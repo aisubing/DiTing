@@ -69,6 +69,24 @@ object CrashLogManager {
     }
 
     /**
+     * Overwrites an already-saved crash report with the richer, deferred version
+     * collected off the crashing thread. Same atomic write + fsync as
+     * [saveCrashReport], but it never prunes, so the original file is kept in
+     * place even if the enrichment step races log rotation.
+     */
+    fun replaceCrashReport(context: Context, file: File, reportContent: String) {
+        runCatching {
+            FileOutputStream(file).use { fos ->
+                fos.write(reportContent.toByteArray(Charsets.UTF_8))
+                fos.flush()
+                runCatching { fos.fd.sync() }
+            }
+        }.onFailure { e ->
+            Log.e(TAG, "Failed to replace crash report at ${file.absolutePath}", e)
+        }
+    }
+
+    /**
      * Called every time a crash occurs: records the consecutive-crash count and,
      * once the threshold is reached without a prior manual export, automatically
      * backs the logs up to the system Download directory.

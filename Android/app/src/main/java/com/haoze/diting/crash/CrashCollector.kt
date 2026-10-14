@@ -275,6 +275,62 @@ object CrashCollector {
         return sb.toString()
     }
 
+    /**
+     * Builds a small, allocation-light report meant to be written from the
+     * crashing thread before the process is torn down. It omits every expensive
+     * diagnostic (logcat fork, all-live-thread dump, binder-backed device/network
+     * queries) so it succeeds even under heavy memory pressure, where the full
+     * [collectReport] would itself fail. It still carries the fields the export
+     * summary parses ("DITING CRASH REPORT", "Timestamp (Local): ",
+     * "Exception Class  : "), so downstream consumers keep working.
+     */
+    fun collectMinimalReport(
+        thread: Thread,
+        throwable: Throwable,
+        topActivityName: String?,
+        isForeground: Boolean
+    ): String {
+        val now = System.currentTimeMillis()
+        val localFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
+        val utcFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS 'UTC'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+
+        val sb = StringBuilder(2048)
+        sb.append("================================================================================\n")
+        sb.append("                           DITING CRASH REPORT\n")
+        sb.append("                            (MINIMAL DIAGNOSTICS)\n")
+        sb.append("================================================================================\n\n")
+
+        sb.append("Timestamp (Local): ").append(localFormat.format(Date(now))).append("\n")
+        sb.append("Timestamp (UTC)  : ").append(utcFormat.format(Date(now))).append("\n")
+        sb.append("Epoch Millis     : ").append(now).append("\n\n")
+
+        appendSection(sb, "CRASH CONTEXT") {
+            append("App Lifecycle    : ").append(if (isForeground) "Foreground" else "Background").append("\n")
+            append("Top Activity     : ").append(topActivityName ?: "(None)").append("\n")
+            append("Thread Name      : ").append(thread.name).append("\n")
+            append("Thread State     : ").append(thread.state).append("\n")
+        }
+
+        appendSection(sb, "EXCEPTION DETAILS & STACK TRACE") {
+            append("Exception Class  : ").append(throwable.javaClass.name).append("\n")
+            append("Message          : ").append(throwable.message ?: "(null)").append("\n\n")
+            append("Full Stack Trace:\n")
+            append(throwable.stackTraceToString().trimEnd()).append("\n")
+        }
+
+        appendSection(sb, "CRASH BREADCRUMBS (RECENT EVENTS)") {
+            append(CrashBreadcrumbs.formatAll()).append("\n")
+        }
+
+        sb.append("================================================================================\n")
+        sb.append("                             END OF REPORT\n")
+        sb.append("================================================================================\n")
+
+        return sb.toString()
+    }
+
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.R)
     fun collectNativeCrashReport(
         context: Context,

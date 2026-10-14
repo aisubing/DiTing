@@ -33,20 +33,45 @@ class CrashHandler private constructor(
                 level = "FATAL"
             )
 
-            val report = CrashCollector.collectReport(
-                context = appContext,
+            // Fast path: capture only cheap diagnostics and persist them with a
+            // synchronous fsync. This must complete before the process dies, and
+            // is deliberately small so it still succeeds under OOM / a wedged
+            // runtime, where the full report below would itself fail.
+            val minimal = CrashCollector.collectMinimalReport(
                 thread = thread,
                 throwable = throwable,
                 topActivityName = currentActivityName,
                 isForeground = isAppForeground
             )
+            val file = CrashLogManager.saveCrashReport(appContext, minimal)
+            Log.e(TAG, "DITING Crash detected! Minimal report saved to: ${file?.absolutePath}")
 
-            val file = CrashLogManager.saveCrashReport(appContext, report)
-            Log.e(TAG, "DITING Crash detected! Report saved to: ${file?.absolutePath}")
-
-            // Track consecutive crashes and decide whether the automatic backup
-            // to the system Download directory should trigger.
-            CrashLogManager.onCrashOccurred(appContext)
+            // Slow path: the expensive diagnostics (logcat fork, all-live-thread
+            // dump, binder-backed device/network queries) and the crash bookkeeping
+            // (sync prefs commit + possible Downloads export) run on a detached
+            // thread so they never block the crashing thread.
+            val saved = file
+            Thread({
+                runCatching {
+                    val full = CrashCollector.collectReport(
+                        context = appContext,
+                        thread = thread,
+                        throwable = throwable,
+                        topActivityName = currentActivityName,
+                        isForeground = isAppForeground
+                    )
+                    if (saved != null) {
+                        CrashLogManager.replaceCrashReport(appContext, saved, full)
+                        Log.i(TAG, "Enriched crash report at ${saved.absolutePath}")
+                    } else {
+                        CrashLogManager.saveCrashReport(appContext, full)
+                    }
+                    CrashLogManager.onCrashOccurred(appContext)
+                }.onFailure { e ->
+                    Log.e(TAG, "Fatal error while enriching crash report", e)
+                    runCatching { CrashLogManager.onCrashOccurred(appContext) }
+                }
+            }, "CrashEnricher").start()
         } catch (e: Throwable) {
             Log.e(TAG, "Fatal error while capturing crash report", e)
         } finally {
