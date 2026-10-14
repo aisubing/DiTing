@@ -283,6 +283,16 @@ interface AllowRuleDao {
     )
     suspend fun allByAppScope(appScope: String): List<AllowRuleEntity>
 
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1)) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r WHERE " +
+            "(r.appScope = :appScope OR r.appScope LIKE :appScope || '|%' OR r.appScope LIKE '%|' || :appScope || '|%' OR r.appScope LIKE '%|' || :appScope) " +
+            "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun pagedByAppScope(appScope: String, limit: Int, offset: Int): List<AllowRuleEntity>
+
     @Query("SELECT DISTINCT appScope FROM allow_rule WHERE appScope IS NOT NULL")
     suspend fun appScopes(): List<String>
 
@@ -409,6 +419,95 @@ interface AllowRuleDao {
             "FROM allow_rule r ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
     )
     suspend fun paged(limit: Int, offset: Int): List<AllowRuleEntity>
+
+    // ALL/DOMAIN view: non-preset rules first (newest first), preset whitelist last.
+    // Mirrors the previous in-memory `compareBy { it.isPreset }.thenByDescending { addedAt }`.
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1)) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r " +
+            "ORDER BY (EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.source = :presetSource)) ASC, r.addedAt DESC " +
+            "LIMIT :limit OFFSET :offset"
+    )
+    suspend fun allPaged(presetSource: String, limit: Int, offset: Int): List<AllowRuleEntity>
+
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1)) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r WHERE " +
+            "(r.pattern LIKE :query OR r.rawLine LIKE :query OR r.groupName LIKE :query OR r.appScope LIKE :query OR " +
+            "EXISTS (SELECT 1 FROM allow_rule_source s2 JOIN subscription sub ON s2.source = 'sub_' || sub.id WHERE s2.ruleId = r.id AND sub.name LIKE :query)) " +
+            "ORDER BY (EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.source = :presetSource)) ASC, r.addedAt DESC " +
+            "LIMIT :limit OFFSET :offset"
+    )
+    suspend fun searchAllPaged(presetSource: String, query: String, limit: Int, offset: Int): List<AllowRuleEntity>
+
+    @Query(
+        "SELECT COUNT(*) FROM allow_rule r WHERE " +
+            "(r.pattern LIKE :query OR r.rawLine LIKE :query OR r.groupName LIKE :query OR r.appScope LIKE :query OR " +
+            "EXISTS (SELECT 1 FROM allow_rule_source s2 JOIN subscription sub ON s2.source = 'sub_' || sub.id WHERE s2.ruleId = r.id AND sub.name LIKE :query))"
+    )
+    suspend fun searchAllCount(query: String): Int
+
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source != 'preset' AND s.source NOT LIKE 'sub_%')) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r " +
+            "WHERE EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.source != 'preset' AND s.source NOT LIKE 'sub_%') " +
+            "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun userRulesPaged(limit: Int, offset: Int): List<AllowRuleEntity>
+
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source != 'preset' AND s.source NOT LIKE 'sub_%')) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r " +
+            "WHERE EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.source != 'preset' AND s.source NOT LIKE 'sub_%') " +
+            "AND (r.pattern LIKE :query OR r.rawLine LIKE :query OR r.groupName LIKE :query OR r.appScope LIKE :query) " +
+            "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun searchUserRulesPaged(query: String, limit: Int, offset: Int): List<AllowRuleEntity>
+
+    @Query(
+        "SELECT COUNT(DISTINCT r.id) FROM allow_rule r JOIN allow_rule_source s ON s.ruleId = r.id " +
+            "WHERE s.source != 'preset' AND s.source NOT LIKE 'sub_%' " +
+            "AND (r.pattern LIKE :query OR r.rawLine LIKE :query OR r.groupName LIKE :query OR r.appScope LIKE :query)"
+    )
+    suspend fun searchUserRulesCount(query: String): Int
+
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source LIKE 'sub_%')) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r " +
+            "WHERE EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.source LIKE 'sub_%') " +
+            "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun subscriptionRulesPaged(limit: Int, offset: Int): List<AllowRuleEntity>
+
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source LIKE 'sub_%')) AS enabled, " +
+            "r.groupName, r.appScope, r.appInverted, r.isWildcard, r.important, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM allow_rule r " +
+            "WHERE EXISTS (SELECT 1 FROM allow_rule_source s WHERE s.ruleId = r.id AND s.source LIKE 'sub_%') " +
+            "AND (r.pattern LIKE :query OR r.rawLine LIKE :query OR r.groupName LIKE :query OR r.appScope LIKE :query OR " +
+            "EXISTS (SELECT 1 FROM allow_rule_source s2 JOIN subscription sub ON s2.source = 'sub_' || sub.id WHERE s2.ruleId = r.id AND sub.name LIKE :query)) " +
+            "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun searchSubscriptionRulesPaged(query: String, limit: Int, offset: Int): List<AllowRuleEntity>
+
+    @Query(
+        "SELECT COUNT(DISTINCT r.id) FROM allow_rule r JOIN allow_rule_source s ON s.ruleId = r.id " +
+            "WHERE s.source LIKE 'sub_%' " +
+            "AND (r.pattern LIKE :query OR r.rawLine LIKE :query OR r.groupName LIKE :query OR r.appScope LIKE :query OR " +
+            "EXISTS (SELECT 1 FROM allow_rule_source s2 JOIN subscription sub ON s2.source = 'sub_' || sub.id WHERE s2.ruleId = r.id AND sub.name LIKE :query))"
+    )
+    suspend fun searchSubscriptionRulesCount(query: String): Int
 
     @Query(
         "SELECT DISTINCT r.id, r.pattern, r.rawLine, r.addedAt, " +

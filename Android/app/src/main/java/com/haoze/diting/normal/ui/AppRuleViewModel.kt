@@ -56,6 +56,27 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
     private val _allowRules = MutableStateFlow<List<AppRuleItem>>(emptyList())
     val allowRules: StateFlow<List<AppRuleItem>> = _allowRules.asStateFlow()
 
+    private val _blockTotalCount = MutableStateFlow(0)
+    val blockTotalCount: StateFlow<Int> = _blockTotalCount.asStateFlow()
+
+    private val _allowTotalCount = MutableStateFlow(0)
+    val allowTotalCount: StateFlow<Int> = _allowTotalCount.asStateFlow()
+
+    private val _blockHasMore = MutableStateFlow(false)
+    val blockHasMore: StateFlow<Boolean> = _blockHasMore.asStateFlow()
+
+    private val _allowHasMore = MutableStateFlow(false)
+    val allowHasMore: StateFlow<Boolean> = _allowHasMore.asStateFlow()
+
+    // Paging bookkeeping for the currently selected app. Guarded by the single
+    // viewModelScope dispatcher usage, but the package check makes a late page
+    // from the previous app harmless.
+    private var loadedPackage: String? = null
+    private var blockOffset = 0
+    private var allowOffset = 0
+    private var blockLoading = false
+    private var allowLoading = false
+
     init {
         loadAllData()
     }
@@ -83,8 +104,13 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
         if (app != null) {
             loadRulesForApp(app.packageName)
         } else {
+            loadedPackage = null
             _blockRules.value = emptyList()
             _allowRules.value = emptyList()
+            _blockTotalCount.value = 0
+            _allowTotalCount.value = 0
+            _blockHasMore.value = false
+            _allowHasMore.value = false
             _selectedAppAllowlistDomains.value = emptySet()
             _fullBlockEnabled.value = false
             loadAllData()
@@ -118,72 +144,159 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
 
     fun loadRulesForApp(packageName: String) {
         val context = getApplication<Application>()
-        val allowlistDomains = AppRulesSettingsStore.getAppAllowlistDomainsForApp(context, packageName)
-        _selectedAppAllowlistDomains.value = allowlistDomains
+        _selectedAppAllowlistDomains.value = AppRulesSettingsStore.getAppAllowlistDomainsForApp(context, packageName)
+
+        // Reset paging for the newly selected app.
+        loadedPackage = packageName
+        blockOffset = 0
+        allowOffset = 0
 
         viewModelScope.launch(Dispatchers.IO) {
-            val blocks = blockRuleDao.allByAppScope(packageName)
-            val allows = allowRuleDao.allByAppScope(packageName)
-            val hasFullBlock = blocks.any { it.pattern == "*" && it.enabled && !it.appInverted }
+            // Only the first page of each list is loaded here; further pages are
+            // fetched on demand by loadMoreBlockRules / loadMoreAllowRules.
+            val blocks = blockRuleDao.pagedByAppScope(packageName, PAGE_SIZE, 0)
+            val allows = allowRuleDao.pagedByAppScope(packageName, PAGE_SIZE, 0)
+            val blockTotal = blockRuleDao.countByAppScope(packageName)
+            val allowTotal = allowRuleDao.countByAppScope(packageName)
+            val hasFullBlock = blockRuleDao.hasEnabledFullBlockForApp(packageName)
 
-            val blockIds = blocks.map { it.id }
-            val allowIds = allows.map { it.id }
-            val blockSources = if (blockIds.isNotEmpty()) blockRuleDao.sourcesForRuleIds(blockIds) else emptyList()
-            val allowSources = if (allowIds.isNotEmpty()) allowRuleDao.sourcesForRuleIds(allowIds) else emptyList()
-            val subscriptions = db.subscriptionDao().all().associateBy { "sub_${it.id}" }
+            val blockItems = buildBlockItems(blocks)
+            val allowItems = buildAllowItems(allows)
 
-            val blockSourcesMap = blockSources.groupBy { it.ruleId }
-            val allowSourcesMap = allowSources.groupBy { it.ruleId }
-
-            val blockItems = blocks.map { entity ->
-                val sources = blockSourcesMap[entity.id].orEmpty()
-                val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
-                val subSources = sources.filter { it.source.startsWith("sub_") }
-                val isSub = subSources.isNotEmpty()
-                val subName = subSources.firstOrNull()?.let { subscriptions[it.source]?.name }
-                AppRuleItem(
-                    id = entity.id,
-                    pattern = entity.pattern,
-                    rawLine = entity.rawLine,
-                    enabled = entity.enabled,
-                    important = entity.important,
-                    isWildcard = entity.isWildcard,
-                    isAllow = false,
-                    appInverted = entity.appInverted,
-                    isUserRule = isUser,
-                    isSubscription = isSub,
-                    subscriptionName = subName
-                )
-            }
-
-            val allowItems = allows.map { entity ->
-                val sources = allowSourcesMap[entity.id].orEmpty()
-                val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
-                val subSources = sources.filter { it.source.startsWith("sub_") }
-                val isSub = subSources.isNotEmpty()
-                val subName = subSources.firstOrNull()?.let { subscriptions[it.source]?.name }
-                AppRuleItem(
-                    id = entity.id,
-                    pattern = entity.pattern,
-                    rawLine = entity.rawLine,
-                    enabled = entity.enabled,
-                    important = entity.important,
-                    isWildcard = entity.isWildcard,
-                    isAllow = true,
-                    appInverted = entity.appInverted,
-                    isUserRule = isUser,
-                    isSubscription = isSub,
-                    subscriptionName = subName
-                )
-            }
-
+            if (loadedPackage != packageName) return@launch
+            blockOffset = blocks.size
+            allowOffset = allows.size
             withContext(Dispatchers.Main) {
+                if (loadedPackage != packageName) return@withContext
                 _blockRules.value = blockItems
                 _allowRules.value = allowItems
+                _blockTotalCount.value = blockTotal
+                _allowTotalCount.value = allowTotal
+                _blockHasMore.value = blocks.size == PAGE_SIZE
+                _allowHasMore.value = allows.size == PAGE_SIZE
                 _fullBlockEnabled.value = hasFullBlock
             }
         }
     }
+
+    fun loadMoreBlockRules() = loadMore(isAllow = false)
+
+    fun loadMoreAllowRules() = loadMore(isAllow = true)
+
+    private fun loadMore(isAllow: Boolean) {
+        val pkg = loadedPackage ?: return
+        if (isAllow) {
+            if (allowLoading || !_allowHasMore.value) return
+            allowLoading = true
+        } else {
+            if (blockLoading || !_blockHasMore.value) return
+            blockLoading = true
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (isAllow) {
+                    val page = allowRuleDao.pagedByAppScope(pkg, PAGE_SIZE, allowOffset)
+                    val items = buildAllowItems(page)
+                    if (loadedPackage != pkg) return@launch
+                    withContext(Dispatchers.Main) {
+                        if (loadedPackage != pkg) return@withContext
+                        _allowRules.value = _allowRules.value + items
+                        allowOffset += page.size
+                        _allowHasMore.value = page.size == PAGE_SIZE
+                    }
+                } else {
+                    val page = blockRuleDao.pagedByAppScope(pkg, PAGE_SIZE, blockOffset)
+                    val items = buildBlockItems(page)
+                    if (loadedPackage != pkg) return@launch
+                    withContext(Dispatchers.Main) {
+                        if (loadedPackage != pkg) return@withContext
+                        _blockRules.value = _blockRules.value + items
+                        blockOffset += page.size
+                        _blockHasMore.value = page.size == PAGE_SIZE
+                    }
+                }
+            } finally {
+                if (isAllow) allowLoading = false else blockLoading = false
+            }
+        }
+    }
+
+    /**
+     * Resolves the subscription-name lookups for a page's source rows. Only the
+     * subscription ids actually referenced by this page are queried, instead of
+     * loading the whole `subscription` table.
+     */
+    private suspend fun subscriptionNamesFor(sources: List<RuleSourceRow>): Map<Long, String> {
+        val subIds = sources.mapNotNull { it.subscriptionId() }.distinct()
+        if (subIds.isEmpty()) return emptyMap()
+        return db.subscriptionDao().idNameByIds(subIds).associate { it.id to it.name }
+    }
+
+    /** Shared classification of a rule's sources into user / subscription, used by both lists. */
+    private fun classify(sources: List<RuleSourceRow>, subscriptionNames: Map<Long, String>): SourceClassification {
+        val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
+        val subSource = sources.firstOrNull { it.source.startsWith("sub_") }
+        return SourceClassification(
+            isUserRule = isUser,
+            isSubscription = subSource != null,
+            subscriptionName = subSource?.subscriptionId()?.let { subscriptionNames[it] }
+        )
+    }
+
+    private suspend fun buildBlockItems(entities: List<BlockRuleEntity>): List<AppRuleItem> {
+        if (entities.isEmpty()) return emptyList()
+        val sources = blockRuleDao.sourcesForRuleIds(entities.map { it.id })
+        val names = subscriptionNamesFor(sources.map { RuleSourceRow(it.ruleId, it.source) })
+        val byRule = sources.groupBy { it.ruleId }
+        return entities.map { e ->
+            val cls = classify(byRule[e.id].orEmpty().map { RuleSourceRow(it.ruleId, it.source) }, names)
+            AppRuleItem(
+                id = e.id,
+                pattern = e.pattern,
+                rawLine = e.rawLine,
+                enabled = e.enabled,
+                important = e.important,
+                isWildcard = e.isWildcard,
+                isAllow = false,
+                appInverted = e.appInverted,
+                isUserRule = cls.isUserRule,
+                isSubscription = cls.isSubscription,
+                subscriptionName = cls.subscriptionName
+            )
+        }
+    }
+
+    private suspend fun buildAllowItems(entities: List<AllowRuleEntity>): List<AppRuleItem> {
+        if (entities.isEmpty()) return emptyList()
+        val sources = allowRuleDao.sourcesForRuleIds(entities.map { it.id })
+        val names = subscriptionNamesFor(sources.map { RuleSourceRow(it.ruleId, it.source) })
+        val byRule = sources.groupBy { it.ruleId }
+        return entities.map { e ->
+            val cls = classify(byRule[e.id].orEmpty().map { RuleSourceRow(it.ruleId, it.source) }, names)
+            AppRuleItem(
+                id = e.id,
+                pattern = e.pattern,
+                rawLine = e.rawLine,
+                enabled = e.enabled,
+                important = e.important,
+                isWildcard = e.isWildcard,
+                isAllow = true,
+                appInverted = e.appInverted,
+                isUserRule = cls.isUserRule,
+                isSubscription = cls.isSubscription,
+                subscriptionName = cls.subscriptionName
+            )
+        }
+    }
+
+    private data class SourceClassification(
+        val isUserRule: Boolean,
+        val isSubscription: Boolean,
+        val subscriptionName: String?
+    )
+
+    private fun RuleSourceRow.subscriptionId(): Long? =
+        if (source.startsWith("sub_")) source.removePrefix("sub_").toLongOrNull() else null
 
     fun addAllowlistDomain(rawInput: String, onResult: (String, Boolean) -> Unit) {
         val app = _selectedApp.value ?: return
@@ -242,12 +355,12 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
         val app = _selectedApp.value ?: return
         viewModelScope.launch(Dispatchers.IO) {
             val pkg = app.packageName
-            val existing = blockRuleDao.allByAppScope(pkg).firstOrNull { it.pattern == "*" && !it.appInverted }
+            val existingId = blockRuleDao.fullBlockRuleIdForApp(pkg)
             val context = getApplication<Application>()
 
             if (enabled) {
-                if (existing != null) {
-                    blockRuleDao.setEnabled(existing.id, true)
+                if (existingId != null) {
+                    blockRuleDao.setEnabled(existingId, true)
                     blockListManager.syncCachedPattern("*")
                 } else {
                     val ruleStr = "*\$app=$pkg"
@@ -258,8 +371,8 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
                 AppRulesSettingsStore.setAppAllowlistDomainsForApp(context, pkg, currentAllowlist)
                 RuntimeDnsSettingsRefresher.refreshAppAllowlistIfRunning(context)
             } else {
-                if (existing != null) {
-                    blockRuleDao.deleteById(existing.id)
+                if (existingId != null) {
+                    blockRuleDao.deleteById(existingId)
                     blockListManager.syncCachedPattern("*")
                     RuntimeDnsSettingsRefresher.syncRuleIfRunning(context, "block", "*", scope)
                 }
@@ -379,5 +492,12 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
             loadAppRuleCounts()
         }
     }
+
+    companion object {
+        private const val PAGE_SIZE = 100
+    }
 }
+
+/** Uniform view of a rule-source row (block vs allow) for shared classification. */
+private data class RuleSourceRow(val ruleId: Long, val source: String)
 

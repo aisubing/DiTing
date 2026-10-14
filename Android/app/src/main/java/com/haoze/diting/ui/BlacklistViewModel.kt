@@ -128,7 +128,6 @@ class BlacklistViewModel(
             val currentFilter = _filter.value
             val domainRulesEnabled = settings.isMasterEnabled(getApplication())
             val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
-            val subscriptionsMap = subscriptionDao.all().associateBy { "sub_${it.id}" }
 
             // 1. URL block items
             val allUrlEntities = when (currentFilter) {
@@ -141,12 +140,13 @@ class BlacklistViewModel(
             val urlRuleIds = filteredUrls.map { it.id }
             val urlSources = if (urlRuleIds.isNotEmpty()) goUrlRuleDao.sourcesForRuleIds(urlRuleIds) else emptyList()
             val urlSourcesByRuleId = urlSources.groupBy { it.ruleId }
+            val urlSubscriptionNames = subscriptionDao.lookupSubscriptionNames(urlSources.map { it.ruleId to it.source })
             val urlItems = filteredUrls.mapNotNull { entity ->
                 val sources = urlSourcesByRuleId[entity.id].orEmpty()
                 val isUser = sources.isEmpty() || sources.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
                 val isSub = sources.any { it.source.startsWith("sub_") }
                 if (currentFilter == BlacklistFilter.USER_ADDED && !isUser) return@mapNotNull null
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionsMap[it.source]?.name }
+                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { urlSubscriptionNames[it.source] }
                 entity.toItem(isUserRule = isUser, isSubscription = isSub, subscriptionName = subName, masterEnabled = addressRulesOperational)
             }
 
@@ -163,13 +163,14 @@ class BlacklistViewModel(
             val cosmeticRuleIds = filteredCosmetics.map { it.id }
             val cosmeticSources = if (cosmeticRuleIds.isNotEmpty()) cosmeticRuleDao.sourcesForRuleIds(cosmeticRuleIds) else emptyList()
             val cosmeticSourcesByRuleId = cosmeticSources.groupBy { it.ruleId }
+            val cosmeticSubscriptionNames = subscriptionDao.lookupSubscriptionNames(cosmeticSources.map { it.ruleId to it.source })
             val cosmeticItems = filteredCosmetics.mapNotNull { entity ->
                 val sources = cosmeticSourcesByRuleId[entity.id].orEmpty()
                 val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
                 val isSub = sources.any { it.source.startsWith("sub_") }
                 if (currentFilter == BlacklistFilter.USER_ADDED && !isUser) return@mapNotNull null
                 if (currentFilter == BlacklistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionsMap[it.source]?.name }
+                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { cosmeticSubscriptionNames[it.source] }
                 entity.toItem(isUserRule = isUser, isSubscription = isSub, subscriptionName = subName, masterEnabled = addressRulesOperational)
             }
 
@@ -224,13 +225,14 @@ class BlacklistViewModel(
             val domainRuleIds = pagedDomainEntities.map { it.id }
             val domainSources = if (domainRuleIds.isNotEmpty()) blockRuleDao.sourcesForRuleIds(domainRuleIds) else emptyList()
             val domainSourcesByRuleId = domainSources.groupBy { it.ruleId }
+            val domainSubscriptionNames = subscriptionDao.lookupSubscriptionNames(domainSources.map { it.ruleId to it.source })
 
             val domainItems = pagedDomainEntities.map { entity ->
                 val sources = domainSourcesByRuleId[entity.id].orEmpty()
                 val isUser = sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
                 val subSources = sources.filter { it.source.startsWith("sub_") }
                 val isSub = subSources.isNotEmpty()
-                val subName = subSources.firstOrNull()?.let { subscriptionsMap[it.source]?.name }
+                val subName = subSources.firstOrNull()?.let { domainSubscriptionNames[it.source] }
                 entity.toItem(isUserRule = isUser, isSubscription = isSub, subscriptionName = subName, masterEnabled = domainRulesEnabled)
             }
 

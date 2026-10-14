@@ -152,23 +152,8 @@ class WhitelistViewModel(
             val domainRulesEnabled = settings.isMasterEnabled(getApplication())
             val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
 
-            val domainEntities = when (currentFilter) {
-                WhitelistFilter.ALL, WhitelistFilter.DOMAIN -> {
-                    val preset = allowRuleDao.bySource(DefaultWhitelistSeeder.SOURCE_PRESET)
-                    val user = allowRuleDao.userRules()
-                    val subs = allowRuleDao.subscriptionRules()
-                    (user + preset + subs).distinctBy { it.id }
-                }
-                WhitelistFilter.PRESET -> allowRuleDao.bySource(DefaultWhitelistSeeder.SOURCE_PRESET)
-                WhitelistFilter.USER_ADDED -> allowRuleDao.userRules()
-                WhitelistFilter.SUBSCRIPTION -> allowRuleDao.subscriptionRules()
-                WhitelistFilter.URL, WhitelistFilter.COSMETIC -> emptyList()
-            }
-
-            val domainRuleIds = domainEntities.map { it.id }
-            val domainSources = if (domainRuleIds.isNotEmpty()) allowRuleDao.sourcesForRuleIds(domainRuleIds) else emptyList()
-            val domainSourcesByRuleId = domainSources.groupBy { it.ruleId }
-
+            // URL and cosmetic rules have no paged DAO queries, so those lists
+            // are still assembled in memory. Domain rules are paged from the DB.
             val allUrlEntities = when (currentFilter) {
                 WhitelistFilter.ALL, WhitelistFilter.URL -> goUrlRuleDao.byKind(GoUrlRuleKind.ALLOW)
                 WhitelistFilter.USER_ADDED -> {
@@ -229,14 +214,102 @@ class WhitelistViewModel(
             val cosmeticSources = if (cosmeticRuleIds.isNotEmpty()) cosmeticRuleDao.sourcesForRuleIds(cosmeticRuleIds) else emptyList()
             val cosmeticSourcesByRuleId = cosmeticSources.groupBy { it.ruleId }
 
-            val subscriptionsMap = subscriptionDao.all().associateBy { "sub_${it.id}" }
+            val urlSourceRows = urlSources.map { it.ruleId to it.source }
+            val cosmeticSourceRows = cosmeticSources.map { it.ruleId to it.source }
+            val subscriptionNames = subscriptionDao.lookupSubscriptionNames(urlSourceRows + cosmeticSourceRows)
 
-            val domainItems = domainEntities.map { entity ->
+            val urlItems = allUrlEntities.mapNotNull { entity ->
+                val sources = urlSourcesByRuleId[entity.id].orEmpty()
+                val isSub = sources.any { it.source.startsWith("sub_") }
+                val isUser = sources.isEmpty() || sources.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
+                if (currentFilter == WhitelistFilter.USER_ADDED && !isUser) return@mapNotNull null
+                if (currentFilter == WhitelistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
+                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionNames[it.source] }
+                if (!matchesSearchQuery(query, entity.pattern, entity.rawLine, null, null, subName)) return@mapNotNull null
+                entity.toItem(
+                    isUserRule = isUser,
+                    isSubscription = isSub,
+                    subscriptionName = subName,
+                    masterEnabled = addressRulesOperational
+                )
+            }
+
+            val cosmeticItems = allCosmeticEntities.mapNotNull { entity ->
+                val sources = cosmeticSourcesByRuleId[entity.id].orEmpty()
+                val isSub = sources.any { it.source.startsWith("sub_") }
+                val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
+                if (currentFilter == WhitelistFilter.USER_ADDED && !isUser) return@mapNotNull null
+                if (currentFilter == WhitelistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
+                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionNames[it.source] }
+                if (!matchesSearchQuery(query, entity.rawLine, entity.domain, entity.selector, null, subName)) return@mapNotNull null
+                entity.toItem(
+                    isUserRule = isUser,
+                    isSubscription = isSub,
+                    subscriptionName = subName,
+                    masterEnabled = addressRulesOperational
+                )
+            }
+
+            val nonDomainItems = when (currentFilter) {
+                WhitelistFilter.URL -> urlItems
+                WhitelistFilter.COSMETIC -> cosmeticItems
+                WhitelistFilter.SUBSCRIPTION -> cosmeticItems
+                else -> cosmeticItems + urlItems
+            }
+            val nonDomainCount = nonDomainItems.size
+
+            val domainCount = when (currentFilter) {
+                WhitelistFilter.ALL, WhitelistFilter.DOMAIN -> {
+                    if (query.isEmpty()) allowRuleDao.count() else allowRuleDao.searchAllCount("%$query%")
+                }
+                WhitelistFilter.PRESET -> {
+                    if (query.isEmpty()) allowRuleDao.countBySourceForList(DefaultWhitelistSeeder.SOURCE_PRESET)
+                    else allowRuleDao.searchCountBySource(DefaultWhitelistSeeder.SOURCE_PRESET, "%$query%")
+                }
+                WhitelistFilter.USER_ADDED -> {
+                    if (query.isEmpty()) allowRuleDao.userRulesCount() else allowRuleDao.searchUserRulesCount("%$query%")
+                }
+                WhitelistFilter.SUBSCRIPTION -> {
+                    if (query.isEmpty()) allowRuleDao.subscriptionRulesCount() else allowRuleDao.searchSubscriptionRulesCount("%$query%")
+                }
+                WhitelistFilter.URL, WhitelistFilter.COSMETIC -> 0
+            }
+
+            val total = nonDomainCount + domainCount
+            val pages = if (total == 0) 1 else (total + pageSize - 1) / pageSize
+            val safePage = page.coerceIn(1, pages)
+            val offset = (safePage - 1) * pageSize
+
+            val pagedNonDomain: List<WhitelistItem>
+            val pagedDomainEntities: List<AllowRuleEntity>
+            if (currentFilter == WhitelistFilter.URL || currentFilter == WhitelistFilter.COSMETIC) {
+                pagedNonDomain = nonDomainItems.drop(offset).take(pageSize)
+                pagedDomainEntities = emptyList()
+            } else if (currentFilter == WhitelistFilter.DOMAIN) {
+                pagedNonDomain = emptyList()
+                pagedDomainEntities = queryDomainEntities(currentFilter, query, pageSize, offset)
+            } else {
+                if (offset < nonDomainCount) {
+                    pagedNonDomain = nonDomainItems.drop(offset).take(pageSize)
+                    val domainLimit = pageSize - pagedNonDomain.size
+                    pagedDomainEntities = if (domainLimit > 0) queryDomainEntities(currentFilter, query, domainLimit, 0) else emptyList()
+                } else {
+                    pagedNonDomain = emptyList()
+                    pagedDomainEntities = queryDomainEntities(currentFilter, query, pageSize, offset - nonDomainCount)
+                }
+            }
+
+            val domainRuleIds = pagedDomainEntities.map { it.id }
+            val domainSources = if (domainRuleIds.isNotEmpty()) allowRuleDao.sourcesForRuleIds(domainRuleIds) else emptyList()
+            val domainSourcesByRuleId = domainSources.groupBy { it.ruleId }
+            val domainSubscriptionNames = subscriptionDao.lookupSubscriptionNames(domainSources.map { it.ruleId to it.source })
+
+            val domainItems = pagedDomainEntities.map { entity ->
                 val sources = domainSourcesByRuleId[entity.id].orEmpty()
                 val isPreset = sources.any { it.source == DefaultWhitelistSeeder.SOURCE_PRESET }
                 val isSub = sources.any { it.source.startsWith("sub_") }
                 val isUser = sources.any { it.source == DefaultWhitelistSeeder.SOURCE_USER || (it.source != DefaultWhitelistSeeder.SOURCE_PRESET && !it.source.startsWith("sub_")) } || (!isPreset && !isSub)
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionsMap[it.source]?.name }
+                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { domainSubscriptionNames[it.source] }
                 entity.toItem(
                     isPreset = isPreset,
                     isUserRule = isUser,
@@ -246,60 +319,21 @@ class WhitelistViewModel(
                 )
             }
 
-            val urlItems = allUrlEntities.map { entity ->
-                val sources = urlSourcesByRuleId[entity.id].orEmpty()
-                val isSub = sources.any { it.source.startsWith("sub_") }
-                val isUser = sources.isEmpty() || sources.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionsMap[it.source]?.name }
-                entity.toItem(
-                    isUserRule = isUser,
-                    isSubscription = isSub,
-                    subscriptionName = subName,
-                    masterEnabled = addressRulesOperational
-                )
-            }
-
-            val cosmeticItems = allCosmeticEntities.map { entity ->
-                val sources = cosmeticSourcesByRuleId[entity.id].orEmpty()
-                val isSub = sources.any { it.source.startsWith("sub_") }
-                val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionsMap[it.source]?.name }
-                entity.toItem(
-                    isUserRule = isUser,
-                    isSubscription = isSub,
-                    subscriptionName = subName,
-                    masterEnabled = addressRulesOperational
-                )
-            }
-
-            val combined = (domainItems + urlItems + cosmeticItems)
-                .distinctBy { "${it.type}_${it.id}" }
-                .filter { item ->
-                    if (query.isEmpty()) true
-                    else item.pattern.lowercase().contains(query) ||
-                            item.rawLine.lowercase().contains(query) ||
-                            (item.groupName?.lowercase()?.contains(query) == true) ||
-                            (item.appScope?.lowercase()?.contains(query) == true) ||
-                            (item.subscriptionName?.lowercase()?.contains(query) == true)
-                }.sortedWith(
-                    compareBy<WhitelistItem> { it.isPreset }
-                        .thenByDescending { it.addedAt }
-                )
-
-            val total = combined.size
-            val pages = if (total == 0) 1 else (total + pageSize - 1) / pageSize
-            val safePage = page.coerceIn(1, pages)
-            val offset = (safePage - 1) * pageSize
-            val pagedItems = combined.drop(offset).take(pageSize)
-
             withContext(Dispatchers.Main) {
-                _items.value = pagedItems
+                _items.value = pagedNonDomain + domainItems
                 _currentPage.value = safePage
                 _totalPages.value = pages
                 _totalCount.value = total
             }
         }
     }
+
+    private suspend fun queryDomainEntities(
+        filter: WhitelistFilter,
+        query: String,
+        limit: Int,
+        offset: Int
+    ): List<AllowRuleEntity> = allowRuleDao.queryWhitelistDomainPage(filter, query, limit, offset)
 
     fun toggleRule(item: WhitelistItem, enabled: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {

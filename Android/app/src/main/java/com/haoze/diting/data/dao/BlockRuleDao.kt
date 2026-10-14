@@ -303,6 +303,30 @@ interface BlockRuleDao {
     )
     suspend fun allByAppScope(appScope: String): List<BlockRuleEntity>
 
+    @Query(
+        "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1)) AS enabled, " +
+            "r.groupName, r.important, r.appScope, r.appInverted, r.isWildcard, r.denyallow, r.isRegex, r.dnsType " +
+            "FROM block_rule r WHERE " +
+            "(r.appScope = :appScope OR r.appScope LIKE :appScope || '|%' OR r.appScope LIKE '%|' || :appScope || '|%' OR r.appScope LIKE '%|' || :appScope) " +
+            "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
+    )
+    suspend fun pagedByAppScope(appScope: String, limit: Int, offset: Int): List<BlockRuleEntity>
+
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM block_rule r WHERE r.pattern = '*' AND r.appInverted = 0 AND r.enabled = 1 " +
+            "AND (r.appScope = :appScope OR r.appScope LIKE :appScope || '|%' OR r.appScope LIKE '%|' || :appScope || '|%' OR r.appScope LIKE '%|' || :appScope) " +
+            "AND EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1))"
+    )
+    suspend fun hasEnabledFullBlockForApp(appScope: String): Boolean
+
+    @Query(
+        "SELECT id FROM block_rule r WHERE r.pattern = '*' AND r.appInverted = 0 " +
+            "AND (r.appScope = :appScope OR r.appScope LIKE :appScope || '|%' OR r.appScope LIKE '%|' || :appScope || '|%' OR r.appScope LIKE '%|' || :appScope) " +
+            "LIMIT 1"
+    )
+    suspend fun fullBlockRuleIdForApp(appScope: String): Long?
+
     @Query("SELECT DISTINCT appScope FROM block_rule WHERE appScope IS NOT NULL")
     suspend fun appScopes(): List<String>
 

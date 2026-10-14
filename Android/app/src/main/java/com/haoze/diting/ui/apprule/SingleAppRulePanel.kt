@@ -21,12 +21,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +60,12 @@ internal fun SingleAppRulePanel(
     fullBlockEnabled: Boolean,
     blockRules: List<AppRuleItem>,
     allowRules: List<AppRuleItem>,
+    blockTotalCount: Int,
+    allowTotalCount: Int,
+    blockHasMore: Boolean,
+    allowHasMore: Boolean,
+    onLoadMoreBlockRules: () -> Unit,
+    onLoadMoreAllowRules: () -> Unit,
     onBack: () -> Unit,
     onAddAllowlistDomain: (String) -> Unit,
     onRemoveAllowlistDomain: (String) -> Unit,
@@ -288,7 +296,7 @@ internal fun SingleAppRulePanel(
             /* Section 3: DNS-specific whitelist rules */
             item(key = "allow_rules_title") {
                 AppSectionHeader(
-                    title = "DNS 专属白名单 (${allowRules.size})",
+                    title = "DNS 专属白名单 ($allowTotalCount)",
                     onAddClick = { openAddDnsDialog(isAllow = true) },
                     addText = "添加 DNS 白名单"
                 )
@@ -327,12 +335,20 @@ internal fun SingleAppRulePanel(
                         )
                     }
                 }
+                if (allowHasMore) {
+                    item(key = "allow_load_more") {
+                        // Composed only when scrolled into view, so this doubles
+                        // as a scroll-triggered incremental page loader.
+                        LaunchedEffect(allowRules.size) { onLoadMoreAllowRules() }
+                        LoadMoreFooter()
+                    }
+                }
             }
 
             /* Section 4: DNS-specific block rules */
             item(key = "block_rules_title") {
                 AppSectionHeader(
-                    title = "DNS 专属拦截 (${blockRules.size})",
+                    title = "DNS 专属拦截 ($blockTotalCount)",
                     onAddClick = { openAddDnsDialog(isAllow = false) },
                     addText = "添加 DNS 拦截"
                 )
@@ -369,6 +385,12 @@ internal fun SingleAppRulePanel(
                             onToggle = { onToggleRule(rule.id, false, it) },
                             onDelete = { onDeleteRule(rule.id, false) }
                         )
+                    }
+                }
+                if (blockHasMore) {
+                    item(key = "block_load_more") {
+                        LaunchedEffect(blockRules.size) { onLoadMoreBlockRules() }
+                        LoadMoreFooter()
                     }
                 }
             }
@@ -408,5 +430,17 @@ internal fun SingleAppRulePanel(
             onDismiss = { showAddDnsDialog = false },
             onConfirm = onAddRule
         )
+    }
+}
+
+@Composable
+private fun LoadMoreFooter() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
     }
 }

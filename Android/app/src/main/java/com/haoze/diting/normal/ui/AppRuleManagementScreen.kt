@@ -62,6 +62,10 @@ internal fun AppRuleManagementScreen(
     val fullBlockEnabled by viewModel.fullBlockEnabled.collectAsStateWithLifecycle()
     val blockRules by viewModel.blockRules.collectAsStateWithLifecycle()
     val allowRules by viewModel.allowRules.collectAsStateWithLifecycle()
+    val blockTotalCount by viewModel.blockTotalCount.collectAsStateWithLifecycle()
+    val allowTotalCount by viewModel.allowTotalCount.collectAsStateWithLifecycle()
+    val blockHasMore by viewModel.blockHasMore.collectAsStateWithLifecycle()
+    val allowHasMore by viewModel.allowHasMore.collectAsStateWithLifecycle()
 
     var showClearAllAllowlistDialog by remember { mutableStateOf(false) }
 
@@ -76,6 +80,12 @@ internal fun AppRuleManagementScreen(
             fullBlockEnabled = fullBlockEnabled,
             blockRules = blockRules,
             allowRules = allowRules,
+            blockTotalCount = blockTotalCount,
+            allowTotalCount = allowTotalCount,
+            blockHasMore = blockHasMore,
+            allowHasMore = allowHasMore,
+            onLoadMoreBlockRules = { viewModel.loadMoreBlockRules() },
+            onLoadMoreAllowRules = { viewModel.loadMoreAllowRules() },
             onBack = { viewModel.selectApp(null) },
             onAddAllowlistDomain = { domain ->
                 viewModel.addAllowlistDomain(domain) { msg, _ ->

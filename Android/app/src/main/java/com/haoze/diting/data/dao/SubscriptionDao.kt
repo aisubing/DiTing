@@ -8,10 +8,16 @@ import androidx.room.Update
 import com.haoze.diting.data.entity.SubscriptionEntity
 import kotlinx.coroutines.flow.Flow
 
+/** Minimal id -> name projection for resolving rule-source subscription labels. */
+data class SubscriptionIdName(val id: Long, val name: String)
+
 @Dao
 interface SubscriptionDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(subscription: SubscriptionEntity): Long
+
+    @Query("SELECT id, name FROM subscription WHERE id IN (:ids)")
+    suspend fun idNameByIds(ids: List<Long>): List<SubscriptionIdName>
 
     @Update
     suspend fun update(subscription: SubscriptionEntity)

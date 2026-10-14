@@ -1,5 +1,8 @@
 package com.haoze.diting.ui
 
+import com.haoze.diting.core.rule.DefaultWhitelistSeeder
+import com.haoze.diting.data.dao.AllowRuleDao
+import com.haoze.diting.data.dao.SubscriptionDao
 import com.haoze.diting.data.entity.AllowRuleEntity
 import com.haoze.diting.data.entity.CosmeticRuleEntity
 import com.haoze.diting.data.entity.GoUrlRuleEntity
@@ -78,6 +81,53 @@ internal fun AllowRuleEntity.toItem(
     isSubscription = isSubscription,
     subscriptionName = subscriptionName
 )
+
+/**
+ * Pages the allow-rule domain tables for the whitelist list. The ALL/DOMAIN view
+ * orders preset rules last (matching the previous in-memory comparator); the
+ * other filters map to their dedicated paged queries. Kept here (rather than in
+ * the ViewModel) to hold the ViewModel under the 600-line file limit.
+ */
+internal suspend fun AllowRuleDao.queryWhitelistDomainPage(
+    filter: WhitelistFilter,
+    query: String,
+    limit: Int,
+    offset: Int
+): List<AllowRuleEntity> = when (filter) {
+    WhitelistFilter.PRESET -> {
+        if (query.isEmpty()) pagedBySource(DefaultWhitelistSeeder.SOURCE_PRESET, limit, offset)
+        else searchPagedBySource(DefaultWhitelistSeeder.SOURCE_PRESET, "%$query%", limit, offset)
+    }
+    WhitelistFilter.USER_ADDED -> {
+        if (query.isEmpty()) userRulesPaged(limit, offset)
+        else searchUserRulesPaged("%$query%", limit, offset)
+    }
+    WhitelistFilter.SUBSCRIPTION -> {
+        if (query.isEmpty()) subscriptionRulesPaged(limit, offset)
+        else searchSubscriptionRulesPaged("%$query%", limit, offset)
+    }
+    else -> {
+        if (query.isEmpty()) allPaged(DefaultWhitelistSeeder.SOURCE_PRESET, limit, offset)
+        else searchAllPaged(DefaultWhitelistSeeder.SOURCE_PRESET, "%$query%", limit, offset)
+    }
+}
+
+/** Resolves only the subscription names referenced by the given `(ruleId, source)` rows. */
+internal suspend fun SubscriptionDao.lookupSubscriptionNames(
+    sources: List<Pair<Long, String>>
+): Map<String, String> {
+    val subIds = sources.mapNotNull { (_, source) ->
+        if (source.startsWith("sub_")) source.removePrefix("sub_").toLongOrNull() else null
+    }.distinct()
+    if (subIds.isEmpty()) return emptyMap()
+    return idNameByIds(subIds).associate { "sub_${it.id}" to it.name }
+}
+
+/** Case-insensitive "contains" match across any of the given fields; true when the query is blank. */
+internal fun matchesSearchQuery(query: String, vararg fields: String?): Boolean {
+    if (query.isEmpty()) return true
+    return fields.any { it?.lowercase()?.contains(query) == true }
+}
 
 internal fun GoUrlRuleEntity.toItem(
     isUserRule: Boolean = true,
