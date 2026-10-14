@@ -1,8 +1,11 @@
 package com.haoze.diting.ui
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.AtomicFile
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -12,6 +15,7 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 private const val AVATAR_DIRECTORY = "recognition_avatars"
@@ -33,10 +37,54 @@ object RecognitionAvatarRepository {
         .build()
     private val downloadMutex = Mutex()
 
+    // Decoded, downsampled avatars keyed by (path, file size, target size). The
+    // avatar set is small and fixed, so this stays tiny for the process lifetime.
+    private val decodeCache = ConcurrentHashMap<String, ImageBitmap>()
+
     fun cachedAvatar(context: Context, avatarFileName: String): File? {
         val file = avatarDirectory(context).resolve(avatarFileName)
         return file.takeIf(::isValidImage)
     }
+
+    /**
+     * Decodes an avatar to display size on a background thread, downsampled to
+     * roughly [targetSizePx] with a power-of-two [BitmapFactory.Options.inSampleSize].
+     * The old path decoded the full-resolution JPEG on the main thread inside a
+     * composable; here decoding never touches the UI thread and the sampled
+     * bitmap is a small fraction of the source. The result is memoized per
+     * (file, target size) for the process.
+     */
+    suspend fun decodeScaled(context: Context, file: File, targetSizePx: Int): ImageBitmap? =
+        withContext(Dispatchers.IO) {
+            val key = decodeCacheKey(file, targetSizePx)
+            decodeCache[key]?.let { return@withContext it }
+            val decoded = decodeScaledInternal(file, targetSizePx) ?: return@withContext null
+            val image = decoded.asImageBitmap()
+            decodeCache[key] = image
+            image
+        }
+
+    private fun decodeScaledInternal(file: File, targetSizePx: Int): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        val target = targetSizePx.coerceAtLeast(1)
+        var sampleSize = 1
+        while (bounds.outWidth / (sampleSize * 2) >= target &&
+            bounds.outHeight / (sampleSize * 2) >= target
+        ) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        return runCatching { BitmapFactory.decodeFile(file.absolutePath, options) }.getOrNull()
+    }
+
+    private fun decodeCacheKey(file: File, targetSizePx: Int): String =
+        "${file.absolutePath}@${file.length()}@$targetSizePx"
 
     suspend fun loadAvatar(context: Context, avatarFileName: String): File? =
         withContext(Dispatchers.IO) {

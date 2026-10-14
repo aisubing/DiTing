@@ -1,7 +1,11 @@
 package com.haoze.diting.ui.floating
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.PixelFormat
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -64,6 +68,19 @@ class FloatingLogOverlayController(
     private var downRawY = 0f
     private var downWindowX = 0
     private var downWindowY = 0
+    // The refresh loop polls forever at 2s; skip it entirely while the screen is
+    // off, since nothing is visible anyway.
+    private var screenOn = (appContext.getSystemService(Context.POWER_SERVICE) as? PowerManager)
+        ?.isInteractive ?: true
+    private var screenReceiverRegistered = false
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_ON -> applyScreenOn(true)
+                Intent.ACTION_SCREEN_OFF -> applyScreenOn(false)
+            }
+        }
+    }
 
     fun setVpnRunning(running: Boolean) {
         vpnRunning = running
@@ -89,8 +106,33 @@ class FloatingLogOverlayController(
         }
     }
 
+    private fun registerScreenReceiver() {
+        if (screenReceiverRegistered) return
+        val filter = IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) }
+        screenReceiverRegistered = runCatching {
+            appContext.registerReceiver(screenReceiver, filter)
+        }.isSuccess
+    }
+
+    private fun unregisterScreenReceiver() {
+        if (!screenReceiverRegistered) return
+        screenReceiverRegistered = false
+        runCatching { appContext.unregisterReceiver(screenReceiver) }
+    }
+
+    private fun applyScreenOn(on: Boolean) {
+        if (screenOn == on) return
+        screenOn = on
+        if (on) {
+            if (expanded) startRefreshing()
+        } else {
+            stopRefreshing()
+        }
+    }
+
     fun destroy() {
         refreshJob?.cancel()
+        unregisterScreenReceiver()
         scope.cancel()
         removeWindow()
     }
@@ -98,15 +140,21 @@ class FloatingLogOverlayController(
     private fun syncVisibility() {
         if (!vpnRunning || appInForeground || hiddenForCurrentBackground || !SystemSettingsStore.isFloatingLogEnabled(appContext)) {
             refreshJob?.cancel()
+            unregisterScreenReceiver()
             removeWindow()
             return
         }
         if (!Settings.canDrawOverlays(appContext)) {
             refreshJob?.cancel()
+            unregisterScreenReceiver()
             removeWindow()
             return
         }
+        registerScreenReceiver()
         ensureWindow()
+        // The window is now on screen: if the panel is expanded but the screen
+        // is off, make sure no polling loop is running.
+        if (!screenOn) stopRefreshing()
     }
 
     private fun ensureWindow() {
@@ -293,6 +341,7 @@ class FloatingLogOverlayController(
 
     private fun startRefreshing() {
         if (refreshJob?.isActive == true) return
+        if (!screenOn) return
         refreshJob = scope.launch {
             while (isActive) {
                 loadLogs()

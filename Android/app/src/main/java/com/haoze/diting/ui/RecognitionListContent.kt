@@ -1,6 +1,5 @@
 package com.haoze.diting.ui
 
-import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -17,12 +16,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,8 +68,12 @@ fun RecognitionList(
 @Composable
 private fun RecognitionListItem(member: RecognitionMember, avatarState: RecognitionAvatarState?) {
     val avatarFile = (avatarState as? RecognitionAvatarState.Available)?.file
-    val avatar = remember(avatarFile) {
-        avatarFile?.let { BitmapFactory.decodeFile(it.absolutePath)?.asImageBitmap() }
+    val context = LocalContext.current.applicationContext
+    // Display size is a fixed 48dp; decode downsampled in the background instead
+    // of decoding the full-resolution JPEG on the main thread during composition.
+    val avatarTargetPx = with(LocalDensity.current) { 48.dp.roundToPx() }
+    val avatar by produceState<ImageBitmap?>(null, avatarFile, avatarTargetPx) {
+        value = avatarFile?.let { RecognitionAvatarRepository.decodeScaled(context, it, avatarTargetPx) }
     }
     val usesDefaultAvatar = member.avatarFileName == null
     val hasAvatar = usesDefaultAvatar || avatar != null
