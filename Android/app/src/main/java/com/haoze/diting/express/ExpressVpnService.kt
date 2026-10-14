@@ -21,8 +21,12 @@ import com.haoze.diting.core.dns.DnsProvider
 import com.haoze.diting.ui.floating.FloatingLogOverlayController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import java.net.DatagramSocket
 import java.net.Socket
 
@@ -42,6 +46,7 @@ class ExpressVpnService : VpnService() {
     private var wasStopped = false
     private var activeProviders: List<DnsProvider> = emptyList()
     private var activeResolutionMode: DnsResolutionMode = DnsResolutionMode.SINGLE
+    private var defaultsSeedJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -49,7 +54,13 @@ class ExpressVpnService : VpnService() {
         activeService = this
         floatingLogOverlay = FloatingLogOverlayController(this, RuleDataset.EXPRESS)
         ExpressNotificationBuilder.ensureChannel(this)
-        kotlinx.coroutines.runBlocking { ExpressDefaultsSeeder.ensureInitialized(this@ExpressVpnService) }
+        // Seed off the main thread: on first launch this opens the Express DB,
+        // rebuilds the trie indexes and syncs WorkManager. It must not block
+        // onCreate(), otherwise startForeground() may miss the Android 12+
+        // foreground-service start deadline.
+        defaultsSeedJob = serviceScope.launch {
+            ExpressDefaultsSeeder.ensureInitialized(this@ExpressVpnService)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -84,6 +95,12 @@ class ExpressVpnService : VpnService() {
 
         // Bring service to foreground immediately to fulfill Android 8.0+ system requirement
         updateForegroundNotification()
+
+        // Only now, with the foreground deadline already satisfied, give the
+        // seeder a short window to finish so the first start has factory rules.
+        // Bounded: on a slow first run the tunnel still starts and picks the
+        // rules up once seeding completes.
+        runCatching { runBlocking { withTimeoutOrNull(2_000) { defaultsSeedJob?.join() } } }
 
         val ipv6Mode = SystemSettingsStore.getIpv6Mode(this, RuleDataset.EXPRESS)
         val pfd = tunnelManager.establishVpnInterface(this, ipv6Mode) ?: run {

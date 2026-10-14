@@ -160,10 +160,13 @@ class DnsVpnDatabaseComponents {
     }
 
     /**
-     * Blocking flush of all logs, caches, and statistics.
+     * Flushes all logs, caches, and statistics off the caller's thread.
+     * Used on service shutdown paths: blocking the main thread on a large
+     * pending batch can trip the service ANR watchdog, so the flush is
+     * dispatched to [flushScope] instead.
      */
-    fun flushLoggersBlocking(context: Context) {
-        runBlocking {
+    fun flushLoggersAsync(context: Context, flushScope: CoroutineScope) {
+        flushScope.launch {
             flushLoggers(context)
         }
     }

@@ -6,7 +6,9 @@ import com.haoze.diting.core.dns.DnsProvider
 import com.haoze.diting.ui.floating.FloatingLogOverlayController
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.VpnService
+import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import com.haoze.diting.crash.CrashBreadcrumbs
@@ -43,6 +45,10 @@ import kotlinx.coroutines.sync.Mutex
 class DnsVpnService : VpnService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Detached from serviceScope so the final log flush can complete after
+    // onDestroy() cancels the main service scope; never cancelled explicitly.
+    private val shutdownScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val refreshMutex = Mutex()
     private val dbComponents = DnsVpnDatabaseComponents()
     private val tunnelManager = DnsVpnTunnelManager()
@@ -163,9 +169,39 @@ class DnsVpnService : VpnService() {
                 refreshMutex = refreshMutex,
                 goInspectionTunnel = tunnelManager.goInspectionTunnel
             )
-            else -> startVpn(intent)
+            else -> {
+                // Promote to foreground immediately after startForegroundService():
+                // Android 12+ kills the process with ForegroundServiceDidNotStartInTimeException
+                // if this does not happen promptly, and the tunnel setup below performs
+                // blocking work (prefs reads, Binder establish, rule-cache warm-up).
+                promoteToForeground()
+                startVpn(intent)
+            }
         }
         return START_STICKY
+    }
+
+    /**
+     * Enters the foreground state with the current configuration. Safe to call
+     * repeatedly; the notification is replaced with the latest content.
+     */
+    private fun promoteToForeground() {
+        runCatching {
+            val notification = VpnNotificationBuilder.build(
+                this,
+                configManager.activeProviders,
+                configManager.activeResolutionMode
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE, notification)
+            }
+        }.onFailure { Log.w(TAG, "Failed to enter foreground", it) }
     }
 
     private fun startVpn(intent: Intent?) {
@@ -259,12 +295,9 @@ class DnsVpnService : VpnService() {
             TrafficStatsManager.start(this, true)
         }
         powerOptimizer.register()
-        runCatching {
-            startForeground(
-                VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE,
-                VpnNotificationBuilder.build(this, configManager.activeProviders, configManager.activeResolutionMode)
-            )
-        }
+        // Already foreground (see promoteToForeground); just refresh the content
+        // now that the resolved providers/resolution mode are known.
+        refreshForegroundNotification()
         speedMonitor.start(
             scope = serviceScope,
             isVpnActive = { tunnelManager.vpnInterface != null },
@@ -318,7 +351,7 @@ class DnsVpnService : VpnService() {
         tunnelManager.stopInspectionDataPlane()
         // Traffic stats are persisted by TrafficStatsManager.stop() in onDestroy
         // (bounded synchronous flush), so don't trigger it again here.
-        dbComponents.flushLoggersBlocking(this)
+        dbComponents.flushLoggersAsync(this, serviceScope)
         stopForeground(STOP_FOREGROUND_REMOVE)
         VpnMonitorManager.onVpnStopped(this)
         stopSelf()
@@ -345,7 +378,7 @@ class DnsVpnService : VpnService() {
         tunnelManager.disconnectVpnInterface()
         tunnelManager.stopInspectionDataPlane()
         TrafficStatsManager.stop(this)
-        dbComponents.flushLoggersBlocking(this)
+        dbComponents.flushLoggersAsync(this, shutdownScope)
         serviceScope.cancel()
 
         if (!wasStopped) {

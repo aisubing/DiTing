@@ -123,9 +123,8 @@ object ExpressModeLauncher {
      * Starts the Express VPN service.
      */
     fun start(context: Context, provider: DnsProvider? = null) {
-        if (!ExpressDefaultsSeeder.isInitialized(context.applicationContext)) {
-            kotlinx.coroutines.runBlocking { ExpressDefaultsSeeder.ensureInitialized(context.applicationContext) }
-        }
+        // Seeding is performed by ExpressVpnService itself (off the main thread),
+        // so the UI thread is never blocked here.
         ExpressVpnController.start(context, provider)
     }
 
