@@ -122,9 +122,9 @@ object CustomBackgroundManager {
         if (cacheFile.exists() && uriMarkerFile.exists()) {
             val savedUri = runCatching { uriMarkerFile.readText() }.getOrNull()
             if (savedUri == uri) {
-                val cachedBmp = runCatching {
-                    BitmapFactory.decodeFile(cacheFile.absolutePath)
-                }.getOrNull()
+                // Downsample the cached file too: older versions wrote it at full
+                // resolution, so a plain decode could reintroduce the OOM.
+                val cachedBmp = decodeSampledBitmapFromFile(appContext, cacheFile)
                 if (cachedBmp != null) {
                     activeUri = uri
                     activeBitmap = cachedBmp
@@ -198,9 +198,7 @@ object CustomBackgroundManager {
         if (cacheFile.exists() && uriMarkerFile.exists()) {
             val savedUri = runCatching { uriMarkerFile.readText() }.getOrNull()
             if (savedUri == uri) {
-                val cachedBmp = runCatching {
-                    BitmapFactory.decodeFile(cacheFile.absolutePath)
-                }.getOrNull()
+                val cachedBmp = decodeSampledBitmapFromFile(context, cacheFile)
                 if (cachedBmp != null) {
                     activeUri = uri
                     activeBitmap = cachedBmp
@@ -289,6 +287,16 @@ object CustomBackgroundManager {
                 bmp = getCachedBitmap(uri)
             }
             if (bmp != null) {
+                // Called on every Activity creation and onResume: skip when the
+                // window already shows this exact bitmap so we don't allocate a
+                // fresh drawable (and Paint/Matrix) on each resume.
+                val current = activity.window.decorView.background
+                if (current is CustomBackgroundDrawable &&
+                    current.backingBitmap === bmp &&
+                    current.isDark === isDark
+                ) {
+                    return
+                }
                 activity.window.setBackgroundDrawable(CustomBackgroundDrawable(bmp, isDark))
             } else {
                 activity.window.setBackgroundDrawableResource(R.color.diting_window_background)
@@ -325,10 +333,28 @@ object CustomBackgroundManager {
      * 响应系统低内存通知
      */
     fun onTrimMemory(level: Int) {
-        @Suppress("DEPRECATION")
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
             thumbnailCache.evictAll()
         }
+        // Under severe pressure, drop the full-screen bitmap too. At this level
+        // the app is in the background, so the next foreground re-decodes it
+        // (applyWindowBackground/AppThemeSurface) and no draw is in flight; the
+        // drawable guards against a recycled bitmap.
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
+            releaseActiveBitmap()
+        }
+    }
+
+    @Synchronized
+    private fun releaseActiveBitmap() {
+        val bmp = activeBitmap
+        activeUri = null
+        activeBitmap = null
+        activeImageBitmap = null
+        if (bmp != null && !bmp.isRecycled) {
+            bmp.recycle()
+        }
+        _backgroundUpdateFlow.value = System.currentTimeMillis()
     }
 
     /**
@@ -341,10 +367,7 @@ object CustomBackgroundManager {
         reqHeight: Int = 0
     ): Bitmap? {
         return runCatching {
-            val dm = context.resources.displayMetrics
-            val maxScreenDim = max(dm.widthPixels, dm.heightPixels).coerceAtLeast(1080)
-            val targetW = if (reqWidth > 0) reqWidth else maxScreenDim
-            val targetH = if (reqHeight > 0) reqHeight else maxScreenDim
+            val (targetW, targetH) = resolveTargetSize(context, reqWidth, reqHeight)
 
             val options = BitmapFactory.Options().apply {
                 inJustDecodeBounds = true
@@ -354,15 +377,59 @@ object CustomBackgroundManager {
                 BitmapFactory.decodeStream(stream, null, options)
             }
 
-            options.inSampleSize = calculateInSampleSize(options, targetW, targetH)
-            options.inJustDecodeBounds = false
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888
+            applyDecodeOptions(options, targetW, targetH)
 
             context.contentResolver.openInputStream(uri).use { stream ->
                 if (stream == null) return null
                 BitmapFactory.decodeStream(stream, null, options)
             }
         }.getOrNull()
+    }
+
+    /**
+     * 与 [decodeSampledBitmapFromUri] 相同，但针对本地预采样缓存文件。
+     * 缓存文件可能由旧版本以全分辨率写入，因此必须同样降采样解码，
+     * 否则会重新引入大图 OOM。
+     */
+    private fun decodeSampledBitmapFromFile(
+        context: Context,
+        file: File,
+        reqWidth: Int = 0,
+        reqHeight: Int = 0
+    ): Bitmap? {
+        return runCatching {
+            val (targetW, targetH) = resolveTargetSize(context, reqWidth, reqHeight)
+
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(file.absolutePath, options)
+
+            applyDecodeOptions(options, targetW, targetH)
+            BitmapFactory.decodeFile(file.absolutePath, options)
+        }.getOrNull()
+    }
+
+    private fun resolveTargetSize(
+        context: Context,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Pair<Int, Int> {
+        val dm = context.resources.displayMetrics
+        // Use the real screen dimensions rather than the square max dimension:
+        // pairing the long edge against both axes previously defeated
+        // downsampling on portrait screens.
+        val targetW = if (reqWidth > 0) reqWidth else dm.widthPixels.coerceAtLeast(1080)
+        val targetH = if (reqHeight > 0) reqHeight else dm.heightPixels.coerceAtLeast(1080)
+        return targetW to targetH
+    }
+
+    private fun applyDecodeOptions(options: BitmapFactory.Options, targetW: Int, targetH: Int) {
+        options.inSampleSize = calculateInSampleSize(options, targetW, targetH)
+        options.inJustDecodeBounds = false
+        // Background art is opaque and only ever drawn behind a scrim, so
+        // RGB_565 is visually equivalent while halving the bitmap footprint.
+        options.inPreferredConfig = Bitmap.Config.RGB_565
     }
 
     private fun calculateInSampleSize(
@@ -372,14 +439,14 @@ object CustomBackgroundManager {
     ): Int {
         val height = options.outHeight
         val width = options.outWidth
-        var inSampleSize = 1
+        if (height <= 0 || width <= 0) return 1
 
-        if (height > reqHeight || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2
-            }
+        var inSampleSize = 1
+        // Downsample until further halving would drop below the target on both
+        // axes. The window drawable crops/upscales to fill, so a decoded bitmap
+        // near the screen size is sufficient and far cheaper than a full decode.
+        while ((height / (inSampleSize * 2)) >= reqHeight && (width / (inSampleSize * 2)) >= reqWidth) {
+            inSampleSize *= 2
         }
         return inSampleSize
     }
@@ -394,6 +461,10 @@ class CustomBackgroundDrawable(
     private val bitmap: Bitmap,
     private val isDarkTheme: Boolean
 ) : Drawable() {
+
+    /** Exposed so callers can cheaply detect an already-applied background. */
+    val backingBitmap: Bitmap get() = bitmap
+    val isDark: Boolean get() = isDarkTheme
 
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val overlayPaint = Paint().apply {
