@@ -3,7 +3,6 @@ package com.haoze.diting.main
 import android.app.Activity
 import android.widget.Toast
 import com.haoze.diting.core.rule.DefaultWhitelistSeeder
-import com.haoze.diting.core.rule.SubscriptionAutoUpdateScheduler
 import com.haoze.diting.crash.CrashLogManager
 import com.haoze.diting.data.AppDatabase
 import com.haoze.diting.notification.AppNotificationChannels
@@ -39,14 +38,15 @@ class MainStartupCoordinator {
     ) {
         if (acceptedExperienceInitialized) return
         acceptedExperienceInitialized = true
-        AppNotificationChannels.createAllChannels(activity)
-        SubscriptionAutoUpdateScheduler.sync(activity)
         if (!SystemSettingsStore.isStartupUpdateCheckDisabled(activity)) {
             appUpdateHost.checkForUpdate(manual = false)
         }
         lifecycleScope.launch {
-            delay(DATABASE_WARMUP_DELAY_MS)
             withContext(Dispatchers.IO) {
+                // Notification channels and the DB warmup both touch the
+                // framework/disk; keep them off the cold-start main thread.
+                runCatching { AppNotificationChannels.createAllChannels(activity) }
+                delay(DATABASE_WARMUP_DELAY_MS)
                 runCatching {
                     val db = AppDatabase.getInstance(activity.applicationContext)
                     db.openHelper.writableDatabase

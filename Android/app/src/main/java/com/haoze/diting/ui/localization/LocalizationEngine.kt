@@ -21,6 +21,19 @@ object LocalizationEngine {
     private val resourceIdCache = ConcurrentHashMap<String, Int>()
     private const val RESOURCE_ID_ABSENT = -1
 
+    /**
+     * Cache of input text -> final translation. The `translate*Exact` /
+     * `translate*Pattern` fallback chains (including the ~150-branch dynamic
+     * pattern matcher) are pure functions of the input string, so their result
+     * can be memoized. Only step 2/3 are cached here; the resource-id step is
+     * already memoized by [resourceIdCache]. [TRANSLATION_ABSENT] marks a text
+     * that has no translation (returned as-is), which is itself the common and
+     * most expensive case to recompute.
+     */
+    private val translationCache = ConcurrentHashMap<String, String>()
+    private const val TRANSLATION_ABSENT = "\u0000__no_translation__"
+    private const val MAX_ABSENT_CACHE_ENTRIES = 4096
+
     internal fun stableTextResourceName(text: String): String {
         var hash = 0
         text.forEach { character -> hash = 31 * hash + character.code }
@@ -35,11 +48,27 @@ object LocalizationEngine {
         val resourceId = resolveResourceId(text, context)
         if (resourceId != 0) return context.getString(resourceId)
 
-        // 2. Exact match dictionary lookup across domain modules
-        translateExact(text)?.let { return it }
+        // 2 + 3. Dictionary and pattern fallbacks, memoized per input text.
+        return translateFallback(text)
+    }
 
-        // 3. Dynamic pattern transformations
-        return translatePatterns(text) ?: text
+    private fun translateFallback(text: String): String {
+        val cached = translationCache[text]
+        if (cached != null) {
+            return if (cached == TRANSLATION_ABSENT) text else cached
+        }
+        val translated = translateExact(text) ?: translatePatterns(text)
+        if (translated != null) {
+            translationCache[text] = translated
+            return translated
+        }
+        // Bound the cache: the "untranslatable" set is unbounded in principle
+        // (dynamic values such as names, numbers, interpolated strings), whereas
+        // real translations are a small fixed set.
+        if (translationCache.size < MAX_ABSENT_CACHE_ENTRIES) {
+            translationCache[text] = TRANSLATION_ABSENT
+        }
+        return text
     }
 
     private fun resolveResourceId(text: String, context: Context): Int {
