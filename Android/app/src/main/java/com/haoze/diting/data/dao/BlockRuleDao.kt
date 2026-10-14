@@ -306,6 +306,9 @@ interface BlockRuleDao {
     @Query("SELECT DISTINCT appScope FROM block_rule WHERE appScope IS NOT NULL")
     suspend fun appScopes(): List<String>
 
+    @Query("SELECT appScope, COUNT(*) AS ruleCount FROM block_rule WHERE appScope IS NOT NULL AND appScope <> '' GROUP BY appScope")
+    suspend fun appScopeCounts(): List<AppScopeCount>
+
     @Query("DELETE FROM block_rule WHERE id = :id")
     suspend fun deleteById(id: Long)
 

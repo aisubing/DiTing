@@ -14,6 +14,8 @@ import com.haoze.diting.core.rule.BlockListManager
 import com.haoze.diting.core.rule.RewriteRuleManager
 import com.haoze.diting.core.rule.GoUrlRuleManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +36,7 @@ class RuleListViewModel(
     private val goUrlRuleDao = db.goUrlRuleDao()
 
     private val pageSize = 100
+    private val SEARCH_DEBOUNCE_MS = 250L
 
     private val _rules = MutableStateFlow<List<RuleListItem>>(emptyList())
     val rules: StateFlow<List<RuleListItem>> = _rules.asStateFlow()
@@ -62,6 +65,7 @@ class RuleListViewModel(
     private var activated = false
     private var ruleKind = ManagedRuleKind.BLOCK
     private var ruleScope = RuleScope.DNS
+    private var searchJob: Job? = null
 
     fun setRuleKind(kind: ManagedRuleKind, scope: RuleScope) {
         if (ruleKind == kind && ruleScope == scope) return
@@ -103,7 +107,13 @@ class RuleListViewModel(
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
-        loadPage(1)
+        // Debounce: without this every keystroke cancelled and re-ran a full
+        // rule query, flooding the IO thread while the user typed.
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            loadPage(1)
+        }
     }
 
     fun selectSourceFilter(filter: RuleSourceFilter) {
@@ -179,10 +189,12 @@ class RuleListViewModel(
         val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
 
         return if (ruleKind.isUrlRule) {
-            val rules = goUrlRuleDao.byKind(ruleKind.goUrlRuleKind!!)
-                .filter { query.isEmpty() || it.pattern.contains(query, ignoreCase = true) || it.rawLine.contains(query, ignoreCase = true) }
-                .drop(offset)
-                .take(limit)
+            val kind = ruleKind.goUrlRuleKind!!
+            val rules = if (query.isEmpty()) {
+                goUrlRuleDao.pagedByKind(kind, limit, offset)
+            } else {
+                goUrlRuleDao.searchPagedByKind(kind, "%$query%", limit, offset)
+            }
             rules.map {
                 RuleListItem(
                     id = it.id,
@@ -271,8 +283,9 @@ class RuleListViewModel(
         val appScopeFilter = filter.appScope
 
         return if (ruleKind.isUrlRule) {
-            goUrlRuleDao.byKind(ruleKind.goUrlRuleKind!!)
-                .count { query.isEmpty() || it.pattern.contains(query, ignoreCase = true) || it.rawLine.contains(query, ignoreCase = true) }
+            val kind = ruleKind.goUrlRuleKind!!
+            if (query.isEmpty()) goUrlRuleDao.count(kind)
+            else goUrlRuleDao.searchCountByKind(kind, "%$query%")
         } else if (ruleKind == ManagedRuleKind.REWRITE) {
             if (source == null) { if (query.isEmpty()) rewriteRuleDao.count() else rewriteRuleDao.searchCount("%$query%") }
             else { if (query.isEmpty()) rewriteRuleDao.countBySourceForList(source) else rewriteRuleDao.searchCountBySource(source, "%$query%") }

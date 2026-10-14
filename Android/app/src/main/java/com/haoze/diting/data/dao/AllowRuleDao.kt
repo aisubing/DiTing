@@ -286,6 +286,9 @@ interface AllowRuleDao {
     @Query("SELECT DISTINCT appScope FROM allow_rule WHERE appScope IS NOT NULL")
     suspend fun appScopes(): List<String>
 
+    @Query("SELECT appScope, COUNT(*) AS ruleCount FROM allow_rule WHERE appScope IS NOT NULL AND appScope <> '' GROUP BY appScope")
+    suspend fun appScopeCounts(): List<AppScopeCount>
+
     @Query("DELETE FROM allow_rule WHERE id = :id")
     suspend fun deleteById(id: Long)
 

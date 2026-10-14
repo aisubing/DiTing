@@ -18,6 +18,8 @@ import com.haoze.diting.core.rule.CosmeticRuleManager
 import com.haoze.diting.core.rule.DefaultWhitelistSeeder
 import com.haoze.diting.core.rule.GoUrlRuleManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,6 +41,8 @@ class WhitelistViewModel(
     private val goUrlRuleManager = GoUrlRuleManager(goUrlRuleDao)
 
     private val pageSize = 100
+    private val SEARCH_DEBOUNCE_MS = 250L
+    private var searchJob: Job? = null
 
     private val _stats = MutableStateFlow(WhitelistStats())
     val stats: StateFlow<WhitelistStats> = _stats.asStateFlow()
@@ -94,7 +98,13 @@ class WhitelistViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
-        loadPage(1)
+        // Debounce: each keystroke otherwise reloaded the whole whitelist,
+        // which is assembled and paginated in memory.
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            loadPage(1)
+        }
     }
 
     fun refreshAll() {

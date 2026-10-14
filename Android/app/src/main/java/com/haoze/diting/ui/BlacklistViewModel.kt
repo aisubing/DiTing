@@ -14,6 +14,8 @@ import com.haoze.diting.core.rule.AdGuardRuleParser
 import com.haoze.diting.core.rule.BlockListManager
 import com.haoze.diting.core.rule.GoUrlRuleManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,8 @@ class BlacklistViewModel(
     private val goUrlRuleManager = GoUrlRuleManager(goUrlRuleDao)
 
     private val pageSize = 100
+    private val SEARCH_DEBOUNCE_MS = 250L
+    private var searchJob: Job? = null
 
     private val _stats = MutableStateFlow(BlacklistStats())
     val stats: StateFlow<BlacklistStats> = _stats.asStateFlow()
@@ -79,7 +83,13 @@ class BlacklistViewModel(
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
-        loadPage(1)
+        // Debounce: each keystroke otherwise reloaded the whole blacklist,
+        // which is assembled and paginated in memory.
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            loadPage(1)
+        }
     }
 
     fun refreshAll() {

@@ -28,7 +28,18 @@ interface GoUrlRuleDao {
     @Query("SELECT r.* FROM go_url_rule r JOIN go_url_rule_source s ON s.ruleId=r.id WHERE s.source=:source GROUP BY r.id")
     suspend fun rulesBySource(source: String): List<GoUrlRuleEntity>
     @Query("SELECT r.id, r.pattern, r.kind, r.rawLine, r.addedAt, (r.enabled=1 AND EXISTS(SELECT 1 FROM go_url_rule_source s WHERE s.ruleId=r.id AND s.enabled=1)) AS enabled FROM go_url_rule r WHERE r.kind=:kind ORDER BY r.addedAt DESC") suspend fun byKind(kind: String): List<GoUrlRuleEntity>
+
+    // Paged variants: the list screen must not materialise the whole table
+    // (which can hold hundreds of thousands of subscription URLs, rawLine
+    // included) and paginate in memory.
+    @Query("SELECT r.id, r.pattern, r.kind, r.rawLine, r.addedAt, (r.enabled=1 AND EXISTS(SELECT 1 FROM go_url_rule_source s WHERE s.ruleId=r.id AND s.enabled=1)) AS enabled FROM go_url_rule r WHERE r.kind=:kind ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset")
+    suspend fun pagedByKind(kind: String, limit: Int, offset: Int): List<GoUrlRuleEntity>
+
+    @Query("SELECT r.id, r.pattern, r.kind, r.rawLine, r.addedAt, (r.enabled=1 AND EXISTS(SELECT 1 FROM go_url_rule_source s WHERE s.ruleId=r.id AND s.enabled=1)) AS enabled FROM go_url_rule r WHERE r.kind=:kind AND (r.pattern LIKE :query OR r.rawLine LIKE :query) ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset")
+    suspend fun searchPagedByKind(kind: String, query: String, limit: Int, offset: Int): List<GoUrlRuleEntity>
+
     @Query("SELECT COUNT(*) FROM go_url_rule WHERE kind=:kind") suspend fun count(kind: String): Int
+    @Query("SELECT COUNT(*) FROM go_url_rule WHERE kind=:kind AND (pattern LIKE :query OR rawLine LIKE :query)") suspend fun searchCountByKind(kind: String, query: String): Int
     @Query("SELECT COUNT(DISTINCT r.id) FROM go_url_rule r JOIN go_url_rule_source s ON s.ruleId=r.id WHERE r.kind=:kind AND r.enabled=1 AND s.enabled=1") suspend fun enabledCount(kind: String): Int
     @Query("SELECT ruleId, source, enabled FROM go_url_rule_source WHERE ruleId IN (:ruleIds)") suspend fun sourcesForRuleIds(ruleIds: List<Long>): List<GoUrlRuleSourceEntity>
     @Query("UPDATE go_url_rule SET enabled=:enabled WHERE id=:id") suspend fun setEnabled(id: Long, enabled: Boolean)

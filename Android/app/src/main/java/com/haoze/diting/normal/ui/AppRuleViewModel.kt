@@ -6,6 +6,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.haoze.diting.data.AppDatabase
+import com.haoze.diting.data.dao.AppScopeCount
 import com.haoze.diting.data.entity.AllowRuleEntity
 import com.haoze.diting.data.entity.BlockRuleEntity
 import com.haoze.diting.data.entity.RuleScope
@@ -92,20 +93,23 @@ internal class AppRuleViewModel(application: Application) : AndroidViewModel(app
 
     fun loadAppRuleCounts() {
         viewModelScope.launch(Dispatchers.IO) {
-            val blockScopes = blockRuleDao.appScopes()
-            val allowScopes = allowRuleDao.appScopes()
-            val allPackages = (blockScopes + allowScopes)
-                .flatMap { it.split('|') }
-                .map { it.trim().removePrefix("~") }
-                .filter { it.isNotEmpty() }
-                .distinct()
-
+            // One grouped scan per table instead of two full-table scans per
+            // installed app (previously ~2N unindexable LIKE scans, which could
+            // occupy the IO thread for minutes on a large rule set).
             val counts = mutableMapOf<String, Int>()
-            for (pkg in allPackages) {
-                val blockCount = blockRuleDao.countByAppScope(pkg)
-                val allowCount = allowRuleDao.countByAppScope(pkg)
-                counts[pkg] = blockCount + allowCount
+            fun accumulate(rows: List<AppScopeCount>) {
+                for (row in rows) {
+                    for (part in row.appScope.split('|')) {
+                        val pkg = part.trim().removePrefix("~")
+                        if (pkg.isNotEmpty()) {
+                            counts[pkg] = (counts[pkg] ?: 0) + row.ruleCount
+                        }
+                    }
+                }
             }
+            accumulate(blockRuleDao.appScopeCounts())
+            accumulate(allowRuleDao.appScopeCounts())
+
             withContext(Dispatchers.Main) {
                 _appRuleCounts.value = counts
             }

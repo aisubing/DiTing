@@ -13,6 +13,12 @@ data class EnabledRule(
     val dnsType: String? = null
 )
 
+/** Raw `appScope` value with the number of rules carrying it, used to build per-app rule counts in one pass. */
+data class AppScopeCount(
+    val appScope: String,
+    val ruleCount: Int
+)
+
 data class EnabledRuleKeyset(
     val id: Long,
     val pattern: String,
