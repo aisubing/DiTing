@@ -58,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import com.haoze.diting.data.entity.DnsCacheEntity
 import com.haoze.diting.ui.components.SettingsCornerShape
 import com.haoze.diting.ui.components.SettingsItemSpacing
@@ -176,6 +177,10 @@ fun DnsCacheScreen(
             ) {
                 items(
                     count = entries.itemCount,
+                    // Stable identity: the list is ordered by lastHitAt and
+                    // refreshed in place, so positional keys would shift row
+                    // state on every refresh.
+                    key = entries.itemKey { it.key },
                     contentType = entries.itemContentType { "DnsCacheEntity" }
                 ) { index ->
                     entries[index]?.let { entry ->
