@@ -79,18 +79,23 @@ class DitingTileService : TileService() {
 
         // Check the system VPN preparation state
         val prepareIntent = VpnService.prepare(this)
-        if (prepareIntent == null) {
-            // The system already granted VPN permission; start in the background
-            try {
-                ContextCompat.startForegroundService(this, DnsVpnService.startIntent(this))
-                updateTileState(running = true)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to start VPN from tile", e)
-                updateTileState(running = false)
-            }
-        } else {
+        if (prepareIntent != null) {
             // The system consent dialog is needed; collapse the tile and open
             // MainActivity to guide the user
+            openMainActivity(requestVpn = true)
+            return
+        }
+        // The system already granted VPN permission. Android 12+ may reject a
+        // foreground-service start originating from a tile, so only report the
+        // tile as running when the request was actually accepted; otherwise
+        // route the user into the app, where the start is allowed.
+        val accepted = runCatching {
+            ContextCompat.startForegroundService(this, DnsVpnService.startIntent(this))
+        }.onFailure { Log.e(TAG, "Failed to start VPN from tile", it) }.isSuccess
+        if (accepted) {
+            updateTileState(running = true)
+        } else {
+            updateTileState(running = false)
             openMainActivity(requestVpn = true)
         }
     }
@@ -104,10 +109,15 @@ class DitingTileService : TileService() {
         }
 
         val prepareIntent = VpnService.prepare(this)
-        if (prepareIntent == null) {
-            com.haoze.diting.express.ExpressVpnController.start(this)
+        if (prepareIntent != null) {
+            openMainActivity(requestVpn = true)
+            return
+        }
+        val accepted = com.haoze.diting.express.ExpressVpnController.start(this)
+        if (accepted) {
             updateTileState(running = true)
         } else {
+            updateTileState(running = false)
             openMainActivity(requestVpn = true)
         }
     }

@@ -34,9 +34,13 @@ class DnsVpnPowerOptimizer(
             val filter = IntentFilter(Intent.ACTION_SCREEN_ON).apply {
                 addAction(Intent.ACTION_SCREEN_OFF)
             }
-            runCatching { context.registerReceiver(screenStateReceiver, filter) }
-                .onFailure { Log.w(TAG, "Failed to register screen state receiver", it) }
-            screenStateReceiverRegistered = true
+            // Only mark as registered on success: otherwise unregister() would
+            // attempt to remove a receiver that was never added, and the screen
+            // state listener would be silently considered active.
+            screenStateReceiverRegistered = runCatching {
+                context.registerReceiver(screenStateReceiver, filter)
+            }.onFailure { Log.w(TAG, "Failed to register screen state receiver", it) }
+                .isSuccess
         }
         // Re-sync to the current screen state on every VPN start (this also
         // covers the tunnel rebuild caused by an exclusion-list refresh: a

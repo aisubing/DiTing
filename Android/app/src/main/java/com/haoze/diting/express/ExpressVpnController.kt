@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import com.haoze.diting.data.ExpressRulesDatabase
 import com.haoze.diting.core.dns.DnsProvider
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
  */
 object ExpressVpnController {
 
+    private const val TAG = "ExpressVpnController"
     private const val PREFS_NAME = "express_vpn_prefs"
     private const val KEY_RUNNING = "express_vpn_running"
 
@@ -85,9 +87,19 @@ object ExpressVpnController {
         return running
     }
 
-    fun start(context: Context, provider: DnsProvider? = null) {
+    /**
+     * Requests the Express VPN service to start.
+     *
+     * @return true when the start request was accepted. Returns false when the
+     * system rejected it — notably Android 12+ background-start restrictions
+     * when invoked from a Quick Settings tile or other non-foreground context,
+     * in which case the caller should surface an explicit path to the app.
+     */
+    fun start(context: Context, provider: DnsProvider? = null): Boolean {
         val intent = ExpressVpnIntents.startIntent(context, provider)
-        runCatching { ContextCompat.startForegroundService(context, intent) }
+        return runCatching { ContextCompat.startForegroundService(context, intent) }
+            .onFailure { Log.w(TAG, "Failed to start Express VPN service", it) }
+            .isSuccess
     }
 
     fun stop(context: Context) {
