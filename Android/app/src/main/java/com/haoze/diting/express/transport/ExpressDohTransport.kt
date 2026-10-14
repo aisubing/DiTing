@@ -8,6 +8,7 @@ import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.ConnectionSpec
 import okhttp3.Dns
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -17,6 +18,7 @@ import okhttp3.Response
 import java.io.IOException
 import java.net.InetAddress
 import java.net.Socket
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.net.SocketFactory
 import kotlin.coroutines.resume
@@ -32,6 +34,59 @@ object ExpressDohTransport {
 
     private val DNS_MEDIA_TYPE = "application/dns-message".toMediaType()
 
+    // Reuse one OkHttpClient per configuration. Each client owns a connection
+    // pool and a dispatcher thread pool; building a new one per query leaked
+    // threads, file descriptors and connections under sustained DNS traffic.
+    // Keyed by timeout + DoH host + bootstrap addresses + socket protector, all
+    // of which are effectively fixed per provider, so the map stays tiny.
+    private const val MAX_CACHED_CLIENTS = 16
+    private val clients = ConcurrentHashMap<ClientKey, OkHttpClient>()
+
+    private data class ClientKey(
+        val timeoutMs: Long,
+        val host: String?,
+        val addresses: List<InetAddress>?,
+        val protectorId: Int?
+    )
+
+    private fun clientFor(
+        timeoutMs: Long,
+        httpUrl: HttpUrl,
+        addresses: List<InetAddress>?,
+        protectSocket: ((Socket) -> Boolean)?
+    ): OkHttpClient {
+        val host = httpUrl.host
+        val key = ClientKey(
+            timeoutMs = timeoutMs,
+            host = if (addresses.isNullOrEmpty()) null else host,
+            addresses = addresses,
+            protectorId = protectSocket?.let { System.identityHashCode(it) }
+        )
+        return clients.getOrPut(key) {
+            if (clients.size >= MAX_CACHED_CLIENTS) clients.clear()
+            val builder = OkHttpClient.Builder()
+                .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                .callTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+                .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
+            if (protectSocket != null) {
+                builder.socketFactory(ExpressProtectingSocketFactory(protectSocket))
+            }
+            if (!addresses.isNullOrEmpty()) {
+                builder.dns(object : Dns {
+                    override fun lookup(hostname: String): List<InetAddress> {
+                        return if (hostname.equals(host, ignoreCase = true)) {
+                            addresses
+                        } else {
+                            Dns.SYSTEM.lookup(hostname)
+                        }
+                    }
+                })
+            }
+            builder.build()
+        }
+    }
+
     suspend fun query(
         url: String,
         bootstrapAddresses: List<InetAddress>? = null,
@@ -40,30 +95,9 @@ object ExpressDohTransport {
         timeoutMs: Long = DNS_UPSTREAM_TIMEOUT_MS.toLong()
     ): ByteArray {
         val httpUrl = url.toHttpUrl()
-        val builder = OkHttpClient.Builder()
-            .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-            .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-            .callTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-            .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
-
-        if (protectSocket != null) {
-            builder.socketFactory(ExpressProtectingSocketFactory(protectSocket))
-        }
-
         val addresses = bootstrapAddresses?.takeIf { it.isNotEmpty() }
-        if (!addresses.isNullOrEmpty()) {
-            builder.dns(object : Dns {
-                override fun lookup(hostname: String): List<InetAddress> {
-                    return if (hostname.equals(httpUrl.host, ignoreCase = true)) {
-                        addresses
-                    } else {
-                        Dns.SYSTEM.lookup(hostname)
-                    }
-                }
-            })
-        }
+        val client = clientFor(timeoutMs, httpUrl, addresses, protectSocket)
 
-        val client = builder.build()
         val request = Request.Builder()
             .url(httpUrl)
             .post(query.toRequestBody(DNS_MEDIA_TYPE))

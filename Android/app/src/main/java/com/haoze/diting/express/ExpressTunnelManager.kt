@@ -41,6 +41,7 @@ import com.haoze.diting.core.cache.DnsCachePolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -63,6 +64,10 @@ class ExpressTunnelManager {
 
     companion object {
         private const val TAG = "ExpressTunnelManager"
+
+        /** Max buffered out-of-order TCP DNS packets before the oldest is dropped. */
+        private const val TCP_CHANNEL_CAPACITY = 256
+
         const val VPN_ADDRESS_V4 = "10.0.0.2"
         const val DNS_SERVER_V4 = "10.0.0.1"
         const val VPN_ADDRESS_V6 = "fd00:abcd::2"
@@ -87,7 +92,14 @@ class ExpressTunnelManager {
     private var tunThread: Thread? = null
     private var retransmitJob: Job? = null
     private var tcpWorkerJob: Job? = null
-    private val tcpChannel = Channel<ExpressPacketCodec.ParsedPacket.DnsTcpPacket>(Channel.UNLIMITED)
+    // Bounded: the consumer serializes resolve() calls (up to a 5s upstream
+    // timeout each), so an UNLIMITED channel could grow without bound under a
+    // TCP:53 flood and exhaust the heap. DROP_OLDEST keeps memory flat; a large
+    // DNS message is trimmed by TCP retransmission if needed.
+    private val tcpChannel = Channel<ExpressPacketCodec.ParsedPacket.DnsTcpPacket>(
+        capacity = TCP_CHANNEL_CAPACITY,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     private lateinit var blockListManager: BlockListManager
     private lateinit var allowListManager: AllowListManager
@@ -479,7 +491,10 @@ class ExpressTunnelManager {
                 if (::raceLogger.isInitialized) raceLogger.flush()
                 if (::bootstrapLogger.isInitialized) bootstrapLogger.flush()
             }
-            if (::bootstrapHealthEngine.isInitialized) bootstrapHealthEngine.flush(commit = true)
+            // close() (not flush()) — it also unregisters the engine from the
+            // static BootstrapHealthStore listener set. Without this, every
+            // Express start leaks a listener plus the whole service graph.
+            if (::bootstrapHealthEngine.isInitialized) bootstrapHealthEngine.close()
         }
     }
 }
