@@ -38,8 +38,41 @@ class ExpressRoomDnsCacheTest {
             storage[entity.key] = entity
         }
 
-        override suspend fun insertAll(entities: List<DnsCacheEntity>) {
-            entities.forEach { storage[it.key] = it }
+        override suspend fun insertIfAbsent(entity: DnsCacheEntity) {
+            storage.putIfAbsent(entity.key, entity)
+        }
+
+        override suspend fun updateMetadata(
+            key: String,
+            queryName: String,
+            queryType: Int,
+            queryClass: Int,
+            createdAt: Long,
+            expiresAt: Long,
+            originalTtlSeconds: Long,
+            ttlOffsets: String,
+            response: ByteArray,
+            responseSize: Int
+        ): Int {
+            val existing = storage[key] ?: return 0
+            storage[key] = existing.copy(
+                queryName = queryName,
+                queryType = queryType,
+                queryClass = queryClass,
+                createdAt = createdAt,
+                expiresAt = expiresAt,
+                originalTtlSeconds = originalTtlSeconds,
+                ttlOffsets = ttlOffsets,
+                response = response,
+                responseSize = responseSize
+            )
+            return 1
+        }
+
+        override suspend fun addHits(key: String, delta: Int, lastHitAt: Long): Int {
+            val existing = storage[key] ?: return 0
+            storage[key] = existing.copy(hitCount = existing.hitCount + delta, lastHitAt = lastHitAt)
+            return 1
         }
 
         override suspend fun recordHit(key: String, now: Long) {

@@ -1,6 +1,7 @@
 package com.haoze.diting.core.cache
 
 import com.haoze.diting.data.dao.DnsCacheDao
+import com.haoze.diting.data.dao.DnsCacheHitDelta
 import com.haoze.diting.data.entity.DnsCacheEntity
 import com.haoze.diting.core.dns.DnsMessageUtils
 import kotlinx.coroutines.CoroutineScope
@@ -38,6 +39,7 @@ class DnsResponseCache(
     private val inFlight = HashMap<String, Deferred<ByteArray>>()
     private val pendingWriteMutex = Mutex()
     private val pendingWrites = LinkedHashMap<String, DnsCacheEntity>()
+    private val pendingHits = LinkedHashMap<String, DnsCacheHitDelta>()
     private var pendingWriteFlushJob: Job? = null
 
     fun updatePolicy(policy: DnsCachePolicy) {
@@ -251,32 +253,69 @@ class DnsResponseCache(
     }
 
     private suspend fun enqueueWrite(entity: DnsCacheEntity) {
-        var flushNow = false
-        pendingWriteMutex.withLock {
+        val flushNow = pendingWriteMutex.withLock {
             pendingWrites[entity.key] = entity
-            flushNow = pendingWrites.size >= WRITE_BATCH_SIZE
-            if (flushNow) {
-                pendingWriteFlushJob?.cancel()
-                pendingWriteFlushJob = null
-            } else if (pendingWriteFlushJob?.isActive != true) {
-                pendingWriteFlushJob = scope.launch {
-                    delay(WRITE_FLUSH_DELAY_MS)
-                    flushPendingWrites()
-                }
-            }
+            markPendingLocked()
         }
         if (flushNow) flushPendingWrites()
     }
 
-    suspend fun flushPendingWrites() {
-        val writes = pendingWriteMutex.withLock {
-            pendingWriteFlushJob = null
-            pendingWrites.values.toList().also { pendingWrites.clear() }
+    /**
+     * Coalesces a cache hit into [pendingHits] instead of writing the row on the
+     * hot path. Deltas are applied atomically at flush time, so they can never be
+     * lost to (or clobber) the metadata write for the same key.
+     */
+    private suspend fun enqueueHit(key: String, now: Long) {
+        val flushNow = pendingWriteMutex.withLock {
+            val existing = pendingHits[key]
+            pendingHits[key] = if (existing == null) {
+                DnsCacheHitDelta(key, 1, now)
+            } else {
+                DnsCacheHitDelta(key, existing.delta + 1, max(existing.lastHitAt, now))
+            }
+            markPendingLocked()
         }
-        if (writes.isEmpty()) return
-        runCatching { dao.insertAll(writes) }.onFailure {
+        if (flushNow) flushPendingWrites()
+    }
+
+    /**
+     * Schedules a trailing flush once enough items are pending, or cancels it and
+     * reports that the caller should flush immediately. Must hold [pendingWriteMutex].
+     */
+    private fun markPendingLocked(): Boolean {
+        if (pendingWrites.size + pendingHits.size >= WRITE_BATCH_SIZE) {
+            pendingWriteFlushJob?.cancel()
+            pendingWriteFlushJob = null
+            return true
+        }
+        if (pendingWriteFlushJob?.isActive != true) {
+            pendingWriteFlushJob = scope.launch {
+                delay(WRITE_FLUSH_DELAY_MS)
+                flushPendingWrites()
+            }
+        }
+        return false
+    }
+
+    suspend fun flushPendingWrites() {
+        val (writes, hits) = pendingWriteMutex.withLock {
+            pendingWriteFlushJob = null
+            val w = pendingWrites.values.toList().also { pendingWrites.clear() }
+            val h = pendingHits.values.toList().also { pendingHits.clear() }
+            w to h
+        }
+        if (writes.isEmpty() && hits.isEmpty()) return
+        runCatching { dao.applyPendingWrites(writes, hits) }.onFailure {
             pendingWriteMutex.withLock {
                 writes.forEach { entity -> pendingWrites.putIfAbsent(entity.key, entity) }
+                hits.forEach { hit ->
+                    val existing = pendingHits[hit.key]
+                    pendingHits[hit.key] = if (existing == null) {
+                        hit
+                    } else {
+                        DnsCacheHitDelta(hit.key, existing.delta + hit.delta, max(existing.lastHitAt, hit.lastHitAt))
+                    }
+                }
                 if (pendingWriteFlushJob?.isActive != true) {
                     pendingWriteFlushJob = scope.launch {
                         delay(WRITE_FLUSH_DELAY_MS)
@@ -292,6 +331,7 @@ class DnsResponseCache(
             pendingWriteFlushJob?.cancel()
             pendingWriteFlushJob = null
             pendingWrites.clear()
+            pendingHits.clear()
         }
     }
 
@@ -327,8 +367,10 @@ class DnsResponseCache(
     }
 
     private suspend fun recordHit(key: String, now: Long) {
+        // Keep the in-memory LRU ordering warm, then coalesce the DB increment
+        // into the pending batch. No synchronous DB write on the hot path.
         shardFor(key).recordHit(key, now)
-        runCatching { dao.recordHit(key, now) }
+        enqueueHit(key, now)
     }
 
 
@@ -340,6 +382,12 @@ class DnsResponseCache(
 
     private suspend fun removeExpired(key: String, shard: CacheShard) {
         shard.remove(key)
+        // Drop any queued write/hit for this key too, or the next flush would
+        // resurrect the row we are deleting now.
+        pendingWriteMutex.withLock {
+            pendingWrites.remove(key)
+            pendingHits.remove(key)
+        }
         dao.delete(key)
     }
 
