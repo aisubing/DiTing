@@ -56,6 +56,15 @@ func detectFirewallManager() firewallManager {
 	}
 }
 
+// FirewallBackendName 返回探测到的防火墙后端名称。
+//
+// 取值为 "firewalld" / "ufw" / "nftables" / "iptables"；系统未安装任何防火墙
+// 管理器时返回 "none"——此时端口本就对外开放，调用方应跳过放行操作，
+// 而不是把"无需放行"当成错误呈现。
+func FirewallBackendName() string {
+	return detectFirewallManager().String()
+}
+
 // CheckFirewallPort53 检测 53 端口 (UDP 与 TCP) 入站放行规则是否存在。
 //
 // 未探测到任何防火墙管理器时返回 false 与 nil 错误——
@@ -77,6 +86,9 @@ func CheckFirewallPort53(ctx context.Context, executor platform.CommandExecutor)
 }
 
 // ConfigureFirewallPort53 配置 53 端口 (UDP 与 TCP) 的入站放行规则。
+//
+// 未探测到任何防火墙管理器时返回 platform.Unsupported——调用方应先经
+// FirewallBackendName 判断，为 "none" 时跳过本调用，避免把"无需放行"记为错误。
 func ConfigureFirewallPort53(ctx context.Context, executor platform.CommandExecutor, enable bool) error {
 	mgr := detectFirewallManager()
 	if mgr == firewallNone {
@@ -99,6 +111,9 @@ func CheckFirewallPortWeb(ctx context.Context, executor platform.CommandExecutor
 }
 
 // ConfigureFirewallPortWeb 配置 Web 管理端口的入站放行规则。
+//
+// 未探测到任何防火墙管理器时返回 platform.Unsupported——调用方应先经
+// FirewallBackendName 判断，为 "none" 时跳过本调用，避免把"无需放行"记为错误。
 func ConfigureFirewallPortWeb(ctx context.Context, executor platform.CommandExecutor, port int, enable bool) error {
 	if port <= 0 {
 		port = defaultWebPort

@@ -44,6 +44,11 @@ func firewallConfigureWeb(ctx context.Context, port int, enable bool) error {
 	return linux.ConfigureFirewallPortWeb(ctx, platform.NewDefaultExecutor(), port, enable)
 }
 
+// firewallBackendName 返回探测到的防火墙后端名称（"none" 表示未检测到任何管理器）。
+func firewallBackendName() string {
+	return linux.FirewallBackendName()
+}
+
 // platformDisplayName 返回当前平台的可读名称，用于版本与诊断输出。
 func platformDisplayName() string {
 	return "Linux"

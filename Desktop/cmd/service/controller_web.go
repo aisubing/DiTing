@@ -67,6 +67,7 @@ func (p *program) GetWebStatus(ctx context.Context) (*ipc.WebStatusResponse, err
 		LANAddresses:    lanAddrs,
 		WebURLs:         webURLs,
 		FirewallAllowed: fwAllowed,
+		FirewallBackend: firewallBackendName(),
 		Initialized:     initialized,
 		Username:        username,
 	}, nil
@@ -99,8 +100,8 @@ func (p *program) ConfigureWeb(ctx context.Context, req ipc.ConfigureWebRequest)
 	}
 	p.mu.Unlock()
 
-	// 按需同步配置 Windows 防火墙规则
-	if req.ConfigureFirewall {
+	// 按需同步配置系统防火墙规则；无防火墙后端时端口本就开放，跳过且不记为错误
+	if req.ConfigureFirewall && firewallBackendName() != "none" {
 		if err := firewallConfigureWeb(ctx, port, req.Enabled); err != nil {
 			log.Printf("[防火墙] 配置 Web 端口规则警告: %v\n", err)
 		} else {

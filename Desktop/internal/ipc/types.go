@@ -176,6 +176,9 @@ type LANStatusResponse struct {
 	ListenAddresses []string `json:"listenAddresses"`
 	LANAddresses    []string `json:"lanAddresses"`
 	FirewallAllowed bool     `json:"firewallAllowed"`
+	// FirewallBackend 为探测到的防火墙后端；"none" 表示未检测到任何管理器、
+	// 端口本就对外开放，无需放行规则。
+	FirewallBackend string `json:"firewallBackend"`
 }
 
 // ConfigureLANRequest 配置局域网 DNS 请求
@@ -238,8 +241,11 @@ type WebStatusResponse struct {
 	LANAddresses    []string `json:"lanAddresses"`
 	WebURLs         []string `json:"webUrls"`
 	FirewallAllowed bool     `json:"firewallAllowed"`
-	Initialized     bool     `json:"initialized"`
-	Username        string   `json:"username"`
+	// FirewallBackend 为探测到的防火墙后端；"none" 表示未检测到任何管理器、
+	// 端口本就对外开放，无需放行规则。
+	FirewallBackend string `json:"firewallBackend"`
+	Initialized     bool   `json:"initialized"`
+	Username        string `json:"username"`
 }
 
 // ConfigureWebRequest 配置局域网 Web 管理服务

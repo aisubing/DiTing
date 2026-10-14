@@ -7,6 +7,7 @@ import StatusBadge from './StatusBadge.vue';
 import ToastBanner from './ToastBanner.vue';
 import AppCard from './ui/AppCard.vue';
 import CopyRow from './ui/CopyRow.vue';
+import InlineAlert from './ui/InlineAlert.vue';
 import { revertSwitch, extractSwitchValue } from '../utils/switch';
 import { useFlashMessage } from '../composables/useFlashMessage';
 import { usePlatform } from '../composables/usePlatform';
@@ -23,12 +24,22 @@ const allowLAN = computed(() => Boolean(lanStatus.value?.allowLAN));
 const lanAddresses = computed(() => lanStatus.value?.lanAddresses || []);
 const firewallAllowed = computed(() => Boolean(lanStatus.value?.firewallAllowed));
 
-/** 防火墙后端副题：Windows Defender vs Linux firewalld/ufw/nftables */
-const firewallSubtitle = computed(() =>
-  isLinux.value
-    ? '防火墙端口安全规则托管（firewalld / ufw / nftables）'
-    : 'Windows Defender 端口安全规则托管'
-);
+/**
+ * 防火墙后端判定：仅当后端明确为 "none"（系统未安装任何防火墙管理器）时，
+ * 视为无需放行；空串或未知值一律按“支持”处理，避免旧响应下误隐藏放行按钮。
+ */
+const firewallBackend = computed(() => lanStatus.value?.firewallBackend || '');
+const firewallSupported = computed(() => firewallBackend.value !== 'none');
+
+/** 防火墙后端副题：无后端 / Windows Defender / Linux 实际探测到的后端 */
+const firewallSubtitle = computed(() => {
+  if (!firewallSupported.value) return '未检测到系统防火墙后端';
+  if (isLinux.value) {
+    const backend = firewallBackend.value || 'firewalld / ufw / nftables';
+    return `防火墙端口安全规则托管（${backend}）`;
+  }
+  return 'Windows Defender 端口安全规则托管';
+});
 
 async function loadData() {
   loading.value = true;
@@ -67,6 +78,8 @@ async function handleToggleLAN(e: Event) {
 }
 
 async function handleToggleFirewall() {
+  // 系统未检测到防火墙后端时端口本就对外开放，无规则可配置
+  if (!firewallSupported.value) return;
   togglingFw.value = true;
   errorMessage.value = '';
   try {
@@ -163,9 +176,11 @@ onMounted(() => {
         <template #badge>
           <span
             class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-            :class="firewallAllowed ? 'bg-status-success-bg text-status-success' : 'bg-status-warning-bg text-status-warning'"
+            :class="!firewallSupported
+              ? 'bg-surface-card-sub text-text-muted'
+              : (firewallAllowed ? 'bg-status-success-bg text-status-success' : 'bg-status-warning-bg text-status-warning')"
           >
-            {{ firewallAllowed ? '53 端口已放行' : '未放行' }}
+            {{ !firewallSupported ? '无需放行' : (firewallAllowed ? '53 端口已放行' : '未放行') }}
           </span>
         </template>
 
@@ -177,7 +192,11 @@ onMounted(() => {
             如果系统防火墙拦截了 53 端口入站流量，手机或路由器将无法连通本机并导致断网。点击下方按钮可由系统自动添加或移除安全放行规则。
           </p>
 
-          <div class="app-card-sub p-3 flex items-center justify-between gap-3">
+          <InlineAlert v-if="!firewallSupported" type="info">
+            系统未检测到防火墙后端（firewalld / ufw / nftables / iptables），53 端口已直接对外开放，无需放行规则。
+          </InlineAlert>
+
+          <div v-else class="app-card-sub p-3 flex items-center justify-between gap-3">
             <div>
               <span class="text-[11px] text-text-muted block">入站规则状态</span>
               <span class="font-semibold text-text-main text-[12px] mt-0.5 block">
@@ -192,7 +211,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <template #footer>
+        <template v-if="firewallSupported" #footer>
           <button
             type="button"
             @click="handleToggleFirewall"

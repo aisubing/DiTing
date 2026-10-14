@@ -147,7 +147,7 @@ sudo DITING_DATA_DIR=/tmp/diting ./build/bin/diting-service -run -port 5353
 | 崩溃自愈 / 应急还原 | ✅ | ✅ | 一致，另附离线脚本 |
 | 53 端口冲突检测与识别 | ✅ | ✅ | 系统级占用从 ICS 换成 resolved stub |
 | 一键自动修复 | ✅ 停用 ICS | ✅ 关闭 stub | — |
-| LAN 局域网 DNS | ✅ | ✅ | 防火墙后端自动探测，无防火墙时降级提示 |
+| LAN 局域网 DNS | ✅ | ✅ | 防火墙后端自动探测；无防火墙时端口直接开放，UI 显示「无需放行」信息态 |
 | 开机自启 | ✅ 注册表/服务 | ✅ systemd enable | — |
 | UAC / 提权弹窗 | ✅ | ❌ | Linux 无按需提权，需以 root 启动 |
 | 界面截图 / 窗口宽高比 | ✅ | ❌ | 无原生窗口，不适用 |
@@ -199,6 +199,6 @@ WSL2（NAT 模式，WSL 2.9.12 / Ubuntu 24.04）下让 Windows 宿主机浏览�
 - **WSL 通配绑定收敛**：Linux 上 `0.0.0.0` 的 `tcp` 监听会收敛为纯 IPv6，导致 Windows 侧 `localhost` 转发失效；WSL 调试请按上文让控制台监听 `127.0.0.1`。
 - **systemd-resolved stub 占 53**：`DNSStubListener=no` 属侵入性操作，UI 上必须给出明确确认提示；卸载后需手动删除 drop-in 并重启 resolved。
 - **无提权弹窗**：服务必须由 root/systemd 启动，非 root 运行需给出可读错误。
-- **空防火墙后端**：无 `ufw`/`firewalld`/`nftables`/`iptables` 时 `ConfigureFirewall*` 走降级分支返回诊断提示，不阻塞启动。
+- **空防火墙后端**：无 `ufw`/`firewalld`/`nftables`/`iptables` 时 `ConfigureFirewall*` 走降级分支返回 `platform.Unsupported` 诊断提示，不阻塞启动；此时端口本就对外开放。`FirewallBackendName()` 会返回 `"none"`，状态响应携带 `firewallBackend` 字段，Web 控制台据此将防火墙卡片呈现为「无需放行」信息态并隐藏放行按钮，启动与切换开关也不再把它记为警告日志。
 - **`//go:embed all:dist`**：`Desktop/frontend/dist/` 虽被 gitignore 但必须存在于工作区，清理构建产物时不要删除。
 - **单文件行数**：所有代码文件须遵循不超过 600 行的项目规范（`AGENTS.md`）。

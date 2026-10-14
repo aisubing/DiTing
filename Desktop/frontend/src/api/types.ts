@@ -394,6 +394,8 @@ export interface WebStatusResponse {
   lanAddresses: string[];
   webUrls: string[];
   firewallAllowed: boolean;
+  /** 探测到的防火墙后端；"none" 表示未检测到任何管理器，端口本就对外开放 */
+  firewallBackend: string;
   initialized: boolean;
   username: string;
 }

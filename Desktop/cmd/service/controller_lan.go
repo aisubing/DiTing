@@ -28,6 +28,7 @@ func (p *program) GetLANStatus(ctx context.Context) (*ipc.LANStatusResponse, err
 		ListenAddresses: udpAddrs,
 		LANAddresses:    lanAddrs,
 		FirewallAllowed: fwAllowed,
+		FirewallBackend: firewallBackendName(),
 	}, nil
 }
 
@@ -46,8 +47,8 @@ func (p *program) ConfigureLAN(ctx context.Context, req ipc.ConfigureLANRequest)
 	}
 	p.mu.Unlock()
 
-	// 按需自动配置 Windows 防火墙规则
-	if req.ConfigureFirewall {
+	// 按需自动配置系统防火墙规则；无防火墙后端时端口本就开放，跳过且不记为错误
+	if req.ConfigureFirewall && firewallBackendName() != "none" {
 		if err := firewallConfigurePort53(ctx, req.AllowLAN); err != nil {
 			log.Printf("[防火墙] 自动配置 53 端口规则警告: %v\n", err)
 		} else {

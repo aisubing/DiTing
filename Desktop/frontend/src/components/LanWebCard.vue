@@ -31,6 +31,12 @@ const firewallAllowed = computed(() => !!webStatus.value?.firewallAllowed);
 const adminUser = computed(() => webStatus.value?.username || 'admin');
 const isInitialized = computed(() => !!webStatus.value?.initialized);
 
+/**
+ * 防火墙后端判定：仅当后端明确为 "none"（系统未安装任何防火墙管理器）时，
+ * 视为无需放行；空串或未知值一律按“支持”处理，避免旧响应下误隐藏放行按钮。
+ */
+const firewallSupported = computed(() => (webStatus.value?.firewallBackend || '') !== 'none');
+
 async function loadData() {
   loading.value = true;
   errorMessage.value = '';
@@ -101,6 +107,8 @@ async function handleToggleWeb(e: Event) {
 }
 
 async function handleToggleFirewall() {
+  // 系统未检测到防火墙后端时端口本就对外开放，无规则可配置
+  if (!firewallSupported.value) return;
   togglingFw.value = true;
   errorMessage.value = '';
   try {
@@ -259,8 +267,8 @@ onMounted(() => {
             <div class="flex items-center gap-1.5">
               <span class="text-[11px] font-bold text-text-main">防火墙</span>
               <StatusBadge
-                :status="firewallAllowed ? 'active' : 'warning'"
-                :text="firewallAllowed ? '已放行' : '未放行'"
+                :status="!firewallSupported ? 'inactive' : (firewallAllowed ? 'active' : 'warning')"
+                :text="!firewallSupported ? '无需放行' : (firewallAllowed ? '已放行' : '未放行')"
                 size="sm"
               />
             </div>
@@ -268,6 +276,7 @@ onMounted(() => {
           </div>
 
           <button
+            v-if="firewallSupported"
             type="button"
             @click="handleToggleFirewall"
             :disabled="togglingFw"
@@ -311,6 +320,11 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
+      <!-- 无防火墙后端时的说明：端口本就对外开放，无需放行 -->
+      <p v-if="!firewallSupported" class="text-[10px] text-text-muted leading-relaxed">
+        系统未检测到防火墙后端（firewalld / ufw / nftables / iptables），端口已直接对外开放，无需放行。
+      </p>
     </div>
   </AppCard>
 

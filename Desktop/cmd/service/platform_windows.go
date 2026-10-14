@@ -44,6 +44,13 @@ func firewallConfigureWeb(ctx context.Context, port int, enable bool) error {
 	return windows.ConfigureFirewallPortWeb(ctx, platform.NewDefaultExecutor(), port, enable)
 }
 
+// firewallBackendName 返回防火墙后端名称。
+//
+// Windows 始终由 Defender 防火墙托管，恒为可用，返回固定标识 "windows"。
+func firewallBackendName() string {
+	return "windows"
+}
+
 // platformDisplayName 返回当前平台的可读名称，用于版本与诊断输出。
 func platformDisplayName() string {
 	return "Windows"
