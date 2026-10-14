@@ -35,6 +35,7 @@ type mockController struct {
 	authInitialized      bool
 	safeSearch           *SafeSearchConfigResponse
 	safeSearchErr        error
+	serviceStatus        *platform.CoreServiceStatus
 }
 
 func (m *mockController) StartDNS(ctx context.Context) error {
@@ -75,6 +76,28 @@ func (m *mockController) DisableTakeover(ctx context.Context) error {
 	}
 	m.takeoverOn = false
 	return nil
+}
+
+func (m *mockController) GetCoreServiceStatus(ctx context.Context) (*platform.CoreServiceStatus, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.serviceStatus != nil {
+		return m.serviceStatus, nil
+	}
+	return &platform.CoreServiceStatus{
+		Installed:      true,
+		Running:        true,
+		State:          "running",
+		StateText:      "运行中",
+		ExecutablePath: "/usr/local/bin/diting-service",
+		CanInstall:     true,
+		Message:        "核心服务正常运行中。",
+		AutoStart: &platform.AutoStartStatus{
+			Enabled:   true,
+			Mechanism: platform.AutoStartMechanismSystemd,
+			Detail:    "systemd 单元已 enable，开机无需登录即可守护运行。",
+		},
+	}, nil
 }
 
 func (m *mockController) GetStatus(ctx context.Context) (*StatusResponse, error) {

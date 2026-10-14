@@ -24,6 +24,11 @@ func newPortChecker(exec platform.CommandExecutor) platform.PortChecker {
 	return linux.NewPortChecker(exec)
 }
 
+// newServiceManager 构造当前平台（Linux）的后台核心服务管理器。
+func newServiceManager(exec platform.CommandExecutor) platform.ServiceManager {
+	return linux.NewServiceManager(exec, nil)
+}
+
 // firewallCheckPort53 检测 53 端口防火墙放行规则是否生效。
 func firewallCheckPort53(ctx context.Context) (bool, error) {
 	return linux.CheckFirewallPort53(ctx, platform.NewDefaultExecutor())

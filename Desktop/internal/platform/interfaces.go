@@ -62,6 +62,9 @@ type PrivilegedExecutor interface {
 }
 
 // ServiceManager 定义后台核心服务生命周期管理接口。
+//
+// GetStatus 除服务自身状态外，还需填充 AutoStart 字段，如实反映宿主机
+// 开机自启托管机制（服务自启 / 登录自启），供 Web 控制台展示。
 type ServiceManager interface {
 	GetStatus(ctx context.Context) (*CoreServiceStatus, error)
 	StartService(ctx context.Context) error

@@ -128,9 +128,10 @@ func parseExecStartPath(out string) string {
 
 // serviceStatus 描述 systemd 单元的解析结果。
 type serviceStatus struct {
-	loadState   string
-	activeState string
-	subState    string
+	loadState     string
+	activeState   string
+	subState      string
+	unitFileState string
 }
 
 // GetStatus 获取当前核心服务状态。
@@ -149,14 +150,47 @@ func (m *LinuxServiceManager) GetStatus(ctx context.Context) (*platform.CoreServ
 	}
 
 	raw, err := runCommand(ctx, m.executor, "systemctl", "show", m.unitName,
-		"-p", "LoadState,ActiveState,SubState")
+		"-p", "LoadState,ActiveState,SubState,UnitFileState")
 	if err != nil {
 		return status, fmt.Errorf("检测核心服务状态失败: %w", err)
 	}
 
 	parsed := parseSystemctlShow(raw)
 	applyServiceStatus(status, parsed)
+	status.AutoStart = m.autoStartStatus(parsed)
 	return status, nil
+}
+
+// autoStartStatus 汇总 Linux 宿主机上所有已生效的开机自启托管机制。
+func (m *LinuxServiceManager) autoStartStatus(st serviceStatus) *platform.AutoStartStatus {
+	if st.unitFileState == "enabled" {
+		return &platform.AutoStartStatus{
+			Enabled:   true,
+			Mechanism: platform.AutoStartMechanismSystemd,
+			Detail:    "systemd 单元已 enable，开机无需登录即可守护运行。",
+		}
+	}
+	if st.unitFileState == "masked" || st.unitFileState == "disabled" {
+		return &platform.AutoStartStatus{
+			Enabled:   false,
+			Mechanism: platform.AutoStartMechanismNone,
+			Detail:    "systemd 单元已被 disable/mask，开机不会自动运行。",
+		}
+	}
+
+	// 非 systemd 托管的发行版或单元未安装时，回退检查桌面登录自启条目。
+	if xdgAutoStartPresent() {
+		return &platform.AutoStartStatus{
+			Enabled:   true,
+			Mechanism: platform.AutoStartMechanismXDG,
+			Detail:    "已加入 XDG 桌面登录自启条目，登录桌面后自动运行。",
+		}
+	}
+	return &platform.AutoStartStatus{
+		Enabled:   false,
+		Mechanism: platform.AutoStartMechanismNone,
+		Detail:    "尚未配置任何开机自启托管机制。",
+	}
 }
 
 // parseSystemctlShow 解析 systemctl show 的 Key=Value 输出。
@@ -174,6 +208,8 @@ func parseSystemctlShow(out string) serviceStatus {
 			st.activeState = value
 		case "SubState":
 			st.subState = value
+		case "UnitFileState":
+			st.unitFileState = value
 		}
 	}
 	return st

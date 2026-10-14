@@ -19,6 +19,11 @@ func NewAutoStartManager() platform.AutoStartManager {
 }
 
 func (m *LinuxAutoStartManager) desktopFilePath() string {
+	return desktopFilePath()
+}
+
+// desktopFilePath 返回 XDG 桌面自启条目的绝对路径（无法定位时为 ""）。
+func desktopFilePath() string {
 	configDir := os.Getenv("XDG_CONFIG_HOME")
 	if configDir == "" {
 		home := os.Getenv("HOME")
@@ -30,14 +35,22 @@ func (m *LinuxAutoStartManager) desktopFilePath() string {
 	return filepath.Join(configDir, "autostart", "diting.desktop")
 }
 
-// IsEnabled 检查 Linux 桌面自启条目是否存在。
-func (m *LinuxAutoStartManager) IsEnabled() bool {
-	p := m.desktopFilePath()
+// xdgAutoStartPresent 判断 XDG 桌面自启条目是否已存在。
+//
+// 供服务状态查询复用：当核心服务由桌面应用而非 systemd 托管时，
+// 该条目才是开机自启的实际生效依据。
+func xdgAutoStartPresent() bool {
+	p := desktopFilePath()
 	if p == "" {
 		return false
 	}
 	_, err := os.Stat(p)
 	return err == nil
+}
+
+// IsEnabled 检查 Linux 桌面自启条目是否存在。
+func (m *LinuxAutoStartManager) IsEnabled() bool {
+	return xdgAutoStartPresent()
 }
 
 // SetEnabled 创建或移除 ~/.config/autostart/diting.desktop。

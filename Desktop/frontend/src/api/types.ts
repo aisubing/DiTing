@@ -345,15 +345,35 @@ export interface TestUpstreamResponse {
   error?: string;
 }
 
+/** 开机自启托管机制：服务自启 / 登录自启 / 未配置 */
+export type AutoStartMechanism = 'service' | 'login_item' | 'systemd' | 'xdg' | 'none' | string;
+
+/** 宿主机开机自启托管状态（GET /api/v1/service/status） */
+export interface AutoStartStatus {
+  enabled: boolean;
+  mechanism: AutoStartMechanism;
+  detail: string;
+}
+
 export interface CoreServiceStatus {
   installed: boolean;
   running: boolean;
-  state: 'running' | 'stopped' | 'not_installed' | 'start_pending' | 'stop_pending' | 'unknown' | string;
+  state:
+    | 'running'
+    | 'stopped'
+    | 'not_installed'
+    | 'start_pending'
+    | 'stop_pending'
+    | 'foreground'
+    | 'unknown'
+    | string;
   stateText: string;
   executablePath: string;
   isElevated: boolean;
   canInstall: boolean;
   message?: string;
+  /** 宿主机自启托管情况；旧版本服务不返回该字段 */
+  autoStart?: AutoStartStatus;
 }
 
 export interface AuthStatusResponse {

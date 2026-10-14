@@ -7,6 +7,7 @@ import type {
   TestUpstreamResponse,
   BootstrapConfig,
   MetaResponse,
+  CoreServiceStatus,
 } from './types';
 import type { HttpTransport } from './http';
 
@@ -21,6 +22,16 @@ export class CoreApi {
   /** 获取宿主机运行平台信息（免鉴权，供平台自适应 UI 使用） */
   public getMeta(): Promise<MetaResponse> {
     return this.http.request<MetaResponse>('/api/v1/meta');
+  }
+
+  /**
+   * 获取宿主机后台核心服务的真实状态。
+   *
+   * Web 控制台无 Wails 绑定，只能经此接口读取 SCM / systemd 的实际状态，
+   * 以免退化为"未安装/未检测到"等与宿主机不符的占位展示。
+   */
+  public getCoreServiceStatus(): Promise<CoreServiceStatus> {
+    return this.http.request<CoreServiceStatus>('/api/v1/service/status');
   }
 
   public async startDNS(): Promise<void> {

@@ -9,7 +9,7 @@ import { NetworkApi } from './network';
 import { WebAuthApi } from './web';
 import { SecurityApi } from './security';
 import { RewriteApi } from './rewrite';
-import { nativeBridge } from './native';
+import { nativeBridge, setCoreServiceStatusProvider } from './native';
 import { isWebMode } from '../utils/env';
 
 /**
@@ -28,6 +28,11 @@ class IPCService {
   private webAuth = new WebAuthApi(this.http, this.events);
   private security = new SecurityApi(this.http);
   private rewrite = new RewriteApi(this.http);
+
+  constructor() {
+    // Web 模式下原生桥接无 Wails 绑定，改由宿主机服务接口提供权威状态。
+    setCoreServiceStatusProvider({ getCoreServiceStatus: () => this.core.getCoreServiceStatus() });
+  }
 
   // --- 环境与连接 ---
   public isWebMode = () => isWebMode();
@@ -145,6 +150,7 @@ class IPCService {
   // --- Wails 原生平台委托 ---
   public runNativeEmergencyRestore = () => nativeBridge.runNativeEmergencyRestore();
   public isAutoStartEnabled = () => nativeBridge.isAutoStartEnabled();
+  public getAutoStartStatus = () => nativeBridge.getAutoStartStatus();
   public setAutoStart = (enable: boolean) => nativeBridge.setAutoStart(enable);
   public getCoreServiceStatus = () => nativeBridge.getCoreServiceStatus();
   public startCoreService = () => nativeBridge.startCoreService();

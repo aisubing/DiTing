@@ -97,6 +97,30 @@ func (e *PortConflictError) Unwrap() error {
 	return e.Err
 }
 
+// 开机自启托管机制标识。
+const (
+	// AutoStartMechanismService 系统服务自启：随系统启动，先于用户登录。
+	AutoStartMechanismService = "service"
+	// AutoStartMechanismLoginItem 用户登录自启：登录桌面后拉起。
+	AutoStartMechanismLoginItem = "login_item"
+	// AutoStartMechanismSystemd systemd 单元自启。
+	AutoStartMechanismSystemd = "systemd"
+	// AutoStartMechanismXDG XDG autostart 桌面条目自启。
+	AutoStartMechanismXDG = "xdg"
+	// AutoStartMechanismNone 未配置任何开机自启托管。
+	AutoStartMechanismNone = "none"
+)
+
+// AutoStartStatus 宿主机开机自启托管状态。
+//
+// Web 控制台无法读取图形桌面的自启开关，只能以宿主机实际配置为准，
+// 故同时给出生效机制与可读说明，避免把"由系统服务托管"误报为"未配置开机启动"。
+type AutoStartStatus struct {
+	Enabled   bool   `json:"enabled"`
+	Mechanism string `json:"mechanism"` // service / login_item / systemd / xdg / none
+	Detail    string `json:"detail"`
+}
+
 // CoreServiceStatus 后台核心服务状态。
 type CoreServiceStatus struct {
 	Installed      bool   `json:"installed"`
@@ -107,4 +131,6 @@ type CoreServiceStatus struct {
 	IsElevated     bool   `json:"isElevated"`
 	CanInstall     bool   `json:"canInstall"`
 	Message        string `json:"message"`
+	// AutoStart 宿主机开机自启托管状态；旧版本服务可能不返回该字段。
+	AutoStart *AutoStartStatus `json:"autoStart,omitempty"`
 }

@@ -24,8 +24,41 @@ func NewAutoStartManager() platform.AutoStartManager {
 }
 
 // IsEnabled 检查当前用户是否已启用开机自启。
+//
+// 仅针对当前用户：桌面端开关的语义就是"本用户的登录自启"，
+// 跨用户的托管情况由服务状态查询另行汇总。
 func (m *WindowsAutoStartManager) IsEnabled() bool {
-	k, err := registry.OpenKey(registry.CURRENT_USER, runRegistryKey, registry.QUERY_VALUE)
+	return runValuePresent(registry.CURRENT_USER)
+}
+
+// loginItemEnabled 检查任一用户会话的登录启动项中是否存在谛听条目。
+//
+// 除当前进程用户外，还扫描 HKEY_USERS 下所有已加载的用户配置单元，
+// 以覆盖"服务以 LocalSystem 身份运行、而自启项登记在交互用户下"的场景。
+func loginItemEnabled() bool {
+	if runValuePresent(registry.CURRENT_USER) {
+		return true
+	}
+
+	names, err := registry.USERS.ReadSubKeyNames(0)
+	if err != nil {
+		return false
+	}
+	for _, sid := range names {
+		if runValuePresent(registry.USERS, sid) {
+			return true
+		}
+	}
+	return false
+}
+
+// runValuePresent 判断指定用户配置单元下的 Run 键是否登记了谛听启动项。
+func runValuePresent(root registry.Key, subKeys ...string) bool {
+	path := runRegistryKey
+	for _, sub := range subKeys {
+		path = sub + `\` + path
+	}
+	k, err := registry.OpenKey(root, path, registry.QUERY_VALUE)
 	if err != nil {
 		return false
 	}

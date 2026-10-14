@@ -8,6 +8,7 @@ import ToastBanner from '../ToastBanner.vue';
 import CoreServiceCard from '../CoreServiceCard.vue';
 import CopyRow from '../ui/CopyRow.vue';
 import { revertSwitch, extractSwitchValue } from '../../utils/switch';
+import type { AutoStartStatus } from '../../api/types';
 import { isWebMode } from '../../utils/env';
 import { usePlatform } from '../../composables/usePlatform';
 import { useToast } from '../../composables/useToast';
@@ -30,12 +31,37 @@ const connResult = ref<{ success: boolean; message: string } | null>(null);
 // 开机自启状态
 const autostart = ref(false);
 const togglingAutostart = ref(false);
+/** 宿主机实际生效的自启托管信息（Web 模式下由服务端上报） */
+const autostartStatus = ref<AutoStartStatus | null>(null);
 
 async function checkAutostart() {
   try {
-    autostart.value = await ipc.isAutoStartEnabled();
+    const st = await ipc.getAutoStartStatus();
+    autostartStatus.value = st;
+    autostart.value = st.enabled;
   } catch {}
 }
+
+/** 自启托管状态文案：区分系统服务托管与用户登录自启 */
+const autostartStateText = computed(() => {
+  if (!autostart.value) return '未配置开机启动';
+
+  switch (autostartStatus.value?.mechanism) {
+    case 'service':
+    case 'systemd':
+      return '✔ 已由系统服务托管自启';
+    case 'xdg':
+      return '✔ 已加入桌面登录启动项';
+    case 'login_item':
+      return '✔ 已加入 Windows 启动项';
+    default:
+      return '✔ 已配置开机自启';
+  }
+});
+
+const autostartDetail = computed(
+  () => autostartStatus.value?.detail || '可通过此处随时开启或关闭，无需手动配置注册表或任务计划。'
+);
 
 async function handleToggleAutostart(e: Event) {
   const enable = extractSwitchValue(e);
@@ -199,9 +225,17 @@ onMounted(() => {
         <!-- Linux Web 控制台：systemd 托管说明（不可在此直接操作） -->
         <div v-if="linuxAutostartInfo" class="space-y-3 mt-3 text-xs text-text-sub leading-relaxed">
           <p>
-            宿主机上的谛听核心服务由 systemd 托管，安装时已通过 <span class="font-mono">systemctl enable</span> 注册开机自启，
-            无需依赖图形桌面登录即可启动。
+            宿主机上的谛听核心服务由 systemd 托管，无需依赖图形桌面登录即可启动。
           </p>
+          <div class="app-card-sub p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-semibold text-text-main">系统自启托管状态</span>
+              <span class="font-semibold text-[12px]" :class="autostart ? 'text-status-success' : 'text-text-muted'">
+                {{ autostartStateText }}
+              </span>
+            </div>
+            <p class="text-[11px] text-text-muted">{{ autostartDetail }}</p>
+          </div>
           <div class="app-card-sub p-3 space-y-2">
             <div class="text-[11px] font-semibold text-text-main">查看自启状态</div>
             <CopyRow text="systemctl is-enabled diting-dnsservice" tag="Shell" tagType="ipv4" />
@@ -213,18 +247,21 @@ onMounted(() => {
         </div>
 
         <div v-else class="space-y-3 mt-3 text-xs text-text-sub leading-relaxed">
-          <p>
+          <p v-if="webMode">
+            以下为宿主机实际生效的开机自启托管情况。Web 控制台无法直接修改宿主机的系统服务或注册表配置。
+          </p>
+          <p v-else>
             在 Windows 系统开机登录后自动启动桌面应用，确保 DNS 拦截、加速和物理网卡保护持续稳定运行。
           </p>
           <div class="app-card-sub p-3 space-y-1">
             <div class="flex items-center justify-between">
               <span class="text-[11px] font-semibold text-text-main">系统自启托管状态</span>
               <span class="font-semibold text-[12px]" :class="autostart ? 'text-status-success' : 'text-text-muted'">
-                {{ autostart ? '✔ 已加入 Windows 启动项' : '未配置开机启动' }}
+                {{ autostartStateText }}
               </span>
             </div>
             <p class="text-[11px] text-text-muted">
-              可通过此处随时开启或关闭，无需手动配置注册表或任务计划。
+              {{ autostartDetail }}
             </p>
           </div>
         </div>

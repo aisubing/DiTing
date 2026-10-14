@@ -55,6 +55,7 @@ type program struct {
 	portChecker    platform.PortChecker
 	ipcServer      *ipc.Server
 	authMgr        *auth.Manager
+	serviceMgr     platform.ServiceManager
 
 	startTime time.Time
 	metrics   *metricsTracker
@@ -105,6 +106,7 @@ func (p *program) run() error {
 	p.takeoverMgr = newDNSManager(executor, p.stateStore, Version)
 	p.adapterScan = newAdapterScanner(executor)
 	p.portChecker = newPortChecker(executor)
+	p.serviceMgr = newServiceManager(executor)
 
 	// 3. 执行崩溃自愈与残留检查
 	healed, err := p.stateStore.CheckAndSelfHeal(context.Background(), p.takeoverMgr)

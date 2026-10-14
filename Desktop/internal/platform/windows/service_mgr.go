@@ -24,6 +24,10 @@ type ServiceManager struct {
 	privExec    platform.PrivilegedExecutor
 	scmQuery    scmQuerier
 	locateExe   func() (string, error)
+	// startTypeQuery 读取服务启动类型；loginItemCheck 检查登录自启项。
+	// 两者均为字段以便测试注入，默认指向原生实现。
+	startTypeQuery func(serviceName string) (uint32, error)
+	loginItemCheck func() bool
 }
 
 // NewServiceManager 创建服务管理器
@@ -35,13 +39,31 @@ func NewServiceManager(executor platform.CommandExecutor, privExec platform.Priv
 		privExec = NewDefaultPrivilegedExecutor(executor)
 	}
 	m := &ServiceManager{
-		serviceName: DefaultServiceName,
-		executor:    executor,
-		privExec:    privExec,
-		scmQuery:    defaultSCMQuery,
+		serviceName:    DefaultServiceName,
+		executor:       executor,
+		privExec:       privExec,
+		scmQuery:       defaultSCMQuery,
+		startTypeQuery: queryStartType,
+		loginItemCheck: loginItemEnabled,
 	}
 	m.locateExe = m.LocateExecutable
 	return m
+}
+
+// startType 读取服务启动类型（startTypeQuery 便于测试注入）。
+func (m *ServiceManager) startType() (uint32, error) {
+	if m.startTypeQuery != nil {
+		return m.startTypeQuery(m.serviceName)
+	}
+	return queryStartType(m.serviceName)
+}
+
+// loginItemPresent 检查登录自启项（loginItemCheck 便于测试注入）。
+func (m *ServiceManager) loginItemPresent() bool {
+	if m.loginItemCheck != nil {
+		return m.loginItemCheck()
+	}
+	return loginItemEnabled()
 }
 
 // locate 定位服务可执行文件（locateExe 便于测试注入）
@@ -130,6 +152,7 @@ func (m *ServiceManager) GetStatus(ctx context.Context) (*platform.CoreServiceSt
 	status.Installed = installed
 	status.Running = running
 	status.State = state
+	status.AutoStart = m.autoStartStatus(installed)
 	switch state {
 	case "running":
 		status.StateText = "运行中"
@@ -151,6 +174,53 @@ func (m *ServiceManager) GetStatus(ctx context.Context) (*platform.CoreServiceSt
 		status.Message = "核心服务未运行。"
 	}
 	return status, nil
+}
+
+// autoStartStatus 汇总 Windows 宿主机上所有已生效的开机自启托管机制。
+//
+// 判定顺序体现自启的实际生效能力：SCM 服务自启先于用户登录，
+// 优先级高于用户登录自启项。
+func (m *ServiceManager) autoStartStatus(installed bool) *platform.AutoStartStatus {
+	if installed {
+		if startType, err := m.startType(); err == nil {
+			switch startType {
+			case windows.SERVICE_AUTO_START:
+				return &platform.AutoStartStatus{
+					Enabled:   true,
+					Mechanism: platform.AutoStartMechanismService,
+					Detail:    "已注册为 Windows 系统服务并设为自动启动，开机无需登录即可守护运行。",
+				}
+			case windows.SERVICE_DISABLED:
+				// 服务被显式禁用，即便存在登录自启项也不会随开机运行，需如实告知。
+				return &platform.AutoStartStatus{
+					Enabled:   false,
+					Mechanism: platform.AutoStartMechanismNone,
+					Detail:    "系统服务已被设为禁用启动，开机不会自动运行。",
+				}
+			}
+		}
+	}
+
+	if m.loginItemPresent() {
+		return &platform.AutoStartStatus{
+			Enabled:   true,
+			Mechanism: platform.AutoStartMechanismLoginItem,
+			Detail:    "已加入 Windows 用户登录启动项，登录桌面后自动运行。",
+		}
+	}
+
+	if installed {
+		return &platform.AutoStartStatus{
+			Enabled:   false,
+			Mechanism: platform.AutoStartMechanismNone,
+			Detail:    "系统服务已安装但启动类型为手动，开机不会自动运行。",
+		}
+	}
+	return &platform.AutoStartStatus{
+		Enabled:   false,
+		Mechanism: platform.AutoStartMechanismNone,
+		Detail:    "尚未配置任何开机自启托管机制。",
+	}
 }
 
 func startServiceNative(serviceName string) error {

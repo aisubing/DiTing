@@ -16,6 +16,11 @@ type ServiceController interface {
 	EnableTakeover(ctx context.Context) error
 	DisableTakeover(ctx context.Context) error
 	GetStatus(ctx context.Context) (*StatusResponse, error)
+	// GetCoreServiceStatus 返回宿主机后台核心服务的真实运行状态与自启托管情况。
+	//
+	// Web 控制台无法访问桌面端 Wails 绑定，需经此接口获取权威状态，
+	// 避免以"未安装/未检测到/未配置开机启动"等占位文案误导用户。
+	GetCoreServiceStatus(ctx context.Context) (*platform.CoreServiceStatus, error)
 	CheckPortConflicts(ctx context.Context) (*platform.PortCheckResult, error)
 	AutofixPortConflicts(ctx context.Context, startDNS bool) (*platform.PortCheckResult, error)
 	GetAdapters(ctx context.Context) ([]platform.AdapterInfo, error)

@@ -133,3 +133,70 @@ func TestIptablesBinary(t *testing.T) {
 		t.Errorf("tcp6 应使用 ip6tables, got=%q", got)
 	}
 }
+
+func TestParseSystemctlShowUnitFileState(t *testing.T) {
+	out := "LoadState=loaded\nActiveState=active\nSubState=running\nUnitFileState=enabled\n"
+	st := parseSystemctlShow(out)
+	if st.unitFileState != "enabled" {
+		t.Fatalf("UnitFileState 解析不符: %+v", st)
+	}
+}
+
+// TestAutoStartStatusSystemd 验证 systemd 已 enable 时如实报告自启生效，
+// 避免 Web 控制台误报"未配置开机启动"。
+func TestAutoStartStatusSystemd(t *testing.T) {
+	mgr := NewServiceManager(nil, nil)
+
+	cases := []struct {
+		name        string
+		unitState   string
+		wantEnabled bool
+		wantMech    string
+	}{
+		{"已启用", "enabled", true, platform.AutoStartMechanismSystemd},
+		{"已禁用", "disabled", false, platform.AutoStartMechanismNone},
+		{"已屏蔽", "masked", false, platform.AutoStartMechanismNone},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := mgr.autoStartStatus(serviceStatus{unitFileState: c.unitState})
+			if got.Enabled != c.wantEnabled {
+				t.Errorf("Enabled 不符: got %v, want %v", got.Enabled, c.wantEnabled)
+			}
+			if got.Mechanism != c.wantMech {
+				t.Errorf("Mechanism 不符: got %q, want %q", got.Mechanism, c.wantMech)
+			}
+			if got.Detail == "" {
+				t.Error("Detail 不应为空")
+			}
+		})
+	}
+}
+
+// TestAutoStartStatusXDGFallback 验证无 systemd 托管信息时回退检查 XDG 桌面条目。
+func TestAutoStartStatusXDGFallback(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", home+"/.config")
+
+	mgr := NewServiceManager(nil, nil)
+
+	// 1. 无桌面条目 → 未配置
+	if got := mgr.autoStartStatus(serviceStatus{}); got.Enabled {
+		t.Errorf("无任何自启配置时不应报告已启用: %+v", got)
+	}
+
+	// 2. 存在桌面条目 → 判定为已配置开机自启
+	if _, err := NewAutoStartManager().SetEnabled(true); err != nil {
+		t.Fatalf("SetEnabled 失败: %v", err)
+	}
+
+	got := mgr.autoStartStatus(serviceStatus{})
+	if !got.Enabled {
+		t.Errorf("存在 XDG 桌面条目时应报告已启用: %+v", got)
+	}
+	if got.Mechanism != platform.AutoStartMechanismXDG {
+		t.Errorf("Mechanism 不符: got %q, want %q", got.Mechanism, platform.AutoStartMechanismXDG)
+	}
+}

@@ -1,5 +1,22 @@
-import type { CoreServiceStatus } from './types';
+import type { AutoStartStatus, CoreServiceStatus } from './types';
 import { isDesktopApp } from '../utils/env';
+
+/**
+ * Web 模式下的服务状态数据源。
+ *
+ * 由 ipc 门面在构造时注入（HttpTransport → CoreApi），避免 native.ts
+ * 反向依赖传输层造成循环引用。
+ */
+export interface CoreServiceStatusProvider {
+  getCoreServiceStatus(): Promise<CoreServiceStatus>;
+}
+
+let statusProvider: CoreServiceStatusProvider | null = null;
+
+/** 注册 Web 模式服务状态数据源（由 IPC 门面调用）。 */
+export function setCoreServiceStatusProvider(provider: CoreServiceStatusProvider | null): void {
+  statusProvider = provider;
+}
 
 // Wails 全局对象类型声明
 declare global {
@@ -37,15 +54,39 @@ export class NativeBridgeService {
     return 'Web 环境不支持原生底层 DNS 应急自愈，请在宿主机桌面端执行';
   }
 
-  public async isAutoStartEnabled(): Promise<boolean> {
-    if (window.go?.main?.App?.IsAutoStartEnabled) {
+  /**
+   * 获取宿主机开机自启托管状态。
+   *
+   * 桌面端读取当前用户的自启开关；Web 端改由宿主机服务上报的实际托管
+   * 机制判定（服务自启 / 登录自启），避免在服务已托管自启时误报未配置。
+   */
+  public async getAutoStartStatus(): Promise<AutoStartStatus> {
+    // 桌面端以当前用户的自启开关为准，不回退到宿主机托管状态：
+    // 后者包含系统服务自启，会让开关显示"已开启"却无法由此处关闭。
+    if (isDesktopApp()) {
       try {
-        return await window.go.main.App.IsAutoStartEnabled();
+        const enabled = await window.go?.main?.App?.IsAutoStartEnabled?.();
+        if (enabled !== undefined) {
+          return {
+            enabled,
+            mechanism: enabled ? 'login_item' : 'none',
+            detail: enabled ? '已开启当前用户登录自启。' : '尚未配置开机自启。',
+          };
+        }
       } catch (e) {
         console.warn('获取开机自启状态失败:', e);
       }
+      return { enabled: false, mechanism: 'none', detail: '暂时无法获取本机开机自启状态。' };
     }
-    return false;
+
+    const remote = await this.fetchRemoteStatus();
+    if (remote?.autoStart) return remote.autoStart;
+
+    return { enabled: false, mechanism: 'none', detail: '暂时无法获取宿主机开机自启状态。' };
+  }
+
+  public async isAutoStartEnabled(): Promise<boolean> {
+    return (await this.getAutoStartStatus()).enabled;
   }
 
   public async setAutoStart(enable: boolean): Promise<boolean> {
@@ -67,26 +108,58 @@ export class NativeBridgeService {
     return null;
   }
 
+  /**
+   * 获取宿主机后台核心服务状态。
+   *
+   * 桌面端直接调用 Wails 绑定；Web 端经宿主机服务接口读取真实状态。
+   * 两者均失败时返回带明确说明的未知状态，而非伪装成"未安装"——
+   * 后者会让用户误以为宿主机根本没有部署核心服务。
+   */
   public async getCoreServiceStatus(): Promise<CoreServiceStatus> {
-    if (window.go?.main?.App?.GetCoreServiceStatus) {
+    // 桌面端已内嵌服务进程，原生绑定是唯一权威来源，不做远程回退。
+    if (isDesktopApp()) {
       try {
-        const res = await window.go.main.App.GetCoreServiceStatus();
-        return res as CoreServiceStatus;
+        const res = await window.go?.main?.App?.GetCoreServiceStatus?.();
+        if (res) return res as CoreServiceStatus;
       } catch (err: any) {
         console.warn('获取核心服务状态失败:', err);
       }
+      return {
+        installed: false,
+        running: false,
+        state: 'unknown',
+        stateText: '状态未知',
+        executablePath: '',
+        isElevated: false,
+        canInstall: false,
+        message: '暂时无法读取本机核心服务状态。',
+      };
     }
+
+    const remote = await this.fetchRemoteStatus();
+    if (remote) return remote;
 
     return {
       installed: false,
       running: false,
       state: 'unknown',
-      stateText: '未知状态',
+      stateText: '状态未知',
       executablePath: '',
       isElevated: false,
       canInstall: false,
-      message: 'Web 浏览器环境，服务由宿主机后台守护进程运行。',
+      message: '暂时无法读取宿主机核心服务状态，请确认与后台服务的连接是否正常。',
     };
+  }
+
+  /** 经宿主机服务接口读取状态；不可用时返回 null 交由调用方降级处理。 */
+  private async fetchRemoteStatus(): Promise<CoreServiceStatus | null> {
+    if (!statusProvider) return null;
+    try {
+      return await statusProvider.getCoreServiceStatus();
+    } catch (err) {
+      console.warn('经服务接口读取核心服务状态失败:', err);
+      return null;
+    }
   }
 
   public async startCoreService(): Promise<string> {

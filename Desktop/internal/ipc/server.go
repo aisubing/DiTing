@@ -119,6 +119,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("/api/v1/portcheck/autofix", s.withAuth(s.handlePortAutofix))
 	mux.HandleFunc("/api/v1/health", s.handleHealth)
 	mux.HandleFunc("/api/v1/meta", s.handleMeta)
+	mux.HandleFunc("/api/v1/service/status", s.withAuth(s.handleServiceStatus))
 
 	// Web 远程管理与认证路由
 	mux.HandleFunc("/api/v1/auth/status", s.handleAuthStatus)

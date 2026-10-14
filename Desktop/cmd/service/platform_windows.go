@@ -24,6 +24,14 @@ func newPortChecker(exec platform.CommandExecutor) platform.PortChecker {
 	return windows.NewPortChecker(exec)
 }
 
+// newServiceManager 构造当前平台（Windows）的后台核心服务管理器。
+//
+// 以 nil 传入特权执行器：服务进程自身即以 LocalSystem 运行，
+// 状态查询无需提权，也不会触发 UAC 弹窗。
+func newServiceManager(exec platform.CommandExecutor) platform.ServiceManager {
+	return windows.NewServiceManager(exec, nil)
+}
+
 // firewallCheckPort53 检测 53 端口防火墙放行规则是否生效。
 func firewallCheckPort53(ctx context.Context) (bool, error) {
 	return windows.CheckFirewallPort53(ctx, platform.NewDefaultExecutor())
