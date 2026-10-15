@@ -47,7 +47,30 @@ func NormalizeCacheConfig(cfg *CacheConfig) {
 	if cfg.PrefetchBeforeExpiryMs > maxPrefetchBeforeMs {
 		cfg.PrefetchBeforeExpiryMs = maxPrefetchBeforeMs
 	}
+
+	// 落盘参数：仅在开启落盘时补全间隔，未开启时不制造"看似已配置"的假象。
+	// 间隔为 0 视为缺省值而非"不落盘"——JSON 里两者无法区分。
+	if cfg.PersistEnabled {
+		if cfg.PersistIntervalSeconds <= 0 {
+			cfg.PersistIntervalSeconds = defaultPersistIntervalSeconds
+		}
+		if cfg.PersistIntervalSeconds < minPersistIntervalSeconds {
+			cfg.PersistIntervalSeconds = minPersistIntervalSeconds
+		}
+		if cfg.PersistIntervalSeconds > maxPersistIntervalSeconds {
+			cfg.PersistIntervalSeconds = maxPersistIntervalSeconds
+		}
+	} else if cfg.PersistIntervalSeconds < 0 {
+		cfg.PersistIntervalSeconds = 0
+	}
 }
+
+// 落盘间隔取值范围：下限 30s（避免频繁写盘拖累磁盘），上限 24h
+const (
+	defaultPersistIntervalSeconds int64 = 300
+	minPersistIntervalSeconds     int64 = 30
+	maxPersistIntervalSeconds     int64 = 86400
+)
 
 // CacheKey 生成标准化缓存键 (domain:qtype:qclass)
 func CacheKey(domain string, qtype, qclass uint16) string {

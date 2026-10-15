@@ -34,6 +34,12 @@ type ServiceController interface {
 	ClearCache(ctx context.Context) error
 	GetCacheConfig(ctx context.Context) (*core.CacheConfig, error)
 	UpdateCacheConfig(ctx context.Context, cfg core.CacheConfig) error
+	// CachePersistStatus 返回缓存落盘状态与排除规则概览
+	CachePersistStatus(ctx context.Context) (*CachePersistResponse, error)
+	// DumpCache 立即把内存缓存落盘
+	DumpCache(ctx context.Context) (*CachePersistResponse, error)
+	// LoadCache 从落盘文件恢复缓存
+	LoadCache(ctx context.Context) (*CachePersistResponse, error)
 	GetFilterStats(ctx context.Context) (*core.FilterStats, error)
 	GetFilterConfig(ctx context.Context) (*core.FilterConfig, error)
 	UpdateFilterConfig(ctx context.Context, cfg core.FilterConfig) error

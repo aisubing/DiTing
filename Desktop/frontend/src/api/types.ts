@@ -174,6 +174,34 @@ export interface CacheConfig {
   prefetchEnabled: boolean;
   prefetchThreshold: number;
   prefetchBeforeExpiryMs: number;
+  /** 不参与缓存的域名正则（Go RE2，无回溯、免疫 ReDoS）；留空表示全部缓存 */
+  excludePatterns?: string[];
+  /** 是否把缓存落盘，重启后复用；默认关闭 */
+  persistEnabled: boolean;
+  /** 落盘文件路径；留空由后端按平台约定推导 */
+  persistPath?: string;
+  /** 定时落盘间隔（秒），取值范围 30–86400；缺省或 0 使用后端默认 300 */
+  persistIntervalSeconds?: number;
+}
+
+/** 缓存落盘状态与操作结果 */
+export interface CachePersistInfo {
+  /** 生效的落盘文件路径 */
+  path: string;
+  /** 本次从文件恢复的条目数（仅「恢复」操作有意义） */
+  restored?: number;
+  /** 操作完成后内存中的条目总数 */
+  entryCount: number;
+  /** 是否开启定期落盘 */
+  persistOn: boolean;
+  /** 定时落盘间隔（秒） */
+  intervalSec: number;
+  /** 最近一次落盘失败的原因 */
+  lastError?: string;
+  /** 当前生效的排除正则 */
+  excludeRules?: string[];
+  /** 被排除规则拦下、绕过缓存的查询累计数 */
+  excludeHits: number;
 }
 
 export interface CacheEntryItem {

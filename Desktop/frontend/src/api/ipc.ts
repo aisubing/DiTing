@@ -83,6 +83,9 @@ class IPCService {
   public clearCache = () => this.cache.clear();
   public getCacheConfig = () => this.cache.getConfig();
   public updateCacheConfig = (cfg: Parameters<CacheApi['updateConfig']>[0]) => this.cache.updateConfig(cfg);
+  public getCachePersist = () => this.cache.getPersistStatus();
+  public dumpCache = () => this.cache.dump();
+  public loadCache = () => this.cache.load();
 
   // --- 查询历史与统计中心 ---
   public searchQueryLog = (q: Parameters<QueryLogApi['search']>[0] = {}) => this.querylog.search(q);

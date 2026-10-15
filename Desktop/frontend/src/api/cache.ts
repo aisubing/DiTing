@@ -1,4 +1,10 @@
-import type { CacheStats, CacheConfig, CacheEntriesResponse, CacheDomainStat } from './types';
+import type {
+  CacheStats,
+  CacheConfig,
+  CacheEntriesResponse,
+  CacheDomainStat,
+  CachePersistInfo,
+} from './types';
 import type { HttpTransport } from './http';
 
 /** 智能解析缓存 */
@@ -33,5 +39,20 @@ export class CacheApi {
       method: 'POST',
       body: JSON.stringify(config),
     });
+  }
+
+  /** 查询落盘状态与排除规则概览 */
+  public getPersistStatus(): Promise<CachePersistInfo> {
+    return this.http.request<CachePersistInfo>('/api/v1/cache/persist');
+  }
+
+  /** 立即把内存缓存落盘 */
+  public dump(): Promise<CachePersistInfo> {
+    return this.http.request<CachePersistInfo>('/api/v1/cache/dump', { method: 'POST' });
+  }
+
+  /** 从落盘文件恢复缓存 */
+  public load(): Promise<CachePersistInfo> {
+    return this.http.request<CachePersistInfo>('/api/v1/cache/load', { method: 'POST' });
   }
 }

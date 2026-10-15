@@ -25,6 +25,14 @@ func NewCacheMiddlewareWithGroups(cache *core.DNSCache, resolver core.Resolver, 
 
 		req := ctx.Req
 		q := req.Question[0]
+
+		// 命中排除规则的域名完全绕过缓存：既不读也不写。
+		// 只跳过读取会让被排除的应答仍占用容量并可能被他人命中；
+		// 只跳过写入则等于"永不命中"，两处都要拦。
+		if cache.IsExcluded(q.Name) {
+			return next()
+		}
+
 		group := cachedGroup(ctx, groups)
 		cachedResp, hit, isStale, staleCandidate := cache.GetForGroup(req, group)
 

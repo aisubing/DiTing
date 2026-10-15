@@ -32,6 +32,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/cache/top", s.withAuth(s.handleCacheTop))
 	mux.HandleFunc("/api/v1/cache/clear", s.withAuth(s.handleCacheClear))
 	mux.HandleFunc("/api/v1/cache/config", s.withAuth(s.handleCacheConfig))
+	mux.HandleFunc("/api/v1/cache/persist", s.withAuth(s.handleCachePersist))
+	mux.HandleFunc("/api/v1/cache/dump", s.withAuth(s.handleCacheDump))
+	mux.HandleFunc("/api/v1/cache/load", s.withAuth(s.handleCacheLoad))
 
 	// 查询日志
 	mux.HandleFunc("/api/v1/querylog/search", s.withAuth(s.handleQueryLogSearch))

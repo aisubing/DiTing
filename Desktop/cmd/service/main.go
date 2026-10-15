@@ -136,6 +136,7 @@ func (p *program) run() error {
 	p.resolver = res
 	p.cache = core.NewDNSCache(cfg.Cache)
 	p.cache.SetPrefetcher(res)
+	p.restoreCacheFromDisk()
 	p.queryLog = querylog.New(cfg.QueryLog)
 	p.filterEngine = core.NewRuleEngine(cfg.Filter)
 	if err := p.filterEngine.SetClientGroups(cfg.Client.GroupConfig()); err != nil {

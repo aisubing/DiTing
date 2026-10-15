@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { ipc } from '../../api/ipc';
-import type { CacheStats, CacheConfig, CacheEntryItem, CacheDomainStat } from '../../api/types';
+import type {
+  CacheStats,
+  CacheConfig,
+  CacheEntryItem,
+  CacheDomainStat,
+  CachePersistInfo,
+} from '../../api/types';
 import StatusBadge from '../StatusBadge.vue';
 import M3Icon from '../M3Icon.vue';
 import AppCard from '../ui/AppCard.vue';
@@ -11,6 +17,8 @@ import ToastBanner from '../ToastBanner.vue';
 import CacheTopDomains from './CacheTopDomains.vue';
 import CacheConfigCard from './CacheConfigCard.vue';
 import CacheEntriesTable from './CacheEntriesTable.vue';
+import CachePersistCard from './CachePersistCard.vue';
+import CacheExcludeCard from './CacheExcludeCard.vue';
 import { revertSwitch, extractSwitchValue } from '../../utils/switch';
 import { usePoller } from '../../composables/usePoller';
 import { useToast } from '../../composables/useToast';
@@ -44,7 +52,14 @@ const config = ref<CacheConfig>({
   prefetchEnabled: false,
   prefetchThreshold: 5,
   prefetchBeforeExpiryMs: 30000,
+  excludePatterns: [],
+  persistEnabled: false,
+  persistPath: '',
+  persistIntervalSeconds: 300,
 });
+
+const persistInfo = ref<CachePersistInfo | null>(null);
+const persistBusy = ref(false);
 
 const entries = ref<CacheEntryItem[]>([]);
 const topDomains = ref<CacheDomainStat[]>([]);
@@ -65,17 +80,20 @@ const hitRatioPercent = computed(() => {
 async function loadData() {
   loading.value = true;
   try {
-    const [st, cfg, entryRes, top] = await Promise.all([
+    const [st, cfg, entryRes, top, persist] = await Promise.all([
       ipc.getCacheStats(),
       ipc.getCacheConfig(),
       ipc.getCacheEntries(currentSearch.value, 100),
       ipc.getCacheTopDomains(10),
+      // 落盘状态属于附加信息：接口不可用不应拖垮整个面板的加载
+      ipc.getCachePersist().catch(() => null),
     ]);
     stats.value = st;
     config.value = cfg;
     entries.value = entryRes?.entries || [];
     totalEntriesCount.value = entryRes?.total || 0;
     topDomains.value = top || [];
+    persistInfo.value = persist;
   } catch (err: any) {
     showToast(err.message || '加载缓存数据失败', true);
   } finally {
@@ -134,6 +152,77 @@ async function handleSaveConfig() {
     showToast(`保存配置失败: ${err.message}`, true);
   } finally {
     saving.value = false;
+  }
+}
+
+/** 统一的落盘配置保存：切换开关与调整间隔共用 */
+async function savePersistConfig(patch: Partial<CacheConfig>, successMsg: string) {
+  saving.value = true;
+  try {
+    const updated = { ...config.value, ...patch };
+    await ipc.updateCacheConfig(updated);
+    config.value = updated;
+    showToast(successMsg);
+    persistInfo.value = await ipc.getCachePersist().catch(() => persistInfo.value);
+  } catch (err: any) {
+    showToast(`保存落盘配置失败: ${err.message}`, true);
+    // 失败后回读服务端配置，避免界面停留在未生效的状态
+    await loadData();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleTogglePersist(enabled: boolean) {
+  await savePersistConfig(
+    { persistEnabled: enabled },
+    enabled ? '缓存落盘已开启' : '缓存落盘已关闭'
+  );
+}
+
+async function handlePersistInterval(seconds: number) {
+  await savePersistConfig({ persistIntervalSeconds: seconds }, '落盘间隔已更新');
+}
+
+async function handleExcludeSave(patterns: string[]) {
+  saving.value = true;
+  try {
+    const updated = { ...config.value, excludePatterns: patterns };
+    await ipc.updateCacheConfig(updated);
+    config.value = updated;
+    showToast(patterns.length > 0 ? `已保存 ${patterns.length} 条排除规则` : '已清空排除规则，全部域名重新参与缓存');
+    persistInfo.value = await ipc.getCachePersist().catch(() => persistInfo.value);
+  } catch (err: any) {
+    showToast(`保存排除规则失败: ${err.message}`, true);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleDumpCache() {
+  persistBusy.value = true;
+  try {
+    const res = await ipc.dumpCache();
+    persistInfo.value = res;
+    showToast(`已落盘 ${res?.entryCount ?? 0} 条缓存记录`);
+  } catch (err: any) {
+    showToast(`落盘失败: ${err.message}`, true);
+  } finally {
+    persistBusy.value = false;
+  }
+}
+
+async function handleLoadCache() {
+  persistBusy.value = true;
+  try {
+    const res = await ipc.loadCache();
+    persistInfo.value = res;
+    showToast(`已从落盘文件恢复 ${res?.restored ?? 0} 条缓存记录`);
+    await loadData();
+  } catch (err: any) {
+    showToast(`恢复失败: ${err.message}`, true);
+  } finally {
+    persistBusy.value = false;
   }
 }
 
@@ -310,7 +399,28 @@ usePoller(pollMetrics, 4000);
       <!-- 4. 加速策略设置 -->
       <CacheConfigCard :config="config" :saving="saving" @save="handleSaveConfig" />
 
-      <!-- 5. 缓存条目明细表格 (双列网格跨列卡片) -->
+      <!-- 5. 落盘持久化 -->
+      <CachePersistCard
+        :enabled="config.persistEnabled"
+        :intervalSeconds="config.persistIntervalSeconds || 0"
+        :info="persistInfo"
+        :saving="saving"
+        :busy="persistBusy"
+        @toggle="handleTogglePersist"
+        @interval="handlePersistInterval"
+        @dump="handleDumpCache"
+        @load="handleLoadCache"
+      />
+
+      <!-- 6. 缓存排除规则 -->
+      <CacheExcludeCard
+        :patterns="config.excludePatterns || []"
+        :hits="persistInfo?.excludeHits || 0"
+        :saving="saving"
+        @save="handleExcludeSave"
+      />
+
+      <!-- 7. 缓存条目明细表格 (双列网格跨列卡片) -->
       <CacheEntriesTable
         class="lg:col-span-2"
         :entries="entries"
