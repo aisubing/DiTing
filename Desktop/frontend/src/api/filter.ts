@@ -1,4 +1,4 @@
-import type { FilterStats, FilterConfig, FilterList, CheckHostResult, ScheduleConfigResponse, UpdateScheduleRequest, FilterPauseResponse, FilterPauseRequest } from './types';
+import type { FilterStats, FilterConfig, FilterList, CheckHostResult, ScheduleConfigResponse, UpdateScheduleRequest, FilterPauseResponse, FilterPauseRequest, BlockedServicesResponse, ConfigureBlockedServicesRequest } from './types';
 import type { HttpTransport } from './http';
 
 /** 规则拦截（过滤引擎、订阅列表与自定义规则） */
@@ -91,6 +91,19 @@ export class FilterApi {
   /** 暂停或恢复拦截；暂停需给出时长（秒） */
   public async setPause(req: FilterPauseRequest): Promise<void> {
     await this.http.request<void>('/api/v1/filter/pause', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  }
+
+  /** 读取内置阻断服务目录与当前勾选 */
+  public getBlockedServices(): Promise<BlockedServicesResponse> {
+    return this.http.request<BlockedServicesResponse>('/api/v1/filter/services');
+  }
+
+  /** 更新内置服务拦截勾选；省略的字段保持当前值 */
+  public configureBlockedServices(req: ConfigureBlockedServicesRequest): Promise<BlockedServicesResponse> {
+    return this.http.request<BlockedServicesResponse>('/api/v1/filter/services', {
       method: 'POST',
       body: JSON.stringify(req),
     });

@@ -85,6 +85,15 @@ type FilterConfig struct {
 	BogusNXDomain bool `json:"bogusNxDomain"`
 	// BogusNXDomainNetworks 伪应答地址清单，同时接受单个 IP 与 CIDR 网段
 	BogusNXDomainNetworks []string `json:"bogusNxDomainNetworks,omitempty"`
+
+	// BlockedServices 被整组拦截的内置服务 ID（见 services.json）。
+	//
+	// 与订阅列表相互独立：这里的规则随程序内置，无需联网拉取，
+	// 因此在配置中只存 ID，规则本体在构建规则索引时从目录展开。
+	BlockedServices []string `json:"blockedServices,omitempty"`
+	// BlockedServiceGroups 被整组拦截的服务分组 ID（如 social_network）。
+	// 与 BlockedServices 取并集，便于「一键拦掉全部短视频」这类用法。
+	BlockedServiceGroups []string `json:"blockedServiceGroups,omitempty"`
 }
 
 // DefaultFilterConfig 生成默认过滤配置
@@ -180,6 +189,50 @@ func NormalizeFilterConfig(cfg *FilterConfig) {
 		normalized = append(normalized, entry)
 	}
 	cfg.BogusNXDomainNetworks = normalized
+
+	// 内置服务 ID 与分组：剔除目录中不存在的项。
+	// 记录日志而非报错——目录版本变化会让旧配置里的服务消失，
+	// 此时保留其余勾选、丢弃失效项，比拒绝加载整份配置更符合用户预期。
+	cfg.BlockedServices = filterKnownIDs(cfg.BlockedServices, ServiceExists, "服务")
+	cfg.BlockedServiceGroups = filterKnownIDs(cfg.BlockedServiceGroups, ServiceGroupExists, "服务分组")
+}
+
+// equalStrings 判断两个字符串切片是否逐项相等（长度与顺序都要一致）。
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// filterKnownIDs 去除空白、重复与目录中不存在的 ID，保持原有顺序。
+func filterKnownIDs(ids []string, known func(string) bool, kind string) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(ids))
+	seen := make(map[string]struct{}, len(ids))
+	for _, raw := range ids {
+		id := strings.TrimSpace(raw)
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		if !known(id) {
+			log.Printf("[FilterConfig] 忽略未知的内置%s: %s", kind, id)
+			continue
+		}
+		out = append(out, id)
+	}
+	return out
 }
 
 // FilterStats 规则引擎运行时统计指标

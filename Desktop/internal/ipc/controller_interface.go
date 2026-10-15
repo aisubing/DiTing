@@ -48,6 +48,10 @@ type ServiceController interface {
 	UpdateFilterList(ctx context.Context, list core.FilterList) error
 	DeleteFilterList(ctx context.Context, id string) error
 	RefreshFilterLists(ctx context.Context, id string) error
+	// GetBlockedServices 返回内置阻断服务目录与当前选择
+	GetBlockedServices(ctx context.Context) (*BlockedServicesResponse, error)
+	// ConfigureBlockedServices 更新内置服务拦截选择并热重载规则
+	ConfigureBlockedServices(ctx context.Context, req ConfigureBlockedServicesRequest) error
 	GetCustomRules(ctx context.Context) ([]string, error)
 	SetCustomRules(ctx context.Context, rules []string) error
 	CheckHostRule(ctx context.Context, domain string, qtype uint16) (*core.CheckHostResult, error)

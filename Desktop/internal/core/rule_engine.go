@@ -1,11 +1,9 @@
 package core
 
 import (
-	"bytes"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -132,9 +130,12 @@ func (e *RuleEngine) UpdateConfig(cfg FilterConfig) error {
 	// 伪应答清单与总开关都可能在本轮变更，必须先同步再决定是否重建规则索引
 	e.syncBogusMatcherUnlocked()
 
-	// 规则索引仅由自定义规则与订阅列表决定；其余字段（开关、时间计划等）热更新即可
+	// 规则索引仅由自定义规则、内置服务选择与订阅列表决定；其余字段（开关、时间计划等）热更新即可。
+	// 服务选择必须逐项比对：勾一个换掉另一个时长度不变，只看长度会漏掉这次变更。
 	matcherInputsUnchanged := e.matcher != nil && e.matcher.TotalRules() > 0 &&
-		len(old.CustomRules) == len(cfg.CustomRules) &&
+		equalStrings(old.CustomRules, cfg.CustomRules) &&
+		equalStrings(old.BlockedServices, cfg.BlockedServices) &&
+		equalStrings(old.BlockedServiceGroups, cfg.BlockedServiceGroups) &&
 		len(old.Lists) == len(cfg.Lists)
 	if matcherInputsUnchanged {
 		return nil
@@ -287,8 +288,10 @@ func (e *RuleEngine) CheckHost(domain string, qtype uint16) CheckHostResult {
 // compileGroupMatchersUnlocked 为每个启用分组构建专属规则匹配器。
 //
 // 调用方须已持有 e.mu 写锁。组级规则集按 RuleListIDs 过滤：
-// 空列表表示继承全部；否则只包含指定的订阅列表（自定义规则始终包含）。
-func (e *RuleEngine) compileGroupMatchersUnlocked(customRules, listRules []*ParsedRule) {
+// 空列表表示继承全部；否则只包含指定的订阅列表。
+// 自定义规则与内置服务规则始终包含——前者是用户对本机最直接的意图，
+// 后者是显式勾选的整组拦截，都不应被「只订阅某几个列表」的过滤条件悄悄关掉。
+func (e *RuleEngine) compileGroupMatchersUnlocked(customRules, serviceRules, listRules []*ParsedRule) {
 	e.groupMatchers = make(map[string]*RuleMatcher)
 	e.groupBlockModes = make(map[string]string)
 
@@ -302,8 +305,9 @@ func (e *RuleEngine) compileGroupMatchersUnlocked(customRules, listRules []*Pars
 			continue
 		}
 
-		selected := make([]*ParsedRule, 0, len(customRules)+len(listRules))
+		selected := make([]*ParsedRule, 0, len(customRules)+len(serviceRules)+len(listRules))
 		selected = append(selected, customRules...)
+		selected = append(selected, serviceRules...)
 
 		if len(g.RuleListIDs) == 0 {
 			selected = append(selected, listRules...)
@@ -406,8 +410,8 @@ func (e *RuleEngine) SetClientGroups(cfg ClientGroupConfig) error {
 	}
 	e.groupCfg = cfg
 
-	customRules, listRules := e.loadAllRulesUnlocked()
-	e.compileGroupMatchersUnlocked(customRules, listRules)
+	rs := e.loadAllRulesUnlocked()
+	e.compileGroupMatchersUnlocked(rs.custom, rs.service, rs.lists)
 	return nil
 }
 
@@ -418,95 +422,4 @@ func (e *RuleEngine) GetClientGroups() ClientGroupConfig {
 	out := ClientGroupConfig{Enabled: e.groupCfg.Enabled, Groups: make([]ClientGroup, len(e.groupCfg.Groups))}
 	copy(out.Groups, e.groupCfg.Groups)
 	return out
-}
-
-// rebuildUnlocked 从自定义规则与订阅缓存重建匹配器并原子切换
-func (e *RuleEngine) rebuildUnlocked() error {
-	customRules, listRules := e.loadAllRulesUnlocked()
-
-	allRules := make([]*ParsedRule, 0, len(customRules)+len(listRules))
-	allRules = append(allRules, customRules...)
-	allRules = append(allRules, listRules...)
-
-	// 构建新的匹配器实例并全量原子切换
-	newMatcher := NewRuleMatcher()
-	newMatcher.BuildFromRules(allRules)
-	e.matcher = newMatcher
-
-	// 按客户端分组构建专属匹配器（组数有限，内存可控）
-	e.compileGroupMatchersUnlocked(customRules, listRules)
-
-	log.Printf("[RuleEngine] 规则索引构建完毕，共激活 %d 条规则", len(allRules))
-	return nil
-}
-
-// loadAllRulesUnlocked 解析自定义规则与各启用订阅列表的缓存并返回。
-//
-// 返回顺序固定为自定义规则在前（最高优先级），随后按列表声明顺序。
-func (e *RuleEngine) loadAllRulesUnlocked() (customRules []*ParsedRule, listRules []*ParsedRule) {
-	for _, line := range e.cfg.CustomRules {
-		if r, ok := ParseRuleLine(line, "custom"); ok && r != nil {
-			customRules = append(customRules, r)
-		}
-	}
-
-	for i := range e.cfg.Lists {
-		list := &e.cfg.Lists[i]
-		if !list.Enabled {
-			continue
-		}
-		cacheFile := filepath.Join(e.cfg.DataDir, list.ID+".txt")
-		data, err := os.ReadFile(cacheFile)
-		if err != nil {
-			continue
-		}
-		parsed, err := ParseRules(bytes.NewReader(data), list.ID)
-		if err != nil {
-			continue
-		}
-		list.RulesCount = len(parsed)
-		listRules = append(listRules, parsed...)
-	}
-	return customRules, listRules
-}
-
-func (e *RuleEngine) runUpdateTicker() {
-	ticker := time.NewTicker(1 * time.Hour)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-e.stopCh:
-			return
-		case <-ticker.C:
-			e.mu.Lock()
-			interval := time.Duration(e.cfg.UpdateIntervalHours) * time.Hour
-			needUpdate := false
-			for _, l := range e.cfg.Lists {
-				if l.Enabled && time.Since(time.UnixMilli(l.LastUpdated)) > interval {
-					needUpdate = true
-					break
-				}
-			}
-			if needUpdate {
-				changed := false
-				for _, l := range e.cfg.Lists {
-					if l.Enabled && time.Since(time.UnixMilli(l.LastUpdated)) > interval {
-						if updated, err := e.refreshListUnlocked(l.ID); err == nil && updated {
-							changed = true
-						}
-					}
-				}
-				if changed {
-					_ = e.rebuildUnlocked()
-				}
-			}
-			e.mu.Unlock()
-		}
-	}
-}
-
-// Close 关闭规则引擎后台协程
-func (e *RuleEngine) Close() {
-	close(e.stopCh)
 }

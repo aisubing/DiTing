@@ -329,6 +329,43 @@ export interface FilterConfig {
   bogusNxDomain?: boolean;
   /** 伪应答地址清单，接受单个 IP 与 CIDR 网段 */
   bogusNxDomainNetworks?: string[];
+  /** 被整组拦截的内置服务 ID（见 /api/v1/filter/services） */
+  blockedServices?: string[];
+  /** 被整组拦截的服务分组 ID */
+  blockedServiceGroups?: string[];
+}
+
+/** 内置阻断服务目录中的单个服务 */
+export interface BlockedService {
+  id: string;
+  name: string;
+  group: string;
+  rules: string[];
+  /** 规则条数；后端已丢弃本端解析器无法生效的条目 */
+  ruleCount: number;
+  /** 规则来源标识，形如 service:bilibili，用于在查询日志中归属 */
+  source: string;
+}
+
+/** 内置阻断服务分组 */
+export interface BlockedServiceGroup {
+  id: string;
+  name: string;
+  count: number;
+}
+
+export interface BlockedServicesResponse {
+  services: BlockedService[];
+  groups: BlockedServiceGroup[];
+  blockedIds: string[];
+  blockedGroups: string[];
+  /** 当前勾选展开后实际生效的规则条数 */
+  activeRules: number;
+}
+
+export interface ConfigureBlockedServicesRequest {
+  ids?: string[];
+  groups?: string[];
 }
 
 /** 单条分时拦截（时间计划） */

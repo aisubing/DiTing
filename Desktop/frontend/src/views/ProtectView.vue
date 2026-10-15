@@ -3,6 +3,7 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import SegmentedTabs from '../components/ui/SegmentedTabs.vue';
 import RulesPanel from '../components/rules/RulesPanel.vue';
 import SchedulePanel from '../components/rules/SchedulePanel.vue';
+import ServicesPanel from '../components/rules/ServicesPanel.vue';
 import { SUB_TABS } from '../constants/navigation';
 import { useSubTab } from '../composables/useSubTab';
 
@@ -22,6 +23,7 @@ const active = useSubTab(segments, () => props.sub, 'lists');
     <SegmentedTabs v-model="active" :segments="segments" />
 
     <SchedulePanel v-if="active === 'schedule'" />
+    <ServicesPanel v-else-if="active === 'services'" />
     <RulesPanel v-else v-model:sub="active" />
   </div>
 </template>

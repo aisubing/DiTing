@@ -54,6 +54,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/filter/check", s.withAuth(s.handleFilterCheck))
 	mux.HandleFunc("/api/v1/filter/schedule", s.withAuth(s.handleFilterSchedule))
 	mux.HandleFunc("/api/v1/filter/pause", s.withAuth(s.handleFilterPause))
+	mux.HandleFunc("/api/v1/filter/services", s.withAuth(s.handleBlockedServices))
 
 	// 局域网与隐私加固
 	mux.HandleFunc("/api/v1/dns/lan", s.withAuth(s.handleLANStatus))

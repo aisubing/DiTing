@@ -3,6 +3,8 @@ package ipc
 import (
 	"context"
 	"fmt"
+
+	"github.com/haoze-evolluling/diting/desktop/internal/core"
 )
 
 // mockExtra 汇总后续 Step 新增的 ServiceController 方法桩。
@@ -16,6 +18,12 @@ type mockExtra struct {
 	cachePersistErr bool
 	cacheDumped     bool
 	cacheLoaded     bool
+
+	// B3 内置阻断服务：由各测试按需注入
+	blockedServices        *BlockedServicesResponse
+	blockedServicesErr     bool
+	blockedServicesUpdated bool
+	lastServicesReq        ConfigureBlockedServicesRequest
 }
 
 // CachePersistStatus 实现 ServiceController 接口（A6）
@@ -43,3 +51,35 @@ func (m *mockExtra) LoadCache(ctx context.Context) (*CachePersistResponse, error
 
 // errCachePersistUnavailable 供需要错误路径的用例注入
 var errCachePersistUnavailable = fmt.Errorf("cache persist unavailable")
+
+// GetBlockedServices 实现 ServiceController 接口（B3）
+func (m *mockExtra) GetBlockedServices(ctx context.Context) (*BlockedServicesResponse, error) {
+	if m.blockedServicesErr {
+		return nil, errBlockedServicesUnavailable
+	}
+	if m.blockedServices != nil {
+		return m.blockedServices, nil
+	}
+	return &BlockedServicesResponse{
+		Services: []core.BlockedService{
+			{ID: "bilibili", Name: "Bilibili", Group: "streaming", RuleN: 2,
+				Source: "service:bilibili"},
+		},
+		Groups:      []core.BlockedServiceGroup{{ID: "streaming", Name: "流媒体", Count: 1}},
+		BlockedIDs:  []string{},
+		ActiveRules: 0,
+	}, nil
+}
+
+// ConfigureBlockedServices 实现 ServiceController 接口（B3）
+func (m *mockExtra) ConfigureBlockedServices(ctx context.Context, req ConfigureBlockedServicesRequest) error {
+	if m.blockedServicesErr {
+		return errBlockedServicesUnavailable
+	}
+	m.blockedServicesUpdated = true
+	m.lastServicesReq = req
+	return nil
+}
+
+// errBlockedServicesUnavailable 供需要错误路径的用例注入
+var errBlockedServicesUnavailable = fmt.Errorf("blocked services unavailable")

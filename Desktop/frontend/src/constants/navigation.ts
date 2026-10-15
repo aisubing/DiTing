@@ -45,6 +45,7 @@ export const SUB_TABS: Record<NavTab, readonly SubTabDef[]> = {
   ],
   protect: [
     { id: 'lists', label: '规则订阅' },
+    { id: 'services', label: '应用拦截' },
     { id: 'custom', label: '自定义规则' },
     { id: 'test', label: '规则检测' },
     { id: 'config', label: '拦截方式' },
