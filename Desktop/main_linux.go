@@ -20,6 +20,8 @@ var (
 func main() {
 	showVersion := flag.Bool("v", false, "显示版本号并退出")
 	flag.BoolVar(showVersion, "version", false, "显示版本号并退出")
+	_ = flag.Bool("minimized", false, "")
+	_ = flag.Bool("m", false, "")
 	flag.Parse()
 
 	fmt.Printf("diting (Linux) version %s (built: %s, commit: %s)\n", Version, BuildTime, GitCommit)

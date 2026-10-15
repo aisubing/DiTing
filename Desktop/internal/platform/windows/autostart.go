@@ -80,7 +80,7 @@ func (m *WindowsAutoStartManager) SetEnabled(enable bool) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("获取执行路径失败: %w", err)
 		}
-		if err := k.SetStringValue(runValueName, `"`+exePath+`"`); err != nil {
+		if err := k.SetStringValue(runValueName, `"`+exePath+`" --minimized`); err != nil {
 			return false, fmt.Errorf("写入自启注册表失败: %w", err)
 		}
 		return true, nil
