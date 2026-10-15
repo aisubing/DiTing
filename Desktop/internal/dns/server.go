@@ -45,9 +45,10 @@ type Server struct {
 
 	// encrypted 为加密监听配置；nil 表示本次不开放加密入口
 	encrypted *EncryptedServerConfig
-	// dot / doh 为已激活的加密监听器；未启用时为 nil
+	// dot / doh / doq 为已激活的加密监听器；未启用时为 nil
 	dot *dotListener
 	doh *dohListener
+	doq *doqListener
 }
 
 // SetEncryptedConfig 设置加密 DNS 监听配置，须在 Start 之前调用。
@@ -64,7 +65,19 @@ func (s *Server) SetEncryptedConfig(cfg *EncryptedServerConfig) {
 func (s *Server) EncryptedEnabled() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.encrypted != nil && (s.encrypted.DoTEnabled || s.encrypted.DoHEnabled)
+	if s.encrypted == nil {
+		return false
+	}
+	return s.encrypted.DoTEnabled || s.encrypted.DoHEnabled || s.encrypted.DoQEnabled
+}
+
+// queryTimeout 返回单次查询可用的总时长，供各加密监听器统一取用。
+func (s *Server) queryTimeout() time.Duration {
+	timeout := s.config.ReadTimeout + s.config.WriteTimeout
+	if timeout <= 0 {
+		return 5 * time.Second
+	}
+	return timeout
 }
 
 // NewServer 创建 DNS 监听服务
@@ -193,6 +206,13 @@ func (s *Server) Start() error {
 					s.encrypted.DoHListenAddress(), normalizeDoHPath(s.encrypted.DoHPath))
 			}
 		}
+		if s.encrypted.DoQEnabled {
+			if err := s.startDoQ(); err != nil {
+				log.Printf("[DNS] DoQ 监听器启动失败，加密解析暂不可用: %v\n", err)
+			} else {
+				log.Printf("[DNS] DoQ 监听器已就绪: quic://%s\n", s.encrypted.DoQListenAddress())
+			}
+		}
 	}
 
 	return nil
@@ -235,10 +255,7 @@ func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, origin queryOrigi
 	s.activeQueries.Add(1)
 	defer s.activeQueries.Done()
 
-	timeout := s.config.ReadTimeout + s.config.WriteTimeout
-	if timeout <= 0 {
-		timeout = 5 * time.Second
-	}
+	timeout := s.queryTimeout()
 	baseCtx := s.ctx
 	if baseCtx == nil {
 		baseCtx = context.Background()
@@ -305,6 +322,8 @@ func (s *Server) Shutdown() error {
 	s.dot = nil
 	doh := s.doh
 	s.doh = nil
+	doq := s.doq
+	s.doq = nil
 	s.mu.Unlock()
 
 	// 先关闭所有网络监听，拒绝新连接
@@ -314,6 +333,9 @@ func (s *Server) Shutdown() error {
 	}
 	if doh != nil {
 		closeHTTP(doh.srv, 3*time.Second)
+	}
+	if doq != nil {
+		doq.close()
 	}
 
 	// 等待活跃请求在超时内完成

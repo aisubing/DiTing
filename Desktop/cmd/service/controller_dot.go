@@ -22,7 +22,7 @@ var dotALPN = []string{"dot"}
 // 不去取，免得在用户没开这个功能时因为证书缺失而刷出无意义的错误日志。
 func (p *program) buildEncryptedServerConfig() *ditingdns.EncryptedServerConfig {
 	enc := p.cfg.Encrypted
-	if !enc.Enabled || (!enc.DoTEnabled && !enc.DoHEnabled) {
+	if !enc.Enabled || (!enc.DoTEnabled && !enc.DoHEnabled && !enc.DoQEnabled) {
 		return nil
 	}
 	if p.certManager == nil {
@@ -41,22 +41,27 @@ func (p *program) buildEncryptedServerConfig() *ditingdns.EncryptedServerConfig 
 	cfg := &ditingdns.EncryptedServerConfig{
 		DoTEnabled:    enc.DoTEnabled,
 		DoHEnabled:    enc.DoHEnabled,
+		DoQEnabled:    enc.DoQEnabled,
 		ListenAddress: enc.ListenAddress,
 		DoTPort:       enc.DoTPort,
 		DoHPort:       enc.DoHPort,
+		DoQPort:       enc.DoQPort,
 		DoHPath:       enc.DoHPath,
 		ServerName:    enc.ServerName,
 		TLSConfig:     tlsCfg,
 		ReadTimeout:   ditingdns.DefaultDoTReadTimeout,
 		IdleTimeout:   ditingdns.DefaultDoTIdleTimeout,
 	}
-	// 只开一项时另一项的端口可能还是零值（旧配置文件缺字段），补齐默认值：
-	// 运行期配置的校验只看已启用那几项，但日志与界面都会读这两个值
+	// 只开一项时其余项的端口可能还是零值（旧配置文件缺字段），补齐默认值：
+	// 运行期配置的校验只看已启用那几项，但日志与界面都会读这些值
 	if !isValidEncPort(cfg.DoTPort) {
 		cfg.DoTPort = core.DefaultDoTPort
 	}
 	if !isValidEncPort(cfg.DoHPort) {
 		cfg.DoHPort = core.DefaultDoHPort
+	}
+	if !isValidEncPort(cfg.DoQPort) {
+		cfg.DoQPort = core.DefaultDoQPort
 	}
 	return cfg
 }

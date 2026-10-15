@@ -28,15 +28,13 @@ const doqPort = ref(853);
 const cfg = computed(() => props.status?.config);
 const enabled = computed(() => cfg.value?.enabled ?? false);
 
-/** DoT / DoH 是否真的在监听——配置打开不等于绑上了端口 */
+/** 各协议是否真的在监听——配置打开不等于绑上了端口 */
 const dotLive = computed(() => Boolean(props.status?.dotListen));
 const dotLiveAddr = computed(() => props.status?.dotListen || '');
 const dohLive = computed(() => Boolean(props.status?.dohListen));
 const dohLiveAddr = computed(() => props.status?.dohListen || '');
-
-/** 已经配好但监听器尚未接入的协议；后续步骤落地后逐项清空 */
-const PENDING_PROTOCOLS = ['DoQ'] as const;
-const pendingText = PENDING_PROTOCOLS.join(' / ');
+const doqLive = computed(() => Boolean(props.status?.doqListen));
+const doqLiveAddr = computed(() => props.status?.doqListen || '');
 
 /** 有任一协议被选中但总开关没开，配置不会生效——提前说出来 */
 const anyProtocolOn = computed(
@@ -156,10 +154,6 @@ const INPUT_CLS =
 
     <div class="space-y-3 mt-3 text-xs">
       <InlineAlert
-        type="warning"
-        :message="`${pendingText} 监听器尚未接入，现在开启只会保存配置，不会真的开始对外服务。DoT / DoH 已可用。`"
-      />
-      <InlineAlert
         v-if="enabled && !anyProtocolOn"
         type="warning"
         message="服务总开关已打开，但三种协议都没选中，因此不会有任何监听。"
@@ -232,6 +226,12 @@ const INPUT_CLS =
                 <span class="text-[10px] text-text-muted font-mono ml-1">DNS over QUIC · RFC 9250</span>
               </div>
               <div class="text-[11px] text-text-muted">端口 {{ cfg?.doqPort ?? 853 }}，UDP 上的加密解析</div>
+              <div v-if="cfg?.doqEnabled" class="text-[11px] mt-0.5 font-mono">
+                <span v-if="doqLive" class="text-status-success">正在监听 {{ doqLiveAddr }}</span>
+                <span v-else class="text-status-warning">
+                  未在监听（服务未启动、证书不可用或端口被占用）
+                </span>
+              </div>
             </div>
             <md-switch
               :selected="cfg?.doqEnabled ?? false"

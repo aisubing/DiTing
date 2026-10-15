@@ -40,10 +40,12 @@ type queryOrigin struct {
 type EncryptedServerConfig struct {
 	DoTEnabled bool
 	DoHEnabled bool
+	DoQEnabled bool
 	// ListenAddress 为空表示所有网卡；端口取自 core.EncryptedDNSConfig
 	ListenAddress string
 	DoTPort       int
 	DoHPort       int
+	DoQPort       int
 	// DoHPath 为 DoH 的请求路径，缺省 /dns-query
 	DoHPath string
 	// ServerName 用于从 SNI 中剥离 ClientID
@@ -84,6 +86,22 @@ func (c EncryptedServerConfig) DoHListenAddress() string {
 	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
+// DoQListenAddress 返回 DoQ 的监听地址，形如 0.0.0.0:853。
+//
+// DoQ 跑在 UDP 上，与 DoT 默认同为 853 并不冲突：两者分属不同传输层，
+// 端口空间本来就是分开的。
+func (c EncryptedServerConfig) DoQListenAddress() string {
+	host := strings.TrimSpace(c.ListenAddress)
+	if host == "" {
+		host = "0.0.0.0"
+	}
+	port := c.DoQPort
+	if port <= 0 || port > 65535 {
+		port = core.DefaultDoQPort
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port))
+}
+
 // Validate 校验监听配置是否足以开工。
 //
 // 只校验「已启用」协议自己的端口：换证书重载时可能只开 DoT，
@@ -94,6 +112,9 @@ func (c EncryptedServerConfig) Validate() error {
 	}
 	if c.DoHEnabled && (c.DoHPort <= 0 || c.DoHPort > 65535) {
 		return fmt.Errorf("DoH 端口 %d 非法", c.DoHPort)
+	}
+	if c.DoQEnabled && (c.DoQPort <= 0 || c.DoQPort > 65535) {
+		return fmt.Errorf("DoQ 端口 %d 非法", c.DoQPort)
 	}
 	if c.ListenAddress != "" {
 		if ip := net.ParseIP(strings.TrimSpace(c.ListenAddress)); ip == nil {

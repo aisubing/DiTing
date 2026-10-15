@@ -30,10 +30,11 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 	}
 
 	// 实际监听地址只能在监听器里问：配置不等于既成事实
-	dotListen, dohListen := "", ""
+	dotListen, dohListen, doqListen := "", "", ""
 	if server != nil {
 		dotListen = server.DoTListenAddress()
 		dohListen = server.DoHListenAddress()
+		doqListen = server.DoQListenAddress()
 	}
 
 	return &ipc.EncryptedDNSStatusResponse{
@@ -42,6 +43,7 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 		CertDir:        dir,
 		DoTListen:      dotListen,
 		DoHListen:      dohListen,
+		DoQListen:      doqListen,
 		DoHURLs:        p.dohURLs(cfg),
 		DefaultDoTPort: core.DefaultDoTPort,
 		DefaultDoHPort: core.DefaultDoHPort,

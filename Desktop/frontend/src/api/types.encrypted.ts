@@ -67,6 +67,8 @@ export interface EncryptedDNSStatusResponse {
   dotListen: string;
   /** 实际生效的 DoH 监听地址；未在监听时为空串 */
   dohListen: string;
+  /** 实际生效的 DoQ 监听地址；未在监听时为空串 */
+  doqListen: string;
   /** 可直接交给终端使用的 DoH 地址列表（服务器名 + 各网卡地址） */
   dohUrls: string[];
 }
