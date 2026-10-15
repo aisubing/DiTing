@@ -107,7 +107,7 @@ fetchData();
         <label
           v-for="svc in services"
           :key="svc.id"
-          class="flex items-start gap-2.5 p-2.5 rounded-md border transition-all cursor-pointer"
+          class="flex items-start gap-2.5 p-2.5 rounded-md border transition-colors cursor-pointer app-interactive-card"
           :class="isServiceEnabled(svc.id) ? 'bg-brand-container/30 border-brand-primary/30' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
         >
           <input

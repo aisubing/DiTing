@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { ipc } from '../api/ipc';
-import { themeManager, type ThemeMode } from '../theme/theme';
+import { themeManager, type ThemeMode, type ThemePalette } from '../theme/theme';
 import {
   loadLoginBgConfig,
   saveLoginBgConfig,
@@ -55,8 +55,14 @@ watch(
 const bgConfig = ref<LoginBgConfig>(loadLoginBgConfig());
 const showBgModal = ref(false);
 
-// 主题模式
-const currentThemeMode = ref<ThemeMode>(themeManager.getThemeMode());
+// 主题模式与配色方案（响应式关联 ThemeManager）
+const currentThemeMode = computed(() => themeManager.themeModeRef.value);
+const currentPalette = computed(() => themeManager.themePaletteRef.value);
+
+function togglePalette() {
+  const next: ThemePalette = currentPalette.value === 'classic' ? 'adguard' : 'classic';
+  themeManager.setThemePalette(next);
+}
 
 // 注入版本号
 const appVersion = __APP_VERSION__;
@@ -80,7 +86,6 @@ function cycleTheme() {
   const modes: ThemeMode[] = ['light', 'dark', 'system'];
   const nextIdx = (modes.indexOf(currentThemeMode.value) + 1) % modes.length;
   const nextMode = modes[nextIdx] ?? 'system';
-  currentThemeMode.value = nextMode;
   themeManager.setThemeMode(nextMode);
 }
 
@@ -227,6 +232,20 @@ onUnmounted(() => {
           />
         </button>
 
+        <!-- 配色方案切换按钮 -->
+        <button
+          type="button"
+          @click="togglePalette"
+          class="app-btn-secondary app-btn-compact backdrop-blur-md bg-surface-card/70"
+          :title="`当前配色：${currentPalette === 'adguard' ? 'AdGuard 绿色' : '经典墨朱'}（点击切换）`"
+        >
+          <span
+            class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10"
+            :class="currentPalette === 'adguard' ? 'bg-[#67B279]' : 'bg-[#9E2B25]'"
+          />
+          <span class="hidden sm:inline">{{ currentPalette === 'adguard' ? 'AdGuard 绿' : '经典墨朱' }}</span>
+        </button>
+
         <!-- 主题切换按钮 -->
         <button
           type="button"
@@ -347,7 +366,7 @@ onUnmounted(() => {
             <button
               type="submit"
               :disabled="loading || lockoutSeconds > 0"
-              class="app-btn-primary w-full h-11 text-sm font-semibold shadow-md flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-[0.99]"
+              class="app-btn-primary w-full h-11 text-sm font-semibold shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <M3Icon :name="loading ? 'sync' : 'check'" :size="18" :class="loading ? 'animate-spin' : ''" />
               <span>{{ currentMode === 'setup' ? '完成初始化并进入控制台' : '立即登录' }}</span>

@@ -421,7 +421,7 @@ usePoller(fetchData, 4000);
       >
         <div class="space-y-3 mt-3.5 text-xs">
           <label
-            class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-all"
+            class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-colors app-interactive-card"
             :class="config.blockMode === 'null_ip' ? 'bg-brand-container/40 border-brand-primary/40' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
           >
             <input type="radio" v-model="config.blockMode" value="null_ip" class="accent-brand-primary mt-0.5" />
@@ -434,7 +434,7 @@ usePoller(fetchData, 4000);
           </label>
 
           <label
-            class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-all"
+            class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-colors app-interactive-card"
             :class="config.blockMode === 'nxdomain' ? 'bg-brand-container/40 border-brand-primary/40' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
           >
             <input type="radio" v-model="config.blockMode" value="nxdomain" class="accent-brand-primary mt-0.5" />
@@ -447,7 +447,7 @@ usePoller(fetchData, 4000);
           </label>
 
           <label
-            class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-all"
+            class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-colors app-interactive-card"
             :class="config.blockMode === 'refused' ? 'bg-brand-container/40 border-brand-primary/40' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
           >
             <input type="radio" v-model="config.blockMode" value="refused" class="accent-brand-primary mt-0.5" />
