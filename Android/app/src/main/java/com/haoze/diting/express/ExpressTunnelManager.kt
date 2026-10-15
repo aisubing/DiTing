@@ -225,7 +225,12 @@ class ExpressTunnelManager {
             Log.w(TAG, "addDisallowedApplication failed for self", e)
         }
 
-        val pfd = builder.establish()
+        val pfd = try {
+            builder.establish()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to establish VPN interface due to exception", e)
+            null
+        }
         vpnInterface = pfd
         isIpv6Active = if (pfd != null) enableIpv6 else false
         return pfd
@@ -269,18 +274,13 @@ class ExpressTunnelManager {
             protectDatagramSocket = { sock -> service.protect(sock) }
         )
 
-        // Pre-warm rule caches
-        val ruleJob = scope.launch(Dispatchers.IO) {
+        // Pre-warm rule caches asynchronously off the main thread
+        scope.launch(Dispatchers.IO) {
             val j1 = launch { runCatching { blockListManager.refreshCache() } }
             val j2 = launch { runCatching { allowListManager.refreshCache() } }
             j1.join()
             j2.join()
             domainPolicy.invalidateCache()
-        }
-        runCatching {
-            runBlocking {
-                withTimeoutOrNull(3000) { ruleJob.join() }
-            }
         }
 
         val transportInvoker = ExpressUpstreamDispatcher.DefaultExpressTransportInvoker(

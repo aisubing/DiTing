@@ -220,6 +220,9 @@ class DnsVpnService : VpnService() {
         val inspectionConfigured = AppRulesSettingsStore.isHttpInspectionEnabled(this) &&
             AppRulesSettingsStore.getHttpInspectionAppPackages(this).isNotEmpty()
         val inspectionRequested = inspectionConfigured && tunnelManager.isHttpsInspectionCertificateInstalled(this)
+        if (inspectionConfigured) {
+            tunnelManager.verifyHttpsInspectionCertificateAsync(this, serviceScope)
+        }
         val blockedPackages = if (AppRulesSettingsStore.isBlockedAppsEnabled(this)) {
             AppRulesSettingsStore.getBlockedAppPackages(this)
         } else {

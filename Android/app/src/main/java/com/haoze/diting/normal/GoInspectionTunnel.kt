@@ -72,6 +72,7 @@ class GoInspectionTunnel(
     private val ruleManager = GoTunnelRuleManager(
         context = context,
         vpnService = vpnService,
+        scope = scope,
         engine = engine,
         dnsPolicy = dnsPolicy,
         cnameRewriteRuleManager = cnameRewriteRuleManager,
