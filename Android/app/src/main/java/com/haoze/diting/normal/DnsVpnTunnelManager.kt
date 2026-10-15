@@ -21,8 +21,7 @@ import com.haoze.diting.ui.settings.AppRulesSettingsStore
 import com.haoze.diting.core.cache.DnsCachePolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.launch
 import java.net.Inet6Address
 
 /**
@@ -45,17 +44,24 @@ class DnsVpnTunnelManager {
 
     /**
      * Checks whether the HTTPS MITM certificate is installed in the system
-     * trusted credentials.
+     * trusted credentials using the cached configuration state without blocking.
      */
     fun isHttpsInspectionCertificateInstalled(context: Context): Boolean {
-        val installed = runBlocking(Dispatchers.IO) {
-            runCatching { GoInspectionCaManager.isInstalled(context) }.getOrDefault(false)
+        return AppRulesSettingsStore.isHttpsInspectionReady(context)
+    }
+
+    /**
+     * Asynchronously verifies the HTTPS MITM certificate in AndroidCAStore
+     * off the main thread and updates the settings store.
+     */
+    fun verifyHttpsInspectionCertificateAsync(context: Context, scope: CoroutineScope) {
+        scope.launch(Dispatchers.IO) {
+            val installed = runCatching { GoInspectionCaManager.isInstalled(context) }.getOrDefault(false)
+            AppRulesSettingsStore.setHttpsInspectionReady(context, installed)
+            if (!installed) {
+                AppRulesSettingsStore.setHttpInspectionEnabled(context, false)
+            }
         }
-        AppRulesSettingsStore.setHttpsInspectionReady(context, installed)
-        if (!installed) {
-            AppRulesSettingsStore.setHttpInspectionEnabled(context, false)
-        }
-        return installed
     }
 
     /**
@@ -204,7 +210,12 @@ class DnsVpnTunnelManager {
             }
         }
 
-        val pfd = builder.establish()
+        val pfd = try {
+            builder.establish()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to establish VPN interface due to exception", e)
+            null
+        }
         vpnInterface = pfd
         isIpv6Active = if (pfd != null) enableIpv6 else false
         return pfd
@@ -232,13 +243,6 @@ class DnsVpnTunnelManager {
     ): Boolean {
         val pfd = vpnInterface ?: return false
         activeInspectionPackages = inspectionPackages
-
-        // Ensure database rules are loaded into memory caches before pushing initial snapshot
-        runBlocking {
-            withTimeoutOrNull(3000) {
-                dbComponents.awaitRulesLoaded()
-            }
-        }
 
         val tunnel = GoInspectionTunnel(
             context = service,

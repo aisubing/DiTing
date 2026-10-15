@@ -6,6 +6,7 @@ import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
 import com.haoze.diting.crash.CrashBreadcrumbs
 import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.express.notification.ExpressNotificationBuilder
@@ -25,8 +26,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeoutOrNull
 import java.net.DatagramSocket
 import java.net.Socket
 
@@ -96,11 +95,13 @@ class ExpressVpnService : VpnService() {
         // Bring service to foreground immediately to fulfill Android 8.0+ system requirement
         updateForegroundNotification()
 
-        // Only now, with the foreground deadline already satisfied, give the
-        // seeder a short window to finish so the first start has factory rules.
-        // Bounded: on a slow first run the tunnel still starts and picks the
-        // rules up once seeding completes.
-        runCatching { runBlocking { withTimeoutOrNull(2_000) { defaultsSeedJob?.join() } } }
+        // Sync rules asynchronously once defaults seeder finishes without blocking the main UI thread
+        serviceScope.launch(Dispatchers.IO) {
+            defaultsSeedJob?.join()
+            if (tunnelManager.vpnInterface != null) {
+                tunnelManager.syncRules(this)
+            }
+        }
 
         val ipv6Mode = SystemSettingsStore.getIpv6Mode(this, RuleDataset.EXPRESS)
         val pfd = tunnelManager.establishVpnInterface(this, ipv6Mode) ?: run {
@@ -181,6 +182,9 @@ class ExpressVpnService : VpnService() {
                 stopForeground(true)
             }
         }
+        runCatching {
+            NotificationManagerCompat.from(this).cancel(ExpressNotificationBuilder.NOTIFICATION_ID_EXPRESS_VPN)
+        }
     }
 
     private fun stopVpn() {
@@ -210,6 +214,7 @@ class ExpressVpnService : VpnService() {
         ExpressVpnController.onServiceStateChanged(this, false)
         tunnelManager.stop()
         serviceScope.cancel()
+        stopForegroundCompat()
         if (!wasStopped) {
             VpnMonitorManager.onVpnStopped(this)
         }

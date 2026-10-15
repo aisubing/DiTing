@@ -8,7 +8,9 @@ import com.haoze.diting.core.rule.RewriteRuleManager
 import android.content.Context
 import android.util.Log
 import com.haoze.diting.ui.settings.AppRulesSettingsStore
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import tunnel.Engine
@@ -21,6 +23,7 @@ import java.io.File
 internal class GoTunnelRuleManager(
     private val context: Context,
     private val vpnService: DnsVpnService,
+    private val scope: CoroutineScope,
     private val engine: Engine,
     private val dnsPolicy: DomainPolicy,
     private val cnameRewriteRuleManager: RewriteRuleManager,
@@ -36,15 +39,17 @@ internal class GoTunnelRuleManager(
      * engine (includes static subscription paths and small rule sets).
      */
     fun pushRuleSnapshot() {
-        val snapshotJson = dnsPolicy.buildRuleSnapshotJson(ruleIndexDirectory)
-        runCatching {
-            val err = engine.applyRuleSnapshot(snapshotJson)
-            if (!err.isNullOrBlank()) {
-                Log.w(TAG, "applyRuleSnapshot error: $err")
-            } else {
-                Log.d(TAG, "applyRuleSnapshot succeeded")
-            }
-        }.onFailure { Log.w(TAG, "Failed to push rule snapshot to Go engine", it) }
+        scope.launch(Dispatchers.IO) {
+            val snapshotJson = dnsPolicy.buildRuleSnapshotJson(ruleIndexDirectory)
+            runCatching {
+                val err = engine.applyRuleSnapshot(snapshotJson)
+                if (!err.isNullOrBlank()) {
+                    Log.w(TAG, "applyRuleSnapshot error: $err")
+                } else {
+                    Log.d(TAG, "applyRuleSnapshot succeeded")
+                }
+            }.onFailure { Log.w(TAG, "Failed to push rule snapshot to Go engine", it) }
+        }
     }
 
     fun updateRewriteRules() {
@@ -57,12 +62,14 @@ internal class GoTunnelRuleManager(
     }
 
     fun updatePassthroughRules() {
-        runCatching {
-            val presetRules = DefaultWhitelistSeeder.parseAssetWhitelist(context).map { it.first }
-            val customBypassRules = AppRulesSettingsStore.getHttpsBypassRules(context)
-            val combined = (presetRules + customBypassRules).filter { it.isNotBlank() }
-            engine.setExtraPassthroughSuffixes(combined.joinToString("\n"))
-        }.onFailure { Log.w(TAG, "Failed to update HTTPS bypass rules", it) }
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val presetRules = DefaultWhitelistSeeder.parseAssetWhitelist(context).map { it.first }
+                val customBypassRules = AppRulesSettingsStore.getHttpsBypassRules(context)
+                val combined = (presetRules + customBypassRules).filter { it.isNotBlank() }
+                engine.setExtraPassthroughSuffixes(combined.joinToString("\n"))
+            }.onFailure { Log.w(TAG, "Failed to update HTTPS bypass rules", it) }
+        }
     }
 
     /**
@@ -94,7 +101,12 @@ internal class GoTunnelRuleManager(
             engine.setRequestRules("")
             return
         }
-        engine.setRequestRules(runBlocking { goUrlRuleManager.jsonSnapshot() })
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val snapshot = goUrlRuleManager.jsonSnapshot()
+                engine.setRequestRules(snapshot)
+            }.onFailure { Log.w(TAG, "Failed to push request rules to Go engine", it) }
+        }
     }
 
     fun updateCosmeticRules() {
@@ -102,10 +114,12 @@ internal class GoTunnelRuleManager(
             engine.setCosmeticCSS("")
             return
         }
-        runCatching {
-            val css = cosmeticRuleManager.compileAllToCssBlocking()
-            engine.setCosmeticCSS(css)
-        }.onFailure { Log.w(TAG, "Failed to push cosmetic CSS to Go engine", it) }
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                val css = cosmeticRuleManager.compileAllToCss()
+                engine.setCosmeticCSS(css)
+            }.onFailure { Log.w(TAG, "Failed to push cosmetic CSS to Go engine", it) }
+        }
     }
 
     @Synchronized

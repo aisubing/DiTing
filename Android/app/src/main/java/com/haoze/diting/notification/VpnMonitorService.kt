@@ -6,7 +6,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
@@ -21,12 +24,18 @@ class VpnMonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isServiceAlive = true
         AppNotificationChannels.createAllChannels(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Android 12+ requires startForeground() promptly after startForegroundService().
+        // Stop requests or failing preconditions MUST still call startForeground() first
+        // before stopping to avoid ForegroundServiceDidNotStartInTimeException.
+        startForegroundCompat()
+
         if (intent?.action == ACTION_STOP_MONITOR) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopForegroundCompat()
             stopSelf()
             return START_NOT_STICKY
         }
@@ -37,15 +46,7 @@ class VpnMonitorService : Service() {
             !NotificationPermissionHelper.hasPermission(this) ||
             VpnMonitorManager.isVpnRunning(this)
         ) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        val notification = buildStoppedNotification()
-        try {
-            startForeground(NOTIFICATION_ID_VPN_MONITOR, notification)
-        } catch (_: Exception) {
+            stopForegroundCompat()
             stopSelf()
             return START_NOT_STICKY
         }
@@ -54,15 +55,48 @@ class VpnMonitorService : Service() {
     }
 
     override fun onDestroy() {
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        runCatching {
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.cancel(NOTIFICATION_ID_VPN_MONITOR)
-        }
+        isServiceAlive = false
+        stopForegroundCompat()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun startForegroundCompat() {
+        val notification = buildStoppedNotification()
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID_VPN_MONITOR,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID_VPN_MONITOR, notification)
+            }
+        }.onFailure { e ->
+            Log.w(TAG, "Failed to startForeground with specialUse type, retrying fallback", e)
+            runCatching {
+                startForeground(NOTIFICATION_ID_VPN_MONITOR, notification)
+            }.onFailure { e2 ->
+                Log.e(TAG, "Failed to enter foreground", e2)
+            }
+        }
+    }
+
+    private fun stopForegroundCompat() {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        }
+        runCatching {
+            androidx.core.app.NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID_VPN_MONITOR)
+        }
+    }
 
     private fun buildStoppedNotification(): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
@@ -99,8 +133,13 @@ class VpnMonitorService : Service() {
     }
 
     companion object {
+        private const val TAG = "VpnMonitorService"
         const val NOTIFICATION_ID_VPN_MONITOR = 1002
         private const val ACTION_STOP_MONITOR = "com.haoze.diting.notification.STOP_MONITOR"
+
+        @Volatile
+        var isServiceAlive: Boolean = false
+            internal set
 
         fun startIntent(context: Context): Intent {
             return Intent(context, VpnMonitorService::class.java)

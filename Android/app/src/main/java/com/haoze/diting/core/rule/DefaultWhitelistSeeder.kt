@@ -87,10 +87,14 @@ object DefaultWhitelistSeeder {
         Log.i(TAG, "Seeded ${entities.size} preset whitelist rules")
     }
 
+    @Volatile
+    private var cachedAssetWhitelist: List<Pair<String, String>>? = null
+
     /**
      * Parses assets/https_passthrough.txt into a list of (domain, category).
      */
     fun parseAssetWhitelist(context: Context): List<Pair<String, String>> {
+        cachedAssetWhitelist?.let { return it }
         val results = mutableListOf<Pair<String, String>>()
         val seen = mutableSetOf<String>()
         var currentCategory = "默认预设"
@@ -122,6 +126,17 @@ object DefaultWhitelistSeeder {
             Log.e(TAG, "Failed to read assets/https_passthrough.txt", it)
         }
 
+        if (results.isNotEmpty()) {
+            cachedAssetWhitelist = results
+        }
         return results
+    }
+
+    internal fun clearCache() {
+        cachedAssetWhitelist = null
+    }
+
+    internal fun setCachedWhitelistForTesting(list: List<Pair<String, String>>?) {
+        cachedAssetWhitelist = list
     }
 }
