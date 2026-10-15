@@ -78,7 +78,15 @@ func (s *Server) startDoT() error {
 		conns: make(map[*dotConn]struct{}),
 	}
 	s.dot = dl
-	go dl.acceptLoop(cfg.ReadTimeout, cfg.IdleTimeout)
+	readTimeout := cfg.ReadTimeout
+	if readTimeout <= 0 {
+		readTimeout = DefaultDoTReadTimeout
+	}
+	idleTimeout := cfg.IdleTimeout
+	if idleTimeout <= 0 {
+		idleTimeout = DefaultDoTIdleTimeout
+	}
+	go dl.acceptLoop(readTimeout, idleTimeout)
 	return nil
 }
 

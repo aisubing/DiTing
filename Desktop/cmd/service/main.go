@@ -182,8 +182,13 @@ func (p *program) run() error {
 	// 其余来源直接按配置路径载入。载入失败不阻断启动——
 	// 证书问题只影响加密监听器，主解析链路与它无关。
 	p.certManager = core.NewCertManager(platform.DefaultCertDir(), cfg.Encrypted.Cert)
-	if cfg.Encrypted.Enabled && cfg.Encrypted.Cert.Source == core.CertSourceSelfSigned {
-		if created, err := p.certManager.EnsureSelfSigned(cfg.Encrypted.Cert); err != nil {
+	if cfg.Encrypted.Cert.Source == core.CertSourceSelfSigned || cfg.Encrypted.Cert.Source == "" {
+		certCfg := cfg.Encrypted.Cert
+		if len(certCfg.DNSNames) == 0 && len(certCfg.IPAddresses) == 0 {
+			certCfg.DNSNames, certCfg.IPAddresses = core.DeriveCertNames(
+				cfg.Encrypted.ServerName, cfg.Encrypted.ListenAddress, nil)
+		}
+		if created, err := p.certManager.EnsureSelfSigned(certCfg); err != nil {
 			log.Printf("[加密DNS] 自签证书生成失败: %v\n", err)
 		} else if created {
 			log.Printf("[加密DNS] 已生成自签证书至 %s\n", platform.DefaultCertDir())

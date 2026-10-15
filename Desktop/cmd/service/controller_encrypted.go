@@ -25,6 +25,9 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 	var info core.CertInfo
 	dir := ""
 	if certMgr != nil {
+		if !certMgr.Info().Loaded {
+			certMgr.Reload()
+		}
 		info = certMgr.Info()
 		dir = certMgr.Dir()
 	}
@@ -121,6 +124,22 @@ func (p *program) ConfigureEncryptedDNS(ctx context.Context, req ipc.ConfigureEn
 	// 碰一次密钥文件，也免得把一个正在被监听器使用的证书换掉
 	if p.certManager != nil && !reflect.DeepEqual(cfg.Cert, p.cfg.Encrypted.Cert) {
 		p.certManager.Configure(cfg.Cert)
+	}
+
+	// 自签来源未载入时自动确保证书就绪，避免用户开启监听时因证书缺失而无法启动
+	if p.certManager != nil && (cfg.Cert.Source == core.CertSourceSelfSigned || cfg.Cert.Source == "") {
+		if !p.certManager.Info().Loaded {
+			certCfg := cfg.Cert
+			if len(certCfg.DNSNames) == 0 && len(certCfg.IPAddresses) == 0 {
+				certCfg.DNSNames, certCfg.IPAddresses = core.DeriveCertNames(
+					cfg.ServerName, cfg.ListenAddress, nil)
+			}
+			if _, err := p.certManager.EnsureSelfSigned(certCfg); err != nil {
+				log.Printf("[加密DNS] 自签证书补齐失败: %v\n", err)
+			} else {
+				cfg.Cert = p.certManager.GetConfig()
+			}
+		}
 	}
 
 	p.cfg.Encrypted = cfg
