@@ -11,7 +11,7 @@ import ConditionalRoutesCard from './ConditionalRoutesCard.vue';
 import UpstreamEditModal from './UpstreamEditModal.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import { useConfirmModal } from '../../composables/useConfirmModal';
-import { protocolMeta } from '../../constants/dnsPresets';
+import { protocolMeta, isHttpsStyleProtocol } from '../../constants/dnsPresets';
 
 const status = ref<StatusResponse | null>(null);
 const currentMode = ref('primary_backup');
@@ -75,7 +75,7 @@ async function loadData(forceSyncProviders = false) {
             id: u.id,
             protocol: u.protocol,
             server: u.server,
-            url: u.url || (u.protocol === 'DOH' ? `https://${u.server}/dns-query` : ''),
+            url: u.url || (isHttpsStyleProtocol(u.protocol) ? `https://${u.server}/dns-query` : ''),
             weight: u.weight ?? 1,
           }));
         }
@@ -96,7 +96,7 @@ async function loadData(forceSyncProviders = false) {
           id: u.id,
           protocol: u.protocol,
           server: u.server,
-          url: u.url || (u.protocol === 'DOH' ? `https://${u.server}/dns-query` : ''),
+          url: u.url || (isHttpsStyleProtocol(u.protocol) ? `https://${u.server}/dns-query` : ''),
           weight: u.weight ?? 1,
         }));
       }

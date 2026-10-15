@@ -104,6 +104,14 @@ func (d *DoHResolver) Exchange(ctx context.Context, rawQuery []byte, dohURL stri
 	client := d.httpClient
 	d.mu.RUnlock()
 
+	return dohExchangeWithClient(ctx, client, rawQuery, dohURL)
+}
+
+// dohExchangeWithClient 在给定 HTTP 客户端上完成一次 RFC 8484 查询。
+//
+// 传输层由调用方提供，DoH（HTTP/2）与 DoH3（HTTP/3）共用本函数，
+// 保证两者的状态码校验、报文长度下限与重试语义完全一致。
+func dohExchangeWithClient(ctx context.Context, client *http.Client, rawQuery []byte, dohURL string) ([]byte, error) {
 	var resp *http.Response
 	var err error
 

@@ -18,6 +18,7 @@ const (
 	ProtocolDoH   DNSProtocol = "DOH"
 	ProtocolDoT   DNSProtocol = "DOT"
 	ProtocolDoQ   DNSProtocol = "DOQ"
+	ProtocolDoH3  DNSProtocol = "DOH3"
 )
 
 // IsEncrypted 判断该协议是否为加密传输。
@@ -26,7 +27,7 @@ const (
 // 明文 UDP/TCP 填充无隐私收益，只会徒增报文体积。
 func (p DNSProtocol) IsEncrypted() bool {
 	switch p {
-	case ProtocolDoH, ProtocolDoT, ProtocolDoQ:
+	case ProtocolDoH, ProtocolDoT, ProtocolDoQ, ProtocolDoH3:
 		return true
 	default:
 		return false
@@ -36,7 +37,7 @@ func (p DNSProtocol) IsEncrypted() bool {
 // IsValidProtocol 校验上游传输协议字符串是否受支持
 func IsValidProtocol(s string) bool {
 	switch strings.ToUpper(strings.TrimSpace(s)) {
-	case "PLAIN", "UDP", "TCP", "DOH", "HTTPS", "DOT", "TLS", "DOQ", "QUIC", "":
+	case "PLAIN", "UDP", "TCP", "DOH", "HTTPS", "DOT", "TLS", "DOQ", "QUIC", "DOH3", "H3", "":
 		return true
 	default:
 		return false
@@ -48,6 +49,8 @@ func ParseProtocol(s string) DNSProtocol {
 	switch strings.ToUpper(strings.TrimSpace(s)) {
 	case "DOH", "HTTPS":
 		return ProtocolDoH
+	case "DOH3", "H3":
+		return ProtocolDoH3
 	case "DOT", "TLS":
 		return ProtocolDoT
 	case "DOQ", "QUIC":
@@ -55,6 +58,11 @@ func ParseProtocol(s string) DNSProtocol {
 	default:
 		return ProtocolPlain
 	}
+}
+
+// IsHTTPStyleProtocol 判断该协议是否以 HTTPS 语义承载（需要 URL 而非裸地址）
+func (p DNSProtocol) IsHTTPStyleProtocol() bool {
+	return p == ProtocolDoH || p == ProtocolDoH3
 }
 
 // ProviderConfig 上游提供者配置结构
@@ -91,6 +99,7 @@ type CoreResolver struct {
 	bootstrap   *BootstrapResolver
 	plain       *PlainResolver
 	doh         *DoHResolver
+	doh3        *DoH3Resolver
 	dot         *DoTResolver
 	doq         *DoQResolver
 	scheduler   *Scheduler
@@ -103,6 +112,7 @@ func NewResolver(cfg ResolverConfig) (*CoreResolver, error) {
 	bs := NewBootstrapResolver(cfg.Bootstrap)
 	plain := NewPlainResolver(bs)
 	doh := NewDoHResolver(bs)
+	doh3 := NewDoH3Resolver(bs)
 	dot := NewDoTResolver(bs)
 	doq := NewDoQResolver(bs)
 
@@ -110,6 +120,7 @@ func NewResolver(cfg ResolverConfig) (*CoreResolver, error) {
 		bootstrap: bs,
 		plain:     plain,
 		doh:       doh,
+		doh3:      doh3,
 		dot:       dot,
 		doq:       doq,
 		router:    NewConditionalRouter(nil),
@@ -155,10 +166,10 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 		}
 
 		server := strings.TrimSpace(p.Server)
-		if proto == ProtocolDoH {
+		if proto.IsHTTPStyleProtocol() {
 			u, err := url.ParseRequestURI(p.URL)
 			if err != nil || u.Scheme != "https" || u.Host == "" {
-				return fmt.Errorf("provider %s: invalid DoH URL %q", p.ID, p.URL)
+				return fmt.Errorf("provider %s: invalid %s URL %q", p.ID, proto, p.URL)
 			}
 			if server == "" {
 				server = u.Host
@@ -201,6 +212,9 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 		if r.doh != nil {
 			r.doh.SetBootstrap(r.bootstrap)
 		}
+		if r.doh3 != nil {
+			r.doh3.SetBootstrap(r.bootstrap)
+		}
 		if r.dot != nil {
 			r.dot.SetBootstrap(r.bootstrap)
 		}
@@ -222,7 +236,10 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 			proto := ProtocolPlain
 			server := upstream
 			urlStr := ""
-			if strings.HasPrefix(upstream, "https://") || strings.HasPrefix(upstream, "http://") {
+			if strings.HasPrefix(upstream, "h3://") {
+				proto = ProtocolDoH3
+				urlStr = "https://" + strings.TrimPrefix(upstream, "h3://")
+			} else if strings.HasPrefix(upstream, "https://") || strings.HasPrefix(upstream, "http://") {
 				proto = ProtocolDoH
 				urlStr = upstream
 			} else if strings.HasPrefix(upstream, "tls://") || strings.HasPrefix(upstream, "dot://") {
@@ -355,6 +372,8 @@ func (r *CoreResolver) executeProvider(ctx context.Context, p *ConfiguredProvide
 	switch p.Protocol {
 	case ProtocolDoH:
 		return r.doh.Exchange(ctx, queryBytes, p.URL)
+	case ProtocolDoH3:
+		return r.doh3.Exchange(ctx, queryBytes, p.URL)
 	case ProtocolDoT:
 		return r.dot.Exchange(ctx, queryBytes, p.Server)
 	case ProtocolDoQ:
@@ -377,6 +396,9 @@ func (r *CoreResolver) Shutdown() error {
 	}
 	if r.doh != nil {
 		closeAll(r.doh.Close())
+	}
+	if r.doh3 != nil {
+		closeAll(r.doh3.Close())
 	}
 	if r.dot != nil {
 		closeAll(r.dot.Close())

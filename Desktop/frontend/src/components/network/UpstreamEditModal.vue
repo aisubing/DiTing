@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { ProviderConfig } from '../../api/types';
 import { DNS_PRESET_PROVIDERS, type DnsProtocolType } from '../../constants/dnsPresets';
 import { validateDoHUrl } from '../../utils/validators';
@@ -32,11 +32,17 @@ const protocolOptions = [
   { label: '普通 DNS', value: 'PLAIN' as DnsProtocolType },
   { label: '加密 DoT', value: 'DOT' as DnsProtocolType },
   { label: '加密 DoH', value: 'DOH' as DnsProtocolType },
+  { label: '加密 DoH3', value: 'DOH3' as DnsProtocolType },
   { label: '加密 DoQ', value: 'DOQ' as DnsProtocolType },
 ];
 
 // 遍历预设时使用的协议顺序，与 protocolOptions 保持一致
-const PROTOCOL_ORDER: DnsProtocolType[] = ['PLAIN', 'DOT', 'DOH', 'DOQ'];
+const PROTOCOL_ORDER: DnsProtocolType[] = ['PLAIN', 'DOT', 'DOH', 'DOH3', 'DOQ'];
+
+// DoH 与 DoH3 同属 HTTPS 语义：均需填写 URL，且共用同一套地址校验
+const isHttpsStyleProtocol = computed(
+  () => formProtocol.value === 'DOH' || formProtocol.value === 'DOH3'
+);
 
 function applyPreset(providerName: string, protocol: DnsProtocolType) {
   currentPresetProvider.value = providerName;
@@ -117,7 +123,7 @@ function handleSave() {
     return;
   }
 
-  if (formProtocol.value === 'DOH') {
+  if (isHttpsStyleProtocol.value) {
     const check = validateDoHUrl(formUrl.value);
     if (!check.valid) {
       formError.value = check.error || 'DoH 地址格式无效';
@@ -213,6 +219,9 @@ function handleSave() {
         <md-select-option value="DOH">
           <div slot="headline">加密模式 (DNS over HTTPS / 安全防窥探)</div>
         </md-select-option>
+        <md-select-option value="DOH3">
+          <div slot="headline">加密模式 (DNS over HTTP/3 / QUIC 承载，抗丢包)</div>
+        </md-select-option>
         <md-select-option value="DOT">
           <div slot="headline">加密模式 (DNS over TLS / 端口 853)</div>
         </md-select-option>
@@ -230,8 +239,8 @@ function handleSave() {
       ></md-outlined-text-field>
 
       <md-outlined-text-field
-        v-if="formProtocol === 'DOH'"
-        label="DoH 加密解析地址 (URL)"
+        v-if="isHttpsStyleProtocol"
+        label="加密解析地址 (URL)"
         :value="formUrl"
         @input="formUrl = ($event.target as any).value"
         class="w-full font-mono"

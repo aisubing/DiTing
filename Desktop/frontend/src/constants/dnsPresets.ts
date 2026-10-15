@@ -1,4 +1,4 @@
-export type DnsProtocolType = 'PLAIN' | 'DOH' | 'DOT' | 'DOQ';
+export type DnsProtocolType = 'PLAIN' | 'DOH' | 'DOH3' | 'DOT' | 'DOQ';
 
 export interface DnsProtocolMeta {
   label: string;
@@ -9,12 +9,18 @@ const PROTOCOL_META: Record<DnsProtocolType, DnsProtocolMeta> = {
   PLAIN: { label: 'UDP 53', encrypted: false },
   DOT: { label: '加密 DoT', encrypted: true },
   DOH: { label: '加密 DoH', encrypted: true },
+  DOH3: { label: '加密 DoH3', encrypted: true },
   DOQ: { label: '加密 DoQ', encrypted: true },
 };
 
 // 后端可能返回未知或空协议值，统一回退为明文展示，避免界面出现空白徽标
 export function protocolMeta(protocol: string): DnsProtocolMeta {
   return PROTOCOL_META[protocol as DnsProtocolType] ?? PROTOCOL_META.PLAIN;
+}
+
+// DoH 与 DoH3 同属 HTTPS 语义：地址为 URL，缺省时可按 host 推导 /dns-query
+export function isHttpsStyleProtocol(protocol: string): boolean {
+  return protocol === 'DOH' || protocol === 'DOH3';
 }
 
 export interface DnsPresetItem {
@@ -161,6 +167,13 @@ export const DNS_PRESET_PROVIDERS: readonly DnsProviderGroup[] = [
         url: 'https://dns.google/dns-query',
         description: 'Google 公共 DNS，基于 HTTPS 的加密解析',
       },
+      DOH3: {
+        id: 'Google (DoH3)',
+        protocol: 'DOH3',
+        server: 'dns.google',
+        url: 'https://dns.google/dns-query',
+        description: 'Google 公共 DNS，基于 HTTP/3 的加密解析',
+      },
     },
   },
   {
@@ -186,6 +199,13 @@ export const DNS_PRESET_PROVIDERS: readonly DnsProviderGroup[] = [
         server: 'cloudflare-dns.com',
         url: 'https://cloudflare-dns.com/dns-query',
         description: 'Cloudflare 1.1.1.1，基于 HTTPS 的加密解析',
+      },
+      DOH3: {
+        id: 'Cloudflare (DoH3)',
+        protocol: 'DOH3',
+        server: 'cloudflare-dns.com',
+        url: 'https://cloudflare-dns.com/dns-query',
+        description: 'Cloudflare 1.1.1.1，基于 HTTP/3 的加密解析',
       },
     },
   },

@@ -25,7 +25,7 @@ export interface MetaResponse {
   os: string;
 }
 
-export type UpstreamProtocol = 'PLAIN' | 'DOH' | 'DOT' | 'DOQ';
+export type UpstreamProtocol = 'PLAIN' | 'DOH' | 'DOH3' | 'DOT' | 'DOQ';
 
 export interface UpstreamInfo {
   id: string;

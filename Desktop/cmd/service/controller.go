@@ -67,10 +67,10 @@ func (p *program) ConfigureUpstream(ctx context.Context, req ipc.ConfigureUpstre
 			prov.Protocol = proto
 
 			switch proto {
-			case core.ProtocolDoH:
+			case core.ProtocolDoH, core.ProtocolDoH3:
 				u, err := url.ParseRequestURI(prov.URL)
 				if err != nil || u.Scheme != "https" || u.Host == "" {
-					return fmt.Errorf("上游 %s: 非法的 DoH URL %q", id, prov.URL)
+					return fmt.Errorf("上游 %s: 非法的 %s URL %q", id, proto, prov.URL)
 				}
 				if strings.TrimSpace(prov.Server) == "" {
 					prov.Server = u.Host
