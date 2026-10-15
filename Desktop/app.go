@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App 结构体，提供供前端 Wails 绑定的跨平台桌面应用核心能力。
@@ -21,6 +22,7 @@ type App struct {
 	firewall    platform.FirewallManager
 	dnsMgr      platform.DNSManager
 	stateStore  platform.StateStore
+	tray        platform.TrayManager
 	version     string
 }
 
@@ -70,12 +72,20 @@ func (a *App) IsAutoStartEnabled() bool {
 	return a.autoStart.IsEnabled()
 }
 
+func (a *App) hasFrontendContext() bool {
+	return a.ctx != nil && a.ctx.Value("frontend") != nil
+}
+
 // SetAutoStart 设置或取消开机自启
 func (a *App) SetAutoStart(enable bool) (bool, error) {
 	if a.autoStart == nil {
 		return false, fmt.Errorf("当前平台不支持开机自启配置")
 	}
-	return a.autoStart.SetEnabled(enable)
+	result, err := a.autoStart.SetEnabled(enable)
+	if err == nil && a.hasFrontendContext() {
+		wailsruntime.EventsEmit(a.ctx, "autostart-changed", result)
+	}
+	return result, err
 }
 
 // GetCoreServiceStatus 获取后台核心服务状态
@@ -165,4 +175,43 @@ func (a *App) ConfigureFirewallForLAN(enable bool) (string, error) {
 		return "已成功放行局域网 53 端口防火墙入站规则！", nil
 	}
 	return "已成功清除局域网 53 端口防火墙入站规则。", nil
+}
+
+// ShowWindow 显示并置顶主窗口
+func (a *App) ShowWindow() {
+	if a.hasFrontendContext() {
+		wailsruntime.WindowShow(a.ctx)
+		wailsruntime.WindowUnminimise(a.ctx)
+	}
+	if a.tray != nil {
+		a.tray.ActivateWindow()
+	}
+}
+
+// HideWindow 隐藏主窗口到系统托盘
+func (a *App) HideWindow() {
+	if a.hasFrontendContext() {
+		wailsruntime.WindowHide(a.ctx)
+	}
+}
+
+// ToggleWindow 切换主窗口显示与隐藏
+func (a *App) ToggleWindow() {
+	if a.tray != nil {
+		if t, ok := a.tray.(interface{ IsWindowActive() bool }); ok && t.IsWindowActive() {
+			a.HideWindow()
+			return
+		}
+	}
+	a.ShowWindow()
+}
+
+// QuitApplication 安全退出应用并释放托盘资源
+func (a *App) QuitApplication() {
+	if a.tray != nil {
+		a.tray.Destroy()
+	}
+	if a.hasFrontendContext() {
+		wailsruntime.Quit(a.ctx)
+	}
 }

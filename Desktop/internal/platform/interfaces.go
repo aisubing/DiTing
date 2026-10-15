@@ -100,3 +100,23 @@ type FirewallManager interface {
 	ConfigureWeb(ctx context.Context, port int, enable bool) error
 }
 
+// TrayCallbacks 定义托盘事件回调集合。
+type TrayCallbacks struct {
+	OnToggleWindow    func()
+	OnShowWindow      func()
+	OnToggleAutoStart func() bool
+	IsAutoStart       func() bool
+	GetServiceStatus  func() (running bool, err error)
+	OnToggleService   func() error
+	OnRestartService  func() error
+	OnExit            func()
+}
+
+// TrayManager 定义桌面系统托盘管理接口。
+type TrayManager interface {
+	Init(callbacks TrayCallbacks) error
+	ShowBalloon(title, text string) error
+	ActivateWindow()
+	Destroy()
+}
+

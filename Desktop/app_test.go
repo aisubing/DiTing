@@ -280,3 +280,70 @@ func TestNewAppConstruction(t *testing.T) {
 		t.Fatalf("app.version 不匹配: %s != %s", app.version, Version)
 	}
 }
+
+type mockTrayManager struct {
+	initialized  bool
+	balloonTitle string
+	balloonText  string
+	activated    bool
+	destroyed    bool
+	windowActive bool
+	callbacks    platform.TrayCallbacks
+}
+
+func (m *mockTrayManager) Init(callbacks platform.TrayCallbacks) error {
+	m.initialized = true
+	m.callbacks = callbacks
+	return nil
+}
+
+func (m *mockTrayManager) ShowBalloon(title, text string) error {
+	m.balloonTitle = title
+	m.balloonText = text
+	return nil
+}
+
+func (m *mockTrayManager) ActivateWindow() {
+	m.activated = true
+}
+
+func (m *mockTrayManager) IsWindowActive() bool {
+	return m.windowActive
+}
+
+func (m *mockTrayManager) Destroy() {
+	m.destroyed = true
+}
+
+func TestAppTrayOperations(t *testing.T) {
+	trayMock := &mockTrayManager{windowActive: false}
+	app := &App{
+		tray:      trayMock,
+		autoStart: &mockAutoStartManager{enabled: false},
+		serviceMgr: &mockServiceManager{
+			status: &platform.CoreServiceStatus{Running: true},
+		},
+	}
+
+	app.ShowWindow()
+	if !trayMock.activated {
+		t.Fatal("ShowWindow 未能触发 tray.ActivateWindow")
+	}
+
+	// 窗口不处于前台活跃时，ToggleWindow 应当激活显示
+	trayMock.activated = false
+	app.ToggleWindow()
+	if !trayMock.activated {
+		t.Fatal("ToggleWindow 未能唤醒窗口")
+	}
+
+	// 窗口处于前台活跃时，ToggleWindow 应当最小化隐藏
+	trayMock.windowActive = true
+	app.ToggleWindow()
+
+	// 测试 QuitApplication
+	app.QuitApplication()
+	if !trayMock.destroyed {
+		t.Fatal("QuitApplication 未能销毁托盘")
+	}
+}

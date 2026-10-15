@@ -17,6 +17,8 @@ var (
 func main() {
 	showVersion := flag.Bool("v", false, "显示 GUI 版本号并退出")
 	flag.BoolVar(showVersion, "version", false, "显示 GUI 版本号并退出")
+	minimized := flag.Bool("minimized", false, "以最小化到系统托盘方式启动")
+	flag.BoolVar(minimized, "m", false, "以最小化到系统托盘方式启动")
 	flag.Parse()
 
 	if *showVersion {
@@ -25,5 +27,5 @@ func main() {
 	}
 
 	app := NewApp()
-	runGUI(app)
+	runGUI(app, *minimized)
 }
