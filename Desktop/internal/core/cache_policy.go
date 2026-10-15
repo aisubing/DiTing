@@ -47,12 +47,52 @@ func NormalizeCacheConfig(cfg *CacheConfig) {
 	if cfg.PrefetchBeforeExpiryMs > maxPrefetchBeforeMs {
 		cfg.PrefetchBeforeExpiryMs = maxPrefetchBeforeMs
 	}
+
+	// 落盘参数：仅在开启落盘时补全间隔，未开启时不制造"看似已配置"的假象。
+	// 间隔为 0 视为缺省值而非"不落盘"——JSON 里两者无法区分。
+	if cfg.PersistEnabled {
+		if cfg.PersistIntervalSeconds <= 0 {
+			cfg.PersistIntervalSeconds = defaultPersistIntervalSeconds
+		}
+		if cfg.PersistIntervalSeconds < minPersistIntervalSeconds {
+			cfg.PersistIntervalSeconds = minPersistIntervalSeconds
+		}
+		if cfg.PersistIntervalSeconds > maxPersistIntervalSeconds {
+			cfg.PersistIntervalSeconds = maxPersistIntervalSeconds
+		}
+	} else if cfg.PersistIntervalSeconds < 0 {
+		cfg.PersistIntervalSeconds = 0
+	}
 }
+
+// 落盘间隔取值范围：下限 30s（避免频繁写盘拖累磁盘），上限 24h
+const (
+	defaultPersistIntervalSeconds int64 = 300
+	minPersistIntervalSeconds     int64 = 30
+	maxPersistIntervalSeconds     int64 = 86400
+)
 
 // CacheKey 生成标准化缓存键 (domain:qtype:qclass)
 func CacheKey(domain string, qtype, qclass uint16) string {
+	return CacheKeyForGroup(domain, qtype, qclass, DefaultClientGroupID)
+}
+
+// CacheKeyForGroup 生成带客户端分组的缓存键 (domain:qtype:qclass:group)。
+//
+// 不同分组可能被路由到不同上游，得到不同应答，因此缓存必须按分组隔离，
+// 否则 A 组的结果会被 B 组命中——策略隔离随之失效。
+//
+// 未命中任何分组（默认组）时回落为与 CacheKey 完全一致的键，
+// 保证未启用分组的部署行为与既有版本逐字相同，也不会让现有缓存条目失效。
+func CacheKeyForGroup(domain string, qtype, qclass uint16, group string) string {
 	normalized := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(domain), "."))
-	return fmt.Sprintf("%s:%d:%d", normalized, qtype, qclass)
+	base := fmt.Sprintf("%s:%d:%d", normalized, qtype, qclass)
+
+	group = strings.TrimSpace(group)
+	if group == "" || group == DefaultClientGroupID {
+		return base
+	}
+	return base + ":" + group
 }
 
 // fnv32 计算 FNV-1a 哈希用于分片路由

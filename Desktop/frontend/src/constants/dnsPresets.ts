@@ -1,4 +1,27 @@
-export type DnsProtocolType = 'PLAIN' | 'DOH' | 'DOT';
+export type DnsProtocolType = 'PLAIN' | 'DOH' | 'DOH3' | 'DOT' | 'DOQ';
+
+export interface DnsProtocolMeta {
+  label: string;
+  encrypted: boolean;
+}
+
+const PROTOCOL_META: Record<DnsProtocolType, DnsProtocolMeta> = {
+  PLAIN: { label: 'UDP 53', encrypted: false },
+  DOT: { label: '加密 DoT', encrypted: true },
+  DOH: { label: '加密 DoH', encrypted: true },
+  DOH3: { label: '加密 DoH3', encrypted: true },
+  DOQ: { label: '加密 DoQ', encrypted: true },
+};
+
+// 后端可能返回未知或空协议值，统一回退为明文展示，避免界面出现空白徽标
+export function protocolMeta(protocol: string): DnsProtocolMeta {
+  return PROTOCOL_META[protocol as DnsProtocolType] ?? PROTOCOL_META.PLAIN;
+}
+
+// DoH 与 DoH3 同属 HTTPS 语义：地址为 URL，缺省时可按 host 推导 /dns-query
+export function isHttpsStyleProtocol(protocol: string): boolean {
+  return protocol === 'DOH' || protocol === 'DOH3';
+}
 
 export interface DnsPresetItem {
   id: string;
@@ -8,9 +31,11 @@ export interface DnsPresetItem {
   description?: string;
 }
 
+// DoQ 尚未被多数公共解析服务支持，故各服务商的协议预设是可选的，
+// 只填写其确实对外提供服务的协议，不臆造端点。
 export interface DnsProviderGroup {
   name: string;
-  presets: Record<DnsProtocolType, DnsPresetItem>;
+  presets: Partial<Record<DnsProtocolType, DnsPresetItem>>;
 }
 
 export const DNS_PRESET_PROVIDERS: readonly DnsProviderGroup[] = [
@@ -142,6 +167,13 @@ export const DNS_PRESET_PROVIDERS: readonly DnsProviderGroup[] = [
         url: 'https://dns.google/dns-query',
         description: 'Google 公共 DNS，基于 HTTPS 的加密解析',
       },
+      DOH3: {
+        id: 'Google (DoH3)',
+        protocol: 'DOH3',
+        server: 'dns.google',
+        url: 'https://dns.google/dns-query',
+        description: 'Google 公共 DNS，基于 HTTP/3 的加密解析',
+      },
     },
   },
   {
@@ -167,6 +199,46 @@ export const DNS_PRESET_PROVIDERS: readonly DnsProviderGroup[] = [
         server: 'cloudflare-dns.com',
         url: 'https://cloudflare-dns.com/dns-query',
         description: 'Cloudflare 1.1.1.1，基于 HTTPS 的加密解析',
+      },
+      DOH3: {
+        id: 'Cloudflare (DoH3)',
+        protocol: 'DOH3',
+        server: 'cloudflare-dns.com',
+        url: 'https://cloudflare-dns.com/dns-query',
+        description: 'Cloudflare 1.1.1.1，基于 HTTP/3 的加密解析',
+      },
+    },
+  },
+  {
+    name: 'AdGuard',
+    presets: {
+      PLAIN: {
+        id: 'AdGuard (DNS)',
+        protocol: 'PLAIN',
+        server: '94.140.14.14:53',
+        url: '',
+        description: 'AdGuard DNS，默认拦截广告与跟踪域名',
+      },
+      DOT: {
+        id: 'AdGuard (DoT)',
+        protocol: 'DOT',
+        server: 'dns.adguard-dns.com:853',
+        url: '',
+        description: 'AdGuard DNS，基于 TLS 的加密解析',
+      },
+      DOH: {
+        id: 'AdGuard (DoH)',
+        protocol: 'DOH',
+        server: 'dns.adguard-dns.com',
+        url: 'https://dns.adguard-dns.com/dns-query',
+        description: 'AdGuard DNS，基于 HTTPS 的加密解析',
+      },
+      DOQ: {
+        id: 'AdGuard (DoQ)',
+        protocol: 'DOQ',
+        server: 'dns.adguard-dns.com:853',
+        url: '',
+        description: 'AdGuard DNS，基于 QUIC 的加密解析（RFC 9250，握手更快）',
       },
     },
   },

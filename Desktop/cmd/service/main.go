@@ -46,7 +46,10 @@ type program struct {
 	rateLimiter    *core.RateLimiter
 	dns64Synth     *core.DNS64Synthesizer
 	rewriteEngine  *core.RewriteEngine
+	zoneEngine     *core.ZoneEngine
 	safeSearchEng  *core.SafeSearchEngine
+	safeBrowsing   *core.SafeBrowsingEngine
+	certManager    *core.CertManager
 	clientResolver *core.ClientResolver
 	ecsMgr         *ditingdns.ECSManager
 	takeoverMgr    platform.DNSManager
@@ -136,16 +139,20 @@ func (p *program) run() error {
 	p.resolver = res
 	p.cache = core.NewDNSCache(cfg.Cache)
 	p.cache.SetPrefetcher(res)
+	p.restoreCacheFromDisk()
 	p.queryLog = querylog.New(cfg.QueryLog)
 	p.filterEngine = core.NewRuleEngine(cfg.Filter)
 	if err := p.filterEngine.SetClientGroups(cfg.Client.GroupConfig()); err != nil {
 		log.Printf("[Clients] 载入客户端分组警告: %v\n", err)
 	}
-	if gr, err := core.NewGroupResolver(cfg.Client.GroupConfig()); err == nil {
+	clientGroupCfg := cfg.Client.GroupConfig()
+	if gr, err := core.NewGroupResolver(clientGroupCfg); err == nil {
 		p.groupResolver = gr
 	} else {
 		log.Printf("[Clients] 编译客户端分组匹配器警告: %v\n", err)
 	}
+	// 分组专属上游依赖已装配的主链路，故须在两个前置件就绪之后绑定
+	p.applyGroupUpstreams(clientGroupCfg)
 
 	hostsRes, err := core.NewHostsResolver(cfg.Hosts)
 	if err != nil {
@@ -166,7 +173,22 @@ func (p *program) run() error {
 	}
 	p.dns64Synth = dns64Synth
 	p.rewriteEngine = core.NewRewriteEngine(cfg.Rewrite)
+	p.zoneEngine = core.NewZoneEngine(cfg.Zone)
 	p.safeSearchEng = core.NewSafeSearchEngine(cfg.SafeSearch)
+	// 声誉查询要向上游发 TXT 问询，解析器此时已就绪
+	p.safeBrowsing = core.NewSafeBrowsingEngine(cfg.SafeBrowsing, res)
+
+	// 加密 DNS 服务端证书：自签来源在首次启动时补齐一张，
+	// 其余来源直接按配置路径载入。载入失败不阻断启动——
+	// 证书问题只影响加密监听器，主解析链路与它无关。
+	p.certManager = core.NewCertManager(platform.DefaultCertDir(), cfg.Encrypted.Cert)
+	if cfg.Encrypted.Enabled && cfg.Encrypted.Cert.Source == core.CertSourceSelfSigned {
+		if created, err := p.certManager.EnsureSelfSigned(cfg.Encrypted.Cert); err != nil {
+			log.Printf("[加密DNS] 自签证书生成失败: %v\n", err)
+		} else if created {
+			log.Printf("[加密DNS] 已生成自签证书至 %s\n", platform.DefaultCertDir())
+		}
+	}
 	p.clientResolver = core.NewClientResolver(cfg.Client, p.hostsResolver, p.rewriteEngine)
 	p.ecsMgr = ditingdns.NewECSManager(cfg.ECS)
 

@@ -34,6 +34,12 @@ type ServiceController interface {
 	ClearCache(ctx context.Context) error
 	GetCacheConfig(ctx context.Context) (*core.CacheConfig, error)
 	UpdateCacheConfig(ctx context.Context, cfg core.CacheConfig) error
+	// CachePersistStatus 返回缓存落盘状态与排除规则概览
+	CachePersistStatus(ctx context.Context) (*CachePersistResponse, error)
+	// DumpCache 立即把内存缓存落盘
+	DumpCache(ctx context.Context) (*CachePersistResponse, error)
+	// LoadCache 从落盘文件恢复缓存
+	LoadCache(ctx context.Context) (*CachePersistResponse, error)
 	GetFilterStats(ctx context.Context) (*core.FilterStats, error)
 	GetFilterConfig(ctx context.Context) (*core.FilterConfig, error)
 	UpdateFilterConfig(ctx context.Context, cfg core.FilterConfig) error
@@ -42,6 +48,10 @@ type ServiceController interface {
 	UpdateFilterList(ctx context.Context, list core.FilterList) error
 	DeleteFilterList(ctx context.Context, id string) error
 	RefreshFilterLists(ctx context.Context, id string) error
+	// GetBlockedServices 返回内置阻断服务目录与当前选择
+	GetBlockedServices(ctx context.Context) (*BlockedServicesResponse, error)
+	// ConfigureBlockedServices 更新内置服务拦截选择并热重载规则
+	ConfigureBlockedServices(ctx context.Context, req ConfigureBlockedServicesRequest) error
 	GetCustomRules(ctx context.Context) ([]string, error)
 	SetCustomRules(ctx context.Context, rules []string) error
 	CheckHostRule(ctx context.Context, domain string, qtype uint16) (*core.CheckHostResult, error)
@@ -78,6 +88,27 @@ type ServiceController interface {
 	AddRewriteRule(ctx context.Context, rule core.RewriteRule) error
 	DeleteRewriteRule(ctx context.Context, domain string) error
 	ConfigureRewrite(ctx context.Context, req ConfigureRewriteRequest) error
+	// GetZoneConfig 返回本地权威区（zone 文件）配置与各区构建结果
+	GetZoneConfig(ctx context.Context) (*ZoneConfigResponse, error)
+	// ConfigureZone 更新本地权威区配置并重建索引
+	ConfigureZone(ctx context.Context, req ConfigureZoneRequest) error
+	// GetSafeBrowsing 返回恶意网址库与家长控制的配置与统计
+	GetSafeBrowsing(ctx context.Context) (*SafeBrowsingResponse, error)
+	// ConfigureSafeBrowsing 更新声誉查询配置
+	ConfigureSafeBrowsing(ctx context.Context, req ConfigureSafeBrowsingRequest) error
+	// GetEncryptedDNS 返回加密 DNS 服务的配置、证书摘要与目录
+	GetEncryptedDNS(ctx context.Context) (*EncryptedDNSStatusResponse, error)
+	// ConfigureEncryptedDNS 更新加密 DNS 配置与证书配置
+	ConfigureEncryptedDNS(ctx context.Context, req ConfigureEncryptedDNSRequest) error
+	// GenerateEncryptedCert 生成或重新签发自签证书
+	GenerateEncryptedCert(ctx context.Context, req GenerateCertRequest) error
+	// ImportEncryptedCert 导入一对 PEM 或一个 PKCS#12 容器作为服务端证书
+	ImportEncryptedCert(ctx context.Context, req ImportCertRequest) error
+	// BuildEncryptedMobileConfig 生成 Apple 配置描述文件；
+	// protocol 为空时按当前启用的监听器挑选
+	BuildEncryptedMobileConfig(ctx context.Context, protocol string) ([]byte, error)
+	// ConfigureEncryptedACL 更新反向代理可信来源；全放行需已确认
+	ConfigureEncryptedACL(ctx context.Context, req ConfigureACLRequest) error
 	GetSafeSearch(ctx context.Context) (*SafeSearchConfigResponse, error)
 	ConfigureSafeSearch(ctx context.Context, req ConfigureSafeSearchRequest) error
 	GetClients(ctx context.Context) ([]core.ClientInfo, error)

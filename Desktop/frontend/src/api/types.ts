@@ -11,6 +11,9 @@ import type {
   ECSConfig,
 } from './types.network';
 import type { SafeSearchConfig } from './types.dns';
+import type { RewriteConfig } from './types.rewrite';
+import type { SafeBrowsingConfig } from './types.safebrowsing';
+import type { EncryptedDNSConfig } from './types.encrypted';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -25,7 +28,22 @@ export interface MetaResponse {
   os: string;
 }
 
-export type UpstreamProtocol = 'PLAIN' | 'DOH' | 'DOT';
+export type UpstreamProtocol = 'PLAIN' | 'DOH' | 'DOH3' | 'DOT' | 'DOQ';
+
+/** sdns:// 印章解析结果，字段可直接回填上游编辑表单 */
+export interface ParseStampResponse {
+  protocol: UpstreamProtocol;
+  server: string;
+  url?: string;
+  providerName: string;
+  path?: string;
+  serverAddr?: string;
+  bootstrapIps?: string[];
+  /** SHA-256(RawTBSCertificate) 指纹，冒号分隔大写十六进制 */
+  pin?: string;
+  props: { dnssec: boolean; noLog: boolean; noFilter: boolean };
+  protoName: string;
+}
 
 export interface UpstreamInfo {
   id: string;
@@ -34,6 +52,8 @@ export interface UpstreamInfo {
   url?: string;
   weight?: number;
   active: boolean;
+  /** 是否已启用证书固定（服务端仅暴露标志，不回传指纹） */
+  pinSet?: boolean;
   successCount: number;
   failureCount: number;
   avgLatencyMs: number;
@@ -66,6 +86,9 @@ export interface DNSStatus {
   blockIPv6?: boolean;
   blockECH?: boolean;
   ednsPadding?: number;
+  blockANY?: boolean;
+  /** 最小化应答形式："notimp"（默认）或 "rfc8482" */
+  blockANYMode?: string;
 }
 
 export interface AdapterState {
@@ -136,6 +159,8 @@ export interface StatusResponse {
   dns64?: DNS64Config;
   rewrite?: RewriteConfig;
   ecs?: ECSConfig;
+  safeBrowsing?: SafeBrowsingConfig;
+  encrypted?: EncryptedDNSConfig;
   clients?: ClientInfo[];
 }
 
@@ -157,6 +182,34 @@ export interface CacheConfig {
   prefetchEnabled: boolean;
   prefetchThreshold: number;
   prefetchBeforeExpiryMs: number;
+  /** 不参与缓存的域名正则（Go RE2，无回溯、免疫 ReDoS）；留空表示全部缓存 */
+  excludePatterns?: string[];
+  /** 是否把缓存落盘，重启后复用；默认关闭 */
+  persistEnabled: boolean;
+  /** 落盘文件路径；留空由后端按平台约定推导 */
+  persistPath?: string;
+  /** 定时落盘间隔（秒），取值范围 30–86400；缺省或 0 使用后端默认 300 */
+  persistIntervalSeconds?: number;
+}
+
+/** 缓存落盘状态与操作结果 */
+export interface CachePersistInfo {
+  /** 生效的落盘文件路径 */
+  path: string;
+  /** 本次从文件恢复的条目数（仅「恢复」操作有意义） */
+  restored?: number;
+  /** 操作完成后内存中的条目总数 */
+  entryCount: number;
+  /** 是否开启定期落盘 */
+  persistOn: boolean;
+  /** 定时落盘间隔（秒） */
+  intervalSec: number;
+  /** 最近一次落盘失败的原因 */
+  lastError?: string;
+  /** 当前生效的排除正则 */
+  excludeRules?: string[];
+  /** 被排除规则拦下、绕过缓存的查询累计数 */
+  excludeHits: number;
 }
 
 export interface CacheEntryItem {
@@ -192,6 +245,14 @@ export * from './types.querylog';
 export * from './types.dns';
 /** 网络/访问控制/协议隐私类型（定义见 ./types.network） */
 export * from './types.network';
+/** 自定义重写与规则测试类型（定义见 ./types.rewrite） */
+export * from './types.rewrite';
+/** 本地权威区（zone 文件）类型（定义见 ./types.zone） */
+export * from './types.zone';
+/** 恶意网址库与家长控制类型（定义见 ./types.safebrowsing） */
+export * from './types.safebrowsing';
+/** 服务端加密 DNS 类型（定义见 ./types.encrypted） */
+export * from './types.encrypted';
 export interface AdapterInfo {
   id: string;
   name: string;
@@ -274,6 +335,61 @@ export interface FilterConfig {
   filterResponse?: boolean;
   /** 仅白名单模式：未命中放行规则一律阻断，默认关闭 */
   allowlistOnly?: boolean;
+  /** 伪应答纠正：应答地址落在劫持地址集合内即改写为 NXDOMAIN，默认关闭 */
+  bogusNxDomain?: boolean;
+  /** 伪应答地址清单，接受单个 IP 与 CIDR 网段 */
+  bogusNxDomainNetworks?: string[];
+  /** 被整组拦截的内置服务 ID（见 /api/v1/filter/services） */
+  blockedServices?: string[];
+  /** 被整组拦截的服务分组 ID */
+  blockedServiceGroups?: string[];
+}
+
+/** 内置阻断服务目录中的单个服务 */
+export interface BlockedService {
+  id: string;
+  name: string;
+  group: string;
+  rules: string[];
+  /** 规则条数；后端已丢弃本端解析器无法生效的条目 */
+  ruleCount: number;
+  /** 规则来源标识，形如 service:bilibili，用于在查询日志中归属 */
+  source: string;
+}
+
+/** 内置阻断服务分组 */
+export interface BlockedServiceGroup {
+  id: string;
+  name: string;
+  count: number;
+}
+
+/** 单个服务在某时刻的计划生效状态 */
+export interface ServiceScheduleState {
+  serviceId: string;
+  active: boolean;
+  hasSchedule: boolean;
+  activeName?: string;
+}
+
+export interface BlockedServicesResponse {
+  services: BlockedService[];
+  groups: BlockedServiceGroup[];
+  blockedIds: string[];
+  blockedGroups: string[];
+  /** 当前勾选展开后实际生效的规则条数 */
+  activeRules: number;
+  /** 各服务的每周生效计划，仅包含已配置计划的服务 */
+  schedules: Record<string, BlockingSchedule[]>;
+  /** 上述计划在当前时刻的生效状态 */
+  scheduleStates: ServiceScheduleState[];
+}
+
+export interface ConfigureBlockedServicesRequest {
+  ids?: string[];
+  groups?: string[];
+  /** 省略表示保持当前值；传 {} 清空全部服务计划 */
+  schedules?: Record<string, BlockingSchedule[]>;
 }
 
 /** 单条分时拦截（时间计划） */
@@ -304,14 +420,6 @@ export interface UpdateScheduleRequest {
   schedules?: BlockingSchedule[];
 }
 
-export interface CheckHostResult {
-  blocked: boolean;
-  action: 'block' | 'allow' | 'pass' | string;
-  matchedRule?: string;
-  listName?: string;
-  reason?: string;
-}
-
 export interface WebSocketEvent {
   type: 'query' | 'metrics' | 'takeover' | 'dns' | 'alert' | 'upstream' | 'background' | 'filter';
   timestamp: number;
@@ -321,9 +429,15 @@ export interface WebSocketEvent {
 export interface ProviderConfig {
   id: string;
   protocol: UpstreamProtocol;
+  /** host:port；也可直接填写 sdns:// 印章 */
   server: string;
   url?: string;
   weight?: number;
+  /**
+   * 证书指纹（SHA-256(RawTBSCertificate)，冒号分隔十六进制）。
+   * 填写后将替代系统 CA 链校验，仅用于自签/私有 CA 上游。
+   */
+  pin?: string;
 }
 
 export interface UpstreamConfigureRequest {
@@ -331,6 +445,18 @@ export interface UpstreamConfigureRequest {
   providers: ProviderConfig[];
   bootstrap?: BootstrapConfig;
   conditionalRoutes?: Record<string, string>;
+  /**
+   * 独立回退链。省略表示保持现状，传空数组表示关闭回退。
+   * 与主链路是"两条链"而非"同一个列表的后续节点"：主链路有独立超时，
+   * 超时或命中触发响应码后才整链切换。
+   */
+  fallbackProviders?: ProviderConfig[];
+  /** 主链路独立超时（毫秒）；0 或省略表示采用服务端默认值（2000ms） */
+  fallbackTimeoutMs?: number;
+  /** 触发回退的响应码；省略表示保持现状，空数组表示恢复默认（SERVFAIL/REFUSED） */
+  fallbackOnRcode?: number[];
+  /** 传输层故障是否触发回退，默认 true */
+  fallbackOnError?: boolean;
 }
 
 export interface TestUpstreamRequest {
@@ -440,26 +566,6 @@ export interface SetLoginBackgroundRequest {
   opacity: number;
   blur: number;
   adminPassword?: string;
-}
-
-export interface RewriteRule {
-  domain: string;
-  ips?: string[];
-  cname?: string;
-  txt?: string[];
-  ttl?: number;
-}
-
-export interface RewriteConfig {
-  enabled: boolean;
-  ttl: number;
-  rules: RewriteRule[];
-}
-
-export interface ConfigureRewriteRequest {
-  enabled?: boolean;
-  ttl?: number;
-  rules?: RewriteRule[];
 }
 
 export interface ClientAlias {

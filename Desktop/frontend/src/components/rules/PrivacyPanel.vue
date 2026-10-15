@@ -7,6 +7,9 @@ import AppCard from '../ui/AppCard.vue';
 import AppModal from '../AppModal.vue';
 import StatusBadge from '../StatusBadge.vue';
 import SafeSearchCard from './SafeSearchCard.vue';
+import AnyQueryCard from './AnyQueryCard.vue';
+import SafeBrowsingCard from './SafeBrowsingCard.vue';
+import ParentalControlCard from './ParentalControlCard.vue';
 import ToastBanner from '../ToastBanner.vue';
 import { extractSwitchValue } from '../../utils/switch';
 import { useToast } from '../../composables/useToast';
@@ -21,6 +24,8 @@ const blockPrivatePTR = ref(true);
 const blockUnqualified = ref(false);
 const blockECH = ref(false);
 const blockIPv6 = ref(false);
+const blockANY = ref(false);
+const blockANYMode = ref('notimp');
 const ednsPadding = ref(128);
 
 // ECS 策略状态
@@ -58,6 +63,8 @@ async function loadData() {
       blockUnqualified.value = st.dns?.blockUnqualified ?? false;
       blockECH.value = st.dns?.blockECH ?? false;
       blockIPv6.value = st.dns?.blockIPv6 ?? false;
+      blockANY.value = st.dns?.blockANY ?? false;
+      blockANYMode.value = st.dns?.blockANYMode || 'notimp';
       ednsPadding.value = st.dns?.ednsPadding ?? 128;
 
       if (st.ecs) {
@@ -101,6 +108,16 @@ async function handleToggleECH(e: Event) {
   await savePrivacyConfig();
 }
 
+async function handleToggleANY(nextVal: boolean) {
+  blockANY.value = nextVal;
+  await savePrivacyConfig();
+}
+
+async function handleANYMode(nextVal: string) {
+  blockANYMode.value = nextVal;
+  await savePrivacyConfig();
+}
+
 async function handlePaddingChange() {
   await savePrivacyConfig();
 }
@@ -113,6 +130,8 @@ async function savePrivacyConfig() {
       blockPrivatePTR: blockPrivatePTR.value,
       blockIPv6: blockIPv6.value,
       blockECH: blockECH.value,
+      blockANY: blockANY.value,
+      blockANYMode: blockANYMode.value,
       ednsPadding: Number(ednsPadding.value) || 0,
     });
     showToast('隐私保护与协议增强策略已更新并即时生效');
@@ -322,6 +341,15 @@ onMounted(() => {
             </p>
           </div>
 
+          <!-- ANY 查询最小化（RFC 8482） -->
+          <AnyQueryCard
+            :enabled="blockANY"
+            :mode="blockANYMode"
+            :saving="saving"
+            @toggle="handleToggleANY"
+            @mode="handleANYMode"
+          />
+
           <!-- IPv6 过滤 / 禁用 -->
           <div class="app-card-sub p-3 space-y-2">
             <div class="flex items-center justify-between">
@@ -510,6 +538,10 @@ onMounted(() => {
 
     <!-- 强制安全搜索（独立子卡片，避免本文件继续膨胀） -->
     <SafeSearchCard @error="(m) => showToast(m, true)" @success="(m) => showToast(m)" />
+
+    <!-- 声誉查询：恶意网址库与家长控制（机制相同，各自独立开关） -->
+    <SafeBrowsingCard @error="(m) => showToast(m, true)" @success="(m) => showToast(m)" />
+    <ParentalControlCard @error="(m) => showToast(m, true)" @success="(m) => showToast(m)" />
 
     <!-- 弹窗：编辑 Rebinding 白名单域名 -->
     <AppModal

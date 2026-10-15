@@ -22,6 +22,14 @@ type DNSCache struct {
 	prefetcherMu sync.RWMutex
 	prefetcher   Resolver
 
+	// excluder 为域名排除匹配器；nil 或空规则集表示全部缓存
+	excluder atomic.Pointer[CacheExcluder]
+
+	// persistMu 保护落盘定时器的启停
+	persistMu        sync.Mutex
+	persistStop      chan struct{}
+	lastPersistError atomic.Value // string
+
 	totalHits     atomic.Uint64
 	totalMisses   atomic.Uint64
 	staleHits     atomic.Uint64
@@ -52,6 +60,10 @@ func NewDNSCache(cfg CacheConfig) *DNSCache {
 		flight:      newSingleFlightGroup(),
 		stopCleaner: make(chan struct{}),
 	}
+	if ex, err := NewCacheExcluder(cfg.ExcludePatterns); err == nil {
+		c.excluder.Store(ex)
+	}
+	c.StartPersistLoop()
 
 	for i := 0; i < NumDNSCacheShards; i++ {
 		c.shards[i] = &cacheShard{
@@ -71,6 +83,40 @@ func (c *DNSCache) UpdateConfig(cfg CacheConfig) {
 	c.configMu.Lock()
 	c.config = cfg
 	c.configMu.Unlock()
+
+	// 排除规则随之重建。编译失败时保留上一次可用的规则集：
+	// 一次笔误不该让已在生效的排除策略整体失效。
+	if ex, err := NewCacheExcluder(cfg.ExcludePatterns); err == nil {
+		c.excluder.Store(ex)
+	} else if len(cfg.ExcludePatterns) == 0 {
+		c.excluder.Store(ex)
+	}
+
+	// 落盘开关与间隔都可以在运行时调整。只在启动时判定一次，
+	// 会让"刚打开开关却迟迟不落盘"与"已关闭却仍在写盘"两种情形同时出现。
+	c.SyncPersistLoop()
+}
+
+// SyncPersistLoop 依据当前配置重启定时落盘协程；未开启落盘时确保其处于停止状态
+func (c *DNSCache) SyncPersistLoop() {
+	c.StopPersistLoop()
+	c.StartPersistLoop()
+}
+
+// Excluder 返回当前的域名排除匹配器（未配置时返回一个恒不命中的实例）
+func (c *DNSCache) Excluder() *CacheExcluder {
+	if c == nil {
+		return nil
+	}
+	if ex := c.excluder.Load(); ex != nil {
+		return ex
+	}
+	return &CacheExcluder{}
+}
+
+// IsExcluded 判断域名是否被排除在缓存之外
+func (c *DNSCache) IsExcluded(domain string) bool {
+	return c.Excluder().IsExcluded(domain)
 }
 
 // GetConfig 获取当前配置副本
@@ -101,12 +147,101 @@ func (c *DNSCache) IsOptimistic() bool {
 	return c.config.Enabled && c.config.Optimistic
 }
 
-// Close 关闭缓存并终止后台主动过期协程
+// Close 关闭缓存并终止后台主动过期协程。
+//
+// 关闭前落盘一次：进程正常退出是唯一能确定写盘安全的时机，
+// 也让下一次冷启动直接复用热缓存的收益。
 func (c *DNSCache) Close() {
 	if c.closed.Swap(true) {
 		return
 	}
 	close(c.stopCleaner)
+	c.StopPersistLoop()
+	c.persistOnShutdown()
+}
+
+// StartPersistLoop 在开启落盘时启动定时落盘协程；重复调用无副作用
+func (c *DNSCache) StartPersistLoop() {
+	cfg := c.GetConfig()
+	if !cfg.PersistEnabled || cfg.PersistPath == "" {
+		return
+	}
+
+	c.persistMu.Lock()
+	defer c.persistMu.Unlock()
+	if c.persistStop != nil {
+		return
+	}
+
+	interval := time.Duration(cfg.PersistIntervalSeconds) * time.Second
+	if interval <= 0 {
+		// 未配置间隔时不做定时落盘，仅在退出时写一次
+		return
+	}
+
+	stop := make(chan struct{})
+	c.persistStop = stop
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-c.stopCleaner:
+				return
+			case <-ticker.C:
+				if err := c.SaveToFile(c.currentPersistPath()); err != nil {
+					// 落盘失败不影响服务：缓存本身仍是有效的内存结构
+					c.setPersistError(err)
+				}
+			}
+		}
+	}()
+}
+
+// StopPersistLoop 停止定时落盘协程
+func (c *DNSCache) StopPersistLoop() {
+	c.persistMu.Lock()
+	defer c.persistMu.Unlock()
+	if c.persistStop == nil {
+		return
+	}
+	close(c.persistStop)
+	c.persistStop = nil
+}
+
+// persistOnShutdown 在关闭时落盘一次
+func (c *DNSCache) persistOnShutdown() {
+	cfg := c.GetConfig()
+	if !cfg.PersistEnabled || cfg.PersistPath == "" {
+		return
+	}
+	if err := c.SaveToFile(cfg.PersistPath); err != nil {
+		c.setPersistError(err)
+	}
+}
+
+// currentPersistPath 读取当前生效的落盘路径
+func (c *DNSCache) currentPersistPath() string {
+	return c.GetConfig().PersistPath
+}
+
+// setPersistError 记录最近一次落盘失败原因
+func (c *DNSCache) setPersistError(err error) {
+	if err == nil {
+		return
+	}
+	c.lastPersistError.Store(err.Error())
+}
+
+// LastPersistError 返回最近一次落盘失败的原因（无失败时为空串）
+func (c *DNSCache) LastPersistError() string {
+	if v, ok := c.lastPersistError.Load().(string); ok {
+		return v
+	}
+	return ""
 }
 
 // Clear 清空全部 64 分片的缓存条目并重置 LRU 链表
@@ -131,12 +266,19 @@ func (c *DNSCache) shard(key string) *cacheShard {
 
 // Get 查询缓存条目并执行 LRU 提升与 TTL 剩余时长重写
 func (c *DNSCache) Get(req *dns.Msg) (resp *dns.Msg, hit bool, isStale bool, staleCandidate *cacheEntry) {
+	return c.GetForGroup(req, DefaultClientGroupID)
+}
+
+// GetForGroup 按客户端分组查询缓存条目。
+//
+// group 为默认组时键与 Get 完全一致，未启用分组的部署行为不变。
+func (c *DNSCache) GetForGroup(req *dns.Msg, group string) (resp *dns.Msg, hit bool, isStale bool, staleCandidate *cacheEntry) {
 	if !c.IsEnabled() || req == nil || len(req.Question) == 0 {
 		return nil, false, false, nil
 	}
 
 	q := req.Question[0]
-	key := CacheKey(q.Name, q.Qtype, q.Qclass)
+	key := CacheKeyForGroup(q.Name, q.Qtype, q.Qclass, group)
 	now := time.Now()
 	shard := c.shard(key)
 
@@ -221,6 +363,13 @@ func (c *DNSCache) BuildStaleResponse(req *dns.Msg, entry *cacheEntry) *dns.Msg 
 
 // Put 解析上游响应并以 LRU 方式持久化至对应分片中
 func (c *DNSCache) Put(req *dns.Msg, resp *dns.Msg) bool {
+	return c.PutForGroup(req, resp, DefaultClientGroupID)
+}
+
+// PutForGroup 按客户端分组写入缓存条目。
+//
+// group 为默认组时键与 Put 完全一致，未启用分组的部署行为不变。
+func (c *DNSCache) PutForGroup(req *dns.Msg, resp *dns.Msg, group string) bool {
 	if !c.IsEnabled() || req == nil || len(req.Question) == 0 || resp == nil {
 		return false
 	}
@@ -259,7 +408,7 @@ func (c *DNSCache) Put(req *dns.Msg, resp *dns.Msg) bool {
 	}
 
 	clonedMsg := resp.Copy()
-	key := CacheKey(q.Name, q.Qtype, q.Qclass)
+	key := CacheKeyForGroup(q.Name, q.Qtype, q.Qclass, group)
 	entry := &cacheEntry{
 		key:          key,
 		domain:       strings.ToLower(strings.TrimSuffix(strings.TrimSpace(q.Name), ".")),

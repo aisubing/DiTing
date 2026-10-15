@@ -3,6 +3,7 @@
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/config"
 	"github.com/haoze-evolluling/diting/desktop/internal/core"
@@ -78,6 +79,11 @@ func (p *program) UpdateCacheConfig(ctx context.Context, cfg core.CacheConfig) e
 	defer p.mu.Unlock()
 
 	core.NormalizeCacheConfig(&cfg)
+	// 前端提交空路径表示"沿用平台约定"。此处必须回填成具体路径，
+	// 否则落盘与恢复会指向不同的文件（一个空路径等于不落盘）。
+	if cfg.PersistEnabled && strings.TrimSpace(cfg.PersistPath) == "" {
+		cfg.PersistPath = p.cachePersistPath()
+	}
 	if p.cache != nil {
 		p.cache.UpdateConfig(cfg)
 	}

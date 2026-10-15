@@ -13,8 +13,6 @@ import (
 	ditingdns "github.com/haoze-evolluling/diting/desktop/internal/dns"
 	"github.com/haoze-evolluling/diting/desktop/internal/ipc"
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
-	"github.com/haoze-evolluling/diting/desktop/internal/querylog"
-	miekgdns "github.com/miekg/dns"
 )
 
 // StartDNS 实现 ServiceController 接口
@@ -26,193 +24,8 @@ func (p *program) StartDNS(ctx context.Context) error {
 		return nil
 	}
 
-	// 提前捕获引用：查询日志记录位于 DNS 热路径，回调内不得再取 p.mu
-	ql := p.queryLog
-
-	metricsMw := ditingdns.NewMetricsMiddleware(func(dctx *ditingdns.DNSContext, duration time.Duration, err error) {
-		qName := ""
-		qType := ""
-		if dctx.Req != nil && len(dctx.Req.Question) > 0 {
-			qName = dctx.Req.Question[0].Name
-			qType = miekgdns.TypeToString[dctx.Req.Question[0].Qtype]
-		}
-		success := (err == nil)
-		p.metrics.RecordQuery(duration, success)
-
-		cacheHitStr := ""
-		if val, ok := dctx.Get("cache_hit"); ok {
-			if s, ok := val.(string); ok {
-				cacheHitStr = s
-			}
-		}
-		rcodeStr := ""
-		if dctx.Resp != nil {
-			rcodeStr = miekgdns.RcodeToString[dctx.Resp.Rcode]
-		}
-
-		filterBlocked := false
-		filterRule := ""
-		filterReason := ""
-		if val, ok := dctx.Get("filter_blocked"); ok {
-			if b, ok := val.(bool); ok {
-				filterBlocked = b
-			}
-		}
-		if val, ok := dctx.Get("rebinding_blocked"); ok {
-			if b, ok := val.(bool); ok && b {
-				filterBlocked = true
-				if filterRule == "" {
-					filterRule = "REBIND_PROTECTION"
-				}
-			}
-		}
-		if val, ok := dctx.Get("access_blocked"); ok {
-			if b, ok := val.(bool); ok && b {
-				filterBlocked = true
-				if filterRule == "" {
-					filterRule = "CLIENT_ACCESS_CONTROL"
-				}
-			}
-		}
-		if val, ok := dctx.Get("ratelimit_blocked"); ok {
-			if b, ok := val.(bool); ok && b {
-				filterBlocked = true
-				if filterRule == "" {
-					filterRule = "RATE_LIMIT_EXCEEDED"
-				}
-			}
-		}
-		if val, ok := dctx.Get("unqualified_blocked"); ok {
-			if b, ok := val.(bool); ok && b {
-				filterBlocked = true
-				if filterRule == "" {
-					filterRule = "BLOCK_UNQUALIFIED"
-				}
-			}
-		}
-		if val, ok := dctx.Get("filter_rule"); ok {
-			if s, ok := val.(string); ok {
-				filterRule = s
-			}
-		}
-		if val, ok := dctx.Get("filter_reason"); ok {
-			if s, ok := val.(string); ok {
-				filterReason = s
-			}
-		}
-
-		// 查询历史与统计收集：复用本回调已算好的字段，无需新增中间件
-		if ql != nil {
-			errStr := ""
-			if err != nil {
-				errStr = err.Error()
-			}
-			status := querylog.StatusAllowed
-			switch {
-			case err != nil:
-				status = querylog.StatusError
-			case filterBlocked:
-				status = querylog.StatusBlocked
-			case cacheHitStr == "stale":
-				status = querylog.StatusStale
-			case cacheHitStr != "":
-				status = querylog.StatusCached
-			}
-			ql.Record(querylog.Record{
-				Timestamp:    time.Now().UnixMilli(),
-				Domain:       qName,
-				QType:        qType,
-				ClientIP:     formatIP(dctx.ClientIP),
-				ClientName:   dctx.ClientName,
-				DurationMs:   float64(duration.Nanoseconds()) / 1e6,
-				RCode:        rcodeStr,
-				Status:       status,
-				Cached:       cacheHitStr != "",
-				CacheHit:     cacheHitStr,
-				Blocked:      filterBlocked,
-				FilterRule:   filterRule,
-				FilterReason: filterReason,
-				Protocol:     dctx.Protocol,
-				Error:        errStr,
-			})
-		}
-
-		if p.ipcServer != nil {
-			errStr := ""
-			if err != nil {
-				errStr = err.Error()
-			}
-			p.ipcServer.Broadcast(ipc.Event{
-				Type:      "query",
-				Timestamp: time.Now().UnixMilli(),
-				Data: ipc.QueryEventData{
-					Domain:       qName,
-					QType:        qType,
-					ClientIP:     formatIP(dctx.ClientIP),
-					ClientName:   dctx.ClientName,
-					DurationMs:   float64(duration.Nanoseconds()) / 1e6,
-					Success:      success,
-					RCode:        rcodeStr,
-					CacheHit:     cacheHitStr,
-					Blocked:      filterBlocked,
-					FilterRule:   filterRule,
-					FilterReason: filterReason,
-					ErrorMessage: errStr,
-				},
-			})
-		}
-	})
-
-	rebindMgr := p.rebindMgr
-	if rebindMgr == nil {
-		rebindMgr = ditingdns.NewRebindProtectionManager(p.cfg.Rebind)
-	}
-	clientMw := ditingdns.NewClientMiddleware(p.clientResolver)
-	accessMw := ditingdns.NewAccessMiddleware(p.accessControl)
-	rateLimitMw := ditingdns.NewRateLimitMiddleware(p.rateLimiter)
-	edeMw := ditingdns.NewEDEMiddleware(func() bool {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		return p.cfg.DNS.EnableEDE
-	})
-	echMw := ditingdns.NewECHMiddleware(func() bool {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		return p.cfg.DNS.BlockECH
-	})
-	sudnMw := ditingdns.NewSUDNMiddleware()
-	ipv6Mw := ditingdns.NewIPv6Middleware(func() bool {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		return p.cfg.DNS.BlockIPv6
-	})
-	hostsMw := ditingdns.NewHostsMiddleware(p.hostsResolver)
-	rewriteMw := ditingdns.NewRewriteMiddleware(p.rewriteEngine)
-	safeSearchMw := ditingdns.NewSafeSearchMiddleware(p.safeSearchEng)
-	privatePTRMw := ditingdns.NewPrivatePTRMiddleware(func() bool {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		return p.cfg.DNS.BlockPrivatePTR
-	}, p.clientResolver)
-	unqualifiedMw := ditingdns.NewDynamicUnqualifiedMiddleware(func() bool {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		return p.cfg.DNS.BlockUnqualified
-	})
-	filterMw := ditingdns.NewFilterMiddlewareWithGroups(p.filterEngine, p.groupResolver)
-	rebindMw := ditingdns.NewRebindMiddleware(rebindMgr, p.cache)
-	filterResponseMw := ditingdns.NewFilterResponseMiddleware(p.filterEngine, p.groupResolver, func() bool {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-		return p.cfg.Filter.FilterResponse
-	}, p.cache)
-	dns64Mw := ditingdns.NewDNS64Middleware(p.dns64Synth, p.resolver)
-	ecsMw := ditingdns.NewECSMiddleware(p.ecsMgr)
-	cacheMw := ditingdns.NewCacheMiddleware(p.cache, p.resolver)
-	forwardMw := ditingdns.NewForwardMiddleware(p.resolver)
-	// 响应侧复检位于 rebindMw 之后、dns64Mw 之前：
-	// 既包裹缓存（缓存命中也复检），又在 DNS64 合成之后获得最终应答，且被 rebindMw 的已阻断判定短路。
-	pipeline := ditingdns.NewPipeline(metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw, hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw, filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw, forwardMw)
+	// 流水线装配（含指标采集中间件）已拆分至 controller_pipeline.go / controller_metrics.go
+	pipeline := p.buildPipeline()
 	udpAddrs, tcpAddrs := p.cfg.DNS.EffectiveListenAddresses()
 	serverCfg := ditingdns.ServerConfig{
 		UDPAddresses: udpAddrs,
@@ -240,6 +53,8 @@ func (p *program) StartDNS(ctx context.Context) error {
 	}
 
 	srv := ditingdns.NewServer(serverCfg, pipeline)
+	// 加密监听是附加能力：配置不完整时返回 nil，明文解析照常启动
+	srv.SetEncryptedConfig(p.buildEncryptedServerConfig())
 	if err := srv.Start(); err != nil {
 		if platform.IsPortBindConflict(err) {
 			if p.portChecker != nil {
@@ -355,6 +170,7 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 				SuccessCount: stat.SuccessCount,
 				FailureCount: stat.FailureCount,
 				AvgLatencyMs: stat.AvgLatencyMs,
+				PinSet:       stat.PinSet,
 			})
 		}
 	} else if p.cfg != nil {
@@ -370,6 +186,7 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 				URL:      prov.URL,
 				Weight:   w,
 				Active:   true,
+				PinSet:   strings.TrimSpace(prov.Pin) != "",
 			})
 		}
 	}
@@ -407,6 +224,8 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 			BlockIPv6:         p.cfg.DNS.BlockIPv6,
 			BlockECH:          p.cfg.DNS.BlockECH,
 			EDNSPadding:       p.cfg.DNS.EDNSPadding,
+			BlockANY:          p.cfg.DNS.BlockANY,
+			BlockANYMode:      p.cfg.DNS.BlockANYMode,
 		},
 		Takeover: ipc.TakeoverStatus{
 			Active:   takeoverActive,
@@ -421,9 +240,12 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 		RateLimit:  p.cfg.RateLimit,
 		DNS64:      p.cfg.DNS64,
 		Rewrite:    p.cfg.Rewrite,
+		Zone:       p.cfg.Zone,
 		SafeSearch: p.cfg.SafeSearch,
-		ECS:        p.cfg.ECS,
-		Clients:    p.getClientsSnapshot(),
+
+		SafeBrowsing: p.cfg.SafeBrowsing,
+		ECS:          p.cfg.ECS,
+		Clients:      p.getClientsSnapshot(),
 	}, nil
 }
 

@@ -67,13 +67,13 @@ func NewFilterResponseMiddleware(
 		if override := engine.GroupBlockMode(groupID); override != "" {
 			blockCfg.BlockMode = override
 		}
-		ctx.Resp = buildBlockedResponse(ctx.Req, blockCfg)
+		ctx.Resp = BuildBlockedResponse(ctx.Req, blockCfg)
 		ctx.Set("filter_action", "block")
 		ctx.Set("filter_blocked", true)
 		ctx.Set("filter_rule", res.MatchedRule)
 		ctx.Set("filter_reason", res.Reason)
 		ctx.Set("filter_list", res.ListName)
-		ctx.Set("client_group", groupID)
+		ctx.Set(attrClientGroup, groupID)
 		ctx.Set("response_filtered", true)
 
 		// 同步剔除缓存中被投毒（别名指向黑名单域）的条目，防止后续命中重放

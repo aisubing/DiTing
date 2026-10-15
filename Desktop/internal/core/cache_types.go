@@ -35,6 +35,23 @@ type CacheConfig struct {
 	PrefetchEnabled        bool  `json:"prefetchEnabled"`
 	PrefetchThreshold      int   `json:"prefetchThreshold"`      // 命中次数门槛，默认 5
 	PrefetchBeforeExpiryMs int64 `json:"prefetchBeforeExpiryMs"` // 剩余有效期阈值（毫秒），默认 30000
+
+	// ExcludePatterns 为不参与缓存的域名正则；RE2 无回溯，天然免疫 ReDoS。
+	// 默认空（全部缓存），未配置时热路径零额外开销。
+	ExcludePatterns []string `json:"excludePatterns,omitempty"`
+
+	// PersistEnabled 控制缓存是否落盘，默认关闭。
+	//
+	// 关闭是刻意的默认值：读取上次的应答会让"上游已变更但仍命中旧记录"
+	// 这类问题变得难以察觉，用户应当明确选择开启。
+	PersistEnabled bool `json:"persistEnabled"`
+	// PersistPath 为落盘文件路径；空表示由调用方按平台约定推导
+	PersistPath string `json:"persistPath,omitempty"`
+	// PersistIntervalSeconds 为定时落盘间隔（秒），默认 300，钳制到 [30, 86400]。
+	//
+	// 0 与缺省不可区分（JSON 中同为缺省值），因此统一按默认值处理；
+	// 想要"只在退出时落盘"请把间隔调到上限 86400。
+	PersistIntervalSeconds int64 `json:"persistIntervalSeconds,omitempty"`
 }
 
 // DefaultCacheConfig 返回标准默认缓存配置

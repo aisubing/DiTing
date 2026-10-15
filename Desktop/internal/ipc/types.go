@@ -26,6 +26,8 @@ type UpstreamInfo struct {
 	SuccessCount uint64  `json:"successCount"`
 	FailureCount uint64  `json:"failureCount"`
 	AvgLatencyMs float64 `json:"avgLatencyMs"`
+	// PinSet 表示该上游已启用证书固定（仅暴露布尔标志，不回传指纹本身）
+	PinSet bool `json:"pinSet,omitempty"`
 }
 
 // DNSStatus DNS 监听器运行状态
@@ -44,6 +46,8 @@ type DNSStatus struct {
 	BlockIPv6         bool                 `json:"blockIPv6"`
 	BlockECH          bool                 `json:"blockECH"`
 	EDNSPadding       int                  `json:"ednsPadding"`
+	BlockANY          bool                 `json:"blockANY"`
+	BlockANYMode      string               `json:"blockANYMode"`
 }
 
 // TakeoverStatus 物理网卡接管运行状态
@@ -77,7 +81,9 @@ type StatusResponse struct {
 	RateLimit     core.RateLimitConfig     `json:"rateLimit"`
 	DNS64         core.DNS64Config         `json:"dns64"`
 	Rewrite       core.RewriteConfig       `json:"rewrite"`
+	Zone          core.ZoneConfig          `json:"zone"`
 	SafeSearch    core.SafeSearchConfig    `json:"safeSearch"`
+	SafeBrowsing  core.SafeBrowsingConfig  `json:"safeBrowsing"`
 	ECS           core.ECSConfig           `json:"ecs"`
 	Clients       []core.ClientInfo        `json:"clients,omitempty"`
 }
@@ -136,13 +142,7 @@ type FilterActionRequest struct {
 	ID string `json:"id"`
 }
 
-// ConfigureUpstreamRequest 动态配置上游请求
-type ConfigureUpstreamRequest struct {
-	Mode              string                `json:"mode"`
-	Providers         []core.ProviderConfig `json:"providers"`
-	Bootstrap         *core.BootstrapConfig `json:"bootstrap,omitempty"`
-	ConditionalRoutes map[string]string     `json:"conditionalRoutes,omitempty"`
-}
+// ConfigureUpstreamRequest 定义见 ./types_upstream.go（含独立回退链字段）
 
 // ConfigureBootstrapRequest 单独配置 Bootstrap 引导 DNS 请求
 type ConfigureBootstrapRequest struct {
@@ -346,6 +346,10 @@ type ConfigurePrivacyRequest struct {
 	BlockIPv6       *bool `json:"blockIPv6,omitempty"`
 	BlockECH        *bool `json:"blockECH,omitempty"`
 	EDNSPadding     *int  `json:"ednsPadding,omitempty"`
+	// BlockANY 对 ANY 查询返回最小化应答（RFC 8482）
+	BlockANY *bool `json:"blockANY,omitempty"`
+	// BlockANYMode 最小化应答形式："notimp"（默认）或 "rfc8482"
+	BlockANYMode *string `json:"blockANYMode,omitempty"`
 }
 
 // ConfigureRebindRequest DNS Rebinding 攻击防御配置请求
@@ -394,20 +398,10 @@ type FilterPauseResponse struct {
 	BlockingEnabled bool `json:"blockingEnabled"`
 }
 
-// ClientGroupConfigResponse 客户端分组配置与已解析规则集选项
-type ClientGroupConfigResponse struct {
-	Enabled bool               `json:"enabled"`
-	Groups  []core.ClientGroup `json:"groups"`
-	// RuleLists 供前端多选绑定的可用订阅列表（ID + 名称）
-	RuleLists []ClientGroupRuleListOption `json:"ruleLists"`
-}
+// ClientGroupConfigResponse 客户端分组配置与已解析规则集选项。
+//
+// 具体字段定义见 ./types_client_groups.go。
 
-// ClientGroupRuleListOption 分组可绑定的订阅列表选项
-type ClientGroupRuleListOption struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Enabled bool   `json:"enabled"`
-}
 
 // ConfigureClientGroupsRequest 客户端分组配置请求
 type ConfigureClientGroupsRequest struct {

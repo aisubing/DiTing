@@ -30,6 +30,12 @@ type ParsedRule struct {
 	// To 目标域排除后缀（$to=，小写去点）。
 	// 在 DNS 层 $to= 与 $denyallow= 语义等价（均针对查询目标域），统一作为排除集合处理。
 	To []string
+
+	// Rewrite 为 $dnsrewrite= 修饰符的解析结果；为 nil 表示本条规则不参与重写。
+	//
+	// 例外规则上的 Rewrite 表示「取消」而非「改写」：裸形式取消该域名的全部重写，
+	// 带取值的形式只取消取值相同的那一条。
+	Rewrite *RewriteAction
 }
 
 // ParseRules 从 io.Reader 读取并解析全部规则
@@ -131,6 +137,7 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 	var dnsType uint16 = 0
 	var denyAllow []string
 	var toDomains []string
+	var rewrite *RewriteAction
 	var modPart string
 
 	if strings.HasPrefix(line, "/") {
@@ -148,9 +155,11 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 	}
 
 	if modPart != "" {
-		modifiers := strings.Split(modPart, ",")
-		for _, mod := range modifiers {
-			mod = strings.TrimSpace(strings.ToLower(mod))
+		modifiers := splitModifiers(modPart)
+		for _, raw := range modifiers {
+			// 关键字与域名均大小写不敏感，但记录取值（TXT、CNAME 目标）保留原文，
+			// 因此只在判定分支上用小写形式，取值一律回传原文
+			mod := strings.TrimSpace(strings.ToLower(raw))
 			if mod == "important" {
 				important = true
 			} else if mod == "badfilter" {
@@ -165,6 +174,14 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 				denyAllow = parseModifierDomains(strings.TrimPrefix(mod, "denyallow="))
 			} else if strings.HasPrefix(mod, "to=") {
 				toDomains = parseModifierDomains(strings.TrimPrefix(mod, "to="))
+			} else if mod == "dnsrewrite" || strings.HasPrefix(mod, "dnsrewrite=") {
+				// 取值区分大小写，必须从原文中截取
+				action, err := parseDNSRewriteModifier(dnsRewriteValue(raw))
+				if err != nil {
+					// 无法解析的重写规则直接丢弃：保留下来只会变成一条语义不明的拦截规则
+					return nil, false
+				}
+				rewrite = action
 			} else if strings.HasPrefix(mod, "~denyallow=") || strings.HasPrefix(mod, "~to=") {
 				// 取反形式在 DNS 层无可靠等价语义，安全忽略该修饰符（保留整条规则）
 			} else if isWebOnlyModifier(mod) {
@@ -192,6 +209,7 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 			Source:    source,
 			DenyAllow: denyAllow,
 			To:        toDomains,
+			Rewrite:   rewrite,
 		}, true
 	}
 
@@ -262,7 +280,95 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 		Source:     source,
 		DenyAllow:  denyAllow,
 		To:         toDomains,
+		Rewrite:    rewrite,
 	}, true
+}
+
+// splitModifiers 按逗号拆分修饰符列表，但保留 $dnsrewrite 取值内部的逗号。
+//
+// dnsrewrite 的取值本身可能含逗号（HTTPS / SVCB 的 alpn=h3,h2），
+// 直接按逗号切分会把它拦腰截断成一条语法错误的取值。定位到 dnsrewrite
+// 之后，只有看起来像新修饰符的片段才会开始下一项，其余一律并入当前取值。
+func splitModifiers(modPart string) []string {
+	head, tail, ok := cutRewriteModifier(modPart)
+	if !ok {
+		return strings.Split(modPart, ",")
+	}
+
+	merged := make([]string, 0, 4)
+	merged = append(merged, head...)
+
+	segments := strings.Split(tail, ",")
+	current := segments[0]
+	for _, seg := range segments[1:] {
+		if looksLikeModifier(seg) {
+			merged = append(merged, current)
+			current = seg
+			continue
+		}
+		current += "," + seg
+	}
+	return append(merged, current)
+}
+
+// cutRewriteModifier 以 dnsrewrite 修饰符为界把列表切成前后两段。
+//
+// 未出现 dnsrewrite 时返回 ok=false，调用方按普通逗号拆分即可。
+func cutRewriteModifier(modPart string) (head []string, tail string, ok bool) {
+	offset := 0
+	for offset <= len(modPart) {
+		next := strings.IndexByte(modPart[offset:], ',')
+		end := len(modPart)
+		if next >= 0 {
+			end = offset + next
+		}
+
+		seg := strings.TrimSpace(strings.ToLower(modPart[offset:end]))
+		if seg == "dnsrewrite" || strings.HasPrefix(seg, "dnsrewrite=") {
+			prefix := strings.Trim(strings.TrimSpace(modPart[:offset]), ",")
+			if prefix != "" {
+				head = strings.Split(prefix, ",")
+			}
+			return head, modPart[offset:], true
+		}
+
+		if next < 0 {
+			return nil, "", false
+		}
+		offset = end + 1
+	}
+	return nil, "", false
+}
+
+// looksLikeModifier 判断片段是否为修饰符关键字（用于切分 dnsrewrite 取值）
+func looksLikeModifier(segment string) bool {
+	mod := strings.TrimSpace(strings.ToLower(segment))
+	if mod == "" {
+		return true
+	}
+	switch {
+	case mod == "important", mod == "badfilter", mod == "dnsrewrite":
+		return true
+	case strings.HasPrefix(mod, "dnsrewrite="),
+		strings.HasPrefix(mod, "dnstype="),
+		strings.HasPrefix(mod, "denyallow="),
+		strings.HasPrefix(mod, "to="),
+		strings.HasPrefix(mod, "~denyallow="),
+		strings.HasPrefix(mod, "~to="):
+		return true
+	}
+	return isWebOnlyModifier(mod)
+}
+
+// dnsRewriteValue 从原文修饰符中截取 dnsrewrite 的取值。
+//
+// 取值本身区分大小写（TXT 文本、CNAME 目标），因此不能复用已小写化的形式。
+// 裸形式（$dnsrewrite 后无等号）返回空串。
+func dnsRewriteValue(rawModifier string) string {
+	if idx := strings.IndexByte(rawModifier, '='); idx >= 0 {
+		return rawModifier[idx+1:]
+	}
+	return ""
 }
 
 // parseModifierDomains 解析修饰符中以 "|" 分隔的域名列表。

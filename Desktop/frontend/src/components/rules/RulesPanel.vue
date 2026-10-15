@@ -9,6 +9,7 @@ import MetricStrip, { type StatEntry } from '../../components/ui/MetricStrip.vue
 import ToastBanner from '../../components/ToastBanner.vue';
 import RuleListsPanel from '../../components/RuleListsPanel.vue';
 import RuleTestPanel from '../../components/RuleTestPanel.vue';
+import BogusNxDomainCard from './BogusNxDomainCard.vue';
 import { revertSwitch, extractSwitchValue } from '../../utils/switch';
 import { usePoller } from '../../composables/usePoller';
 import { useToast } from '../../composables/useToast';
@@ -36,6 +37,8 @@ const config = ref<FilterConfig>({
   schedules: [],
   filterResponse: false,
   allowlistOnly: false,
+  bogusNxDomain: false,
+  bogusNxDomainNetworks: [],
 });
 
 const listCount = ref(0);
@@ -140,6 +143,34 @@ async function toggleAllowlistOnly(e: Event) {
   } catch (err: any) {
     revertSwitch(e, !next);
     showToast(err?.message || '更新仅白名单模式失败', true);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleBogusToggle(next: boolean) {
+  try {
+    saving.value = true;
+    await ipc.updateFilterConfig({ bogusNxDomain: next });
+    config.value.bogusNxDomain = next;
+    showToast(`伪应答纠正已${next ? '开启' : '关闭'}`);
+  } catch (err: any) {
+    showToast(err?.message || '更新伪应答纠正开关失败', true);
+    await fetchData();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleBogusNetworksSave(networks: string[]) {
+  try {
+    saving.value = true;
+    await ipc.updateFilterConfig({ bogusNxDomainNetworks: networks });
+    config.value.bogusNxDomainNetworks = networks;
+    showToast(networks.length > 0 ? `已保存 ${networks.length} 条劫持地址` : '劫持地址清单已清空');
+  } catch (err: any) {
+    showToast(err?.message || '保存劫持地址清单失败', true);
+    await fetchData();
   } finally {
     saving.value = false;
   }
@@ -313,6 +344,25 @@ usePoller(fetchData, 4000);
             </div>
             <code class="font-mono text-accent-seal text-[12px] block">||urgent.com^$important</code>
             <p class="text-[11px] text-text-muted">忽略所有白名单规则，强制拦截该域名</p>
+          </div>
+
+          <div class="app-card-sub p-2.5 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-text-main">应答重写</span>
+              <span class="text-[10px] text-text-muted">$dnsrewrite</span>
+            </div>
+            <code class="font-mono text-brand-primary text-[12px] block">||nas.lan^$dnsrewrite=10.0.0.5</code>
+            <code class="font-mono text-brand-primary text-[12px] block">||old.com^$dnsrewrite=NXDOMAIN;;</code>
+            <code class="font-mono text-brand-primary text-[12px] block">||_sip._tcp.lan^$dnsrewrite=NOERROR;SRV;10 60 8080 sip.lan</code>
+            <p class="text-[11px] text-text-muted">
+              无需上游应答，直接按规则给出结果。支持 IPv4/IPv6 地址、域名（CNAME）、
+              <code class="font-mono">NOERROR;A;1.2.3.4</code> 这类显式写法，以及
+              <code class="font-mono">REFUSED</code>/<code class="font-mono">NXDOMAIN</code> 等应答码。
+              显式写法还支持 MX / SRV / NS / PTR / TXT / HTTPS / SVCB 记录类型，
+              与「自定义 DNS 重写」面板的语法完全一致。
+              优先级高于一切拦截与放行规则；用 <code class="font-mono">@@||nas.lan^$dnsrewrite</code>
+              可取消该域名的全部重写。
+            </p>
           </div>
         </div>
 
@@ -509,6 +559,15 @@ usePoller(fetchData, 4000);
             注意：请先确保已配置充分的放行白名单，否则可能造成大面积域名解析失败。
           </p>
         </div>
+
+        <!-- 伪应答纠正 -->
+        <BogusNxDomainCard
+          :enabled="!!config.bogusNxDomain"
+          :networks="config.bogusNxDomainNetworks || []"
+          :saving="saving"
+          @toggle="handleBogusToggle"
+          @save="handleBogusNetworksSave"
+        />
       </div>
     </AppCard>
   </div>

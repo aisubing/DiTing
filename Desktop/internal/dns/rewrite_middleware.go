@@ -23,11 +23,12 @@ func NewRewriteMiddleware(engine *core.RewriteEngine) Middleware {
 
 		var answers []dns.RR
 		var matched bool
+		rcode := dns.RcodeSuccess
 
 		if q.Qtype == dns.TypePTR {
 			answers, matched = engine.LookupPTR(q.Name)
 		} else {
-			answers, matched = engine.Lookup(domain, q.Qtype)
+			answers, rcode, matched = engine.LookupDetailed(domain, q.Qtype)
 		}
 
 		if matched {
@@ -35,14 +36,20 @@ func NewRewriteMiddleware(engine *core.RewriteEngine) Middleware {
 			resp.SetReply(ctx.Req)
 			resp.Authoritative = true
 			resp.RecursionAvailable = true
-			resp.Rcode = dns.RcodeSuccess
-			resp.Answer = answers
+			resp.Rcode = rcode
+			// 非 NOERROR 时不携带记录：失败结论与应答内容不应同时出现
+			if rcode == dns.RcodeSuccess {
+				resp.Answer = answers
+			}
 
 			ctx.Resp = resp
 			ctx.Set("source", "rewrite")
-			if len(answers) > 0 {
+			switch {
+			case rcode != dns.RcodeSuccess:
+				ctx.Set("cache_hit", "rewrite_rcode")
+			case len(answers) > 0:
 				ctx.Set("cache_hit", "rewrite")
-			} else {
+			default:
 				// 权威 NODATA 命中（如仅配置 A 记录但请求 AAAA/MX），阻断外泄
 				ctx.Set("cache_hit", "rewrite_nodata")
 			}

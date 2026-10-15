@@ -11,6 +11,10 @@ import (
 )
 
 type mockController struct {
+	// 后续 Step 新增的 Controller 方法桩集中在 mock_extra_test.go，
+	// 通过匿名字段挂载，避免本文件触碰 600 行上限。
+	mockExtra
+
 	mu                   sync.Mutex
 	dnsRunning           bool
 	takeoverOn           bool

@@ -8,7 +8,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -28,8 +27,12 @@ func (p *program) ConfigureUpstream(ctx context.Context, req ipc.ConfigureUpstre
 		p.cfg = config.DefaultConfig()
 	}
 
-	// 基础校验：必须包含至少一个可配置字段
-	if req.Mode == "" && req.Providers == nil && req.Bootstrap == nil && req.ConditionalRoutes == nil {
+	// 基础校验：必须包含至少一个可配置字段。
+	// 回退链的标量字段（超时/响应码/故障开关）同样算有效配置项，
+	// 否则用户只调整"独立超时"时会被告知"未包含任何有效的上游配置项"。
+	if req.Mode == "" && req.Providers == nil && req.Bootstrap == nil &&
+		req.ConditionalRoutes == nil && req.FallbackProviders == nil &&
+		req.FallbackTimeoutMs == nil && req.FallbackOnRcode == nil && req.FallbackOnError == nil {
 		return fmt.Errorf("未包含任何有效的上游配置项")
 	}
 
@@ -42,54 +45,48 @@ func (p *program) ConfigureUpstream(ctx context.Context, req ipc.ConfigureUpstre
 		cfg.Mode = req.Mode
 	}
 
+	// 主链路与回退链路的 ID 必须全局唯一：统计指标按 ID 归集，
+	// 同名节点会共享同一份健康与延迟记录，导致口径互相污染。
+	seenIDs := make(map[string]bool)
+
 	if req.Providers != nil {
 		if len(req.Providers) == 0 {
 			return fmt.Errorf("至少需要配置一个上游 DNS 服务器")
 		}
-
-		seenIDs := make(map[string]bool, len(req.Providers))
-		validatedProviders := make([]core.ProviderConfig, len(req.Providers))
-		for i, prov := range req.Providers {
-			id := strings.TrimSpace(prov.ID)
-			if id == "" {
-				id = fmt.Sprintf("provider-%d", i+1)
-				prov.ID = id
-			}
-			if seenIDs[id] {
-				return fmt.Errorf("上游服务器 ID 重复: %s", id)
-			}
-			seenIDs[id] = true
-
-			if !core.IsValidProtocol(string(prov.Protocol)) {
-				return fmt.Errorf("上游 %s: 不支持的解析协议 %q", id, prov.Protocol)
-			}
-			proto := core.ParseProtocol(string(prov.Protocol))
-			prov.Protocol = proto
-
-			switch proto {
-			case core.ProtocolDoH:
-				u, err := url.ParseRequestURI(prov.URL)
-				if err != nil || u.Scheme != "https" || u.Host == "" {
-					return fmt.Errorf("上游 %s: 非法的 DoH URL %q", id, prov.URL)
-				}
-				if strings.TrimSpace(prov.Server) == "" {
-					prov.Server = u.Host
-				}
-			case core.ProtocolDoT:
-				if strings.TrimSpace(prov.Server) == "" {
-					return fmt.Errorf("上游 %s: DoT 服务器地址不能为空", id)
-				}
-			default:
-				if strings.TrimSpace(prov.Server) == "" {
-					return fmt.Errorf("上游 %s: 服务器地址不能为空", id)
-				}
-			}
-			if prov.Weight <= 0 {
-				prov.Weight = 1
-			}
-			validatedProviders[i] = prov
+		validated, err := validateProviderList(req.Providers, seenIDs, "")
+		if err != nil {
+			return err
 		}
-		cfg.Providers = validatedProviders
+		cfg.Providers = validated
+	} else {
+		for _, prov := range cfg.Providers {
+			seenIDs[strings.TrimSpace(prov.ID)] = true
+		}
+	}
+
+	// nil 表示"保持现状"，非 nil（含空切片）表示"替换为这里给出的回退链"；
+	// 传空切片即关闭回退，这是关闭该功能的唯一途径。
+	if req.FallbackProviders != nil {
+		validated, err := validateProviderList(req.FallbackProviders, seenIDs, "回退")
+		if err != nil {
+			return err
+		}
+		if len(validated) == 0 {
+			cfg.FallbackProviders = nil
+		} else {
+			cfg.FallbackProviders = validated
+		}
+	}
+	if req.FallbackTimeoutMs != nil {
+		cfg.FallbackTimeoutMs = *req.FallbackTimeoutMs
+	}
+	if req.FallbackOnRcode != nil {
+		// 复制一份，避免调用方的切片与落盘配置共享底层数组；
+		// 空切片原样保留（表示"取消全部响应码触发"），不可与 nil 合并。
+		cfg.FallbackOnRcode = append([]int{}, (*req.FallbackOnRcode)...)
+	}
+	if req.FallbackOnError != nil {
+		cfg.FallbackOnError = req.FallbackOnError
 	}
 
 	if req.Bootstrap != nil {
@@ -107,6 +104,9 @@ func (p *program) ConfigureUpstream(ctx context.Context, req ipc.ConfigureUpstre
 		if err := p.resolver.Configure(cfg); err != nil {
 			return err
 		}
+		// 上游整体重建后，分组专属上游的节点指针必须重新绑定到新对象；
+		// Configure 内部只保留 ID 映射，此处据分组配置重新解析一次
+		p.applyGroupUpstreams(p.cfg.Client.GroupConfig())
 	}
 
 	p.cfg.Upstream = cfg

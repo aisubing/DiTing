@@ -9,6 +9,8 @@ import { NetworkApi } from './network';
 import { WebAuthApi } from './web';
 import { SecurityApi } from './security';
 import { RewriteApi } from './rewrite';
+import { ZoneApi } from './zone';
+import { EncryptedDNSApi } from './encrypted';
 import { nativeBridge, setCoreServiceStatusProvider } from './native';
 import { isWebMode } from '../utils/env';
 
@@ -28,6 +30,8 @@ class IPCService {
   private webAuth = new WebAuthApi(this.http, this.events);
   private security = new SecurityApi(this.http);
   private rewrite = new RewriteApi(this.http);
+  private zone = new ZoneApi(this.http);
+  private encrypted = new EncryptedDNSApi(this.http);
 
   constructor() {
     // Web 模式下原生桥接无 Wails 绑定，改由宿主机服务接口提供权威状态。
@@ -73,6 +77,7 @@ class IPCService {
   public getUpstreamConfig = () => this.core.getUpstreamConfig();
   public configureUpstream = (req: Parameters<CoreApi['configureUpstream']>[0]) => this.core.configureUpstream(req);
   public testUpstream = (req: Parameters<CoreApi['testUpstream']>[0]) => this.core.testUpstream(req);
+  public parseStamp = (stamp: string) => this.core.parseStamp(stamp);
   public configureBootstrap = (cfg: Parameters<CoreApi['configureBootstrap']>[0]) => this.core.configureBootstrap(cfg);
 
   // --- 智能缓存 ---
@@ -82,6 +87,9 @@ class IPCService {
   public clearCache = () => this.cache.clear();
   public getCacheConfig = () => this.cache.getConfig();
   public updateCacheConfig = (cfg: Parameters<CacheApi['updateConfig']>[0]) => this.cache.updateConfig(cfg);
+  public getCachePersist = () => this.cache.getPersistStatus();
+  public dumpCache = () => this.cache.dump();
+  public loadCache = () => this.cache.load();
 
   // --- 查询历史与统计中心 ---
   public searchQueryLog = (q: Parameters<QueryLogApi['search']>[0] = {}) => this.querylog.search(q);
@@ -106,12 +114,27 @@ class IPCService {
   public configureBlockingSchedule = (req: Parameters<FilterApi['configureSchedule']>[0]) => this.filter.configureSchedule(req);
   public getFilterPause = () => this.filter.getPause();
   public setFilterPause = (req: Parameters<FilterApi['setPause']>[0]) => this.filter.setPause(req);
+  public getBlockedServices = () => this.filter.getBlockedServices();
+  public configureBlockedServices = (req: Parameters<FilterApi['configureBlockedServices']>[0]) => this.filter.configureBlockedServices(req);
+  public getSafeBrowsing = () => this.filter.getSafeBrowsing();
+  public configureSafeBrowsing = (req: Parameters<FilterApi['configureSafeBrowsing']>[0]) => this.filter.configureSafeBrowsing(req);
+
+  // --- 服务端加密 DNS（DoT / DoH / DoQ）---
+  public getEncryptedDNSStatus = () => this.encrypted.getStatus();
+  public configureEncryptedDNS = (req: Parameters<EncryptedDNSApi['configure']>[0]) => this.encrypted.configure(req);
+  public generateEncryptedCert = (req: Parameters<EncryptedDNSApi['generateCert']>[0]) => this.encrypted.generateCert(req);
+  public importEncryptedCert = (req: Parameters<EncryptedDNSApi['importCert']>[0]) => this.encrypted.importCert(req);
+  public encryptedMobileConfigURL = (protocol?: 'HTTPS' | 'TLS') => this.encrypted.mobileConfigURL(protocol);
+  public configureEncryptedACL = (req: Parameters<EncryptedDNSApi['configureACL']>[0]) => this.encrypted.configureACL(req);
 
   // --- 自定义重写与客户端管理 ---
   public getRewriteRules = () => this.rewrite.getRewriteRules();
   public addRewriteRule = (rule: Parameters<RewriteApi['addRewriteRule']>[0]) => this.rewrite.addRewriteRule(rule);
   public deleteRewriteRule = (domain: string) => this.rewrite.deleteRewriteRule(domain);
   public configureRewrite = (req: Parameters<RewriteApi['configureRewrite']>[0]) => this.rewrite.configureRewrite(req);
+  public getZoneConfig = () => this.zone.getZoneConfig();
+  public configureZone = (req: Parameters<ZoneApi['configureZone']>[0]) => this.zone.configureZone(req);
+  public testZone = (req: Parameters<ZoneApi['testZone']>[0]) => this.zone.testZone(req);
   public getClients = () => this.rewrite.getClients();
   public configureClientAlias = (req: Parameters<RewriteApi['configureClientAlias']>[0]) => this.rewrite.configureClientAlias(req);
   public getClientGroups = () => this.rewrite.getClientGroups();

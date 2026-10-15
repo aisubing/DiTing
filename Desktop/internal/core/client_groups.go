@@ -18,6 +18,11 @@ type ClientGroup struct {
 	Clients     []string `json:"clients"`               // IP 或 CIDR，支持 IPv4/IPv6
 	RuleListIDs []string `json:"ruleListIds,omitempty"` // 该组启用的订阅列表 ID（空=全部）
 	BlockMode   string   `json:"blockMode,omitempty"`   // 组级拦截方式覆盖（空=继承全局）
+	// UpstreamIDs 为该组的专属上游节点 ID（空=沿用主链路）。
+	//
+	// 借鉴 Technitium 的按网络指定转发器与 AdGuard 的按客户端选上游：
+	// 指向的上游 ID 必须是上游配置中真实存在的节点，不存在的会在编译期被剔除。
+	UpstreamIDs []string `json:"upstreamIds,omitempty"`
 
 	// 组级分时拦截计划（借鉴 blocky config/schedule.go 的 per-group schedule 门控）：
 	// 配置了启用计划时以本组计划判定生效窗口；未配置时回落全局计划语义。
@@ -170,6 +175,21 @@ func NormalizeClientGroupConfig(cfg *ClientGroupConfig) error {
 			members = append(members, trimmed)
 		}
 		g.Clients = members
+
+		// 专属上游 ID 去空去重；是否真实存在由上游配置侧在编译匹配表时校验
+		if len(g.UpstreamIDs) > 0 {
+			seenUp := make(map[string]bool, len(g.UpstreamIDs))
+			upstreams := make([]string, 0, len(g.UpstreamIDs))
+			for _, raw := range g.UpstreamIDs {
+				id := strings.TrimSpace(raw)
+				if id == "" || seenUp[id] {
+					continue
+				}
+				seenUp[id] = true
+				upstreams = append(upstreams, id)
+			}
+			g.UpstreamIDs = upstreams
+		}
 		if g.BlockMode != "" && !IsValidBlockMode(g.BlockMode) {
 			problems = append(problems, fmt.Sprintf("分组 %s 的拦截方式 %q 非法，已回落全局", g.ID, g.BlockMode))
 			g.BlockMode = ""
@@ -211,6 +231,49 @@ func IsValidBlockMode(mode string) bool {
 	default:
 		return false
 	}
+}
+
+// GroupUpstreamMap 由分组配置汇总出「分组 → 专属上游 ID」映射。
+//
+// 只包含确实指定了专属上游的启用分组；未指定者不出现在结果中，
+// 与「未启用该功能」保持同一语义。
+//
+// 本方法不假定配置已被 Normalize 处理过：启动路径会直接传入磁盘上的原始配置，
+// 因此空 ID 与重复项在此就地剔除。
+func (c ClientGroupConfig) GroupUpstreamMap() map[string][]string {
+	if !c.Enabled || len(c.Groups) == 0 {
+		return nil
+	}
+
+	out := make(map[string][]string)
+	for _, g := range c.Groups {
+		if !g.Enabled || len(g.UpstreamIDs) == 0 {
+			continue
+		}
+		id := strings.TrimSpace(g.ID)
+		if id == "" || id == DefaultClientGroupID {
+			continue
+		}
+
+		seen := make(map[string]bool, len(g.UpstreamIDs))
+		ids := make([]string, 0, len(g.UpstreamIDs))
+		for _, raw := range g.UpstreamIDs {
+			trimmed := strings.TrimSpace(raw)
+			if trimmed == "" || seen[trimmed] {
+				continue
+			}
+			seen[trimmed] = true
+			ids = append(ids, trimmed)
+		}
+		if len(ids) == 0 {
+			continue
+		}
+		out[id] = ids
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // GroupConfig 从客户端配置中提取分组配置。
