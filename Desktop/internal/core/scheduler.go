@@ -149,6 +149,8 @@ type ConfiguredProvider struct {
 	URL      string
 	Weight   int
 	Stats    *ProviderStats
+	// Pin 为该上游的证书固定指纹；nil 表示沿用系统 CA 校验
+	Pin *CertPin
 }
 
 // ProviderExecutor 定义上游执行回调

@@ -65,6 +65,7 @@ type DoTResolver struct {
 	bootstrap    *BootstrapResolver
 	sessionCache tls.ClientSessionCache
 	customTLS    *tls.Config
+	pinLookup    PinLookup
 	closed       atomic.Bool
 }
 
@@ -82,6 +83,20 @@ func (d *DoTResolver) SetTLSConfig(cfg *tls.Config) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.customTLS = cfg
+}
+
+// SetPinLookup 设置按主机名查询的证书固定表，并清理既有连接
+// （已建立的连接可能未经过固定校验，必须重建）
+func (d *DoTResolver) SetPinLookup(lookup PinLookup) {
+	d.mu.Lock()
+	d.pinLookup = lookup
+	for _, entries := range d.conns {
+		for _, e := range entries {
+			e.close()
+		}
+	}
+	d.conns = make(map[string][]*dotConnEntry)
+	d.mu.Unlock()
 }
 
 // SetBootstrap 更新引导解析器引用并清理旧连接
@@ -227,12 +242,7 @@ func (d *DoTResolver) dialFreshConn(ctx context.Context, host, targetServer stri
 	}
 
 	d.mu.Lock()
-	var tlsConfig *tls.Config
-	if d.customTLS != nil {
-		tlsConfig = d.customTLS.Clone()
-	} else {
-		tlsConfig = &tls.Config{}
-	}
+	tlsConfig := PinAwareTLSConfig(d.customTLS, d.pinLookup)
 	d.mu.Unlock()
 
 	tlsConfig.ServerName = host

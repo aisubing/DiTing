@@ -27,6 +27,21 @@ export interface MetaResponse {
 
 export type UpstreamProtocol = 'PLAIN' | 'DOH' | 'DOH3' | 'DOT' | 'DOQ';
 
+/** sdns:// 印章解析结果，字段可直接回填上游编辑表单 */
+export interface ParseStampResponse {
+  protocol: UpstreamProtocol;
+  server: string;
+  url?: string;
+  providerName: string;
+  path?: string;
+  serverAddr?: string;
+  bootstrapIps?: string[];
+  /** SHA-256(RawTBSCertificate) 指纹，冒号分隔大写十六进制 */
+  pin?: string;
+  props: { dnssec: boolean; noLog: boolean; noFilter: boolean };
+  protoName: string;
+}
+
 export interface UpstreamInfo {
   id: string;
   protocol: UpstreamProtocol;
@@ -34,6 +49,8 @@ export interface UpstreamInfo {
   url?: string;
   weight?: number;
   active: boolean;
+  /** 是否已启用证书固定（服务端仅暴露标志，不回传指纹） */
+  pinSet?: boolean;
   successCount: number;
   failureCount: number;
   avgLatencyMs: number;
@@ -321,9 +338,15 @@ export interface WebSocketEvent {
 export interface ProviderConfig {
   id: string;
   protocol: UpstreamProtocol;
+  /** host:port；也可直接填写 sdns:// 印章 */
   server: string;
   url?: string;
   weight?: number;
+  /**
+   * 证书指纹（SHA-256(RawTBSCertificate)，冒号分隔十六进制）。
+   * 填写后将替代系统 CA 链校验，仅用于自签/私有 CA 上游。
+   */
+  pin?: string;
 }
 
 export interface UpstreamConfigureRequest {

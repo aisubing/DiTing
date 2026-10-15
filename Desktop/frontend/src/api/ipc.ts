@@ -73,6 +73,7 @@ class IPCService {
   public getUpstreamConfig = () => this.core.getUpstreamConfig();
   public configureUpstream = (req: Parameters<CoreApi['configureUpstream']>[0]) => this.core.configureUpstream(req);
   public testUpstream = (req: Parameters<CoreApi['testUpstream']>[0]) => this.core.testUpstream(req);
+  public parseStamp = (stamp: string) => this.core.parseStamp(stamp);
   public configureBootstrap = (cfg: Parameters<CoreApi['configureBootstrap']>[0]) => this.core.configureBootstrap(cfg);
 
   // --- 智能缓存 ---

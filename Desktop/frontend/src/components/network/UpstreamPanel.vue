@@ -77,6 +77,7 @@ async function loadData(forceSyncProviders = false) {
             server: u.server,
             url: u.url || (isHttpsStyleProtocol(u.protocol) ? `https://${u.server}/dns-query` : ''),
             weight: u.weight ?? 1,
+            pin: u.pin,
           }));
         }
         if (upCfg.bootstrap) {
@@ -371,6 +372,13 @@ onMounted(() => {
               ]"
             >
               {{ protocolMeta(node.protocol).label }}
+            </span>
+            <span
+              v-if="node.pinSet"
+              class="px-2 py-0.5 rounded-full text-[10px] font-semibold border border-status-success/40 text-status-success"
+              title="已启用证书指纹固定：该校验替代系统 CA 链校验"
+            >
+              🔒 指纹固定
             </span>
             <StatusBadge
               :status="node.active ? 'active' : 'inactive'"

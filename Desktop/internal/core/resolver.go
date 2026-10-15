@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -69,9 +68,14 @@ func (p DNSProtocol) IsHTTPStyleProtocol() bool {
 type ProviderConfig struct {
 	ID       string      `json:"id"`
 	Protocol DNSProtocol `json:"protocol"`
-	Server   string      `json:"server"` // host:port 格式
-	URL      string      `json:"url"`    // DoH URL 地址
+	Server   string      `json:"server"` // host:port 格式，也可直接填写 sdns:// 印章
+	URL      string      `json:"url"`    // DoH/DoH3 URL 地址
 	Weight   int         `json:"weight,omitempty"`
+	// Pin 为十六进制证书指纹（SHA-256(RawTBSCertificate)）。
+	//
+	// 安全提示：固定指纹会**替代**系统 CA 链校验，仅应用于自签或私有 CA
+	// 部署的上游；留空即沿用标准校验，为默认且推荐的状态。
+	Pin string `json:"pin,omitempty"`
 }
 
 // ResolverConfig 上游解析器整体配置
@@ -105,6 +109,8 @@ type CoreResolver struct {
 	scheduler   *Scheduler
 	router      *ConditionalRouter
 	ednsPadding int
+	// pinLookup 为按主机名分派的证书固定表，nil 表示未配置任何固定
+	pinLookup PinLookup
 }
 
 // NewResolver 创建并初始化核心 DNS 解析器
@@ -155,48 +161,27 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 	}
 	r.mu.RUnlock()
 
-	providers := make([]*ConfiguredProvider, 0, len(cfg.Providers))
-	for i, p := range cfg.Providers {
-		if !IsValidProtocol(string(p.Protocol)) {
-			return fmt.Errorf("provider %s: unsupported protocol %q", p.ID, p.Protocol)
-		}
-		proto := ParseProtocol(string(p.Protocol))
-		if p.ID == "" {
-			p.ID = fmt.Sprintf("provider-%d", i+1)
-		}
-
-		server := strings.TrimSpace(p.Server)
-		if proto.IsHTTPStyleProtocol() {
-			u, err := url.ParseRequestURI(p.URL)
-			if err != nil || u.Scheme != "https" || u.Host == "" {
-				return fmt.Errorf("provider %s: invalid %s URL %q", p.ID, proto, p.URL)
-			}
-			if server == "" {
-				server = u.Host
-			}
-		} else if server == "" {
-			return fmt.Errorf("provider %s: empty server address", p.ID)
-		}
-
-		weight := p.Weight
-		if weight <= 0 {
-			weight = 1
-		}
-
-		stats := oldStats[p.ID]
-		if stats == nil {
-			stats = NewProviderStats()
-		}
-
-		providers = append(providers, &ConfiguredProvider{
-			ID:       p.ID,
-			Protocol: proto,
-			Server:   server,
-			URL:      p.URL,
-			Weight:   weight,
-			Stats:    stats,
-		})
+	inputs, err := buildProviderInputs(cfg.Providers)
+	if err != nil {
+		return err
 	}
+
+	providers := make([]*ConfiguredProvider, 0, len(inputs))
+	for _, in := range inputs {
+		prov, err := normalizeProvider(in.cfg, in.pin)
+		if err != nil {
+			return err
+		}
+		if stats := oldStats[prov.ID]; stats != nil {
+			prov.Stats = stats
+		} else {
+			prov.Stats = NewProviderStats()
+		}
+		providers = append(providers, prov)
+	}
+
+	// 证书固定按主机名分派：指纹是 per-provider 的，一份全局 TLS 配置装不下
+	pinLookup := buildPinLookup(providers)
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -224,6 +209,21 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 		if r.plain != nil {
 			r.plain.SetBootstrap(r.bootstrap)
 		}
+	}
+
+	r.pinLookup = pinLookup
+
+	if r.doh != nil {
+		r.doh.SetPinLookup(pinLookup)
+	}
+	if r.doh3 != nil {
+		r.doh3.SetPinLookup(pinLookup)
+	}
+	if r.dot != nil {
+		r.dot.SetPinLookup(pinLookup)
+	}
+	if r.doq != nil {
+		r.doq.SetPinLookup(pinLookup)
 	}
 
 	if r.router != nil {
@@ -421,6 +421,17 @@ type UpstreamStatSnapshot struct {
 	AvgLatencyMs float64
 	ScoreMs      float64
 	IsHealthy    bool
+	// PinSet 表示该上游已启用证书固定（不暴露指纹本身，避免泄露无必要信息）
+	PinSet bool
+}
+
+// PinLookup 返回当前生效的证书固定查询表（未配置固定时返回 nil）。
+//
+// 供状态展示与上层判断"是否启用了证书固定"。
+func (r *CoreResolver) PinLookup() PinLookup {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.pinLookup
 }
 
 // GetProviderStats 返回当前配置上游的运行统计指标
@@ -447,6 +458,7 @@ func (r *CoreResolver) GetProviderStats() []UpstreamStatSnapshot {
 			AvgLatencyMs: float64(ewmaRTT.Nanoseconds()) / 1e6,
 			ScoreMs:      float64(score.Nanoseconds()) / 1e6,
 			IsHealthy:    failureCount < 3,
+			PinSet:       p.Pin != nil && len(p.Pin.Sha256) > 0,
 		})
 	}
 	return res

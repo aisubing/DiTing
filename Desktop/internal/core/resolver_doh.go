@@ -23,6 +23,7 @@ type DoHResolver struct {
 	mu         sync.RWMutex
 	bootstrap  *BootstrapResolver
 	customTLS  *tls.Config
+	pinLookup  PinLookup
 	httpClient *http.Client
 }
 
@@ -39,6 +40,20 @@ func NewDoHResolver(bootstrap *BootstrapResolver) *DoHResolver {
 func (d *DoHResolver) SetTLSConfig(cfg *tls.Config) {
 	d.mu.Lock()
 	d.customTLS = cfg
+	oldClient := d.httpClient
+	d.httpClient = d.buildHTTPClient(d.bootstrap)
+	d.mu.Unlock()
+
+	if oldClient != nil {
+		oldClient.CloseIdleConnections()
+	}
+}
+
+// SetPinLookup 设置按主机名查询的证书固定表，并重建客户端连接池
+// （已建立的连接可能未经过固定校验，必须重建）
+func (d *DoHResolver) SetPinLookup(lookup PinLookup) {
+	d.mu.Lock()
+	d.pinLookup = lookup
 	oldClient := d.httpClient
 	d.httpClient = d.buildHTTPClient(d.bootstrap)
 	d.mu.Unlock()
@@ -84,9 +99,7 @@ func (d *DoHResolver) buildHTTPClient(bootstrap *BootstrapResolver) *http.Client
 		TLSHandshakeTimeout: defaultDoHConnectTimeout,
 	}
 
-	if d.customTLS != nil {
-		transport.TLSClientConfig = d.customTLS.Clone()
-	}
+	transport.TLSClientConfig = PinAwareTLSConfig(d.customTLS, d.pinLookup)
 
 	return &http.Client{
 		Transport: transport,

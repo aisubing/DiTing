@@ -3,6 +3,7 @@ import type {
   AdapterInfo,
   PortCheckResult,
   UpstreamConfigureRequest,
+  ParseStampResponse,
   TestUpstreamRequest,
   TestUpstreamResponse,
   BootstrapConfig,
@@ -96,6 +97,13 @@ export class CoreApi {
     return this.http.request<TestUpstreamResponse>('/api/v1/upstream/test', {
       method: 'POST',
       body: JSON.stringify(req),
+    });
+  }
+
+  public parseStamp(stamp: string): Promise<ParseStampResponse> {
+    return this.http.request<ParseStampResponse>('/api/v1/upstream/stamp', {
+      method: 'POST',
+      body: JSON.stringify({ stamp }),
     });
   }
 

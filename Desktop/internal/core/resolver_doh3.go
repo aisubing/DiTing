@@ -23,6 +23,7 @@ type DoH3Resolver struct {
 	mu         sync.RWMutex
 	bootstrap  *BootstrapResolver
 	customTLS  *tls.Config
+	pinLookup  PinLookup
 	httpClient *http.Client
 	transport  *http3.Transport
 }
@@ -38,6 +39,14 @@ func NewDoH3Resolver(bootstrap *BootstrapResolver) *DoH3Resolver {
 func (d *DoH3Resolver) SetTLSConfig(cfg *tls.Config) {
 	d.mu.Lock()
 	d.customTLS = cfg
+	d.rebuildClientLocked()
+	d.mu.Unlock()
+}
+
+// SetPinLookup 设置按主机名查询的证书固定表，并重建 HTTP/3 传输层
+func (d *DoH3Resolver) SetPinLookup(lookup PinLookup) {
+	d.mu.Lock()
+	d.pinLookup = lookup
 	d.rebuildClientLocked()
 	d.mu.Unlock()
 }
@@ -85,14 +94,11 @@ func (d *DoH3Resolver) rebuildClientLocked() {
 }
 
 func (d *DoH3Resolver) tlsConfigLocked() *tls.Config {
-	if d.customTLS != nil {
-		cfg := d.customTLS.Clone()
-		if cfg.MinVersion == 0 {
-			cfg.MinVersion = tls.VersionTLS13
-		}
-		return cfg
+	cfg := PinAwareTLSConfig(d.customTLS, d.pinLookup)
+	if cfg.MinVersion == 0 {
+		cfg.MinVersion = tls.VersionTLS13
 	}
-	return &tls.Config{MinVersion: tls.VersionTLS13}
+	return cfg
 }
 
 // dialFuncLocked 构造 QUIC 拨号函数：先把主机名经引导解析为 IP，再建连。

@@ -168,6 +168,7 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 				SuccessCount: stat.SuccessCount,
 				FailureCount: stat.FailureCount,
 				AvgLatencyMs: stat.AvgLatencyMs,
+				PinSet:       stat.PinSet,
 			})
 		}
 	} else if p.cfg != nil {
@@ -183,6 +184,7 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 				URL:      prov.URL,
 				Weight:   w,
 				Active:   true,
+				PinSet:   strings.TrimSpace(prov.Pin) != "",
 			})
 		}
 	}

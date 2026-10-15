@@ -23,6 +23,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/upstream", s.withAuth(s.handleUpstreamConfigure))
 	mux.HandleFunc("/api/v1/upstream/configure", s.withAuth(s.handleUpstreamConfigure))
 	mux.HandleFunc("/api/v1/upstream/test", s.withAuth(s.handleUpstreamTest))
+	mux.HandleFunc("/api/v1/upstream/stamp", s.withAuth(s.handleParseStamp))
 	mux.HandleFunc("/api/v1/bootstrap/configure", s.withAuth(s.handleBootstrapConfigure))
 
 	// 缓存

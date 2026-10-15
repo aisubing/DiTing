@@ -26,6 +26,8 @@ type UpstreamInfo struct {
 	SuccessCount uint64  `json:"successCount"`
 	FailureCount uint64  `json:"failureCount"`
 	AvgLatencyMs float64 `json:"avgLatencyMs"`
+	// PinSet 表示该上游已启用证书固定（仅暴露布尔标志，不回传指纹本身）
+	PinSet bool `json:"pinSet,omitempty"`
 }
 
 // DNSStatus DNS 监听器运行状态
