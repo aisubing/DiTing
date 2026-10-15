@@ -3,6 +3,7 @@ package dns
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -41,6 +42,28 @@ type Server struct {
 	closed        atomic.Bool
 	ctx           context.Context
 	cancel        context.CancelFunc
+
+	// encrypted 为加密监听配置；nil 表示本次不开放加密入口
+	encrypted *EncryptedServerConfig
+	// dot 为已激活的 DoT 监听器；未启用时为 nil
+	dot *dotListener
+}
+
+// SetEncryptedConfig 设置加密 DNS 监听配置，须在 Start 之前调用。
+//
+// 单独一个方法而不是塞进 NewServer 的参数：加密入口是可选能力，
+// 绝大多数调用方（含测试）只关心明文监听，不该被迫构造一份假证书。
+func (s *Server) SetEncryptedConfig(cfg *EncryptedServerConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.encrypted = cfg
+}
+
+// EncryptedEnabled 报告是否有任何加密监听器处于启用状态
+func (s *Server) EncryptedEnabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.encrypted != nil && s.encrypted.DoTEnabled
 }
 
 // NewServer 创建 DNS 监听服务
@@ -152,6 +175,15 @@ func (s *Server) Start() error {
 		}(srv)
 	}
 
+	// 加密监听是附加能力：绑定失败只记日志，不能让明文解析跟着起不来
+	if s.encrypted != nil && s.encrypted.DoTEnabled {
+		if err := s.startDoT(); err != nil {
+			log.Printf("[DNS] DoT 监听器启动失败，加密解析暂不可用: %v\n", err)
+		} else {
+			log.Printf("[DNS] DoT 监听器已就绪: %s\n", s.encrypted.DoTListenAddress())
+		}
+	}
+
 	return nil
 }
 
@@ -165,13 +197,32 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		return
 	}
 
-	s.activeQueries.Add(1)
-	defer s.activeQueries.Done()
-
 	protocol := "udp"
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		protocol = "tcp"
 	}
+	s.handleQuery(w, r, protocol, "")
+}
+
+// handleEncryptedQuery 处理来自加密监听器的查询。
+//
+// 与明文入口共用同一条流水线：加密只改变报文怎么来、应答怎么回去，
+// 不该改变一次查询被怎样解析。serverName 用于识别 ClientID，明文入口传空串。
+func (s *Server) handleEncryptedQuery(w dns.ResponseWriter, r *dns.Msg, protocol, serverName string) {
+	if r == nil {
+		return
+	}
+	if s.closed.Load() {
+		dns.HandleFailed(w, r)
+		return
+	}
+	s.handleQuery(w, r, protocol, serverName)
+}
+
+// handleQuery 执行一次查询：构造上下文、跑流水线、写回应答。
+func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, protocol, serverName string) {
+	s.activeQueries.Add(1)
+	defer s.activeQueries.Done()
 
 	timeout := s.config.ReadTimeout + s.config.WriteTimeout
 	if timeout <= 0 {
@@ -185,6 +236,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	defer queryCancel()
 
 	dnsCtx := NewDNSContext(queryCtx, r, w.RemoteAddr(), protocol)
+	applyEncryptedClientID(dnsCtx, serverName, s.ServerName())
 
 	if s.pipeline != nil {
 		_ = s.pipeline.Execute(dnsCtx)
@@ -208,6 +260,21 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	}
 }
 
+// serving 报告服务是否仍在接收查询。
+func (s *Server) serving() bool {
+	return s.started.Load() && !s.closed.Load()
+}
+
+// ServerName 返回用户在加密配置里填写的服务器名；未配置时为空串。
+func (s *Server) ServerName() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.encrypted == nil {
+		return ""
+	}
+	return s.encrypted.ServerName
+}
+
 // Shutdown 优雅关闭监听器并等待进行中请求结束
 func (s *Server) Shutdown() error {
 	s.mu.Lock()
@@ -223,10 +290,15 @@ func (s *Server) Shutdown() error {
 	}
 	servers := s.servers
 	s.servers = nil
+	dot := s.dot
+	s.dot = nil
 	s.mu.Unlock()
 
 	// 先关闭所有网络监听，拒绝新连接
 	s.cleanupServers(servers)
+	if dot != nil {
+		dot.close()
+	}
 
 	// 等待活跃请求在超时内完成
 	waitCh := make(chan struct{})

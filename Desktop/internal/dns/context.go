@@ -15,6 +15,30 @@ import (
 // 集中定义可避免读写两侧的字符串字面量漂移。
 const attrClientGroup = "client_group"
 
+// attrClientID 为加密入口识别出的 ClientID 属性键。
+//
+// ClientID 来自 DoT 的 SNI（`<ClientID>.<服务器名>`）或 DoH 的路径段，是
+// 同一台设备换个 IP 之后仍能认出来的稳定身份，因此比 client_group
+// （按 IP 网段划分）更适合做身份归属。
+const attrClientID = "client_id"
+
+// applyEncryptedClientID 从 SNI 里识别 ClientID 并写入上下文。
+//
+// hostSNI 为空（非加密入口或未配置服务器名）时不做任何事：没有基准名字就
+// 无从判断客户端是否多写了一级标签，凭空取一层反而会把正常访问归类成
+// 某个并不存在的客户端。
+func applyEncryptedClientID(ctx *DNSContext, cliSNI, hostSNI string) {
+	if ctx == nil || hostSNI == "" {
+		return
+	}
+	id := ClientIDFromServerName(hostSNI, cliSNI)
+	if id == "" {
+		return
+	}
+	ctx.ClientID = id
+	ctx.Set(attrClientID, id)
+}
+
 // DNSContext 封装单个 DNS 查询的执行上下文与状态信息
 type DNSContext struct {
 	Context    context.Context
@@ -23,7 +47,10 @@ type DNSContext struct {
 	ClientIP   net.IP
 	ClientPort int
 	ClientName string // 客户端主机名或友好别名（如 localhost、MacBook-Pro）
-	Protocol   string // "udp" 或 "tcp"
+	// ClientID 加密入口识别出的客户端标识（DoT 的 SNI / DoH 的路径段）；
+	// 明文入口为空串。同一设备换 IP 后仍可辨认，故优先于 IP 归属。
+	ClientID   string
+	Protocol   string // "udp" / "tcp" / "tcp-tls"
 	StartTime  time.Time
 	Attributes map[string]any
 	Err        error

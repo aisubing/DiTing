@@ -27,6 +27,14 @@ const doqPort = ref(853);
 const cfg = computed(() => props.status?.config);
 const enabled = computed(() => cfg.value?.enabled ?? false);
 
+/** DoT 是否真的在监听——配置打开不等于绑上了端口 */
+const dotLive = computed(() => Boolean(props.status?.dotListen));
+const dotLiveAddr = computed(() => props.status?.dotListen || '');
+
+/** 已经配好但监听器尚未接入的协议；C3/C4 落地后逐项清空 */
+const PENDING_PROTOCOLS = ['DoH', 'DoQ'] as const;
+const pendingText = PENDING_PROTOCOLS.join(' / ');
+
 /** 有任一协议被选中但总开关没开，配置不会生效——提前说出来 */
 const anyProtocolOn = computed(
   () => Boolean(cfg.value?.dotEnabled || cfg.value?.dohEnabled || cfg.value?.doqEnabled),
@@ -145,8 +153,8 @@ const INPUT_CLS =
 
     <div class="space-y-3 mt-3 text-xs">
       <InlineAlert
-        type="info"
-        message="本页只保存证书与监听配置。DoT / DoH / DoQ 监听器将在后续步骤接入，现在开启不会真的开始对外服务。"
+        type="warning"
+        :message="`${pendingText} 监听器尚未接入，现在开启只会保存配置，不会真的开始对外服务。DoT 已可用。`"
       />
       <InlineAlert
         v-if="enabled && !anyProtocolOn"
@@ -163,7 +171,15 @@ const INPUT_CLS =
                 DoT
                 <span class="text-[10px] text-text-muted font-mono ml-1">DNS over TLS · RFC 7858</span>
               </div>
-              <div class="text-[11px] text-text-muted">端口 {{ cfg?.dotPort ?? 853 }}，客户端用 <code class="font-mono">tls://</code> 连接</div>
+              <div class="text-[11px] text-text-muted">
+                端口 {{ cfg?.dotPort ?? 853 }}，客户端用 <code class="font-mono">tls://</code> 连接
+              </div>
+              <div v-if="cfg?.dotEnabled" class="text-[11px] mt-0.5 font-mono">
+                <span v-if="dotLive" class="text-status-success">正在监听 {{ dotLiveAddr }}</span>
+                <span v-else class="text-status-warning">
+                  未在监听（服务未启动、证书不可用或端口被占用）
+                </span>
+              </div>
             </div>
             <md-switch
               :selected="cfg?.dotEnabled ?? false"

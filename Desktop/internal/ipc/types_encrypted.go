@@ -22,6 +22,10 @@ type EncryptedDNSStatusResponse struct {
 	DefaultDoHPort int    `json:"defaultDohPort"`
 	DefaultDoQPort int    `json:"defaultDoqPort"`
 	DefaultDoHPath string `json:"defaultDohPath"`
+	// DoTListen 实际生效的 DoT 监听地址；未在监听时为空串。
+	// 与配置里的端口分开：配置写着 853 不代表真的绑上了，
+	// 可能证书载入失败，也可能端口被别人占了。
+	DoTListen string `json:"dotListen"`
 }
 
 // ConfigureEncryptedDNSRequest 更新加密 DNS 配置。

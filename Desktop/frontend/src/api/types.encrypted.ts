@@ -63,6 +63,8 @@ export interface EncryptedDNSStatusResponse {
   defaultDohPort: number;
   defaultDoqPort: number;
   defaultDohPath: string;
+  /** 实际生效的 DoT 监听地址；未在监听时为空串 */
+  dotListen: string;
 }
 
 /** 所有字段可选：省略表示沿用当前值 */

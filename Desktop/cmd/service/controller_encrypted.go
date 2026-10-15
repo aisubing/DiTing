@@ -26,10 +26,17 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 		dir = certMgr.Dir()
 	}
 
+	// 实际监听地址只能在监听器里问：配置不等于既成事实
+	dotListen := ""
+	if p.server != nil {
+		dotListen = p.server.DoTListenAddress()
+	}
+
 	return &ipc.EncryptedDNSStatusResponse{
 		Config:         cfg,
 		Cert:           info,
 		CertDir:        dir,
+		DoTListen:      dotListen,
 		DefaultDoTPort: core.DefaultDoTPort,
 		DefaultDoHPort: core.DefaultDoHPort,
 		DefaultDoQPort: core.DefaultDoQPort,
@@ -88,6 +95,8 @@ func (p *program) ConfigureEncryptedDNS(ctx context.Context, req ipc.ConfigureEn
 
 	p.cfg.Encrypted = cfg
 	p.persistConfigLocked("加密 DNS 配置")
+	// 端口、证书、服务器名都只在监听器启动时读取一次，改完必须重建才生效
+	p.reloadDNSWithCurrentConfig()
 	return nil
 }
 
@@ -134,6 +143,9 @@ func (p *program) GenerateEncryptedCert(ctx context.Context, req ipc.GenerateCer
 	// 把实际生效的参数写回配置，界面下次打开看到的就是证书的真实内容
 	p.cfg.Encrypted.Cert = p.certManager.GetConfig()
 	p.persistConfigLocked("加密 DNS 证书")
+	// 换了证书就得重握手：已建立的 DoT 连接仍持有旧证书，不重建的话
+	// 新证书要等到下一次服务重启才会真正生效
+	p.reloadDNSWithCurrentConfig()
 	return nil
 }
 
@@ -168,6 +180,7 @@ func (p *program) ImportEncryptedCert(ctx context.Context, req ipc.ImportCertReq
 
 	p.cfg.Encrypted.Cert = p.certManager.GetConfig()
 	p.persistConfigLocked("加密 DNS 证书")
+	p.reloadDNSWithCurrentConfig()
 	return nil
 }
 

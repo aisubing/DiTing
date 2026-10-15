@@ -53,6 +53,8 @@ func (p *program) StartDNS(ctx context.Context) error {
 	}
 
 	srv := ditingdns.NewServer(serverCfg, pipeline)
+	// 加密监听是附加能力：配置不完整时返回 nil，明文解析照常启动
+	srv.SetEncryptedConfig(p.buildEncryptedServerConfig())
 	if err := srv.Start(); err != nil {
 		if platform.IsPortBindConflict(err) {
 			if p.portChecker != nil {

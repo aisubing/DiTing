@@ -24,6 +24,13 @@ func NewClientMiddlewareWithGroups(resolver *core.ClientResolver, groups *core.G
 			}
 		}
 
+		// 加密入口的 ClientID 优先于反查出来的主机名：前者是客户端自己
+		// 声明的身份，设备换 IP 也不会变；后者只是对当前地址的推测。
+		if ctx.ClientID != "" {
+			ctx.ClientName = ctx.ClientID
+			ctx.Set("client_name", ctx.ClientID)
+		}
+
 		if groups != nil && ctx.ClientIP != nil {
 			ctx.Set(attrClientGroup, groups.Resolve(ctx.ClientIP))
 		}
