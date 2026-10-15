@@ -354,6 +354,14 @@ export interface BlockedServiceGroup {
   count: number;
 }
 
+/** 单个服务在某时刻的计划生效状态 */
+export interface ServiceScheduleState {
+  serviceId: string;
+  active: boolean;
+  hasSchedule: boolean;
+  activeName?: string;
+}
+
 export interface BlockedServicesResponse {
   services: BlockedService[];
   groups: BlockedServiceGroup[];
@@ -361,11 +369,17 @@ export interface BlockedServicesResponse {
   blockedGroups: string[];
   /** 当前勾选展开后实际生效的规则条数 */
   activeRules: number;
+  /** 各服务的每周生效计划，仅包含已配置计划的服务 */
+  schedules: Record<string, BlockingSchedule[]>;
+  /** 上述计划在当前时刻的生效状态 */
+  scheduleStates: ServiceScheduleState[];
 }
 
 export interface ConfigureBlockedServicesRequest {
   ids?: string[];
   groups?: string[];
+  /** 省略表示保持当前值；传 {} 清空全部服务计划 */
+  schedules?: Record<string, BlockingSchedule[]>;
 }
 
 /** 单条分时拦截（时间计划） */

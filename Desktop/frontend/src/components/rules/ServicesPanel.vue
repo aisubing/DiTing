@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { ipc } from '../../api/ipc';
-import type { BlockedService, BlockedServiceGroup } from '../../api/types';
+import type { BlockedService, BlockedServiceGroup, BlockingSchedule, ServiceScheduleState } from '../../api/types';
 import M3Icon from '../M3Icon.vue';
 import AppCard from '../ui/AppCard.vue';
 import ToastBanner from '../ToastBanner.vue';
+import ServiceScheduleModal from './ServiceScheduleModal.vue';
 import { useToast } from '../../composables/useToast';
 
 const services = ref<BlockedService[]>([]);
@@ -12,12 +13,18 @@ const groups = ref<BlockedServiceGroup[]>([]);
 const blockedIds = ref<Set<string>>(new Set());
 const blockedGroups = ref<Set<string>>(new Set());
 const activeRules = ref(0);
+const schedules = ref<Record<string, BlockingSchedule[]>>({});
+const scheduleStates = ref<Record<string, ServiceScheduleState>>({});
 
 const loading = ref(false);
 const saving = ref(false);
 const searchFilter = ref('');
 const activeGroup = ref('');
 const expandedId = ref('');
+
+// 计划编辑弹窗
+const scheduleModalOpen = ref(false);
+const scheduleTarget = ref<BlockedService | null>(null);
 
 const { toast, show: showToast, dismiss } = useToast();
 
@@ -49,15 +56,35 @@ function isBlocked(svc: BlockedService): boolean {
 
 const blockedCount = computed(() => services.value.filter(isBlocked).length);
 
+/** 该服务是否配置了启用中的计划 */
+function hasSchedule(id: string): boolean {
+  return !!scheduleStates.value[id]?.hasSchedule;
+}
+
+/** 配置了计划但当前不在生效窗口内 */
+function schedulePaused(id: string): boolean {
+  const state = scheduleStates.value[id];
+  return !!state && state.hasSchedule && !state.active;
+}
+
+/** 应用服务端返回的完整状态，避免各处遗漏字段 */
+function applyState(res: { blockedIds?: string[]; blockedGroups?: string[]; activeRules?: number; schedules?: Record<string, BlockingSchedule[]>; scheduleStates?: ServiceScheduleState[] }) {
+  if (res.blockedIds) blockedIds.value = new Set(res.blockedIds);
+  if (res.blockedGroups) blockedGroups.value = new Set(res.blockedGroups);
+  if (res.activeRules !== undefined) activeRules.value = res.activeRules;
+  if (res.schedules) schedules.value = res.schedules;
+  const map: Record<string, ServiceScheduleState> = {};
+  for (const s of res.scheduleStates || []) map[s.serviceId] = s;
+  scheduleStates.value = map;
+}
+
 async function loadData() {
   loading.value = true;
   try {
     const res = await ipc.getBlockedServices();
     services.value = res.services || [];
     groups.value = res.groups || [];
-    blockedIds.value = new Set(res.blockedIds || []);
-    blockedGroups.value = new Set(res.blockedGroups || []);
-    activeRules.value = res.activeRules || 0;
+    applyState(res);
   } catch (err: any) {
     showToast(err.message || '加载内置服务目录失败', true);
   } finally {
@@ -75,13 +102,46 @@ async function persist(prevIds: Set<string>, prevGroups: Set<string>) {
     });
     services.value = res.services || services.value;
     groups.value = res.groups || groups.value;
-    blockedIds.value = new Set(res.blockedIds || []);
-    blockedGroups.value = new Set(res.blockedGroups || []);
-    activeRules.value = res.activeRules || 0;
+    applyState(res);
   } catch (err: any) {
     blockedIds.value = prevIds;
     blockedGroups.value = prevGroups;
     showToast(err.message || '保存应用拦截配置失败', true);
+  } finally {
+    saving.value = false;
+  }
+}
+
+function openScheduleModal(svc: BlockedService) {
+  scheduleTarget.value = svc;
+  scheduleModalOpen.value = true;
+}
+
+/** 保存某服务的周计划；空计划列表表示删除该服务的计划（回到恒拦截） */
+async function handleSaveSchedule(list: BlockingSchedule[]) {
+  const svc = scheduleTarget.value;
+  if (!svc) return;
+
+  const prev = { ...schedules.value };
+  const next = { ...schedules.value };
+  if (list.length > 0) {
+    next[svc.id] = list;
+  } else {
+    delete next[svc.id];
+  }
+  schedules.value = next;
+  scheduleModalOpen.value = false;
+
+  saving.value = true;
+  try {
+    const res = await ipc.configureBlockedServices({ schedules: next });
+    applyState(res);
+    showToast(
+      list.length > 0 ? `「${svc.name}」的每周生效计划已保存` : `「${svc.name}」已恢复为始终拦截`
+    );
+  } catch (err: any) {
+    schedules.value = prev;
+    showToast(err.message || '保存服务计划失败', true);
   } finally {
     saving.value = false;
   }
@@ -235,10 +295,30 @@ onMounted(loadData);
                   >
                     随分组
                   </span>
+                  <span
+                    v-if="hasSchedule(svc.id)"
+                    class="px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0"
+                    :class="schedulePaused(svc.id)
+                      ? 'bg-surface-card-sub text-text-muted'
+                      : 'bg-brand-container text-brand-primary'"
+                    :title="schedulePaused(svc.id) ? '计划的生效窗口之外，当前放行' : '当前处于计划生效窗口内'"
+                  >
+                    {{ schedulePaused(svc.id) ? '计划外' : '计划内' }}
+                  </span>
                 </div>
                 <span class="text-[10px] text-text-muted font-mono truncate block">
                   {{ groupNames[svc.group] || svc.group }} · {{ svc.ruleCount }} 条规则
                 </span>
+              </button>
+
+              <button
+                type="button"
+                class="app-btn-secondary app-btn-compact !px-1.5"
+                :disabled="saving"
+                :title="hasSchedule(svc.id) ? '编辑每周生效计划' : '为该应用设置每周生效计划'"
+                @click="openScheduleModal(svc)"
+              >
+                <M3Icon name="alarm" :size="13" />
               </button>
 
               <!-- 随分组拦截的服务禁用开关：此时点开关不会有任何持久化效果，
@@ -279,5 +359,13 @@ onMounted(loadData);
         </div>
       </div>
     </AppCard>
+
+    <ServiceScheduleModal
+      :open="scheduleModalOpen"
+      :service="scheduleTarget"
+      :schedules="scheduleTarget ? schedules[scheduleTarget.id] || [] : []"
+      @close="scheduleModalOpen = false"
+      @save="handleSaveSchedule"
+    />
   </div>
 </template>

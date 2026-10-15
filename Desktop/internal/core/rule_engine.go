@@ -375,6 +375,14 @@ func (e *RuleEngine) MatchForGroup(domain string, qtype uint16, groupID string) 
 		return res
 	}
 
+	// 服务级周计划：命中内置服务规则但该服务当前不在生效窗口内时整体放行。
+	// 放在统计之前，使窗口外的查询不计入拦截数——它并未真正被拦下。
+	if res.Blocked {
+		if !e.serviceScheduleBlocks(res.ListName) {
+			return CheckHostResult{Action: "pass", Reason: ReasonServiceScheduleInactive}
+		}
+	}
+
 	if res.Blocked {
 		e.blockedQueries.Add(1)
 	} else if res.Action == "allow" {

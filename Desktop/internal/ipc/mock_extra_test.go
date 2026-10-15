@@ -65,9 +65,10 @@ func (m *mockExtra) GetBlockedServices(ctx context.Context) (*BlockedServicesRes
 			{ID: "bilibili", Name: "Bilibili", Group: "streaming", RuleN: 2,
 				Source: "service:bilibili"},
 		},
-		Groups:      []core.BlockedServiceGroup{{ID: "streaming", Name: "流媒体", Count: 1}},
-		BlockedIDs:  []string{},
-		ActiveRules: 0,
+		Groups:         []core.BlockedServiceGroup{{ID: "streaming", Name: "流媒体", Count: 1}},
+		BlockedIDs:     []string{},
+		Schedules:      map[string][]core.BlockingSchedule{},
+		ScheduleStates: []core.ServiceScheduleState{},
 	}, nil
 }
 

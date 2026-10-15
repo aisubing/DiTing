@@ -94,6 +94,12 @@ type FilterConfig struct {
 	// BlockedServiceGroups 被整组拦截的服务分组 ID（如 social_network）。
 	// 与 BlockedServices 取并集，便于「一键拦掉全部短视频」这类用法。
 	BlockedServiceGroups []string `json:"blockedServiceGroups,omitempty"`
+
+	// ServiceSchedules 单个内置服务的每周生效计划（服务 ID → 计划列表）。
+	//
+	// 与全局 ScheduleEnabled 相互独立：全局计划管的是「什么时候整体拦截」，
+	// 这里管的是「某个应用什么时候可以被访问」。未出现在本表中的服务恒为生效。
+	ServiceSchedules map[string][]BlockingSchedule `json:"serviceSchedules,omitempty"`
 }
 
 // DefaultFilterConfig 生成默认过滤配置
@@ -195,6 +201,7 @@ func NormalizeFilterConfig(cfg *FilterConfig) {
 	// 此时保留其余勾选、丢弃失效项，比拒绝加载整份配置更符合用户预期。
 	cfg.BlockedServices = filterKnownIDs(cfg.BlockedServices, ServiceExists, "服务")
 	cfg.BlockedServiceGroups = filterKnownIDs(cfg.BlockedServiceGroups, ServiceGroupExists, "服务分组")
+	cfg.ServiceSchedules = NormalizeServiceSchedules(cfg.ServiceSchedules)
 }
 
 // equalStrings 判断两个字符串切片是否逐项相等（长度与顺序都要一致）。

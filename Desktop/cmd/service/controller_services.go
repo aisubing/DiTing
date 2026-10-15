@@ -16,15 +16,38 @@ func (p *program) GetBlockedServices(ctx context.Context) (*ipc.BlockedServicesR
 	p.mu.Lock()
 	selectedIDs := append([]string(nil), p.cfg.Filter.BlockedServices...)
 	selectedGroups := append([]string(nil), p.cfg.Filter.BlockedServiceGroups...)
+	schedules := copyServiceSchedules(p.cfg.Filter.ServiceSchedules)
+	var states []core.ServiceScheduleState
+	if p.filterEngine != nil {
+		states = p.filterEngine.ServiceScheduleStates()
+	}
 	p.mu.Unlock()
 
+	if states == nil {
+		states = []core.ServiceScheduleState{}
+	}
+
 	return &ipc.BlockedServicesResponse{
-		Services:      services,
-		Groups:        groups,
-		BlockedIDs:    selectedIDs,
-		BlockedGroups: selectedGroups,
-		ActiveRules:   core.CountBlockedServiceRules(selectedIDs, selectedGroups),
+		Services:       services,
+		Groups:         groups,
+		BlockedIDs:     selectedIDs,
+		BlockedGroups:  selectedGroups,
+		ActiveRules:    core.CountBlockedServiceRules(selectedIDs, selectedGroups),
+		Schedules:      schedules,
+		ScheduleStates: states,
 	}, nil
+}
+
+// copyServiceSchedules 深拷贝计划表，避免把引擎内部切片交给调用方改动
+func copyServiceSchedules(src map[string][]core.BlockingSchedule) map[string][]core.BlockingSchedule {
+	if len(src) == 0 {
+		return map[string][]core.BlockingSchedule{}
+	}
+	out := make(map[string][]core.BlockingSchedule, len(src))
+	for id, schedules := range src {
+		out[id] = append([]core.BlockingSchedule(nil), schedules...)
+	}
+	return out
 }
 
 // ConfigureBlockedServices 更新内置服务拦截选择并热重载规则索引
@@ -38,6 +61,9 @@ func (p *program) ConfigureBlockedServices(ctx context.Context, req ipc.Configur
 	}
 	if req.Groups != nil {
 		cfg.BlockedServiceGroups = *req.Groups
+	}
+	if req.Schedules != nil {
+		cfg.ServiceSchedules = *req.Schedules
 	}
 	// 归一化会剔除目录中不存在的 ID，因此未启用规则引擎时也要走一遍，
 	// 免得把非法勾选原样写进配置文件

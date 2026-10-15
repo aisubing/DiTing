@@ -45,6 +45,16 @@ func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver *core.
 			return next()
 		}
 
+		// 服务级周计划窗口外：仅放行这一个服务，其余规则照常生效
+		if res.Action == "pass" && res.Reason == core.ReasonServiceScheduleInactive {
+			ctx.Set("filter_action", "pass")
+			ctx.Set("filter_blocked", false)
+			ctx.Set("filter_reason", res.Reason)
+			ctx.Set("filter_service_schedule_inactive", true)
+			ctx.Set(attrClientGroup, groupID)
+			return next()
+		}
+
 		// 重写必须早于拦截判定：两者互斥，重写命中时不应再生成阻断应答
 		if res.IsRewrite() {
 			ctx.Resp = buildRewriteResponse(ctx.Req, *res.Rewritten)

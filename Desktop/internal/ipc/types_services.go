@@ -14,13 +14,19 @@ type BlockedServicesResponse struct {
 	BlockedGroups []string `json:"blockedGroups"`
 	// ActiveRules 当前选择展开后实际生效的规则条数
 	ActiveRules int `json:"activeRules"`
+	// Schedules 各服务的每周生效计划（仅包含已配置计划的服务）
+	Schedules map[string][]core.BlockingSchedule `json:"schedules"`
+	// ScheduleStates 上述计划在当前时刻的生效状态，供界面标注
+	ScheduleStates []core.ServiceScheduleState `json:"scheduleStates"`
 }
 
-// ConfigureBlockedServicesRequest 更新内置服务拦截选择。
+// ConfigureBlockedServicesRequest 更新内置服务拦截选择与周计划。
 //
-// 两个字段均为可选：省略表示沿用当前值，传空数组表示清空该维度。
+// 三个字段均为可选：省略表示沿用当前值，传空数组/空表表示清空该维度。
 // 用指针而非切片本身来区分这两种意图。
 type ConfigureBlockedServicesRequest struct {
 	IDs    *[]string `json:"ids,omitempty"`
 	Groups *[]string `json:"groups,omitempty"`
+	// Schedules 传 nil 保持当前值；传 {} 清空全部服务计划
+	Schedules *map[string][]core.BlockingSchedule `json:"schedules,omitempty"`
 }
