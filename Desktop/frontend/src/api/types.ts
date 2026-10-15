@@ -13,6 +13,7 @@ import type {
 import type { SafeSearchConfig } from './types.dns';
 import type { RewriteConfig } from './types.rewrite';
 import type { SafeBrowsingConfig } from './types.safebrowsing';
+import type { EncryptedDNSConfig } from './types.encrypted';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -159,6 +160,7 @@ export interface StatusResponse {
   rewrite?: RewriteConfig;
   ecs?: ECSConfig;
   safeBrowsing?: SafeBrowsingConfig;
+  encrypted?: EncryptedDNSConfig;
   clients?: ClientInfo[];
 }
 
@@ -249,6 +251,8 @@ export * from './types.rewrite';
 export * from './types.zone';
 /** 恶意网址库与家长控制类型（定义见 ./types.safebrowsing） */
 export * from './types.safebrowsing';
+/** 服务端加密 DNS 类型（定义见 ./types.encrypted） */
+export * from './types.encrypted';
 export interface AdapterInfo {
   id: string;
   name: string;

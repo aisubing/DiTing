@@ -56,6 +56,7 @@ export const SUB_TABS: Record<NavTab, readonly SubTabDef[]> = {
     { id: 'adapters', label: '网卡接管' },
     { id: 'lan', label: '局域网 DNS' },
     { id: 'clients', label: '设备管理' },
+    { id: 'encrypted', label: '加密 DNS 服务' },
     { id: 'privacy', label: '安全隐私' },
   ],
   system: [

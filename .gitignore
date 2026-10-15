@@ -34,6 +34,9 @@ local.properties
 *.keystore
 *.jks
 *.p12
+# 唯一例外：证书导入单测的 PKCS#12 素材（口令公开，非真实凭据）。
+# 它需保持由真实 OpenSSL 3.x 默认参数导出，才能持续覆盖解析兼容性。
+!Desktop/internal/core/testdata/dns-lan.p12
 keystore/
 DITING-keystore/
 secrets/

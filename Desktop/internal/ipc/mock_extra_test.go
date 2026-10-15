@@ -36,6 +36,16 @@ type mockExtra struct {
 	safeBrowsingErr     bool
 	safeBrowsingUpdated bool
 	lastSafeBrowsingReq ConfigureSafeBrowsingRequest
+
+	// C1 加密 DNS 服务：由各测试按需注入
+	encrypted         *EncryptedDNSStatusResponse
+	encryptedErr      bool
+	encryptedUpdated  bool
+	lastEncryptedReq  ConfigureEncryptedDNSRequest
+	certGenerated     bool
+	lastCertGenReq    GenerateCertRequest
+	certImported      bool
+	lastCertImportReq ImportCertRequest
 }
 
 // CachePersistStatus 实现 ServiceController 接口（A6）
@@ -154,3 +164,54 @@ func (m *mockExtra) ConfigureSafeBrowsing(ctx context.Context, req ConfigureSafe
 
 // errSafeBrowsingUnavailable 供需要错误路径的用例注入
 var errSafeBrowsingUnavailable = fmt.Errorf("safe browsing unavailable")
+
+// GetEncryptedDNS 实现 ServiceController 接口（C1）
+func (m *mockExtra) GetEncryptedDNS(ctx context.Context) (*EncryptedDNSStatusResponse, error) {
+	if m.encryptedErr {
+		return nil, errEncryptedUnavailable
+	}
+	if m.encrypted != nil {
+		return m.encrypted, nil
+	}
+	return &EncryptedDNSStatusResponse{
+		Config:         core.DefaultEncryptedDNSConfig(),
+		Cert:           core.CertInfo{Source: core.CertSourceSelfSigned},
+		DefaultDoTPort: core.DefaultDoTPort,
+		DefaultDoHPort: core.DefaultDoHPort,
+		DefaultDoQPort: core.DefaultDoQPort,
+		DefaultDoHPath: core.DefaultDoHPath,
+	}, nil
+}
+
+// ConfigureEncryptedDNS 实现 ServiceController 接口（C1）
+func (m *mockExtra) ConfigureEncryptedDNS(ctx context.Context, req ConfigureEncryptedDNSRequest) error {
+	if m.encryptedErr {
+		return errEncryptedUnavailable
+	}
+	m.encryptedUpdated = true
+	m.lastEncryptedReq = req
+	return nil
+}
+
+// GenerateEncryptedCert 实现 ServiceController 接口（C1）
+func (m *mockExtra) GenerateEncryptedCert(ctx context.Context, req GenerateCertRequest) error {
+	if m.encryptedErr {
+		return errEncryptedUnavailable
+	}
+	m.certGenerated = true
+	m.lastCertGenReq = req
+	return nil
+}
+
+// ImportEncryptedCert 实现 ServiceController 接口（C1）
+func (m *mockExtra) ImportEncryptedCert(ctx context.Context, req ImportCertRequest) error {
+	if m.encryptedErr {
+		return errEncryptedUnavailable
+	}
+	m.certImported = true
+	m.lastCertImportReq = req
+	return nil
+}
+
+// errEncryptedUnavailable 供需要错误路径的用例注入
+var errEncryptedUnavailable = fmt.Errorf("encrypted dns unavailable")

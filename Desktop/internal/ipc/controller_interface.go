@@ -96,6 +96,14 @@ type ServiceController interface {
 	GetSafeBrowsing(ctx context.Context) (*SafeBrowsingResponse, error)
 	// ConfigureSafeBrowsing 更新声誉查询配置
 	ConfigureSafeBrowsing(ctx context.Context, req ConfigureSafeBrowsingRequest) error
+	// GetEncryptedDNS 返回加密 DNS 服务的配置、证书摘要与目录
+	GetEncryptedDNS(ctx context.Context) (*EncryptedDNSStatusResponse, error)
+	// ConfigureEncryptedDNS 更新加密 DNS 配置与证书配置
+	ConfigureEncryptedDNS(ctx context.Context, req ConfigureEncryptedDNSRequest) error
+	// GenerateEncryptedCert 生成或重新签发自签证书
+	GenerateEncryptedCert(ctx context.Context, req GenerateCertRequest) error
+	// ImportEncryptedCert 导入一对 PEM 或一个 PKCS#12 容器作为服务端证书
+	ImportEncryptedCert(ctx context.Context, req ImportCertRequest) error
 	GetSafeSearch(ctx context.Context) (*SafeSearchConfigResponse, error)
 	ConfigureSafeSearch(ctx context.Context, req ConfigureSafeSearchRequest) error
 	GetClients(ctx context.Context) ([]core.ClientInfo, error)

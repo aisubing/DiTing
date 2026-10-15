@@ -10,6 +10,7 @@ require (
 	github.com/wailsapp/wails/v2 v2.14.0
 	golang.org/x/net v0.57.0
 	golang.org/x/sys v0.47.0
+	software.sslmate.com/src/go-pkcs12 v0.7.4
 )
 
 require (

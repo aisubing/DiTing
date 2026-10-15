@@ -15,6 +15,8 @@ const (
 	DefaultFilterDirName = "filters"
 	// DefaultQueryLogDirName 默认查询日志落盘目录名。
 	DefaultQueryLogDirName = "querylog"
+	// DefaultCertDirName 默认加密 DNS 服务证书目录名。
+	DefaultCertDirName = "certs"
 )
 
 // EnvDataDir 覆盖数据目录的环境变量名。
@@ -66,4 +68,12 @@ func DefaultFilterDir() string {
 // 目录不可写时由调用方降级为纯内存模式，不影响服务启动。
 func DefaultQueryLogDir() string {
 	return filepath.Join(DefaultDataDir(), DefaultQueryLogDirName)
+}
+
+// DefaultCertDir 返回默认证书目录绝对路径。
+//
+// 与配置目录分开而落在数据目录下：私钥是数据而非配置，它不该随
+// 配置文件一起被复制、备份或提交到版本库。
+func DefaultCertDir() string {
+	return filepath.Join(DefaultDataDir(), DefaultCertDirName)
 }

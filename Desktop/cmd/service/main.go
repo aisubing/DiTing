@@ -49,6 +49,7 @@ type program struct {
 	zoneEngine     *core.ZoneEngine
 	safeSearchEng  *core.SafeSearchEngine
 	safeBrowsing   *core.SafeBrowsingEngine
+	certManager    *core.CertManager
 	clientResolver *core.ClientResolver
 	ecsMgr         *ditingdns.ECSManager
 	takeoverMgr    platform.DNSManager
@@ -176,6 +177,18 @@ func (p *program) run() error {
 	p.safeSearchEng = core.NewSafeSearchEngine(cfg.SafeSearch)
 	// 声誉查询要向上游发 TXT 问询，解析器此时已就绪
 	p.safeBrowsing = core.NewSafeBrowsingEngine(cfg.SafeBrowsing, res)
+
+	// 加密 DNS 服务端证书：自签来源在首次启动时补齐一张，
+	// 其余来源直接按配置路径载入。载入失败不阻断启动——
+	// 证书问题只影响加密监听器，主解析链路与它无关。
+	p.certManager = core.NewCertManager(platform.DefaultCertDir(), cfg.Encrypted.Cert)
+	if cfg.Encrypted.Enabled && cfg.Encrypted.Cert.Source == core.CertSourceSelfSigned {
+		if created, err := p.certManager.EnsureSelfSigned(cfg.Encrypted.Cert); err != nil {
+			log.Printf("[加密DNS] 自签证书生成失败: %v\n", err)
+		} else if created {
+			log.Printf("[加密DNS] 已生成自签证书至 %s\n", platform.DefaultCertDir())
+		}
+	}
 	p.clientResolver = core.NewClientResolver(cfg.Client, p.hostsResolver, p.rewriteEngine)
 	p.ecsMgr = ditingdns.NewECSManager(cfg.ECS)
 

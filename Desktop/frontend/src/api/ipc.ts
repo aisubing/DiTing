@@ -10,6 +10,7 @@ import { WebAuthApi } from './web';
 import { SecurityApi } from './security';
 import { RewriteApi } from './rewrite';
 import { ZoneApi } from './zone';
+import { EncryptedDNSApi } from './encrypted';
 import { nativeBridge, setCoreServiceStatusProvider } from './native';
 import { isWebMode } from '../utils/env';
 
@@ -30,6 +31,7 @@ class IPCService {
   private security = new SecurityApi(this.http);
   private rewrite = new RewriteApi(this.http);
   private zone = new ZoneApi(this.http);
+  private encrypted = new EncryptedDNSApi(this.http);
 
   constructor() {
     // Web 模式下原生桥接无 Wails 绑定，改由宿主机服务接口提供权威状态。
@@ -116,6 +118,12 @@ class IPCService {
   public configureBlockedServices = (req: Parameters<FilterApi['configureBlockedServices']>[0]) => this.filter.configureBlockedServices(req);
   public getSafeBrowsing = () => this.filter.getSafeBrowsing();
   public configureSafeBrowsing = (req: Parameters<FilterApi['configureSafeBrowsing']>[0]) => this.filter.configureSafeBrowsing(req);
+
+  // --- 服务端加密 DNS（DoT / DoH / DoQ）---
+  public getEncryptedDNSStatus = () => this.encrypted.getStatus();
+  public configureEncryptedDNS = (req: Parameters<EncryptedDNSApi['configure']>[0]) => this.encrypted.configure(req);
+  public generateEncryptedCert = (req: Parameters<EncryptedDNSApi['generateCert']>[0]) => this.encrypted.generateCert(req);
+  public importEncryptedCert = (req: Parameters<EncryptedDNSApi['importCert']>[0]) => this.encrypted.importCert(req);
 
   // --- 自定义重写与客户端管理 ---
   public getRewriteRules = () => this.rewrite.getRewriteRules();

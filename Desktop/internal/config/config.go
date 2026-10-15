@@ -208,10 +208,12 @@ type Config struct {
 	SafeSearch core.SafeSearchConfig    `json:"safeSearch"`
 	// SafeBrowsing 恶意网址库与家长控制（依赖第三方哈希前缀查询，默认关闭）
 	SafeBrowsing core.SafeBrowsingConfig `json:"safeBrowsing"`
-	Client       core.ClientConfig       `json:"client"`
-	ECS          core.ECSConfig          `json:"ecs"`
-	QueryLog     querylog.QueryLogConfig `json:"querylog"`
-	Web          WebConfig               `json:"web"`
+	// Encrypted 服务端加密 DNS（DoT/DoH/DoQ 监听器与证书，默认关闭）
+	Encrypted core.EncryptedDNSConfig `json:"encrypted"`
+	Client    core.ClientConfig       `json:"client"`
+	ECS       core.ECSConfig          `json:"ecs"`
+	QueryLog  querylog.QueryLogConfig `json:"querylog"`
+	Web       WebConfig               `json:"web"`
 }
 
 // DefaultConfig 生成默认系统配置
@@ -267,6 +269,7 @@ func DefaultConfig() *Config {
 		SafeSearch: core.DefaultSafeSearchConfig(),
 
 		SafeBrowsing: core.DefaultSafeBrowsingConfig(),
+		Encrypted:    core.DefaultEncryptedDNSConfig(),
 		Client:       core.DefaultClientConfig(),
 		ECS:          core.DefaultECSConfig(),
 		QueryLog:     querylog.DefaultQueryLogConfig(),

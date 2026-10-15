@@ -74,6 +74,12 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/safesearch/config", s.withAuth(s.handleSafeSearch))
 	mux.HandleFunc("/api/v1/filter/safebrowsing", s.withAuth(s.handleSafeBrowsing))
 
+	// 加密 DNS 服务（证书与监听器配置）
+	mux.HandleFunc("/api/v1/encrypted/dns/status", s.withAuth(s.handleEncryptedDNSStatus))
+	mux.HandleFunc("/api/v1/encrypted/dns/configure", s.withAuth(s.handleEncryptedDNSConfigure))
+	mux.HandleFunc("/api/v1/encrypted/dns/cert/generate", s.withAuth(s.handleEncryptedCertGenerate))
+	mux.HandleFunc("/api/v1/encrypted/dns/cert/import", s.withAuth(s.handleEncryptedCertImport))
+
 	// 客户端与分组
 	mux.HandleFunc("/api/v1/clients", s.withAuth(s.handleClients))
 	mux.HandleFunc("/api/v1/clients/alias", s.withAuth(s.handleClientAlias))
