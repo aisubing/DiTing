@@ -46,32 +46,36 @@ class CrashHandler private constructor(
             val file = CrashLogManager.saveCrashReport(appContext, minimal)
             Log.e(TAG, "DITING Crash detected! Minimal report saved to: ${file?.absolutePath}")
 
-            // Slow path: the expensive diagnostics (logcat fork, all-live-thread
-            // dump, binder-backed device/network queries) and the crash bookkeeping
-            // (sync prefs commit + possible Downloads export) run on a detached
-            // thread so they never block the crashing thread.
-            val saved = file
-            Thread({
-                runCatching {
-                    val full = CrashCollector.collectReport(
-                        context = appContext,
-                        thread = thread,
-                        throwable = throwable,
-                        topActivityName = currentActivityName,
-                        isForeground = isAppForeground
-                    )
-                    if (saved != null) {
-                        CrashLogManager.replaceCrashReport(appContext, saved, full)
-                        Log.i(TAG, "Enriched crash report at ${saved.absolutePath}")
-                    } else {
-                        CrashLogManager.saveCrashReport(appContext, full)
-                    }
-                    CrashLogManager.onCrashOccurred(appContext)
-                }.onFailure { e ->
-                    Log.e(TAG, "Fatal error while enriching crash report", e)
-                    runCatching { CrashLogManager.onCrashOccurred(appContext) }
+            // Best-effort enrichment, run inline. It cannot be deferred to
+            // another thread: the default handler tears the process down as soon
+            // as this method returns, so a detached thread would be killed before
+            // finishing. The minimal report written above stays in place if this
+            // step fails, which keeps the "a report always lands" guarantee while
+            // restoring the full diagnostics.
+            val full = runCatching {
+                CrashCollector.collectReport(
+                    context = appContext,
+                    thread = thread,
+                    throwable = throwable,
+                    topActivityName = currentActivityName,
+                    isForeground = isAppForeground
+                )
+            }.getOrNull()
+            if (full != null) {
+                if (file != null) {
+                    CrashLogManager.replaceCrashReport(appContext, file, full)
+                    Log.i(TAG, "Enriched crash report at ${file.absolutePath}")
+                } else {
+                    CrashLogManager.saveCrashReport(appContext, full)
                 }
-            }, "CrashEnricher").start()
+            } else {
+                Log.w(TAG, "Failed to collect the full crash report; keeping the minimal one")
+            }
+
+            // Crash bookkeeping (consecutive-crash count + threshold export) must
+            // also run inline, for the same reason. It runs after the enrichment
+            // so the auto-exported bundle carries the full report.
+            CrashLogManager.onCrashOccurred(appContext)
         } catch (e: Throwable) {
             Log.e(TAG, "Fatal error while capturing crash report", e)
         } finally {

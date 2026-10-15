@@ -69,10 +69,10 @@ object CrashLogManager {
     }
 
     /**
-     * Overwrites an already-saved crash report with the richer, deferred version
-     * collected off the crashing thread. Same atomic write + fsync as
-     * [saveCrashReport], but it never prunes, so the original file is kept in
-     * place even if the enrichment step races log rotation.
+     * Overwrites an already-saved crash report with the richer version collected
+     * by the same crash pass. Same atomic write + fsync as [saveCrashReport], but
+     * it never prunes, so the original file is kept in place even if the
+     * enrichment step races log rotation.
      */
     fun replaceCrashReport(context: Context, file: File, reportContent: String) {
         runCatching {
