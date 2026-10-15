@@ -45,10 +45,12 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 		DoHListen:      dohListen,
 		DoQListen:      doqListen,
 		DoHURLs:        p.dohURLs(cfg),
-		DefaultDoTPort: core.DefaultDoTPort,
-		DefaultDoHPort: core.DefaultDoHPort,
-		DefaultDoQPort: core.DefaultDoQPort,
-		DefaultDoHPath: core.DefaultDoHPath,
+		// 全放行条目即便已确认也要一直提醒：它让访问控制与限速同时失去意义
+		UnrestrictedTrust: core.HasUnrestrictedTrust(cfg.ReverseProxy.TrustedSources),
+		DefaultDoTPort:    core.DefaultDoTPort,
+		DefaultDoHPort:    core.DefaultDoHPort,
+		DefaultDoQPort:    core.DefaultDoQPort,
+		DefaultDoHPath:    core.DefaultDoHPath,
 	}, nil
 }
 

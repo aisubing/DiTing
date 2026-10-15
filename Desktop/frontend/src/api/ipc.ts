@@ -125,6 +125,7 @@ class IPCService {
   public generateEncryptedCert = (req: Parameters<EncryptedDNSApi['generateCert']>[0]) => this.encrypted.generateCert(req);
   public importEncryptedCert = (req: Parameters<EncryptedDNSApi['importCert']>[0]) => this.encrypted.importCert(req);
   public encryptedMobileConfigURL = (protocol?: 'HTTPS' | 'TLS') => this.encrypted.mobileConfigURL(protocol);
+  public configureEncryptedACL = (req: Parameters<EncryptedDNSApi['configureACL']>[0]) => this.encrypted.configureACL(req);
 
   // --- 自定义重写与客户端管理 ---
   public getRewriteRules = () => this.rewrite.getRewriteRules();

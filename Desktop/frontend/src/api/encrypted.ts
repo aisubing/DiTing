@@ -1,6 +1,7 @@
 import type {
   EncryptedDNSStatusResponse,
   ConfigureEncryptedDNSRequest,
+  ConfigureACLRequest,
   GenerateCertRequest,
   ImportCertRequest,
 } from './types';
@@ -34,6 +35,14 @@ export class EncryptedDNSApi {
   /** 导入一对 PEM 或一个 PKCS#12 容器作为服务端证书 */
   public importCert(req: ImportCertRequest): Promise<EncryptedDNSStatusResponse> {
     return this.http.request<EncryptedDNSStatusResponse>('/api/v1/encrypted/dns/cert/import', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
+  }
+
+  /** 更新反向代理可信来源；返回归一化后的完整状态 */
+  public configureACL(req: ConfigureACLRequest): Promise<EncryptedDNSStatusResponse> {
+    return this.http.request<EncryptedDNSStatusResponse>('/api/v1/encrypted/dns/acl', {
       method: 'POST',
       body: JSON.stringify(req),
     });

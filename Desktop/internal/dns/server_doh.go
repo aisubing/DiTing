@@ -198,7 +198,7 @@ func (s *Server) serveDoH(clientIDFromPath string) http.HandlerFunc {
 			clientID = strings.ToLower(clientID)
 		}
 
-		rw := newDoHResponseWriter(w, remoteAddrFromRequest(r))
+		rw := newDoHResponseWriter(w, s.doHClientAddr(r))
 		s.handleEncryptedQuery(rw, req, queryOrigin{
 			Protocol:     "doh",
 			ServerName:   clientServerName(r),

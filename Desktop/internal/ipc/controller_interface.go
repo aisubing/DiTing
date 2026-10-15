@@ -107,6 +107,8 @@ type ServiceController interface {
 	// BuildEncryptedMobileConfig 生成 Apple 配置描述文件；
 	// protocol 为空时按当前启用的监听器挑选
 	BuildEncryptedMobileConfig(ctx context.Context, protocol string) ([]byte, error)
+	// ConfigureEncryptedACL 更新反向代理可信来源；全放行需已确认
+	ConfigureEncryptedACL(ctx context.Context, req ConfigureACLRequest) error
 	GetSafeSearch(ctx context.Context) (*SafeSearchConfigResponse, error)
 	ConfigureSafeSearch(ctx context.Context, req ConfigureSafeSearchRequest) error
 	GetClients(ctx context.Context) ([]core.ClientInfo, error)

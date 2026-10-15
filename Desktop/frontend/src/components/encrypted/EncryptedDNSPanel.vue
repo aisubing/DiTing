@@ -10,6 +10,7 @@ import EncryptedListenersCard from './EncryptedListenersCard.vue';
 import ClientIDCard from './ClientIDCard.vue';
 import DDRCard from './DDRCard.vue';
 import MobileConfigCard from './MobileConfigCard.vue';
+import ReverseProxyCard from './ReverseProxyCard.vue';
 import { useToast } from '../../composables/useToast';
 
 const { toast, show: showToast, dismiss } = useToast();
@@ -94,6 +95,13 @@ onMounted(() => {
         @error="(m: string) => showToast(m, true)"
       />
       <MobileConfigCard :status="status" />
+      <ReverseProxyCard
+        :status="status"
+        @changed="onChanged"
+        @saving="(v: boolean) => (saving = v)"
+        @success="(m: string) => showToast(m)"
+        @error="(m: string) => showToast(m, true)"
+      />
     </template>
 
     <div v-else-if="loading" class="app-card p-8 text-center text-xs text-text-muted">正在读取加密 DNS 服务配置…</div>

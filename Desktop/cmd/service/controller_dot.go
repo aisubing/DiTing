@@ -52,6 +52,21 @@ func (p *program) buildEncryptedServerConfig() *ditingdns.EncryptedServerConfig 
 		ReadTimeout:   ditingdns.DefaultDoTReadTimeout,
 		IdleTimeout:   ditingdns.DefaultDoTIdleTimeout,
 	}
+
+	// 可信代理解析失败时退回「不信任任何转发头」而不是拒绝监听：
+	// 两种做法都杜绝了来源伪造，但后者会连带把整个加密入口拖下水。
+	// 列表在保存时已校验过，走到这里通常意味着配置文件被手工改坏了，
+	// 故用 Warn 级别的日志明确点出真实后果。
+	if enc.ReverseProxy.Enabled {
+		tp, err := ditingdns.NewTrustedProxy(true, enc.ReverseProxy.TrustedSources,
+			enc.ReverseProxy.ClientIPHeader)
+		if err != nil {
+			log.Printf("[加密DNS] 反向代理可信来源无效，本次将忽略全部转发头，"+
+				"代理后的真实客户端 IP 无法还原: %v\n", err)
+		} else {
+			cfg.TrustedProxy = tp
+		}
+	}
 	// 只开一项时其余项的端口可能还是零值（旧配置文件缺字段），补齐默认值：
 	// 运行期配置的校验只看已启用那几项，但日志与界面都会读这些值
 	if !isValidEncPort(cfg.DoTPort) {

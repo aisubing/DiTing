@@ -32,6 +32,9 @@ type EncryptedDNSStatusResponse struct {
 	DoQListen string `json:"doqListen"`
 	// DoHURLs 可直接交给终端使用的 DoH 地址，含服务器名与各网卡地址
 	DoHURLs []string `json:"dohUrls"`
+	// UnrestrictedTrust 可信代理列表里存在 0.0.0.0/0 或 ::/0；
+	// 界面需据此给出「任何人都能伪造来源」的显著警告
+	UnrestrictedTrust bool `json:"unrestrictedTrust"`
 }
 
 // ConfigureEncryptedDNSRequest 更新加密 DNS 配置。

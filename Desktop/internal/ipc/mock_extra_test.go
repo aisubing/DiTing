@@ -51,6 +51,11 @@ type mockExtra struct {
 	mobileConfigProtocol string
 	mobileConfigData     []byte
 	mobileConfigErr      bool
+
+	// C7 反向代理可信来源
+	aclUpdated  bool
+	lastACLReq  ConfigureACLRequest
+	aclWriteErr bool
 }
 
 // CachePersistStatus 实现 ServiceController 接口（A6）
@@ -231,4 +236,14 @@ func (m *mockExtra) BuildEncryptedMobileConfig(ctx context.Context, protocol str
 		return m.mobileConfigData, nil
 	}
 	return []byte(`<plist version="1.0"></plist>`), nil
+}
+
+// ConfigureEncryptedACL 实现 ServiceController 接口（C7）
+func (m *mockExtra) ConfigureEncryptedACL(ctx context.Context, req ConfigureACLRequest) error {
+	if m.aclWriteErr {
+		return errEncryptedUnavailable
+	}
+	m.aclUpdated = true
+	m.lastACLReq = req
+	return nil
 }

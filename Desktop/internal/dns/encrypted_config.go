@@ -52,6 +52,9 @@ type EncryptedServerConfig struct {
 	ServerName string
 	// TLSConfig 已载入服务端证书；为 nil 时不监听任何加密端口
 	TLSConfig *tls.Config
+	// TrustedProxy 在 DoH 位于反向代理之后时还原真实客户端 IP；
+	// nil 表示不信任任何转发头（默认）
+	TrustedProxy *TrustedProxy
 	// ReadTimeout / IdleTimeout 见上方默认值
 	ReadTimeout time.Duration
 	IdleTimeout time.Duration

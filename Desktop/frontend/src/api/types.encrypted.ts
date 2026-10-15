@@ -40,6 +40,13 @@ export interface EncryptedDNSConfig {
    * 它会直接失去解析能力。
    */
   ddrEnabled: boolean;
+  /**
+   * 移动端配置描述文件的标识；首次生成后固定，避免设备重复安装。
+   * 生成描述文件前为空串，界面不必感知它。
+   */
+  uuid?: string;
+  /** 反向代理透传配置，默认关闭 */
+  reverseProxy: ReverseProxyConfig;
 }
 
 /** 证书摘要；不含私钥与完整证书体 */
@@ -78,6 +85,25 @@ export interface EncryptedDNSStatusResponse {
   doqListen: string;
   /** 可直接交给终端使用的 DoH 地址列表（服务器名 + 各网卡地址） */
   dohUrls: string[];
+  /** 可信来源里存在 0.0.0.0/0 或 ::/0，界面需给出显著警告 */
+  unrestrictedTrust: boolean;
+}
+
+/** 反向代理可信来源配置 */
+export interface ReverseProxyConfig {
+  enabled: boolean;
+  trustedSources: string[];
+  /** 自定义转发头名；空串表示按 X-Forwarded-For → X-Real-IP 依次尝试 */
+  clientIpHeader: string;
+}
+
+/** 更新反向代理可信来源；字段省略表示沿用当前值 */
+export interface ConfigureACLRequest {
+  enabled?: boolean;
+  trustedSources?: string[];
+  clientIpHeader?: string;
+  /** 显式确认接受 0.0.0.0/0 这类全放行配置 */
+  confirmUnrestricted?: boolean;
 }
 
 /** 所有字段可选：省略表示沿用当前值 */

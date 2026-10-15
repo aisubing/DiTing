@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/x509"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -89,6 +90,26 @@ type EncryptedDNSConfig struct {
 
 	// UUID 移动端配置描述文件的标识；首次生成后固定，避免设备重复安装
 	UUID string `json:"uuid"`
+
+	// ReverseProxy 反向代理透传配置。
+	//
+	// 默认关闭：开启意味着采信请求里可被伪造的转发头，只有在 DoH
+	// 确实位于自己掌握的反向代理之后时才该打开。
+	ReverseProxy ReverseProxyConfig `json:"reverseProxy"`
+}
+
+// ReverseProxyConfig 反向代理可信来源配置。
+//
+// 列表为空与 Enabled 为 false 等价（谁都不信），保留两个字段是因为
+// 用户可能想先填好地址、确认无误后再打开开关。
+type ReverseProxyConfig struct {
+	Enabled bool `json:"enabled"`
+	// TrustedSources 可信代理的 IP 或 CIDR 列表
+	TrustedSources []string `json:"trustedSources"`
+	// ClientIPHeader 自定义转发头名；留空时依次尝试
+	// X-Forwarded-For 与 X-Real-IP。Cloudflare 之类用自有头名的
+	// 部署必须填写，否则拿到的始终是代理自己的地址。
+	ClientIPHeader string `json:"clientIpHeader"`
 }
 
 // DefaultEncryptedDNSConfig 返回默认配置（默认全部关闭）。
@@ -151,6 +172,9 @@ func NormalizeEncryptedDNSConfig(cfg *EncryptedDNSConfig) {
 	// 描述文件 UUID 会原样进 XML 与载荷标识，带空白会让标识对不上；
 	// 这里只规整、不重新生成——换了 UUID 设备会当成另一份描述文件
 	cfg.UUID = strings.TrimSpace(cfg.UUID)
+
+	cfg.ReverseProxy.TrustedSources = trimNonEmpty(cfg.ReverseProxy.TrustedSources)
+	cfg.ReverseProxy.ClientIPHeader = strings.TrimSpace(cfg.ReverseProxy.ClientIPHeader)
 
 	if !isValidPort(cfg.DoTPort) {
 		cfg.DoTPort = DefaultDoTPort
@@ -228,6 +252,63 @@ func DoHURLs(hosts []string, port int, path string) []string {
 		out = append(out, "https://"+authority+path)
 	}
 	return out
+}
+
+// NormalizeTrustedSources 校验可信代理来源列表。
+//
+// 非法条目直接报错而不是跳过：可信列表的每一项都决定「谁会采信转发头」，
+// 静默丢弃一个写错的 CIDR 会让用户以为某台代理已被信任，实际却是被忽略的，
+// 反过来又可能因为漏配而让真实终端 IP 取不到。宁可让保存失败。
+func NormalizeTrustedSources(entries []string) ([]string, error) {
+	out := make([]string, 0, len(entries))
+	seen := make(map[string]bool, len(entries))
+	for _, raw := range entries {
+		entry := strings.TrimSpace(raw)
+		if entry == "" {
+			continue
+		}
+		if strings.Contains(entry, "/") {
+			if _, _, err := net.ParseCIDR(entry); err != nil {
+				return nil, fmt.Errorf("可信来源网段 %q 无效: %w", entry, err)
+			}
+		} else if net.ParseIP(entry) == nil {
+			return nil, fmt.Errorf("可信来源 %q 不是合法的 IP 或 CIDR", entry)
+		}
+		if seen[entry] {
+			continue
+		}
+		seen[entry] = true
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
+// IsUnrestrictedTrust 判断某条目是否等于「信任所有人」。
+//
+// 前缀长度为 0 的 CIDR（0.0.0.0/0 与 ::/0）意味着任何直连对端都被信任，
+// 于是调用方可以随意伪造 X-Forwarded-For 来伪装成白名单成员、
+// 并让按 IP 计数的限速各自为政。这不是普通配置项，界面必须二次确认。
+func IsUnrestrictedTrust(entry string) bool {
+	entry = strings.TrimSpace(entry)
+	if !strings.Contains(entry, "/") {
+		return false
+	}
+	_, ipNet, err := net.ParseCIDR(entry)
+	if err != nil {
+		return false
+	}
+	ones, _ := ipNet.Mask.Size()
+	return ones == 0
+}
+
+// HasUnrestrictedTrust 报告列表中是否存在全放行条目
+func HasUnrestrictedTrust(entries []string) bool {
+	for _, e := range entries {
+		if IsUnrestrictedTrust(e) {
+			return true
+		}
+	}
+	return false
 }
 
 // CertInfo 服务端证书的只读摘要，供界面展示。
