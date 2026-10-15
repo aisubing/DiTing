@@ -49,7 +49,7 @@ func NewBogusNXDomainMiddleware(matcher func() *core.BogusNXDomainMatcher) Middl
 
 		q := ctx.Req.Question[0]
 
-		// 复刻 buildBlockedResponse 的 NXDOMAIN 形态，并打上与规则拦截一致的标记，
+		// 复刻 BuildBlockedResponse 的 NXDOMAIN 形态，并打上与规则拦截一致的标记，
 		// 使 EDE（Blocked）、查询日志分类与统计口径无需为这条路径单开分支。
 		resp := new(dns.Msg)
 		resp.SetRcode(ctx.Req, dns.RcodeNameError)

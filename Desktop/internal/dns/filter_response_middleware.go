@@ -67,7 +67,7 @@ func NewFilterResponseMiddleware(
 		if override := engine.GroupBlockMode(groupID); override != "" {
 			blockCfg.BlockMode = override
 		}
-		ctx.Resp = buildBlockedResponse(ctx.Req, blockCfg)
+		ctx.Resp = BuildBlockedResponse(ctx.Req, blockCfg)
 		ctx.Set("filter_action", "block")
 		ctx.Set("filter_blocked", true)
 		ctx.Set("filter_rule", res.MatchedRule)

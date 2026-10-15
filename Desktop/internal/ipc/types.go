@@ -81,7 +81,9 @@ type StatusResponse struct {
 	RateLimit     core.RateLimitConfig     `json:"rateLimit"`
 	DNS64         core.DNS64Config         `json:"dns64"`
 	Rewrite       core.RewriteConfig       `json:"rewrite"`
+	Zone          core.ZoneConfig          `json:"zone"`
 	SafeSearch    core.SafeSearchConfig    `json:"safeSearch"`
+	SafeBrowsing  core.SafeBrowsingConfig  `json:"safeBrowsing"`
 	ECS           core.ECSConfig           `json:"ecs"`
 	Clients       []core.ClientInfo        `json:"clients,omitempty"`
 }

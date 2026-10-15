@@ -12,6 +12,7 @@ import type {
 } from './types.network';
 import type { SafeSearchConfig } from './types.dns';
 import type { RewriteConfig } from './types.rewrite';
+import type { SafeBrowsingConfig } from './types.safebrowsing';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -157,6 +158,7 @@ export interface StatusResponse {
   dns64?: DNS64Config;
   rewrite?: RewriteConfig;
   ecs?: ECSConfig;
+  safeBrowsing?: SafeBrowsingConfig;
   clients?: ClientInfo[];
 }
 
@@ -245,6 +247,8 @@ export * from './types.network';
 export * from './types.rewrite';
 /** 本地权威区（zone 文件）类型（定义见 ./types.zone） */
 export * from './types.zone';
+/** 恶意网址库与家长控制类型（定义见 ./types.safebrowsing） */
+export * from './types.safebrowsing';
 export interface AdapterInfo {
   id: string;
   name: string;

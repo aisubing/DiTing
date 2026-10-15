@@ -75,7 +75,7 @@ func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver *core.
 			if override := engine.GroupBlockMode(groupID); override != "" {
 				blockCfg.BlockMode = override
 			}
-			resp := buildBlockedResponse(ctx.Req, blockCfg)
+			resp := BuildBlockedResponse(ctx.Req, blockCfg)
 			ctx.Resp = resp
 			ctx.Set("filter_action", "block")
 			ctx.Set("filter_blocked", true)
@@ -100,7 +100,7 @@ func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver *core.
 
 // buildRewriteResponse 依据 $dnsrewrite 规则组装应答报文。
 //
-// 与 buildBlockedResponse 的区别在语义而不只是内容：这里返回的是规则
+// 与 BuildBlockedResponse 的区别在语义而不只是内容：这里返回的是规则
 // 明确声明的应答，Rcode 与记录都来自规则本身，不受 BlockMode 影响。
 // Records 为空且 Rcode 为 NOERROR 时是有意为之的权威 NODATA，
 // 用于让「该名字只有 A 记录」的内网域名不因查询 AAAA 而外泄到上游。
@@ -114,8 +114,12 @@ func buildRewriteResponse(req *dns.Msg, res core.RewriteResult) *dns.Msg {
 	return resp
 }
 
-// buildBlockedResponse 依据配置策略组装阻断 DNS 应答报文
-func buildBlockedResponse(req *dns.Msg, cfg core.FilterConfig) *dns.Msg {
+// BuildBlockedResponse 依据配置策略组装阻断 DNS 应答报文。
+//
+// 导出是因为声誉查询（safe browsing / 家长控制）命中时也需要给出与本地
+// 规则拦截完全一致的应答形式：用户配置的 BlockMode 是全局策略，
+// 不该因为拦截来自哪一层而给出不同的失败形态。
+func BuildBlockedResponse(req *dns.Msg, cfg core.FilterConfig) *dns.Msg {
 	resp := new(dns.Msg)
 	resp.SetReply(req)
 	resp.Authoritative = true

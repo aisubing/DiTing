@@ -114,6 +114,8 @@ class IPCService {
   public setFilterPause = (req: Parameters<FilterApi['setPause']>[0]) => this.filter.setPause(req);
   public getBlockedServices = () => this.filter.getBlockedServices();
   public configureBlockedServices = (req: Parameters<FilterApi['configureBlockedServices']>[0]) => this.filter.configureBlockedServices(req);
+  public getSafeBrowsing = () => this.filter.getSafeBrowsing();
+  public configureSafeBrowsing = (req: Parameters<FilterApi['configureSafeBrowsing']>[0]) => this.filter.configureSafeBrowsing(req);
 
   // --- 自定义重写与客户端管理 ---
   public getRewriteRules = () => this.rewrite.getRewriteRules();

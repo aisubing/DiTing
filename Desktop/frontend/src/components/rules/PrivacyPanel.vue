@@ -8,6 +8,8 @@ import AppModal from '../AppModal.vue';
 import StatusBadge from '../StatusBadge.vue';
 import SafeSearchCard from './SafeSearchCard.vue';
 import AnyQueryCard from './AnyQueryCard.vue';
+import SafeBrowsingCard from './SafeBrowsingCard.vue';
+import ParentalControlCard from './ParentalControlCard.vue';
 import ToastBanner from '../ToastBanner.vue';
 import { extractSwitchValue } from '../../utils/switch';
 import { useToast } from '../../composables/useToast';
@@ -536,6 +538,10 @@ onMounted(() => {
 
     <!-- 强制安全搜索（独立子卡片，避免本文件继续膨胀） -->
     <SafeSearchCard @error="(m) => showToast(m, true)" @success="(m) => showToast(m)" />
+
+    <!-- 声誉查询：恶意网址库与家长控制（机制相同，各自独立开关） -->
+    <SafeBrowsingCard @error="(m) => showToast(m, true)" @success="(m) => showToast(m)" />
+    <ParentalControlCard @error="(m) => showToast(m, true)" @success="(m) => showToast(m)" />
 
     <!-- 弹窗：编辑 Rebinding 白名单域名 -->
     <AppModal

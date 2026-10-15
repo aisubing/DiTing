@@ -238,9 +238,12 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 		RateLimit:  p.cfg.RateLimit,
 		DNS64:      p.cfg.DNS64,
 		Rewrite:    p.cfg.Rewrite,
+		Zone:       p.cfg.Zone,
 		SafeSearch: p.cfg.SafeSearch,
-		ECS:        p.cfg.ECS,
-		Clients:    p.getClientsSnapshot(),
+
+		SafeBrowsing: p.cfg.SafeBrowsing,
+		ECS:          p.cfg.ECS,
+		Clients:      p.getClientsSnapshot(),
 	}, nil
 }
 

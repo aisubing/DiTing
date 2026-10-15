@@ -92,6 +92,10 @@ type ServiceController interface {
 	GetZoneConfig(ctx context.Context) (*ZoneConfigResponse, error)
 	// ConfigureZone 更新本地权威区配置并重建索引
 	ConfigureZone(ctx context.Context, req ConfigureZoneRequest) error
+	// GetSafeBrowsing 返回恶意网址库与家长控制的配置与统计
+	GetSafeBrowsing(ctx context.Context) (*SafeBrowsingResponse, error)
+	// ConfigureSafeBrowsing 更新声誉查询配置
+	ConfigureSafeBrowsing(ctx context.Context, req ConfigureSafeBrowsingRequest) error
 	GetSafeSearch(ctx context.Context) (*SafeSearchConfigResponse, error)
 	ConfigureSafeSearch(ctx context.Context, req ConfigureSafeSearchRequest) error
 	GetClients(ctx context.Context) ([]core.ClientInfo, error)

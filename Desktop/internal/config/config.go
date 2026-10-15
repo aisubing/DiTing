@@ -206,10 +206,12 @@ type Config struct {
 	Rewrite    core.RewriteConfig       `json:"rewrite"`
 	Zone       core.ZoneConfig          `json:"zone"`
 	SafeSearch core.SafeSearchConfig    `json:"safeSearch"`
-	Client     core.ClientConfig        `json:"client"`
-	ECS        core.ECSConfig           `json:"ecs"`
-	QueryLog   querylog.QueryLogConfig  `json:"querylog"`
-	Web        WebConfig                `json:"web"`
+	// SafeBrowsing 恶意网址库与家长控制（依赖第三方哈希前缀查询，默认关闭）
+	SafeBrowsing core.SafeBrowsingConfig `json:"safeBrowsing"`
+	Client       core.ClientConfig       `json:"client"`
+	ECS          core.ECSConfig          `json:"ecs"`
+	QueryLog     querylog.QueryLogConfig `json:"querylog"`
+	Web          WebConfig               `json:"web"`
 }
 
 // DefaultConfig 生成默认系统配置
@@ -263,9 +265,11 @@ func DefaultConfig() *Config {
 		Rewrite:    core.DefaultRewriteConfig(),
 		Zone:       core.DefaultZoneConfig(),
 		SafeSearch: core.DefaultSafeSearchConfig(),
-		Client:     core.DefaultClientConfig(),
-		ECS:        core.DefaultECSConfig(),
-		QueryLog:   querylog.DefaultQueryLogConfig(),
+
+		SafeBrowsing: core.DefaultSafeBrowsingConfig(),
+		Client:       core.DefaultClientConfig(),
+		ECS:          core.DefaultECSConfig(),
+		QueryLog:     querylog.DefaultQueryLogConfig(),
 		Web: WebConfig{
 			Enabled:        true,
 			ListenPort:     15353,

@@ -10,8 +10,8 @@ import (
 // 中间件的注册顺序即语义的一部分，调用方不得随意调整：
 //
 //	metrics → EDE → ECH → client → access → ratelimit → SUDN → zone → hosts → rewrite
-//	→ safesearch → IPv6 → privatePTR → unqualified → ANY → filter → rebind
-//	→ filterResponse → DNS64 → ECS → cache → bogusNXDomain → upstreamRoute → forward
+//	→ safesearch → IPv6 → privatePTR → unqualified → ANY → filter → safeBrowsing
+//	→ rebind → filterResponse → DNS64 → ECS → cache → bogusNXDomain → upstreamRoute → forward
 //
 // 其中响应侧复检（filterResponse）位于 rebind 之后、DNS64 之前：
 // 既包裹缓存（缓存命中也复检），又在 DNS64 合成之后获得最终应答，
@@ -75,6 +75,15 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		return p.cfg.DNS.BlockANYMode
 	})
 	filterMw := ditingdns.NewFilterMiddlewareWithGroups(p.filterEngine, p.groupResolver)
+	// 声誉查询紧跟在本地规则之后：本地规则是免费的，先让它筛掉绝大多数请求，
+	// 只有到这里仍未被拦的域名才值得花一次外部查询。它也必须在缓存之前——
+	// 缓存的键里没有「谁拦的」这一维度，拦下的应答进了缓存会掩盖真实判断。
+	safeBrowsingMw := ditingdns.NewSafeBrowsingMiddleware(p.safeBrowsing, func() core.FilterConfig {
+		if p.filterEngine == nil {
+			return core.FilterConfig{}
+		}
+		return p.filterEngine.GetConfig()
+	})
 	rebindMw := ditingdns.NewRebindMiddleware(rebindMgr, p.cache)
 	filterResponseMw := ditingdns.NewFilterResponseMiddleware(p.filterEngine, p.groupResolver, func() bool {
 		p.mu.Lock()
@@ -98,7 +107,7 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	return ditingdns.NewPipeline(
 		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw,
 		zoneMw, hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
-		anyMw, filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
+		anyMw, filterMw, safeBrowsingMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
 		bogusNxMw, upstreamRouteMw, forwardMw,
 	)
 }

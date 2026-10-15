@@ -30,6 +30,12 @@ type mockExtra struct {
 	zoneErr     bool
 	zoneUpdated bool
 	lastZoneReq ConfigureZoneRequest
+
+	// B6 声誉查询：由各测试按需注入
+	safeBrowsing        *SafeBrowsingResponse
+	safeBrowsingErr     bool
+	safeBrowsingUpdated bool
+	lastSafeBrowsingReq ConfigureSafeBrowsingRequest
 }
 
 // CachePersistStatus 实现 ServiceController 接口（A6）
@@ -121,3 +127,30 @@ func (m *mockExtra) ConfigureZone(ctx context.Context, req ConfigureZoneRequest)
 
 // errZoneUnavailable 供需要错误路径的用例注入
 var errZoneUnavailable = fmt.Errorf("zone unavailable")
+
+// GetSafeBrowsing 实现 ServiceController 接口（B6）
+func (m *mockExtra) GetSafeBrowsing(ctx context.Context) (*SafeBrowsingResponse, error) {
+	if m.safeBrowsingErr {
+		return nil, errSafeBrowsingUnavailable
+	}
+	if m.safeBrowsing != nil {
+		return m.safeBrowsing, nil
+	}
+	return &SafeBrowsingResponse{
+		Config:    core.DefaultSafeBrowsingConfig(),
+		BlockMode: core.BlockModeNullIP,
+	}, nil
+}
+
+// ConfigureSafeBrowsing 实现 ServiceController 接口（B6）
+func (m *mockExtra) ConfigureSafeBrowsing(ctx context.Context, req ConfigureSafeBrowsingRequest) error {
+	if m.safeBrowsingErr {
+		return errSafeBrowsingUnavailable
+	}
+	m.safeBrowsingUpdated = true
+	m.lastSafeBrowsingReq = req
+	return nil
+}
+
+// errSafeBrowsingUnavailable 供需要错误路径的用例注入
+var errSafeBrowsingUnavailable = fmt.Errorf("safe browsing unavailable")

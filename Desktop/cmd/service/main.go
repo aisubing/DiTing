@@ -48,6 +48,7 @@ type program struct {
 	rewriteEngine  *core.RewriteEngine
 	zoneEngine     *core.ZoneEngine
 	safeSearchEng  *core.SafeSearchEngine
+	safeBrowsing   *core.SafeBrowsingEngine
 	clientResolver *core.ClientResolver
 	ecsMgr         *ditingdns.ECSManager
 	takeoverMgr    platform.DNSManager
@@ -173,6 +174,8 @@ func (p *program) run() error {
 	p.rewriteEngine = core.NewRewriteEngine(cfg.Rewrite)
 	p.zoneEngine = core.NewZoneEngine(cfg.Zone)
 	p.safeSearchEng = core.NewSafeSearchEngine(cfg.SafeSearch)
+	// 声誉查询要向上游发 TXT 问询，解析器此时已就绪
+	p.safeBrowsing = core.NewSafeBrowsingEngine(cfg.SafeBrowsing, res)
 	p.clientResolver = core.NewClientResolver(cfg.Client, p.hostsResolver, p.rewriteEngine)
 	p.ecsMgr = ditingdns.NewECSManager(cfg.ECS)
 
