@@ -115,9 +115,9 @@ func TestFilterMiddlewareServiceScheduleInactive(t *testing.T) {
 	engine := scheduleFilterEngine(t)
 
 	if err := engine.UpdateConfig(core.FilterConfig{
-		Enabled:          true,
-		CustomRules:      []string{"||ad.tracker.com^"},
-		BlockedServices:  []string{"bilibili"},
+		Enabled:         true,
+		CustomRules:     []string{"||ad.tracker.com^"},
+		BlockedServices: []string{"bilibili"},
 		ServiceSchedules: map[string][]core.BlockingSchedule{
 			"bilibili": {{ID: "school", Name: "上课时段", Enabled: true, Start: "00:00", End: "00:01"}},
 		},
