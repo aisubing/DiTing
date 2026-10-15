@@ -168,8 +168,8 @@ go test ./...
 GOOS=linux go test ./...                   # 需在 Linux 环境；仅纯逻辑可跨编译运行
 ```
 
-- Linux 单二进制构建：`./build_linux.sh`（支持 `--package` 生成 `.deb` / `.tar.gz`）。
-- 维护工具箱：构建目标选择 `linux`，架构可选 `amd64` / `arm64` / `arm`。
+- Linux 单二进制构建：`./build_linux.sh`（支持 `--package` 打包为 `.deb`）。
+- 维护工具箱：构建目标选择 `deb`（或 `both` 双平台），架构可选 `amd64` / `arm64` / `arm`。
 - systemd 安装：`Desktop/build/linux/install.sh` / `uninstall.sh`。
 
 ### WSL 实测要点（本次验证记录）

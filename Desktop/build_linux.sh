@@ -3,13 +3,13 @@
 #   谛听 (DITING) Linux 端构建脚本
 #
 #   在 Linux 主机本地（或在 WSL 中）构建 diting-service 单二进制，
-#   可选生成 .deb 与 .tar.gz 发行包。
+#   可选打包为 .deb 发行包。
 #
 #   用法:
 #     ./build_linux.sh                    # 构建 amd64 二进制
 #     ./build_linux.sh -a arm64           # 构建 arm64 二进制
 #     ./build_linux.sh -v 1.3.5           # 指定版本号
-#     ./build_linux.sh --package          # 额外生成 .deb 与 .tar.gz
+#     ./build_linux.sh --package          # 打包为 .deb 发行包
 #     ./build_linux.sh --clean            # 先清理旧产物
 # ============================================================================
 
@@ -27,7 +27,7 @@ OUTPUT_DIR="$SCRIPT_DIR/build/bin"
 
 usage() {
     sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
-    exit 0
+    exit "${1:-0}"
 }
 
 while [ $# -gt 0 ]; do
@@ -39,7 +39,7 @@ while [ $# -gt 0 ]; do
         --clean)      CLEAN=1; shift ;;
         --package)    PACKAGE=1; shift ;;
         -h|--help)    usage ;;
-        *) echo "[错误] 未知参数: $1" >&2; usage ;;
+        *) echo "[错误] 未知参数: $1" >&2; usage 1 ;;
     esac
 done
 
@@ -69,8 +69,10 @@ BIN_NAME="diting-service"
 BIN_PATH="$OUTPUT_DIR/$BIN_NAME"
 
 if [ "$CLEAN" -eq 1 ]; then
-    echo ">>> 清理旧构建产物: $OUTPUT_DIR"
-    rm -rf "$OUTPUT_DIR"
+    # 仅清理本脚本自身的 Linux 产物（二进制 / 旧 .deb / 临时目录），保留同目录下的 Windows 安装包
+    echo ">>> 清理旧构建产物 (仅 Linux 侧): $OUTPUT_DIR"
+    rm -f "$OUTPUT_DIR/$BIN_NAME"
+    rm -rf "$OUTPUT_DIR"/diting_*_linux_*
 fi
 mkdir -p "$OUTPUT_DIR"
 
@@ -99,6 +101,12 @@ echo "[OK] 编译成功: $BIN_PATH ($(du -h "$BIN_PATH" | cut -f1))"
 # 发行包
 # ---------------------------------------------------------------------------
 if [ "$PACKAGE" -eq 1 ]; then
+    # Go 的 GOARCH=arm 对应 Debian 归档架构 armhf（ARMv7 硬浮点，与默认 GOARM=7 一致）
+    case "$ARCH" in
+        arm) DEB_ARCH="armhf" ;;
+        *)   DEB_ARCH="$ARCH" ;;
+    esac
+
     PKG_NAME="diting_${VERSION}_linux_${ARCH}"
     TMP_STAGE="$(mktemp -d /tmp/diting-pkg.XXXXXX 2>/dev/null || mktemp -d)"
     PKG_DIR="$TMP_STAGE/$PKG_NAME"
@@ -146,7 +154,7 @@ Package: diting
 Version: $VERSION
 Section: net
 Priority: optional
-Architecture: $ARCH
+Architecture: $DEB_ARCH
 Maintainer: DITING <https://github.com/haoze-evolluling/diting>
 Description: 谛听 (DITING) DNS 内核特权服务
  谛听 DNS 内核的 Linux 端特权服务，负责系统 DNS 接管、
@@ -191,8 +199,14 @@ EOF
 fi
 
 echo "============================================================"
-echo " 构建完成。安装方式:"
-echo "   sudo install -m 0755 $BIN_PATH /usr/local/bin/$BIN_NAME"
-echo "   sudo $BIN_NAME -service install && sudo $BIN_NAME -service start"
+if [ "$PACKAGE" -eq 1 ]; then
+    echo " 构建完成。仅保留 .deb 安装包（中间二进制已清理）:"
+    echo "   sudo dpkg -i $DEB"
+    echo "   或解包后执行: sudo /usr/share/diting/install.sh"
+else
+    echo " 构建完成。安装方式:"
+    echo "   sudo install -m 0755 $BIN_PATH /usr/local/bin/$BIN_NAME"
+    echo "   sudo $BIN_NAME -service install && sudo $BIN_NAME -service start"
+fi
 echo "   管理地址: http://127.0.0.1:15353"
 echo "============================================================"

@@ -9,6 +9,7 @@
 import argparse
 import datetime
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -160,7 +161,8 @@ def check_toolchain() -> Dict[str, dict]:
         try:
             out = subprocess.check_output([tools["nsis"]["cmd"], "/VERSION"], text=True).strip()
             tools["nsis"]["found"] = True
-            tools["nsis"]["version"] = f"v{out}"
+            # makensis /VERSION 自身已带前缀 v（如 v3.12），避免重复显示为 vv3.12
+            tools["nsis"]["version"] = out if out.lower().startswith("v") else f"v{out}"
         except Exception:
             tools["nsis"]["found"] = True
             tools["nsis"]["version"] = "已安装"
@@ -198,6 +200,11 @@ def build_pipeline(
         is_cancelled = lambda: False
     if not version:
         version = get_current_project_version()
+
+    # 版本号会拼入 WSL 命令行与产物文件名，限制字符集以防注入或非法路径
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]*", version):
+        on_log("error", f"非法的版本号: {version} (仅允许字母、数字与 . _ + - 且需以字母或数字开头)")
+        return {"success": False, "message": f"非法版本号: {version}"}
 
     root = get_root_dir()
     desktop_dir = os.path.join(root, "Desktop")
@@ -274,7 +281,8 @@ def build_pipeline(
     # 4. 构建 Windows EXE 安装包
     if need_win:
         on_log("info", ">>> [1/3] 正在编译 Windows 特权服务 (diting-service.exe)...")
-        cmd_svc = ["go", "build", "-ldflags", f"-s -w -H windowsgui -X main.Version={version}", "-o", service_bin, "./cmd/service"]
+        svc_ldflags = f"{'-s -w ' if is_rel else ''}-H windowsgui -X 'main.Version={version}' -X 'main.GitCommit={git_commit}' -X 'main.BuildTime={build_time}'"
+        cmd_svc = ["go", "build", "-ldflags", svc_ldflags, "-o", service_bin, "./cmd/service"]
         ok = run_cmd_live(cmd_svc, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled)
         if not ok or not os.path.exists(service_bin):
             return {"success": False, "message": "特权服务编译失败"}
@@ -335,12 +343,13 @@ def build_pipeline(
         if arch not in ("amd64", "arm64", "arm"):
             return {"success": False, "message": f"不支持的 Linux 架构: {arch}"}
         on_log("info", f">>> 正在打包 Linux 发行包 (.deb, linux/{arch})...")
+        # 始终以 bash 显式执行，避免脚本缺失可执行位（如 Windows 克隆检出）导致失败
         if sys.platform == "win32":
             wsl_dir = desktop_dir.replace("\\", "/")
-            cmd_pkg = ["wsl.exe", "-e", "bash", "-c", f"cd \"$(wslpath '{wsl_dir}')\" && ./build_linux.sh --package -a {arch} -v {version} -b {build_type}"]
+            cmd_pkg = ["wsl.exe", "-e", "bash", "-c", f"cd \"$(wslpath '{wsl_dir}')\" && exec bash ./build_linux.sh --package -a {arch} -v {version} -b {build_type}"]
             ok = run_cmd_live(cmd_pkg, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled)
         else:
-            cmd_pkg = ["./build_linux.sh", "--package", "-a", arch, "-v", version, "-b", build_type]
+            cmd_pkg = ["bash", "./build_linux.sh", "--package", "-a", arch, "-v", version, "-b", build_type]
             ok = run_cmd_live(cmd_pkg, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled)
 
         if not ok:
@@ -351,16 +360,14 @@ def build_pipeline(
         if not os.path.exists(deb_file):
             return {"success": False, "message": "未找到生成的 DEB 安装包产物"}
 
-        # 确保产物目录纯净：清理可能残留的 Linux 单二进制、tar.gz 压缩包及临时目录
+        # 确保产物目录纯净：清理可能残留的 Linux 单二进制及临时目录
         raw_linux_bin = os.path.join(bin_dir, "diting-service")
-        raw_tarball = os.path.join(bin_dir, f"diting_{version}_linux_{arch}.tar.gz")
         leftover_dir = os.path.join(bin_dir, f"diting_{version}_linux_{arch}")
-        for p in (raw_linux_bin, raw_tarball):
-            if os.path.exists(p):
-                try:
-                    os.remove(p)
-                except Exception:
-                    pass
+        if os.path.exists(raw_linux_bin):
+            try:
+                os.remove(raw_linux_bin)
+            except Exception:
+                pass
         if os.path.isdir(leftover_dir):
             try:
                 shutil.rmtree(leftover_dir, ignore_errors=True)

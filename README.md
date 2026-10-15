@@ -192,7 +192,7 @@ go build -ldflags "-s -w -H windowsgui -X main.Version=1.3.5" -o build/bin/ditin
 wails build -platform windows/amd64 -o diting-gui.exe
 
 # 3. 打包 NSIS 安装包（需预先编译好服务与 GUI）
-makensis -DPRODUCT_VERSION=1.3.5 -DOUTPUT_FILENAME=build/bin/DITING-release-v1.3.5.exe build/windows/installer/project.nsi
+makensis /INPUTCHARSET UTF8 -DARG_WAILS_AMD64_BINARY=build/bin/diting-gui.exe -DPRODUCT_VERSION=1.3.5 -DOUTPUT_FILENAME=build/bin/DITING-release-v1.3.5.exe build/windows/installer/project.nsi
 ```
 
 ---
