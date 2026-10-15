@@ -356,13 +356,32 @@ export interface UpdateScheduleRequest {
   schedules?: BlockingSchedule[];
 }
 
+/** $dnsrewrite 规则给出的应答内容（仅 action === 'rewrite' 时存在） */
+export interface RewriteResult {
+  /** DNS 应答码数值，见 rcodeNames */
+  rcode: number;
+  /** 应答记录的展示形式，一条记录一项；为空表示权威 NODATA */
+  summary?: string[];
+}
+
 export interface CheckHostResult {
   blocked: boolean;
-  action: 'block' | 'allow' | 'pass' | string;
+  action: 'block' | 'allow' | 'pass' | 'rewrite' | string;
   matchedRule?: string;
   listName?: string;
   reason?: string;
+  rewritten?: RewriteResult;
 }
+
+/** 应答码数值到可读名称的映射，与后端支持的 RCODE 关键字一致 */
+export const RCODE_NAMES: Record<number, string> = {
+  0: 'NOERROR',
+  1: 'FORMERR',
+  2: 'SERVFAIL',
+  3: 'NXDOMAIN',
+  4: 'NOTIMP',
+  5: 'REFUSED',
+};
 
 export interface WebSocketEvent {
   type: 'query' | 'metrics' | 'takeover' | 'dns' | 'alert' | 'upstream' | 'background' | 'filter';

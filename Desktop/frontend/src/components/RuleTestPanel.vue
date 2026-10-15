@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { ipc } from '../api/ipc';
 import type { CheckHostResult } from '../api/types';
+import { RCODE_NAMES } from '../api/types';
 import M3Icon from './M3Icon.vue';
 import AppCard from './ui/AppCard.vue';
 
@@ -13,6 +14,13 @@ const testDomain = ref('');
 const testQType = ref('A');
 const testResult = ref<CheckHostResult | null>(null);
 const testing = ref(false);
+
+/** 重写命中的结论文本：以应答码或记录内容呈现，而非笼统的「已放行」 */
+const rewriteLabel = computed(() => {
+  const rw = testResult.value?.rewritten;
+  if (!rw) return '已被重写';
+  return RCODE_NAMES[rw.rcode] || `RCODE ${rw.rcode}`;
+});
 
 async function runTest() {
   if (!testDomain.value.trim()) return;
@@ -125,9 +133,11 @@ function fillExample(domain: string) {
           :class="
             testResult.blocked
               ? 'bg-status-error-bg border-status-error/30'
-              : testResult.action === 'allow'
-                ? 'bg-status-success-bg border-status-success/30'
-                : 'bg-surface-card-sub border-surface-border-sub'
+              : testResult.action === 'rewrite'
+                ? 'bg-brand-container/40 border-brand-primary/30'
+                : testResult.action === 'allow'
+                  ? 'bg-status-success-bg border-status-success/30'
+                  : 'bg-surface-card-sub border-surface-border-sub'
           "
         >
           <div class="flex items-center gap-2.5 min-w-0">
@@ -136,12 +146,22 @@ function fillExample(domain: string) {
               :class="
                 testResult.blocked
                   ? 'bg-accent-seal text-white'
-                  : testResult.action === 'allow'
-                    ? 'bg-status-success text-white'
-                    : 'bg-surface-card text-text-sub border border-surface-border'
+                  : testResult.action === 'rewrite'
+                    ? 'bg-brand-primary text-white'
+                    : testResult.action === 'allow'
+                      ? 'bg-status-success text-white'
+                      : 'bg-surface-card text-text-sub border border-surface-border'
               "
             >
-              {{ testResult.blocked ? '已拦截 (阻断访问)' : testResult.action === 'allow' ? '已放行 (信任名单)' : '未命中 (正常解析)' }}
+              {{
+                testResult.blocked
+                  ? '已拦截 (阻断访问)'
+                  : testResult.action === 'rewrite'
+                    ? `已重写 (${rewriteLabel})`
+                    : testResult.action === 'allow'
+                      ? '已放行 (信任名单)'
+                      : '未命中 (正常解析)'
+              }}
             </span>
             <span class="font-mono font-bold text-text-main text-[13px] truncate select-all">
               {{ testDomain }}
@@ -173,6 +193,23 @@ function fillExample(domain: string) {
                 {{ testResult.reason || '正常直连解析' }}
               </span>
             </div>
+          </div>
+
+          <!-- 重写命中的应答内容 -->
+          <div v-if="testResult.rewritten" class="app-card-sub p-2.5 space-y-1">
+            <span class="text-[11px] text-text-muted block">$dnsrewrite 应答内容</span>
+            <p v-if="!testResult.rewritten.summary?.length" class="font-mono text-text-main text-[11px]">
+              {{ rewriteLabel }}，不返回任何记录（权威 NODATA）
+            </p>
+            <ul v-else class="space-y-0.5">
+              <li
+                v-for="(item, idx) in testResult.rewritten.summary"
+                :key="idx"
+                class="font-mono text-text-main text-[11px] break-all select-all"
+              >
+                {{ item }}
+              </li>
+            </ul>
           </div>
         </div>
       </div>

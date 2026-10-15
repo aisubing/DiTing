@@ -61,8 +61,11 @@ func (e *RuleEngine) groupByIDUnlocked(groupID string) (*ClientGroup, bool) {
 //
 // 判定依据：Action == "allow" 恰为优先级 1（$important 例外）与优先级 3（@@ 例外）
 // 的返回形态；pass（未命中任何规则）与 block 均视为需要阻断。
+//
+// 重写命中一并放行：$dnsrewrite 是用户对该名字最明确的一次表态，
+// 把它改写为阻断既违背规则本意，也让「仅白名单」模式下的重写功能形同虚设。
 func applyAllowlistOnly(res CheckHostResult) CheckHostResult {
-	if res.Blocked || res.Action == "allow" {
+	if res.Blocked || res.Action == "allow" || res.IsRewrite() {
 		return res
 	}
 	return CheckHostResult{

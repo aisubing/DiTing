@@ -208,6 +208,16 @@ type CheckHostResult struct {
 	MatchedRule string `json:"matchedRule"`
 	ListName    string `json:"listName"`
 	Reason      string `json:"reason"`
+	// Rewritten 为 $dnsrewrite 规则给出的应答内容；仅在 Action == "rewrite" 时非空。
+	//
+	// 拦截与重写是两种不同的应答改写，用独立字段而非复用 Blocked，
+	// 便于查询日志与规则测试面板区分展示。
+	Rewritten *RewriteResult `json:"rewritten,omitempty"`
+}
+
+// IsRewrite 判断本次判定是否为重写命中
+func (r CheckHostResult) IsRewrite() bool {
+	return r.Action == "rewrite" && r.Rewritten != nil
 }
 
 // CheckDomainRequest 域名检测请求 DTO

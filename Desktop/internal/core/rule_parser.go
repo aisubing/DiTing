@@ -30,6 +30,12 @@ type ParsedRule struct {
 	// To 目标域排除后缀（$to=，小写去点）。
 	// 在 DNS 层 $to= 与 $denyallow= 语义等价（均针对查询目标域），统一作为排除集合处理。
 	To []string
+
+	// Rewrite 为 $dnsrewrite= 修饰符的解析结果；为 nil 表示本条规则不参与重写。
+	//
+	// 例外规则上的 Rewrite 表示「取消」而非「改写」：裸形式取消该域名的全部重写，
+	// 带取值的形式只取消取值相同的那一条。
+	Rewrite *RewriteAction
 }
 
 // ParseRules 从 io.Reader 读取并解析全部规则
@@ -131,6 +137,7 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 	var dnsType uint16 = 0
 	var denyAllow []string
 	var toDomains []string
+	var rewrite *RewriteAction
 	var modPart string
 
 	if strings.HasPrefix(line, "/") {
@@ -149,8 +156,10 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 
 	if modPart != "" {
 		modifiers := strings.Split(modPart, ",")
-		for _, mod := range modifiers {
-			mod = strings.TrimSpace(strings.ToLower(mod))
+		for _, raw := range modifiers {
+			// 关键字与域名均大小写不敏感，但记录取值（TXT、CNAME 目标）保留原文，
+			// 因此只在判定分支上用小写形式，取值一律回传原文
+			mod := strings.TrimSpace(strings.ToLower(raw))
 			if mod == "important" {
 				important = true
 			} else if mod == "badfilter" {
@@ -165,6 +174,14 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 				denyAllow = parseModifierDomains(strings.TrimPrefix(mod, "denyallow="))
 			} else if strings.HasPrefix(mod, "to=") {
 				toDomains = parseModifierDomains(strings.TrimPrefix(mod, "to="))
+			} else if mod == "dnsrewrite" || strings.HasPrefix(mod, "dnsrewrite=") {
+				// 取值区分大小写，必须从原文中截取
+				action, err := parseDNSRewriteModifier(dnsRewriteValue(raw))
+				if err != nil {
+					// 无法解析的重写规则直接丢弃：保留下来只会变成一条语义不明的拦截规则
+					return nil, false
+				}
+				rewrite = action
 			} else if strings.HasPrefix(mod, "~denyallow=") || strings.HasPrefix(mod, "~to=") {
 				// 取反形式在 DNS 层无可靠等价语义，安全忽略该修饰符（保留整条规则）
 			} else if isWebOnlyModifier(mod) {
@@ -173,6 +190,7 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 			}
 		}
 	}
+
 
 	// 4. 正则规则 (/pattern/)
 	if strings.HasPrefix(line, "/") && strings.HasSuffix(line, "/") && len(line) > 2 {
@@ -192,6 +210,7 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 			Source:    source,
 			DenyAllow: denyAllow,
 			To:        toDomains,
+			Rewrite:   rewrite,
 		}, true
 	}
 
@@ -262,7 +281,19 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 		Source:     source,
 		DenyAllow:  denyAllow,
 		To:         toDomains,
+		Rewrite:    rewrite,
 	}, true
+}
+
+// dnsRewriteValue 从原文修饰符中截取 dnsrewrite 的取值。
+//
+// 取值本身区分大小写（TXT 文本、CNAME 目标），因此不能复用已小写化的形式。
+// 裸形式（$dnsrewrite 后无等号）返回空串。
+func dnsRewriteValue(rawModifier string) string {
+	if idx := strings.IndexByte(rawModifier, '='); idx >= 0 {
+		return rawModifier[idx+1:]
+	}
+	return ""
 }
 
 // parseModifierDomains 解析修饰符中以 "|" 分隔的域名列表。

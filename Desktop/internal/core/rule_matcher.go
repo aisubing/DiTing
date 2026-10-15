@@ -32,6 +32,15 @@ type RuleMatcher struct {
 	// hasDenyAllow 标记是否存在带 $denyallow=/$to= 排除修饰符的规则。
 	// 为 false 时匹配热路径完全跳过排除判定，零额外开销。
 	hasDenyAllow bool
+
+	// Tier 0: $dnsrewrite 重写规则（优先级高于一切拦截与放行规则）
+	//
+	// 按域名分桶而非直接建 Trie：重写规则是「精确名字 → 应答内容」的映射，
+	// 查询时需要把一个域名的全部重写规则一并取出（多条 A 记录求和），
+	// 字典树只能给出单条命中，语义不符。向上逐级查找保留了父域继承的写法。
+	rewriteExact   map[string][]*ParsedRule
+	rewriteWild    []*ParsedRule // 通配符与正则形式的重写规则
+	rewriteCancels []*ParsedRule // 例外规则上的 $dnsrewrite，用于取消重写
 }
 
 // NewRuleMatcher 创建规则评估匹配器
@@ -46,6 +55,7 @@ func NewRuleMatcher() *RuleMatcher {
 		bloom:               NewDomainBloomFilter(1000, 0.001),
 		blockTrie:           NewDomainTrie(),
 		blockRules:          make([]*ParsedRule, 0),
+		rewriteExact:        make(map[string][]*ParsedRule),
 	}
 }
 
@@ -71,8 +81,28 @@ func (m *RuleMatcher) BuildFromRules(rules []*ParsedRule) {
 	// 是否出现带 $denyallow=/$to= 排除修饰符的黑名单规则
 	hasDenyAllow := false
 
+	rewriteExact := make(map[string][]*ParsedRule)
+	var rewriteWild []*ParsedRule
+	var rewriteCancels []*ParsedRule
+
 	for _, r := range rules {
 		if r == nil {
+			continue
+		}
+
+		// Tier 0: 重写规则从拦截/放行索引中完全剥离。
+		//
+		// 例外规则上的裸 $dnsrewrite 只用于取消重写，若同时留在放行 Trie 中，
+		// 会让"取消一条重写"变成"整域放行"，把该域名下的黑名单规则一并解除。
+		if r.Rewrite != nil {
+			switch {
+			case r.IsAllow:
+				rewriteCancels = append(rewriteCancels, r)
+			case r.IsRegex || r.IsWildcard:
+				rewriteWild = append(rewriteWild, r)
+			default:
+				rewriteExact[r.Pattern] = append(rewriteExact[r.Pattern], r)
+			}
 			continue
 		}
 
@@ -129,6 +159,9 @@ func (m *RuleMatcher) BuildFromRules(rules []*ParsedRule) {
 	m.blockRules = blockRules
 	m.totalRulesCount = len(rules)
 	m.hasDenyAllow = hasDenyAllow
+	m.rewriteExact = rewriteExact
+	m.rewriteWild = rewriteWild
+	m.rewriteCancels = rewriteCancels
 }
 
 // Match 对域名进行多策略优先级匹配评估 (Important Allow > Important Block > Whitelist Allow > Bloom+Trie Block > Wildcard/Regex)
@@ -139,6 +172,14 @@ func (m *RuleMatcher) Match(domain string, qtype uint16) CheckHostResult {
 	domain = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
 	if domain == "" {
 		return CheckHostResult{Action: "pass"}
+	}
+
+	// 0. 最高优先级: $dnsrewrite 重写规则
+	//
+	// 对齐 AdGuard Home：重写先于一切拦截与放行判定。未命中时零开销，
+	// 因此不需要额外的 hasRewrite 开关。
+	if res, hit := m.matchRewriteUnlocked(domain, qtype); hit {
+		return res
 	}
 
 	// 1. 最高优先级: 带 $important 的白名单例外规则 (Trie -> Wildcard/Regex)

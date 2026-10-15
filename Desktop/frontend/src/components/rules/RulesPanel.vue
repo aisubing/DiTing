@@ -345,6 +345,22 @@ usePoller(fetchData, 4000);
             <code class="font-mono text-accent-seal text-[12px] block">||urgent.com^$important</code>
             <p class="text-[11px] text-text-muted">忽略所有白名单规则，强制拦截该域名</p>
           </div>
+
+          <div class="app-card-sub p-2.5 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-text-main">应答重写</span>
+              <span class="text-[10px] text-text-muted">$dnsrewrite</span>
+            </div>
+            <code class="font-mono text-brand-primary text-[12px] block">||nas.lan^$dnsrewrite=10.0.0.5</code>
+            <code class="font-mono text-brand-primary text-[12px] block">||old.com^$dnsrewrite=NXDOMAIN;;</code>
+            <p class="text-[11px] text-text-muted">
+              无需上游应答，直接按规则给出结果。支持 IPv4/IPv6 地址、域名（CNAME）、
+              <code class="font-mono">NOERROR;A;1.2.3.4</code> 这类显式写法，以及
+              <code class="font-mono">REFUSED</code>/<code class="font-mono">NXDOMAIN</code> 等应答码。
+              优先级高于一切拦截与放行规则；用 <code class="font-mono">@@||nas.lan^$dnsrewrite</code>
+              可取消该域名的全部重写。
+            </p>
+          </div>
         </div>
 
         <template #footer>

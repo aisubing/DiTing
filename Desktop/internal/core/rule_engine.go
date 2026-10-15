@@ -365,6 +365,12 @@ func (e *RuleEngine) MatchForGroup(domain string, qtype uint16, groupID string) 
 		res = applyAllowlistOnly(res)
 	}
 
+	// 重写命中不计入拦截/放行统计：它是「应答改写」而非「策略判定」，
+	// 计进任一侧都会让拦截率与放行数出现与实际策略不符的偏差。
+	if res.IsRewrite() {
+		return res
+	}
+
 	if res.Blocked {
 		e.blockedQueries.Add(1)
 	} else if res.Action == "allow" {
