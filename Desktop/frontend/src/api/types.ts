@@ -11,6 +11,7 @@ import type {
   ECSConfig,
 } from './types.network';
 import type { SafeSearchConfig } from './types.dns';
+import type { RewriteConfig } from './types.rewrite';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -240,6 +241,8 @@ export * from './types.querylog';
 export * from './types.dns';
 /** 网络/访问控制/协议隐私类型（定义见 ./types.network） */
 export * from './types.network';
+/** 自定义重写与规则测试类型（定义见 ./types.rewrite） */
+export * from './types.rewrite';
 export interface AdapterInfo {
   id: string;
   name: string;
@@ -355,33 +358,6 @@ export interface UpdateScheduleRequest {
   enabled?: boolean;
   schedules?: BlockingSchedule[];
 }
-
-/** $dnsrewrite 规则给出的应答内容（仅 action === 'rewrite' 时存在） */
-export interface RewriteResult {
-  /** DNS 应答码数值，见 rcodeNames */
-  rcode: number;
-  /** 应答记录的展示形式，一条记录一项；为空表示权威 NODATA */
-  summary?: string[];
-}
-
-export interface CheckHostResult {
-  blocked: boolean;
-  action: 'block' | 'allow' | 'pass' | 'rewrite' | string;
-  matchedRule?: string;
-  listName?: string;
-  reason?: string;
-  rewritten?: RewriteResult;
-}
-
-/** 应答码数值到可读名称的映射，与后端支持的 RCODE 关键字一致 */
-export const RCODE_NAMES: Record<number, string> = {
-  0: 'NOERROR',
-  1: 'FORMERR',
-  2: 'SERVFAIL',
-  3: 'NXDOMAIN',
-  4: 'NOTIMP',
-  5: 'REFUSED',
-};
 
 export interface WebSocketEvent {
   type: 'query' | 'metrics' | 'takeover' | 'dns' | 'alert' | 'upstream' | 'background' | 'filter';
@@ -529,26 +505,6 @@ export interface SetLoginBackgroundRequest {
   opacity: number;
   blur: number;
   adminPassword?: string;
-}
-
-export interface RewriteRule {
-  domain: string;
-  ips?: string[];
-  cname?: string;
-  txt?: string[];
-  ttl?: number;
-}
-
-export interface RewriteConfig {
-  enabled: boolean;
-  ttl: number;
-  rules: RewriteRule[];
-}
-
-export interface ConfigureRewriteRequest {
-  enabled?: boolean;
-  ttl?: number;
-  rules?: RewriteRule[];
 }
 
 export interface ClientAlias {

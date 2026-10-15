@@ -2,12 +2,11 @@ package core
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/miekg/dns"
 )
 
 // DefaultRewriteTTL 默认重写记录生存期（秒）
@@ -20,6 +19,18 @@ type RewriteRule struct {
 	CNAME  string   `json:"cname,omitempty"` // CNAME 目标别名
 	TXT    []string `json:"txt,omitempty"`   // TXT 记录内容列表
 	TTL    uint32   `json:"ttl,omitempty"`   // 生存期（秒），为 0 时使用系统默认 TTL
+
+	// Records 承载 MX / SRV / NS / PTR / HTTPS / SVCB 以及显式写法的 A/AAAA/CNAME/TXT。
+	//
+	// 与上面的快捷字段并存：快捷字段覆盖了最常见的三种场景，界面默认走快捷字段；
+	// Records 用于表达快捷字段无法描述的记录（如 MX 的优先级、SVCB 的 alpn）。
+	// 两类同时配置时都会被返回，因此同一条规则可以同时声明 A 与 MX。
+	Records []RewriteRecord `json:"records,omitempty"`
+
+	// RCode 覆盖应答码（"NXDOMAIN" / "REFUSED" 等），为空表示 NOERROR。
+	//
+	// 非 NOERROR 时不再返回任何记录，用于把一个域名整体置为不存在或被拒绝。
+	RCode string `json:"rcode,omitempty"`
 }
 
 // RewriteConfig DNS 重写配置
@@ -61,6 +72,8 @@ type compiledRule struct {
 	cname      string // 标准 FQDN (以点结尾)
 	txt        []string
 	ttl        uint32
+	records    []RewriteRecord
+	rcode      int
 }
 
 // RewriteEngine 自定义 DNS 重写与伪装引擎
@@ -119,6 +132,21 @@ func (e *RewriteEngine) addRuleInternal(rule RewriteRule) {
 		txt:    rule.TXT,
 	}
 
+	// 显式记录在编译期做一次校验并就地剔除非法项：留到查询期才发现只会
+	// 让用户看到「配了却不生效」，而编译期可以直接把问题写进日志。
+	c.records = compileRewriteRecords(norm, rule.Records)
+
+	// 无法识别的应答码回落到 NOERROR：写错一个单词不该让整条规则变成
+	// 一个「什么都不返回」的空壳，那样更难排查。
+	if rule.RCode != "" && rule.RCode != RewriteRCodeNone {
+		rcode, ok := ParseRewriteRCode(rule.RCode)
+		if !ok {
+			log.Printf("[Rewrite] 规则 %s 的应答码 %q 无法识别，按 NOERROR 处理", norm, rule.RCode)
+		} else {
+			c.rcode = rcode
+		}
+	}
+
 	if strings.HasPrefix(norm, "*.") {
 		c.isWildcard = true
 		c.suffix = strings.TrimPrefix(norm, "*.")
@@ -164,6 +192,36 @@ func (e *RewriteEngine) addRuleInternal(rule RewriteRule) {
 	}
 }
 
+// compileRewriteRecords 校验并保留合法的显式记录，丢弃非法项并记录日志
+func compileRewriteRecords(domain string, records []RewriteRecord) []RewriteRecord {
+	if len(records) == 0 {
+		return nil
+	}
+
+	kept := make([]RewriteRecord, 0, len(records))
+	for _, rec := range records {
+		if strings.TrimSpace(rec.Type) == "" {
+			continue
+		}
+		// 用一个中性查询名与类型做试构造：此处只关心取值是否可解析，
+		// 与最终返回给哪个查询无关（同名不同类型的记录会在查询期被过滤）。
+		rrtype, ok := rewriteRecordTypes[strings.ToUpper(strings.TrimSpace(rec.Type))]
+		if !ok {
+			log.Printf("[Rewrite] 规则 %s 的记录类型 %q 不受支持，已忽略", domain, rec.Type)
+			continue
+		}
+		if _, err := buildRewriteRR("probe.invalid.", rrtype, rec, DefaultRewriteTTL); err != nil {
+			log.Printf("[Rewrite] 规则 %s 的 %s 记录取值非法（%v），已忽略", domain, rec.Type, err)
+			continue
+		}
+		kept = append(kept, rec)
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return kept
+}
+
 func (e *RewriteEngine) appendPTR(ipStr, fqdn string) {
 	for _, exist := range e.ptrMap[ipStr] {
 		if exist == fqdn {
@@ -183,185 +241,6 @@ func (e *RewriteEngine) findRule(norm string) (*compiledRule, bool) {
 		}
 	}
 	return nil, false
-}
-
-func (e *RewriteEngine) chaseCNAME(targetFQDN string, qtype uint16, visited map[string]bool) []dns.RR {
-	if len(visited) > 8 {
-		return nil
-	}
-	targetNorm := normalizeRewriteDomain(targetFQDN)
-	if targetNorm == "" || visited[targetNorm] {
-		return nil
-	}
-	visited[targetNorm] = true
-
-	rule, ok := e.findRule(targetNorm)
-	if !ok {
-		return nil
-	}
-
-	var chained []dns.RR
-	switch qtype {
-	case dns.TypeA:
-		if len(rule.v4List) > 0 {
-			for _, ip := range rule.v4List {
-				chained = append(chained, &dns.A{
-					Hdr: dns.RR_Header{Name: dns.Fqdn(targetFQDN), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: rule.ttl},
-					A:   ip,
-				})
-			}
-		} else if rule.cname != "" {
-			chained = append(chained, &dns.CNAME{
-				Hdr:    dns.RR_Header{Name: dns.Fqdn(targetFQDN), Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: rule.ttl},
-				Target: rule.cname,
-			})
-			chained = append(chained, e.chaseCNAME(rule.cname, qtype, visited)...)
-		}
-	case dns.TypeAAAA:
-		if len(rule.v6List) > 0 {
-			for _, ip := range rule.v6List {
-				chained = append(chained, &dns.AAAA{
-					Hdr:  dns.RR_Header{Name: dns.Fqdn(targetFQDN), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: rule.ttl},
-					AAAA: ip,
-				})
-			}
-		} else if rule.cname != "" {
-			chained = append(chained, &dns.CNAME{
-				Hdr:    dns.RR_Header{Name: dns.Fqdn(targetFQDN), Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: rule.ttl},
-				Target: rule.cname,
-			})
-			chained = append(chained, e.chaseCNAME(rule.cname, qtype, visited)...)
-		}
-	}
-	return chained
-}
-
-// Lookup 查找匹配的重写规则
-func (e *RewriteEngine) Lookup(domain string, qtype uint16) (answers []dns.RR, matched bool) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	if !e.enabled {
-		return nil, false
-	}
-
-	norm := normalizeRewriteDomain(domain)
-	if norm == "" {
-		return nil, false
-	}
-
-	cr, ok := e.findRule(norm)
-	if !ok {
-		return nil, false
-	}
-
-	// 匹配成功，标记为已被重写规则捕获
-	matched = true
-	fqdn := domain
-	if !strings.HasSuffix(fqdn, ".") {
-		fqdn += "."
-	}
-
-	switch qtype {
-	case dns.TypeA:
-		if len(cr.v4List) > 0 {
-			for _, ip := range cr.v4List {
-				answers = append(answers, &dns.A{
-					Hdr: dns.RR_Header{Name: fqdn, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: cr.ttl},
-					A:   ip,
-				})
-			}
-		} else if cr.cname != "" {
-			answers = append(answers, &dns.CNAME{
-				Hdr:    dns.RR_Header{Name: fqdn, Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: cr.ttl},
-				Target: cr.cname,
-			})
-			answers = append(answers, e.chaseCNAME(cr.cname, dns.TypeA, map[string]bool{norm: true})...)
-		}
-	case dns.TypeAAAA:
-		if len(cr.v6List) > 0 {
-			for _, ip := range cr.v6List {
-				answers = append(answers, &dns.AAAA{
-					Hdr:  dns.RR_Header{Name: fqdn, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: cr.ttl},
-					AAAA: ip,
-				})
-			}
-		} else if cr.cname != "" {
-			answers = append(answers, &dns.CNAME{
-				Hdr:    dns.RR_Header{Name: fqdn, Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: cr.ttl},
-				Target: cr.cname,
-			})
-			answers = append(answers, e.chaseCNAME(cr.cname, dns.TypeAAAA, map[string]bool{norm: true})...)
-		}
-	case dns.TypeCNAME:
-		if cr.cname != "" {
-			answers = append(answers, &dns.CNAME{
-				Hdr:    dns.RR_Header{Name: fqdn, Rrtype: dns.TypeCNAME, Class: dns.ClassINET, Ttl: cr.ttl},
-				Target: cr.cname,
-			})
-		}
-	case dns.TypeTXT:
-		if len(cr.txt) > 0 {
-			answers = append(answers, &dns.TXT{
-				Hdr: dns.RR_Header{Name: fqdn, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: cr.ttl},
-				Txt: cr.txt,
-			})
-		}
-	}
-
-	return answers, true
-}
-
-// LookupPTR 根据 IP 反向解析域名（O(1) 精确反查，支持多域名别名）
-func (e *RewriteEngine) LookupPTR(ptrQuery string) (answers []dns.RR, matched bool) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
-	if !e.enabled {
-		return nil, false
-	}
-
-	ip := ParseIPFromArpa(ptrQuery)
-	if ip == nil {
-		return nil, false
-	}
-	if v4 := ip.To4(); v4 != nil {
-		ip = v4
-	}
-
-	domains, ok := e.ptrMap[ip.String()]
-	if !ok || len(domains) == 0 {
-		return nil, false
-	}
-
-	fqdn := dns.Fqdn(ptrQuery)
-	for _, domain := range domains {
-		answers = append(answers, &dns.PTR{
-			Hdr: dns.RR_Header{Name: fqdn, Rrtype: dns.TypePTR, Class: dns.ClassINET, Ttl: e.defaultTTL},
-			Ptr: domain,
-		})
-	}
-
-	return answers, true
-}
-
-// LookupReverse 实现 ReverseLookuper 接口，根据 IP 反向查询重写匹配的域名
-func (e *RewriteEngine) LookupReverse(ip net.IP) string {
-	if ip == nil {
-		return ""
-	}
-	if v4 := ip.To4(); v4 != nil {
-		ip = v4
-	}
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	if !e.enabled {
-		return ""
-	}
-	if domains, ok := e.ptrMap[ip.String()]; ok && len(domains) > 0 {
-		return strings.TrimSuffix(domains[0], ".")
-	}
-	return ""
 }
 
 // AddRule 动态添加单条规则

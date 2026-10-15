@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { ipc } from '../../api/ipc';
 import type { RewriteRule, RewriteConfig } from '../../api/types';
+import { REWRITE_RCODES } from '../../api/types';
 import M3Icon from '../M3Icon.vue';
 import AppCard from '../ui/AppCard.vue';
 import StatusBadge from '../StatusBadge.vue';
@@ -43,9 +44,43 @@ const filteredRules = computed(() => {
     if (r.cname && r.cname.toLowerCase().includes(q)) return true;
     if (r.ips && r.ips.some((ip) => ip.includes(q))) return true;
     if (r.txt && r.txt.some((t) => t.toLowerCase().includes(q))) return true;
+    if (r.records && r.records.some((rec) => rec.value.toLowerCase().includes(q))) return true;
     return false;
   });
 });
+
+/**
+ * 规则的记录类型徽标。
+ *
+ * 快捷字段与自定义记录可以并存，因此这里返回的是全部类型而非优先级最高的那一个；
+ * 单条规则若配了失败应答码，则只显示该应答码 —— 此时任何记录都不会被返回。
+ */
+function ruleTypes(r: RewriteRule): string[] {
+  if (r.rcode && r.rcode !== 'NOERROR') return [r.rcode];
+  const types: string[] = [];
+  if (r.cname) types.push('CNAME');
+  if (r.txt && r.txt.length > 0) types.push('TXT');
+  if (r.ips && r.ips.length > 0) types.push('A / AAAA');
+  for (const rec of r.records || []) {
+    if (!types.includes(rec.type)) types.push(rec.type);
+  }
+  return types.length > 0 ? types : ['空'];
+}
+
+/** 记录类型徽标的配色：失败应答码用警示色，其余按类型区分 */
+function typeBadgeClass(type: string): string {
+  if (REWRITE_RCODES.includes(type as (typeof REWRITE_RCODES)[number]) && type !== 'NOERROR') {
+    return 'bg-status-warning-bg text-status-warning border-status-warning/20';
+  }
+  switch (type) {
+    case 'CNAME':
+      return 'bg-brand-container text-brand-primary border-brand-primary/20';
+    case 'A / AAAA':
+      return 'bg-status-success-bg text-status-success border-status-success/20';
+    default:
+      return 'bg-surface-card-sub text-text-muted border-surface-border';
+  }
+}
 
 async function loadData() {
   loading.value = true;
@@ -246,44 +281,50 @@ onMounted(() => {
                   {{ r.domain }}
                 </td>
                 <td class="py-2.5 px-3">
-                  <span
-                    v-if="r.cname"
-                    class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-brand-container text-brand-primary border border-brand-primary/20"
-                  >
-                    CNAME
-                  </span>
-                  <span
-                    v-else-if="r.txt && r.txt.length > 0"
-                    class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-surface-card-sub text-text-muted border border-surface-border"
-                  >
-                    TXT
-                  </span>
-                  <span
-                    v-else
-                    class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-status-success-bg text-status-success border border-status-success/20"
-                  >
-                    A / AAAA
-                  </span>
-                </td>
-                <td class="py-2.5 px-3 font-mono text-text-sub">
-                  <span v-if="r.cname" class="font-bold text-text-main">
-                    {{ r.cname }}
-                  </span>
-                  <div v-else-if="r.txt && r.txt.length > 0" class="space-y-0.5">
-                    <div v-for="(t, ti) in r.txt" :key="ti" class="text-[11px] truncate max-w-sm">
-                      "{{ t }}"
-                    </div>
-                  </div>
-                  <div v-else-if="r.ips && r.ips.length > 0" class="flex flex-wrap gap-1">
+                  <div class="flex flex-wrap gap-1">
                     <span
-                      v-for="ip in r.ips"
-                      :key="ip"
-                      class="px-1.5 py-0.2 rounded bg-surface-card-sub border border-surface-border-sub text-[11px]"
+                      v-for="t in ruleTypes(r)"
+                      :key="t"
+                      class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border"
+                      :class="typeBadgeClass(t)"
                     >
-                      {{ ip }}
+                      {{ t }}
                     </span>
                   </div>
-                  <span v-else class="text-text-muted italic">无目标</span>
+                </td>
+                <td class="py-2.5 px-3 font-mono text-text-sub">
+                  <div v-if="r.rcode && r.rcode !== 'NOERROR'" class="text-[11px] text-status-warning">
+                    仅返回 {{ r.rcode }}，不返回任何记录
+                  </div>
+                  <template v-else>
+                    <span v-if="r.cname" class="font-bold text-text-main">
+                      {{ r.cname }}
+                    </span>
+                    <div v-if="r.txt && r.txt.length > 0" class="space-y-0.5">
+                      <div v-for="(t, ti) in r.txt" :key="ti" class="text-[11px] truncate max-w-sm">
+                        "{{ t }}"
+                      </div>
+                    </div>
+                    <div v-if="r.ips && r.ips.length > 0" class="flex flex-wrap gap-1">
+                      <span
+                        v-for="ip in r.ips"
+                        :key="ip"
+                        class="px-1.5 py-0.2 rounded bg-surface-card-sub border border-surface-border-sub text-[11px]"
+                      >
+                        {{ ip }}
+                      </span>
+                    </div>
+                    <div v-for="(rec, ri) in r.records || []" :key="'rec-' + ri" class="text-[11px] truncate max-w-sm">
+                      <span class="text-text-muted">{{ rec.type }}</span>
+                      <span class="ml-1">{{ rec.value }}</span>
+                    </div>
+                    <span
+                      v-if="!r.cname && !(r.txt && r.txt.length > 0) && !(r.ips && r.ips.length > 0) && !(r.records && r.records.length > 0)"
+                      class="text-text-muted italic"
+                    >
+                      无目标
+                    </span>
+                  </template>
                 </td>
                 <td class="py-2.5 px-3 font-mono text-center text-text-muted text-[11px]">
                   {{ r.ttl || rewriteConfig.ttl || 60 }}s

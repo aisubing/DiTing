@@ -107,46 +107,22 @@ func normalizeRewriteValue(rrtype uint16, value string) string {
 
 // Records 构造本条重写动作在给定查询名下的应答记录。
 //
+// 记录构造统一委托给 buildRewriteRR，与自定义重写规则共用同一套类型支持，
+// 因此 MX / SRV / HTTPS / SVCB 等取值语法在两种入口下完全一致。
 // CNAME 对任意查询类型都返回：别名是名字本身的属性，与请求的记录类型无关。
-// 其它类型仅在记录类型与查询类型一致时返回，否则得到权威 NODATA。
-//
-// 本函数目前覆盖单值类型；MX/SRV/HTTPS/SVCB 等需要多字段解析的类型在后续步骤补齐。
 func (a *RewriteAction) Records(qname string, qtype uint16, ttl uint32) []dns.RR {
 	if a == nil || a.Bare || a.RCode != dns.RcodeSuccess || a.RRType == 0 {
 		return nil
 	}
-	if a.RRType != dns.TypeCNAME && a.RRType != qtype {
+
+	rr, err := buildRewriteRR(qname, qtype, RewriteRecord{
+		Type:  dns.TypeToString[a.RRType],
+		Value: a.Value,
+	}, ttl)
+	if err != nil || rr == nil {
 		return nil
 	}
-
-	header := dns.RR_Header{
-		Name:   dns.Fqdn(qname),
-		Rrtype: a.RRType,
-		Class:  dns.ClassINET,
-		Ttl:    ttl,
-	}
-
-	switch a.RRType {
-	case dns.TypeA:
-		v4 := net.ParseIP(strings.TrimSpace(a.Value)).To4()
-		if v4 == nil {
-			return nil
-		}
-		return []dns.RR{&dns.A{Hdr: header, A: v4}}
-	case dns.TypeAAAA:
-		v6 := net.ParseIP(strings.TrimSpace(a.Value)).To16()
-		if v6 == nil {
-			return nil
-		}
-		return []dns.RR{&dns.AAAA{Hdr: header, AAAA: v6}}
-	case dns.TypeCNAME:
-		return []dns.RR{&dns.CNAME{Hdr: header, Target: dns.Fqdn(strings.TrimSpace(a.Value))}}
-	case dns.TypePTR:
-		return []dns.RR{&dns.PTR{Hdr: header, Ptr: dns.Fqdn(strings.TrimSpace(a.Value))}}
-	case dns.TypeTXT:
-		return []dns.RR{&dns.TXT{Hdr: header, Txt: []string{a.Value}}}
-	}
-	return nil
+	return []dns.RR{rr}
 }
 
 // parseDNSRewriteModifier 解析 $dnsrewrite= 之后的取值。
@@ -218,26 +194,36 @@ func parseShorthandRewrite(value string) (*RewriteAction, error) {
 	return &RewriteAction{RCode: dns.RcodeSuccess, RRType: dns.TypeAAAA, Value: value}, nil
 }
 
-// validateRewriteValue 校验取值与记录类型是否匹配
+// supportedRewriteRRType 判断记录类型是否有对应的构造实现
+func supportedRewriteRRType(rrtype uint16) bool {
+	name, ok := dns.TypeToString[rrtype]
+	if !ok {
+		return false
+	}
+	_, ok = rewriteRecordTypes[name]
+	return ok
+}
+
+// validateRewriteValue 校验取值与记录类型是否匹配。
+//
+// 复用 buildRewriteRR 做实际解析而非另写一套判定：两者若各写一遍，
+// 迟早会出现「校验通过但构造失败」这类只在运行时才暴露的偏差。
 func validateRewriteValue(rrtype uint16, value string) error {
 	typeName := dns.TypeToString[rrtype]
-	if value == "" {
+	if !supportedRewriteRRType(rrtype) {
+		return fmt.Errorf("记录类型 %s 暂不支持重写", typeName)
+	}
+	if strings.TrimSpace(value) == "" {
 		return fmt.Errorf("%s 记录缺少取值", typeName)
 	}
 
-	switch rrtype {
-	case dns.TypeA:
-		if ip := net.ParseIP(value); ip == nil || ip.To4() == nil {
-			return fmt.Errorf("A 记录的取值 %q 不是合法的 IPv4 地址", value)
-		}
-	case dns.TypeAAAA:
-		if ip := net.ParseIP(value); ip == nil || ip.To16() == nil {
-			return fmt.Errorf("AAAA 记录的取值 %q 不是合法的 IPv6 地址", value)
-		}
-	case dns.TypeCNAME, dns.TypePTR, dns.TypeNS:
-		if !isRewriteTarget(value) {
-			return fmt.Errorf("%s 记录的取值 %q 不是合法的域名", typeName, value)
-		}
+	// 传入 rrtype 作为查询类型，使构造路径不会因类型不匹配而提前返回 nil
+	rr, err := buildRewriteRR("probe.invalid.", rrtype, RewriteRecord{Type: typeName, Value: value}, DefaultRewriteTTL)
+	if err != nil {
+		return err
+	}
+	if rr == nil {
+		return fmt.Errorf("%s 记录的取值 %q 无法解析", typeName, value)
 	}
 	return nil
 }

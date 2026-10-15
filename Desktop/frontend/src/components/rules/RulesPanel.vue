@@ -353,10 +353,13 @@ usePoller(fetchData, 4000);
             </div>
             <code class="font-mono text-brand-primary text-[12px] block">||nas.lan^$dnsrewrite=10.0.0.5</code>
             <code class="font-mono text-brand-primary text-[12px] block">||old.com^$dnsrewrite=NXDOMAIN;;</code>
+            <code class="font-mono text-brand-primary text-[12px] block">||_sip._tcp.lan^$dnsrewrite=NOERROR;SRV;10 60 8080 sip.lan</code>
             <p class="text-[11px] text-text-muted">
               无需上游应答，直接按规则给出结果。支持 IPv4/IPv6 地址、域名（CNAME）、
               <code class="font-mono">NOERROR;A;1.2.3.4</code> 这类显式写法，以及
               <code class="font-mono">REFUSED</code>/<code class="font-mono">NXDOMAIN</code> 等应答码。
+              显式写法还支持 MX / SRV / NS / PTR / TXT / HTTPS / SVCB 记录类型，
+              与「自定义 DNS 重写」面板的语法完全一致。
               优先级高于一切拦截与放行规则；用 <code class="font-mono">@@||nas.lan^$dnsrewrite</code>
               可取消该域名的全部重写。
             </p>
