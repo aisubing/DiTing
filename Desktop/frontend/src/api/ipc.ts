@@ -9,6 +9,7 @@ import { NetworkApi } from './network';
 import { WebAuthApi } from './web';
 import { SecurityApi } from './security';
 import { RewriteApi } from './rewrite';
+import { ZoneApi } from './zone';
 import { nativeBridge, setCoreServiceStatusProvider } from './native';
 import { isWebMode } from '../utils/env';
 
@@ -28,6 +29,7 @@ class IPCService {
   private webAuth = new WebAuthApi(this.http, this.events);
   private security = new SecurityApi(this.http);
   private rewrite = new RewriteApi(this.http);
+  private zone = new ZoneApi(this.http);
 
   constructor() {
     // Web 模式下原生桥接无 Wails 绑定，改由宿主机服务接口提供权威状态。
@@ -118,6 +120,9 @@ class IPCService {
   public addRewriteRule = (rule: Parameters<RewriteApi['addRewriteRule']>[0]) => this.rewrite.addRewriteRule(rule);
   public deleteRewriteRule = (domain: string) => this.rewrite.deleteRewriteRule(domain);
   public configureRewrite = (req: Parameters<RewriteApi['configureRewrite']>[0]) => this.rewrite.configureRewrite(req);
+  public getZoneConfig = () => this.zone.getZoneConfig();
+  public configureZone = (req: Parameters<ZoneApi['configureZone']>[0]) => this.zone.configureZone(req);
+  public testZone = (req: Parameters<ZoneApi['testZone']>[0]) => this.zone.testZone(req);
   public getClients = () => this.rewrite.getClients();
   public configureClientAlias = (req: Parameters<RewriteApi['configureClientAlias']>[0]) => this.rewrite.configureClientAlias(req);
   public getClientGroups = () => this.rewrite.getClientGroups();

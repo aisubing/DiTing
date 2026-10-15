@@ -9,6 +9,7 @@ import StatusBadge from '../StatusBadge.vue';
 import ToastBanner from '../ToastBanner.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import RewriteEditModal from './RewriteEditModal.vue';
+import ZoneFileCard from './ZoneFileCard.vue';
 import { extractSwitchValue } from '../../utils/switch';
 import { useToast } from '../../composables/useToast';
 import { useConfirmModal } from '../../composables/useConfirmModal';
@@ -364,6 +365,9 @@ onMounted(() => {
         </div>
       </div>
     </AppCard>
+
+    <!-- 本地权威区：与重写同属「这个域名不要问上游」，故同页呈现 -->
+    <ZoneFileCard />
 
     <!-- 编辑/添加弹窗 -->
     <RewriteEditModal

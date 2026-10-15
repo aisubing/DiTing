@@ -69,6 +69,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/dns/hosts/configure", s.withAuth(s.handleHostsConfigure))
 	mux.HandleFunc("/api/v1/dns/rewrite/rules", s.withAuth(s.handleRewriteRules))
 	mux.HandleFunc("/api/v1/dns/rewrite/configure", s.withAuth(s.handleRewriteConfigure))
+	mux.HandleFunc("/api/v1/dns/zone/config", s.withAuth(s.handleZoneConfig))
+	mux.HandleFunc("/api/v1/dns/zone/test", s.withAuth(s.handleZoneTest))
 	mux.HandleFunc("/api/v1/safesearch/config", s.withAuth(s.handleSafeSearch))
 
 	// 客户端与分组

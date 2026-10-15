@@ -147,6 +147,7 @@ func normalizeConfig(cfg *Config) {
 	core.NormalizeCacheConfig(&cfg.Cache)
 	core.NormalizeFilterConfig(&cfg.Filter)
 	core.NormalizeRewriteConfig(&cfg.Rewrite)
+	core.NormalizeZoneConfig(&cfg.Zone)
 	core.NormalizeSafeSearchConfig(&cfg.SafeSearch)
 	_ = cfg.Client.Normalize()
 	querylog.NormalizeQueryLogConfig(&cfg.QueryLog)

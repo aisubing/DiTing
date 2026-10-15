@@ -24,6 +24,12 @@ type mockExtra struct {
 	blockedServicesErr     bool
 	blockedServicesUpdated bool
 	lastServicesReq        ConfigureBlockedServicesRequest
+
+	// B5 本地权威区：由各测试按需注入
+	zoneConfig  *ZoneConfigResponse
+	zoneErr     bool
+	zoneUpdated bool
+	lastZoneReq ConfigureZoneRequest
 }
 
 // CachePersistStatus 实现 ServiceController 接口（A6）
@@ -84,3 +90,34 @@ func (m *mockExtra) ConfigureBlockedServices(ctx context.Context, req ConfigureB
 
 // errBlockedServicesUnavailable 供需要错误路径的用例注入
 var errBlockedServicesUnavailable = fmt.Errorf("blocked services unavailable")
+
+// GetZoneConfig 实现 ServiceController 接口（B5）
+func (m *mockExtra) GetZoneConfig(ctx context.Context) (*ZoneConfigResponse, error) {
+	if m.zoneErr {
+		return nil, errZoneUnavailable
+	}
+	if m.zoneConfig != nil {
+		return m.zoneConfig, nil
+	}
+	return &ZoneConfigResponse{
+		Enabled:    false,
+		TTL:        300,
+		Zones:      []core.ZoneEntry{},
+		States:     []core.ZoneState{},
+		MaxZones:   core.MaxZoneCount,
+		MaxRecords: core.MaxZoneRecords,
+	}, nil
+}
+
+// ConfigureZone 实现 ServiceController 接口（B5）
+func (m *mockExtra) ConfigureZone(ctx context.Context, req ConfigureZoneRequest) error {
+	if m.zoneErr {
+		return errZoneUnavailable
+	}
+	m.zoneUpdated = true
+	m.lastZoneReq = req
+	return nil
+}
+
+// errZoneUnavailable 供需要错误路径的用例注入
+var errZoneUnavailable = fmt.Errorf("zone unavailable")

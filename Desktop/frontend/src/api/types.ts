@@ -243,6 +243,8 @@ export * from './types.dns';
 export * from './types.network';
 /** 自定义重写与规则测试类型（定义见 ./types.rewrite） */
 export * from './types.rewrite';
+/** 本地权威区（zone 文件）类型（定义见 ./types.zone） */
+export * from './types.zone';
 export interface AdapterInfo {
   id: string;
   name: string;

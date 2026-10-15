@@ -204,6 +204,7 @@ type Config struct {
 	RateLimit  core.RateLimitConfig     `json:"rateLimit"`
 	DNS64      core.DNS64Config         `json:"dns64"`
 	Rewrite    core.RewriteConfig       `json:"rewrite"`
+	Zone       core.ZoneConfig          `json:"zone"`
 	SafeSearch core.SafeSearchConfig    `json:"safeSearch"`
 	Client     core.ClientConfig        `json:"client"`
 	ECS        core.ECSConfig           `json:"ecs"`
@@ -260,6 +261,7 @@ func DefaultConfig() *Config {
 		RateLimit:  core.DefaultRateLimitConfig(),
 		DNS64:      core.DefaultDNS64Config(),
 		Rewrite:    core.DefaultRewriteConfig(),
+		Zone:       core.DefaultZoneConfig(),
 		SafeSearch: core.DefaultSafeSearchConfig(),
 		Client:     core.DefaultClientConfig(),
 		ECS:        core.DefaultECSConfig(),

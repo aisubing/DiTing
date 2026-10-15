@@ -453,5 +453,67 @@ func TestPipeline_HostsRewriteWithIPv6Block(t *testing.T) {
 	}
 }
 
+// 本地权威区必须排在 hosts 之前：区是对整个名字空间的显式声明，
+// 反序会让系统 hosts 文件中恰好存在的同名条目掩盖区的权威结论，
+// 而区里那条 NODATA 正是用户用来阻止内网名字外泄的。
+func TestPipeline_ZonePrecedesHosts(t *testing.T) {
+	hr, _ := core.NewHostsResolver(core.HostsConfig{Enabled: true})
+	hr.LoadReader(strings.NewReader("10.0.0.1 conflict.lan\n10.0.0.2 outside.example\n"))
 
+	ze := core.NewZoneEngine(core.ZoneConfig{
+		Enabled: true,
+		Zones: []core.ZoneEntry{{
+			ID:      "z",
+			Origin:  "lan",
+			Enabled: true,
+			Content: "$ORIGIN lan.\nconflict IN A 192.168.1.5\n",
+		}},
+	})
 
+	pipeline := NewPipeline(NewZoneMiddleware(ze), NewHostsMiddleware(hr))
+
+	// 1. 两个来源都有该名字时以区为准
+	req1 := new(dns.Msg)
+	req1.SetQuestion("conflict.lan.", dns.TypeA)
+	ctx1 := NewDNSContext(context.Background(), req1, &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5353}, "udp")
+	if err := pipeline.Execute(ctx1); err != nil {
+		t.Fatalf("pipeline execute error: %v", err)
+	}
+	if ctx1.Resp == nil || len(ctx1.Resp.Answer) != 1 {
+		t.Fatalf("expected 1 answer, got %v", ctx1.Resp)
+	}
+	a, ok := ctx1.Resp.Answer[0].(*dns.A)
+	if !ok || !a.A.Equal(net.ParseIP("192.168.1.5")) {
+		t.Fatalf("expected zone answer 192.168.1.5, got %v", ctx1.Resp.Answer[0])
+	}
+	if src, _ := ctx1.Get("source"); src != "zone" {
+		t.Fatalf("expected source=zone, got %v", src)
+	}
+
+	// 2. 区顶点之外的名字不受影响，仍由 hosts 应答
+	req2 := new(dns.Msg)
+	req2.SetQuestion("outside.example.", dns.TypeA)
+	ctx2 := NewDNSContext(context.Background(), req2, &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5353}, "udp")
+	if err := pipeline.Execute(ctx2); err != nil {
+		t.Fatalf("pipeline execute error: %v", err)
+	}
+	if src, _ := ctx2.Get("source"); src != "hosts" {
+		t.Fatalf("expected hosts to answer outside.example, got source=%v", src)
+	}
+
+	// 3. 区内的未知名字短路为权威 NODATA，不得落到 hosts 或更下层。
+	// hosts 里即便有同名条目也一并被区覆盖 —— 这正是「区对整个名字空间
+	// 负责」的代价，配置界面已就此提示。
+	req3 := new(dns.Msg)
+	req3.SetQuestion("ghost.lan.", dns.TypeA)
+	ctx3 := NewDNSContext(context.Background(), req3, &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 5353}, "udp")
+	if err := pipeline.Execute(ctx3); err != nil {
+		t.Fatalf("pipeline execute error: %v", err)
+	}
+	if ctx3.Resp == nil || len(ctx3.Resp.Answer) != 0 || ctx3.Resp.Rcode != dns.RcodeSuccess {
+		t.Fatalf("expected authoritative NODATA for ghost.lan, got %v", ctx3.Resp)
+	}
+	if !ctx3.Resp.Authoritative {
+		t.Fatal("expected AA flag on zone NODATA")
+	}
+}

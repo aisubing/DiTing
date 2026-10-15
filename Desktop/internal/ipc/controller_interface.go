@@ -88,6 +88,10 @@ type ServiceController interface {
 	AddRewriteRule(ctx context.Context, rule core.RewriteRule) error
 	DeleteRewriteRule(ctx context.Context, domain string) error
 	ConfigureRewrite(ctx context.Context, req ConfigureRewriteRequest) error
+	// GetZoneConfig 返回本地权威区（zone 文件）配置与各区构建结果
+	GetZoneConfig(ctx context.Context) (*ZoneConfigResponse, error)
+	// ConfigureZone 更新本地权威区配置并重建索引
+	ConfigureZone(ctx context.Context, req ConfigureZoneRequest) error
 	GetSafeSearch(ctx context.Context) (*SafeSearchConfigResponse, error)
 	ConfigureSafeSearch(ctx context.Context, req ConfigureSafeSearchRequest) error
 	GetClients(ctx context.Context) ([]core.ClientInfo, error)

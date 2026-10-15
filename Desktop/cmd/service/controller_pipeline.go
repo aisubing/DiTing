@@ -9,7 +9,7 @@ import (
 //
 // 中间件的注册顺序即语义的一部分，调用方不得随意调整：
 //
-//	metrics → EDE → ECH → client → access → ratelimit → SUDN → hosts → rewrite
+//	metrics → EDE → ECH → client → access → ratelimit → SUDN → zone → hosts → rewrite
 //	→ safesearch → IPv6 → privatePTR → unqualified → ANY → filter → rebind
 //	→ filterResponse → DNS64 → ECS → cache → bogusNXDomain → upstreamRoute → forward
 //
@@ -47,6 +47,9 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		defer p.mu.Unlock()
 		return p.cfg.DNS.BlockIPv6
 	})
+	// 本地权威区排在 hosts 之前：区是对整个名字空间的显式声明，
+	// 同名时以区为准；反之区的权威 NODATA 会被 hosts 的局部条目掩盖。
+	zoneMw := ditingdns.NewZoneMiddleware(p.zoneEngine)
 	hostsMw := ditingdns.NewHostsMiddleware(p.hostsResolver)
 	rewriteMw := ditingdns.NewRewriteMiddleware(p.rewriteEngine)
 	safeSearchMw := ditingdns.NewSafeSearchMiddleware(p.safeSearchEng)
@@ -94,7 +97,7 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 
 	return ditingdns.NewPipeline(
 		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw,
-		hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
+		zoneMw, hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
 		anyMw, filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
 		bogusNxMw, upstreamRouteMw, forwardMw,
 	)
