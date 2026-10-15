@@ -73,7 +73,7 @@ func NewFilterResponseMiddleware(
 		ctx.Set("filter_rule", res.MatchedRule)
 		ctx.Set("filter_reason", res.Reason)
 		ctx.Set("filter_list", res.ListName)
-		ctx.Set("client_group", groupID)
+		ctx.Set(attrClientGroup, groupID)
 		ctx.Set("response_filtered", true)
 
 		// 同步剔除缓存中被投毒（别名指向黑名单域）的条目，防止后续命中重放

@@ -135,6 +135,10 @@ type CoreResolver struct {
 	fallbackOnRcode []int
 	// fallbackOnError 为传输层故障是否触发回退
 	fallbackOnError bool
+	// groupUpstreams 为客户端分组 → 专属上游节点的映射；为空表示未启用
+	groupUpstreams map[string][]*ConfiguredProvider
+	// groupUpstreamIDs 为其持久化形态（仅存 ID），供状态展示与配置回写
+	groupUpstreamIDs map[string][]string
 }
 
 // NewResolver 创建并初始化核心 DNS 解析器
@@ -214,6 +218,9 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 
 	r.mode = mode
 	r.providers = providers
+	// 上游列表被整体替换后，分组专属上游的节点指针也必须重新绑定到新对象上；
+	// 否则热更新会让分组仍指向已废弃的旧节点（其统计与连接池都已不再被调度）
+	_ = r.applyGroupUpstreamsLocked(r.groupUpstreamIDs)
 	r.fallbackProviders = fallbackProviders
 	r.fallbackTimeout = fallbackTimeoutOf(cfg.FallbackTimeoutMs)
 	r.fallbackOnRcode = fallbackRcodes(cfg.FallbackOnRcode)

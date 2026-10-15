@@ -390,20 +390,10 @@ type FilterPauseResponse struct {
 	BlockingEnabled bool `json:"blockingEnabled"`
 }
 
-// ClientGroupConfigResponse 客户端分组配置与已解析规则集选项
-type ClientGroupConfigResponse struct {
-	Enabled bool               `json:"enabled"`
-	Groups  []core.ClientGroup `json:"groups"`
-	// RuleLists 供前端多选绑定的可用订阅列表（ID + 名称）
-	RuleLists []ClientGroupRuleListOption `json:"ruleLists"`
-}
+// ClientGroupConfigResponse 客户端分组配置与已解析规则集选项。
+//
+// 具体字段定义见 ./types_client_groups.go。
 
-// ClientGroupRuleListOption 分组可绑定的订阅列表选项
-type ClientGroupRuleListOption struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Enabled bool   `json:"enabled"`
-}
 
 // ConfigureClientGroupsRequest 客户端分组配置请求
 type ConfigureClientGroupsRequest struct {

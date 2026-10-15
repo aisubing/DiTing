@@ -141,11 +141,14 @@ func (p *program) run() error {
 	if err := p.filterEngine.SetClientGroups(cfg.Client.GroupConfig()); err != nil {
 		log.Printf("[Clients] 载入客户端分组警告: %v\n", err)
 	}
-	if gr, err := core.NewGroupResolver(cfg.Client.GroupConfig()); err == nil {
+	clientGroupCfg := cfg.Client.GroupConfig()
+	if gr, err := core.NewGroupResolver(clientGroupCfg); err == nil {
 		p.groupResolver = gr
 	} else {
 		log.Printf("[Clients] 编译客户端分组匹配器警告: %v\n", err)
 	}
+	// 分组专属上游依赖已装配的主链路，故须在两个前置件就绪之后绑定
+	p.applyGroupUpstreams(clientGroupCfg)
 
 	hostsRes, err := core.NewHostsResolver(cfg.Hosts)
 	if err != nil {

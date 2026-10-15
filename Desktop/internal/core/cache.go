@@ -131,12 +131,19 @@ func (c *DNSCache) shard(key string) *cacheShard {
 
 // Get 查询缓存条目并执行 LRU 提升与 TTL 剩余时长重写
 func (c *DNSCache) Get(req *dns.Msg) (resp *dns.Msg, hit bool, isStale bool, staleCandidate *cacheEntry) {
+	return c.GetForGroup(req, DefaultClientGroupID)
+}
+
+// GetForGroup 按客户端分组查询缓存条目。
+//
+// group 为默认组时键与 Get 完全一致，未启用分组的部署行为不变。
+func (c *DNSCache) GetForGroup(req *dns.Msg, group string) (resp *dns.Msg, hit bool, isStale bool, staleCandidate *cacheEntry) {
 	if !c.IsEnabled() || req == nil || len(req.Question) == 0 {
 		return nil, false, false, nil
 	}
 
 	q := req.Question[0]
-	key := CacheKey(q.Name, q.Qtype, q.Qclass)
+	key := CacheKeyForGroup(q.Name, q.Qtype, q.Qclass, group)
 	now := time.Now()
 	shard := c.shard(key)
 
@@ -221,6 +228,13 @@ func (c *DNSCache) BuildStaleResponse(req *dns.Msg, entry *cacheEntry) *dns.Msg 
 
 // Put 解析上游响应并以 LRU 方式持久化至对应分片中
 func (c *DNSCache) Put(req *dns.Msg, resp *dns.Msg) bool {
+	return c.PutForGroup(req, resp, DefaultClientGroupID)
+}
+
+// PutForGroup 按客户端分组写入缓存条目。
+//
+// group 为默认组时键与 Put 完全一致，未启用分组的部署行为不变。
+func (c *DNSCache) PutForGroup(req *dns.Msg, resp *dns.Msg, group string) bool {
 	if !c.IsEnabled() || req == nil || len(req.Question) == 0 || resp == nil {
 		return false
 	}
@@ -259,7 +273,7 @@ func (c *DNSCache) Put(req *dns.Msg, resp *dns.Msg) bool {
 	}
 
 	clonedMsg := resp.Copy()
-	key := CacheKey(q.Name, q.Qtype, q.Qclass)
+	key := CacheKeyForGroup(q.Name, q.Qtype, q.Qclass, group)
 	entry := &cacheEntry{
 		key:          key,
 		domain:       strings.ToLower(strings.TrimSuffix(strings.TrimSpace(q.Name), ".")),

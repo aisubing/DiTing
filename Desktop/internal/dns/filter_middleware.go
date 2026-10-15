@@ -58,7 +58,7 @@ func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver *core.
 			ctx.Set("filter_rule", res.MatchedRule)
 			ctx.Set("filter_reason", res.Reason)
 			ctx.Set("filter_list", res.ListName)
-			ctx.Set("client_group", groupID)
+			ctx.Set(attrClientGroup, groupID)
 			return nil
 		}
 

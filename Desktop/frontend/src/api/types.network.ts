@@ -60,6 +60,11 @@ export interface ClientGroup {
   schedules?: BlockingSchedule[];
   /** 组级仅白名单模式 */
   allowlistOnly?: boolean;
+  /**
+   * 该组的专属上游节点 ID（空 = 沿用主链路）。
+   * 命中该组的查询会直接由这些上游解析，不再经过默认上游。
+   */
+  upstreamIds?: string[];
 }
 
 /** 分组可绑定的订阅列表选项 */
@@ -69,10 +74,18 @@ export interface ClientGroupRuleListOption {
   enabled: boolean;
 }
 
+/** 分组可绑定的上游节点选项 */
+export interface ClientGroupUpstreamOption {
+  id: string;
+  protocol: string;
+  server: string;
+}
+
 export interface ClientGroupConfigResponse {
   enabled: boolean;
   groups: ClientGroup[];
   ruleLists: ClientGroupRuleListOption[];
+  upstreams: ClientGroupUpstreamOption[];
 }
 
 export interface ConfigureClientGroupsRequest {

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ipc } from '../../api/ipc';
-import type { BlockingSchedule, ClientGroup, ClientGroupRuleListOption, ClientGroupConfigResponse } from '../../api/types';
+import type {
+  BlockingSchedule,
+  ClientGroup,
+  ClientGroupRuleListOption,
+  ClientGroupUpstreamOption,
+  ClientGroupConfigResponse,
+} from '../../api/types';
 import M3Icon from '../M3Icon.vue';
 import AppCard from '../ui/AppCard.vue';
 import StatusBadge from '../StatusBadge.vue';
@@ -28,6 +34,7 @@ const BLOCK_MODES = [
 const enabled = ref(false);
 const drafts = ref<GroupDraft[]>([]);
 const ruleLists = ref<ClientGroupRuleListOption[]>([]);
+const upstreamOptions = ref<ClientGroupUpstreamOption[]>([]);
 const saving = ref(false);
 const deleteIndex = ref(-1);
 const { toast, show: showToast, dismiss } = useToast();
@@ -54,6 +61,7 @@ function newDraft(index: number): GroupDraft {
     scheduleEnabled: false,
     schedules: [],
     allowlistOnly: false,
+    upstreamIds: [],
   };
 }
 
@@ -80,6 +88,17 @@ function inheritsAll(row: GroupDraft): boolean {
   return !row.ruleListIds || row.ruleListIds.length === 0;
 }
 
+function toggleUpstream(row: GroupDraft, id: string) {
+  const ids = row.upstreamIds || [];
+  const idx = ids.indexOf(id);
+  if (idx >= 0) {
+    ids.splice(idx, 1);
+  } else {
+    ids.push(id);
+  }
+  row.upstreamIds = ids;
+}
+
 async function fetchData() {
   try {
     const res: ClientGroupConfigResponse = await ipc.getClientGroups();
@@ -87,6 +106,7 @@ async function fetchData() {
     enabled.value = res.enabled;
     drafts.value = (res.groups || []).map(toDraft);
     ruleLists.value = res.ruleLists || [];
+    upstreamOptions.value = res.upstreams || [];
   } catch {
     // 轮询失败静默，避免打断正在编辑的表单
   }
@@ -300,6 +320,44 @@ fetchData();
               <p v-else class="text-[11px] text-text-muted">当前无可用订阅列表，该组将仅应用自定义规则。</p>
               <p v-if="inheritsAll(row)" class="text-[11px] text-text-muted">
                 未勾选任何列表 → 继承全部订阅规则。
+              </p>
+            </div>
+
+            <!-- 专属上游绑定 -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-[11px] font-semibold text-text-muted">专属上游 DNS</label>
+                <button
+                  type="button"
+                  class="text-[11px] text-brand-primary hover:underline"
+                  @click="row.upstreamIds = []"
+                >
+                  沿用主链路
+                </button>
+              </div>
+              <div v-if="upstreamOptions.length > 0" class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="up in upstreamOptions"
+                  :key="up.id"
+                  type="button"
+                  :title="`${up.protocol} · ${up.server}`"
+                  class="px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors font-mono"
+                  :class="(row.upstreamIds || []).includes(up.id)
+                    ? 'bg-brand-primary text-white border-brand-primary'
+                    : 'bg-surface-card text-text-muted border-surface-border-sub hover:border-brand-primary/60'"
+                  @click="toggleUpstream(row, up.id)"
+                >
+                  {{ up.id }}
+                </button>
+              </div>
+              <p v-else class="text-[11px] text-text-muted">当前无可选上游，该组将沿用主链路。</p>
+              <p class="text-[11px] text-text-muted">
+                <template v-if="!row.upstreamIds || row.upstreamIds.length === 0">
+                  未勾选任何上游 → 沿用主链路调度策略。
+                </template>
+                <template v-else>
+                  该组的查询直接由所选上游解析，不再经过默认上游，也不参与全局回退链。
+                </template>
               </p>
             </div>
           </div>

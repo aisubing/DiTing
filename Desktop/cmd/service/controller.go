@@ -104,6 +104,9 @@ func (p *program) ConfigureUpstream(ctx context.Context, req ipc.ConfigureUpstre
 		if err := p.resolver.Configure(cfg); err != nil {
 			return err
 		}
+		// 上游整体重建后，分组专属上游的节点指针必须重新绑定到新对象；
+		// Configure 内部只保留 ID 映射，此处据分组配置重新解析一次
+		p.applyGroupUpstreams(p.cfg.Client.GroupConfig())
 	}
 
 	p.cfg.Upstream = cfg

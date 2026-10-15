@@ -10,7 +10,7 @@ import (
 //
 //	metrics → EDE → ECH → client → access → ratelimit → SUDN → hosts → rewrite
 //	→ safesearch → IPv6 → privatePTR → unqualified → filter → rebind
-//	→ filterResponse → DNS64 → ECS → cache → forward
+//	→ filterResponse → DNS64 → ECS → cache → upstreamRoute → forward
 //
 // 其中响应侧复检（filterResponse）位于 rebind 之后、DNS64 之前：
 // 既包裹缓存（缓存命中也复检），又在 DNS64 合成之后获得最终应答，
@@ -24,7 +24,8 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	if rebindMgr == nil {
 		rebindMgr = ditingdns.NewRebindProtectionManager(p.cfg.Rebind)
 	}
-	clientMw := ditingdns.NewClientMiddleware(p.clientResolver)
+	// 分组标记必须在缓存之前写入，否则缓存键会退化为默认组而失去分组隔离
+	clientMw := ditingdns.NewClientMiddlewareWithGroups(p.clientResolver, p.groupResolver)
 	accessMw := ditingdns.NewAccessMiddleware(p.accessControl)
 	rateLimitMw := ditingdns.NewRateLimitMiddleware(p.rateLimiter)
 	edeMw := ditingdns.NewEDEMiddleware(func() bool {
@@ -65,12 +66,14 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	}, p.cache)
 	dns64Mw := ditingdns.NewDNS64Middleware(p.dns64Synth, p.resolver)
 	ecsMw := ditingdns.NewECSMiddleware(p.ecsMgr)
-	cacheMw := ditingdns.NewCacheMiddleware(p.cache, p.resolver)
+	cacheMw := ditingdns.NewCacheMiddlewareWithGroups(p.cache, p.resolver, p.groupResolver)
+	upstreamRouteMw := ditingdns.NewUpstreamRouteMiddleware(p.resolver, p.groupResolver)
 	forwardMw := ditingdns.NewForwardMiddleware(p.resolver)
 
 	return ditingdns.NewPipeline(
 		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw,
 		hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
-		filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw, forwardMw,
+		filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
+		upstreamRouteMw, forwardMw,
 	)
 }

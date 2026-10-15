@@ -9,6 +9,12 @@ import (
 	"github.com/miekg/dns"
 )
 
+// attrClientGroup 为上下文中的客户端分组属性键。
+//
+// 由 client 中间件在流水线早期写入，被规则过滤与缓存键共同消费。
+// 集中定义可避免读写两侧的字符串字面量漂移。
+const attrClientGroup = "client_group"
+
 // DNSContext 封装单个 DNS 查询的执行上下文与状态信息
 type DNSContext struct {
 	Context    context.Context
