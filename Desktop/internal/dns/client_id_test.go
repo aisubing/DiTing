@@ -79,7 +79,10 @@ func TestClientIDFromServerNameTooLongPrefix(t *testing.T) {
 
 func TestApplyEncryptedClientIDSetsClientName(t *testing.T) {
 	ctx := NewDNSContext(nil, nil, nil, "tcp-tls")
-	applyEncryptedClientID(ctx, "tablet.dns.lan", "dns.lan")
+	applyEncryptedClientID(ctx, queryOrigin{
+		Protocol:   "tcp-tls",
+		ServerName: "tablet.dns.lan",
+	}, "dns.lan")
 
 	if ctx.ClientID != "tablet" {
 		t.Fatalf("ClientID 应为 tablet，实得 %q", ctx.ClientID)
@@ -88,10 +91,25 @@ func TestApplyEncryptedClientIDSetsClientName(t *testing.T) {
 		t.Fatalf("ClientID 应写入属性表，实得 %v", v)
 	}
 
-	// 明文入口（无 SNI）不应产生任何 ClientID
+	// 明文入口（无 SNI、无路径）不应产生任何 ClientID
 	plain := NewDNSContext(nil, nil, nil, "udp")
-	applyEncryptedClientID(plain, "", "")
+	applyEncryptedClientID(plain, queryOrigin{Protocol: "udp"}, "")
 	if plain.ClientID != "" {
 		t.Fatalf("明文入口不应有 ClientID，实得 %q", plain.ClientID)
+	}
+}
+
+// DoH 的路径 ClientID 优先于 SNI：路径是用户逐字填进客户端的，
+// 而 SNI 往往是客户端自己挑的默认值
+func TestApplyEncryptedClientIDPrefersPath(t *testing.T) {
+	ctx := NewDNSContext(nil, nil, nil, "doh")
+	applyEncryptedClientID(ctx, queryOrigin{
+		Protocol:     "doh",
+		ServerName:   "sni.dns.lan",
+		PathClientID: "laptop",
+	}, "dns.lan")
+
+	if ctx.ClientID != "laptop" {
+		t.Fatalf("应以路径 ClientID 为准，实得 %q", ctx.ClientID)
 	}
 }

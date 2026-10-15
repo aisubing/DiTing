@@ -45,8 +45,9 @@ type Server struct {
 
 	// encrypted 为加密监听配置；nil 表示本次不开放加密入口
 	encrypted *EncryptedServerConfig
-	// dot 为已激活的 DoT 监听器；未启用时为 nil
+	// dot / doh 为已激活的加密监听器；未启用时为 nil
 	dot *dotListener
+	doh *dohListener
 }
 
 // SetEncryptedConfig 设置加密 DNS 监听配置，须在 Start 之前调用。
@@ -63,7 +64,7 @@ func (s *Server) SetEncryptedConfig(cfg *EncryptedServerConfig) {
 func (s *Server) EncryptedEnabled() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.encrypted != nil && s.encrypted.DoTEnabled
+	return s.encrypted != nil && (s.encrypted.DoTEnabled || s.encrypted.DoHEnabled)
 }
 
 // NewServer 创建 DNS 监听服务
@@ -176,11 +177,21 @@ func (s *Server) Start() error {
 	}
 
 	// 加密监听是附加能力：绑定失败只记日志，不能让明文解析跟着起不来
-	if s.encrypted != nil && s.encrypted.DoTEnabled {
-		if err := s.startDoT(); err != nil {
-			log.Printf("[DNS] DoT 监听器启动失败，加密解析暂不可用: %v\n", err)
-		} else {
-			log.Printf("[DNS] DoT 监听器已就绪: %s\n", s.encrypted.DoTListenAddress())
+	if s.encrypted != nil {
+		if s.encrypted.DoTEnabled {
+			if err := s.startDoT(); err != nil {
+				log.Printf("[DNS] DoT 监听器启动失败，加密解析暂不可用: %v\n", err)
+			} else {
+				log.Printf("[DNS] DoT 监听器已就绪: %s\n", s.encrypted.DoTListenAddress())
+			}
+		}
+		if s.encrypted.DoHEnabled {
+			if err := s.startDoH(); err != nil {
+				log.Printf("[DNS] DoH 监听器启动失败，加密解析暂不可用: %v\n", err)
+			} else {
+				log.Printf("[DNS] DoH 监听器已就绪: https://%s%s\n",
+					s.encrypted.DoHListenAddress(), normalizeDoHPath(s.encrypted.DoHPath))
+			}
 		}
 	}
 
@@ -201,14 +212,14 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		protocol = "tcp"
 	}
-	s.handleQuery(w, r, protocol, "")
+	s.handleQuery(w, r, queryOrigin{Protocol: protocol})
 }
 
 // handleEncryptedQuery 处理来自加密监听器的查询。
 //
 // 与明文入口共用同一条流水线：加密只改变报文怎么来、应答怎么回去，
-// 不该改变一次查询被怎样解析。serverName 用于识别 ClientID，明文入口传空串。
-func (s *Server) handleEncryptedQuery(w dns.ResponseWriter, r *dns.Msg, protocol, serverName string) {
+// 不该改变一次查询被怎样解析。
+func (s *Server) handleEncryptedQuery(w dns.ResponseWriter, r *dns.Msg, origin queryOrigin) {
 	if r == nil {
 		return
 	}
@@ -216,11 +227,11 @@ func (s *Server) handleEncryptedQuery(w dns.ResponseWriter, r *dns.Msg, protocol
 		dns.HandleFailed(w, r)
 		return
 	}
-	s.handleQuery(w, r, protocol, serverName)
+	s.handleQuery(w, r, origin)
 }
 
 // handleQuery 执行一次查询：构造上下文、跑流水线、写回应答。
-func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, protocol, serverName string) {
+func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, origin queryOrigin) {
 	s.activeQueries.Add(1)
 	defer s.activeQueries.Done()
 
@@ -235,8 +246,8 @@ func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, protocol, serverN
 	queryCtx, queryCancel := context.WithTimeout(baseCtx, timeout)
 	defer queryCancel()
 
-	dnsCtx := NewDNSContext(queryCtx, r, w.RemoteAddr(), protocol)
-	applyEncryptedClientID(dnsCtx, serverName, s.ServerName())
+	dnsCtx := NewDNSContext(queryCtx, r, w.RemoteAddr(), origin.Protocol)
+	applyEncryptedClientID(dnsCtx, origin, s.ServerName())
 
 	if s.pipeline != nil {
 		_ = s.pipeline.Execute(dnsCtx)
@@ -244,7 +255,7 @@ func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, protocol, serverN
 
 	if dnsCtx.Resp != nil {
 		dnsCtx.Resp.Id = r.Id
-		if protocol == "udp" {
+		if origin.Protocol == "udp" {
 			maxSize := dns.MinMsgSize
 			if opt := r.IsEdns0(); opt != nil {
 				maxSize = int(opt.UDPSize())
@@ -292,12 +303,17 @@ func (s *Server) Shutdown() error {
 	s.servers = nil
 	dot := s.dot
 	s.dot = nil
+	doh := s.doh
+	s.doh = nil
 	s.mu.Unlock()
 
 	// 先关闭所有网络监听，拒绝新连接
 	s.cleanupServers(servers)
 	if dot != nil {
 		dot.close()
+	}
+	if doh != nil {
+		closeHTTP(doh.srv, 3*time.Second)
 	}
 
 	// 等待活跃请求在超时内完成

@@ -22,16 +22,22 @@ const attrClientGroup = "client_group"
 // （按 IP 网段划分）更适合做身份归属。
 const attrClientID = "client_id"
 
-// applyEncryptedClientID 从 SNI 里识别 ClientID 并写入上下文。
+// applyEncryptedClientID 解析本次查询的 ClientID 并写入上下文。
 //
-// hostSNI 为空（非加密入口或未配置服务器名）时不做任何事：没有基准名字就
-// 无从判断客户端是否多写了一级标签，凭空取一层反而会把正常访问归类成
-// 某个并不存在的客户端。
-func applyEncryptedClientID(ctx *DNSContext, cliSNI, hostSNI string) {
-	if ctx == nil || hostSNI == "" {
+// DoH 的路径段优先于 DoT 的 SNI：路径是用户在客户端里逐字填进去的，
+// 而 SNI 往往是客户端自己挑的默认值，两者都以路径为准更贴近用户意图。
+//
+// 服务器名未配置时只能靠路径，因为此时无从判断 SNI 是否多写了一级标签，
+// 凭空取一层会把正常访问归类成某个并不存在的客户端。
+func applyEncryptedClientID(ctx *DNSContext, origin queryOrigin, hostSNI string) {
+	if ctx == nil {
 		return
 	}
-	id := ClientIDFromServerName(hostSNI, cliSNI)
+
+	id := origin.PathClientID
+	if id == "" {
+		id = ClientIDFromServerName(hostSNI, origin.ServerName)
+	}
 	if id == "" {
 		return
 	}

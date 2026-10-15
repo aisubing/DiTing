@@ -5,6 +5,7 @@ import type { EncryptedDNSStatusResponse, ConfigureEncryptedDNSRequest } from '.
 import AppCard from '../ui/AppCard.vue';
 import StatusBadge from '../StatusBadge.vue';
 import InlineAlert from '../ui/InlineAlert.vue';
+import CopyRow from '../ui/CopyRow.vue';
 import M3Icon from '../M3Icon.vue';
 import { extractSwitchValue, revertSwitch } from '../../utils/switch';
 
@@ -27,12 +28,14 @@ const doqPort = ref(853);
 const cfg = computed(() => props.status?.config);
 const enabled = computed(() => cfg.value?.enabled ?? false);
 
-/** DoT 是否真的在监听——配置打开不等于绑上了端口 */
+/** DoT / DoH 是否真的在监听——配置打开不等于绑上了端口 */
 const dotLive = computed(() => Boolean(props.status?.dotListen));
 const dotLiveAddr = computed(() => props.status?.dotListen || '');
+const dohLive = computed(() => Boolean(props.status?.dohListen));
+const dohLiveAddr = computed(() => props.status?.dohListen || '');
 
-/** 已经配好但监听器尚未接入的协议；C3/C4 落地后逐项清空 */
-const PENDING_PROTOCOLS = ['DoH', 'DoQ'] as const;
+/** 已经配好但监听器尚未接入的协议；后续步骤落地后逐项清空 */
+const PENDING_PROTOCOLS = ['DoQ'] as const;
 const pendingText = PENDING_PROTOCOLS.join(' / ');
 
 /** 有任一协议被选中但总开关没开，配置不会生效——提前说出来 */
@@ -154,7 +157,7 @@ const INPUT_CLS =
     <div class="space-y-3 mt-3 text-xs">
       <InlineAlert
         type="warning"
-        :message="`${pendingText} 监听器尚未接入，现在开启只会保存配置，不会真的开始对外服务。DoT 已可用。`"
+        :message="`${pendingText} 监听器尚未接入，现在开启只会保存配置，不会真的开始对外服务。DoT / DoH 已可用。`"
       />
       <InlineAlert
         v-if="enabled && !anyProtocolOn"
@@ -196,11 +199,30 @@ const INPUT_CLS =
               <div class="text-[11px] text-text-muted">
                 端口 {{ cfg?.dohPort ?? 443 }}，路径 <code class="font-mono">{{ cfg?.dohPath || '/dns-query' }}</code>
               </div>
+              <div v-if="cfg?.dohEnabled" class="text-[11px] mt-0.5 font-mono">
+                <span v-if="dohLive" class="text-status-success">正在监听 {{ dohLiveAddr }}</span>
+                <span v-else class="text-status-warning">
+                  未在监听（服务未启动、证书不可用或端口被占用）
+                </span>
+              </div>
             </div>
             <md-switch
               :selected="cfg?.dohEnabled ?? false"
               :disabled="saving"
               @change="(e: Event) => toggleProtocol(e, 'dohEnabled', 'DoH')"
+            />
+          </div>
+          <div
+            v-if="cfg?.dohEnabled && (status?.dohUrls?.length ?? 0) > 0"
+            class="border-t border-surface-border-sub pt-2 space-y-1.5"
+          >
+            <div class="text-[11px] text-text-muted">客户端填写以下任一地址即可使用：</div>
+            <CopyRow
+              v-for="url in status?.dohUrls || []"
+              :key="url"
+              :text="url"
+              :open-url="url"
+              open-title="在浏览器中打开（应显示 400，说明服务在响应）"
             />
           </div>
           <div class="flex items-center justify-between gap-3 border-t border-surface-border-sub pt-2">

@@ -7,6 +7,7 @@ import InlineAlert from '../ui/InlineAlert.vue';
 import M3Icon from '../M3Icon.vue';
 import CertificateCard from './CertificateCard.vue';
 import EncryptedListenersCard from './EncryptedListenersCard.vue';
+import ClientIDCard from './ClientIDCard.vue';
 import { useToast } from '../../composables/useToast';
 
 const { toast, show: showToast, dismiss } = useToast();
@@ -82,6 +83,7 @@ onMounted(() => {
         @success="(m: string) => showToast(m)"
         @error="(m: string) => showToast(m, true)"
       />
+      <ClientIDCard :status="status" />
     </template>
 
     <div v-else-if="loading" class="app-card p-8 text-center text-xs text-text-muted">正在读取加密 DNS 服务配置…</div>

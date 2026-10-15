@@ -65,6 +65,10 @@ export interface EncryptedDNSStatusResponse {
   defaultDohPath: string;
   /** 实际生效的 DoT 监听地址；未在监听时为空串 */
   dotListen: string;
+  /** 实际生效的 DoH 监听地址；未在监听时为空串 */
+  dohListen: string;
+  /** 可直接交给终端使用的 DoH 地址列表（服务器名 + 各网卡地址） */
+  dohUrls: string[];
 }
 
 /** 所有字段可选：省略表示沿用当前值 */

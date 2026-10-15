@@ -2,6 +2,8 @@ package core
 
 import (
 	"crypto/x509"
+	"net"
+	"strconv"
 	"strings"
 )
 
@@ -177,6 +179,44 @@ func IsValidCertSource(src string) bool {
 	default:
 		return false
 	}
+}
+
+// DoHURLs 按候选主机名生成 DoH 地址列表，供界面直接展示与复制。
+//
+// 443 端口不写进地址：客户端配置里 https://dns.lan/dns-query 与
+// https://dns.lan:443/dns-query 等价，多一个显式端口只会让用户
+// 以为非用不可，也更容易在粘贴时粘错。
+func DoHURLs(hosts []string, port int, path string) []string {
+	if !isValidPort(port) {
+		port = DefaultDoHPort
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		path = DefaultDoHPath
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
+	out := make([]string, 0, len(hosts))
+	seen := make(map[string]bool, len(hosts))
+	for _, h := range hosts {
+		h = strings.TrimSpace(h)
+		if h == "" || seen[h] {
+			continue
+		}
+		seen[h] = true
+		// IPv6 字面量必须加方括号，否则 https://::1/dns-query 解析不了
+		authority := h
+		if net.ParseIP(h) != nil && strings.Contains(h, ":") {
+			authority = "[" + h + "]"
+		}
+		if port != DefaultDoHPort {
+			authority = authority + ":" + strconv.Itoa(port)
+		}
+		out = append(out, "https://"+authority+path)
+	}
+	return out
 }
 
 // CertInfo 服务端证书的只读摘要，供界面展示。

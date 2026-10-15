@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 
+	"github.com/haoze-evolluling/diting/desktop/internal/core"
 	ditingdns "github.com/haoze-evolluling/diting/desktop/internal/dns"
 )
 
@@ -10,6 +11,9 @@ import (
 //
 // 不宣告它客户端一样能连——DoT 客户端普遍不校验 ALPN——但宣告之后，误把
 // DoH/DoQ 指向这个端口的客户端会握不上手，比连上来再收到解析失败更容易定位。
+//
+// DoH 的 ALPN（h2）由服务器自己覆写：一张证书要同时服务两种协议时，
+// 靠这里传入的 NextProtos 是分不开的。
 var dotALPN = []string{"dot"}
 
 // buildEncryptedServerConfig 按当前配置装配加密监听参数。
@@ -18,31 +22,48 @@ var dotALPN = []string{"dot"}
 // 不去取，免得在用户没开这个功能时因为证书缺失而刷出无意义的错误日志。
 func (p *program) buildEncryptedServerConfig() *ditingdns.EncryptedServerConfig {
 	enc := p.cfg.Encrypted
-	if !enc.Enabled || !enc.DoTEnabled {
+	if !enc.Enabled || (!enc.DoTEnabled && !enc.DoHEnabled) {
 		return nil
 	}
 	if p.certManager == nil {
-		log.Println("[加密DNS] 证书管理器未就绪，本次不开放 DoT 监听")
+		log.Println("[加密DNS] 证书管理器未就绪，本次不开放加密监听")
 		return nil
 	}
 
 	tlsCfg, err := p.certManager.TLSConfig(dotALPN...)
 	if err != nil {
-		// 证书不可用时宁可不监听：没有证书的 DoT 端口只会让客户端
+		// 证书不可用时宁可不监听：没有证书的加密端口只会让客户端
 		// 卡在握手阶段，比明确拒服务更难排查
-		log.Printf("[加密DNS] 服务端证书不可用，本次不开放 DoT 监听: %v\n", err)
+		log.Printf("[加密DNS] 服务端证书不可用，本次不开放加密监听: %v\n", err)
 		return nil
 	}
 
-	return &ditingdns.EncryptedServerConfig{
-		DoTEnabled:    true,
+	cfg := &ditingdns.EncryptedServerConfig{
+		DoTEnabled:    enc.DoTEnabled,
+		DoHEnabled:    enc.DoHEnabled,
 		ListenAddress: enc.ListenAddress,
 		DoTPort:       enc.DoTPort,
+		DoHPort:       enc.DoHPort,
+		DoHPath:       enc.DoHPath,
 		ServerName:    enc.ServerName,
 		TLSConfig:     tlsCfg,
 		ReadTimeout:   ditingdns.DefaultDoTReadTimeout,
 		IdleTimeout:   ditingdns.DefaultDoTIdleTimeout,
 	}
+	// 只开一项时另一项的端口可能还是零值（旧配置文件缺字段），补齐默认值：
+	// 运行期配置的校验只看已启用那几项，但日志与界面都会读这两个值
+	if !isValidEncPort(cfg.DoTPort) {
+		cfg.DoTPort = core.DefaultDoTPort
+	}
+	if !isValidEncPort(cfg.DoHPort) {
+		cfg.DoHPort = core.DefaultDoHPort
+	}
+	return cfg
+}
+
+// isValidEncPort 判断监听端口是否可用；0 视为非法（见 core.isValidPort 的取舍）
+func isValidEncPort(port int) bool {
+	return port > 0 && port <= 65535
 }
 
 // reloadDNSWithCurrentConfig 在持有 p.mu 的前提下重建流水线与监听器。

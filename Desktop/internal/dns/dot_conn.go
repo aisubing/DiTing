@@ -141,7 +141,7 @@ func (d *dotConn) serve(readTimeout, idleTimeout time.Duration) {
 		// 的成本不该与它主动发起查询时一样高
 		timeout = idleTimeout
 
-		d.srv.handleEncryptedQuery(d, req, "tcp-tls", d.serverName)
+		d.srv.handleEncryptedQuery(d, req, queryOrigin{Protocol: "tcp-tls", ServerName: d.serverName})
 	}
 }
 

@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/config"
 	"github.com/haoze-evolluling/diting/desktop/internal/core"
 	"github.com/haoze-evolluling/diting/desktop/internal/ipc"
+	"github.com/haoze-evolluling/diting/desktop/internal/platform"
 )
 
 // GetEncryptedDNS 返回加密 DNS 服务的配置、证书摘要与目录
@@ -17,6 +19,7 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 	p.mu.Lock()
 	cfg := p.cfg.Encrypted
 	certMgr := p.certManager
+	server := p.server
 	p.mu.Unlock()
 
 	var info core.CertInfo
@@ -27,9 +30,10 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 	}
 
 	// 实际监听地址只能在监听器里问：配置不等于既成事实
-	dotListen := ""
-	if p.server != nil {
-		dotListen = p.server.DoTListenAddress()
+	dotListen, dohListen := "", ""
+	if server != nil {
+		dotListen = server.DoTListenAddress()
+		dohListen = server.DoHListenAddress()
 	}
 
 	return &ipc.EncryptedDNSStatusResponse{
@@ -37,11 +41,30 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 		Cert:           info,
 		CertDir:        dir,
 		DoTListen:      dotListen,
+		DoHListen:      dohListen,
+		DoHURLs:        p.dohURLs(cfg),
 		DefaultDoTPort: core.DefaultDoTPort,
 		DefaultDoHPort: core.DefaultDoHPort,
 		DefaultDoQPort: core.DefaultDoQPort,
 		DefaultDoHPath: core.DefaultDoHPath,
 	}, nil
+}
+
+// dohURLs 生成界面可直接复制的 DoH 地址。
+//
+// 服务器名排在最前：它是证书里唯一的 DNS 名，终端按它连接才不会被
+// 证书校验拦下；网卡 IP 只能作为「证书已含该 IP」时的补充。
+func (p *program) dohURLs(cfg core.EncryptedDNSConfig) []string {
+	hosts := make([]string, 0, 4)
+	if name := strings.TrimSpace(cfg.ServerName); name != "" {
+		hosts = append(hosts, name)
+	}
+	if lanAddrs, err := platform.GetLANAddresses(); err == nil {
+		hosts = append(hosts, lanAddrs...)
+	} else {
+		log.Printf("[加密DNS] 获取局域网地址失败，DoH 地址列表可能不完整: %v\n", err)
+	}
+	return core.DoHURLs(hosts, cfg.DoHPort, cfg.DoHPath)
 }
 
 // ConfigureEncryptedDNS 更新加密 DNS 配置并持久化

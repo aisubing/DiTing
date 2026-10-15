@@ -18,6 +18,20 @@ const (
 	DefaultDoTIdleTimeout = 30 * time.Second
 )
 
+// queryOrigin 描述一次查询从哪个入口进来，以及入口能提供的身份线索。
+//
+// 集中成一个结构体而不是继续加参数：每接一种加密协议都要多带一两个
+// 只有它自己用得上的字段（SNI、DoH 路径段），散在参数列表里会让每个
+// 调用点都得知道别的协议长什么样。
+type queryOrigin struct {
+	// Protocol 写入 DNSContext：udp / tcp / tcp-tls / doh / doq
+	Protocol string
+	// ServerName 为 DoT 握手给出的 SNI
+	ServerName string
+	// PathClientID 为 DoH 路径段里带的 ClientID
+	PathClientID string
+}
+
 // EncryptedServerConfig 加密 DNS 监听配置。
 //
 // 与 core.EncryptedDNSConfig 分开：那是「用户配置了什么」的持久化形态，
@@ -25,9 +39,13 @@ const (
 // *tls.Config，配置里不再出现任何文件路径。
 type EncryptedServerConfig struct {
 	DoTEnabled bool
+	DoHEnabled bool
 	// ListenAddress 为空表示所有网卡；端口取自 core.EncryptedDNSConfig
 	ListenAddress string
 	DoTPort       int
+	DoHPort       int
+	// DoHPath 为 DoH 的请求路径，缺省 /dns-query
+	DoHPath string
 	// ServerName 用于从 SNI 中剥离 ClientID
 	ServerName string
 	// TLSConfig 已载入服务端证书；为 nil 时不监听任何加密端口
@@ -53,10 +71,29 @@ func (c EncryptedServerConfig) DoTListenAddress() string {
 	return net.JoinHostPort(host, strconv.Itoa(port))
 }
 
+// DoHListenAddress 返回 DoH 的监听地址，形如 0.0.0.0:443。
+func (c EncryptedServerConfig) DoHListenAddress() string {
+	host := strings.TrimSpace(c.ListenAddress)
+	if host == "" {
+		host = "0.0.0.0"
+	}
+	port := c.DoHPort
+	if port <= 0 || port > 65535 {
+		port = core.DefaultDoHPort
+	}
+	return net.JoinHostPort(host, strconv.Itoa(port))
+}
+
 // Validate 校验监听配置是否足以开工。
+//
+// 只校验「已启用」协议自己的端口：换证书重载时可能只开 DoT，
+// 此时 DoHPort 还是零值，一并校验会让合法的单项配置起不来。
 func (c EncryptedServerConfig) Validate() error {
-	if c.DoTPort <= 0 || c.DoTPort > 65535 {
+	if c.DoTEnabled && (c.DoTPort <= 0 || c.DoTPort > 65535) {
 		return fmt.Errorf("DoT 端口 %d 非法", c.DoTPort)
+	}
+	if c.DoHEnabled && (c.DoHPort <= 0 || c.DoHPort > 65535) {
+		return fmt.Errorf("DoH 端口 %d 非法", c.DoHPort)
 	}
 	if c.ListenAddress != "" {
 		if ip := net.ParseIP(strings.TrimSpace(c.ListenAddress)); ip == nil {

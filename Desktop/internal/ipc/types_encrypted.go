@@ -26,6 +26,10 @@ type EncryptedDNSStatusResponse struct {
 	// 与配置里的端口分开：配置写着 853 不代表真的绑上了，
 	// 可能证书载入失败，也可能端口被别人占了。
 	DoTListen string `json:"dotListen"`
+	// DoHListen 实际生效的 DoH 监听地址；未在监听时为空串
+	DoHListen string `json:"dohListen"`
+	// DoHURLs 可直接交给终端使用的 DoH 地址，含服务器名与各网卡地址
+	DoHURLs []string `json:"dohUrls"`
 }
 
 // ConfigureEncryptedDNSRequest 更新加密 DNS 配置。
