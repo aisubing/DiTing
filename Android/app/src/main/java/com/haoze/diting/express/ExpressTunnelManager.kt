@@ -37,6 +37,7 @@ import com.haoze.diting.core.log.RaceLogger
 import com.haoze.diting.core.rule.RuleIndexLayout
 import com.haoze.diting.core.rule.subscriptionIdOrNull
 import com.haoze.diting.express.cache.ExpressRoomDnsCache
+import com.haoze.diting.express.transport.ExpressDohTransport
 import com.haoze.diting.core.cache.DnsCachePolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -484,6 +485,11 @@ class ExpressTunnelManager {
         isIpv6Active = false
         tunThread?.interrupt()
         tunThread = null
+
+        // Drop the cached DoH clients: their socket protectors reference this
+        // service, so keeping them would retain the whole service graph across
+        // sessions (and leak their dispatcher threads and connections).
+        runCatching { ExpressDohTransport.releaseClients() }
 
         runCatching {
             runBlocking {

@@ -42,12 +42,35 @@ object ExpressDohTransport {
     private const val MAX_CACHED_CLIENTS = 16
     private val clients = ConcurrentHashMap<ClientKey, OkHttpClient>()
 
-    private data class ClientKey(
+    /**
+     * The protector is part of the key by identity, so two different lambdas never
+     * share a client. It also means the map holds the protector (and through it
+     * the owning VpnService) alive, which is why [releaseClients] must be called
+     * when the VPN session ends.
+     */
+    private class ClientKey(
         val timeoutMs: Long,
         val host: String?,
         val addresses: List<InetAddress>?,
-        val protectorId: Int?
-    )
+        val protector: ((Socket) -> Boolean)?
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is ClientKey) return false
+            return timeoutMs == other.timeoutMs &&
+                host == other.host &&
+                addresses == other.addresses &&
+                protector === other.protector
+        }
+
+        override fun hashCode(): Int {
+            var result = timeoutMs.hashCode()
+            result = 31 * result + (host?.hashCode() ?: 0)
+            result = 31 * result + (addresses?.hashCode() ?: 0)
+            result = 31 * result + System.identityHashCode(protector)
+            return result
+        }
+    }
 
     private fun clientFor(
         timeoutMs: Long,
@@ -60,31 +83,77 @@ object ExpressDohTransport {
             timeoutMs = timeoutMs,
             host = if (addresses.isNullOrEmpty()) null else host,
             addresses = addresses,
-            protectorId = protectSocket?.let { System.identityHashCode(it) }
+            protector = protectSocket
         )
-        return clients.getOrPut(key) {
-            if (clients.size >= MAX_CACHED_CLIENTS) clients.clear()
-            val builder = OkHttpClient.Builder()
-                .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-                .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-                .callTimeout(timeoutMs, TimeUnit.MILLISECONDS)
-                .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
-            if (protectSocket != null) {
-                builder.socketFactory(ExpressProtectingSocketFactory(protectSocket))
-            }
-            if (!addresses.isNullOrEmpty()) {
-                builder.dns(object : Dns {
-                    override fun lookup(hostname: String): List<InetAddress> {
-                        return if (hostname.equals(host, ignoreCase = true)) {
-                            addresses
-                        } else {
-                            Dns.SYSTEM.lookup(hostname)
-                        }
-                    }
-                })
-            }
-            builder.build()
+        clients[key]?.let { return it }
+
+        val created = buildClient(timeoutMs, host, addresses, protectSocket)
+        // getOrPut is not atomic on ConcurrentHashMap: a racing caller may have
+        // won, in which case drop the client we just built instead of leaking it.
+        val existing = clients.putIfAbsent(key, created)
+        if (existing != null) {
+            created.closeQuietly()
+            return existing
         }
+        evictOverflow()
+        return created
+    }
+
+    private fun buildClient(
+        timeoutMs: Long,
+        host: String,
+        addresses: List<InetAddress>?,
+        protectSocket: ((Socket) -> Boolean)?
+    ): OkHttpClient {
+        val builder = OkHttpClient.Builder()
+            .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+            .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+            .callTimeout(timeoutMs, TimeUnit.MILLISECONDS)
+            .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
+        if (protectSocket != null) {
+            builder.socketFactory(ExpressProtectingSocketFactory(protectSocket))
+        }
+        if (!addresses.isNullOrEmpty()) {
+            builder.dns(object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> {
+                    return if (hostname.equals(host, ignoreCase = true)) {
+                        addresses
+                    } else {
+                        Dns.SYSTEM.lookup(hostname)
+                    }
+                }
+            })
+        }
+        return builder.build()
+    }
+
+    /** Trims the cache down to [MAX_CACHED_CLIENTS], closing what it drops. */
+    private fun evictOverflow() {
+        if (clients.size <= MAX_CACHED_CLIENTS) return
+        clients.keys.take(clients.size - MAX_CACHED_CLIENTS).forEach { key ->
+            clients.remove(key)?.closeQuietly()
+        }
+    }
+
+    /**
+     * Drops every cached client, shutting down its dispatcher and connection
+     * pool. Must be called when the VPN session that supplied the socket
+     * protectors ends: the protectors reference the service, so keeping the
+     * clients would retain a whole service graph per session.
+     *
+     * A client is rebuilt lazily on the next query, so calling this while a query
+     * is in flight only fails that query, which the caller retries.
+     */
+    fun releaseClients() {
+        clients.keys.toList().forEach { key ->
+            clients.remove(key)?.closeQuietly()
+        }
+    }
+
+    private fun OkHttpClient.closeQuietly() {
+        runCatching { dispatcher.executorService.shutdown() }
+        runCatching { connectionPool.evictAll() }
+        runCatching { cache?.close() }
     }
 
     suspend fun query(
