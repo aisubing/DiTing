@@ -319,6 +319,10 @@ export interface FilterConfig {
   filterResponse?: boolean;
   /** 仅白名单模式：未命中放行规则一律阻断，默认关闭 */
   allowlistOnly?: boolean;
+  /** 伪应答纠正：应答地址落在劫持地址集合内即改写为 NXDOMAIN，默认关闭 */
+  bogusNxDomain?: boolean;
+  /** 伪应答地址清单，接受单个 IP 与 CIDR 网段 */
+  bogusNxDomainNetworks?: string[];
 }
 
 /** 单条分时拦截（时间计划） */

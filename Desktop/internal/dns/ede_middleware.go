@@ -75,7 +75,16 @@ func NewEDEMiddleware(enabled any) Middleware {
 			return err
 		}
 
-		// 5. 规则过滤拦截 (AdGuard / 黑名单)
+		// 5. 伪应答纠正（上游劫持）
+		//
+		// 标为被拦截（Blocked）而非伪造应答（Forged Answer）：
+		// 纠正后的报文是 NXDOMAIN，并未替客户端"伪造"任何地址。
+		if val, ok := ctx.Get("bogus_nxdomain"); ok && val == true {
+			SetEDE(ctx.Resp, dns.ExtendedErrorCodeBlocked, "DITING: 上游返回劫持地址，已纠正为 NXDOMAIN")
+			return err
+		}
+
+		// 6. 规则过滤拦截 (AdGuard / 黑名单)
 		if val, ok := ctx.Get("filter_blocked"); ok && val == true {
 			reason := "DITING: Blocked by filter rule"
 			if rVal, ok := ctx.Get("filter_reason"); ok {
@@ -87,7 +96,7 @@ func NewEDEMiddleware(enabled any) Middleware {
 			return err
 		}
 
-		// 3. 上游解析故障 (SERVFAIL / Network Error)
+		// 7. 上游解析故障 (SERVFAIL / Network Error)
 		if ctx.Err != nil || ctx.Resp.Rcode == dns.RcodeServerFailure {
 			errMsg := "DITING: Upstream resolution failed"
 			if ctx.Err != nil {
@@ -97,7 +106,7 @@ func NewEDEMiddleware(enabled any) Middleware {
 			return err
 		}
 
-		// 4. 过期容灾缓存 (Stale-While-Revalidate)
+		// 8. 过期容灾缓存 (Stale-While-Revalidate)
 		if val, ok := ctx.Get("cache_hit"); ok && val == "stale" {
 			SetEDE(ctx.Resp, dns.ExtendedErrorCodeCachedError, "DITING: Stale cache response (network degraded)")
 			return err

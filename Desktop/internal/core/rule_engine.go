@@ -25,6 +25,9 @@ type RuleEngine struct {
 	groupMatchers   map[string]*RuleMatcher
 	groupBlockModes map[string]string
 
+	// bogusMatcher 伪应答地址匹配器；未启用伪应答纠正时为 nil
+	bogusMatcher *BogusNXDomainMatcher
+
 	httpClient *http.Client
 	stopCh     chan struct{}
 
@@ -61,6 +64,9 @@ func NewRuleEngine(cfg FilterConfig) *RuleEngine {
 	if err := engine.rebuildUnlocked(); err != nil {
 		log.Printf("[RuleEngine] 初始加载规则出现警告: %v", err)
 	}
+	engine.mu.Lock()
+	engine.syncBogusMatcherUnlocked()
+	engine.mu.Unlock()
 
 	// 启动定期更新定时器
 	go engine.runUpdateTicker()
@@ -85,6 +91,8 @@ func (e *RuleEngine) IsEnabled() bool {
 func (e *RuleEngine) SetEnabled(enabled bool) {
 	e.mu.Lock()
 	e.cfg.Enabled = enabled
+	// 总开关同时决定伪应答纠正是否生效
+	e.syncBogusMatcherUnlocked()
 	e.mu.Unlock()
 }
 
@@ -121,6 +129,8 @@ func (e *RuleEngine) UpdateConfig(cfg FilterConfig) error {
 	NormalizeFilterConfig(&cfg)
 
 	e.cfg = cfg
+	// 伪应答清单与总开关都可能在本轮变更，必须先同步再决定是否重建规则索引
+	e.syncBogusMatcherUnlocked()
 
 	// 规则索引仅由自定义规则与订阅列表决定；其余字段（开关、时间计划等）热更新即可
 	matcherInputsUnchanged := e.matcher != nil && e.matcher.TotalRules() > 0 &&

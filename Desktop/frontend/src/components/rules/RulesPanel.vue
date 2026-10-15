@@ -9,6 +9,7 @@ import MetricStrip, { type StatEntry } from '../../components/ui/MetricStrip.vue
 import ToastBanner from '../../components/ToastBanner.vue';
 import RuleListsPanel from '../../components/RuleListsPanel.vue';
 import RuleTestPanel from '../../components/RuleTestPanel.vue';
+import BogusNxDomainCard from './BogusNxDomainCard.vue';
 import { revertSwitch, extractSwitchValue } from '../../utils/switch';
 import { usePoller } from '../../composables/usePoller';
 import { useToast } from '../../composables/useToast';
@@ -36,6 +37,8 @@ const config = ref<FilterConfig>({
   schedules: [],
   filterResponse: false,
   allowlistOnly: false,
+  bogusNxDomain: false,
+  bogusNxDomainNetworks: [],
 });
 
 const listCount = ref(0);
@@ -140,6 +143,34 @@ async function toggleAllowlistOnly(e: Event) {
   } catch (err: any) {
     revertSwitch(e, !next);
     showToast(err?.message || '更新仅白名单模式失败', true);
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleBogusToggle(next: boolean) {
+  try {
+    saving.value = true;
+    await ipc.updateFilterConfig({ bogusNxDomain: next });
+    config.value.bogusNxDomain = next;
+    showToast(`伪应答纠正已${next ? '开启' : '关闭'}`);
+  } catch (err: any) {
+    showToast(err?.message || '更新伪应答纠正开关失败', true);
+    await fetchData();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function handleBogusNetworksSave(networks: string[]) {
+  try {
+    saving.value = true;
+    await ipc.updateFilterConfig({ bogusNxDomainNetworks: networks });
+    config.value.bogusNxDomainNetworks = networks;
+    showToast(networks.length > 0 ? `已保存 ${networks.length} 条劫持地址` : '劫持地址清单已清空');
+  } catch (err: any) {
+    showToast(err?.message || '保存劫持地址清单失败', true);
+    await fetchData();
   } finally {
     saving.value = false;
   }
@@ -509,6 +540,15 @@ usePoller(fetchData, 4000);
             注意：请先确保已配置充分的放行白名单，否则可能造成大面积域名解析失败。
           </p>
         </div>
+
+        <!-- 伪应答纠正 -->
+        <BogusNxDomainCard
+          :enabled="!!config.bogusNxDomain"
+          :networks="config.bogusNxDomainNetworks || []"
+          :saving="saving"
+          @toggle="handleBogusToggle"
+          @save="handleBogusNetworksSave"
+        />
       </div>
     </AppCard>
   </div>

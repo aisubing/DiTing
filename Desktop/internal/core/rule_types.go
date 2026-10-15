@@ -2,6 +2,7 @@ package core
 
 import (
 	"log"
+	"strings"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
 )
@@ -74,6 +75,16 @@ type FilterConfig struct {
 	// AllowlistOnly 全局「仅白名单」模式（默认关闭，借鉴 blocky allowlistOnly / pi-hole 分组模型）。
 	// 开启后仅当命中放行规则（@@ 例外）才放行，未命中任何规则的查询一律阻断。
 	AllowlistOnly bool `json:"allowlistOnly"`
+
+	// BogusNXDomain 伪应答纠正开关（默认关闭）。
+	//
+	// 开启后，应答中的 A/AAAA 若落在 BogusNXDomainNetworks 内即判定为上游劫持，
+	// 就地改写为 NXDOMAIN 并打上拦截标记，使查询日志与 EDE 自动归类。
+	//
+	// 默认关闭是必要的：企业内网大量使用私网地址，误判会让合法域名直接解析失败。
+	BogusNXDomain bool `json:"bogusNxDomain"`
+	// BogusNXDomainNetworks 伪应答地址清单，同时接受单个 IP 与 CIDR 网段
+	BogusNXDomainNetworks []string `json:"bogusNxDomainNetworks,omitempty"`
 }
 
 // DefaultFilterConfig 生成默认过滤配置
@@ -91,6 +102,9 @@ func DefaultFilterConfig() FilterConfig {
 		Schedules:           []BlockingSchedule{},
 		FilterResponse:      false,
 		AllowlistOnly:       false,
+
+		BogusNXDomain:         false,
+		BogusNXDomainNetworks: DefaultBogusNXDomainNetworks(),
 	}
 }
 
@@ -148,6 +162,24 @@ func NormalizeFilterConfig(cfg *FilterConfig) {
 		}
 		cfg.Schedules = valid
 	}
+
+	// 伪应答地址：只做去空白与去重，合法性交由匹配器编译时判定并报告。
+	// 这里丢掉的条目无法反馈给用户，而编译期的错误信息可以。
+	normalized := make([]string, 0, len(cfg.BogusNXDomainNetworks))
+	seen := make(map[string]struct{}, len(cfg.BogusNXDomainNetworks))
+	for _, raw := range cfg.BogusNXDomainNetworks {
+		entry := strings.TrimSpace(raw)
+		if entry == "" {
+			continue
+		}
+		key := strings.ToLower(entry)
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, entry)
+	}
+	cfg.BogusNXDomainNetworks = normalized
 }
 
 // FilterStats 规则引擎运行时统计指标

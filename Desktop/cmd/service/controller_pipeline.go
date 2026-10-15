@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/haoze-evolluling/diting/desktop/internal/core"
 	ditingdns "github.com/haoze-evolluling/diting/desktop/internal/dns"
 )
 
@@ -10,11 +11,13 @@ import (
 //
 //	metrics → EDE → ECH → client → access → ratelimit → SUDN → hosts → rewrite
 //	→ safesearch → IPv6 → privatePTR → unqualified → filter → rebind
-//	→ filterResponse → DNS64 → ECS → cache → upstreamRoute → forward
+//	→ filterResponse → DNS64 → ECS → cache → bogusNXDomain → upstreamRoute → forward
 //
 // 其中响应侧复检（filterResponse）位于 rebind 之后、DNS64 之前：
 // 既包裹缓存（缓存命中也复检），又在 DNS64 合成之后获得最终应答，
 // 且被 rebind 的已阻断判定短路。
+//
+// 伪应答纠正（bogusNXDomain）夹在缓存与回源之间，理由见该处注释。
 //
 // 调用方需持有 p.mu（内部对 p.cfg 的读取依赖该保护）。
 func (p *program) buildPipeline() *ditingdns.Pipeline {
@@ -67,6 +70,14 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	dns64Mw := ditingdns.NewDNS64Middleware(p.dns64Synth, p.resolver)
 	ecsMw := ditingdns.NewECSMiddleware(p.ecsMgr)
 	cacheMw := ditingdns.NewCacheMiddlewareWithGroups(p.cache, p.resolver, p.groupResolver)
+	// 伪应答纠正必须紧贴缓存之后：在缓存之前会让纠正后的 NXDOMAIN 无法被缓存，
+	// 伪地址仍可能被写入；在回源之后则已写入的伪记录无法撤回。
+	bogusNxMw := ditingdns.NewBogusNXDomainMiddleware(func() *core.BogusNXDomainMatcher {
+		if p.filterEngine == nil {
+			return nil
+		}
+		return p.filterEngine.BogusNXDomainMatcher()
+	})
 	upstreamRouteMw := ditingdns.NewUpstreamRouteMiddleware(p.resolver, p.groupResolver)
 	forwardMw := ditingdns.NewForwardMiddleware(p.resolver)
 
@@ -74,6 +85,6 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw,
 		hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
 		filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
-		upstreamRouteMw, forwardMw,
+		bogusNxMw, upstreamRouteMw, forwardMw,
 	)
 }

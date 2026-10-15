@@ -8,6 +8,36 @@ import (
 	"github.com/miekg/dns"
 )
 
+// 伪应答纠正走被拦截（Blocked）而非伪造应答（Forged Answer）：
+// 纠正后的报文是 NXDOMAIN，并未替客户端"伪造"任何地址。
+func TestEDEMiddleware_BogusNXDomain(t *testing.T) {
+	mw := NewEDEMiddleware(true)
+	req := new(dns.Msg)
+	req.SetEdns0(4096, false)
+	ctx := &DNSContext{
+		Context: context.Background(),
+		Req:     req,
+		Resp:    new(dns.Msg),
+	}
+	ctx.Set("bogus_nxdomain", true)
+	// 同时被打上规则拦截标记（中间件如此设置），EDE 必须给出更具体的原因
+	ctx.Set("filter_blocked", true)
+	ctx.Set("filter_reason", "伪应答纠正: x.test. 解析为 0.0.0.0")
+
+	err := mw(ctx, func() error { return nil })
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ede := GetEdns0Option[*dns.EDNS0_EDE](ctx.Resp)
+	if ede == nil {
+		t.Fatal("expected EDE option in response")
+	}
+	if ede.InfoCode != dns.ExtendedErrorCodeBlocked {
+		t.Fatalf("expected code %d, got %d", dns.ExtendedErrorCodeBlocked, ede.InfoCode)
+	}
+}
+
 func TestEDEMiddleware_BlockedByFilter(t *testing.T) {
 	mw := NewEDEMiddleware(true)
 	req := new(dns.Msg)
