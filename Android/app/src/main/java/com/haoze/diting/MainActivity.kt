@@ -13,7 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.haoze.diting.express.ExpressModeLauncher
 import com.haoze.diting.main.MainModeDispatcher
@@ -75,7 +74,6 @@ class MainActivity : AppLocalizedActivity() {
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         languageModeAtCreate = AppLanguageManager.getMode(this)
         enableEdgeToEdge()

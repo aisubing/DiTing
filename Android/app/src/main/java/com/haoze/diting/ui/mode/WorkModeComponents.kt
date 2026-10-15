@@ -45,7 +45,7 @@ fun WorkModeHeader(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Illustration / Decorative Emblem (软件启动遮罩图标与超椭圆样式)
+        // Top Illustration / Decorative Emblem (品牌超椭圆图标)
         Image(
             painter = painterResource(id = R.drawable.ic_splash_squircle_logo),
             contentDescription = localizedText("谛听 · DITING"),
