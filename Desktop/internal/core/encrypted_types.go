@@ -79,6 +79,14 @@ type EncryptedDNSConfig struct {
 
 	// ServerName 客户端应使用的服务器名，用于生成 DDR 广播与移动端描述文件
 	ServerName string `json:"serverName"`
+
+	// DDREnabled 是否应答 _dns.resolver.arpa. 的 SVCB 探测（RFC 9462）。
+	//
+	// 默认关闭：DDR 会让客户端自动切到本机做加密解析，一旦证书不被
+	// 信任，客户端会直接失去解析能力——比起手动少填一个地址，
+	// 这个代价大得多。
+	DDREnabled bool `json:"ddrEnabled"`
+
 	// UUID 移动端配置描述文件的标识；首次生成后固定，避免设备重复安装
 	UUID string `json:"uuid"`
 }

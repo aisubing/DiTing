@@ -33,6 +33,13 @@ export interface EncryptedDNSConfig {
   dohPath: string;
   /** 客户端应使用的服务器名 */
   serverName: string;
+  /**
+   * 是否应答 `_dns.resolver.arpa.` 的 SVCB 探测（DDR，RFC 9462）。
+   *
+   * 默认关闭：开启后客户端会自动切到本机做加密解析，一旦证书不受信任，
+   * 它会直接失去解析能力。
+   */
+  ddrEnabled: boolean;
 }
 
 /** 证书摘要；不含私钥与完整证书体 */
@@ -79,6 +86,7 @@ export interface ConfigureEncryptedDNSRequest {
   dotEnabled?: boolean;
   dohEnabled?: boolean;
   doqEnabled?: boolean;
+  ddrEnabled?: boolean;
   listenAddress?: string;
   dotPort?: number;
   dohPort?: number;

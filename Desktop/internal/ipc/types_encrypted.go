@@ -44,6 +44,7 @@ type ConfigureEncryptedDNSRequest struct {
 	DoTEnabled    *bool            `json:"dotEnabled,omitempty"`
 	DoHEnabled    *bool            `json:"dohEnabled,omitempty"`
 	DoQEnabled    *bool            `json:"doqEnabled,omitempty"`
+	DDREnabled    *bool            `json:"ddrEnabled,omitempty"`
 	ListenAddress *string          `json:"listenAddress,omitempty"`
 	DoTPort       *int             `json:"dotPort,omitempty"`
 	DoHPort       *int             `json:"dohPort,omitempty"`

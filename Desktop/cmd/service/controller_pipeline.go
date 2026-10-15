@@ -9,8 +9,8 @@ import (
 //
 // 中间件的注册顺序即语义的一部分，调用方不得随意调整：
 //
-//	metrics → EDE → ECH → client → access → ratelimit → SUDN → zone → hosts → rewrite
-//	→ safesearch → IPv6 → privatePTR → unqualified → ANY → filter → safeBrowsing
+//	metrics → EDE → ECH → client → access → ratelimit → DDR → SUDN → zone → hosts
+//	→ rewrite → safesearch → IPv6 → privatePTR → unqualified → ANY → filter → safeBrowsing
 //	→ rebind → filterResponse → DNS64 → ECS → cache → bogusNXDomain → upstreamRoute → forward
 //
 // 其中响应侧复检（filterResponse）位于 rebind 之后、DNS64 之前：
@@ -41,6 +41,36 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		defer p.mu.Unlock()
 		return p.cfg.DNS.BlockECH
 	})
+	// DDR 必须排在 SUDN 之前：SUDN 会对整个 resolver.arpa 返回 NODATA
+	// 以防探测外泄，晚于它注册就永远轮不到 DDR 接管
+	ddrMw := ditingdns.NewDDRMiddleware(
+		func() bool {
+			p.mu.Lock()
+			defer p.mu.Unlock()
+			return p.cfg.Encrypted.Enabled && p.cfg.Encrypted.DDREnabled
+		},
+		func() ditingdns.DDRAnswer {
+			p.mu.Lock()
+			defer p.mu.Unlock()
+
+			if p.server == nil {
+				return ditingdns.DDRAnswer{}
+			}
+			var certIPs []string
+			if p.certManager != nil {
+				certIPs = p.certManager.Info().IPAddresses
+			}
+			// 只在真正监听的端口上广播：广播一个绑不上的端口，
+			// 等于把客户端的解析交给一个不存在的服务
+			return ditingdns.BuildDDRAnswer(
+				p.buildEncryptedServerConfig(),
+				p.server.DoTListenAddress(),
+				p.server.DoHListenAddress(),
+				p.server.DoQListenAddress(),
+				certIPs,
+			)
+		},
+	)
 	sudnMw := ditingdns.NewSUDNMiddleware()
 	ipv6Mw := ditingdns.NewIPv6Middleware(func() bool {
 		p.mu.Lock()
@@ -105,7 +135,7 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	forwardMw := ditingdns.NewForwardMiddleware(p.resolver)
 
 	return ditingdns.NewPipeline(
-		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw,
+		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, ddrMw, sudnMw,
 		zoneMw, hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
 		anyMw, filterMw, safeBrowsingMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
 		bogusNxMw, upstreamRouteMw, forwardMw,

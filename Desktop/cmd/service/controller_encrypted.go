@@ -87,6 +87,9 @@ func (p *program) ConfigureEncryptedDNS(ctx context.Context, req ipc.ConfigureEn
 	if req.DoQEnabled != nil {
 		cfg.DoQEnabled = *req.DoQEnabled
 	}
+	if req.DDREnabled != nil {
+		cfg.DDREnabled = *req.DDREnabled
+	}
 	if req.ListenAddress != nil {
 		cfg.ListenAddress = *req.ListenAddress
 	}
