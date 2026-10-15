@@ -126,7 +126,17 @@ object DefaultWhitelistSeeder {
             Log.e(TAG, "Failed to read assets/https_passthrough.txt", it)
         }
 
-        cachedAssetWhitelist = results
+        if (results.isNotEmpty()) {
+            cachedAssetWhitelist = results
+        }
         return results
+    }
+
+    internal fun clearCache() {
+        cachedAssetWhitelist = null
+    }
+
+    internal fun setCachedWhitelistForTesting(list: List<Pair<String, String>>?) {
+        cachedAssetWhitelist = list
     }
 }

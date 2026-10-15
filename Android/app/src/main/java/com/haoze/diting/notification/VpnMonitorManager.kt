@@ -50,8 +50,10 @@ object VpnMonitorManager {
      */
     fun stop(context: Context) {
         val appContext = context.applicationContext
-        runCatching {
-            appContext.startService(VpnMonitorService.stopIntent(appContext))
+        if (VpnMonitorService.isServiceAlive) {
+            runCatching {
+                appContext.startService(VpnMonitorService.stopIntent(appContext))
+            }
         }
         runCatching {
             appContext.stopService(VpnMonitorService.stopIntent(appContext))
@@ -65,6 +67,11 @@ object VpnMonitorManager {
             Log.w(TAG, "Failed to cancel monitor notification", e)
         }
     }
+
+    /**
+     * Checks whether the monitor service is currently alive.
+     */
+    fun isMonitorAlive(): Boolean = VpnMonitorService.isServiceAlive
 
     /**
      * Hook invoked when the VPN starts.

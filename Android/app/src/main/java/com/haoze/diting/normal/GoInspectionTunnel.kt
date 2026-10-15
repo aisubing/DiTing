@@ -220,6 +220,8 @@ class GoInspectionTunnel(
             // the inspection-dependent CNAME redirects stay empty here.
             ruleManager.updateRewriteMap()
             engine.setRequestRules("")
+            updatePassthroughRules()
+            pushRuleSnapshot()
         }
         engine.setDomainChecker(object : DomainChecker {
             override fun checkDomain(domain: String, appName: String): String =
@@ -256,7 +258,6 @@ class GoInspectionTunnel(
         // with DNS filtering disabled; decrypted HTTP traffic is additionally
         // matched against URL-level rules on top of the DNS filtering result.
         engine.setFilterDNS(true)
-        pushRuleSnapshot()
         engine.setBatchLogCallback(object : BatchLogCallback {
             override fun onDNSQueryBatch(jsonLogs: String) {
                 if (jsonLogs.isBlank()) return
@@ -370,7 +371,6 @@ class GoInspectionTunnel(
                 TrafficStatsManager.onGoTrafficTick(jsonDeltas)
             }
         })
-        updatePassthroughRules()
     }
 
     private fun packageUid(packageName: String): Int? =

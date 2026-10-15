@@ -24,6 +24,7 @@ class VpnMonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isServiceAlive = true
         AppNotificationChannels.createAllChannels(this)
     }
 
@@ -54,11 +55,8 @@ class VpnMonitorService : Service() {
     }
 
     override fun onDestroy() {
+        isServiceAlive = false
         stopForegroundCompat()
-        runCatching {
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.cancel(NOTIFICATION_ID_VPN_MONITOR)
-        }
         super.onDestroy()
     }
 
@@ -94,6 +92,9 @@ class VpnMonitorService : Service() {
                 @Suppress("DEPRECATION")
                 stopForeground(true)
             }
+        }
+        runCatching {
+            androidx.core.app.NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID_VPN_MONITOR)
         }
     }
 
@@ -135,6 +136,10 @@ class VpnMonitorService : Service() {
         private const val TAG = "VpnMonitorService"
         const val NOTIFICATION_ID_VPN_MONITOR = 1002
         private const val ACTION_STOP_MONITOR = "com.haoze.diting.notification.STOP_MONITOR"
+
+        @Volatile
+        var isServiceAlive: Boolean = false
+            internal set
 
         fun startIntent(context: Context): Intent {
             return Intent(context, VpnMonitorService::class.java)

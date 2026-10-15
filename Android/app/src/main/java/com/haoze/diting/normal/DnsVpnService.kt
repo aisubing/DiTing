@@ -107,7 +107,6 @@ class DnsVpnService : VpnService() {
             if (tunnelManager.vpnInterface != null) {
                 tunnelManager.goInspectionTunnel?.let { tunnel ->
                     tunnel.updateRewriteRules()
-                    tunnel.pushRuleSnapshot()
                     tunnel.clearDnsCache()
                 }
             }
@@ -186,12 +185,12 @@ class DnsVpnService : VpnService() {
      * repeatedly; the notification is replaced with the latest content.
      */
     private fun promoteToForeground() {
+        val notification = VpnNotificationBuilder.build(
+            this,
+            configManager.activeProviders,
+            configManager.activeResolutionMode
+        )
         runCatching {
-            val notification = VpnNotificationBuilder.build(
-                this,
-                configManager.activeProviders,
-                configManager.activeResolutionMode
-            )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(
                     VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE,
@@ -201,7 +200,28 @@ class DnsVpnService : VpnService() {
             } else {
                 startForeground(VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE, notification)
             }
-        }.onFailure { Log.w(TAG, "Failed to enter foreground", it) }
+        }.onFailure { e ->
+            Log.w(TAG, "Failed to enter foreground with specialUse, retrying fallback", e)
+            runCatching {
+                startForeground(VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE, notification)
+            }.onFailure { e2 ->
+                Log.e(TAG, "Failed to enter foreground", e2)
+            }
+        }
+    }
+
+    private fun stopForegroundCompat() {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        }
+        runCatching {
+            NotificationManagerCompat.from(this).cancel(VpnNotificationBuilder.NOTIFICATION_ID_VPN_SERVICE)
+        }
     }
 
     private fun startVpn(intent: Intent?) {
@@ -241,6 +261,7 @@ class DnsVpnService : VpnService() {
                 OutboundProxySettingsStore.setOutboundProxyStatus(this, "error", validationError)
                 DnsVpnStatusNotifier.setRunningFlag(this, false)
                 DnsVpnStatusNotifier.sendStatusBroadcast(this, false)
+                stopForegroundCompat()
                 stopSelf()
                 return
             }
@@ -263,6 +284,7 @@ class DnsVpnService : VpnService() {
             PermissionDisclosureSettings.updateVpnGrant(this, false)
             DnsVpnStatusNotifier.setRunningFlag(this, false)
             DnsVpnStatusNotifier.sendStatusBroadcast(this, false)
+            stopForegroundCompat()
             stopSelf()
             return
         }
@@ -290,6 +312,7 @@ class DnsVpnService : VpnService() {
             Log.e(TAG, "Go tunnel failed to start")
             DnsVpnStatusNotifier.setRunningFlag(this, false)
             DnsVpnStatusNotifier.sendStatusBroadcast(this, false)
+            stopForegroundCompat()
             stopSelf()
             return
         }
@@ -355,7 +378,7 @@ class DnsVpnService : VpnService() {
         // Traffic stats are persisted by TrafficStatsManager.stop() in onDestroy
         // (bounded synchronous flush), so don't trigger it again here.
         dbComponents.flushLoggersAsync(this, serviceScope)
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopForegroundCompat()
         VpnMonitorManager.onVpnStopped(this)
         stopSelf()
     }
@@ -383,6 +406,7 @@ class DnsVpnService : VpnService() {
         TrafficStatsManager.stop(this)
         dbComponents.flushLoggersAsync(this, shutdownScope)
         serviceScope.cancel()
+        stopForegroundCompat()
 
         if (!wasStopped) {
             DnsVpnStatusNotifier.sendStatusBroadcast(this, false)
