@@ -129,6 +129,18 @@ func (p *program) ConfigurePrivacy(ctx context.Context, req ipc.ConfigurePrivacy
 			_ = p.resolver.Configure(p.cfg.Upstream)
 		}
 	}
+	if req.BlockANY != nil {
+		p.cfg.DNS.BlockANY = *req.BlockANY
+	}
+	if req.BlockANYMode != nil {
+		// 未知模式回落到 notimp，与配置载入时的归一化保持一致
+		switch *req.BlockANYMode {
+		case config.ANYModeRFC8482:
+			p.cfg.DNS.BlockANYMode = config.ANYModeRFC8482
+		default:
+			p.cfg.DNS.BlockANYMode = config.ANYModeNotImp
+		}
+	}
 
 	if p.configPath != "" {
 		if err := config.SaveConfig(p.configPath, p.cfg); err != nil {

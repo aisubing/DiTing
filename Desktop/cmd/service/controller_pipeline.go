@@ -10,7 +10,7 @@ import (
 // 中间件的注册顺序即语义的一部分，调用方不得随意调整：
 //
 //	metrics → EDE → ECH → client → access → ratelimit → SUDN → hosts → rewrite
-//	→ safesearch → IPv6 → privatePTR → unqualified → filter → rebind
+//	→ safesearch → IPv6 → privatePTR → unqualified → ANY → filter → rebind
 //	→ filterResponse → DNS64 → ECS → cache → bogusNXDomain → upstreamRoute → forward
 //
 // 其中响应侧复检（filterResponse）位于 rebind 之后、DNS64 之前：
@@ -60,6 +60,17 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		defer p.mu.Unlock()
 		return p.cfg.DNS.BlockUnqualified
 	})
+	// ANY 最小化放在 unqualified 之后、filter 之前：
+	// 本地权威应答与前置拦截已有结论，此处只拦真正会外泄到上游的 ANY 查询。
+	anyMw := ditingdns.NewANYMiddleware(func() bool {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		return p.cfg.DNS.BlockANY
+	}, func() string {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		return p.cfg.DNS.BlockANYMode
+	})
 	filterMw := ditingdns.NewFilterMiddlewareWithGroups(p.filterEngine, p.groupResolver)
 	rebindMw := ditingdns.NewRebindMiddleware(rebindMgr, p.cache)
 	filterResponseMw := ditingdns.NewFilterResponseMiddleware(p.filterEngine, p.groupResolver, func() bool {
@@ -84,7 +95,7 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	return ditingdns.NewPipeline(
 		metricsMw, edeMw, echMw, clientMw, accessMw, rateLimitMw, sudnMw,
 		hostsMw, rewriteMw, safeSearchMw, ipv6Mw, privatePTRMw, unqualifiedMw,
-		filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
+		anyMw, filterMw, rebindMw, filterResponseMw, dns64Mw, ecsMw, cacheMw,
 		bogusNxMw, upstreamRouteMw, forwardMw,
 	)
 }

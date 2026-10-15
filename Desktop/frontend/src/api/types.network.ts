@@ -113,6 +113,10 @@ export interface ConfigurePrivacyRequest {
   blockIPv6?: boolean;
   blockECH?: boolean;
   ednsPadding?: number;
+  /** 对 ANY 查询返回最小化应答（RFC 8482） */
+  blockANY?: boolean;
+  /** 最小化应答形式："notimp"（默认）或 "rfc8482" */
+  blockANYMode?: string;
 }
 
 export interface ECSConfig {

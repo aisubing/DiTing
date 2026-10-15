@@ -105,6 +105,31 @@ func TestController_SecurityAndTransitionConfig(t *testing.T) {
 		t.Errorf("expected upstream EDNSPadding to be 256, got %d", prg.cfg.Upstream.EDNSPadding)
 	}
 
+	// 6. 测试 ConfigurePrivacy 的 ANY 最小化字段
+	anyMode := config.ANYModeRFC8482
+	anyReq := ipc.ConfigurePrivacyRequest{
+		BlockANY:     &bTrue,
+		BlockANYMode: &anyMode,
+	}
+	if err := prg.ConfigurePrivacy(ctx, anyReq); err != nil {
+		t.Fatalf("ConfigurePrivacy (ANY) failed: %v", err)
+	}
+	if !prg.cfg.DNS.BlockANY || prg.cfg.DNS.BlockANYMode != config.ANYModeRFC8482 {
+		t.Errorf("unexpected ANY config: %+v", prg.cfg.DNS)
+	}
+
+	// 未知模式必须回落到 notimp，而不能原样写入一个下游无法识别的取值
+	bogusMode := "rfc8482-typo"
+	prg.ConfigurePrivacy(ctx, ipc.ConfigurePrivacyRequest{BlockANYMode: &bogusMode})
+	if prg.cfg.DNS.BlockANYMode != config.ANYModeNotImp {
+		t.Errorf("unknown mode must fall back to notimp, got %q", prg.cfg.DNS.BlockANYMode)
+	}
+	// 只回传模式时不得顺带改写开关
+	if !prg.cfg.DNS.BlockANY {
+		t.Error("BlockANY must stay untouched when the request omits it")
+	}
+	prg.ConfigurePrivacy(ctx, ipc.ConfigurePrivacyRequest{BlockANYMode: &anyMode})
+
 	// 验证磁盘配置文件持久化是否正确写入
 	reloaded, err := config.LoadConfig(cfgPath)
 	if err != nil {
@@ -115,6 +140,9 @@ func TestController_SecurityAndTransitionConfig(t *testing.T) {
 	}
 	if reloaded.DNS.BlockPrivatePTR != false || !reloaded.DNS.BlockIPv6 || !reloaded.DNS.BlockECH || reloaded.DNS.EDNSPadding != 256 {
 		t.Errorf("persisted privacy config mismatch: %+v", reloaded.DNS)
+	}
+	if !reloaded.DNS.BlockANY || reloaded.DNS.BlockANYMode != config.ANYModeRFC8482 {
+		t.Errorf("persisted ANY config mismatch: %+v", reloaded.DNS)
 	}
 	_ = os.RemoveAll(tmpDir)
 }

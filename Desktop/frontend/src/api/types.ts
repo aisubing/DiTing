@@ -83,6 +83,9 @@ export interface DNSStatus {
   blockIPv6?: boolean;
   blockECH?: boolean;
   ednsPadding?: number;
+  blockANY?: boolean;
+  /** 最小化应答形式："notimp"（默认）或 "rfc8482" */
+  blockANYMode?: string;
 }
 
 export interface AdapterState {

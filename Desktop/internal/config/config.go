@@ -24,7 +24,26 @@ type DNSConfig struct {
 	BlockIPv6        bool          `json:"blockIPv6"`        // 是否阻止 IPv6 AAAA 查询并秒级应答权威 NODATA
 	BlockECH         bool          `json:"blockECH"`         // 是否剥离 HTTPS/SVCB 响应中的 ECH 参数以防过滤绕过
 	EDNSPadding      int           `json:"ednsPadding"`      // RFC 7830 / RFC 8467 EDNS0 填充块大小（0为禁用，默认 128）
+
+	// BlockANY 是否对 ANY (QtypeANY) 查询返回最小化应答（RFC 8482），默认关闭。
+	//
+	// ANY 常被用于放大攻击与绕过按记录类型的拦截，但合法的诊断工具也会用到，
+	// 因此由用户显式开启。
+	BlockANY bool `json:"blockANY"`
+	// BlockANYMode 最小化应答形式："notimp"（默认）或 "rfc8482"。
+	//
+	// notimp 更保守：它明确表示"不支持该查询"，客户端不会把它当成一次有效解析；
+	// rfc8482 返回带 HINFO("RFC8482") 的 NOERROR，语义更准确但要求客户端理解该约定。
+	BlockANYMode string `json:"blockANYMode"`
 }
+
+// ANY 查询最小化应答模式
+const (
+	// ANYModeNotImp 直接返回 NOTIMP（默认）
+	ANYModeNotImp = "notimp"
+	// ANYModeRFC8482 返回 RFC 8482 规定的 HINFO("RFC8482") 应答
+	ANYModeRFC8482 = "rfc8482"
+)
 
 // EffectiveListenAddresses 根据 AllowLAN 配置返回实际应监听的双栈 UDP 与 TCP 地址
 func (c *DNSConfig) EffectiveListenAddresses() (udpAddrs []string, tcpAddrs []string) {
@@ -207,6 +226,8 @@ func DefaultConfig() *Config {
 			BlockIPv6:        false,
 			BlockECH:         false,
 			EDNSPadding:      128,
+			BlockANY:         false,
+			BlockANYMode:     ANYModeNotImp,
 		},
 		Upstream: core.ResolverConfig{
 			Mode:        core.ModePrimaryBackup,

@@ -107,6 +107,12 @@ func normalizeConfig(cfg *Config) {
 	if cfg.DNS.EDNSPadding < 0 {
 		cfg.DNS.EDNSPadding = 0
 	}
+	// 未知模式回落到默认值：一个拼错的模式名不该让 ANY 查询完全不被处理
+	switch cfg.DNS.BlockANYMode {
+	case ANYModeNotImp, ANYModeRFC8482:
+	default:
+		cfg.DNS.BlockANYMode = ANYModeNotImp
+	}
 	if cfg.IPC.ListenAddress == "" {
 		cfg.IPC.ListenAddress = "127.0.0.1:15353"
 	}

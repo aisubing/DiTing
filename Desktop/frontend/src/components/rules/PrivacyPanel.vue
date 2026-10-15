@@ -7,6 +7,7 @@ import AppCard from '../ui/AppCard.vue';
 import AppModal from '../AppModal.vue';
 import StatusBadge from '../StatusBadge.vue';
 import SafeSearchCard from './SafeSearchCard.vue';
+import AnyQueryCard from './AnyQueryCard.vue';
 import ToastBanner from '../ToastBanner.vue';
 import { extractSwitchValue } from '../../utils/switch';
 import { useToast } from '../../composables/useToast';
@@ -21,6 +22,8 @@ const blockPrivatePTR = ref(true);
 const blockUnqualified = ref(false);
 const blockECH = ref(false);
 const blockIPv6 = ref(false);
+const blockANY = ref(false);
+const blockANYMode = ref('notimp');
 const ednsPadding = ref(128);
 
 // ECS 策略状态
@@ -58,6 +61,8 @@ async function loadData() {
       blockUnqualified.value = st.dns?.blockUnqualified ?? false;
       blockECH.value = st.dns?.blockECH ?? false;
       blockIPv6.value = st.dns?.blockIPv6 ?? false;
+      blockANY.value = st.dns?.blockANY ?? false;
+      blockANYMode.value = st.dns?.blockANYMode || 'notimp';
       ednsPadding.value = st.dns?.ednsPadding ?? 128;
 
       if (st.ecs) {
@@ -101,6 +106,16 @@ async function handleToggleECH(e: Event) {
   await savePrivacyConfig();
 }
 
+async function handleToggleANY(nextVal: boolean) {
+  blockANY.value = nextVal;
+  await savePrivacyConfig();
+}
+
+async function handleANYMode(nextVal: string) {
+  blockANYMode.value = nextVal;
+  await savePrivacyConfig();
+}
+
 async function handlePaddingChange() {
   await savePrivacyConfig();
 }
@@ -113,6 +128,8 @@ async function savePrivacyConfig() {
       blockPrivatePTR: blockPrivatePTR.value,
       blockIPv6: blockIPv6.value,
       blockECH: blockECH.value,
+      blockANY: blockANY.value,
+      blockANYMode: blockANYMode.value,
       ednsPadding: Number(ednsPadding.value) || 0,
     });
     showToast('隐私保护与协议增强策略已更新并即时生效');
@@ -321,6 +338,15 @@ onMounted(() => {
               从上游 HTTPS / SVCB 资源记录中过滤剥离 <code class="font-mono">ech</code> 参数。防止客户端使用 TLS 1.3 ECH 加密真实访问域名，保障本地防火墙与规则引擎审计不被绕过。
             </p>
           </div>
+
+          <!-- ANY 查询最小化（RFC 8482） -->
+          <AnyQueryCard
+            :enabled="blockANY"
+            :mode="blockANYMode"
+            :saving="saving"
+            @toggle="handleToggleANY"
+            @mode="handleANYMode"
+          />
 
           <!-- IPv6 过滤 / 禁用 -->
           <div class="app-card-sub p-3 space-y-2">

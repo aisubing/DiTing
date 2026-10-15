@@ -163,6 +163,38 @@ func TestNormalizeConfigDefaults(t *testing.T) {
 	}
 }
 
+func TestNormalizeConfig_BlockANYMode(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"未知取值回落到 notimp", "typo", ANYModeNotImp},
+		{"空值回落到 notimp", "", ANYModeNotImp},
+		{"已知取值保持不变", ANYModeRFC8482, ANYModeRFC8482},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &Config{}
+			cfg.DNS.BlockANYMode = tc.in
+			normalizeConfig(cfg)
+			if cfg.DNS.BlockANYMode != tc.want {
+				t.Fatalf("BlockANYMode = %q, want %q", cfg.DNS.BlockANYMode, tc.want)
+			}
+		})
+	}
+}
+
+func TestDefaultConfig_BlockANY(t *testing.T) {
+	cfg := DefaultConfig()
+	// 合法诊断工具仍会用到 ANY，默认必须关闭，且模式要有确定取值
+	if cfg.DNS.BlockANY {
+		t.Error("BlockANY must default to off")
+	}
+	if cfg.DNS.BlockANYMode != ANYModeNotImp {
+		t.Errorf("BlockANYMode = %q, want %q", cfg.DNS.BlockANYMode, ANYModeNotImp)
+	}
+}
+
 func TestEffectiveListenAddresses(t *testing.T) {
 	// 默认本地回环模式
 	dnsCfg := DNSConfig{

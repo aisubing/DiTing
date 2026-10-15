@@ -46,6 +46,8 @@ type DNSStatus struct {
 	BlockIPv6         bool                 `json:"blockIPv6"`
 	BlockECH          bool                 `json:"blockECH"`
 	EDNSPadding       int                  `json:"ednsPadding"`
+	BlockANY          bool                 `json:"blockANY"`
+	BlockANYMode      string               `json:"blockANYMode"`
 }
 
 // TakeoverStatus 物理网卡接管运行状态
@@ -342,6 +344,10 @@ type ConfigurePrivacyRequest struct {
 	BlockIPv6       *bool `json:"blockIPv6,omitempty"`
 	BlockECH        *bool `json:"blockECH,omitempty"`
 	EDNSPadding     *int  `json:"ednsPadding,omitempty"`
+	// BlockANY 对 ANY 查询返回最小化应答（RFC 8482）
+	BlockANY *bool `json:"blockANY,omitempty"`
+	// BlockANYMode 最小化应答形式："notimp"（默认）或 "rfc8482"
+	BlockANYMode *string `json:"blockANYMode,omitempty"`
 }
 
 // ConfigureRebindRequest DNS Rebinding 攻击防御配置请求

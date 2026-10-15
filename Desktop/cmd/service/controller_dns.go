@@ -222,6 +222,8 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 			BlockIPv6:         p.cfg.DNS.BlockIPv6,
 			BlockECH:          p.cfg.DNS.BlockECH,
 			EDNSPadding:       p.cfg.DNS.EDNSPadding,
+			BlockANY:          p.cfg.DNS.BlockANY,
+			BlockANYMode:      p.cfg.DNS.BlockANYMode,
 		},
 		Takeover: ipc.TakeoverStatus{
 			Active:   takeoverActive,
