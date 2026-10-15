@@ -38,4 +38,23 @@ export class EncryptedDNSApi {
       body: JSON.stringify(req),
     });
   }
+
+  /**
+   * 构造描述文件下载地址。
+   *
+   * 这里只拼 URL、不发请求：该接口返回二进制文件，且要让 iOS 设备直接
+   * 打开链接下载（系统不会带自定义请求头），所以令牌只能放在查询串里。
+   * 由浏览器发起下载而不是 fetch，才能让系统按媒体类型接管。
+   */
+  public mobileConfigURL(protocol?: 'HTTPS' | 'TLS'): string {
+    const params = new URLSearchParams();
+    if (this.http.token) {
+      params.set('token', this.http.token);
+    }
+    if (protocol) {
+      params.set('protocol', protocol);
+    }
+    const query = params.toString();
+    return `${this.http.baseURL}/api/v1/encrypted/mobileconfig${query ? `?${query}` : ''}`;
+  }
 }

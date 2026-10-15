@@ -148,6 +148,9 @@ func NormalizeEncryptedDNSConfig(cfg *EncryptedDNSConfig) {
 
 	cfg.ListenAddress = strings.TrimSpace(cfg.ListenAddress)
 	cfg.ServerName = strings.TrimSpace(cfg.ServerName)
+	// 描述文件 UUID 会原样进 XML 与载荷标识，带空白会让标识对不上；
+	// 这里只规整、不重新生成——换了 UUID 设备会当成另一份描述文件
+	cfg.UUID = strings.TrimSpace(cfg.UUID)
 
 	if !isValidPort(cfg.DoTPort) {
 		cfg.DoTPort = DefaultDoTPort

@@ -46,6 +46,11 @@ type mockExtra struct {
 	lastCertGenReq    GenerateCertRequest
 	certImported      bool
 	lastCertImportReq ImportCertRequest
+
+	// C6 Apple 配置描述文件
+	mobileConfigProtocol string
+	mobileConfigData     []byte
+	mobileConfigErr      bool
 }
 
 // CachePersistStatus 实现 ServiceController 接口（A6）
@@ -215,3 +220,15 @@ func (m *mockExtra) ImportEncryptedCert(ctx context.Context, req ImportCertReque
 
 // errEncryptedUnavailable 供需要错误路径的用例注入
 var errEncryptedUnavailable = fmt.Errorf("encrypted dns unavailable")
+
+// BuildEncryptedMobileConfig 实现 ServiceController 接口（C6）
+func (m *mockExtra) BuildEncryptedMobileConfig(ctx context.Context, protocol string) ([]byte, error) {
+	if m.mobileConfigErr {
+		return nil, errEncryptedUnavailable
+	}
+	m.mobileConfigProtocol = protocol
+	if m.mobileConfigData != nil {
+		return m.mobileConfigData, nil
+	}
+	return []byte(`<plist version="1.0"></plist>`), nil
+}

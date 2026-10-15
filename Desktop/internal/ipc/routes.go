@@ -79,6 +79,9 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/encrypted/dns/configure", s.withAuth(s.handleEncryptedDNSConfigure))
 	mux.HandleFunc("/api/v1/encrypted/dns/cert/generate", s.withAuth(s.handleEncryptedCertGenerate))
 	mux.HandleFunc("/api/v1/encrypted/dns/cert/import", s.withAuth(s.handleEncryptedCertImport))
+	// 描述文件是二进制文件，且需支持从设备直接打开链接下载（不带自定义
+	// 请求头），故不经 withAuth 的 JSON 包装，令牌由处理器自己从 query 取
+	mux.HandleFunc("/api/v1/encrypted/mobileconfig", s.handleEncryptedMobileConfig)
 
 	// 客户端与分组
 	mux.HandleFunc("/api/v1/clients", s.withAuth(s.handleClients))

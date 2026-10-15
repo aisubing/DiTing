@@ -104,6 +104,9 @@ type ServiceController interface {
 	GenerateEncryptedCert(ctx context.Context, req GenerateCertRequest) error
 	// ImportEncryptedCert 导入一对 PEM 或一个 PKCS#12 容器作为服务端证书
 	ImportEncryptedCert(ctx context.Context, req ImportCertRequest) error
+	// BuildEncryptedMobileConfig 生成 Apple 配置描述文件；
+	// protocol 为空时按当前启用的监听器挑选
+	BuildEncryptedMobileConfig(ctx context.Context, protocol string) ([]byte, error)
 	GetSafeSearch(ctx context.Context) (*SafeSearchConfigResponse, error)
 	ConfigureSafeSearch(ctx context.Context, req ConfigureSafeSearchRequest) error
 	GetClients(ctx context.Context) ([]core.ClientInfo, error)
