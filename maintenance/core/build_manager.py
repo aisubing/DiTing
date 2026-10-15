@@ -184,6 +184,70 @@ def run_cmd_live(cmd: list, cwd: str, on_log: Callable[[str, str], None], is_can
     return stream_process_output(cmd=cmd, cwd=cwd, on_log=on_log, is_cancelled=is_cancelled, env=env) == 0
 
 
+def ensure_frontend_dist(desktop_dir: str) -> None:
+    """确保 frontend/dist 目录存在，避免 Go embed 在未构建前端时直接报错中断"""
+    dist_dir = os.path.join(desktop_dir, "frontend", "dist")
+    os.makedirs(dist_dir, exist_ok=True)
+    keep_file = os.path.join(dist_dir, ".gitkeep")
+    if not os.path.exists(keep_file) and not os.listdir(dist_dir):
+        try:
+            with open(keep_file, "w", encoding="utf-8") as f:
+                f.write("")
+        except Exception:
+            pass
+
+
+def ensure_webview2_bootstrapper(installer_dir: str, on_log: Optional[Callable[[str, str], None]] = None) -> bool:
+    """确保 NSIS 打包所需的 MicrosoftEdgeWebview2Setup.exe 存在"""
+    tmp_dir = os.path.join(installer_dir, "tmp")
+    target_path = os.path.join(tmp_dir, "MicrosoftEdgeWebview2Setup.exe")
+    if os.path.exists(target_path) and os.path.getsize(target_path) > 1024:
+        return True
+
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    # 1. 优先尝试从本地 Go 模块缓存中提取 Wails 自带的 bootstrapper 二进制
+    try:
+        gopath = os.environ.get("GOPATH")
+        if not gopath:
+            try:
+                gopath = subprocess.check_output(["go", "env", "GOPATH"], text=True).strip()
+            except Exception:
+                gopath = os.path.expanduser("~/go")
+        if gopath:
+            import glob
+            pattern = os.path.join(gopath, "pkg", "mod", "github.com", "wailsapp", "wails", "v2*", "internal", "webview2runtime", "MicrosoftEdgeWebview2Setup.exe")
+            matches = glob.glob(pattern)
+            if matches:
+                matches.sort()
+                shutil.copy2(matches[-1], target_path)
+                if on_log:
+                    on_log("info", "已从本地 Wails 模块缓存就绪 WebView2 安装引导程序")
+                return True
+    except Exception as e:
+        if on_log:
+            on_log("warn", f"从 Go 模块缓存提取 WebView2 Bootstrapper 失败: {e}")
+
+    # 2. 从微软官方分发链接下载
+    try:
+        if on_log:
+            on_log("info", "正在下载微软官方 WebView2 安装引导程序 (MicrosoftEdgeWebview2Setup.exe)...")
+        import urllib.request
+        url = "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as resp, open(target_path, "wb") as f:
+            shutil.copyfileobj(resp, f)
+        if os.path.exists(target_path) and os.path.getsize(target_path) > 1024:
+            if on_log:
+                on_log("info", "WebView2 安装引导程序下载完成")
+            return True
+    except Exception as e:
+        if on_log:
+            on_log("error", f"下载 WebView2 Bootstrapper 失败: {e}")
+
+    return False
+
+
 def build_pipeline(
     target: str = "all",
     version: Optional[str] = None,
@@ -261,6 +325,7 @@ def build_pipeline(
         on_log("info", f"清理旧构建产物: {bin_dir}")
         shutil.rmtree(bin_dir, ignore_errors=True)
     os.makedirs(bin_dir, exist_ok=True)
+    ensure_frontend_dist(desktop_dir)
 
     git_commit = "unknown"
     try:
@@ -280,14 +345,7 @@ def build_pipeline(
 
     # 4. 构建 Windows EXE 安装包
     if need_win:
-        on_log("info", ">>> [1/3] 正在编译 Windows 特权服务 (diting-service.exe)...")
-        svc_ldflags = f"{'-s -w ' if is_rel else ''}-H windowsgui -X 'main.Version={version}' -X 'main.GitCommit={git_commit}' -X 'main.BuildTime={build_time}'"
-        cmd_svc = ["go", "build", "-ldflags", svc_ldflags, "-o", service_bin, "./cmd/service"]
-        ok = run_cmd_live(cmd_svc, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled)
-        if not ok or not os.path.exists(service_bin):
-            return {"success": False, "message": "特权服务编译失败"}
-
-        on_log("info", ">>> [2/3] 正在使用 Wails 编译 GUI 客户端 (diting-gui.exe)...")
+        on_log("info", ">>> [1/3] 正在使用 Wails 编译 GUI 桌面客户端 (diting-gui.exe)...")
         wails_cmd = [tools["wails"]["cmd"] or "wails", "build", "-platform", "windows/amd64", "-o", "diting-gui.exe", "-ldflags", ldflags]
         if not is_rel:
             wails_cmd.append("-debug")
@@ -295,9 +353,26 @@ def build_pipeline(
         if not ok or not os.path.exists(gui_bin):
             return {"success": False, "message": "GUI 客户端编译失败"}
 
+        on_log("info", ">>> [2/3] 正在编译 Windows 特权服务 (diting-service.exe)...")
+        svc_ldflags = f"{'-s -w ' if is_rel else ''}-H windowsgui -X 'main.Version={version}' -X 'main.GitCommit={git_commit}' -X 'main.BuildTime={build_time}'"
+        cmd_svc = ["go", "build", "-ldflags", svc_ldflags, "-o", service_bin, "./cmd/service"]
+        ok = run_cmd_live(cmd_svc, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled)
+        if not ok or not os.path.exists(service_bin):
+            return {"success": False, "message": "特权服务编译失败"}
+
         on_log("info", ">>> [3/3] 正在打包 NSIS 独立安装包...")
+        installer_dir = os.path.join(desktop_dir, "build", "windows", "installer")
+        tools_nsh = os.path.join(installer_dir, "wails_tools.nsh")
+        if not os.path.exists(tools_nsh):
+            on_log("error", f"未找到 NSIS 宏定义配置文件: {tools_nsh}")
+            return {"success": False, "message": "缺少 wails_tools.nsh 宏文件"}
+
+        if not ensure_webview2_bootstrapper(installer_dir, on_log=on_log):
+            on_log("error", "无法就绪 WebView2 Bootstrapper 安装引导程序，NSIS 打包中止。")
+            return {"success": False, "message": "缺少 WebView2 引导程序"}
+
         nsis_exe = tools["nsis"]["cmd"] or "makensis"
-        nsi_script = os.path.join(desktop_dir, "build", "windows", "installer", "project.nsi")
+        nsi_script = os.path.join(installer_dir, "project.nsi")
         installer_name = f"DITING-{build_type.lower()}-v{version}.exe"
         installer_path = os.path.join(bin_dir, installer_name)
         fallback_installer = os.path.join(bin_dir, "diting-gui-amd64-installer.exe")
