@@ -250,10 +250,13 @@ class WhitelistViewModel(
                 )
             }
 
+            // SUBSCRIPTION keeps both: unlike the blacklist (whose URL list is
+            // empty for that filter), allow-listed URL rules with a subscription
+            // source belong in this tab, and the in-memory baseline included them.
             val nonDomainItems = when (currentFilter) {
                 WhitelistFilter.URL -> urlItems
                 WhitelistFilter.COSMETIC -> cosmeticItems
-                WhitelistFilter.SUBSCRIPTION -> cosmeticItems
+                WhitelistFilter.SUBSCRIPTION -> cosmeticItems + urlItems
                 else -> cosmeticItems + urlItems
             }
             val nonDomainCount = nonDomainItems.size
