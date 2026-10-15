@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/miekg/dns"
 )
@@ -85,6 +86,21 @@ type ResolverConfig struct {
 	Bootstrap         BootstrapConfig   `json:"bootstrap"`
 	ConditionalRoutes map[string]string `json:"conditionalRoutes,omitempty"` // 域名后缀分流: domainSuffix -> upstream
 	EDNSPadding       int               `json:"ednsPadding,omitempty"`       // RFC 7830 EDNS0 填充块大小（0 为禁用，推荐 128）
+	// FallbackProviders 为独立回退链；为空即不启用，主链路行为与未配置时完全一致。
+	//
+	// 启用后主链路获得一个独立超时（见 FallbackTimeoutMs），
+	// 避免慢上游把整条链路的预算吃光导致回退链根本没有机会执行。
+	FallbackProviders []ProviderConfig `json:"fallbackProviders,omitempty"`
+	// FallbackTimeoutMs 为主链路独立超时（毫秒）。
+	// <=0 表示使用 DefaultFallbackTimeoutMs；仅在有回退上游时生效。
+	FallbackTimeoutMs int `json:"fallbackTimeoutMs,omitempty"`
+	// FallbackOnRcode 指定触发回退的响应码。
+	//
+	// 不加 omitempty：nil（未表态，采用默认）与空切片（明确取消所有响应码触发）
+	// 语义不同，序列化时必须保留这一区别，否则界面上取消全部勾选后会被读回默认值。
+	FallbackOnRcode []int `json:"fallbackOnRcode"`
+	// FallbackOnError 控制传输层故障（超时/连接失败）是否触发回退，默认 true。
+	FallbackOnError *bool `json:"fallbackOnError,omitempty"`
 }
 
 // Resolver 核心上游解析器接口
@@ -111,6 +127,14 @@ type CoreResolver struct {
 	ednsPadding int
 	// pinLookup 为按主机名分派的证书固定表，nil 表示未配置任何固定
 	pinLookup PinLookup
+	// fallbackProviders 为独立回退链；为空表示未启用
+	fallbackProviders []*ConfiguredProvider
+	// fallbackTimeout 为主链路独立超时；仅在有回退链时生效
+	fallbackTimeout time.Duration
+	// fallbackOnRcode 为触发回退的响应码集合（已归一化为非空）
+	fallbackOnRcode []int
+	// fallbackOnError 为传输层故障是否触发回退
+	fallbackOnError bool
 }
 
 // NewResolver 创建并初始化核心 DNS 解析器
@@ -153,41 +177,50 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 
 	// 捕获已有节点的统计指标，使动态更新配置时平滑保留健康与延迟历史
 	r.mu.RLock()
-	oldStats := make(map[string]*ProviderStats, len(r.providers))
+	oldStats := make(map[string]*ProviderStats, len(r.providers)+len(r.fallbackProviders))
 	for _, oldP := range r.providers {
 		if oldP != nil && oldP.ID != "" && oldP.Stats != nil {
 			oldStats[oldP.ID] = oldP.Stats
 		}
 	}
+	for _, oldP := range r.fallbackProviders {
+		if oldP != nil && oldP.ID != "" && oldP.Stats != nil {
+			if _, exists := oldStats[oldP.ID]; !exists {
+				oldStats[oldP.ID] = oldP.Stats
+			}
+		}
+	}
 	r.mu.RUnlock()
 
-	inputs, err := buildProviderInputs(cfg.Providers)
+	providers, err := buildProviderSet(cfg.Providers, oldStats)
 	if err != nil {
 		return err
 	}
 
-	providers := make([]*ConfiguredProvider, 0, len(inputs))
-	for _, in := range inputs {
-		prov, err := normalizeProvider(in.cfg, in.pin)
-		if err != nil {
-			return err
-		}
-		if stats := oldStats[prov.ID]; stats != nil {
-			prov.Stats = stats
-		} else {
-			prov.Stats = NewProviderStats()
-		}
-		providers = append(providers, prov)
+	fallbackProviders, err := buildProviderSet(cfg.FallbackProviders, oldStats)
+	if err != nil {
+		return fmt.Errorf("fallback chain: %w", err)
 	}
 
-	// 证书固定按主机名分派：指纹是 per-provider 的，一份全局 TLS 配置装不下
-	pinLookup := buildPinLookup(providers)
+	// 证书固定按主机名分派：指纹是 per-provider 的，一份全局 TLS 配置装不下。
+	// 回退链上的固定同样必须生效，故一并纳入分派表。
+	pinsFor := make([]*ConfiguredProvider, 0, len(providers)+len(fallbackProviders))
+	pinsFor = append(pinsFor, providers...)
+	pinsFor = append(pinsFor, fallbackProviders...)
+	pinLookup := buildPinLookup(pinsFor)
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	r.mode = mode
 	r.providers = providers
+	r.fallbackProviders = fallbackProviders
+	r.fallbackTimeout = fallbackTimeoutOf(cfg.FallbackTimeoutMs)
+	r.fallbackOnRcode = fallbackRcodes(cfg.FallbackOnRcode)
+	r.fallbackOnError = true
+	if cfg.FallbackOnError != nil {
+		r.fallbackOnError = *cfg.FallbackOnError
+	}
 	r.ednsPadding = cfg.EDNSPadding
 	if r.ednsPadding < 0 {
 		r.ednsPadding = 0
@@ -275,12 +308,31 @@ func (r *CoreResolver) Resolve(ctx context.Context, rawQuery []byte) ([]byte, er
 		}
 	}
 
-	r.mu.RLock()
-	mode := r.mode
-	providers := r.providers
-	r.mu.RUnlock()
+	return r.scheduler.resolveWithFallback(ctx, r.fallbackPlan(), rawQuery)
+}
 
-	return r.scheduler.Resolve(ctx, mode, providers, rawQuery)
+// fallbackPlan 汇总当前生效的调度与回退配置
+func (r *CoreResolver) fallbackPlan() FallbackPlan {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	onError := r.fallbackOnError
+	return FallbackPlan{
+		Mode:              r.mode,
+		Providers:         r.providers,
+		FallbackProviders: r.fallbackProviders,
+		Timeout:           r.fallbackTimeout,
+		OnRcode:           r.fallbackOnRcode,
+		OnError:           &onError,
+	}
+}
+
+// fallbackTimeoutOf 把毫秒配置换算为超时；未配置时采用默认值
+func fallbackTimeoutOf(ms int) time.Duration {
+	if ms > 0 {
+		return time.Duration(ms) * time.Millisecond
+	}
+	return DefaultFallbackTimeout()
 }
 
 // Exchange 调度执行结构化 *dns.Msg 请求并保持 Transaction ID 一致
@@ -300,12 +352,7 @@ func (r *CoreResolver) Exchange(ctx context.Context, req *dns.Msg) (*dns.Msg, er
 		return nil, fmt.Errorf("pack dns query: %w", err)
 	}
 
-	r.mu.RLock()
-	mode := r.mode
-	providers := r.providers
-	r.mu.RUnlock()
-
-	rawResp, err := r.scheduler.Resolve(ctx, mode, providers, rawQuery)
+	rawResp, err := r.scheduler.resolveWithFallback(ctx, r.fallbackPlan(), rawQuery)
 	if err != nil {
 		return nil, err
 	}

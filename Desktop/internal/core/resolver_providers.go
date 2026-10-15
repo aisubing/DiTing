@@ -58,6 +58,37 @@ type providerBuildInput struct {
 	pin *CertPin
 }
 
+// buildProviderSet 把用户配置展开并校验为一组可调度的上游。
+//
+// 主链路与回退链路共用此函数：两者的展开、校验与统计继承规则必须一致，
+// 否则回退链会在统计口径或印章处理上与主链产生偏差。
+// oldStats 用于在配置热更新时平滑保留健康与延迟历史，可为 nil。
+func buildProviderSet(cfgs []ProviderConfig, oldStats map[string]*ProviderStats) ([]*ConfiguredProvider, error) {
+	if len(cfgs) == 0 {
+		return nil, nil
+	}
+
+	inputs, err := buildProviderInputs(cfgs)
+	if err != nil {
+		return nil, err
+	}
+
+	providers := make([]*ConfiguredProvider, 0, len(inputs))
+	for _, in := range inputs {
+		prov, err := normalizeProvider(in.cfg, in.pin)
+		if err != nil {
+			return nil, err
+		}
+		if stats := oldStats[prov.ID]; stats != nil {
+			prov.Stats = stats
+		} else {
+			prov.Stats = NewProviderStats()
+		}
+		providers = append(providers, prov)
+	}
+	return providers, nil
+}
+
 // buildProviderInputs 校验并归一化上游列表，同时展开其中的印章。
 //
 // 印章既可单独作为上游（Server 字段填 sdns://...），

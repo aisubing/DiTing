@@ -8,6 +8,7 @@ import AppCard from '../ui/AppCard.vue';
 import M3Icon from '../M3Icon.vue';
 import BootstrapConfigCard from '../BootstrapConfigCard.vue';
 import ConditionalRoutesCard from './ConditionalRoutesCard.vue';
+import FallbackUpstreamCard, { type FallbackConfig } from './FallbackUpstreamCard.vue';
 import UpstreamEditModal from './UpstreamEditModal.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import { useConfirmModal } from '../../composables/useConfirmModal';
@@ -25,6 +26,7 @@ const bootstrapConfig = ref<BootstrapConfig>({
     { id: 'bs-dnspod', name: 'DNSPod', address: '119.29.29.29:53', weight: 1.0 },
   ],
 });
+const fallbackConfig = ref<FallbackConfig>({ providers: [], timeoutMs: 2000, onError: true, onRcode: [] });
 const loading = ref(false);
 const saving = ref(false);
 const errorMessage = ref('');
@@ -89,6 +91,21 @@ async function loadData(forceSyncProviders = false) {
         if (upCfg.conditionalRoutes) {
           conditionalRoutes.value = { ...upCfg.conditionalRoutes };
         }
+        fallbackConfig.value = {
+          providers: (upCfg.fallbackProviders || []).map((u: ProviderConfig) => ({
+            id: u.id,
+            protocol: u.protocol,
+            server: u.server,
+            url: u.url || (isHttpsStyleProtocol(u.protocol) ? `https://${u.server}/dns-query` : ''),
+            weight: u.weight ?? 1,
+            pin: u.pin,
+          })),
+          // 服务端 0 表示"用默认值"，界面统一显示为默认的 2000ms
+          timeoutMs: upCfg.fallbackTimeoutMs && upCfg.fallbackTimeoutMs > 0 ? upCfg.fallbackTimeoutMs : 2000,
+          onError: upCfg.fallbackOnError !== false,
+          // 服务端字段缺失（undefined）才回落默认；显式空数组表示"不按响应码回退"
+          onRcode: upCfg.fallbackOnRcode ?? [2, 5],
+        };
       }
     } catch {
       // 若权威端点不可达，回退至 status 视图
@@ -135,6 +152,11 @@ async function handleConditionalRoutesSave(updated: Record<string, string>) {
   await saveConfig();
 }
 
+async function handleFallbackSave(updated: FallbackConfig) {
+  fallbackConfig.value = updated;
+  await saveConfig();
+}
+
 async function saveConfig() {
   saving.value = true;
   errorMessage.value = '';
@@ -145,6 +167,11 @@ async function saveConfig() {
       providers: providers.value,
       bootstrap: bootstrapConfig.value,
       conditionalRoutes: conditionalRoutes.value,
+      // 显式传空数组以关闭回退；服务端以 nil 表示"保持现状"，故此处必须回传
+      fallbackProviders: fallbackConfig.value.providers,
+      fallbackTimeoutMs: fallbackConfig.value.timeoutMs,
+      fallbackOnRcode: fallbackConfig.value.onRcode,
+      fallbackOnError: fallbackConfig.value.onError,
     });
     successMessage.value = 'DNS 服务器配置已更新并即时生效！';
     await loadData(true);
@@ -451,7 +478,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 3. 条件分流路由 (Split DNS) 独立模块 -->
+    <!-- 3. 独立回退上游链路 -->
+    <FallbackUpstreamCard
+      :config="fallbackConfig"
+      :saving="saving"
+      @save="handleFallbackSave"
+    />
+
+    <!-- 4. 条件分流路由 (Split DNS) 独立模块 -->
     <ConditionalRoutesCard
       :routes="conditionalRoutes"
       :saving="saving"

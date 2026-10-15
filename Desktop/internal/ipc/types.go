@@ -138,13 +138,7 @@ type FilterActionRequest struct {
 	ID string `json:"id"`
 }
 
-// ConfigureUpstreamRequest 动态配置上游请求
-type ConfigureUpstreamRequest struct {
-	Mode              string                `json:"mode"`
-	Providers         []core.ProviderConfig `json:"providers"`
-	Bootstrap         *core.BootstrapConfig `json:"bootstrap,omitempty"`
-	ConditionalRoutes map[string]string     `json:"conditionalRoutes,omitempty"`
-}
+// ConfigureUpstreamRequest 定义见 ./types_upstream.go（含独立回退链字段）
 
 // ConfigureBootstrapRequest 单独配置 Bootstrap 引导 DNS 请求
 type ConfigureBootstrapRequest struct {

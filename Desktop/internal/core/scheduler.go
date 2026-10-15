@@ -345,10 +345,11 @@ func ValidateDNSResponse(rawQuery, rawResponse []byte) error {
 
 	// NXDOMAIN 是权威有效的域名不存在判定，禁止触发容灾降级；
 	// SERVFAIL、REFUSED 等错误码代表上游故障，须触发回退。
+	// 该错误以专用类型返回，便于回退策略把它与传输层故障区分开。
 	switch response.Rcode {
 	case dns.RcodeSuccess, dns.RcodeNameError:
 		return nil
 	default:
-		return fmt.Errorf("upstream returned rcode %s (%d)", dns.RcodeToString[response.Rcode], response.Rcode)
+		return &UpstreamRcodeError{Rcode: response.Rcode}
 	}
 }

@@ -354,6 +354,18 @@ export interface UpstreamConfigureRequest {
   providers: ProviderConfig[];
   bootstrap?: BootstrapConfig;
   conditionalRoutes?: Record<string, string>;
+  /**
+   * 独立回退链。省略表示保持现状，传空数组表示关闭回退。
+   * 与主链路是"两条链"而非"同一个列表的后续节点"：主链路有独立超时，
+   * 超时或命中触发响应码后才整链切换。
+   */
+  fallbackProviders?: ProviderConfig[];
+  /** 主链路独立超时（毫秒）；0 或省略表示采用服务端默认值（2000ms） */
+  fallbackTimeoutMs?: number;
+  /** 触发回退的响应码；省略表示保持现状，空数组表示恢复默认（SERVFAIL/REFUSED） */
+  fallbackOnRcode?: number[];
+  /** 传输层故障是否触发回退，默认 true */
+  fallbackOnError?: boolean;
 }
 
 export interface TestUpstreamRequest {
