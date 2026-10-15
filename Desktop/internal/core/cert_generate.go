@@ -127,7 +127,7 @@ func certCommonName(cfg CertConfig) string {
 	if len(cfg.IPAddresses) > 0 {
 		return cfg.IPAddresses[0]
 	}
-	return "diting-dns"
+	return DefaultServerName
 }
 
 // DeriveCertNames 由监听地址与服务器名推导出证书应有的 SAN。

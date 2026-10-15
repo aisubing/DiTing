@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -27,11 +28,28 @@ type doqFixture struct {
 	clientID func() string
 }
 
+// freeUDPPort 取一个当前空闲的 UDP 端口号
+func freeUDPPort(t *testing.T) int {
+	t.Helper()
+	for attempt := 0; attempt < 100; attempt++ {
+		pc, err := net.ListenPacket("udp", "127.0.0.1:0")
+		if err != nil {
+			time.Sleep(5 * time.Millisecond)
+			continue
+		}
+		port := pc.LocalAddr().(*net.UDPAddr).Port
+		_ = pc.Close()
+		return port
+	}
+	t.Fatalf("取空闲 UDP 端口失败")
+	return 0
+}
+
 func newDoQFixture(t *testing.T, serverName string) *doqFixture {
 	t.Helper()
 
 	serverTLS, pool := dotFixture(t)
-	port := freeTCPPort(t)
+	port := freeUDPPort(t)
 	capture, clientID := captureClientID()
 
 	res := &mockResolver{
@@ -234,7 +252,7 @@ func TestDoQ_ClientIDFromSNI(t *testing.T) {
 
 // 未启用 DoQ 时不应占用端口
 func TestDoQ_NotStartedWhenDisabled(t *testing.T) {
-	port := freeTCPPort(t)
+	port := freeUDPPort(t)
 	addr := findAvailableLocalPort(t)
 
 	serverTLS, pool := dotFixture(t)
@@ -268,7 +286,7 @@ func TestDoQ_NotStartedWhenDisabled(t *testing.T) {
 
 // 证书不可用时 DoQ 起不来，但明文解析必须照常工作
 func TestDoQ_FailureDoesNotBreakPlainDNS(t *testing.T) {
-	port := freeTCPPort(t)
+	port := freeUDPPort(t)
 	addr := findAvailableLocalPort(t)
 
 	res := &mockResolver{

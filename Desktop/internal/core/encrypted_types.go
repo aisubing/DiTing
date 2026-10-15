@@ -18,6 +18,7 @@ const (
 	DefaultDoHPort = 443
 	DefaultDoQPort = 853
 	DefaultDoHPath = "/dns-query"
+	DefaultServerName = "dns.lan"
 )
 
 // 服务端证书的来源。
@@ -128,6 +129,7 @@ func DefaultEncryptedDNSConfig() EncryptedDNSConfig {
 		DoHPort:       DefaultDoHPort,
 		DoQPort:       DefaultDoQPort,
 		DoHPath:       DefaultDoHPath,
+		ServerName:    DefaultServerName,
 	}
 }
 
@@ -137,9 +139,11 @@ func DefaultEncryptedDNSConfig() EncryptedDNSConfig {
 // DNS 场景绰绰有余。要求 RSA 的场景（老客户端）可在界面上切换。
 func DefaultCertConfig() CertConfig {
 	return CertConfig{
-		Source:    CertSourceSelfSigned,
-		KeyType:   "ecdsa",
-		ValidDays: 825,
+		Source:     CertSourceSelfSigned,
+		KeyType:    "ecdsa",
+		ValidDays:  825,
+		CommonName: DefaultServerName,
+		DNSNames:   []string{DefaultServerName},
 	}
 }
 
@@ -169,6 +173,9 @@ func NormalizeEncryptedDNSConfig(cfg *EncryptedDNSConfig) {
 
 	cfg.ListenAddress = strings.TrimSpace(cfg.ListenAddress)
 	cfg.ServerName = strings.TrimSpace(cfg.ServerName)
+	if cfg.ServerName == "" {
+		cfg.ServerName = DefaultServerName
+	}
 	// 描述文件 UUID 会原样进 XML 与载荷标识，带空白会让标识对不上；
 	// 这里只规整、不重新生成——换了 UUID 设备会当成另一份描述文件
 	cfg.UUID = strings.TrimSpace(cfg.UUID)

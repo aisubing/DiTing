@@ -328,3 +328,65 @@ func TestDoT_ShutdownClosesIdleConnections(t *testing.T) {
 		t.Fatal("关闭后不应还能读到数据")
 	}
 }
+
+// ReloadEncrypted 能够动态启停 DoT 监听器
+func TestDoT_ReloadEncrypted(t *testing.T) {
+	serverTLS, pool := dotFixture(t)
+	port := freeTCPPort(t)
+
+	res := &mockResolver{
+		exchangeFunc: func(ctx context.Context, req *miekgdns.Msg) (*miekgdns.Msg, error) {
+			resp := new(miekgdns.Msg)
+			resp.SetReply(req)
+			rr, _ := miekgdns.NewRR(fmt.Sprintf("%s 300 IN A 1.1.1.1", req.Question[0].Name))
+			resp.Answer = append(resp.Answer, rr)
+			return resp, nil
+		},
+	}
+	pipeline := NewPipeline(NewForwardMiddleware(res))
+	addr := findAvailableLocalPort(t)
+
+	cfg := ServerConfig{
+		UDPAddresses: []string{addr},
+		TCPAddresses: []string{addr},
+		ReadTimeout:  2 * time.Second,
+		WriteTimeout: 2 * time.Second,
+	}
+	srv := NewServer(cfg, pipeline)
+	if err := srv.Start(); err != nil {
+		t.Fatalf("启动失败: %v", err)
+	}
+	defer func() { _ = srv.Shutdown() }()
+
+	if srv.DoTListenAddress() != "" {
+		t.Fatalf("初始状态不应有 DoT 监听")
+	}
+
+	// 动态开启 DoT
+	encCfg := &EncryptedServerConfig{
+		DoTEnabled:    true,
+		ListenAddress: "127.0.0.1",
+		DoTPort:       port,
+		TLSConfig:     serverTLS,
+	}
+	srv.ReloadEncrypted(encCfg)
+
+	if srv.DoTListenAddress() == "" {
+		t.Fatalf("重载后应有 DoT 监听")
+	}
+
+	resp, err := dialDoT(t, pool, port, "dns.lan", "example.com")
+	if err != nil {
+		t.Fatalf("DoT 查询失败: %v", err)
+	}
+	if len(resp.Answer) == 0 {
+		t.Fatalf("未收到应答")
+	}
+
+	// 动态关闭 DoT
+	srv.ReloadEncrypted(nil)
+	if srv.DoTListenAddress() != "" {
+		t.Fatalf("关闭后不应有 DoT 监听")
+	}
+}
+

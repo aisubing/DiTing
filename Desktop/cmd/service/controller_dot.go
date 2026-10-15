@@ -86,39 +86,15 @@ func isValidEncPort(port int) bool {
 	return port > 0 && port <= 65535
 }
 
-// reloadDNSWithCurrentConfig 在持有 p.mu 的前提下重建流水线与监听器。
+// reloadDNSWithCurrentConfig 在持有 p.mu 的前提下热重载加密监听器。
 //
-// 加密监听的配置（端口、证书、服务器名）只在启动时读取一次，改完必须重建
-// 才生效。这一点与明文监听一致：流水线本身也是每次启动重新装配的，因此
-// 顺带把两边都刷到最新，而不是只换加密那部分、留下一半旧一半新。
+// 加密监听的配置（端口、证书、服务器名）改动时仅启停加密端口（853 / 443 等），
+// 无需重启 53 端口明文监听，避免产生端口绑定冲突或造成主解析链路瞬断。
 func (p *program) reloadDNSWithCurrentConfig() {
 	if !p.dnsRunning || p.server == nil {
 		return
 	}
 
-	pipeline := p.buildPipeline()
-	udpAddrs, tcpAddrs := p.cfg.DNS.EffectiveListenAddresses()
-	serverCfg := ditingdns.ServerConfig{
-		UDPAddresses: udpAddrs,
-		TCPAddresses: tcpAddrs,
-		ReadTimeout:  p.cfg.DNS.ReadTimeout,
-		WriteTimeout: p.cfg.DNS.WriteTimeout,
-	}
-
 	encCfg := p.buildEncryptedServerConfig()
-
-	old := p.server
-	newSrv := ditingdns.NewServer(serverCfg, pipeline)
-	newSrv.SetEncryptedConfig(encCfg)
-	if err := newSrv.Start(); err != nil {
-		// 新监听器起不来时保留旧的：让用户正在使用的解析中断，
-		// 比让某个配置项晚一步生效严重得多
-		log.Printf("[加密DNS] 重建监听器失败，继续沿用原有监听器: %v\n", err)
-		return
-	}
-
-	p.server = newSrv
-	if err := old.Shutdown(); err != nil {
-		log.Printf("[加密DNS] 关闭旧监听器时出错: %v\n", err)
-	}
+	p.server.ReloadEncrypted(encCfg)
 }

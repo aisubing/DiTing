@@ -61,6 +61,59 @@ func (s *Server) SetEncryptedConfig(cfg *EncryptedServerConfig) {
 	s.encrypted = cfg
 }
 
+// ReloadEncrypted 动态热重载加密监听器（DoT / DoH / DoQ）。
+//
+// 仅启停加密监听端口（853 / 443 等），无需重启主 53 端口明文监听，
+// 避免产生 53 端口重新绑定冲突或造成明文解析瞬断。
+func (s *Server) ReloadEncrypted(cfg *EncryptedServerConfig) {
+	s.mu.Lock()
+	oldDot := s.dot
+	oldDoH := s.doh
+	oldDoQ := s.doq
+	s.dot = nil
+	s.doh = nil
+	s.doq = nil
+	s.encrypted = cfg
+	s.mu.Unlock()
+
+	if oldDot != nil {
+		oldDot.close()
+	}
+	if oldDoH != nil {
+		closeHTTP(oldDoH.srv, 3*time.Second)
+	}
+	if oldDoQ != nil {
+		oldDoQ.close()
+	}
+
+	if cfg == nil || !s.started.Load() || s.closed.Load() {
+		return
+	}
+
+	if cfg.DoTEnabled {
+		if err := s.startDoT(); err != nil {
+			log.Printf("[DNS] DoT 监听器启动失败，加密解析暂不可用: %v\n", err)
+		} else {
+			log.Printf("[DNS] DoT 监听器已就绪: %s\n", s.encrypted.DoTListenAddress())
+		}
+	}
+	if cfg.DoHEnabled {
+		if err := s.startDoH(); err != nil {
+			log.Printf("[DNS] DoH 监听器启动失败，加密解析暂不可用: %v\n", err)
+		} else {
+			log.Printf("[DNS] DoH 监听器已就绪: https://%s%s\n",
+				s.encrypted.DoHListenAddress(), normalizeDoHPath(s.encrypted.DoHPath))
+		}
+	}
+	if cfg.DoQEnabled {
+		if err := s.startDoQ(); err != nil {
+			log.Printf("[DNS] DoQ 监听器启动失败，加密解析暂不可用: %v\n", err)
+		} else {
+			log.Printf("[DNS] DoQ 监听器已就绪: quic://%s\n", s.encrypted.DoQListenAddress())
+		}
+	}
+}
+
 // EncryptedEnabled 报告是否有任何加密监听器处于启用状态
 func (s *Server) EncryptedEnabled() bool {
 	s.mu.Lock()
