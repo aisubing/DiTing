@@ -63,6 +63,10 @@ function parseRoute() {
     if (themeParam === 'light' || themeParam === 'dark' || themeParam === 'system') {
       themeManager.setThemeMode(themeParam);
     }
+    const paletteParam = url.searchParams.get('palette');
+    if (paletteParam === 'classic' || paletteParam === 'adguard') {
+      themeManager.setThemePalette(paletteParam);
+    }
     if (url.searchParams.has('modal')) {
       showAlertModal.value = url.searchParams.get('modal') === 'alert';
     }
