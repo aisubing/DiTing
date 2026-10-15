@@ -4,17 +4,15 @@ import { themeManager, type ThemeMode, type ThemePalette } from '../../theme/the
 import AppCard from '../ui/AppCard.vue';
 import M3Icon from '../M3Icon.vue';
 
-// 主题模式与配色方案状态
-const currentMode = ref<ThemeMode>(themeManager.getThemeMode());
-const currentPalette = ref<ThemePalette>(themeManager.getThemePalette());
+// 主题模式与配色方案响应式状态（始终与 ThemeManager 单一事实来源保持同步）
+const currentMode = computed(() => themeManager.themeModeRef.value);
+const currentPalette = computed(() => themeManager.themePaletteRef.value);
 
 function handleModeChange(mode: ThemeMode) {
-  currentMode.value = mode;
   themeManager.setThemeMode(mode);
 }
 
 function handlePaletteChange(palette: ThemePalette) {
-  currentPalette.value = palette;
   themeManager.setThemePalette(palette);
 }
 
@@ -29,11 +27,6 @@ const modeOptions = computed(() => [
   { id: 'light' as const, name: currentPalette.value === 'adguard' ? '浅色护盾' : '浅色宣纸' },
   { id: 'dark' as const, name: currentPalette.value === 'adguard' ? '深色幽绿' : '深色墨夜' },
 ]);
-
-onMounted(() => {
-  currentMode.value = themeManager.getThemeMode();
-  currentPalette.value = themeManager.getThemePalette();
-});
 </script>
 
 <template>
@@ -57,10 +50,10 @@ onMounted(() => {
           <button
             type="button"
             @click="handlePaletteChange('classic')"
-            class="app-btn-base justify-between h-13 px-3.5 rounded-lg border text-left transition-all"
+            class="app-btn-base justify-between h-13 px-3.5 rounded-lg border text-left"
             :class="[
               currentPalette === 'classic'
-                ? 'bg-brand-primary text-surface-card border-brand-primary dark:text-[#1a1a1c] shadow-xs'
+                ? 'bg-brand-primary text-brand-on-primary border-brand-primary shadow-xs'
                 : 'bg-surface-card-sub border-surface-border text-text-main hover:bg-surface-hover',
             ]"
           >
@@ -83,10 +76,10 @@ onMounted(() => {
           <button
             type="button"
             @click="handlePaletteChange('adguard')"
-            class="app-btn-base justify-between h-13 px-3.5 rounded-lg border text-left transition-all"
+            class="app-btn-base justify-between h-13 px-3.5 rounded-lg border text-left"
             :class="[
               currentPalette === 'adguard'
-                ? 'bg-brand-primary text-white border-brand-primary dark:text-[#141715] shadow-xs'
+                ? 'bg-brand-primary text-brand-on-primary border-brand-primary shadow-xs'
                 : 'bg-surface-card-sub border-surface-border text-text-main hover:bg-surface-hover',
             ]"
           >
@@ -119,7 +112,7 @@ onMounted(() => {
             class="app-btn-base flex-1 min-w-[90px]"
             :class="[
               currentMode === m.id
-                ? 'bg-brand-primary text-surface-card border border-brand-primary dark:text-[#1a1a1c]'
+                ? 'bg-brand-primary text-brand-on-primary border border-brand-primary'
                 : 'bg-surface-card-sub border border-surface-border text-text-sub hover:bg-surface-hover',
             ]"
           >

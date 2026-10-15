@@ -55,13 +55,12 @@ watch(
 const bgConfig = ref<LoginBgConfig>(loadLoginBgConfig());
 const showBgModal = ref(false);
 
-// 主题模式与配色方案
-const currentThemeMode = ref<ThemeMode>(themeManager.getThemeMode());
-const currentPalette = ref<ThemePalette>(themeManager.getThemePalette());
+// 主题模式与配色方案（响应式关联 ThemeManager）
+const currentThemeMode = computed(() => themeManager.themeModeRef.value);
+const currentPalette = computed(() => themeManager.themePaletteRef.value);
 
 function togglePalette() {
   const next: ThemePalette = currentPalette.value === 'classic' ? 'adguard' : 'classic';
-  currentPalette.value = next;
   themeManager.setThemePalette(next);
 }
 
@@ -87,7 +86,6 @@ function cycleTheme() {
   const modes: ThemeMode[] = ['light', 'dark', 'system'];
   const nextIdx = (modes.indexOf(currentThemeMode.value) + 1) % modes.length;
   const nextMode = modes[nextIdx] ?? 'system';
-  currentThemeMode.value = nextMode;
   themeManager.setThemeMode(nextMode);
 }
 

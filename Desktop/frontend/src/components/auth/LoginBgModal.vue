@@ -321,7 +321,9 @@ async function handleResetDefault() {
         />
         <div
           @click="fileInput?.click()"
-          class="border-2 border-dashed border-surface-border hover:border-brand-primary/50 rounded-lg p-5 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-colors bg-surface-card-sub/40 hover:bg-surface-card-sub"
+          role="button"
+          tabindex="0"
+          class="border-2 border-dashed border-surface-border hover:border-brand-primary/50 rounded-lg p-5 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-colors bg-surface-card-sub/40 hover:bg-surface-card-sub app-interactive-card"
         >
           <div class="w-10 h-10 rounded-full bg-surface-card flex items-center justify-center text-text-sub shadow-xs">
             <M3Icon name="upload" :size="20" />

@@ -292,7 +292,9 @@ onMounted(() => {
           <div
             v-for="mode in schedulingModes"
             :key="mode.id"
-            class="flex items-start gap-2.5 p-2.5 rounded-md border transition-all duration-150 cursor-pointer"
+            role="button"
+            tabindex="0"
+            class="flex items-start gap-2.5 p-2.5 rounded-md border transition-colors duration-150 cursor-pointer app-interactive-card"
             :class="[
               currentMode === mode.id
                 ? 'border-brand-primary bg-brand-container/40 dark:bg-brand-container/20'

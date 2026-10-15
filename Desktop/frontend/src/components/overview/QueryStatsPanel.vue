@@ -127,7 +127,7 @@ usePoller(pollStats, 5000);
             <div class="flex items-center gap-2 min-w-0">
               <span
                 class="w-5 h-5 rounded-md flex items-center justify-center font-bold font-mono text-[10px] shrink-0"
-                :class="idx < 3 ? 'bg-brand-primary text-surface-card dark:text-[#1a1a1c]' : 'bg-surface-hover text-text-sub'"
+                :class="idx < 3 ? 'bg-brand-primary text-brand-on-primary' : 'bg-surface-hover text-text-sub'"
               >
                 {{ idx + 1 }}
               </span>

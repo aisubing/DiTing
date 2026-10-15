@@ -59,11 +59,14 @@ function parseRoute() {
       currentSub.value = rawSub;
     }
 
-    const themeParam = url.searchParams.get('theme');
+    const hashQueryIndex = url.hash.indexOf('?');
+    const hashParams = hashQueryIndex >= 0 ? new URLSearchParams(url.hash.substring(hashQueryIndex)) : null;
+
+    const themeParam = url.searchParams.get('theme') || hashParams?.get('theme');
     if (themeParam === 'light' || themeParam === 'dark' || themeParam === 'system') {
       themeManager.setThemeMode(themeParam);
     }
-    const paletteParam = url.searchParams.get('palette');
+    const paletteParam = url.searchParams.get('palette') || hashParams?.get('palette');
     if (paletteParam === 'classic' || paletteParam === 'adguard') {
       themeManager.setThemePalette(paletteParam);
     }
@@ -223,9 +226,12 @@ onUnmounted(() => {
     >
       <!-- 品牌：软件 Logo + 宋体字标 -->
       <div
-        class="flex items-center gap-2.5 px-4 mb-5 cursor-pointer"
+        class="flex items-center gap-2.5 px-4 mb-5 cursor-pointer app-interactive-card"
         :class="wideSidebar ? '' : 'justify-center px-0'"
         @click="handleNavigate('overview')"
+        role="button"
+        tabindex="0"
+        title="返回系统总览"
       >
         <div class="relative w-8 h-8 shrink-0 flex items-center justify-center">
           <img

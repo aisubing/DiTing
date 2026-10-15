@@ -195,14 +195,14 @@ function handleSave() {
         <label class="font-semibold text-text-muted block mb-1.5">应答目标</label>
         <div class="grid grid-cols-2 gap-2">
           <label
-            class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold"
+            class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold app-interactive-card"
             :class="mode === 'shortcut' ? 'bg-brand-container/40 border-brand-primary text-brand-primary' : 'border-surface-border bg-surface-card-sub text-text-sub'"
           >
             <input type="radio" v-model="mode" value="shortcut" class="sr-only" />
             <span>快捷目标</span>
           </label>
           <label
-            class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold"
+            class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold app-interactive-card"
             :class="mode === 'records' ? 'bg-brand-container/40 border-brand-primary text-brand-primary' : 'border-surface-border bg-surface-card-sub text-text-sub'"
           >
             <input type="radio" v-model="mode" value="records" class="sr-only" />
@@ -217,21 +217,21 @@ function handleSave() {
           <label class="font-semibold text-text-muted block mb-1.5">重写目标类型</label>
           <div class="grid grid-cols-3 gap-2">
             <label
-              class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold"
+              class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold app-interactive-card"
               :class="ruleType === 'ip' ? 'bg-brand-container/40 border-brand-primary text-brand-primary' : 'border-surface-border bg-surface-card-sub text-text-sub'"
             >
               <input type="radio" v-model="ruleType" value="ip" class="sr-only" />
               <span>A / AAAA 地址</span>
             </label>
             <label
-              class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold"
+              class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold app-interactive-card"
               :class="ruleType === 'cname' ? 'bg-brand-container/40 border-brand-primary text-brand-primary' : 'border-surface-border bg-surface-card-sub text-text-sub'"
             >
               <input type="radio" v-model="ruleType" value="cname" class="sr-only" />
               <span>CNAME 别名</span>
             </label>
             <label
-              class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold"
+              class="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-md border cursor-pointer transition-colors text-[11px] font-semibold app-interactive-card"
               :class="ruleType === 'txt' ? 'bg-brand-container/40 border-brand-primary text-brand-primary' : 'border-surface-border bg-surface-card-sub text-text-sub'"
             >
               <input type="radio" v-model="ruleType" value="txt" class="sr-only" />

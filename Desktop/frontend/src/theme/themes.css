@@ -236,7 +236,7 @@
   --app-brand-primary-hover: #84c193;
   --app-brand-container: rgba(103, 178, 121, 0.18);
   --app-brand-on-container: #d9ecde;
-  --app-brand-on-primary: #141715;
+  --app-brand-on-primary: #ffffff;
 
   --app-accent-seal: #67b279;
   --app-accent-seal-bg: rgba(103, 178, 121, 0.18);
@@ -249,7 +249,7 @@
   --app-status-error-bg: rgba(239, 144, 113, 0.16);
 
   --md-sys-color-primary: #67b279;
-  --md-sys-color-on-primary: #141715;
+  --md-sys-color-on-primary: #ffffff;
   --md-sys-color-primary-container: rgba(103, 178, 121, 0.18);
   --md-sys-color-on-primary-container: #d9ecde;
   --md-sys-color-secondary: #a6b2a9;
@@ -257,7 +257,7 @@
   --md-sys-color-secondary-container: rgba(103, 178, 121, 0.18);
   --md-sys-color-on-secondary-container: #d9ecde;
   --md-sys-color-tertiary: #67b279;
-  --md-sys-color-on-tertiary: #141715;
+  --md-sys-color-on-tertiary: #ffffff;
   --md-sys-color-tertiary-container: rgba(103, 178, 121, 0.18);
   --md-sys-color-on-tertiary-container: #d9ecde;
   --md-sys-color-surface: #141715;
@@ -272,12 +272,12 @@
   --md-sys-color-outline: #738076;
   --md-sys-color-outline-variant: #313b34;
   --md-sys-color-error: #ef9071;
-  --md-sys-color-on-error: #2a0d0a;
+  --md-sys-color-on-error: #ffffff;
   --md-sys-color-error-container: rgba(239, 144, 113, 0.16);
   --md-sys-color-on-error-container: #e4e9e5;
   --md-sys-color-inverse-surface: #e4e9e5;
   --md-sys-color-inverse-on-surface: #141715;
-  --md-sys-color-inverse-primary: #141715;
+  --md-sys-color-inverse-primary: #67b279;
   --md-sys-color-shadow: #000000;
   --md-sys-color-scrim: rgba(0, 0, 0, 0.6);
   --md-focus-ring-color: #67b279;

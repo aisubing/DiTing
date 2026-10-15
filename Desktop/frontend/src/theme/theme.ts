@@ -14,7 +14,7 @@ const CLASSIC_LIGHT_FG = '#1A1A1C';
 
 const ADGUARD_DARK_BG = '#141715';
 const ADGUARD_DARK_FG = '#E4E9E5';
-const ADGUARD_LIGHT_BG = '#F6F8F6';
+const ADGUARD_LIGHT_BG = '#F5F7F5';
 const ADGUARD_LIGHT_FG = '#1F2D22';
 
 class ThemeManager {
@@ -22,6 +22,7 @@ class ThemeManager {
   private currentPalette = ref<ThemePalette>('classic');
   private isDarkActive = ref<boolean>(false);
   private mediaListenerAttached = false;
+  private storageListenerAttached = false;
 
   constructor() {
     this.init();
@@ -42,6 +43,7 @@ class ThemeManager {
     } catch {}
 
     this.attachSystemThemeListener();
+    this.attachStorageListener();
     this.applyTheme();
   }
 
@@ -55,6 +57,26 @@ class ThemeManager {
         }
       });
       this.mediaListenerAttached = true;
+    } catch {}
+  }
+
+  private attachStorageListener() {
+    if (this.storageListenerAttached || typeof window === 'undefined') return;
+    try {
+      window.addEventListener('storage', (e) => {
+        if (e.key === STORAGE_KEY_MODE && e.newValue) {
+          if (e.newValue === 'light' || e.newValue === 'dark' || e.newValue === 'system') {
+            this.currentMode.value = e.newValue as ThemeMode;
+            this.applyTheme();
+          }
+        } else if (e.key === STORAGE_KEY_PALETTE && e.newValue) {
+          if (e.newValue === 'classic' || e.newValue === 'adguard') {
+            this.currentPalette.value = e.newValue as ThemePalette;
+            this.applyTheme();
+          }
+        }
+      });
+      this.storageListenerAttached = true;
     } catch {}
   }
 
