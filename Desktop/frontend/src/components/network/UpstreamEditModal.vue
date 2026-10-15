@@ -18,7 +18,7 @@ const emit = defineEmits<{
 }>();
 
 const formId = ref('');
-const formProtocol = ref<'PLAIN' | 'DOH' | 'DOT'>('DOT');
+const formProtocol = ref<DnsProtocolType>('DOT');
 const formServer = ref('');
 const formUrl = ref('');
 const formWeight = ref(1);
@@ -32,15 +32,24 @@ const protocolOptions = [
   { label: '普通 DNS', value: 'PLAIN' as DnsProtocolType },
   { label: '加密 DoT', value: 'DOT' as DnsProtocolType },
   { label: '加密 DoH', value: 'DOH' as DnsProtocolType },
+  { label: '加密 DoQ', value: 'DOQ' as DnsProtocolType },
 ];
+
+// 遍历预设时使用的协议顺序，与 protocolOptions 保持一致
+const PROTOCOL_ORDER: DnsProtocolType[] = ['PLAIN', 'DOT', 'DOH', 'DOQ'];
 
 function applyPreset(providerName: string, protocol: DnsProtocolType) {
   currentPresetProvider.value = providerName;
   currentPresetProtocol.value = protocol;
+
   const group = DNS_PRESET_PROVIDERS.find((p) => p.name === providerName);
-  if (!group) return;
-  const preset = group.presets[protocol];
-  if (!preset) return;
+  const preset = group?.presets[protocol];
+  if (!preset) {
+    // 该服务商未提供此协议的公开端点：只切换协议选择，不臆造地址覆盖用户已填内容
+    formProtocol.value = protocol;
+    selectedPresetDesc.value = `${providerName} 暂未提供该协议的公开端点，请手动填写`;
+    return;
+  }
 
   formId.value = preset.id;
   formProtocol.value = preset.protocol;
@@ -75,8 +84,9 @@ watch(
 
         let matched = false;
         for (const group of DNS_PRESET_PROVIDERS) {
-          for (const proto of ['PLAIN', 'DOT', 'DOH'] as DnsProtocolType[]) {
+          for (const proto of PROTOCOL_ORDER) {
             const p = group.presets[proto];
+            if (!p) continue;
             if (p.id === item.id || (p.server === item.server && p.protocol === item.protocol)) {
               currentPresetProvider.value = group.name;
               currentPresetProtocol.value = p.protocol;
@@ -205,6 +215,9 @@ function handleSave() {
         </md-select-option>
         <md-select-option value="DOT">
           <div slot="headline">加密模式 (DNS over TLS / 端口 853)</div>
+        </md-select-option>
+        <md-select-option value="DOQ">
+          <div slot="headline">加密模式 (DNS over QUIC / 端口 853，握手更快)</div>
         </md-select-option>
       </md-outlined-select>
 

@@ -17,12 +17,26 @@ const (
 	ProtocolPlain DNSProtocol = "PLAIN"
 	ProtocolDoH   DNSProtocol = "DOH"
 	ProtocolDoT   DNSProtocol = "DOT"
+	ProtocolDoQ   DNSProtocol = "DOQ"
 )
+
+// IsEncrypted 判断该协议是否为加密传输。
+//
+// 加密传输才适用 RFC 7830 的 EDNS0 填充（长度指纹抹平）；
+// 明文 UDP/TCP 填充无隐私收益，只会徒增报文体积。
+func (p DNSProtocol) IsEncrypted() bool {
+	switch p {
+	case ProtocolDoH, ProtocolDoT, ProtocolDoQ:
+		return true
+	default:
+		return false
+	}
+}
 
 // IsValidProtocol 校验上游传输协议字符串是否受支持
 func IsValidProtocol(s string) bool {
 	switch strings.ToUpper(strings.TrimSpace(s)) {
-	case "PLAIN", "UDP", "TCP", "DOH", "HTTPS", "DOT", "TLS", "":
+	case "PLAIN", "UDP", "TCP", "DOH", "HTTPS", "DOT", "TLS", "DOQ", "QUIC", "":
 		return true
 	default:
 		return false
@@ -36,6 +50,8 @@ func ParseProtocol(s string) DNSProtocol {
 		return ProtocolDoH
 	case "DOT", "TLS":
 		return ProtocolDoT
+	case "DOQ", "QUIC":
+		return ProtocolDoQ
 	default:
 		return ProtocolPlain
 	}
@@ -76,6 +92,7 @@ type CoreResolver struct {
 	plain       *PlainResolver
 	doh         *DoHResolver
 	dot         *DoTResolver
+	doq         *DoQResolver
 	scheduler   *Scheduler
 	router      *ConditionalRouter
 	ednsPadding int
@@ -87,12 +104,14 @@ func NewResolver(cfg ResolverConfig) (*CoreResolver, error) {
 	plain := NewPlainResolver(bs)
 	doh := NewDoHResolver(bs)
 	dot := NewDoTResolver(bs)
+	doq := NewDoQResolver(bs)
 
 	r := &CoreResolver{
 		bootstrap: bs,
 		plain:     plain,
 		doh:       doh,
 		dot:       dot,
+		doq:       doq,
 		router:    NewConditionalRouter(nil),
 	}
 
@@ -185,6 +204,9 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 		if r.dot != nil {
 			r.dot.SetBootstrap(r.bootstrap)
 		}
+		if r.doq != nil {
+			r.doq.SetBootstrap(r.bootstrap)
+		}
 		if r.plain != nil {
 			r.plain.SetBootstrap(r.bootstrap)
 		}
@@ -206,6 +228,9 @@ func (r *CoreResolver) Configure(cfg ResolverConfig) error {
 			} else if strings.HasPrefix(upstream, "tls://") || strings.HasPrefix(upstream, "dot://") {
 				proto = ProtocolDoT
 				server = strings.TrimPrefix(strings.TrimPrefix(upstream, "tls://"), "dot://")
+			} else if strings.HasPrefix(upstream, "quic://") || strings.HasPrefix(upstream, "doq://") {
+				proto = ProtocolDoQ
+				server = strings.TrimPrefix(strings.TrimPrefix(upstream, "quic://"), "doq://")
 			}
 			prov := &ConfiguredProvider{
 				ID:       "conditional-" + pattern,
@@ -315,8 +340,8 @@ func (r *CoreResolver) executeProvider(ctx context.Context, p *ConfiguredProvide
 	paddingBlock := r.ednsPadding
 	r.mu.RUnlock()
 
-	// 若配置了 EDNS Padding 且为加密传输 (DoH/DoT)，按照 RFC 7830 / RFC 8467 对齐填充抹平长度指纹
-	if paddingBlock > 0 && (p.Protocol == ProtocolDoH || p.Protocol == ProtocolDoT) {
+	// 若配置了 EDNS Padding 且为加密传输 (DoH/DoT/DoQ)，按照 RFC 7830 / RFC 8467 对齐填充抹平长度指纹
+	if paddingBlock > 0 && p.Protocol.IsEncrypted() {
 		var reqMsg dns.Msg
 		if err := reqMsg.Unpack(rawQuery); err == nil {
 			if PadMessage(&reqMsg, paddingBlock) {
@@ -332,6 +357,8 @@ func (r *CoreResolver) executeProvider(ctx context.Context, p *ConfiguredProvide
 		return r.doh.Exchange(ctx, queryBytes, p.URL)
 	case ProtocolDoT:
 		return r.dot.Exchange(ctx, queryBytes, p.Server)
+	case ProtocolDoQ:
+		return r.doq.Exchange(ctx, queryBytes, p.Server)
 	default:
 		return r.plain.Exchange(ctx, queryBytes, p.Server)
 	}
@@ -342,18 +369,22 @@ func (r *CoreResolver) Shutdown() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var dohErr, dotErr error
+	var firstErr error
+	closeAll := func(err error) {
+		if err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
 	if r.doh != nil {
-		dohErr = r.doh.Close()
+		closeAll(r.doh.Close())
 	}
 	if r.dot != nil {
-		dotErr = r.dot.Close()
+		closeAll(r.dot.Close())
 	}
-
-	if dohErr != nil {
-		return dohErr
+	if r.doq != nil {
+		closeAll(r.doq.Close())
 	}
-	return dotErr
+	return firstErr
 }
 
 // UpstreamStatSnapshot 记录单个上游节点的统计状态快照

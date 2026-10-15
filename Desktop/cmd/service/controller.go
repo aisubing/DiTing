@@ -75,9 +75,9 @@ func (p *program) ConfigureUpstream(ctx context.Context, req ipc.ConfigureUpstre
 				if strings.TrimSpace(prov.Server) == "" {
 					prov.Server = u.Host
 				}
-			case core.ProtocolDoT:
+			case core.ProtocolDoT, core.ProtocolDoQ:
 				if strings.TrimSpace(prov.Server) == "" {
-					return fmt.Errorf("上游 %s: DoT 服务器地址不能为空", id)
+					return fmt.Errorf("上游 %s: %s 服务器地址不能为空", id, proto)
 				}
 			default:
 				if strings.TrimSpace(prov.Server) == "" {

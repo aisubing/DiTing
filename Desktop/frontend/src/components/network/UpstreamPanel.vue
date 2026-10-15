@@ -11,6 +11,7 @@ import ConditionalRoutesCard from './ConditionalRoutesCard.vue';
 import UpstreamEditModal from './UpstreamEditModal.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import { useConfirmModal } from '../../composables/useConfirmModal';
+import { protocolMeta } from '../../constants/dnsPresets';
 
 const status = ref<StatusResponse | null>(null);
 const currentMode = ref('primary_backup');
@@ -364,14 +365,12 @@ onMounted(() => {
             <span
               class="px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono border"
               :class="[
-                node.protocol === 'DOH'
+                protocolMeta(node.protocol).encrypted
                   ? 'border-accent-seal/50 text-accent-seal'
-                  : node.protocol === 'DOT'
-                    ? 'border-accent-seal/40 text-text-main'
-                    : 'border-surface-border text-text-sub'
+                  : 'border-surface-border text-text-sub'
               ]"
             >
-              {{ node.protocol === 'DOH' ? '加密 DoH' : node.protocol === 'DOT' ? '加密 DoT' : 'UDP 53' }}
+              {{ protocolMeta(node.protocol).label }}
             </span>
             <StatusBadge
               :status="node.active ? 'active' : 'inactive'"
