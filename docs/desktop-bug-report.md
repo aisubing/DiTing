@@ -371,7 +371,14 @@
 - **根因**：把可执行路径当安全字面量拼入需要专属转义语法（GSEsc：`\`、`` ` ``、`$`、空格须反斜杠转义）的桌面条目字段；状态判定用存在性代替有效性。
 - **验证方法**：Linux 实机：二进制放含空格目录，GUI 开自启 → `grep '^Exec=' ~/.config/autostart/diting.desktop` 看到未加引号空格路径，`journalctl --user | grep -i "no such file"` 可见启动失败，而界面仍显示已启用。包内测试：构造 fake exePath 断言 Exec 行符合规范转义（现状不合规）。
 
+### BUG-51 · 规则解析 · 高 · ParseRuleLine 的行末注释剥离排在 cosmetic 规则过滤之前：`域名##选择器` 类网页过滤规则被降级成「整域 DNS 拦截」规则
+- **位置**：[internal/core/rule_parser.go:97-103](Desktop/internal/core/rule_parser.go#L97)（先 `strings.SplitN(line, "#", 2)[0]` 无条件截断第一个 `#` 之后的一切）、[:123-126](Desktop/internal/core/rule_parser.go#L123)（`##`/`#@#`/`#?#` 网页过滤规则的丢弃判定**排在截断之后**，此时 `#` 已不存在，判定恒不成立）；批量入口 [internal/core/rule_parser.go:47-79](Desktop/internal/core/rule_parser.go#L47) 自身仅过滤**行首**为 `!`/`#`/`[` 的注释行，中缀 `##` 原样传入 `ParseRuleLine`，无二次防线
+- **根因**：把「行末注释」与「AdGuard 分隔符 `#`」当成同一件事——AdGuard 语法里注释只在**行首**（`!`/`#`/`[`），中缀 `#` 属于元素隐藏/程序规则的分隔标记；顺序颠倒后 `youtube.com##.video-ads` 被截成 `youtube.com`，落进默认分支（:241-244）成为 `||` 同效的全域黑名单。
+- **验证方法**：**已实证（临时测试验证后删除）**：`ParseRuleLine("youtube.com##.video-ads","list")` 返回 `ok=true、Pattern=youtube.com、IsAllow=false`；`RuleMatcher.Match("www.youtube.com", A)` 返回 **Blocked=true, Reason=blacklist, MatchedRule="youtube.com##.video-ads"**。`#@#`（重要元素隐藏）与 `#?#`（程序规则）两形式同样漏网并被拦。
+- **现象**：订阅任何含元素隐藏/程序规则的列表（EasyList、AdGuard 基础筛选器等主流「广告过滤」列表大量包含 `##` 行；仓库内 [internal/core/safesearch_rules.go](Desktop/internal/core/safesearch_rules.go) 这类 `$dnsrewrite` 写法也提示项目直接消费 AdGuard 格式列表）时，每条 cosmetic 规则都会变成一条**全域拦截规则**：`youtube.com##...` → `youtube.com` 及其全部子域 DNS 被拦。表现为「加了个列表后整站打不开」，且日志里命中规则原文写着带 `##` 的行，用户与运维都无法从界面推断真实原因；这类误杀规模与列表条目数成正比，属高影响正确性缺陷（默认列表为空故出厂不受影响，用户一经订阅即触发）。修复方向：cosmetic/程序规则判定必须在截断注释**之前**，且 AdGuard 语义下应只剥「空格 + `#`」形态的行末注释。
+
 ### 观察项（第 8 轮，暂不计为独立缺陷）
+- [internal/platform/windows/tray_defs.go:172-182](Desktop/internal/platform/windows/tray_defs.go#L172)：`appendMenuItem` 丢弃 `AppendMenuW` 返回值——AGENT_MISTAKES 2026-10-16「绝不丢弃 Win32 返回值」条目的同型残留。现状失败仅表现为菜单项静默缺失（文本恒为常量、UTF16 转换必成），无历史缺陷那样的静默失效面，列观察。
 - [cmd/service/controller_web.go:116-134](Desktop/cmd/service/controller_web.go#L116)：ConfigureWeb 平滑重启的异步 goroutine 在 :124 **不持 `p.mu`** 读 `p.cfg.IPC.AuthToken`——与 BUG-3 同型（可变字段裸读）。当前 AuthToken 在全部代码路径中只由持锁的改密流程写入、重启 goroutine 读到的新旧值语义相同，实际无害，列观察待与 BUG-3 一并治理。
 - [cmd/service/controller_dns.go:146-151](Desktop/cmd/service/controller_dns.go#L146)：GetAdapters 惰性写 `p.adapterScan` 不加锁；生产路径 main.go:110 恒先初始化，属死分支，列观察。
 - [internal/dns/dns64_middleware.go:100-116](Desktop/internal/dns/dns64_middleware.go#L100)：DNS64 **原地改写 ctx.Resp**（追加合成 AAAA/CNAME）。当前安全的前提是上游 filterResponse/rebind 两个中间件不改写应答只剔除缓存，且 cache 的 Get 每命中都 `entry.msg.Copy()`——前提脆弱但现状无缺陷，列观察。
