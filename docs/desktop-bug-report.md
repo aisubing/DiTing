@@ -103,6 +103,18 @@
 
 ---
 
+## 第 3 轮（2026-10-17）— 已扫描模块
+
+已扫描：`cmd/service/{controller,controller_encrypted,controller_acl}.go`（reloadDNSWithCurrentConfig 锁链）、`internal/dns/{ede_middleware,server}.go`（getter 锁依赖与 close 等待）、`internal/platform/windows/dns_native.go`。
+
+### BUG-16 · 加密 DNS 配置保存 · 高 · 保存设置时持 p.mu 等待在途查询退出，而在途查询正阻塞在同一把 p.mu 上——整条解析流水线停顿 3~9 秒
+- **位置**：[cmd/service/controller_encrypted.go:78-80,148](Desktop/cmd/service/controller_encrypted.go#L78)、[cmd/service/controller_acl.go:16-17,45](Desktop/cmd/service/controller_acl.go#L16)、[cmd/service/controller_dot.go:89-100](Desktop/cmd/service/controller_dot.go#L89)、[internal/dns/server.go:79-87](Desktop/internal/dns/server.go#L79)、[internal/dns/server_dot.go:188-197](Desktop/internal/dns/server_dot.go#L188)、[cmd/service/controller_pipeline.go:34-43,75-106](Desktop/cmd/service/controller_pipeline.go#L34)
+- **现象**：`ConfigureEncryptedDNS / GenerateEncryptedCert / ImportEncryptedCert / ConfigureEncryptedACL` 全程持 `p.mu`（`defer Unlock`），末尾调用 `reloadDNSWithCurrentConfig → server.ReloadEncrypted`；后者在**不释放** `p.mu` 的情况下 `oldDot.close()`（内含 `d.wg.Wait()` 最多 3s）、`closeHTTP(oldDoH.srv, 3s)`、`oldDoQ.close()` 等待在途查询协程退出。而在途查询进入流水线后，EDE/ECH/IPv6/PrivatePTR/Unqualified/ANY/DDR 等**每查询必过**的 getter 回调都要 `p.mu.Lock()`（controller_pipeline.go:36 等处）——它们阻塞在配置保存者手里的那把锁上，永远等不到自己「退出」。
+- **根因**：锁序倒置：配置线程持 p.mu → 等查询退出；查询线程 → 等 p.mu。两侧只能靠 3 秒超时打破，等价于每次保存加密设置/证书/ACL 时本机 DNS 强制停顿至多 3×3=9 秒，且旧监听器上的在途请求被超时强行放弃（连接被关，客户端收到截断应答）。若 TLS 证书生成（GenerateEncryptedCert 持锁做密钥生成+落盘）耗时长，停顿从保存点击起就覆盖整个生成过程。
+- **验证方法**：集成测试：装配真实 `buildPipeline()` 的 Server 起 DoT；另起 goroutine 持续发 DoT 查询；主线程调用 `ConfigureEncryptedDNS`（改端口），记录查询 RTT——现状每次保存出现秒级尖刺且伴随查询超时。单元级：对 `p.mu` 加 `TryLock` 断言 getter 在 reload 期间拿不到锁即阻塞。
+
+---
+
 ## 已核实但予以剔除的代理报告项（防重复上报）
 
 - 「`/api/v1/service/status` 不返回 `autoStart`」——**不实**：`platform.CoreServiceStatus` 含 `autoStart,omitempty`（[internal/platform/types.go:134](Desktop/internal/platform/types.go#L134)），`ServiceManager.GetStatus` 恒填充（service_mgr.go:155）；Web 模式自启开关本就隐藏不可操作。
