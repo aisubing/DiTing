@@ -144,12 +144,119 @@
 
 ---
 
+## 第 5 轮（2026-10-17）— 已扫描模块
+
+已扫描：`frontend/src/components/{rules/{RulesPanel,SafeBrowsingCard}.vue, overview/QueryHistoryPanel.vue, accel/CachePanel.vue, network/{UpstreamPanel,ClientsPanel,ClientGroupsCard}.vue, encrypted/{EncryptedListenersCard,ReverseProxyCard,EncryptedDNSPanel}.vue, rules/ScheduleEditor.vue}`、`frontend/src/composables/usePoller.ts`，并对照后端 `cmd/service/controller_dns.go`（GetStatus 的 upstreams 数据源）。本轮为**前端交互/状态管理**专项；工程无前端自动化测试工具链（package.json 仅 dev/build/preview），全部条目按代码路径静态核验并给出 UI 手动复现步骤。
+
+### BUG-20 · 前端/规则面板 · 高 · 4 秒轮询无条件覆盖用户正在编辑的自定义规则与策略参数，未保存输入静默丢失
+- **位置**：[frontend/src/components/rules/RulesPanel.vue:214](Desktop/frontend/src/components/rules/RulesPanel.vue#L214)（`usePoller(fetchData, 4000)`）、[:73](Desktop/frontend/src/components/rules/RulesPanel.vue#L73)（`config.value = cfg` 整体替换）、[:75](Desktop/frontend/src/components/rules/RulesPanel.vue#L75)（`customRulesText.value` 重写）；受影响的编辑绑定：textarea [:393](Desktop/frontend/src/components/rules/RulesPanel.vue#L393)、blockMode 单选 [:427/:440/:453](Desktop/frontend/src/components/rules/RulesPanel.vue#L427)、数值/地址输入 [:481/:493/:500](Desktop/frontend/src/components/rules/RulesPanel.vue#L481)
+- **现象**：`fetchData` 每次轮询都用服务端快照整体替换 `config`（v-model 驱动策略配置页的三组单选与三个输入框）并重写 `customRulesText`（v-model 绑定自定义规则 textarea），全程无任何"用户正在编辑"判据。用户在 textarea 里输入新规则、尚未点「保存规则」，≤4 秒内文本即被服务器旧内容回卷；在策略配置页选中 NXDOMAIN 后等待 4 秒，单选回到服务器值。保存按钮（`saveCustomRules` [:179-194](Desktop/frontend/src/components/rules/RulesPanel.vue#L179)、`saveConfig` [:196-212](Desktop/frontend/src/components/rules/RulesPanel.vue#L196)）读取的正是这两个被覆写的 ref——若轮询恰好插在用户点保存之前落回，落库的是服务器旧值，用户输入无声消失。
+- **根因**：面板把「展示用服务器状态」与「编辑草稿」合并为同一份响应式状态，而高频轮询只认前者；`usePoller` 也无「输入焦点/脏态期间暂停」语义。同组件的暂停倒计时等只读展示确有轮询必要，二者共用一份覆写路径。
+- **验证方法**：手动复现：防护 → 自定义规则页签，在 textarea 输入一行 `||test.example^` 不点保存，等待 4–5 秒 → 文本回卷为服务器内容；策略配置页签选中「NXDOMAIN」单选，等 4 秒 → 选择回弹。静态核验点：[:73/:75](Desktop/frontend/src/components/rules/RulesPanel.vue#L73) 无任何 dirty/焦点守卫，全文件无 dirty 标志位。
+
+### BUG-21 · 前端/加密 DNS 等 · 高 · 「状态回填」清除未保存草稿（同族四处）：任何状态对象刷新都把草稿字段无条件覆写回服务器值
+- **位置**：① [frontend/src/components/encrypted/EncryptedListenersCard.vue:44-56](Desktop/frontend/src/components/encrypted/EncryptedListenersCard.vue#L44)（`watch(() => props.status)` 回填 6 个 v-model 字段，模板绑定 [:250-270](Desktop/frontend/src/components/encrypted/EncryptedListenersCard.vue#L250)），触发链 [EncryptedDNSPanel.vue:37-39](Desktop/frontend/src/components/encrypted/EncryptedDNSPanel.vue#L37)（`onChanged` 整体替换 status）＋本卡 `toggleMaster/toggleProtocol` [:73-105](Desktop/frontend/src/components/encrypted/EncryptedListenersCard.vue#L73) 的 `emit('changed')`；② [frontend/src/components/encrypted/ReverseProxyCard.vue:63-70](Desktop/frontend/src/components/encrypted/ReverseProxyCard.vue#L63)（`watch([sources, clientIpHeader])`，`sources` 为 computed [:33](Desktop/frontend/src/components/encrypted/ReverseProxyCard.vue#L33) 直取父状态内数组，父状态对象一经整体替换（任何卡片 `changed`/刷新）引用即变、watch 触发），本卡开关 [:89-97](Desktop/frontend/src/components/encrypted/ReverseProxyCard.vue#L89)；③ [frontend/src/components/rules/SafeBrowsingCard.vue:29-35](Desktop/frontend/src/components/rules/SafeBrowsingCard.vue#L29)（`apply()` 无条件重写 `timeoutMs/cacheSize/cacheTTLSeconds`，模板 v-model [:154-175](Desktop/frontend/src/components/rules/SafeBrowsingCard.vue#L154)），`toggleMaster` [:46-58](Desktop/frontend/src/components/rules/SafeBrowsingCard.vue#L46) 即调用；④ [frontend/src/components/network/ClientsPanel.vue:150-153,180-181](Desktop/frontend/src/components/network/ClientsPanel.vue#L150)（行内白/黑名单按钮成功后直接重写 `allowedText/blockedText` 草稿 textarea，且请求体由 `accessConfig` 组装、根本不含用户草稿——草稿既不会被保存还会被清空）。
+- **现象**：四处共同模式：用户在输入框/textarea 中编辑尚未保存，此时**同一卡片自己的开关**、兄弟卡片的 `changed`、或面板「刷新」按钮任一发生，状态对象身份变化即触发回填，草稿被服务器旧值静默覆写，无任何提示或恢复途径。
+- **根因**：草稿态与展示态未分离（无编辑标志/焦点判断/差异保留），且以对象引用变化而非"用户字段确实被外部改动"作为回填条件；ReverseProxyCard 的 computed 数组引用不稳定使误触发比①更频繁。
+- **验证方法**：手动复现：设备 → 加密 DNS → 「服务器名」输入新值后拨动同卡 DoT 开关 → 输入回卷；反向代理卡点「编辑」→ textarea 加一行 → 拨同卡启用开关 → 新增行消失；防护 → 恶意网址库改「查询超时」→ 拨启用开关 → 数字回弹；设备 → 客户端 → 白名单 textarea 手输一行 → 点任一行「加入白名单」按钮 → textarea 被服务器列表重写。
+
+### BUG-22 · 前端/查询历史 · 中 · `liveBuffer` 为非响应式 `let` 却被模板消费：「暂停期间新增 N 条」永不显示，缓冲事件在检索回包时被吞；回车重发检索无请求代次守卫
+- **位置**：[frontend/src/components/overview/QueryHistoryPanel.vue:37](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L37)（`let liveBuffer: QueryLogRecord[] = []`）、[:145-152](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L145)（暂停/翻页/筛选态下事件仅 push 进该数组）、模板 [:285-287](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L285)（`v-if="liveBuffer.length > 0"`）；[:90](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L90)（`fetchPage` 成功后 `liveBuffer = []`）、[:83-96](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L83)（无请求代次/中止守卫）、[:234/:240](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L234)（筛选输入框 `@keyup.enter="applyFilters"` 不受 `loading` 门控）
+- **现象**：(a) 停留在第 2 页或暂停实时刷新时产生新查询，`liveBuffer.push` 不触发任何重渲染，「暂停期间新增 N 条，检索后可见」提示永不出现/递增——该功能等于不存在。(b) 提示语承诺"检索后可见"，但 `fetchPage` 回包即 `liveBuffer = []`，把**本次请求快照之后、回包之前**到达的事件一并丢弃。(c) 翻页按钮虽以 `:disabled="loading"`（[:365/:374](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L365)）挡住连点，筛选输入框回车不受此门控：loading 期间按 Enter 发出第二个 `searchQueryLog`，乱序回包中后到者整体覆写 `entries/total`，表格内容与「第 x/y 页」页码错位。
+- **根因**：Vue 模板对 `<script setup>` 普通 `let` 仅在重渲染时读取，push 不构成渲染依赖；分页请求缺 stale-response 守卫。
+- **验证方法**：手动复现：总览 → 历史记录 → 下一页，随后持续产生 DNS 查询 → 提示条始终不出现。静态核验：`liveBuffer` 非 `ref`/`reactive`（[:37](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L37)）且组件内无任何其他响应式赋值伴随 push 路径（[:147](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L147) 直接 return）。回车乱序可在 DevTools 网络节流（Slow 3G）下：先输条件回车，立即改条件再回车，观察两请求响应乱序时表格与页码不符。
+
+### BUG-23 · 前端/缓存面板 · 中 · 4 秒轮询与手动检索互相覆写列表，无请求代次守卫：过滤结果会被先到轮询的回包"闪回"全量
+- **位置**：[frontend/src/components/accel/CachePanel.vue:247](Desktop/frontend/src/components/accel/CachePanel.vue#L247)（`usePoller(pollMetrics, 4000)`）、[:104-118](Desktop/frontend/src/components/accel/CachePanel.vue#L104)（`pollMetrics` 调用时读 `currentSearch.value`，回包无条件写 `entries/totalEntriesCount`）、[:120-129](Desktop/frontend/src/components/accel/CachePanel.vue#L120)（`handleSearch` 同样直接覆写，两路径互不感知）
+- **现象**：轮询在 t 时刻发出（携带旧 `currentSearch`），用户在 t+ε 输入关键词点检索并发出新请求；若轮询回包晚于检索回包到达，过滤结果被旧参数的全量列表覆盖，4 秒后下一次轮询才恢复——用户看到"刚搜完结果闪回全部条目"，并可能误按清空/导出操作在错误列表上。
+- **根因**：与 BUG-22(c) 同族的 stale-response 竞态，独立站点：`entries` 的写入者有两条并发路径而无数组代次标记（请求序号/AbortController 均缺）。`pollMetrics` 捕获 `currentSearch` 的时机是发请求时而非回包时，守卫无从比较。
+- **验证方法**：手动复现：解析 → 加速缓存，DevTools 网络节流 Slow 3G，在轮询 tick 后约 100–300ms 内提交检索（网络面板可见两请求乱序），表格先显示过滤结果、随即闪回未过滤内容。
+
+### BUG-24 · 前端/上游面板 · 中 · 展示列表 `upstreams` 与被编辑列表 `providers` 是两份数组、同一 index 语义错位；保存失败后编辑/删除命中错误行
+- **位置**：[frontend/src/components/network/UpstreamPanel.vue:386-388](Desktop/frontend/src/components/network/UpstreamPanel.vue#L386)（`v-for="(node, idx) in upstreams"`）、[:460](Desktop/frontend/src/components/network/UpstreamPanel.vue#L460)（`openEditDialog(idx)`）、[:469-470](Desktop/frontend/src/components/network/UpstreamPanel.vue#L469)（`handleDeleteNode(idx)`、禁用阈值为 `upstreams.length <= 1`）；但 `openEditDialog` [:214-217](Desktop/frontend/src/components/network/UpstreamPanel.vue#L214)、`handleDeleteNode` [:220-239](Desktop/frontend/src/components/network/UpstreamPanel.vue#L220)（内部守卫是 `providers.value.length <= 1`）、`saveConfig` 落库 [:160-175](Desktop/frontend/src/components/network/UpstreamPanel.vue#L160) 全部寻址 `providers`；`providers` 仅在为空或 `forceSyncProviders` 时从 `getUpstreamConfig()` 重同步 [:75-84](Desktop/frontend/src/components/network/UpstreamPanel.vue#L75)
+- **现象**：两个列表数据源不同：`upstreams` 来自 `getStatus()`——服务侧优先取 **resolver 实时统计**（[cmd/service/controller_dns.go:159-177](Desktop/cmd/service/controller_dns.go#L159)，DNS 运行中）或配置回退（[:177-196](Desktop/cmd/service/controller_dns.go#L177)）；`providers` 来自 `getUpstreamConfig()`。正常运行时二者当前恰好同源同序，但任何一次 `saveConfig` 失败（服务器拒绝参数、写入出错）后 `providers` 已含本地新增/删除/修改而 `upstreams` 停留在服务器旧列表且不会自动重同步（`forceSyncProviders` 恒 false，重同步条件 `providers.length===0` 不成立）：此时点击第 N 张可见卡片的「编辑」弹出的是 `providers[N-1]` 之类的错位条目，「删除」直接 splice 错误的服务器并落库。禁用阈值混用两套 `length`，进一步掩盖边界不一致。
+- **根因**：同一 UI 实体的"展示"与"操作"各用一份状态、以数组下标隐式对齐，无任何按 `id` 的匹配或单源约束；失败路径缺少强制重同步。
+- **验证方法**：手动复现：解析 → 上游，添加一个会被服务端拒绝的条目触发 `saveConfig` 失败（错误横幅出现、providers 已含该条），对照可见卡片数与编辑弹窗内容即见错位。静态核验：模板 `idx` 直接传入仅寻址 `providers` 的两个处理函数（[:388→460/469](Desktop/frontend/src/components/network/UpstreamPanel.vue#L388)），全文件无 `upstreams`↔`providers` 的对账代码。
+
+### BUG-25 · 前端/上游面板 · 低 · 成功横幅定时器重复创建且不清理：两次快速保存后第二条横幅提前消失，卸载后定时器仍触发
+- **位置**：[frontend/src/components/network/UpstreamPanel.vue:176-180](Desktop/frontend/src/components/network/UpstreamPanel.vue#L176)（每次 `saveConfig` 成功都新建 `setTimeout(3000)`，句柄未保存、`onUnmounted` 无清理；同组件模式亦见于 [components/accel/CachePanel.vue:145-152](Desktop/frontend/src/components/accel/CachePanel.vue#L145) 等横幅路径，以本处为样本）
+- **现象**：3 秒内两次保存（如连续切模式）：第一次的回调在自身 3 秒到点即清空 `successMessage`，把第二次刚显示的横幅提前抹掉；面板卸载/切页后遗留定时器仍回调改写已无消费者的 ref。违背工程自身的清理规范（[useFlashMessage.ts:43-46](Desktop/frontend/src/composables/useFlashMessage.ts#L43) 有 `onUnmounted` 清理；对照 BUG-15 已记录的 useToast 同类缺陷）。
+- **根因**：自动消失提示用裸 `setTimeout` 且未做"新调度先取消旧调度"。
+- **验证方法**：手动复现：DevTools 网络节流使两次保存间隔可感，快速切换解析模式两次，第二条「已更新并即时生效」横幅存活不足 3 秒即消失。
+
+### BUG-26 · 前端/客户端分组 · 低 · 可删除草稿列表以 `:key="index"` 渲染（嵌套计划表同）：删除分组后 DOM 原位复用，编辑焦点/输入串行到上移的分组
+- **位置**：[frontend/src/components/network/ClientGroupsCard.vue:210-213](Desktop/frontend/src/components/network/ClientGroupsCard.vue#L210)（`v-for="(row, index) in drafts" :key="index"`）、[:119-128](Desktop/frontend/src/components/network/ClientGroupsCard.vue#L119)（`confirmDelete` 直接 `splice`）；嵌套 [frontend/src/components/rules/ScheduleEditor.vue:56](Desktop/frontend/src/components/rules/ScheduleEditor.vue#L56)（`v-for :key="index"`）与 [:46-51](Desktop/frontend/src/components/rules/ScheduleEditor.vue#L46)（计划行 splice）
+- **现象**：`md-outlined-text-field` 为 `:value` + `@input` 受控自定义元素，其内部（shadow DOM）值与焦点并不随 key 重排而重置。删除第 1 组后，原第 2 组各行复用原 DOM 节点：光标仍停在删除行残留的焦点输入框上，继续输入写进的是**上移后占据该位置的另一分组**；嵌套的时间段行同样错位。分组无稳定 id（草稿为新建对象），删除后 `saveConfig`（[:130-153](Desktop/frontend/src/components/network/ClientGroupsCard.vue#L130)）把错位的草稿整批落库。
+- **根因**：删除式可变列表用位置下标做 key；`newDraft`（[:53](Desktop/frontend/src/components/network/ClientGroupsCard.vue#L53)）本可生成稳定 uid。
+- **验证方法**：手动复现：设备 → 客户端 → 开启分组 → 建两组各输一个可辨识名称 → 删除第 1 组 → 在原焦点输入框继续打字，观察文本进入错误的分组行；保存后服务器落库错位。
+
+### 观察项（前端，暂不计为独立缺陷）
+- [components/overview/OverviewPanel.vue:99-113](Desktop/frontend/src/components/overview/OverviewPanel.vue#L99)：`fetchStatus` 同样无 stale-response 守卫，轮询与 WS 突发可短暂显示旧状态，但 5 秒内自愈且无用户输入交互面，风险低于 BUG-22/23。
+- [components/encrypted/MobileConfigCard.vue:36-55](Desktop/frontend/src/components/encrypted/MobileConfigCard.vue#L36)：异步二维码生成可乱序回写——与既有观察「mobileConfigURL 非响应式」同点位，等待同一修复。
+- BUG-20/21 的根因（草稿与服务器状态未分离）为工程级模式问题，预计后续轮次在其他含内联表单的组件（RuleListsPanel 订阅参数、RewritePanel 表单等）仍会复现同族症状，届时并表不另立条目。
+
+---
+
+## 第 6 轮（2026-10-17）— 已扫描模块
+
+已扫描：`internal/ipc/{server_filter,server_client_groups,routes}.go` 与 `cmd/service/{controller_dns,controller_cache,controller_security,controller_rewrite,controller_zone,controller_safesearch,controller_client_groups,controller_pipeline,controller_filter,controller_lan}.go`，并对照引擎侧 `internal/core/{client_groups,cache,cache_stats,cache_persist,rate_limiter,rule_engine_lists}.go`、`internal/dns/{filter_middleware,client_middleware,cache_middleware,upstream_route_middleware}.go`。本轮主题：**配置写路径的"热生效"语义与生命周期一致性**（代理报告 7 项，全部核验属实）。
+
+### BUG-27 · 客户端分组热更新 · 高 · ConfigureClientGroups 换掉 p.groupResolver，但运行中流水线持有旧指针——新分组/成员变更对 DNS 转发路径完全不生效，API 却回复「已更新并生效」
+- **位置**：[cmd/service/controller_client_groups.go:88-93](Desktop/cmd/service/controller_client_groups.go#L88)（`p.groupResolver = gr` 仅换字段）、[cmd/service/controller_pipeline.go:31,107,118,125,134](Desktop/cmd/service/controller_pipeline.go#L31)（`buildPipeline` 把**当时的** `p.groupResolver` 指针按值捕获进 client/filter/filterResponse/cache/upstreamRoute 五个中间件闭包）、[internal/dns/filter_middleware.go:19-37](Desktop/internal/dns/filter_middleware.go#L19)、[internal/dns/client_middleware.go:17-36](Desktop/internal/dns/client_middleware.go#L17)、[internal/dns/cache_middleware.go:20-36](Desktop/internal/dns/cache_middleware.go#L20)、[internal/dns/upstream_route_middleware.go:30-41](Desktop/internal/dns/upstream_route_middleware.go#L30)（闭包持旧指针读 `entries`）、[internal/core/client_groups.go:61-110](Desktop/internal/core/client_groups.go#L61)（`NewGroupResolver` 每次新建对象、`Resolve` 读 `r.entries`）、[internal/ipc/server_client_groups.go:37-40](Desktop/internal/ipc/server_client_groups.go#L37)（返回「客户端分组已更新并生效」）；`buildPipeline` 全工程唯一调用点 [cmd/service/controller_dns.go:28](Desktop/cmd/service/controller_dns.go#L28)（仅 `StartDNS`），`Server.pipeline` 装配后逐查询复用（[internal/dns/server.go:38,152,322-323](Desktop/internal/dns/server.go#L322)）
+- **现象**：DNS 运行中新增/修改分组：规则引擎匹配器确有热更（`filterEngine.SetClientGroups`，controller_client_groups.go:84），但**转发侧**的分组归属（client 中间件写入 ctx 的 `attrClientGroup`、filter 中间件的 `MatchForGroup(domain,qtype,groupID)`、缓存隔离键、分组专属上游路由 `ExchangeForGroup`）全部仍由旧 `GroupResolver` 判定——新分组解析为 `default`，其专属规则集/上游/缓存隔离静默不生效，直到监听器重启。响应文案宣称"已生效"，GET `/api/v1/clients/groups` 也显示新配置，用户无从察觉。对照同工程 [cmd/service/controller_lan.go:59-68](Desktop/cmd/service/controller_lan.go#L59)：改监听地址明知中间件固化，故 StopDNS+StartDNS 平滑重建流水线；分组路径漏了这一步（或未改为 getter 惰性读取）。
+- **根因**：指针按值捕获 vs 字段重赋值的生命周期错配；`SetClientGroups` 只重建了引擎侧分组匹配器，掩盖了 resolver 侧未重建的事实。
+- **验证方法**：集成测试：装配真实 `buildPipeline()` 起 DNS（分组功能开启、含组 A），POST ConfigureClientGroups 增加组 B（CIDR 覆盖查询源 IP）→ `Exchange` 断言查询按组 B 规则集/上游处理——现状按 default 组。简易版：ConfigureClientGroups 后比较 `p.groupResolver` 与流水线中间件闭包捕获的指针（反射/包内测试构造两份断言不等）。实机：开启分组后新增分组即刻从成员 IP 发起命中该组规则的域名查询，日志 `filterRule` 为空且上游未切换，重启 DNS 后行为才变化。
+
+### BUG-28 · 服务状态接口 · 高 · GetStatus 在释放 p.mu 后大范围读 p.cfg/p.resolver/p.takeoverMgr，与全部持锁 Configure* 写路径构成数据竞争
+- **位置**：[cmd/service/controller_dns.go:155-157](Desktop/cmd/service/controller_dns.go#L155)（仅 `dnsRun` 在锁内取）、[:159-176](Desktop/cmd/service/controller_dns.go#L159)（无锁读 `p.resolver.GetProviderStats()`）、[:194-199](Desktop/cmd/service/controller_dns.go#L194)（无锁读 `p.takeoverMgr`）、[:201,215-248](Desktop/cmd/service/controller_dns.go#L201)（无锁读 `p.cfg.DNS/Upstream/Hosts/Rebind/Access/RateLimit/DNS64/Rewrite/Zone/SafeSearch/SafeBrowsing/ECS` 全量）；写侧全部持 `p.mu`：[cmd/service/controller_security.go:56](Desktop/cmd/service/controller_security.go#L56)（ConfigureRateLimit `p.cfg.RateLimit = cfg`）、[:95,126-127,159-162](Desktop/cmd/service/controller_security.go#L95)、[cmd/service/controller.go:112](Desktop/cmd/service/controller.go#L112)（ConfigureUpstream）、[cmd/service/controller_client_groups.go:99-100](Desktop/cmd/service/controller_client_groups.go#L99) 等
+- **现象**：Web 控制台/托盘每 3–5s 轮询 `/api/v1/status`，与任意一次保存（限速、隐私、上游、分组…）并发即触发对同一 `config.Config` 结构体的无同步读写——Go 内存模型下是货真价实的数据竞争，不止"读到旧值"：`p.cfg.Upstream.Providers` 切片头读写撕裂可致 range 越界 panic 直接崩服务进程；`p.resolver.GetProviderStats()` 与 ConfigureUpstream 的重建并发同理。
+- **根因**：`p.mu` 约定为"读 p.cfg 必须持锁"（`buildPipeline` 注释 [controller_pipeline.go:22](Desktop/cmd/service/controller_pipeline.go#L22) 明说"内部对 p.cfg 的读取依赖该保护"），GetStatus 却只锁了 `dnsRun` 一个字段。对照同文件 controller_schedule.go:90 的"锁内取值、锁外使用"姿势。
+- **验证方法**：`cd Desktop && go test -race ./cmd/service/`：并发跑 `p.GetStatus(ctx)` 与 `p.ConfigureRateLimit(...)`，race detector 报 read controller_dns.go:240 vs previous write controller_security.go:56。实机：浏览器开着总览页连续点保存限速，观察偶发状态字段新旧混合渲染。
+
+### BUG-29 · 缓存配置热更新 · 中 · maxEntries 修改被持久化并被 GET 回显，但运行期容量（分片上限/落盘上限/Stats）从不重算——「已更新并生效」实为重启才生效
+- **位置**：[cmd/service/controller_cache.go:77-95](Desktop/cmd/service/controller_cache.go#L77)（`UpdateCacheConfig` → `p.cache.UpdateConfig(cfg)` + 落盘）、[internal/core/cache.go:78-95](Desktop/internal/core/cache.go#L78)（`UpdateConfig` 只换 `c.config`，不碰 `c.maxEntries` 与 `shard.maxEntries`）、[:44-77](Desktop/internal/core/cache.go#L44)（容量仅在 `NewDNSCache` 折算一次）、淘汰点 [:439](Desktop/internal/core/cache.go#L439)（`len(shard.entries) >= shard.maxEntries`）、[internal/core/cache_stats.go:36](Desktop/internal/core/cache_stats.go#L36) 与 [internal/core/cache_persist.go:63,114](Desktop/internal/core/cache_persist.go#L63)（读 `c.maxEntries`）
+- **现象**：把缓存上限从 1024 调到 200000：POST 返回成功，`GET /api/v1/cache/config` 因回显 `GetConfig()` 显示 200000（[internal/core/cache.go:123-127](Desktop/internal/core/cache.go#L123)），但逐出阈值、落盘条数上限、`/cache/stats` 的 `MaxEntries` 全部还是开机值——用户以为扩容生效，实际命中率毫无变化；反向调低同样静默无效。与 BUG-27 同族：配置面"已生效"与运行面"要重启"脱节。
+- **根因**：分片容量在构造期一次性折算进 64 个 shard 与两个字段，`UpdateConfig` 的更新面只覆盖 `config`；无重算/重建分片逻辑，也无一处注释声明"容量变更需重启"。
+- **验证方法**：包内测试：`NewDNSCache(cfg{MaxEntries:64})` → `UpdateConfig(cfg{MaxEntries:4096})` → 写入 100 条，断言淘汰行为/`Stats().MaxEntries` 仍为 64（当前如此）——修复预期应为 4096 或返回明确错误。
+
+### BUG-30 · 订阅源更新 · 中 · `POST /api/v1/filter/lists/update` 缺 URL 非空校验（与 add 不对称），省略 URL 字段即把在用订阅源清空并静默"更新成功"
+- **位置**：[internal/ipc/server_filter.go:126-149](Desktop/internal/ipc/server_filter.go#L126)（update 处理无任何字段校验）对照 [:96-114](Desktop/internal/ipc/server_filter.go#L96)（add 明确拒绝空 URL）；[internal/core/rule_engine_lists.go:61-81](Desktop/internal/core/rule_engine_lists.go#L61)（`UpdateFilterList` 无条件 `e.cfg.Lists[idx].URL = list.URL` 后 `rebuildUnlocked`）、[cmd/service/controller_filter.go:82-96](Desktop/cmd/service/controller_filter.go#L82)（落库同一无校验值）
+- **现象**：API 调用方（curl、自动化脚本、第三方集成）POST `{"id":"x","name":"X","enabled":true}` 省略 url → 反序列化为空串 → 该列表 URL 被清空并持久化，此后每轮定时刷新/手动刷新对空 URL 拉取恒失败，该订阅源的全部规则静默消失；HTTP 200「已成功更新」，前端仅在启用开关时（[RuleListsPanel.vue:90-102](Desktop/frontend/src/components/RuleListsPanel.vue#L90)）会带全字段，API 面才是缺口主体。add 有守卫、update 没有，属明显的对称性遗漏。
+- **根因**：`FilterList` 全量覆盖式更新，缺"部分更新"语义（指针字段或空值豁免），入口校验又只在 add 落了地。
+- **验证方法**：ipc 测试：add 合法列表 → update 不带 url 字段 → 断言 400（当前 200）；再 GET `/api/v1/filter/lists` 见 URL 为空串。
+
+### BUG-31 · 限速热更新 · 低中 · 运行中把限速从关闭改为开启不会启动清理协程：闲置令牌桶只靠 16384 上限内联淘汰，与「启动即开启」行为不一致
+- **位置**：[internal/core/rate_limiter.go:104-106](Desktop/internal/core/rate_limiter.go#L104)（`NewRateLimiter` 仅 `cfg.Enabled` 时 `go r.runJanitor(ctx, time.Minute)`）、[:112-147](Desktop/internal/core/rate_limiter.go#L112)（`UpdateConfig` 换 `r.cfg` 却从不(重)启动 janitor）、[:274-298](Desktop/internal/core/rate_limiter.go#L274)（`runJanitor`→`cleanupIdleBuckets` 是唯一按分钟回收闲置桶的路径）、[:217-240](Desktop/internal/core/rate_limiter.go#L217)（兜底为容量达 `maxBuckets=16384` 才内联全表扫描淘汰）、[cmd/service/controller_security.go:52-54](Desktop/cmd/service/controller_security.go#L52)（配置保存路径）
+- **现象**：默认（关闭）启动后在界面开启限速：限流本身即刻生效（`Allow` 检查 `r.cfg.Enabled`），但 janitor 缺席——每个来过的客户端 IP 各占一个 `clientBucket` 直至 16384 才触发 O(n) 内联淘汰风暴；同样配置若"先开启再启动"则每分钟准时回收，内存驻留与淘汰抖动两种路径行为分叉。`Allow` 早退（disabled 时直接放行）意味着关闭期间的桶不会增长，但开启时刻的历史桶也无人回收。
+- **根因**：janitor 生命周期绑定在构造期的 `cfg.Enabled` 判定，`UpdateConfig` 未纳入其启停（对照 `DNSCache.SyncPersistLoop`——落盘协程就做了按配置重启，注释还特意解释"只在启动时判定一次会同时出现两种不一致"，[internal/core/cache.go:96-98](Desktop/internal/core/cache.go#L96)）。
+- **验证方法**：core 包测试：`NewRateLimiter(Enabled:false)` → `UpdateConfig(Enabled:true)` → 注入时钟驱动 100 个 IP 各一发后推进 5 分钟（手动调 `cleanupIdleBuckets` 前），断言桶数衰减——现状不衰减；对照构造即开启的用例则每分钟清空闲置桶。
+
+### BUG-32 · 隐私配置保存 · 低中 · ConfigurePrivacy 先改 `p.cfg.Upstream` 再吞掉 `resolver.Configure` 错误，仍持久化新值并返回成功——磁盘与运行态分叉
+- **位置**：[cmd/service/controller_security.go:121-130](Desktop/cmd/service/controller_security.go#L121)（`p.cfg.DNS/Upstream.EDNSPadding = padding` 后 `_ = p.resolver.Configure(p.cfg.Upstream)`），[:145-149](Desktop/cmd/service/controller_security.go#L145)（照常 SaveConfig、返回 nil→200）；引擎错误源 [internal/core/resolver.go:172-173](Desktop/internal/core/resolver.go#L172)（"至少需要一个上游"等校验）
+- **现象**：上游处于引擎拒绝的中间状态时（如 BUG-30 清空 URL 后某校验路径、或 bootstrap 配置残缺），保存 EDNS 填充值：运行中的 resolver 保持旧 padding，config.json 已写入新值，UI 显示"已更新"且当前会话行为与重启后不一致。兄弟方法 ConfigureAccess/ConfigureDNS64 都传播引擎错误（[:24-27,:76-79](Desktop/cmd/service/controller_security.go#L24)），唯独此处用 `_ =` 吞掉。
+- **根因**：`_ =` 吞错 + "先改共享 cfg 再同步引擎"的顺序使失败时状态半提交。
+- **验证方法**：controller 测试：注入零 providers 的 `p.cfg.Upstream`（resolver 已建），`ConfigurePrivacy({ednsPadding:128})` → 断言返回错误且不落盘——当前返回 nil 且落盘。
+
+### BUG-33 · TTL 配置接口 · 低 · Rewrite/Zone/SafeSearch/Hosts 四路 configure 对显式提交的 `ttl<=0` 静默丢弃后仍报「已成功更新」：既不应用也不拒绝，用户以为已保存
+- **位置**：[cmd/service/controller_rewrite.go:75-77](Desktop/cmd/service/controller_rewrite.go#L75)、[cmd/service/controller_zone.go:55-57](Desktop/cmd/service/controller_zone.go#L55)、[cmd/service/controller_safesearch.go:40-42](Desktop/cmd/service/controller_safesearch.go#L40)、[cmd/service/controller_security.go:191-193](Desktop/cmd/service/controller_security.go#L191)——同型 `if req.TTL != nil && *req.TTL > 0 { cfg.TTL = *req.TTL }`
+- **现象**：`*req.TTL != nil` 说明调用方**明确想改 TTL**，填 0/负数（例如想表达"不缓存/立即过期"，或前端 number 输入清空后提交 0）时该意图被无声吞掉：配置保持旧值、照常落盘、返回成功，GET 回读旧 TTL，用户无从得知请求未被应用。对照加密 DNS 路径（[cmd/service/controller_encrypted.go:121](Desktop/cmd/service/controller_encrypted.go#L121) Normalize 后回显生效值），至少让客户端看得见归一化结果。
+- **根因**：`>0` 守卫把"非法值"与"未提供"合并处理；正确姿势是非法值报 400 或归一化后回显。
+- **验证方法**：ipc 测试：GET 当前 rewrite TTL → POST `{"ttl":0}` → 期望 400/回显归一化，当前 200 且 GET 值不变（对 zone/safesearch/hosts 各重复一次，同族四处）。
+
+### 观察项（第 6 轮）
+- 代理复核清除项（未列缺陷，防后续重复排查）：routes.go 鉴权包裹完整（公开集仅 events/health/meta/auth*/background*/mobileconfig）；上游 weight/protocol 校验闭环（validateProviderList）；ACL 全放行双保险；广播 nil 处理；GetZoneConfig/GetBlockedServices 深拷贝正确。
+- `cmd/service/controller_filter.go:94` `_ = config.SaveConfig`——引擎已热更、磁盘可能滞后，属"运行对/落盘错"反向分叉，面窄于 BUG-32，暂列观察。
+- BUG-29 修复建议方向（仅记录不改码）：`UpdateConfig` 内按新 MaxEntries 重建分片容量或返回"需重启"明示，二者取其一并保持 API 回显诚实。
+
+---
+
 ## 已核实但予以剔除的代理报告项（防重复上报）
 
 - 「`/api/v1/service/status` 不返回 `autoStart`」——**不实**：`platform.CoreServiceStatus` 含 `autoStart,omitempty`（[internal/platform/types.go:134](Desktop/internal/platform/types.go#L134)），`ServiceManager.GetStatus` 恒填充（service_mgr.go:155）；Web 模式自启开关本就隐藏不可操作。
 - 「`RestoreAdapters` 持锁再入自死锁」——**不实**：该方法及其下游均不取 `m.mu`。
 - 「`useCopyFeedback` 跨实例串扰」——**不实**：`copiedValue/timer` 为每次调用新建的闭包变量，非模块级共享。
 - 「netsh `name=X` 单 token 参数引号失效」——代理自验后撤回，add 路径确有 `err` 检查。
+- 「QueryHistoryPanel 连点下一页造成分页竞态」——**触发路径不实**：上/下页按钮 `:disabled="!canPrev||loading"`（[QueryHistoryPanel.vue:365,374](Desktop/frontend/src/components/overview/QueryHistoryPanel.vue#L365)）已门控；真实可达路径是筛选框回车（不受 loading 门控），已按修正后的触发方式并入 BUG-22(c)。
 - 「`filter.checkHost` 数字 qtype 传错」——当前唯一调用方 RuleTestPanel 的 select 值恒为字符串助记符，`number` 仅为签名冗余，无实际错误路径，降为观察项。
 - 「web 模式 `setAutoStart` 静默空操作」——入口开关在 Web 模式已被 `v-else-if="webMode"` 隐藏，不可达，降为观察项。
 
