@@ -251,3 +251,45 @@ func TestTrayManagerIsWindowActive(t *testing.T) {
 	}
 }
 
+func TestTrayIsWindowActiveStates(t *testing.T) {
+	tray := NewWindowsTray()
+
+	// 1. hwnd == 0 时永远为 false
+	if tray.IsWindowActive() {
+		t.Fatal("hwnd == 0 时 IsWindowActive 应返回 false")
+	}
+
+	// 2. 模拟设置虚拟 HWND
+	tray.hwnd = 999999
+
+	// 3. 当窗口失活时间在 500ms 内（模拟点击托盘瞬间 Explorer 夺取焦点），应判定为活跃
+	tray.lastDeactiveTime = time.Now().Add(-100 * time.Millisecond)
+	// 在没有真实 OS 窗口时 visible 为 0，仍应优雅返回 false 而不崩溃
+	if tray.IsWindowActive() {
+		t.Fatal("不可见/无效窗口句柄应返回 false")
+	}
+}
+
+func TestCoordinatesParsing(t *testing.T) {
+	// 验证坐标打包和解析：支持多显示器负坐标（如副屏在主屏左侧时 X < 0）
+	xTarget := int16(-250)
+	yTarget := int16(480)
+	wParam := uintptr(uint32(uint16(xTarget)) | (uint32(uint16(yTarget)) << 16))
+
+	xParsed := int32(int16(wParam & 0xFFFF))
+	yParsed := int32(int16((wParam >> 16) & 0xFFFF))
+
+	if xParsed != -250 || yParsed != 480 {
+		t.Fatalf("负坐标解析异常: x=%d, y=%d", xParsed, yParsed)
+	}
+}
+
+func TestForceSetForegroundWindowSafety(t *testing.T) {
+	// 验证 hwnd == 0 时调用 forceSetForegroundWindow 安全无崩溃
+	forceSetForegroundWindow(0)
+	if isWindowOrChildOf(0, 0) {
+		t.Fatal("空句柄 isWindowOrChildOf 应返回 false")
+	}
+}
+
+

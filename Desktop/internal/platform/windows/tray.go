@@ -23,11 +23,13 @@ type WindowsTray struct {
 	origWndProc       uintptr
 	lastClickTime     time.Time
 	lastMenuTime      time.Time
+	lastDeactiveTime  time.Time
 	mu                sync.Mutex
 	hasShownBalloon   bool
 	isInitialized     bool
 	isShowingMenu     bool
 	isVersion4        bool
+	isCurrentlyActive bool
 }
 
 var globalTray *WindowsTray
@@ -148,7 +150,9 @@ func (t *WindowsTray) addNotifyIcon() error {
 	// 设置托盘版本行为 (NOTIFYICON_VERSION_4)
 	nid.uTimeoutOrVer = 4
 	retV, _, _ := procShell_NotifyIconW.Call(nimSetVersion, uintptr(unsafe.Pointer(&nid)))
+	t.mu.Lock()
 	t.isVersion4 = retV != 0
+	t.mu.Unlock()
 	return nil
 }
 
@@ -187,11 +191,11 @@ func (t *WindowsTray) ActivateWindow() {
 		return
 	}
 	procShowWindow.Call(t.hwnd, swRestore)
-	procSetForegroundWindow.Call(t.hwnd)
+	forceSetForegroundWindow(t.hwnd)
 	procBringWindowToTop.Call(t.hwnd)
 }
 
-// IsWindowActive 判断主窗口当前是否可见且正处于前台
+// IsWindowActive 判断主窗口当前是否可见且正处于活跃状态
 func (t *WindowsTray) IsWindowActive() bool {
 	if t.hwnd == 0 {
 		return false
@@ -200,8 +204,23 @@ func (t *WindowsTray) IsWindowActive() bool {
 	if visible == 0 {
 		return false
 	}
+	iconic, _, _ := procIsIconic.Call(t.hwnd)
+	if iconic != 0 {
+		return false
+	}
+
 	fg, _, _ := procGetForegroundWindow.Call()
-	return fg == t.hwnd
+	if fg == t.hwnd || isWindowOrChildOf(t.hwnd, fg) {
+		return true
+	}
+
+	// 当用户点击系统托盘图标时，Windows Explorer (Shell_TrayWnd) 会瞬间夺取前台焦点。
+	// 若主窗口在此之前处于活跃状态（500ms 内失活），判定为主窗口当前处于活跃状态，应当执行隐藏。
+	t.mu.Lock()
+	recentlyActive := t.isCurrentlyActive || (!t.lastDeactiveTime.IsZero() && time.Since(t.lastDeactiveTime) < 500*time.Millisecond)
+	t.mu.Unlock()
+
+	return recentlyActive
 }
 
 // Destroy 释放托盘图标与窗口消息拦截
@@ -247,6 +266,17 @@ func trayWindowHookProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uintptr
 		t.handleTrayCallback(wParam, lParam)
 		return 0
 
+	case wmActivate:
+		loword := uint16(wParam & 0xFFFF)
+		t.mu.Lock()
+		if loword == waActive || loword == waClickActive {
+			t.isCurrentlyActive = true
+		} else if loword == waInactive {
+			t.isCurrentlyActive = false
+			t.lastDeactiveTime = time.Now()
+		}
+		t.mu.Unlock()
+
 	case wmClose:
 		t.mu.Lock()
 		firstClose := !t.hasShownBalloon
@@ -280,6 +310,10 @@ func (t *WindowsTray) handleTrayCallback(wParam, lParam uintptr) {
 	// 在 NOTIFYICON_VERSION_4 规范下，LOWORD(lParam) 为通知事件代码，HIWORD(lParam) 为图标 ID
 	event := uint32(lParam & 0xFFFF)
 
+	t.mu.Lock()
+	isV4 := t.isVersion4
+	t.mu.Unlock()
+
 	switch event {
 	case ninSelect, ninKeySelect:
 		t.handleLeftClick()
@@ -287,7 +321,7 @@ func (t *WindowsTray) handleTrayCallback(wParam, lParam uintptr) {
 	case wmLButtonUp:
 		// 当 NOTIFYICON_VERSION_4 生效时，Windows Shell 会在单次左键抬起时同时派发 WM_LBUTTONUP 与 NIN_SELECT；
 		// 为避免双重派发导致误判为双击，版本 4 下忽略 WM_LBUTTONUP，仅以 NIN_SELECT 为准。
-		if !t.isVersion4 {
+		if !isV4 {
 			t.handleLeftClick()
 		}
 
@@ -305,8 +339,8 @@ func (t *WindowsTray) handleTrayCallback(wParam, lParam uintptr) {
 
 	case wmRButtonUp:
 		// 仅在低版本兜底模式下响应 WM_RBUTTONUP；版本 4 下忽略该原始鼠标消息以防菜单重复弹出
-		if !t.isVersion4 {
-			t.showContextMenu(wParam)
+		if !isV4 {
+			t.showContextMenu(0)
 		}
 
 	case ninBalloonUserClick:
@@ -348,17 +382,20 @@ func (t *WindowsTray) handleLeftClick() {
 	}
 }
 
-func appendMenuItem(hMenu uintptr, flags uintptr, id uintptr, text string) {
-	ptr, _ := syscall.UTF16PtrFromString(text)
-	procAppendMenuW.Call(hMenu, flags, id, uintptr(unsafe.Pointer(ptr)))
-}
-
 // showContextMenu 弹出右键菜单
 func (t *WindowsTray) showContextMenu(wParam uintptr) {
 	t.mu.Lock()
-	if t.isShowingMenu || (t.lastMenuTime != (time.Time{}) && time.Since(t.lastMenuTime) < 250*time.Millisecond) {
+	if t.hwnd == 0 {
 		t.mu.Unlock()
 		return
+	}
+	// 极短时间（<50ms）内的硬件或系统抖动重复事件直接忽略
+	if !t.lastMenuTime.IsZero() && time.Since(t.lastMenuTime) < 50*time.Millisecond {
+		t.mu.Unlock()
+		return
+	}
+	if t.isShowingMenu {
+		procEndMenu.Call()
 	}
 	t.isShowingMenu = true
 	t.mu.Unlock()
@@ -420,13 +457,17 @@ func (t *WindowsTray) showContextMenu(wParam uintptr) {
 	// 4. 退出程序
 	appendMenuItem(hMenu, mfString, idMenuExit, "退出程序")
 
-	// 坐标解析：NOTIFYICON_VERSION_4 在 wParam 中打包了光标 X, Y 锚点
+	// 坐标解析：NOTIFYICON_VERSION_4 在 wParam 中打包了光标 X, Y 锚点（支持多显示器负坐标）
+	t.mu.Lock()
+	isV4 := t.isVersion4
+	t.mu.Unlock()
+
 	var x, y int32
-	if wParam != 0 {
+	if isV4 && wParam != 0 {
 		x = int32(int16(wParam & 0xFFFF))
 		y = int32(int16((wParam >> 16) & 0xFFFF))
 	}
-	if x == 0 && y == 0 {
+	if !isV4 || (x == 0 && y == 0) {
 		var pt point
 		procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
 		x = pt.X
@@ -434,7 +475,7 @@ func (t *WindowsTray) showContextMenu(wParam uintptr) {
 	}
 
 	// Win32 标准要求：调用 TrackPopupMenu 之前必须将托盘宿主窗口置为前台，菜单退出后发送 WM_NULL 清除任务状态
-	procSetForegroundWindow.Call(t.hwnd)
+	forceSetForegroundWindow(t.hwnd)
 
 	cmd, _, _ := procTrackPopupMenu.Call(
 		hMenu,
@@ -449,8 +490,9 @@ func (t *WindowsTray) showContextMenu(wParam uintptr) {
 
 	switch cmd {
 	case idMenuShowWindow:
+		t.ActivateWindow()
 		if t.callbacks.OnShowWindow != nil {
-			go t.callbacks.OnShowWindow()
+			t.callbacks.OnShowWindow()
 		}
 	case idMenuAutoStart:
 		if t.callbacks.OnToggleAutoStart != nil {

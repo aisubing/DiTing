@@ -2,6 +2,10 @@
 
 package windows
 
+import (
+	"syscall"
+	"unsafe"
+)
 
 var (
 	procShell_NotifyIconW           = modShell32.NewProc("Shell_NotifyIconW")
@@ -28,9 +32,22 @@ var (
 	procCallWindowProcW             = modUser32.NewProc("CallWindowProcW")
 	procDefWindowProcW              = modUser32.NewProc("DefWindowProcW")
 	procGetDoubleClickTime          = modUser32.NewProc("GetDoubleClickTime")
+	procKeybd_event                 = modUser32.NewProc("keybd_event")
+	procIsIconic                    = modUser32.NewProc("IsIconic")
+	procGetAncestor                 = modUser32.NewProc("GetAncestor")
+	procEndMenu                     = modUser32.NewProc("EndMenu")
 )
 
 const (
+	wmActivate     = 0x0006
+	waInactive     = 0
+	waActive       = 1
+	waClickActive  = 2
+	vkMenu         = 0x12
+	keyeventfKeyUp = 0x0002
+	gaRoot         = 2
+	gaRootOwner    = 3
+
 	wmTrayCallback = 0x8000 + 200 // WM_APP + 200
 	msgfltAdd      = 1            // MSGFLT_ADD
 	msgfltAllow    = 1            // MSGFLT_ALLOW
@@ -113,3 +130,38 @@ func setWindowLongPtr(hwnd uintptr, nIndex uintptr, newLong uintptr) uintptr {
 	ret, _, _ := procSetWindowLongW.Call(hwnd, nIndex, newLong)
 	return ret
 }
+
+// forceSetForegroundWindow 突破 Windows 前台窃取限制将窗口强制激活置顶
+func forceSetForegroundWindow(hwnd uintptr) {
+	if hwnd == 0 {
+		return
+	}
+	procKeybd_event.Call(vkMenu, 0, 0, 0)
+	procSetForegroundWindow.Call(hwnd)
+	procKeybd_event.Call(vkMenu, 0, keyeventfKeyUp, 0)
+}
+
+func isWindowOrChildOf(parent, child uintptr) bool {
+	if child == 0 || parent == 0 {
+		return false
+	}
+	if child == parent {
+		return true
+	}
+	root, _, _ := procGetAncestor.Call(child, gaRootOwner)
+	if root == parent {
+		return true
+	}
+	root2, _, _ := procGetAncestor.Call(child, gaRoot)
+	return root2 == parent
+}
+
+func appendMenuItem(hMenu uintptr, flags uintptr, id uintptr, text string) {
+	if text == "" && flags&mfSeparator != 0 {
+		procAppendMenuW.Call(hMenu, flags, id, 0)
+		return
+	}
+	ptr, _ := syscall.UTF16PtrFromString(text)
+	procAppendMenuW.Call(hMenu, flags, id, uintptr(unsafe.Pointer(ptr)))
+}
+
