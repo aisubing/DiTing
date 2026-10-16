@@ -224,7 +224,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6 select-none">
+  <div class="space-y-5 select-none">
     <ToastBanner v-if="toast" :message="toast.message" :type="toast.isError ? 'error' : 'success'" dismissible @dismiss="dismiss" />
 
     <!-- 1. 活跃客户端识别与主机名别名卡片 -->

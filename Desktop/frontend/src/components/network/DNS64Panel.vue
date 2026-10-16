@@ -76,7 +76,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6 select-none max-w-4xl mx-auto">
+  <div class="space-y-5 select-none">
     <ToastBanner v-if="toast" :message="toast.message" :type="toast.isError ? 'error' : 'success'" dismissible @dismiss="dismiss" />
 
     <AppCard

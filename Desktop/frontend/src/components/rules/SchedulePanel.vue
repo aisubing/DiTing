@@ -67,7 +67,7 @@ usePoller(fetchData, 5000);
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="space-y-5">
     <ToastBanner v-if="toast" :message="toast.message" :type="toast.isError ? 'error' : 'success'" dismissible @dismiss="dismiss" />
 
     <AppCard

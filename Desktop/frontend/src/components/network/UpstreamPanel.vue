@@ -255,7 +255,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6 select-none pb-12">
+  <div class="space-y-5 select-none">
     <!-- 消息横幅 -->
     <ToastBanner
       v-if="successMessage"

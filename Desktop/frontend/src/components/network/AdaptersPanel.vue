@@ -90,7 +90,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-5 pb-12 select-none">
+  <div class="space-y-5 select-none">
     <!-- 头部操作栏 -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>

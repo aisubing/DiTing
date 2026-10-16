@@ -215,7 +215,7 @@ usePoller(fetchData, 4000);
 </script>
 
 <template>
-  <div class="space-y-6 max-w-7xl mx-auto pb-12 select-none">
+  <div class="space-y-5 select-none">
     <!-- 顶部消息提示 -->
     <ToastBanner v-if="toast" :message="toast.message" :type="toast.isError ? 'error' : 'success'" dismissible @dismiss="dismiss" />
 

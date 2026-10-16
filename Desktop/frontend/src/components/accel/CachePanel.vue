@@ -248,7 +248,7 @@ usePoller(pollMetrics, 4000);
 </script>
 
 <template>
-  <div class="space-y-5 pb-12 select-none">
+  <div class="space-y-5 select-none">
     <!-- 状态反馈提示 -->
     <ToastBanner
       v-if="toast"
