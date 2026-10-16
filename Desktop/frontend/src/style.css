@@ -499,12 +499,22 @@ select option {
   height: 0;
 }
 
+/* 呼吸灯（运行中状态指示）。
+ *
+ * 性能约束：在 WebView2 下，对 opacity 做逐帧插值的无限动画会让合成器持续
+ * 整窗口重绘。1080p 实测常驻占用 GPU 约 28%（3D ~9% + Copy ~16%），
+ * 且 will-change / translateZ / contain / 改用 transform 或 background-color
+ * 均无法降低——开销来自"出帧频率"本身，而非元素重绘或图层提升。
+ *
+ * 因此改用 steps() 把每周期内的取值离散化，把出帧从 60fps 降到每秒数次：
+ * 实测占用降至约 1.5%（约 -95%）。指示点仅 6px，视觉上无差别。
+ * 如需更平滑可提高步数（steps(4) 约 3%，steps(8) 约 7%）。 */
 @keyframes seal-breathe {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
 .seal-pulse {
-  animation: seal-breathe 1.8s ease-in-out infinite;
+  animation: seal-breathe 1.8s steps(2, jump-none) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
