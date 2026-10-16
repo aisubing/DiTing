@@ -312,6 +312,76 @@
 
 ---
 
+## 第 8 轮（2026-10-17）— 已扫描模块
+
+已扫描：`internal/auth/auth.go`（防爆破锁定键源）、`internal/ipc/{server_static,server_web,server_filter_pause}.go`、`internal/core/{dns64,rule_engine_pause,safesearch,safesearch_rules,access_control,rule_list_fetch,schedule}.go`、`internal/dns/{dns64_middleware,realip,edns0,server_doq,server_dot,safesearch_middleware}.go`、`cmd/service/{controller_schedule,controller_pipeline,controller_services,controller_portcheck,controller_security,controller_dot,controller_dns,controller}.go`、`internal/platform/{state,netutil,ports,executor}.go`、`internal/ipc/server_stamp.go`、`internal/ipc/server_ws.go`（runHub 复核维持第 2 轮判定）、`internal/platform/linux/{portcheck,portcheck_owner,portcheck_proc,portcheck_autofix,backend_resolved,autostart,takeover(增补),backend(增补),net,files,privilege,adapter}.go`（Linux 平台层深扫代理结果已逐条对照源码复核后并入，BUG-46~50）。**本轮自扫 4 项全部经临时 Go 测试实证**（`zz_tmp_*_verify_test.go`，运行后均已删除，不入库）；Linux 条目为非 Linux 主机的行级源码复核 + 权威文档核验（systemd-resolved(8) 手册确认无 PIDFile），附 Linux 实机复现步骤。Windows 平台层与前端 api 层代理深扫仍在进行，结果下一轮并入。
+
+### BUG-42 · IPC/Web 鉴权 · 高 · Web 模式登录防爆破锁定键取自可伪造的 X-Forwarded-For：攻击者可无限次尝试口令，还可反向锁死真实用户
+- **位置**：[internal/ipc/server_static.go:126-141](Desktop/internal/ipc/server_static.go#L126)（`getClientIP` 无条件采信 `X-Forwarded-For` 首段，其次 `X-Real-IP`，最后才回退 `RemoteAddr`——**没有任何可信代理判定**）、[internal/ipc/server_web.go:34](Desktop/internal/ipc/server_web.go#L34)（登录处理把该值直接作为 `clientIP` 传给 `Login`）、[internal/auth/auth.go:172-222](Desktop/internal/auth/auth.go#L172)（`ipAttempts`/`ipLockedUntil` 全部以传入的 clientIP 为键；阈值 MaxFailedAttempts=5、锁定 5 分钟，判定见 :183-198）
+- **现象**：开启 Web 局域网模式后（该模式的存在意义就是让非本机设备访问），任意 LAN 客户端对 `/api/v1/auth/login` 的口令爆破**每次请求换一个 `X-Forwarded-For: <随机 IP>` 头**即可让失败计数永远落在不同的键上，5 次锁定阈值形同虚设，SHA-256+盐口令可离线节奏不受限地在线碰撞。反向同样成立：攻击者拿受害者真实 IP 当 XFF 值连错 5 次，就能把该局域网用户在 5 分钟窗口内锁在门外（针对特定机口的 DoS）。对照：[internal/dns/realip.go](Desktop/internal/dns/realip.go) 为 DNS 侧 DoH 实现的 TrustedProxy「默认不信、右起扫描」是正确姿势——同一仓库里两处对同一转发头的信任标准不一致，IPC 侧选择了完全信任。
+- **根因**：登录锁定键直接采信可伪造头部，未复用/参照 DNS 侧已有的可信代理判定；IPC 服务在桌面/Web 模式下都是**直连**（无自有反代），本就不该解析任何转发头。
+- **验证方法**：**已实证（临时测试验证后删除）**：`getClientIP` 收到 `X-Forwarded-For: 8.8.8.8, 10.0.0.1`（RemoteAddr=127.0.0.1:54321）返回 **`8.8.8.8`**，`X-Real-IP` 同理；结合 auth 侧实证（见 BUG-43：以 1000 个不同来源键各失败一次，`ipAttempts` 累积 1001 个键、无一键触发锁定）即构成完整绕过链。实机：`curl -X POST http://<host>:15353/api/v1/auth/login -H 'X-Forwarded-For: 1.2.3.4' -d '{"username":"admin","password":"wrong"}'` 每次换 XFF 值，观察 `GetStatus` 永不出现锁定标志。
+
+### BUG-43 · IPC/Web 鉴权 · 中 · 登录失败计数与锁定表以任意可伪造字符串为键且无上限、无过期回收：内存无限增长（资源耗尽）
+- **位置**：[internal/auth/auth.go:172-222](Desktop/internal/auth/auth.go#L172)（`ipAttempts[clientIP]++`、`ipLockedUntil[clientIP]=...`，两 map 无容量上限；仅登录**成功**时才 delete（:205-206），失败的键永不删除；`ipLockedUntil` 过期后下次读取该键才会覆盖，但无人读取的过期键**永不回收**）、键源同 BUG-42 的 `getClientIP`
+- **现象**：与 BUG-42 同键源、不同缺陷：攻击者每次请求携带新的伪造 XFF，服务端就新增一个 map 项——每个唯一键一次失败登录即永久驻留一条 `int` 计数（外加锁定期一条时间戳）。长时间运行 + 任意速率的失败登录洪水使 auth 结构无上限膨胀（无淘汰、无 LRU、无定时清扫），且 IPC 服务进程与 DNS 核心同进程，最终拖垮整个桌面应用。修复 BUG-42（改用 RemoteAddr）可把键空间收敛到真实对端数，但**合法 LAN 用户规模下的过期键不回收问题仍在**，两处都需要治理。
+- **根因**：把可伪造输入当身份键的同时又把它当**持久存储**键；缺少容量上限与过期清扫。
+- **验证方法**：**已实证（临时测试验证后删除）**：`internal/auth` 包内对 `Login` 灌 1000 个不同 `clientIP` 各失败一次 → `ipAttempts` 长度 **1001**（含内部默认键），全部留存、无一被锁定回收；断言输出记录 map 长度。
+- **关联**：键源缺陷见 BUG-42（修复顺序建议同源一并处理）。
+
+### BUG-44 · DNS64 合成 · 中 · EmbedIPv4InIPv6 对 /40、/48、/56 前缀的字节布局违反 RFC 6052 Table 2：合成的 AAAA 指向错误 IPv4，NAT64 流量黑洞化
+- **位置**：[internal/core/dns64.go:110-161](Desktop/internal/core/dns64.go#L110)（`EmbedIPv4InIPv6`：case 56 把 IPv4 拆成 `v6[7]=v4[0]`、零填充 `v6[8]`、`copy(v6[9:12], v4[1:4])`——**零字节插在 IPv4 中间**；case 48/case 40 同样以 `v6[8]=0` 把本应连续的 4 字节 IPv4 拦腰截断。RFC 6052 §2.2 Table 2 规定 IPv4 必须**紧随前缀连续放置**，u 字节位于 IPv4 **之后**（/56 为 byte11、/48 为 byte10、/40 为 byte9），且合成前缀已入排除集（:78），错误结果不会再被拦截修正）；调用方 [internal/core/dns64.go:248-262](Desktop/internal/core/dns64.go#L248)（`SynthesizeFromAWithTTL` 对所有已配置前缀逐一嵌入）与 [internal/dns/dns64_middleware.go:89](Desktop/internal/dns/dns64_middleware.go#L89)
+- **现象**：使用非默认前缀长度（自定义 NAT64 部署常见的 /64 之外的 /48、/40、/56，以及运营商级 /32）时：/32、/64、/96 三种布局正确；/40、/48、/56 合成出的 AAAA 与 NAT64 网关按 RFC 6052 反解出的 IPv4 **不是同一个地址**——IPv6-only 客户端拿到“看似正确格式、实为错址”的合成记录，连接黑洞且无任何日志提示（合成链路本身成功）。默认 `64:ff9b::/96` 不受影响，故定级中。工程内既有测试只断言「byte8==0」（[internal/core/dns64_test.go:122-127](Desktop/internal/core/dns64_test.go#L122)），恰好被错误实现满足（代码正是在 byte8 塞零），所以单测全绿掩盖了布局错误。
+- **根因**：把「u 必须为 0」误写成「IPv4 拆两半、中间垫 0」；/56、/48、/40 三个 case 的注释与实现均按错误布局自述（如 case 56 注释「IPv4[0] | u(8) | IPv4[1-3]」），属对 Table 2 的系统性误读而非笔误。
+- **验证方法**：**已实证（临时测试验证后删除）**：`EmbedIPv4InIPv6(192.0.2.1, …)`：/40 得 `2001:0db8:00c0:0002:0001:0000:0000:0000`，RFC 6052 Table 2 期望 `2001:0db8:00c0:0002:0100:…`；/48 得 `2001:0db8:0001:c000:0002:0100:0000:0000`，期望 `2001:0db8:0001:c000:0201:0000:0000:0000`；/56 得 `2001:0db8:0001:00c0:0000:0201:0000:0000`，期望 `2001:0db8:0001:00c0:0002:0100:0000:0000`（三例 u 均在 byte8 而非 IPv4 之后）；/32、/64、/96 三例与期望一致。
+
+### BUG-45 · 拦截暂停 · 中低 · SetFilterPause 对 durationSec 零校验：负值与乘算溢出值被静默解释为「暂停至手动恢复」，定时暂停变成事实上的永久关过滤
+- **位置**：[internal/ipc/server_filter_pause.go:24-36](Desktop/internal/ipc/server_filter_pause.go#L24)（POST 仅反序列化，无范围校验）、[cmd/service/controller_schedule.go:97-98](Desktop/cmd/service/controller_schedule.go#L97)（`engine.PauseFor(time.Duration(req.DurationSec) * time.Second)`，int64 秒→纳秒乘算可溢出为负）、[internal/core/rule_engine_pause.go:20-24](Desktop/internal/core/rule_engine_pause.go#L20)（`d <= 0` 一律落到「100 年哨兵值＝暂停至手动恢复」）；对照语义契约 [internal/ipc/types.go:385-387](Desktop/internal/ipc/types.go#L385)（仅 **0** 被文档化为「暂停至手动恢复」）
+- **现象**：`durationSec` 为负数（如客户端笔误 `-1`）或大到溢出（≥ 约 9.22e9，如 `18446744073`、`10000000000`）时，换算出的 Duration ≤0，与“永久暂停”的 0 值语义**不可区分**：API 返回成功、UI 显示「拦截已暂停」，但到期自动恢复永不发生——过滤整体关闭直到手动恢复或进程重启（fail-open，且 [frontend/src/components/rules/RulesPanel.vue:286](Desktop/frontend/src/components/rules/RulesPanel.vue#L286) 的 GUI 只发合法值，受害面是文档化全量 API/第三方自动化脚本）。附带：暂停后 `GetFilterPause` 回显剩余 ≈876000 小时，前端 [RulesPanel.vue:85](Desktop/frontend/src/components/rules/RulesPanel.vue#L85) 显示「36500 天」的荒谬倒计时，也是该状态的可见信号缺失。与 BUG-1 叠加时（本机任意进程/恶意网页免鉴权可调 API），“恶意永久关过滤”路径已经存在，本条的独立价值是：**合法调用方的错误输入也会静默退化成安全关闭**，应返回 400 而非 100 年。
+- **根因**：把「0＝永久」的实现便利当成了对所有非正 Duration 的输入契约；入口没有 `durationSec >= 0 && 不溢出` 的校验。
+- **验证方法**：**已实证（临时测试验证后删除）**：`internal/core` 包内对新建引擎依次 `PauseFor(time.Duration(n)*time.Second)`（运行时乘法，n∈{-1, 0, 18446744073, 10000000000}）→ `PauseState()` 四例全部 `paused=true、remaining≈876000h（100 年哨兵）`，断言输出记录 `-1s/0s/-709.55ms/-2346317h` 四种溢出形态均落入同一永久分支。
+
+### BUG-46 · 平台/Linux 端口检测 · 中 · inode→PID 归属表构建时把本进程整体排除，`isSelf` 判定永不为真：自身监听被诊断为「无法定位的第三方冲突」
+- **位置**：[internal/platform/linux/portcheck_owner.go:25-35](Desktop/internal/platform/linux/portcheck_owner.go#L25)（`pid == self → continue`——本进程的 socket fd 从不登记进 owners 表）、[internal/platform/linux/portcheck.go:83-103](Desktop/internal/platform/linux/portcheck.go#L83)（`pid := owners[s.Inode]` 对自身 socket 恒得 0 → `isSelf := pid == selfPID` 恒 false → 落入 `default:`「占用进程无法定位」）、[internal/platform/linux/portcheck.go:137-153](Desktop/internal/platform/linux/portcheck.go#L137)（`hasSelfListener` 永不置真，`socketsFree` 又因自身占用为 false → `Available=false` 且计入 `hasThirdPartyConflict`）
+- **现象**：DNS 服务运行中（自身监听 127.0.0.1:53）时点 GUI「检测端口冲突」（`/api/v1/portcheck` → [cmd/service/controller_portcheck.go:10-24](Desktop/cmd/service/controller_portcheck.go#L10)）：应用把自己的监听诊断为「占用进程无法定位（可能属于其他用户或已退出）」的第三方冲突，`Available=false、CanAutofix=false`——用户被告知端口被不明程序抢走；同状态下点「一键自动修复」更直接返回错误「检测到第三方程序占用 53 端口，无法自动修复」（portcheck_autofix.go:31-33 判 HasICS=false 即报错）。代码里 `case isSelf:` 的「谛听核心服务监听中」分支（portcheck.go:101-103）与 `hasSelfListener` 兜底（:151）是永久死代码。排除自身若是为省全盘扫描开销，正确做法至少是对 `/proc/self/fd` 单独采集登记——现状是「先把自己抹掉、再指望检出自己」的自相矛盾。
+- **根因**：用「跳过 self」优化扫描，却把 self 的 socket 归属信息一并抹掉，下游 `pid == selfPID` 判定因此永远失去输入。
+- **验证方法**：Linux 实机：`sudo diting-service -run`（起 53 监听）后调用 `/api/v1/portcheck`，127.0.0.1:53 条目显示 PID 0/「无法定位」而非「谛听核心服务监听中」；或在 Linux 上写临时测试绑定 127.0.0.1:53 后调 `inspectPort53Listeners()`，断言 `conflict.IsSelf`（现状恒 false，owners 表无自身 inode）。
+
+### BUG-47 · 平台/Linux stub 检测 · 中低 · systemd-resolved 的 PID 取自它从不创建的 `/run/systemd/resolve/resolved.pid`：pidfile 检测路径恒零
+- **位置**：[internal/platform/linux/portcheck_owner.go:82-93](Desktop/internal/platform/linux/portcheck_owner.go#L82)（`os.ReadFile("/run/systemd/resolve/resolved.pid")`，失败即返回 0）；消费方 [internal/platform/linux/portcheck.go:71,86-88](Desktop/internal/platform/linux/portcheck.go#L71)（`resolvedPID != 0 && pid == resolvedPID` 分支永不成立）、[internal/platform/linux/portcheck_autofix.go:77-86](Desktop/internal/platform/linux/portcheck_autofix.go#L77)（`stopResolvedStubProcess` 首行 `pid == 0 → return nil`——回退终止恒空操作且**返回成功**，与 BUG-49 联动）
+- **现象**：systemd-resolved 是 Type=notify 服务，**不写 PIDFile**；其运行时目录仅含 `stub-resolv.conf`、`resolv.conf` 与 Varlink socket（systemd-resolved(8) 手册核实无任何 .pid 产物，本次已在线核对）。于是 resolvedPID 恒 0：stub 识别只剩「地址字面量 127.0.0.53/54」与进程名比对两条路——而进程名比对需要 owners 表命中，恰被 BUG-46（无权限扫他人进程时 owners 为空、或本进程被排除）削弱；兜底 kill 路径整体失效。后果链见 BUG-49：自动修复在 WSL/无 systemd 单元环境下谎报成功。
+- **根因**：对 resolved 的实现形态（notify 服务无 pidfile）判断错误，选择了不存在的文件作为 PID 来源。健壮来源应为 Varlink/`systemctl show --property=MainPID systemd-resolved` 或owners 表内的进程名命中。
+- **验证方法**：Linux 实机：`ls /run/systemd/resolve/` 无 resolved.pid；`sudo systemctl show systemd-resolved -p MainPID` 有值而代码路径恒 0。包内测试：`systemdResolvedPID()` 在 resolved 运行中的机器上断言非零——恒失败。
+
+### BUG-48 · 平台/Linux resolved 接管 · 中 · resolvedBackend.Apply 中途失败时回退范围漏掉「dns 已改、domain 未改」的当前网卡；单卡接管路径还整体缺回退
+- **位置**：[internal/platform/linux/backend_resolved.go:33-51](Desktop/internal/platform/linux/backend_resolved.go#L33)（`resolvectl dns iface 127.0.0.1 ::1` 成功后 `resolvectl domain iface ~.` 失败 → `rollbackApplied(ctx, applied)` 只回退**之前已完成**的网卡，当前 `a` 要两条命令都成功才进 applied——已改 DNS 的它恰好不在内）、[:54-66](Desktop/internal/platform/linux/backend_resolved.go#L54)（回退仅遍历入参列表）、[internal/platform/linux/backend.go:44](Desktop/internal/platform/linux/backend.go#L44)（接口契约明文「保证 Apply 失败时不留下半成品状态」）、[internal/platform/linux/takeover.go:147-172](Desktop/internal/platform/linux/takeover.go#L147)（**TakeoverSingle 路径**：Apply 失败只回滚内存状态与 stateStore，不调 `backend.Restore`——多卡 Takeover 在 :96-98 有 `m.backend.Restore(ctx, states)` 兜底，单卡路径连这层补偿都没有）
+- **现象**：dbus 瞬断等使 `domain` 调用失败时，该网卡 DNS 永久指向 127.0.0.1/::1；单卡接管场景下这个半成品状态就是终态——**该链路的系统解析直接黑洞化**（本机监听器若还没起或已停，域名全挂），且 Apply 返回的是「设置域名路由失败」而非还原失败，用户无从察觉 DNS 已被改走。违反自述契约。
+- **根因**：`applied` 以「网卡全完成」为登记粒度而非「每条已生效的系统变更」，回退粒度与变更粒度不一致；TakeoverSingle 又依赖了多卡路径才有的上层补偿。
+- **验证方法**：Linux 实机：`resolvectl dns eth0 127.0.0.1 ::1` 成功、包装器让随后的 `domain` 失败后触发单卡接管 → `resolvectl dns eth0` 仍显示 127.0.0.1。包内测试：注入 CommandExecutor 使 `domain ~.` 调用报错，断言对当前 iface 有 `revert`/dns 还原命令下发（现状无）。
+
+### BUG-49 · 平台/Linux 端口自愈 · 中 · resolved stub 修复失败被链式吞成「成功」：配置已改写而服务未重启，UI 报已修复
+- **位置**：[internal/platform/linux/portcheck_autofix.go:49-66](Desktop/internal/platform/linux/portcheck_autofix.go#L49)（`systemctl restart systemd-resolved` 失败 → 走回退；回退 `stopResolvedStubProcess` 因 BUG-47 恒返回 nil → `fallbackErr == nil` → 函数 `return nil` 谎报成功）、[internal/platform/linux/portcheck_autofix.go:18-47](Desktop/internal/platform/linux/portcheck_autofix.go#L18)（上层据 nil 继续复检，`after.Available` 仍 false 时返回 `Available=false` **但 error==nil**）、[cmd/service/controller_portcheck.go:28-55](Desktop/cmd/service/controller_portcheck.go#L28)（`err==nil` → 不报「自动修复失败」，`startDNS` 因 !Available 静默不启动）
+- **现象**：WSL2/无 systemd 单元容器中点「一键自动修复」：`/etc/systemd/resolved.conf.d/diting.conf`（DNSStubListener=no）已被写进系统（:55，副作用先于一切验证），restart 失败、回退空转、整体返回成功——stub 仍在监听 127.0.0.53:53，修复动作事实上**从未生效也从未报告失败**；遗留的 drop-in 是对用户系统的、无人知晓的持久改动（卸载说明只写在注释里）。日志/UI 得到的是「端口不可用」的平静结论而非「修复失败」。与 Windows 侧 BUG-10 的吞错清扫同型。
+- **根因**：回退函数把「无法定位目标进程」编码成 `nil`（成功语义），与调用方「回退失败才报错」的组合逻辑相矛盾；变更系统配置的步骤又排在可失败性验证之前。
+- **验证方法**：Linux 包内测试：注入 executor 使 `systemctl restart` 报错、`systemdResolvedPID()`==0（无需 root）→ 断言 `disableResolvedStubListener` 返回非 nil（现状返回 nil，且 drop-in 写入已发生）。实机：WSL2 GUI 点一键修复，观察 resolved 仍在监听且无错误提示。
+
+### BUG-50 · 平台/Linux 自启 · 低中 · XDG 自启条目 Exec 值不转义不引号：安装路径含空格/`%` 时自启静默失败，UI 仍显示「已启用」
+- **位置**：[internal/platform/linux/autostart.go:71](Desktop/internal/platform/linux/autostart.go#L71)（`fmt.Sprintf(...Exec=%s\n..., exePath)` 原样拼入 `os.Executable()`）、[:42-54](Desktop/internal/platform/linux/autostart.go#L42)（`IsEnabled`/`xdgAutoStartPresent` 只 `Stat` 文件存在性，不解析内容）、[:72](Desktop/internal/platform/linux/autostart.go#L72)（`os.WriteFile` 非原子，直接覆写目标）
+- **现象**：按 Desktop Entry 规范，Exec 值中空格是 argv 分隔符、`%` 是字段码占位符（`d`/`f`/`F`/`i`/`U` 等）须以 `%%` 转义；路径如 `/home/u/My Apps/diting/diting-service` 会被切成执行 `/home/u/My`，含 `%` 的路径（如镜像目录 `%temp%` 风格命名）被字段码吞掉——桌面会话静默不启动该条目。而 `IsEnabled` 只看文件存在，GUI 自启开关显示「已启用」，用户以为已开机自启。主路径 `/usr/local/bin`、`~/.local/bin` 无空格时不触发，故定级低中。
+- **根因**：把可执行路径当安全字面量拼入需要专属转义语法（GSEsc：`\`、`` ` ``、`$`、空格须反斜杠转义）的桌面条目字段；状态判定用存在性代替有效性。
+- **验证方法**：Linux 实机：二进制放含空格目录，GUI 开自启 → `grep '^Exec=' ~/.config/autostart/diting.desktop` 看到未加引号空格路径，`journalctl --user | grep -i "no such file"` 可见启动失败，而界面仍显示已启用。包内测试：构造 fake exePath 断言 Exec 行符合规范转义（现状不合规）。
+
+### 观察项（第 8 轮，暂不计为独立缺陷）
+- [cmd/service/controller_web.go:116-134](Desktop/cmd/service/controller_web.go#L116)：ConfigureWeb 平滑重启的异步 goroutine 在 :124 **不持 `p.mu`** 读 `p.cfg.IPC.AuthToken`——与 BUG-3 同型（可变字段裸读）。当前 AuthToken 在全部代码路径中只由持锁的改密流程写入、重启 goroutine 读到的新旧值语义相同，实际无害，列观察待与 BUG-3 一并治理。
+- [cmd/service/controller_dns.go:146-151](Desktop/cmd/service/controller_dns.go#L146)：GetAdapters 惰性写 `p.adapterScan` 不加锁；生产路径 main.go:110 恒先初始化，属死分支，列观察。
+- [internal/dns/dns64_middleware.go:100-116](Desktop/internal/dns/dns64_middleware.go#L100)：DNS64 **原地改写 ctx.Resp**（追加合成 AAAA/CNAME）。当前安全的前提是上游 filterResponse/rebind 两个中间件不改写应答只剔除缓存，且 cache 的 Get 每命中都 `entry.msg.Copy()`——前提脆弱但现状无缺陷，列观察。
+- [internal/core/safesearch.go:191-202](Desktop/internal/core/safesearch.go#L191) + [internal/dns/safesearch_middleware.go:44-48](Desktop/internal/dns/safesearch_middleware.go#L44)：命中强制安全搜索域名时返回 `AA=1 + 单条 CNAME（如 www.google.com → forcesafesearch.google.com）`且**不再解析目标链**——严格语义下权威服务器不应返回跨链未终结的 CNAME；部分 stub 解析器会对目标重新发起查询、再次命中同一改写形成放大循环的风险存在但未经实证（需特定客户端行为），列观察。
+- [internal/ipc/server_ws.go:17-24](Desktop/internal/ipc/server_ws.go#L17)：`CheckOrigin` 恒 true。浏览器 WS 握手本不受 CORS 约束，该函数只挡「跨源页面携带凭据订阅」的二次防线；结合 BUG-1 的空 token 回环放行，它扩大了恶意网页面的可达性但非独立根因；runHub 的 close(send) 与 broadcast 互斥关系复查无回归（维持第 2 轮判定）。
+- Linux 平台层深扫已排查并排除（防后续重复翻查）：`net.go`（/proc/net/route 字段序与十六进制小端还原正确；仅解析 IPv4 默认路由属既有设计——解析器绑 127.0.0.1）、`files.go`、`privilege.go`（euid==0 闸门无 TOCTOU）、`portcheck_proc.go`（/proc/net/{tcp,tcp6,udp,udp6} 字段 [1]/[3]/[9] 与 8/32 位十六进制换算逐位核过，正确）、`adapter.go`、`firewall_mgr.go`（薄透传）、`backend.go`（commandExists 的 PATH 切分与 detectBackend 兜底非 nil 成立）；`tray_mgr.go`/`aspect_ratio_mgr.go` 空桩——main_linux.go 在 Wails 之前即退出，交付路径不可达，**不**沿用 Windows BUG-4 的定级逻辑。已收录的 BUG-17/18/19 与第 4 轮三条 Linux 观察项不重复计。
+- [internal/platform/linux/portcheck.go:88](Desktop/internal/platform/linux/portcheck.go#L88)：`isSystemdResolvedProcess(pid)` 依赖 owners 表命中，无 root 时他人进程 fd 不可读 → 非 stub 地址形态的 resolved 占用退化为 pid=0「无法定位」；与 BUG-46 同根（owners 表覆盖面）但触发条件不同（需非回环 stub 地址，实际难见），暂不单列。
+
+---
+
 ## 已核实但予以剔除的代理报告项（防重复上报）
 
 - 「`/api/v1/service/status` 不返回 `autoStart`」——**不实**：`platform.CoreServiceStatus` 含 `autoStart,omitempty`（[internal/platform/types.go:134](Desktop/internal/platform/types.go#L134)），`ServiceManager.GetStatus` 恒填充（service_mgr.go:155）；Web 模式自启开关本就隐藏不可操作。
