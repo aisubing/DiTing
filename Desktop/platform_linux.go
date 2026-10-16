@@ -17,7 +17,6 @@ func NewApp() *App {
 	capturer := linux.NewWindowCapturer()
 	aspectRatio := linux.NewAspectRatioManager()
 	firewall := linux.NewFirewallManager(exec)
-	trayMgr := linux.NewTrayManager()
 
 	return &App{
 		serviceMgr:  serviceMgr,
@@ -27,7 +26,6 @@ func NewApp() *App {
 		firewall:    firewall,
 		dnsMgr:      dnsMgr,
 		stateStore:  store,
-		tray:        trayMgr,
 		version:     Version,
 	}
 }

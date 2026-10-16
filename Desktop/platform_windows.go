@@ -25,7 +25,6 @@ func NewApp() *App {
 	capturer := windows.NewWindowCapturer()
 	aspectRatio := windows.NewAspectRatioManager()
 	firewall := windows.NewFirewallManager(exec)
-	trayMgr := windows.NewTrayManager()
 
 	return &App{
 		serviceMgr:  serviceMgr,
@@ -35,21 +34,24 @@ func NewApp() *App {
 		firewall:    firewall,
 		dnsMgr:      dnsMgr,
 		stateStore:  store,
-		tray:        trayMgr,
 		version:     Version,
 	}
 }
 
 // runGUI 启动 Windows 平台 Wails GUI 窗口应用。
+//
+// 当前为无托盘常驻形态，窗口一旦隐藏便无法唤回，故 startMinimized 被忽略，
+// 始终以前台可见窗口启动。托盘模块重建后将恢复最小化启动能力。
 func runGUI(app *App, startMinimized bool) {
+	_ = startMinimized
 	err := wails.Run(&options.App{
 		Title:             "谛听 (DITING) DNS 控制台",
 		Width:             1280,
 		Height:            720,
 		MinWidth:          1280,
 		MinHeight:         720,
-		StartHidden:       startMinimized,
-		HideWindowOnClose: true,
+		StartHidden:       false,
+		HideWindowOnClose: false,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "diting-dns-gui-single-instance-lock",
 			OnSecondInstanceLaunch: func(secondInstanceData options.SecondInstanceData) {
@@ -64,79 +66,6 @@ func runGUI(app *App, startMinimized bool) {
 		BackgroundColour: &options.RGBA{R: 17, G: 20, B: 24, A: 1},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
-			go func() {
-				if app.tray != nil {
-					_ = app.tray.Init(platform.TrayCallbacks{
-						OnToggleWindow: func() {
-							app.ToggleWindow()
-						},
-						OnShowWindow: func() {
-							app.ShowWindow()
-						},
-						OnToggleAutoStart: func() bool {
-							current := app.IsAutoStartEnabled()
-							newVal, err := app.SetAutoStart(!current)
-							if app.tray != nil {
-								if err != nil {
-									_ = app.tray.ShowBalloon("开机自启动", fmt.Sprintf("设置失败: %v", err))
-								} else if newVal {
-									_ = app.tray.ShowBalloon("开机自启动", "已开启开机自启动")
-								} else {
-									_ = app.tray.ShowBalloon("开机自启动", "已关闭开机自启动")
-								}
-							}
-							return newVal
-						},
-						IsAutoStart: func() bool {
-							return app.IsAutoStartEnabled()
-						},
-						GetServiceStatus: func() (bool, error) {
-							st, err := app.GetCoreServiceStatus()
-							if err != nil {
-								return false, err
-							}
-							return st.Running, nil
-						},
-						OnToggleService: func() error {
-							st, err := app.GetCoreServiceStatus()
-							if err != nil {
-								if app.tray != nil {
-									_ = app.tray.ShowBalloon("核心服务", fmt.Sprintf("获取状态失败: %v", err))
-								}
-								return err
-							}
-							var msg string
-							if st.Running {
-								msg, err = app.StopCoreService()
-							} else {
-								msg, err = app.StartCoreService()
-							}
-							if app.tray != nil {
-								if err != nil {
-									_ = app.tray.ShowBalloon("核心服务", fmt.Sprintf("操作失败: %v", err))
-								} else {
-									_ = app.tray.ShowBalloon("核心服务", msg)
-								}
-							}
-							return err
-						},
-						OnRestartService: func() error {
-							msg, err := app.RestartCoreService()
-							if app.tray != nil {
-								if err != nil {
-									_ = app.tray.ShowBalloon("核心服务", fmt.Sprintf("重启失败: %v", err))
-								} else {
-									_ = app.tray.ShowBalloon("核心服务", msg)
-								}
-							}
-							return err
-						},
-						OnExit: func() {
-							app.QuitApplication()
-						},
-					})
-				}
-			}()
 		},
 		OnDomReady: func(ctx context.Context) {
 			go func() {
@@ -144,9 +73,6 @@ func runGUI(app *App, startMinimized bool) {
 			}()
 		},
 		OnShutdown: func(ctx context.Context) {
-			if app.tray != nil {
-				app.tray.Destroy()
-			}
 		},
 		Bind: []interface{}{
 			app,

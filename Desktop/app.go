@@ -22,7 +22,6 @@ type App struct {
 	firewall    platform.FirewallManager
 	dnsMgr      platform.DNSManager
 	stateStore  platform.StateStore
-	tray        platform.TrayManager
 	version     string
 }
 
@@ -183,32 +182,24 @@ func (a *App) ShowWindow() {
 		wailsruntime.WindowShow(a.ctx)
 		wailsruntime.WindowUnminimise(a.ctx)
 	}
-	if a.tray != nil {
-		a.tray.ActivateWindow()
-	}
 }
 
-// HideWindow 隐藏主窗口到系统托盘
+// HideWindow 隐藏主窗口
 func (a *App) HideWindow() {
 	if a.hasFrontendContext() {
 		wailsruntime.WindowHide(a.ctx)
 	}
 }
 
-// ToggleWindow 切换主窗口显示与隐藏
+// ToggleWindow 切换主窗口显示与隐藏。
+//
+// 无托盘常驻形态下，隐藏的窗口只能通过显示唤回，故此处语义为唤醒并置顶。
 func (a *App) ToggleWindow() {
-	if a.tray != nil && a.tray.IsWindowActive() {
-		a.HideWindow()
-		return
-	}
 	a.ShowWindow()
 }
 
-// QuitApplication 安全退出应用并释放托盘资源
+// QuitApplication 安全退出应用
 func (a *App) QuitApplication() {
-	if a.tray != nil {
-		a.tray.Destroy()
-	}
 	if a.hasFrontendContext() {
 		wailsruntime.Quit(a.ctx)
 	}
