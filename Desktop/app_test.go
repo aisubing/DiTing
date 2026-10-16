@@ -281,13 +281,110 @@ func TestNewAppConstruction(t *testing.T) {
 	}
 }
 
-// TestAppWindowOperations 验证无托盘形态下窗口显隐方法在缺少前端上下文时安全无操作。
+// mockTrayManager 模拟托盘管理器，记录被触发的窗口操作。
+type mockTrayManager struct {
+	initialized  bool
+	activated    bool
+	destroyed    bool
+	windowActive bool
+	balloonTitle string
+	balloonText  string
+	callbacks    platform.TrayCallbacks
+}
+
+func (m *mockTrayManager) Init(callbacks platform.TrayCallbacks) error {
+	m.initialized = true
+	m.callbacks = callbacks
+	return nil
+}
+
+func (m *mockTrayManager) ShowBalloon(title, text string) error {
+	m.balloonTitle = title
+	m.balloonText = text
+	return nil
+}
+
+func (m *mockTrayManager) ActivateWindow() {
+	m.activated = true
+}
+
+func (m *mockTrayManager) IsWindowActive() bool {
+	return m.windowActive
+}
+
+func (m *mockTrayManager) Destroy() {
+	m.destroyed = true
+}
+
+// TestAppWindowOperations 验证缺少前端上下文时窗口操作安全无操作。
 func TestAppWindowOperations(t *testing.T) {
 	app := &App{}
 
-	// 未注入前端上下文时，各窗口操作应安全返回且不 panic
 	app.ShowWindow()
 	app.HideWindow()
 	app.ToggleWindow()
 	app.QuitApplication()
+}
+
+// TestAppInitTrayCallbacks 验证托盘回调装配正确，且窗口显隐回调可正常转发。
+func TestAppInitTrayCallbacks(t *testing.T) {
+	trayMock := &mockTrayManager{}
+	app := &App{tray: trayMock}
+
+	app.initTray()
+	if !trayMock.initialized {
+		t.Fatal("initTray 未能初始化托盘")
+	}
+
+	cb := trayMock.callbacks
+	for name, fn := range map[string]func(){
+		"OnShowWindow": cb.OnShowWindow,
+		"OnHideWindow": cb.OnHideWindow,
+		"OnExit":       cb.OnExit,
+	} {
+		if fn == nil {
+			t.Fatalf("托盘回调 %s 未装配", name)
+		}
+	}
+	if cb.IsAutoStart == nil || cb.GetServiceStatus == nil ||
+		cb.OnToggleAutoStart == nil || cb.OnToggleService == nil ||
+		cb.OnRestartService == nil {
+		t.Fatal("托盘回调存在未装配项")
+	}
+
+	// 无前端上下文时触发显隐回调应安全无 panic
+	cb.OnShowWindow()
+	cb.OnHideWindow()
+}
+
+// TestAppTrayWindowToggle 验证 ToggleWindow 依据托盘可见性判定选择显隐。
+func TestAppTrayWindowToggle(t *testing.T) {
+	trayMock := &mockTrayManager{windowActive: false}
+	app := &App{tray: trayMock}
+
+	// 窗口不活跃时 ToggleWindow 应唤醒并置顶
+	app.ToggleWindow()
+	if !trayMock.activated {
+		t.Fatal("窗口不活跃时 ToggleWindow 应触发 ActivateWindow")
+	}
+
+	// 窗口活跃时 ToggleWindow 应转为隐藏（不再次激活）
+	trayMock.activated = false
+	trayMock.windowActive = true
+	app.ToggleWindow()
+	if trayMock.activated {
+		t.Fatal("窗口活跃时 ToggleWindow 不应触发 ActivateWindow")
+	}
+
+	// QuitApplication 应释放托盘
+	app.QuitApplication()
+	if !trayMock.destroyed {
+		t.Fatal("QuitApplication 未能销毁托盘")
+	}
+}
+
+// TestAppInitTrayNilSafe 验证未注入托盘时 initTray 安全返回。
+func TestAppInitTrayNilSafe(t *testing.T) {
+	app := &App{}
+	app.initTray()
 }

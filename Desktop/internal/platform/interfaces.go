@@ -100,3 +100,27 @@ type FirewallManager interface {
 	ConfigureWeb(ctx context.Context, port int, enable bool) error
 }
 
+// TrayCallbacks 定义托盘事件回调集合。
+//
+// 线程约定：OnShowWindow 与 OnHideWindow 由托盘在窗口线程内同步调用
+// （窗口显隐须保住前台令牌），其余回调可能被异步派发。
+type TrayCallbacks struct {
+	OnShowWindow      func()
+	OnHideWindow      func()
+	OnToggleAutoStart func() bool
+	IsAutoStart       func() bool
+	GetServiceStatus  func() (running bool, err error)
+	OnToggleService   func() error
+	OnRestartService  func() error
+	OnExit            func()
+}
+
+// TrayManager 定义桌面系统托盘管理接口。
+type TrayManager interface {
+	Init(callbacks TrayCallbacks) error
+	ShowBalloon(title, text string) error
+	ActivateWindow()
+	IsWindowActive() bool
+	Destroy()
+}
+

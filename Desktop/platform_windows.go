@@ -25,6 +25,7 @@ func NewApp() *App {
 	capturer := windows.NewWindowCapturer()
 	aspectRatio := windows.NewAspectRatioManager()
 	firewall := windows.NewFirewallManager(exec)
+	trayMgr := windows.NewTrayManager()
 
 	return &App{
 		serviceMgr:  serviceMgr,
@@ -34,24 +35,21 @@ func NewApp() *App {
 		firewall:    firewall,
 		dnsMgr:      dnsMgr,
 		stateStore:  store,
+		tray:        trayMgr,
 		version:     Version,
 	}
 }
 
 // runGUI 启动 Windows 平台 Wails GUI 窗口应用。
-//
-// 当前为无托盘常驻形态，窗口一旦隐藏便无法唤回，故 startMinimized 被忽略，
-// 始终以前台可见窗口启动。托盘模块重建后将恢复最小化启动能力。
 func runGUI(app *App, startMinimized bool) {
-	_ = startMinimized
 	err := wails.Run(&options.App{
 		Title:             "谛听 (DITING) DNS 控制台",
 		Width:             1280,
 		Height:            720,
 		MinWidth:          1280,
 		MinHeight:         720,
-		StartHidden:       false,
-		HideWindowOnClose: false,
+		StartHidden:       startMinimized,
+		HideWindowOnClose: true,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "diting-dns-gui-single-instance-lock",
 			OnSecondInstanceLaunch: func(secondInstanceData options.SecondInstanceData) {
@@ -71,8 +69,13 @@ func runGUI(app *App, startMinimized bool) {
 			go func() {
 				windows.LockWindowAspectRatio(windows.DefaultWindowTitle, 16.0/9.0)
 			}()
+			// 主窗口此时必定已创建，可安全挂载托盘图标与消息子类。
+			app.initTray()
 		},
 		OnShutdown: func(ctx context.Context) {
+			if app.tray != nil {
+				app.tray.Destroy()
+			}
 		},
 		Bind: []interface{}{
 			app,

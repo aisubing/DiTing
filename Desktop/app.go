@@ -22,6 +22,7 @@ type App struct {
 	firewall    platform.FirewallManager
 	dnsMgr      platform.DNSManager
 	stateStore  platform.StateStore
+	tray        platform.TrayManager
 	version     string
 }
 
@@ -182,25 +183,108 @@ func (a *App) ShowWindow() {
 		wailsruntime.WindowShow(a.ctx)
 		wailsruntime.WindowUnminimise(a.ctx)
 	}
+	if a.tray != nil {
+		a.tray.ActivateWindow()
+	}
 }
 
-// HideWindow 隐藏主窗口
+// HideWindow 隐藏主窗口到系统托盘
 func (a *App) HideWindow() {
 	if a.hasFrontendContext() {
 		wailsruntime.WindowHide(a.ctx)
 	}
 }
 
-// ToggleWindow 切换主窗口显示与隐藏。
-//
-// 无托盘常驻形态下，隐藏的窗口只能通过显示唤回，故此处语义为唤醒并置顶。
+// ToggleWindow 切换主窗口显示与隐藏
 func (a *App) ToggleWindow() {
+	if a.tray != nil && a.tray.IsWindowActive() {
+		a.HideWindow()
+		return
+	}
 	a.ShowWindow()
 }
 
-// QuitApplication 安全退出应用
+// QuitApplication 安全退出应用并释放托盘资源
 func (a *App) QuitApplication() {
+	if a.tray != nil {
+		a.tray.Destroy()
+	}
 	if a.hasFrontendContext() {
 		wailsruntime.Quit(a.ctx)
 	}
+}
+
+// initTray 装配托盘回调并初始化系统托盘。
+//
+// 回调按线程语义分两类：窗口显隐由托盘在窗口线程内同步调用（须保住前台令牌），
+// 服务启停/注册表写入等阻塞操作则由托盘异步派发。
+func (a *App) initTray() {
+	if a.tray == nil {
+		return
+	}
+
+	balloon := func(title string, err error, okMsg string) {
+		if a.tray == nil {
+			return
+		}
+		if err != nil {
+			_ = a.tray.ShowBalloon(title, fmt.Sprintf("操作失败: %v", err))
+			return
+		}
+		_ = a.tray.ShowBalloon(title, okMsg)
+	}
+
+	_ = a.tray.Init(platform.TrayCallbacks{
+		OnShowWindow: func() {
+			a.ShowWindow()
+		},
+		OnHideWindow: func() {
+			a.HideWindow()
+		},
+		OnToggleAutoStart: func() bool {
+			current := a.IsAutoStartEnabled()
+			newVal, err := a.SetAutoStart(!current)
+			if err != nil {
+				balloon("开机自启动", err, "")
+			} else if newVal {
+				balloon("开机自启动", nil, "已开启开机自启动")
+			} else {
+				balloon("开机自启动", nil, "已关闭开机自启动")
+			}
+			return newVal
+		},
+		IsAutoStart: func() bool {
+			return a.IsAutoStartEnabled()
+		},
+		GetServiceStatus: func() (bool, error) {
+			st, err := a.GetCoreServiceStatus()
+			if err != nil {
+				return false, err
+			}
+			return st.Running, nil
+		},
+		OnToggleService: func() error {
+			st, err := a.GetCoreServiceStatus()
+			if err != nil {
+				balloon("核心服务", err, "")
+				return err
+			}
+			var msg string
+			if st.Running {
+				msg, err = a.StopCoreService()
+			} else {
+				msg, err = a.StartCoreService()
+			}
+			balloon("核心服务", err, msg)
+			return err
+		},
+		OnRestartService: func() error {
+			msg, err := a.RestartCoreService()
+			balloon("核心服务", err, msg)
+			return err
+		},
+		OnExit: func() {
+			a.QuitApplication()
+		},
+	})
 }
