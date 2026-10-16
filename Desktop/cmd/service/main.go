@@ -22,7 +22,7 @@ import (
 
 // Version 信息（可在编译期通过 -ldflags 注入）
 var (
-	Version   = "1.3.8"
+	Version   = "1.3.10"
 	BuildTime = "dev"
 	GitCommit = "dev"
 )
