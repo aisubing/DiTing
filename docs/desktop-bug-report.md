@@ -14,7 +14,7 @@
 - **位置**：[internal/ipc/server.go:127-155](Desktop/internal/ipc/server.go#L127)、[internal/ipc/server.go:141](Desktop/internal/ipc/server.go#L141)、[internal/ipc/cors.go:14-25](Desktop/internal/ipc/cors.go#L14)
 - **现象**：默认配置下（`cfg.IPC.AuthToken == ""`，见 [internal/config/config.go:252-255](Desktop/internal/config/config.go#L252) 且 `cmd/service/cli.go` 安装服务时从不生成 token），`verifyToken` 第 3 分支 `s.token == "" && isLoopbackRequest(r)` 对**任何源地址为 127.0.0.1/[::1] 的请求直接放行**。攻击者无需任何凭据即可调用改密码、关过滤、启停服务、接管网卡等全部 `/api/v1/*` 写接口。
 - **根因**：回环免鉴权的设计前提「只有本机受信进程会连 loopback」不成立——本机浏览器访问 `http://127.0.0.1:15353/...` 时 RemoteAddr 同样是回环。叠加 `cors.go` 把 `Access-Control-Allow-Origin` 反射为请求 Origin 并置 `Allow-Credentials: true`，任意恶意网页可从浏览器跨域读写该管理 API（`/api/v1/auth/password` 走 loopback 时 `bypassOldAuth=true`，可直接改写管理员密码）。
-- **验证方法**：本机起服务后，从一个非 `evil` 域页面的脚本 `fetch('http://127.0.0.1:15353/api/v1/status')`；或 `curl`（不带任何 Authorization）从 127.0.0.1 调用 `/api/v1/dns/stop`，预期均返回成功而非 401。可编写 Go 测试：`NewServer("127.0.0.1:0", "", ctrl)`，对 `httptest.NewRequest`（RemoteAddr 设为 `127.0.0.1:1`）断言 `verifyToken` 恒 true。
+- **验证方法**：已用临时测试实证（验证后删除）：`NewServer("127.0.0.1:0", "", &mockController{})`，`withAuth(handleDNSStop)` 收到 `RemoteAddr=127.0.0.1:54321` 且无任何凭据的请求返回 **200 `{"success":true,"message":"DNS 服务已停止"}`**；同一请求源地址改为 `192.168.1.50` 则 401。亦可实机验证：本机浏览器 `curl.exe http://127.0.0.1:15353/api/v1/dns/stop -X POST` 不带凭据直接生效。
 
 ### BUG-2 · IPC WebSocket · 中 · 回环免鉴权导致本机任意进程实时窃取全部 DNS 查询日志
 - **位置**：[internal/ipc/server_ws.go:83-88](Desktop/internal/ipc/server_ws.go#L83)、[internal/ipc/routes.go:96](Desktop/internal/ipc/routes.go#L96)、[frontend/src/api/ws.ts:34-37](Desktop/frontend/src/api/ws.ts#L34)
