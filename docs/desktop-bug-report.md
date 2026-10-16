@@ -115,6 +115,29 @@
 
 ---
 
+## 第 4 轮（2026-10-17）— 已扫描模块
+
+已扫描：`internal/platform/linux/{takeover,backend,backend_resolvconf,backend_networkmanager,resolvconf,restore_script,dnsstate,firewall}.go`（Linux 平台层，全新模块）。
+
+### BUG-17 · Linux 应急恢复 · 中 · restore-dns.sh 读取的原始备份 `/etc/resolv.conf.diting.orig` 从未被任何代码写入，首选还原路径为死分支
+- **位置**：[internal/platform/linux/restore_script.go:102-104](Desktop/internal/platform/linux/restore_script.go#L102)（脚本判定并 cat `.orig`）对照 [internal/platform/linux/backend_resolvconf.go:28-33](Desktop/internal/platform/linux/backend_resolvconf.go#L28)（接管时仅把备份写到 `DefaultDataDir()/backups/resolv.conf`）；全仓库检索 `diting.orig` 仅此两读、无任何写入点。
+- **现象**：接管走 resolv.conf 后端时，原始文件内容（含 search 域、options 等）备份到数据目录，但离线脚本只会去 `cat /etc/resolv.conf.diting.orig`——该文件永不存在，脚本恒落入 else 分支，按快照中的 nameserver 列表重建。快照经 `CleanAdapterState` 会剥掉回环地址（netutil.go:78-88），若用户原配置为 `nameserver 127.0.0.53`（resolved stub）等回环地址会被过滤成空 → 脚本落到硬编码 `223.5.5.5/119.29.29.29`。search 域与 options 全部丢失。
+- **根因**：备份写入路径与脚本读取路径是两套常量，改备份机制时未同步脚本模板。
+- **验证方法**：Linux 下接管（resolvconf 后端）后 `ls /etc/resolv.conf.diting.orig` 必然不存在；对照 `~/.diting`（或 ProgramData 等价目录）`backups/resolv.conf` 存在。执行生成的 restore-dns.sh 输出恒为「写入接管前记录的解析服务器」分支。
+
+### BUG-18 · Linux 网卡接管 · 中 · RestoreSingle 按名匹配无 break：同名多条目时其余匹配被静默移出状态且从未还原，仍返回成功
+- **位置**：[internal/platform/linux/takeover.go:199-212](Desktop/internal/platform/linux/takeover.go#L199)（`a.ID == adapterID || a.Name == adapterID` 命中不 break，其余命中项既不进 target 也不进 remaining）、同型 [internal/platform/linux/takeover.go:120-130](Desktop/internal/platform/linux/takeover.go#L120)（TakeoverSingle 先命中先覆盖）
+- **现象**：与 Windows 版 BUG-11 同族但代码独立（Linux 实现自有一份）：快照中存在两条 Name 相同的记录（如设备名与连接显示名混用）时，`RestoreSingle("eth0")` 只还原最后一条，前面的条目从 `remaining` 消失且 `backend.Restore` 未收到它 → 该网卡 DNS 停留在 127.0.0.1，函数返回 nil（成功），状态文件与实况脱节，重启后自愈无从恢复该网卡。
+- **根因**：循环以「排除式」构建 remaining，命中即替换 target，未把未选中的命中项放回 remaining，也未在多条命中时显式报错。
+- **验证方法**：包内测试（Linux tag 下跑或抽纯函数）：预置 `m.adapters=[{ID:"a1",Name:"eth0"},{ID:"a2",Name:"eth0"}]`，mock backend 记录 Restore 调用；`RestoreSingle("eth0")` → 断言 backend.Restore 收到 2 条（当前 1 条）、`GetTakenOverAdapters()` 为空（a2 被静默丢弃）。
+
+### 观察项（Linux 层，暂不计为独立缺陷）
+- `internal/platform/linux/restore_script.go:93`：`nmcli con mod %q ...` 用 Go `%q` 生成 shell 双引号串，Go 的转义集与 sh 双引号语义不完全一致（`$`、反引号不转义），含 `$` 的接口名理论上会展开；Linux 接口名实际字符集受限，风险低于 BUG-12 的 Windows 对应面。
+- `internal/platform/linux/dnsstate.go:76`（serversFromNmcli）：nmcli `-t` 输出对值内 `:` 会转义为 `\:`，解析处直接 `Split(":")` 未反转义——含冒号的连接名/值会错位；同样属实际难触发的窄路径。
+- `internal/platform/linux/backend_networkmanager.go:49-72`：Restore 遍历**所有**活动连接，不在快照中的连接会被 `modifyConnection(conn, nil, nil, false)` 清空静态 DNS——接管后新激活的、手工配了静态 DNS 的连接会在还原时被抹掉配置；触发条件较苛刻，暂列观察。
+
+---
+
 ## 已核实但予以剔除的代理报告项（防重复上报）
 
 - 「`/api/v1/service/status` 不返回 `autoStart`」——**不实**：`platform.CoreServiceStatus` 含 `autoStart,omitempty`（[internal/platform/types.go:134](Desktop/internal/platform/types.go#L134)），`ServiceManager.GetStatus` 恒填充（service_mgr.go:155）；Web 模式自启开关本就隐藏不可操作。
