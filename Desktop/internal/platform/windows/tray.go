@@ -14,28 +14,37 @@ import (
 )
 
 var (
-	procShell_NotifyIconW       = modShell32.NewProc("Shell_NotifyIconW")
-	procExtractIconExW          = modShell32.NewProc("ExtractIconExW")
-	procCreatePopupMenu         = modUser32.NewProc("CreatePopupMenu")
-	procAppendMenuW             = modUser32.NewProc("AppendMenuW")
-	procDestroyMenu             = modUser32.NewProc("DestroyMenu")
-	procTrackPopupMenu          = modUser32.NewProc("TrackPopupMenu")
-	procGetCursorPos            = modUser32.NewProc("GetCursorPos")
-	procSetForegroundWindow     = modUser32.NewProc("SetForegroundWindow")
-	procPostMessageW            = modUser32.NewProc("PostMessageW")
-	procDestroyIcon             = modUser32.NewProc("DestroyIcon")
-	procLoadIconW               = modUser32.NewProc("LoadIconW")
-	procRegisterWindowMessageW  = modUser32.NewProc("RegisterWindowMessageW")
-	procIsWindowVisible         = modUser32.NewProc("IsWindowVisible")
-	procGetForegroundWindow     = modUser32.NewProc("GetForegroundWindow")
-	procShowWindow              = modUser32.NewProc("ShowWindow")
-	procBringWindowToTop        = modUser32.NewProc("BringWindowToTop")
-	procSetMenuDefaultItem      = modUser32.NewProc("SetMenuDefaultItem")
+	procShell_NotifyIconW           = modShell32.NewProc("Shell_NotifyIconW")
+	procExtractIconExW              = modShell32.NewProc("ExtractIconExW")
+	procCreatePopupMenu             = modUser32.NewProc("CreatePopupMenu")
+	procAppendMenuW                 = modUser32.NewProc("AppendMenuW")
+	procDestroyMenu                 = modUser32.NewProc("DestroyMenu")
+	procTrackPopupMenu              = modUser32.NewProc("TrackPopupMenu")
+	procGetCursorPos                = modUser32.NewProc("GetCursorPos")
+	procSetForegroundWindow         = modUser32.NewProc("SetForegroundWindow")
+	procPostMessageW                = modUser32.NewProc("PostMessageW")
+	procDestroyIcon                 = modUser32.NewProc("DestroyIcon")
+	procLoadIconW                   = modUser32.NewProc("LoadIconW")
+	procRegisterWindowMessageW      = modUser32.NewProc("RegisterWindowMessageW")
+	procIsWindowVisible             = modUser32.NewProc("IsWindowVisible")
+	procGetForegroundWindow         = modUser32.NewProc("GetForegroundWindow")
+	procShowWindow                  = modUser32.NewProc("ShowWindow")
+	procBringWindowToTop            = modUser32.NewProc("BringWindowToTop")
+	procSetMenuDefaultItem          = modUser32.NewProc("SetMenuDefaultItem")
+	procChangeWindowMessageFilter   = modUser32.NewProc("ChangeWindowMessageFilter")
+	procChangeWindowMessageFilterEx = modUser32.NewProc("ChangeWindowMessageFilterEx")
+	procSetWindowLongPtrW           = modUser32.NewProc("SetWindowLongPtrW")
+	procSetWindowLongW              = modUser32.NewProc("SetWindowLongW")
+	procCallWindowProcW             = modUser32.NewProc("CallWindowProcW")
+	procDefWindowProcW              = modUser32.NewProc("DefWindowProcW")
+	procGetDoubleClickTime          = modUser32.NewProc("GetDoubleClickTime")
 )
 
 const (
-	traySubclassID  = 0x444955 // "DIU"
-	wmTrayCallback  = 0x8000 + 200 // WM_APP + 200
+	wmTrayCallback = 0x8000 + 200 // WM_APP + 200
+	msgfltAdd      = 1            // MSGFLT_ADD
+	msgfltAllow    = 1            // MSGFLT_ALLOW
+	gwlpWndProc    = ^uintptr(3)  // -4 (GWLP_WNDPROC)
 
 	nimAdd        = 0x00000000
 	nimModify     = 0x00000001
@@ -49,12 +58,18 @@ const (
 
 	niifInfo = 0x00000001
 
-	wmLButtonUp          = 0x0202
-	wmRButtonUp          = 0x0205
-	wmContextMenu        = 0x007B
-	ninBalloonUserClick  = 0x0405
-	wmClose              = 0x0010
-	wmNull               = 0x0000
+	wmLButtonDown       = 0x0201
+	wmLButtonUp         = 0x0202
+	wmLButtonDblClk     = 0x0203
+	wmRButtonDown       = 0x0204
+	wmRButtonUp         = 0x0205
+	wmRButtonDblClk     = 0x0206
+	wmContextMenu       = 0x007B
+	ninSelect           = 0x0400 // WM_USER + 0
+	ninKeySelect        = 0x0401 // WM_USER + 1
+	ninBalloonUserClick = 0x0405 // WM_USER + 5
+	wmClose             = 0x0010
+	wmNull              = 0x0000
 
 	mfString    = 0x00000000
 	mfGrayed    = 0x00000001
@@ -76,6 +91,7 @@ const (
 	idMenuServiceRestart = 1005
 	idMenuExit           = 1006
 )
+
 
 type point struct {
 	X int32
@@ -102,17 +118,28 @@ type notifyIconData struct {
 
 // WindowsTray 负责管理 Windows 系统托盘图标及其交互
 type WindowsTray struct {
-	hwnd               uintptr
-	hIcon              uintptr
-	callbacks          platform.TrayCallbacks
-	msgTaskbarCreated  uintptr
-	subclassCallback   uintptr
-	mu                 sync.Mutex
-	hasShownBalloon    bool
-	isInitialized      bool
+	hwnd              uintptr
+	hIcon             uintptr
+	callbacks         platform.TrayCallbacks
+	msgTaskbarCreated uintptr
+	subclassCallback  uintptr
+	origWndProc       uintptr
+	lastClickTime     time.Time
+	mu                sync.Mutex
+	hasShownBalloon   bool
+	isInitialized     bool
 }
 
 var globalTray *WindowsTray
+
+func setWindowLongPtr(hwnd uintptr, nIndex uintptr, newLong uintptr) uintptr {
+	if procSetWindowLongPtrW.Find() == nil {
+		ret, _, _ := procSetWindowLongPtrW.Call(hwnd, nIndex, newLong)
+		return ret
+	}
+	ret, _, _ := procSetWindowLongW.Call(hwnd, nIndex, newLong)
+	return ret
+}
 
 // NewWindowsTray 创建 Windows 系统托盘实例
 func NewWindowsTray() *WindowsTray {
@@ -149,6 +176,20 @@ func (t *WindowsTray) Init(callbacks platform.TrayCallbacks) error {
 	tbMsgPtr, _ := syscall.UTF16PtrFromString("TaskbarCreated")
 	t.msgTaskbarCreated, _, _ = procRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(tbMsgPtr)))
 
+	// 放行 UIPI 消息过滤规则：当以管理员特权运行客户端时，允许 Explorer.exe（中完整性级别）向主窗口发送托盘消息
+	if procChangeWindowMessageFilterEx.Find() == nil {
+		procChangeWindowMessageFilterEx.Call(t.hwnd, uintptr(wmTrayCallback), msgfltAllow, 0)
+		if t.msgTaskbarCreated != 0 {
+			procChangeWindowMessageFilterEx.Call(t.hwnd, t.msgTaskbarCreated, msgfltAllow, 0)
+		}
+	}
+	if procChangeWindowMessageFilter.Find() == nil {
+		procChangeWindowMessageFilter.Call(uintptr(wmTrayCallback), msgfltAdd)
+		if t.msgTaskbarCreated != 0 {
+			procChangeWindowMessageFilter.Call(t.msgTaskbarCreated, msgfltAdd)
+		}
+	}
+
 	// 加载图标
 	t.loadIcon()
 
@@ -157,19 +198,18 @@ func (t *WindowsTray) Init(callbacks platform.TrayCallbacks) error {
 		return fmt.Errorf("添加系统托盘图标失败: %w", err)
 	}
 
-	// 挂载窗口子类过程
+	// 挂载窗口消息拦截过程（SetWindowLongPtr 支持跨线程安全挂载）
 	globalTray = t
-	t.subclassCallback = syscall.NewCallback(trayWindowSubclassProc)
-	procSetWindowSubclass.Call(
-		t.hwnd,
-		t.subclassCallback,
-		traySubclassID,
-		0,
-	)
+	t.subclassCallback = syscall.NewCallback(trayWindowHookProc)
+	t.origWndProc = setWindowLongPtr(t.hwnd, gwlpWndProc, t.subclassCallback)
+	if t.origWndProc == 0 {
+		return fmt.Errorf("挂载窗口过程失败")
+	}
 
 	t.isInitialized = true
 	return nil
 }
+
 
 func (t *WindowsTray) loadIcon() {
 	exePath, err := os.Executable()
@@ -271,7 +311,7 @@ func (t *WindowsTray) IsWindowActive() bool {
 	return fg == t.hwnd
 }
 
-// Destroy 释放托盘图标与窗口子类化挂载
+// Destroy 释放托盘图标与窗口消息拦截
 func (t *WindowsTray) Destroy() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -286,8 +326,9 @@ func (t *WindowsTray) Destroy() {
 	nid.uID = 1
 	procShell_NotifyIconW.Call(nimDelete, uintptr(unsafe.Pointer(&nid)))
 
-	if t.subclassCallback != 0 && t.hwnd != 0 {
-		procRemoveWindowSubclass.Call(t.hwnd, t.subclassCallback, traySubclassID)
+	if t.origWndProc != 0 && t.hwnd != 0 {
+		setWindowLongPtr(t.hwnd, gwlpWndProc, t.origWndProc)
+		t.origWndProc = 0
 		t.subclassCallback = 0
 	}
 
@@ -300,31 +341,18 @@ func (t *WindowsTray) Destroy() {
 	globalTray = nil
 }
 
-// trayWindowSubclassProc Win32 窗口消息拦截处理过程
-func trayWindowSubclassProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uintptr, uIdSubclass uintptr, dwRefData uintptr) uintptr {
+// trayWindowHookProc Win32 窗口消息拦截处理过程
+func trayWindowHookProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uintptr) uintptr {
 	t := globalTray
-	if t == nil {
-		ret, _, _ := procDefSubclassProc.Call(hwnd, uintptr(msg), wParam, lParam)
+	if t == nil || t.origWndProc == 0 {
+		ret, _, _ := procDefWindowProcW.Call(hwnd, uintptr(msg), wParam, lParam)
 		return ret
 	}
 
 	switch msg {
 	case wmTrayCallback:
-		switch lParam {
-		case wmLButtonUp:
-			if t.callbacks.OnToggleWindow != nil {
-				t.callbacks.OnToggleWindow()
-			}
-			return 0
-		case wmRButtonUp, wmContextMenu:
-			t.showContextMenu()
-			return 0
-		case ninBalloonUserClick:
-			if t.callbacks.OnShowWindow != nil {
-				t.callbacks.OnShowWindow()
-			}
-			return 0
-		}
+		t.handleTrayCallback(wParam, lParam)
+		return 0
 
 	case wmClose:
 		t.mu.Lock()
@@ -338,8 +366,8 @@ func trayWindowSubclassProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uin
 				"谛听已最小化到系统托盘，并在后台继续运行。\n点击托盘图标可重新打开主界面。",
 			)
 		}
-		// 由 Wails 内部接管 WM_CLOSE 并隐藏窗口 (HideWindowOnClose: true)
-		ret, _, _ := procDefSubclassProc.Call(hwnd, uintptr(msg), wParam, lParam)
+		// 由原窗口过程（Wails）接管 WM_CLOSE 并隐藏窗口 (HideWindowOnClose: true)
+		ret, _, _ := procCallWindowProcW.Call(t.origWndProc, hwnd, uintptr(msg), wParam, lParam)
 		return ret
 
 	default:
@@ -350,9 +378,70 @@ func trayWindowSubclassProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uin
 		}
 	}
 
-	ret, _, _ := procDefSubclassProc.Call(hwnd, uintptr(msg), wParam, lParam)
+	ret, _, _ := procCallWindowProcW.Call(t.origWndProc, hwnd, uintptr(msg), wParam, lParam)
 	return ret
 }
+
+// handleTrayCallback 处理来自托盘图标的用户交互事件
+func (t *WindowsTray) handleTrayCallback(wParam, lParam uintptr) {
+	// 在 NOTIFYICON_VERSION_4 规范下，LOWORD(lParam) 为通知事件代码，HIWORD(lParam) 为图标 ID
+	// 兼容标准/旧版托盘模式，统一提取低 16 位事件代码
+	event := uint32(lParam & 0xFFFF)
+
+	switch event {
+	case ninSelect, ninKeySelect, wmLButtonUp:
+		// 单击或键盘选择：支持单击切换显示与双击判定防抖
+		t.mu.Lock()
+		now := time.Now()
+		elapsed := now.Sub(t.lastClickTime)
+		t.lastClickTime = now
+		t.mu.Unlock()
+
+		doubleClickMs := 500 * time.Millisecond
+		if procGetDoubleClickTime.Find() == nil {
+			if ms, _, _ := procGetDoubleClickTime.Call(); ms > 0 {
+				doubleClickMs = time.Duration(ms) * time.Millisecond
+			}
+		}
+
+		// 极短时间（<50ms）内的重复事件为系统或鼠标冗余派发，直接忽略
+		if elapsed < 50*time.Millisecond {
+			return
+		}
+
+		if elapsed <= doubleClickMs {
+			// 在双击时间阈值内再次触发：确认为双击，确保窗口唤醒并置顶
+			if t.callbacks.OnShowWindow != nil {
+				t.callbacks.OnShowWindow()
+			}
+		} else {
+			// 单击触发窗口切换（显示/最小化）
+			if t.callbacks.OnToggleWindow != nil {
+				t.callbacks.OnToggleWindow()
+			}
+		}
+
+	case wmLButtonDblClk:
+		// 原生双击消息：强制唤醒并置顶窗口
+		t.mu.Lock()
+		t.lastClickTime = time.Now()
+		t.mu.Unlock()
+		if t.callbacks.OnShowWindow != nil {
+			t.callbacks.OnShowWindow()
+		}
+
+	case wmRButtonUp, wmContextMenu:
+		// 右键单击或上下文菜单请求：弹出托盘右键功能菜单
+		t.showContextMenu()
+
+	case ninBalloonUserClick:
+		// 用户点击气泡通知，打开主界面
+		if t.callbacks.OnShowWindow != nil {
+			t.callbacks.OnShowWindow()
+		}
+	}
+}
+
 
 // showContextMenu 弹出右键菜单
 func (t *WindowsTray) showContextMenu() {
