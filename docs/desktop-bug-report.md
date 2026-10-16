@@ -250,6 +250,68 @@
 
 ---
 
+## 第 7 轮（2026-10-17）— 已扫描模块
+
+已扫描：`internal/core/{rule_engine,rule_engine_build,rule_engine_pause,rule_engine_lists,cache,cache_prefetch,cache_cleaner,cache_types,cache_policy}.go`、`internal/dns/{server_doh,server_doh_writer,server,ddr,ddr_middleware,ede_middleware,edns0,private_ptr_middleware,pipeline,realip,client_id,context,encrypted_config,server_tls_params,filter_response_middleware,rebind_middleware}.go`、`internal/platform/windows/{portcheck_autofix,service_elevate}.go`、`internal/core/{mobileconfig,plist}.go`、`internal/config/store.go`、`cmd/service/{controller,controller_schedule,controller_bg,metrics}.go`。**本轮 8 项中 6 项已用临时 Go 测试实证**（`zz_tmp_*_verify_test.go`，运行后均已删除，不入库），栈/断言输出为直接证据。
+
+### BUG-34 · 规则引擎 · 严重 · GetStats 在读锁内调用会二次取读锁的 currentTime()，与任意排队写者构成永久死锁——整条过滤流水线（进而全部 DNS 查询）冻结
+- **位置**：[internal/core/rule_engine.go:155-156](Desktop/internal/core/rule_engine.go#L155)（`GetStats` 持 `e.mu.RLock()` 全程）、[:181](Desktop/internal/core/rule_engine.go#L181)、[:188](Desktop/internal/core/rule_engine.go#L188)（锁内调用 `e.currentTime()`）、[:269-277](Desktop/internal/core/rule_engine.go#L269)（`currentTime` 自身 `e.mu.RLock()/RUnlock()`）；写侧同锁：[internal/core/rule_engine_pause.go:13,30](Desktop/internal/core/rule_engine_pause.go#L13)（`PauseFor/ResumePause`）、[internal/core/rule_engine.go:90](Desktop/internal/core/rule_engine.go#L90)（`SetEnabled`）、UpdateConfig/AddFilterList 等全部 `e.mu.Lock()`
+- **现象**：Go 的 `sync.RWMutex` 读者不可重入：一旦写者排队，后续 `RLock` 一律阻塞。`GetStats` 先持有读锁，再在 181/188 行经 `currentTime()` 请求第二把读锁——若此刻有写者排队（如用户拨拦截总开关/点定时暂停），第二把读锁永远等不到（写者又在等 `GetStats` 的第一把读锁释放），**三方环等待、永久死锁**。死锁后所有后续读者（`MatchForGroup`/`IsEnabled`/`CheckHost`——即每一条 DNS 查询的拦截判定）都排在写者之后，整条解析流水线冻结，服务只剩重启可救。触发窗口宽：`GetStats` 由 `/api/v1/status` 与 `/api/v1/filter/stats` 每 3–5 秒轮询一次（[cmd/service/controller_filter.go:19](Desktop/cmd/service/controller_filter.go#L19)、controller_dns.go:261），写者动作是 GUI 上的常规操作；181 行还要求「启用时间计划且有生效计划」、188 行要求「处于定时暂停中」——而暂停状态下的 GUI 恰好在高频轮询统计，两个条件在真实操作中同时常开。
+- **根因**：注释（[:178](Desktop/internal/core/rule_engine.go#L178)、[:184](Desktop/internal/core/rule_engine.go#L184)「避免重入加锁，直接内联判定」）说明作者明知重入风险并已把 `pauseStateUnlocked` 内联，却漏掉 `currentTime()` 本身仍是重入点。工程内已有正确姿势：[internal/core/service_schedule.go:96](Desktop/internal/core/service_schedule.go#L96) 在取锁前先 `now := e.currentTime()`。
+- **验证方法**：**已实证（临时测试验证后删除）**：启用全天时间计划建引擎，一协程循环 `PauseFor/ResumePause`，另一协程调 `GetStats`——5 秒超时不返回；栈转储显示 `GetStats` goroutine 停在 `sync.RWMutex.RLock`←`currentTime`（rule_engine.go:270）←`GetStats`（rule_engine.go:181），写者 goroutine 停在 `ResumePause` 的 `RWMutex.Lock`（rule_engine_pause.go:30）。可固化为 `internal/core` 带超时的回归测试。
+
+### BUG-35 · 缓存剔除 · 高 · `DNSCache.Remove` 不分组：分组条目的投毒剔除是空操作，被拦应答持续从缓存重放
+- **位置**：[internal/core/cache.go:462-481](Desktop/internal/core/cache.go#L462)（[:468](Desktop/internal/core/cache.go#L468) `key := CacheKey(...)` 恒为默认组键）、[internal/core/cache_policy.go:76-96](Desktop/internal/core/cache_policy.go#L76)（分组键为 `domain:qtype:qclass:group`）、调用方 [internal/dns/filter_response_middleware.go:80-82](Desktop/internal/dns/filter_response_middleware.go#L80)（响应侧别名链拦截后「同步剔除缓存中被投毒的条目」）、[internal/dns/rebind_middleware.go:205-208](Desktop/internal/dns/rebind_middleware.go#L205)（rebinding 拦截同样调 `c.Remove(ctx.Req)`）；写入侧分组感知：[internal/dns/cache_middleware.go:62,81](Desktop/internal/dns/cache_middleware.go#L62)（`PutForGroup`）
+- **现象**：启用客户端分组后，非默认组的查询结果存在带组后缀的键下；两条安全语义的剔除路径（CNAME 换域投毒复检、rebinding 私网地址复检）都调无组参的 `Remove`，删的是默认组键上大概率不存在的条目——**被判定拦截的应答继续留在组缓存里，直到自然过期都在重放**，拦截只在未命中缓存时生效一次。与 BUG-27 同属「分组隔离在旁路功能上陆续漏配」。
+- **根因**：`Put/Get` 组感知改造时，`Remove` 未跟进（无 `RemoveForGroup`，`cacheEntry` 也未存 group 供反查）。
+- **验证方法**：**已实证（临时测试验证后删除）**：`PutForGroup(req,resp,"kids")` → `Remove(req)` 返回 **false** → `GetForGroup(req,"kids")` 仍命中。断言输出记录键形如 `"evil.example:1:1:kids"` vs `"evil.example:1:1"`。
+
+### BUG-36 · 缓存预取 · 中 · 预取按分组键挑出候选、却用全局解析器回源并写进默认组键：分组热点永不刷新、默认组无端多收答案
+- **位置**：[internal/core/cache_prefetch.go:112-118](Desktop/internal/core/cache_prefetch.go#L112)（`c.flight.Do(e.key, …)` 用分组键防抖，回调里 `c.Put(req, resp)` 写默认组键）、[:65-75](Desktop/internal/core/cache_prefetch.go#L65)（`buildPrefetchRequest` 不带组）、[:89](Desktop/internal/core/cache_prefetch.go#L89) 与 [cmd/service/main.go:141](Desktop/cmd/service/main.go#L141)（prefetcher 恒为全局 `CoreResolver`，不经 `ExchangeForGroup`）；对照正确姿势 [internal/dns/cache_middleware.go:62](Desktop/internal/dns/cache_middleware.go#L62)（SWR 刷新 `PutForGroup(reqCopy, freshResp, group)`）
+- **现象**：开启主动预取+客户端分组后：(a) 分组热点条目每次 tick 都被选中、回源、然后把结果写到**别的键**上——原条目照常过期，预取对分组查询完全无效（每 30s 反复空耗一次上游）；(b) 默认组键被非默认组流量引发的预取无端写满，未启用分组时才有该条目内容的语义被打破；(c) 有分组专属上游时，预取拿到的是默认上游的答案，与「分组可能被路由到不同上游」（[internal/core/cache_policy.go:80-84](Desktop/internal/core/cache_policy.go#L80)）的隔离前提冲突。
+- **根因**：`cacheEntry.key` 是完整分组键但条目不单独存 group，预取回调图省事走了 `Put`（默认组）而非解析/携带组信息。
+- **验证方法**：**已实证（临时测试验证后删除）**：`kids` 组种一条临近过期热点 → `prefetchHotEntries` → 断言 `"hot.example:1:1:kids"` 未被刷新、`"hot.example:1:1"` 凭空出现新条目。
+
+### BUG-37 · 规则引擎热更新 · 中 · UpdateConfig 的免重建判定只比订阅列表的**条数**：停用/改 URL/调序一律不重建匹配器，配置与运行态分叉
+- **位置**：[internal/core/rule_engine.go:135-144](Desktop/internal/core/rule_engine.go#L135)（`len(old.Lists) == len(cfg.Lists)` 即视为未变，提前 `return nil` 跳过 `rebuildUnlocked`）；对照 :132-134 的注释——「服务选择必须逐项比对：勾一个换掉另一个时长度不变，只看长度会漏掉这次变更」（CustomRules/BlockedServices/BlockedServiceGroups 都用了 `equalStrings` 逐项比，唯独 `Lists` 退回比长度）；写库与回显路径 [cmd/service/controller_filter.go:37-51](Desktop/cmd/service/controller_filter.go#L37)
+- **现象**：任何以「全量配置 POST」形式修改 `lists` 内容（同一列表 `enabled` 翻转、URL 替换、顺序调整——条数不变）的请求：`e.cfg` 被更新（UI 下次 GET 显示新状态）、config.json 落盘，但匹配器不重建——**界面显示已停用的订阅列表继续拦截、显示已启用的列表继续沉默**，直到小时级定时刷新或手动 `RefreshList/RefreshAllLists` 恰好触发重建才收敛。API 文档化的全量提交（curl/第三方自动化按 GET→改→POST 的自然用法）与任何未来的前端整表保存路径都会踩中。
+- **根因**：变更检测用长度代理内容，与自己注释里刚批判过的错误同型；`FilterList` 无逐项比较器。
+- **验证方法**：**已实证（临时测试验证后删除）**：建引擎含 1 条启用列表（规则文件落临时目录）→ `UpdateConfig` 仅把 `Lists[0].Enabled` 改为 false → `CheckHost("blocked.example")` 仍返回 `block`。
+
+### BUG-38 · 加密 DNS/DoH · 高 · DoHPath 未做字符校验直入 http.ServeMux 模式注册，畸形路径同步 panic：当次保存毒化配置，服务下次启动即崩溃（启动即死循环）
+- **位置**：[internal/dns/server_doh.go:155-160](Desktop/internal/dns/server_doh.go#L155)（`mux.HandleFunc("GET "+path+"/{ClientID}", …)` 等四条，Go≥1.22 模式语法对非法 pattern **panic**）、[:79-92](Desktop/internal/dns/server_doh.go#L79)（`normalizeDoHPath` 只补前导 `/`、去尾部 `/`，不收敛内部 `//`、不拒绝 `{`/`}`）、[:121-122](Desktop/internal/dns/server_doh.go#L121)（`startDoH` 内同步注册）；上游无归一化：[internal/core/encrypted_types.go:198-202](Desktop/internal/core/encrypted_types.go#L198)（仅 TrimSpace/补斜杠）、[cmd/service/controller_encrypted.go:110-112](Desktop/cmd/service/controller_encrypted.go#L110)（界面值原样写入）；触发链 [cmd/service/controller_encrypted.go:143-148](Desktop/cmd/service/controller_encrypted.go#L143)（先 `p.cfg.Encrypted = cfg`＋**持久化**，再 `reloadDNSWithCurrentConfig`）；崩溃面：[cmd/service/main.go:76-80](Desktop/cmd/service/main.go#L76)（`run()` 在裸 goroutine 中）→ [internal/dns/server.go:254-258](Desktop/internal/dns/server.go#L254)（启动路径 `startDoH` 的 panic 不被任何 recover 兜住——全仓 `recover()` 仅存在于 [internal/core/cache_flight.go](Desktop/internal/core/cache_flight.go)）
+- **现象**：用户在加密 DNS 面板的 DoH 路径里填 `/dns//query` 或含 `{` 的名字并保存：保存请求的 HTTP 协程中 `ReloadEncrypted→startDoH` panic——net/http 对 handler panic 有兜底，当次只是连接中断、旧监听器已被关而新 DoH/DoQ 没起来（DoH 静默瘫痪）；**但坏值已经先写进 config.json**。此后服务每次启动走到 `Start()` 的「加密监听是附加能力，绑定失败只记日志」分支时，`startDoH` 不是返回 error 而是**同步 panic**，启动协程无人 recover → 进程崩溃；Windows 服务恢复策略会反复拉起再崩，表现为「更新一次路径设置后，DNS 服务再也起不来」，且 UI/托盘都进不去，只能手改配置文件。
+- **根因**：把用户输入直接拼接进会 panic 的 API（`ServeMux` 模式串）；「加密监听失败不影响主链路」的容错设计只覆盖了返回 error 的路径，没覆盖 panic。
+- **验证方法**：**已实证（临时测试验证后删除）**：`registerDoHRoutes(mux, "/a//b", …)` panic：`non-CONNECT pattern with unclean path can never match`；`"/dns{query"` panic：`bad wildcard segment`；`"/{ClientID}"` panic：`duplicate wildcard name "ClientID"`（第二条路由拼出 `{ClientID}/{ClientID}`）。实机等价路径：界面改 DoH 路径为 `/x//y` 保存 → 服务日志出现 panic 栈。
+
+### BUG-39 · 加密 DNS/DoH · 中 · DoH GET 分支绕过自家 dohMaxBody 上限（仅 1 MiB 头部兜底），且两条分支都不按 RFC 8484 校验 QDCOUNT/QR
+- **位置**：[internal/dns/server_doh.go:22-26](Desktop/internal/dns/server_doh.go#L22)（注释声明「不设上限的话…把内存吃光」，`dohMaxBody=65536+512`）、[:248-258](Desktop/internal/dns/server_doh.go#L248)（`readDoHQuery` GET 分支 `base64url(?dns=)` 解码**无任何尺寸检查**，直入 `Unpack`）、[:264-273](Desktop/internal/dns/server_doh.go#L264)（POST 才有 `LimitReader(dohMaxBody+1)`+超限报错）、[startDoH 的 http.Server :129-134](Desktop/internal/dns/server_doh.go#L129)（未设 `MaxHeaderBytes`，默认 1 MiB——即 GET 单请求实际可带约 750 KB 解码报文，约为目标上限的 12 倍）；报文合法性校验缺失：`serveDoH`/流水线各中间件仅判 `len(Question)==0` 早退放行，[internal/dns/forwarder.go:23](Desktop/internal/dns/forwarder.go#L23) 把**原样的**非法报文（0 题/多题/QR=1 的响应型报文）打包发往上游。
+- **现象**：(a) 匿名 DoH 客户端用 GET 灌大报文，绕开代码自我声明的 64 KiB 上限，放大 Unpack/内存开销；(b) 多题查询只有 Question[0] 被过滤/缓存/改写，其余题被原样透传上游——上游多数会静默丢弃，但本机日志与拦截判定只覆盖第一题，形成「拦不住第二题」的假阴性；(c) `QR=1`/`OPCODE≠QUERY` 报文照常走完整流水线。RFC 8484 §4.1/§6 要求 DoH 服务器对不合语法报文返回 400。
+- **根因**：尺寸守卫只写在了 POST 分支；协议合法性校验从未落地（各中间件的零题早退是给内部路径兜底，不构成入口防御）。
+- **验证方法**：代码断言：`readDoHQuery` GET 分支无长度判据（对照 POST :264-270 有三行守卫）；构造 `SetQuestion` 后手工追加第二个 `Question` 的报文 POST 给包内 DoH，现状 200 且第二题随原报文出网（修复预期 400）。
+
+### BUG-40 · 加密 DNS/DDR · 低中 · DDR 的 SVCB 应答不携带 EDNS(0) OPT——按 RFC 9460/6891 合规客户端将丢弃整条应答
+- **位置**：[internal/dns/ddr.go:52-100](Desktop/internal/dns/ddr.go#L52)（`resp.SetReply(req)` 后只追加 SVCB；miekg/dns 的 `SetReply` 不复制 OPT——已实测）、[internal/dns/server.go:322-337](Desktop/internal/dns/server.go#L322)（收尾只借用 `r.IsEdns0()` 定截断尺寸，不回填 OPT）、[internal/dns/ede_middleware.go:23-28](Desktop/internal/dns/ede_middleware.go#L23)（唯一会补 OPT 的 EDE 中间件只在拦截/错误分支触发，DDR 成功应答不属于任何分支）
+- **现象**：DoT/DoH 入口对 `_dns.resolver.arpa SVCB` 返回 NOERROR+ANSWER，**EXTRA 无 OPT**。SVCB(RRType 64) 按 RFC 9460 仅在 EDNS(0) 下有意义；RFC 6891 §6.2.1 把「应答缺 OPT」视为 responder 不支持 EDNS 的信号，严格实现的 DDR 消费方（Chrome/Android 的 automatic-secure-network 栈普遍要求带 OPT 的应答）会把这份 SVCB 当作不合规丢弃——本机明明开着 DoH/DoT 并在广播，客户端却探测不到、不升级。属可抓包实证的互操作性缺陷；代码事实（应答无 OPT）已由测试钉死，客户端侧后果为协议标准推断，故定级低中。
+- **根因**：DDR 应答手工组装，没走「复制请求 OPT」或统一 EDNS 收尾路径。
+- **验证方法**：**已实证（临时测试验证后删除）**：带 OPT 的请求进 `BuildDDRResponse`，返回报文 `resp.IsEdns0()==nil`。实机可在 DoH 端口抓包核对 SVCB 应答 EXTRA 段。
+
+### BUG-41 · DNS/PrivatePTR · 低 · 私网反向查询的权威 NXDOMAIN 把 SOA 属主写成查询全名而非控制区顶点，负缓存语义被破坏
+- **位置**：[internal/dns/private_ptr_middleware.go:179-197](Desktop/internal/dns/private_ptr_middleware.go#L179)（`soaZone := q.Name`——直接取 `1.2.168.192.in-addr.arpa.` 这种叶子名做 SOA 属主）
+- **现象**：RFC 2308 §3/§4 要求否定应答的 AUTHORITY SOA 属主为「与查询名最佳匹配的区顶点」；把 SOA 安在查询名自身等于声称每个主机名都是一个区的起点，递归解析器做属主一致性校验时不会采纳该 TTL，私网 PTR 的 NXDOMAIN **无法负缓存**，每个客户端每条连接都重新打进来一次——功能上仍能拦，但把「本地权威应答」的省流量收益全数退掉。AA=1/NXDOMAIN 本身正确，属协议语义缺陷而非崩溃类。
+- **根因**：合成本地权威应答时按查询名回填 SOA，未从命中的私网反解后缀（`privateReverseSuffixes`）推出区顶点。
+- **验证方法**：包内测试：对 `1.2.168.192.in-addr.arpa. PTR` 取 `ctx.Resp.Ns[0].(*dns.SOA).Hdr.Name`，期望 `168.192.in-addr.arpa.`（修复后），现状等于查询名。
+
+### 观察项（第 7 轮，暂不计为独立缺陷）
+- [internal/platform/windows/portcheck_autofix.go:45-56](Desktop/internal/platform/windows/portcheck_autofix.go#L45)：ICS 自愈把 SharedAccess 启动类型改成「禁用」后**无任何恢复路径**，且失败被 `_ = errConfig` 吞掉；UI 文案只说「停止占用」，用户事后无法从本机恢复 ICS（要动注册表/服务管理）。语义是刻意的「防自动复活」，但不可逆+静默失败建议产品复核。
+- [cmd/service/controller.go:183-195](Desktop/cmd/service/controller.go#L183)：TestUpstream 的 DOH 分支每次点击新建 `http.Transport` 且不 `CloseIdleConnections`——测试按钮触发的空闲连接与协程驻留到 GC；单次操作量级小，暂列观察。
+- [internal/core/mobileconfig.go](Desktop/internal/core/mobileconfig.go) / [internal/core/plist.go](Desktop/internal/core/plist.go)：逐行核过——XML 转义完整（含 C0 控制字符丢弃）、DoH URL 前缀强校验、UUID 稳定复用，无缺陷。
+- [internal/config/store.go:86-90](Desktop/internal/config/store.go#L86)：先 `os.Remove(path)` 再 `Rename`——两次写之间断电会留下「主文件缺失、`.tmp` 完整」的窗口，载入时按「文件不存在」静默回落默认配置（丢全部设置）。有 `storeMu` 与 0644 兜底，触发窗口极窄，列观察。
+- 代理已排查并排除（防后续重复翻查）：`pipeline.go`（Execute 快照+递归形态正确）、`client_id.go`（越界与连字符位校验到位）、`realip.go`（TrustedProxy 构造后只读、XFF 右起扫描正确）、`context.go`、`server_doh_writer.go`（WriteMsg 已 Copy）、`server_tls_params.go`、`ratelimit_middleware.go`、`access_middleware.go`；`edns0.go` 的 v4-in-v6 自定义子网族错配与 `doq_conn.go` 的 writeMu 外 Close 均不够实锤，弃报。
+- 代理报告中「预取导致跨组应答污染」的表述经复核**偏强**：预取回源走的是全局解析器，写入默认组的值与默认组自查一致，实际危害为「分组预取失效+无谓回源+隔离前提被架空」，已按修正后的表述记入 BUG-36。
+
+---
+
 ## 已核实但予以剔除的代理报告项（防重复上报）
 
 - 「`/api/v1/service/status` 不返回 `autoStart`」——**不实**：`platform.CoreServiceStatus` 含 `autoStart,omitempty`（[internal/platform/types.go:134](Desktop/internal/platform/types.go#L134)），`ServiceManager.GetStatus` 恒填充（service_mgr.go:155）；Web 模式自启开关本就隐藏不可操作。
