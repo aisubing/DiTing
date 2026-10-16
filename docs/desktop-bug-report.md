@@ -131,8 +131,14 @@
 - **根因**：循环以「排除式」构建 remaining，命中即替换 target，未把未选中的命中项放回 remaining，也未在多条命中时显式报错。
 - **验证方法**：包内测试（Linux tag 下跑或抽纯函数）：预置 `m.adapters=[{ID:"a1",Name:"eth0"},{ID:"a2",Name:"eth0"}]`，mock backend 记录 Restore 调用；`RestoreSingle("eth0")` → 断言 backend.Restore 收到 2 条（当前 1 条）、`GetTakenOverAdapters()` 为空（a2 被静默丢弃）。
 
+### BUG-19 · Linux 服务安装 · 中 · locate 命中相对候选路径时写出的 systemd 单元 ExecStart 为相对路径，服务永远起不来
+- **位置**：[internal/platform/linux/service_mgr.go:71-88](Desktop/internal/platform/linux/service_mgr.go#L71)（candidates 含 `./build/bin/diting-service`、`build/bin/diting-service`；commandExists 分支返回裸名 `"diting-service"`）、[service_mgr.go:295-297](Desktop/internal/platform/linux/service_mgr.go#L295)（`renderSystemdUnit(exePath)` 原样拼入 ExecStart）、[service_mgr.go:338-357](Desktop/internal/platform/linux/service_mgr.go#L338)
+- **现象**：`InstallService` 用 `locate()` 的结果渲染单元文件。`fileExists("./build/bin/diting-service")` 以 GUI 进程 CWD 判定存在后，该**相对路径**被原样写入 `/etc/systemd/system/*.service` 的 `ExecStart=`；systemd 以 `/` 为工作目录解析相对路径 → 找不到可执行文件 → 单元进入 `failed`，`Restart=always` 变成每 10 秒失败重启一次。commandExists 分支同理返回裸命令名。用户只见「运行失败请查 journalctl」，看不到根因是路径。
+- **根因**：locate 的「可执行」判定发生在 GUI 进程 CWD，而最终使用方（systemd）的 CWD 是 `/`；候选与返回值均未 `filepath.Abs` 归一。
+- **验证方法**：Linux 上从含 `build/bin/diting-service` 的目录启动 GUI → 点安装服务 → `systemctl cat diting-dnsservice` 查看 ExecStart 是否为相对路径 → `systemctl start` 后单元 failed、journal 记录找不到文件。单测：注入 `locateExe` 返回相对路径，断言 renderSystemdUnit 输出含绝对路径（当前不含）。
+
 ### 观察项（Linux 层，暂不计为独立缺陷）
-- `internal/platform/linux/restore_script.go:93`：`nmcli con mod %q ...` 用 Go `%q` 生成 shell 双引号串，Go 的转义集与 sh 双引号语义不完全一致（`$`、反引号不转义），含 `$` 的接口名理论上会展开；Linux 接口名实际字符集受限，风险低于 BUG-12 的 Windows 对应面。
+- `internal/platform/linux/restore_script.go:93`：`nmcli con mod %q ...` 用 Go `%q` 生成 shell 双引号串，Go 转义集与 sh 双引号语义不完全一致（`$`、反引号不转义），含 `$` 的连接名理论上会展开；Linux 连接名实际字符集受限，风险低于 BUG-12 的 Windows 对应面。
 - `internal/platform/linux/dnsstate.go:76`（serversFromNmcli）：nmcli `-t` 输出对值内 `:` 会转义为 `\:`，解析处直接 `Split(":")` 未反转义——含冒号的连接名/值会错位；同样属实际难触发的窄路径。
 - `internal/platform/linux/backend_networkmanager.go:49-72`：Restore 遍历**所有**活动连接，不在快照中的连接会被 `modifyConnection(conn, nil, nil, false)` 清空静态 DNS——接管后新激活的、手工配了静态 DNS 的连接会在还原时被抹掉配置；触发条件较苛刻，暂列观察。
 
