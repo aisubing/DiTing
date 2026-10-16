@@ -13,109 +13,6 @@ import (
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
 )
 
-var (
-	procShell_NotifyIconW           = modShell32.NewProc("Shell_NotifyIconW")
-	procExtractIconExW              = modShell32.NewProc("ExtractIconExW")
-	procCreatePopupMenu             = modUser32.NewProc("CreatePopupMenu")
-	procAppendMenuW                 = modUser32.NewProc("AppendMenuW")
-	procDestroyMenu                 = modUser32.NewProc("DestroyMenu")
-	procTrackPopupMenu              = modUser32.NewProc("TrackPopupMenu")
-	procGetCursorPos                = modUser32.NewProc("GetCursorPos")
-	procSetForegroundWindow         = modUser32.NewProc("SetForegroundWindow")
-	procPostMessageW                = modUser32.NewProc("PostMessageW")
-	procDestroyIcon                 = modUser32.NewProc("DestroyIcon")
-	procLoadIconW                   = modUser32.NewProc("LoadIconW")
-	procRegisterWindowMessageW      = modUser32.NewProc("RegisterWindowMessageW")
-	procIsWindowVisible             = modUser32.NewProc("IsWindowVisible")
-	procGetForegroundWindow         = modUser32.NewProc("GetForegroundWindow")
-	procShowWindow                  = modUser32.NewProc("ShowWindow")
-	procBringWindowToTop            = modUser32.NewProc("BringWindowToTop")
-	procSetMenuDefaultItem          = modUser32.NewProc("SetMenuDefaultItem")
-	procChangeWindowMessageFilter   = modUser32.NewProc("ChangeWindowMessageFilter")
-	procChangeWindowMessageFilterEx = modUser32.NewProc("ChangeWindowMessageFilterEx")
-	procSetWindowLongPtrW           = modUser32.NewProc("SetWindowLongPtrW")
-	procSetWindowLongW              = modUser32.NewProc("SetWindowLongW")
-	procCallWindowProcW             = modUser32.NewProc("CallWindowProcW")
-	procDefWindowProcW              = modUser32.NewProc("DefWindowProcW")
-	procGetDoubleClickTime          = modUser32.NewProc("GetDoubleClickTime")
-)
-
-const (
-	wmTrayCallback = 0x8000 + 200 // WM_APP + 200
-	msgfltAdd      = 1            // MSGFLT_ADD
-	msgfltAllow    = 1            // MSGFLT_ALLOW
-	gwlpWndProc    = ^uintptr(3)  // -4 (GWLP_WNDPROC)
-
-	nimAdd        = 0x00000000
-	nimModify     = 0x00000001
-	nimDelete     = 0x00000002
-	nimSetVersion = 0x00000004
-
-	nifMessage = 0x00000001
-	nifIcon    = 0x00000002
-	nifTip     = 0x00000004
-	nifInfo    = 0x00000010
-
-	niifInfo = 0x00000001
-
-	wmLButtonDown       = 0x0201
-	wmLButtonUp         = 0x0202
-	wmLButtonDblClk     = 0x0203
-	wmRButtonDown       = 0x0204
-	wmRButtonUp         = 0x0205
-	wmRButtonDblClk     = 0x0206
-	wmContextMenu       = 0x007B
-	ninSelect           = 0x0400 // WM_USER + 0
-	ninKeySelect        = 0x0401 // WM_USER + 1
-	ninBalloonUserClick = 0x0405 // WM_USER + 5
-	wmClose             = 0x0010
-	wmNull              = 0x0000
-
-	mfString    = 0x00000000
-	mfGrayed    = 0x00000001
-	mfDisabled  = 0x00000002
-	mfChecked   = 0x00000008
-	mfUnchecked = 0x00000000
-	mfSeparator = 0x00000800
-
-	tpmRightButton = 0x0002
-	tpmReturnCmd   = 0x0100
-	tpmNoNotify    = 0x0080
-
-	swRestore = 9
-
-	idMenuShowWindow     = 1001
-	idMenuAutoStart      = 1002
-	idMenuServiceStatus  = 1003
-	idMenuServiceToggle  = 1004
-	idMenuServiceRestart = 1005
-	idMenuExit           = 1006
-)
-
-
-type point struct {
-	X int32
-	Y int32
-}
-
-type notifyIconData struct {
-	cbSize           uint32
-	hWnd             uintptr
-	uID              uint32
-	uFlags           uint32
-	uCallbackMessage uint32
-	hIcon            uintptr
-	szTip            [128]uint16
-	dwState          uint32
-	dwStateMask      uint32
-	szInfo           [256]uint16
-	uTimeoutOrVer    uint32
-	szInfoTitle      [64]uint16
-	dwInfoFlags      uint32
-	guidItem         [16]byte
-	hBalloonIcon     uintptr
-}
-
 // WindowsTray 负责管理 Windows 系统托盘图标及其交互
 type WindowsTray struct {
 	hwnd              uintptr
@@ -125,21 +22,16 @@ type WindowsTray struct {
 	subclassCallback  uintptr
 	origWndProc       uintptr
 	lastClickTime     time.Time
+	lastMenuTime      time.Time
 	mu                sync.Mutex
 	hasShownBalloon   bool
 	isInitialized     bool
+	isShowingMenu     bool
+	isVersion4        bool
 }
 
 var globalTray *WindowsTray
 
-func setWindowLongPtr(hwnd uintptr, nIndex uintptr, newLong uintptr) uintptr {
-	if procSetWindowLongPtrW.Find() == nil {
-		ret, _, _ := procSetWindowLongPtrW.Call(hwnd, nIndex, newLong)
-		return ret
-	}
-	ret, _, _ := procSetWindowLongW.Call(hwnd, nIndex, newLong)
-	return ret
-}
 
 // NewWindowsTray 创建 Windows 系统托盘实例
 func NewWindowsTray() *WindowsTray {
@@ -253,9 +145,10 @@ func (t *WindowsTray) addNotifyIcon() error {
 		return fmt.Errorf("Shell_NotifyIconW(NIM_ADD) 失败: %v", err)
 	}
 
-	// 设置托盘版本行为
+	// 设置托盘版本行为 (NOTIFYICON_VERSION_4)
 	nid.uTimeoutOrVer = 4
-	procShell_NotifyIconW.Call(nimSetVersion, uintptr(unsafe.Pointer(&nid)))
+	retV, _, _ := procShell_NotifyIconW.Call(nimSetVersion, uintptr(unsafe.Pointer(&nid)))
+	t.isVersion4 = retV != 0
 	return nil
 }
 
@@ -385,44 +278,20 @@ func trayWindowHookProc(hwnd uintptr, msg uint32, wParam uintptr, lParam uintptr
 // handleTrayCallback 处理来自托盘图标的用户交互事件
 func (t *WindowsTray) handleTrayCallback(wParam, lParam uintptr) {
 	// 在 NOTIFYICON_VERSION_4 规范下，LOWORD(lParam) 为通知事件代码，HIWORD(lParam) 为图标 ID
-	// 兼容标准/旧版托盘模式，统一提取低 16 位事件代码
 	event := uint32(lParam & 0xFFFF)
 
 	switch event {
-	case ninSelect, ninKeySelect, wmLButtonUp:
-		// 单击或键盘选择：支持单击切换显示与双击判定防抖
-		t.mu.Lock()
-		now := time.Now()
-		elapsed := now.Sub(t.lastClickTime)
-		t.lastClickTime = now
-		t.mu.Unlock()
+	case ninSelect, ninKeySelect:
+		t.handleLeftClick()
 
-		doubleClickMs := 500 * time.Millisecond
-		if procGetDoubleClickTime.Find() == nil {
-			if ms, _, _ := procGetDoubleClickTime.Call(); ms > 0 {
-				doubleClickMs = time.Duration(ms) * time.Millisecond
-			}
-		}
-
-		// 极短时间（<50ms）内的重复事件为系统或鼠标冗余派发，直接忽略
-		if elapsed < 50*time.Millisecond {
-			return
-		}
-
-		if elapsed <= doubleClickMs {
-			// 在双击时间阈值内再次触发：确认为双击，确保窗口唤醒并置顶
-			if t.callbacks.OnShowWindow != nil {
-				t.callbacks.OnShowWindow()
-			}
-		} else {
-			// 单击触发窗口切换（显示/最小化）
-			if t.callbacks.OnToggleWindow != nil {
-				t.callbacks.OnToggleWindow()
-			}
+	case wmLButtonUp:
+		// 当 NOTIFYICON_VERSION_4 生效时，Windows Shell 会在单次左键抬起时同时派发 WM_LBUTTONUP 与 NIN_SELECT；
+		// 为避免双重派发导致误判为双击，版本 4 下忽略 WM_LBUTTONUP，仅以 NIN_SELECT 为准。
+		if !t.isVersion4 {
+			t.handleLeftClick()
 		}
 
 	case wmLButtonDblClk:
-		// 原生双击消息：强制唤醒并置顶窗口
 		t.mu.Lock()
 		t.lastClickTime = time.Now()
 		t.mu.Unlock()
@@ -430,21 +299,77 @@ func (t *WindowsTray) handleTrayCallback(wParam, lParam uintptr) {
 			t.callbacks.OnShowWindow()
 		}
 
-	case wmRButtonUp, wmContextMenu:
-		// 右键单击或上下文菜单请求：弹出托盘右键功能菜单
-		t.showContextMenu()
+	case wmContextMenu:
+		// NOTIFYICON_VERSION_4 标准上下文菜单请求（鼠标右键或键盘 Shift+F10 / Apps Key）
+		t.showContextMenu(wParam)
+
+	case wmRButtonUp:
+		// 仅在低版本兜底模式下响应 WM_RBUTTONUP；版本 4 下忽略该原始鼠标消息以防菜单重复弹出
+		if !t.isVersion4 {
+			t.showContextMenu(wParam)
+		}
 
 	case ninBalloonUserClick:
-		// 用户点击气泡通知，打开主界面
 		if t.callbacks.OnShowWindow != nil {
 			t.callbacks.OnShowWindow()
 		}
 	}
 }
 
+func (t *WindowsTray) handleLeftClick() {
+	t.mu.Lock()
+	now := time.Now()
+	elapsed := now.Sub(t.lastClickTime)
+	t.lastClickTime = now
+	t.mu.Unlock()
+
+	doubleClickMs := 500 * time.Millisecond
+	if procGetDoubleClickTime.Find() == nil {
+		if ms, _, _ := procGetDoubleClickTime.Call(); ms > 0 {
+			doubleClickMs = time.Duration(ms) * time.Millisecond
+		}
+	}
+
+	// 极短时间（<50ms）内的硬件或系统重复抖动事件直接忽略
+	if elapsed < 50*time.Millisecond {
+		return
+	}
+
+	if elapsed <= doubleClickMs {
+		// 双击：唤醒并置顶主界面
+		if t.callbacks.OnShowWindow != nil {
+			t.callbacks.OnShowWindow()
+		}
+	} else {
+		// 单击：切换窗口显隐
+		if t.callbacks.OnToggleWindow != nil {
+			t.callbacks.OnToggleWindow()
+		}
+	}
+}
+
+func appendMenuItem(hMenu uintptr, flags uintptr, id uintptr, text string) {
+	ptr, _ := syscall.UTF16PtrFromString(text)
+	procAppendMenuW.Call(hMenu, flags, id, uintptr(unsafe.Pointer(ptr)))
+}
 
 // showContextMenu 弹出右键菜单
-func (t *WindowsTray) showContextMenu() {
+func (t *WindowsTray) showContextMenu(wParam uintptr) {
+	t.mu.Lock()
+	if t.isShowingMenu || (t.lastMenuTime != (time.Time{}) && time.Since(t.lastMenuTime) < 250*time.Millisecond) {
+		t.mu.Unlock()
+		return
+	}
+	t.isShowingMenu = true
+	t.mu.Unlock()
+
+	defer func() {
+		t.mu.Lock()
+		t.isShowingMenu = false
+		t.lastMenuTime = time.Now()
+		t.mu.Unlock()
+	}()
+
 	hMenu, _, _ := procCreatePopupMenu.Call()
 	if hMenu == 0 {
 		return
@@ -452,13 +377,9 @@ func (t *WindowsTray) showContextMenu() {
 	defer procDestroyMenu.Call(hMenu)
 
 	// 1. 打开主界面
-	titlePtr, _ := syscall.UTF16PtrFromString("打开主界面")
-	procAppendMenuW.Call(hMenu, mfString, idMenuShowWindow, uintptr(unsafe.Pointer(titlePtr)))
-	// 设置为加粗默认项
+	appendMenuItem(hMenu, mfString, idMenuShowWindow, "打开主界面")
 	procSetMenuDefaultItem.Call(hMenu, idMenuShowWindow, 0)
-
-	// 分隔线
-	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
+	appendMenuItem(hMenu, mfSeparator, 0, "")
 
 	// 2. 开机自启动
 	isAuto := false
@@ -471,11 +392,8 @@ func (t *WindowsTray) showContextMenu() {
 	} else {
 		autoFlags |= mfUnchecked
 	}
-	autoTextPtr, _ := syscall.UTF16PtrFromString("开机自启动")
-	procAppendMenuW.Call(hMenu, autoFlags, idMenuAutoStart, uintptr(unsafe.Pointer(autoTextPtr)))
-
-	// 分隔线
-	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
+	appendMenuItem(hMenu, autoFlags, idMenuAutoStart, "开机自启动")
+	appendMenuItem(hMenu, mfSeparator, 0, "")
 
 	// 3. DNS 核心服务状态与快捷启停
 	serviceRunning := false
@@ -485,43 +403,44 @@ func (t *WindowsTray) showContextMenu() {
 		}
 	}
 
-	var statusText string
+	statusText := "核心服务: 已停止"
 	if serviceRunning {
 		statusText = "核心服务: 运行中"
-	} else {
-		statusText = "核心服务: 已停止"
 	}
-	statusTextPtr, _ := syscall.UTF16PtrFromString(statusText)
-	procAppendMenuW.Call(hMenu, mfString|mfDisabled|mfGrayed, idMenuServiceStatus, uintptr(unsafe.Pointer(statusTextPtr)))
+	appendMenuItem(hMenu, mfString|mfDisabled|mfGrayed, idMenuServiceStatus, statusText)
 
 	if serviceRunning {
-		stopTextPtr, _ := syscall.UTF16PtrFromString("停止核心服务")
-		procAppendMenuW.Call(hMenu, mfString, idMenuServiceToggle, uintptr(unsafe.Pointer(stopTextPtr)))
-
-		restartTextPtr, _ := syscall.UTF16PtrFromString("重启核心服务")
-		procAppendMenuW.Call(hMenu, mfString, idMenuServiceRestart, uintptr(unsafe.Pointer(restartTextPtr)))
+		appendMenuItem(hMenu, mfString, idMenuServiceToggle, "停止核心服务")
+		appendMenuItem(hMenu, mfString, idMenuServiceRestart, "重启核心服务")
 	} else {
-		startTextPtr, _ := syscall.UTF16PtrFromString("启动核心服务")
-		procAppendMenuW.Call(hMenu, mfString, idMenuServiceToggle, uintptr(unsafe.Pointer(startTextPtr)))
+		appendMenuItem(hMenu, mfString, idMenuServiceToggle, "启动核心服务")
 	}
-
-	// 分隔线
-	procAppendMenuW.Call(hMenu, mfSeparator, 0, 0)
+	appendMenuItem(hMenu, mfSeparator, 0, "")
 
 	// 4. 退出程序
-	exitTextPtr, _ := syscall.UTF16PtrFromString("退出程序")
-	procAppendMenuW.Call(hMenu, mfString, idMenuExit, uintptr(unsafe.Pointer(exitTextPtr)))
+	appendMenuItem(hMenu, mfString, idMenuExit, "退出程序")
 
-	// 定位并弹出菜单
-	var pt point
-	procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+	// 坐标解析：NOTIFYICON_VERSION_4 在 wParam 中打包了光标 X, Y 锚点
+	var x, y int32
+	if wParam != 0 {
+		x = int32(int16(wParam & 0xFFFF))
+		y = int32(int16((wParam >> 16) & 0xFFFF))
+	}
+	if x == 0 && y == 0 {
+		var pt point
+		procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
+		x = pt.X
+		y = pt.Y
+	}
+
+	// Win32 标准要求：调用 TrackPopupMenu 之前必须将托盘宿主窗口置为前台，菜单退出后发送 WM_NULL 清除任务状态
 	procSetForegroundWindow.Call(t.hwnd)
 
 	cmd, _, _ := procTrackPopupMenu.Call(
 		hMenu,
 		tpmReturnCmd|tpmNoNotify|tpmRightButton,
-		uintptr(pt.X),
-		uintptr(pt.Y),
+		uintptr(x),
+		uintptr(y),
 		0,
 		t.hwnd,
 		0,
@@ -531,7 +450,7 @@ func (t *WindowsTray) showContextMenu() {
 	switch cmd {
 	case idMenuShowWindow:
 		if t.callbacks.OnShowWindow != nil {
-			t.callbacks.OnShowWindow()
+			go t.callbacks.OnShowWindow()
 		}
 	case idMenuAutoStart:
 		if t.callbacks.OnToggleAutoStart != nil {
@@ -547,7 +466,7 @@ func (t *WindowsTray) showContextMenu() {
 		}
 	case idMenuExit:
 		if t.callbacks.OnExit != nil {
-			t.callbacks.OnExit()
+			go t.callbacks.OnExit()
 		}
 	}
 }

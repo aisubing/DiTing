@@ -183,3 +183,71 @@ func TestHandleTrayCallbackSingleAndDoubleClick(t *testing.T) {
 	}
 }
 
+func TestHandleTrayCallbackVersion4Filter(t *testing.T) {
+	tray := NewWindowsTray()
+	tray.isVersion4 = true // 启用 NOTIFYICON_VERSION_4 模式
+
+	var toggleCount, showCount int
+	tray.callbacks = platform.TrayCallbacks{
+		OnToggleWindow: func() {
+			toggleCount++
+		},
+		OnShowWindow: func() {
+			showCount++
+		},
+	}
+
+	// 1. 版本 4 下，原始 wmLButtonUp 与 NIN_SELECT 同时到达时，wmLButtonUp 应当被静默丢弃
+	tray.handleTrayCallback(0, uintptr(wmLButtonUp))
+	if toggleCount != 0 {
+		t.Fatalf("版本 4 模式下 wmLButtonUp 应当被过滤忽略，实际 toggleCount: %d", toggleCount)
+	}
+
+	// 2. 版本 4 下，ninSelect 应正常响应并触发 OnToggleWindow
+	tray.lastClickTime = time.Now().Add(-1 * time.Second)
+	tray.handleTrayCallback(0, uintptr((1<<16)|ninSelect))
+	if toggleCount != 1 {
+		t.Fatalf("版本 4 模式下 ninSelect 应当生效，实际 toggleCount: %d", toggleCount)
+	}
+
+	// 3. 版本 4 下，原始 wmRButtonUp 消息应当被静默丢弃，避免与 wmContextMenu 双重触发
+	tray.handleTrayCallback(0, uintptr(wmRButtonUp))
+	if tray.isShowingMenu {
+		t.Fatal("版本 4 模式下 wmRButtonUp 不应触发上下文菜单")
+	}
+}
+
+func TestContextMenuDebounce(t *testing.T) {
+	tray := NewWindowsTray()
+
+	// 1. 当正在显示菜单时 (isShowingMenu == true)，后续请求应当直接丢弃
+	tray.isShowingMenu = true
+	tray.showContextMenu(0)
+	if !tray.isShowingMenu {
+		t.Fatal("isShowingMenu 状态异常")
+	}
+
+	// 2. 刚刚关闭菜单时（<250ms 防抖区间），后续事件应当被拦截，避免菜单重复弹起
+	tray.isShowingMenu = false
+	tray.lastMenuTime = time.Now()
+	tray.showContextMenu(0)
+	if tray.isShowingMenu {
+		t.Fatal("防抖区间内的菜单呼出请求应当被丢弃")
+	}
+
+	// 3. 超出防抖时间后允许重置
+	tray.lastMenuTime = time.Now().Add(-300 * time.Millisecond)
+	// 在没有可用窗口句柄 (hwnd == 0) 时，调用应当优雅退出且不崩溃
+	tray.showContextMenu(0)
+	if tray.isShowingMenu {
+		t.Fatal("未绑定 HWND 时 showContextMenu 应当安全返回")
+	}
+}
+
+func TestTrayManagerIsWindowActive(t *testing.T) {
+	mgr := NewTrayManager()
+	if mgr.IsWindowActive() {
+		t.Fatal("未初始化的托盘管理器 IsWindowActive 应返回 false")
+	}
+}
+

@@ -75,7 +75,16 @@ func runGUI(app *App, startMinimized bool) {
 						},
 						OnToggleAutoStart: func() bool {
 							current := app.IsAutoStartEnabled()
-							newVal, _ := app.SetAutoStart(!current)
+							newVal, err := app.SetAutoStart(!current)
+							if app.tray != nil {
+								if err != nil {
+									_ = app.tray.ShowBalloon("开机自启动", fmt.Sprintf("设置失败: %v", err))
+								} else if newVal {
+									_ = app.tray.ShowBalloon("开机自启动", "已开启开机自启动")
+								} else {
+									_ = app.tray.ShowBalloon("开机自启动", "已关闭开机自启动")
+								}
+							}
 							return newVal
 						},
 						IsAutoStart: func() bool {
@@ -91,17 +100,35 @@ func runGUI(app *App, startMinimized bool) {
 						OnToggleService: func() error {
 							st, err := app.GetCoreServiceStatus()
 							if err != nil {
+								if app.tray != nil {
+									_ = app.tray.ShowBalloon("核心服务", fmt.Sprintf("获取状态失败: %v", err))
+								}
 								return err
 							}
+							var msg string
 							if st.Running {
-								_, err = app.StopCoreService()
+								msg, err = app.StopCoreService()
 							} else {
-								_, err = app.StartCoreService()
+								msg, err = app.StartCoreService()
+							}
+							if app.tray != nil {
+								if err != nil {
+									_ = app.tray.ShowBalloon("核心服务", fmt.Sprintf("操作失败: %v", err))
+								} else {
+									_ = app.tray.ShowBalloon("核心服务", msg)
+								}
 							}
 							return err
 						},
 						OnRestartService: func() error {
-							_, err := app.RestartCoreService()
+							msg, err := app.RestartCoreService()
+							if app.tray != nil {
+								if err != nil {
+									_ = app.tray.ShowBalloon("核心服务", fmt.Sprintf("重启失败: %v", err))
+								} else {
+									_ = app.tray.ShowBalloon("核心服务", msg)
+								}
+							}
 							return err
 						},
 						OnExit: func() {

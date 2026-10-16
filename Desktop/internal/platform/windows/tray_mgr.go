@@ -33,6 +33,11 @@ func (m *WindowsTrayManager) ActivateWindow() {
 	m.tray.ActivateWindow()
 }
 
+// IsWindowActive 判断主窗口当前是否可见且正处于前台
+func (m *WindowsTrayManager) IsWindowActive() bool {
+	return m.tray.IsWindowActive()
+}
+
 // Destroy 销毁托盘
 func (m *WindowsTrayManager) Destroy() {
 	m.tray.Destroy()

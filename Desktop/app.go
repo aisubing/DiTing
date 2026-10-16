@@ -197,11 +197,9 @@ func (a *App) HideWindow() {
 
 // ToggleWindow 切换主窗口显示与隐藏
 func (a *App) ToggleWindow() {
-	if a.tray != nil {
-		if t, ok := a.tray.(interface{ IsWindowActive() bool }); ok && t.IsWindowActive() {
-			a.HideWindow()
-			return
-		}
+	if a.tray != nil && a.tray.IsWindowActive() {
+		a.HideWindow()
+		return
 	}
 	a.ShowWindow()
 }

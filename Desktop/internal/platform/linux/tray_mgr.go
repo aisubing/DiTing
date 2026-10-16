@@ -27,5 +27,10 @@ func (m *LinuxTrayManager) ShowBalloon(title, text string) error {
 // ActivateWindow 在 Linux 环境下为空操作。
 func (m *LinuxTrayManager) ActivateWindow() {}
 
+// IsWindowActive 在 Linux 环境下为空操作存根。
+func (m *LinuxTrayManager) IsWindowActive() bool {
+	return false
+}
+
 // Destroy 在 Linux 环境下为空操作。
 func (m *LinuxTrayManager) Destroy() {}

@@ -117,6 +117,7 @@ type TrayManager interface {
 	Init(callbacks TrayCallbacks) error
 	ShowBalloon(title, text string) error
 	ActivateWindow()
+	IsWindowActive() bool
 	Destroy()
 }
 
