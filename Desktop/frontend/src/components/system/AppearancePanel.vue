@@ -48,7 +48,7 @@ const modeOptions = computed(() => [
 </script>
 
 <template>
-  <div class="space-y-6 select-none max-w-4xl">
+  <div class="space-y-5 select-none">
     <AppCard
       title="外观与界面主题"
       subtitle="多套设计体系自由切换，深浅模式与视觉体验全局适配"
