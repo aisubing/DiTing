@@ -416,8 +416,80 @@
 
 ---
 
+## 第 9 轮（2026-10-17）— 已扫描模块
+
+已扫描：`internal/querylog/{reader,stats,types,writer,ring,querylog}.go`＋`cmd/service/{controller_querylog,controller_metrics,main}.go`（查询历史链路全新深扫）、`internal/core/{cert_manager,cert_generate,hosts_resolver,rewrite,rewrite_records,rewrite_lookup,rule_engine,rule_engine_group_policy,rule_engine_response,scheduler,resolver_providers}.go`、`internal/platform/windows/{adapter,adapter_native,service_scm,firewall,portcheck_native,aspect_ratio}.go`＋`platform_windows.go`＋`service_privilege/screenshot/window_capturer`（代理深扫结果逐条源码复核）、`internal/ipc/{routes,server_bg,server_querylog}.go`＋`cmd/service/{controller_bg,controller_lan,controller_encrypted}.go`。**本轮 BUG-56/59/61/62 共 4 项经临时 Go 测试实证**（`zz_tmp_*_verify_test.go`，运行后即删，工作区保持干净），BUG-57 含实机 `icacls` 取证（真实部署落点 `%ProgramData%\DITING\certs`），`queryStartType` NULL 缓冲探测候选实机证伪后剔除。核心引擎批次 A 代理仍在进行，结果下一轮并入。
+
+### BUG-56 · 查询历史 · 中 · 「清空查询历史」报成功但落盘文件删除失败被静默吞掉（Windows）/ 写入器落入孤儿句柄整日静默丢历史（POSIX）
+- **位置**：[internal/querylog/querylog.go:254-258](Desktop/internal/querylog/querylog.go#L254)（`Clear(removeFiles)` 对 `writer.listFiles()` 逐个 `_ = os.Remove(p)`，错误全吞）、[:239-259](Desktop/internal/querylog/querylog.go#L239)（`Clear` 签名不返回 error）、[cmd/service/controller_querylog.go:53-61](Desktop/cmd/service/controller_querylog.go#L53)（控制器恒返回 nil）、[internal/ipc/server_querylog.go:85-88](Desktop/internal/ipc/server_querylog.go#L85)（HTTP 恒回「查询历史与统计已成功清空」）；根因面 [internal/querylog/writer.go:164-182](Desktop/internal/querylog/writer.go#L164)（`ensureFileLocked` 仅当 `file==nil || curDay!=day` 才重开句柄——当天句柄一旦持有，被删也不会重建）
+- **现象**：写入器 goroutine 全天持有当天 `querylog-YYYYMMDD.jsonl` 句柄（`O_APPEND`，flush 周期 1s）。用户点「清空查询历史」：内存环与统计桶被清，但**Windows 上 `os.Remove` 因共享冲突直接失败**（实证报错 `The process cannot access the file because it is being used by another process`），错误被 `_ =` 丢弃，接口照样报成功；随后的 `GET /querylog/search`（`includeFile` 默认开）把 5 条「已清空」的落盘记录原样返回（实证：清空后 `Total=5 Entries=5`）。POSIX 分支更隐蔽：删除成功但句柄悬空，`ensureFileLocked` 不重建，之后整个白天的记录写进「已删除」的孤儿 inode，关进程即彻底消失（实证：删除句柄后目录无任何 jsonl，b/c 两连条写入均报成功不落盘）。
+- **根因**：`Clear` 删文件的与持有者（writer goroutine）跨线程且无协议——既不请求 writer 关句柄，也不检查/传播删除错误。
+- **验证方法**：已实证（临时测试两条，验证后已删）：① `New(FileEnabled)` 记录 5 条 → 等 1s flush → `Clear(true)` → `Search({IncludeFile:true})` → `Total=5`；② 手写 `writer` 直接调 `writeRecord/flush` → `os.Remove` 当天文件（Windows 报共享冲突）→ 继续写 2 条+flush 均报成功 → `closeFile()` 后磁盘无残留。可固化回归：`Clear` 应改为向 writer 发「关句柄+删文件」请求并返回聚合 error。
+
+### BUG-57 · 加密 DNS 证书 · 中 · Windows 上私钥 0600 权限是空操作，默认数据目录 %ProgramData%\DITING 继承 Users 读权限——同机任意低权用户可窃取 DoT/DoH/DoQ 私钥
+- **位置**：[internal/core/cert_manager.go:419-435](Desktop/internal/core/cert_manager.go#L419)（`writeFilePrivate` 注释自陈「私钥一旦可被同机其他用户读取，这套加密监听就只剩传输加密而没有身份认证」，用 `os.WriteFile(_,0o600)`+`os.Chmod(_,0o600)`——**Go 在 Windows 上两者都只切换只读属性，不设置任何 ACL**）、[internal/platform/paths.go:73-79](Desktop/internal/platform/paths.go#L73)＋[internal/platform/windows/paths_windows.go:11-23](Desktop/internal/platform/windows/paths_windows.go#L11)（证书目录 = `%ProgramData%\DITING\certs`，ProgramData 默认 ACL 授予 `BUILTIN\Users:(RX)`）
+- **现象**：桌面端主交付平台（Windows）上，`MkdirAll(_,0o700)` 与 `WriteFile(_,0o600)` 全部落空，`server.key` 实际继承目录 ACL。实机取证（本机 Windows 11 26300，已部署过服务的真实落点）：`icacls server.key` → `NT AUTHORITY\SYSTEM:(I)(F) / BUILTIN\Administrators:(I)(F) / BUILTIN\Users:(I)(RX)`——**Users 含读取**。同机任意标准用户/低权进程可直接读出私钥，冒充本机的加密 DNS 服务；代码注释里明确防御的威胁模型在该平台从未成立。
+- **根因**：以 POSIX mode 语义表达 Windows 权限意图，且无平台分支（应落 ACL：`SetNamedSecurityInfo` 授予仅 SYSTEM/管理员，或改放受 ACL 保护的私有目录）。
+- **验证方法**：实机 `icacls %ProgramData%\DITING\certs\server.key`（本条即当场取证）。Linux 对照：同代码 0600 有效，属 Windows 专属缺陷。
+
+### BUG-58 · 加密 DNS 证书 · 中 · 自签证书到期后无续期与检出路径：到期不报错、Loaded 恒真、Ensure 见文件即短路，825 天到点全量客户端握手失败
+- **位置**：[internal/core/cert_manager.go:201-204](Desktop/internal/core/cert_manager.go#L201)（`EnsureSelfSigned` 只判 `fileExists` 即复用，不验 NotAfter）、[:87-108](Desktop/internal/core/cert_manager.go#L87)（`Reload`→`loadCertMaterial`→`tls.X509KeyPair` **不校验有效期**）、[:122-131](Desktop/internal/core/cert_manager.go#L122)（`TLSConfig` 只判 `loaded/cert!=nil`，无 NotAfter 闸门）、[internal/core/cert_generate.go:44-46](Desktop/internal/core/cert_generate.go#L44)（默认 825 天，Apple 上限）；[cmd/service/controller_encrypted.go:28-30](Desktop/cmd/service/controller_encrypted.go#L28)（状态查询仅 `!Loaded` 才 Reload，过期时 Loaded 恒真永不触发）
+- **现象**：开启自签加密监听的部署在第 825 天起对全部客户端 TLS 握手失败（客户端拒绝过期证书），而本端一切「正常」：`Loaded=true`、监听器不报错、`Info().DaysRemaining` 为负仅在前端 CertificateCard 红色文本「已过期 N 天」展示（[frontend/src/components/encrypted/CertificateCard.vue:53-65](Desktop/frontend/src/components/encrypted/CertificateCard.vue#L53)——**展示而非动作**），无自动重签、无事件告警、总览/状态页不消费该值。用户唯一出路是手工点「重新签发」，而重签又使已装描述文件信任旧证书的移动端全部失效。
+- **根因**：证书生命周期管理止步「存在且可解析」，缺「将到期主动续期 + 过期主动暴露故障」闭环。
+- **验证方法**：包内测试：向 dir 写入 NotAfter 已过期的自签对 → `Reload()` → 断言 `Info().Loaded==true` 且 `DaysRemaining<0`、`TLSConfig()` 无错（现状全过）；grep 确认除 CertificateCard 显示外无任何 `DaysRemaining<0` 行为分支。
+
+### BUG-59 · Hosts 解析 · 中 · UpdateConfig 先清空映射后解锁再逐文件重填，重填窗口内所有内网域名失去命中与权威 NODATA 保护，被原样转发公网上游
+- **位置**：[internal/core/hosts_resolver.go:100-123](Desktop/internal/core/hosts_resolver.go#L100)（锁内 :108-111 清 `v4Map/v6Map/ptrMap/loadedFiles` → :112 Unlock → :114-121 逐个 `LoadFile` 重填，每个文件含 `os.Open`+全量解析）；消费方 [internal/dns/hosts_middleware.go:28-51](Desktop/internal/dns/hosts_middleware.go#L28)（`Lookup` 无命中且 `HasDomain` 为 false 时不再给权威 NODATA，放行去上游）
+- **现象**：每次保存 hosts 配置（IPC `POST /dns/hosts/configure`，哪怕只改 TTL/开关）都存在一个「映射全空」窗口；实证（30 万行 hosts 文件，一 goroutine 连续 `UpdateConfig`、主 goroutine 连续 `Lookup`）：4586 次查询中 **4340 次（94.6%）命中空映射**——期间内网主机名既解析不出、也不被判定「属于本地权威」，直接查询公网 DoH/DoT 上游，正是该模块注释宣称要杜绝的局域网域名泄露。文件规模线性放大窗口（系统 hosts + 每个自定义文件逐个重读）。
+- **根因**：热重载采用「就地清空再填充」而非「构建新映射后原子换指针」（对照 cache/规则引擎的换代模式）。`Reload()`（:126-143）同型，当前无调用方（死代码），修复时应一并原子化。
+- **验证方法**：已实证（临时测试验证后删除）：构造大文件+并发 UpdateConfig/Lookup，统计空返回比例。可固化为压测型回归。
+
+### BUG-60 · 规则引擎响应侧 · 低中 · MatchResponse 只判全局分时计划，请求侧 MatchForGroup 判分组分时：两闸相位不一致时任一方向都出错（分组漏检 CNAME 换域 / 分组静默期仍被响应侧拦）
+- **位置**：[internal/core/rule_engine_response.go:73-76](Desktop/internal/core/rule_engine_response.go#L73)（`MatchResponse` 门控用 `e.IsBlockingActive()`——全局语义 [:226-240](Desktop/internal/core/rule_engine.go#L226)）、对照 [internal/core/rule_engine.go:348-357](Desktop/internal/core/rule_engine.go#L348)（`MatchForGroup` 用 `IsBlockingActiveForGroup(groupID)`，组级计划优先，[rule_engine_group_policy.go:18-30](Desktop/internal/core/rule_engine_group_policy.go#L18)）；调用点 [internal/dns/filter_response_middleware.go:60](Desktop/internal/dns/filter_response_middleware.go#L60) 传入 groupID 却只用于取 matcher，门控不看组
+- **现象**：全局计划当前静默、某分组计划活跃时：该分组请求侧正常拦截，但 CDN 换域投毒（CNAME 目标黑名单）的响应侧复检被整体跳过——漏拦；反向（全局活跃、组静默）：请求侧 `ReasonScheduleInactive` 放行，响应侧却仍对别名链复检并可拦下——同一查询在请求/响应两侧对「该分组此刻该不该拦」的判定互相矛盾。
+- **根因**：分组分时（第 3 轮引入）只改造了请求侧门控，响应侧复检函数是后加的，沿用了全局闸。
+- **验证方法**：包内测试注入时钟：全局 Schedules 窗口外 + 组 Schedules 窗口内，同一含黑名单 CNAME 的响应分别走 `MatchForGroup`（blocked）与 `MatchResponse`（pass），断言二者一致——现状不一致即证。
+
+### BUG-61 · DNS 重写 · 低 · 显式 AAAA 记录的类型闸门用 `To16()`（对 IPv4 字面量恒非 nil），接受 IPv4 并合成 `::ffff:x.x.x.x` 伪 AAAA 应答
+- **位置**：[internal/core/rewrite_records.go:132-137](Desktop/internal/core/rewrite_records.go#L132)（`ip == nil || ip.To16() == nil`——`net.ParseIP("10.0.0.5").To16()` 返回 v4-mapped 非 nil，校验放行），对照 A 分支 :125-130 正确用 `To4()==nil` 拒收；编译期探针 [internal/core/rewrite.go:213](Desktop/internal/core/rewrite.go#L213) 同用此函数，同样放行
+- **现象**：已实证：`buildRewriteRR("x.lan.", dns.TypeAAAA, {Type:"AAAA",Value:"10.0.0.5"}, 60)` 返回合法 `dns.AAAA`，应答内容 `::ffff:10.0.0.5`。IPv6-only 客户端直接丢弃或连不通；A/AAAA 校验强度不对称。
+- **根因**：`To16` 对任何合法 IP 都非 nil，应改为「`To4()!=nil` 即拒」或 `ip.To16()!=nil && ip.To4()==nil`。
+- **验证方法**：已实证（临时测试验证后已删）。
+
+### BUG-62 · DNS 重写 · 低 · 同一 owner 名同时返回 CNAME 与其他类型记录，违反 RFC 1034 §3.6.2；注释明确鼓励快捷字段与 Records 并存，属常规配法
+- **位置**：[internal/core/rewrite_lookup.go:105-106](Desktop/internal/core/rewrite_lookup.go#L105)（`matchShortcutRecords` 与 `matchExplicitRecords` 结果直接串接进同一 `resp.Answer`，无互斥检查）；`Records` 内 CNAME 型免 qtype 过滤 [rewrite_records.go:111-114](Desktop/internal/core/rewrite_records.go#L111)；并存设计见 [internal/core/rewrite.go:22-27](Desktop/internal/core/rewrite.go#L22) 注释（「两类同时配置时都会被返回」）
+- **现象**：已实证：规则 `{Domain:dual.lan, Records:[CNAME→final.lan., A→10.1.2.3]}`，`Lookup(dual.lan, TypeA)` 返回 `[CNAME, A]` 两条同名异型记录；严格 stub/校验器会丢弃非 CNAME 或判报文异常，宽松者行为二义（取 CNAME 链还是取 A）。快捷 CNAME+MX 组合下 TypeMX 查询只见 MX（快捷分支 qtype 隔离），但 Records 同含 CNAME+A 时同 owner 并存成立。
+- **根因**：重写引擎按「字段拼接」构造应答，未按 DNS 属主名做 CNAME 独占约束归并。
+- **验证方法**：已实证（临时测试验证后已删）；RFC 1034 §3.6.2 / RFC 1034 图 8。
+
+### BUG-63 · Windows 网卡扫描 · 低 · scanAdaptersNative 完全忽略 ctx、NewAdapterScanner 丢弃 executor 参数：调用方超时/取消对原生枚举无效
+- **位置**：[internal/platform/windows/adapter_native.go:15-36](Desktop/internal/platform/windows/adapter_native.go#L15)（函数收 ctx 但全程不查 `ctx.Done()`：最多 5 轮 `GetAdaptersAddresses` 重试 + 逐网卡注册表双键读）、[internal/platform/windows/adapter.go:19-26](Desktop/internal/platform/windows/adapter.go#L19)（executor 形参未用；ScanAll 直通）
+- **现象**：[cmd/service/controller.go:279](Desktop/cmd/service/controller.go#L279)、[cmd/service/controller_dns.go:121,150](Desktop/cmd/service/controller_dns.go#L121) 以带超时的请求 ctx 调 ScanAll，ctx 取消/到期后扫描照跑完整轮才返回；接管/还原循环里的「按 ctx 中止」语义对枚举段是空承诺。单轮耗时短（百毫秒级）故实害小，但接口契约（ctx 参数）形同虚设，且 Linux 侧 `ScanAll` 若未来加 cmd 执行同样会踩「executor 参数被静默丢弃」的配置漂移。
+- **根因**：原生 API 循环无取消点；构造函数签名与实现脱节。
+- **验证方法**：windows build-tag 测试：传入已 cancel 的 ctx 调 `ScanAll`，断言立即返回 `context.Canceled`——现状返回完整列表。
+
+### BUG-64 · 加密 DNS 证书 · 低 · ImportPEM 与自签证书共用固定文件名 server.crt/server.key，来源切换互相踩踏：改回 self_signed 后永不生成自签（复用导入件），点重签即覆写导入证书
+- **位置**：[internal/core/cert_manager.go:261-266](Desktop/internal/core/cert_manager.go#L261)（`ImportPEM` 落盘目标直接取 `SelfSignedCertFileName/SelfSignedKeyFileName` 常量，:282-287 再把 Source 记为 file 指向同一路径）、[:363-371](Desktop/internal/core/cert_manager.go#L363)（`Source=self_signed|""` 的解析路径 = 同一对固定名）、[:201-204](Desktop/internal/core/cert_manager.go#L201)（`EnsureSelfSigned` 见文件即短路）；触发 UI：CertificateCard 导入/重签按钮并存
+- **现象**：导入 CA 证书后把 Cert.Source 改回 `self_signed`（或清空），启动/配置路径（[cmd/service/controller_encrypted.go:128-140](Desktop/cmd/service/controller_encrypted.go#L128)、main.go:184-196）见文件存在 → 直接复用**导入证书**、`created=false`、永不生成自签；反之点「重新签发」把自签新对覆写进同一路径，导入证书（若 Source 仍指向该路径）被静默换掉。两种来源共用一份文件，「在用哪张」的记账与注释里「固定命名防孤儿」的初衷相互矛盾——正是注释警告的同名不同期问题，发生在导入与自签之间。
+- **根因**：导入落点未与自签固定名隔离（应落 `imported.crt/key` 或用户指定路径）。
+- **验证方法**：包内序列测试：`ImportPEM(A)` → `Configure(Source:self_signed)` → `EnsureSelfSigned` → 断言 `created==true` 且磁盘内容仍为 A（现状 `created==false` 且用的是导入件）→ `RegenerateSelfSigned` → 断言导入件未被覆盖（现状被覆盖）。
+
+### 观察项（第 9 轮，暂不计为独立缺陷）
+- [internal/platform/windows/firewall.go:25-35,117-121](Desktop/internal/platform/windows/firewall.go#L25)：`CheckFirewall*` 把 netsh **执行失败**（服务停/权限不足）与「规则未放行」同等返回 `(false,nil)`；且 [isFirewallRuleActive:38-61](Desktop/internal/platform/windows/firewall.go#L38) 的 `enabled/actionAllow` 是全文「末行覆盖」布尔——`netsh show rule` 同名多规则时逐块打印，判定取最后一条而非「任一有效」。调用方 [cmd/service/controller_lan.go:24](Desktop/cmd/service/controller_lan.go#L24) 本就以 `_` 丢 error，UI 仅显示 FirewallAllowed 布尔。误导路径存在（防火墙服务异常→提示「未放行需重新配置」）但实害难评级。
+- [internal/platform/windows/portcheck_native.go:167-171](Desktop/internal/platform/windows/portcheck_native.go#L167)：`procOpenServiceW` 失败（含策略拒绝打开 SharedAccess，非「服务不存在」）统一返回 `(false,0,nil)` 吞掉 err → ICS 占用静默漏报、一键修复资格判定退化。触发需服务 ACL 异常，罕见。
+- [platform_windows.go:68-74](Desktop/platform_windows.go#L68)：`OnDomReady` 每次导航/热重载都 `go LockWindowAspectRatio(...)`，无幂等守卫（同回调内的 `app.initTray` 有）——AGENT_MISTAKES「OnDomReady 须幂等」同型残留：每次新 `syscall.NewCallback` + 最长 3s 轮询协程；因 BUG-4 已证 `SetWindowSubclass` 在本进程恒 FALSE，重复挂载的实际效果只是泄漏回调，不单列。
+- [internal/platform/windows/adapter_native.go:100-105](Desktop/internal/platform/windows/adapter_native.go#L100)：`if len(v4DNS)==0 && v4DHCP { v4DHCP = true }` 为恒真赋值死代码（v6 同型），疑似「运行时无 DNS→回退 DHCP」意图写反；当前注册表为准，输出仍正确，属误导型残留。
+- [cmd/service/controller_encrypted.go:28-30](Desktop/cmd/service/controller_encrypted.go#L28)：证书处于「存在但解析失败」态（PKCS#12 口令错/容器损坏）时，每次 `GET /encrypted/dns/status` 都重跑一遍 `pkcs12.Decode` 的 PBKDF2（十万级迭代）且永不自愈——但代理所称「前端 3-5s 轮询」不实：EncryptedDNSPanel 仅 onMounted 加载一次，无轮询；实害限于反复手动刷新，降级为观察。
+- [internal/core/resolver_plain.go:178-179](Desktop/internal/core/resolver_plain.go#L178)：`respLen > 65535` 为死分支（`binary.BigEndian.Uint16` 值域 ≤65535）；同文件 `respLen==0` 有意义。对照 [resolver_dot.go:309](Desktop/internal/core/resolver_dot.go#L309) 同型死检。无害，记录防清理时误删 `==0` 分支。
+- [internal/ipc/routes.go:109-110](Desktop/internal/ipc/routes.go#L109)：`GET /api/v1/auth/background` 与 `/auth/background/image` 不经 `withAuth`（登录页未鉴权渲染所需，属设计面）；响应仅含 type/url/opacity/blur/updatedAt（[controller_bg.go:74-110](Desktop/cmd/service/controller_bg.go#L74)），不含口令与图片内容外的信息。POST/DELETE 有 `verifyBackgroundPermission` 且正确使用 `RemoteAddr`（[server_bg.go:46-49](Desktop/internal/ipc/server_bg.go#L46)，与 BUG-42 的 XFF 采信形成同工程不一致——同一鉴权族内一处防伪造一处不防，佐证 BUG-42 属遗漏而非设计）。恶意网页可匿名枚举自定义背景 URL/时间戳，暴露面小，列观察。
+- Windows 平台层代理深扫已排查并排除（防后续重复翻查）：`portcheck_native.go` 四张 MIB 表 rowSize/offset 与 iprtrmib 逐字段比对正确、句柄全 defer 关闭；`service_privilege.go` SHELLEXECUTEINFOW 字段偏移 amd64 对齐正确、伪令牌免 CloseHandle/FreeSid defer 齐；`screenshot.go` GDI 对象/DC 逆序释放无泄漏；`firewall_mgr.go/window_capturer.go/aspect_ratio_mgr.go` 薄委托干净；`autostart.go` 键均 Close、DeleteValue 对「本已缺失」容忍合理。
+- 核心引擎批次 B 与 Windows 平台层两份代理报告经源码复核后的**修正与降级**：批次 B 称「`DaysRemaining` 计算后全仓无消费者」不实（前端 [CertificateCard.vue:53-65](Desktop/frontend/src/components/encrypted/CertificateCard.vue#L53) 以 error/warning 色显示之，故本表 BUG-58 改述为「展示而非动作」——缺的是续期动作而非展示）；批次 B 称「前端 3-5s 轮询 `/encrypted/dns/status` 每次重跑 PKCS12 PBKDF2」的轮询前提不实（EncryptedDNSPanel 仅 onMounted 加载一次），相应内容降为观察；Windows 代理称 `queryStartType` NULL 缓冲探测可能返回非 INSUFFICIENT_BUFFER 错误——本机实机证伪（见下剔除节）。
+
+---
+
 ## 已核实但予以剔除的代理报告项（防重复上报）
 
+- 「`queryStartType` 的 `QueryServiceConfig(svc, nil, 0, &needed)` NULL 缓冲探测在部分 Windows 返回非 INSUFFICIENT_BUFFER 错误 → 自启状态误报」——**本机实机证伪**（Windows 11 Pro 26300，临时测试验证后已删）：对 `dnscache`/`DitingDNSService`/`SharedAccess` 三个真实服务调用均 `err=<nil>` 且 startType 正确（2/2/3）。NULL+size0 是 MSDN 认可的能力探测形态，担忧路径不成立。
 - 「`/api/v1/service/status` 不返回 `autoStart`」——**不实**：`platform.CoreServiceStatus` 含 `autoStart,omitempty`（[internal/platform/types.go:134](Desktop/internal/platform/types.go#L134)），`ServiceManager.GetStatus` 恒填充（service_mgr.go:155）；Web 模式自启开关本就隐藏不可操作。
 - 「`RestoreAdapters` 持锁再入自死锁」——**不实**：该方法及其下游均不取 `m.mu`。
 - 「`useCopyFeedback` 跨实例串扰」——**不实**：`copiedValue/timer` 为每次调用新建的闭包变量，非模块级共享。
