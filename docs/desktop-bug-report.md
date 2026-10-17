@@ -99,6 +99,7 @@
 | A-095 | 低 | regex 注释截断 | `AdblockRuleLineParser:24` 的无差别 `substringBefore('#')` 早于 regex 提取（`:33+`）：`/banner#1/` 被截成 `/banner`，`lastSlash==0` 不落 regex 分支、域名分支 `normalizeDomain("/banner")` 判 invalid——regex 体内的 `#` 合法（模式字符），规则整条静默丢失（Go `rule_compiler.go:193` 同收 `#` 且拒 `/` 开头行，两端一致地丢） | 待处理 |
 | A-096 | 低中 | 规则索引残留 | `MappedSubscriptionRuleIndex.compileAndLoad` 的 `finally` 只删本线程 temp；进程被杀后 `block.trie.<nano>.tmp` 永久堆积——`RuleIndexLayout.deleteAll` **全仓零调用者**（grep 实证），无任何清理路径；`renameTo` 失败时退化 `temp.copyTo(overwrite=true)` 非原子，读端（Go `openDTRI`/Kotlin `load`）可读到半写文件→该轮订阅索引失效 | 待处理 |
 | A-097 | 低 | AI 报告渲染 | `MarkdownInlineAnnotator.kt:26` 斜体分支 `(?<!_)_(?!_)…(?<!_)_(?!_)` 未排除**词内下划线**：`dns_vpn_prefs` 中的 `_vpn_` 被匹配，两个下划线定界符被吃掉并以斜体输出 `vpn`（本机 Python re 等价复算实证 8 例中 5 例词内误中：`_vpn_`/`_haoze_`/`_LOG_` 等）；AI 分析报告正文里的配置键名/包名全部被改写变形 | 待处理 |
+| A-098 | 中 | bootstrap 健康污染 | `BootstrapSelector.resolveHost` 把「日志落库异常」误判为「解析失败」：成功分支 `recordResult(true)→logger.log()→putCached` 全包在 try 内（`:46-63`），而 `BootstrapLogger.log` 每满 20 条在调用栈内同步 `dao.insertAll`（`BootstrapLogger.kt:69-89`，无 runCatching）→ DB 写抛被 `:65` 的宽 `catch(Exception)` 吞成解析失败，给同一 IP 再记一次 `recordResult(false)`、`removeCached` 撤掉刚写成功的缓存，并触发对下一候选的重复解析（健康统计双记 + 无谓回退 + 成功日志缺失、失败行 message 变 SQL 异常） | 待处理 |
 
 ---
 
@@ -1305,6 +1306,13 @@
 - **触发路径**：让 AI 分析结果正文含裸文本 `dns_vpn_prefs`（不加反引号）→ 打开分析弹层观察。
 - **复现/验证**：JVM 单测 `formatMarkdownAnnotatedString("配置 dns_vpn_prefs 键", …)` 断言输出文本保留 `_`（当前丢失为 `配置 vpn 键` 斜体段）。修复 = 斜体分支补词边界（如 `(?<![\w_])_(?!_)[^_]+_(?![\w_])`）或按 CommonMark 规则排除 intra-word `_`。
 
+## A-098 `BootstrapSelector` 把日志落库异常误判为解析失败：一次成功解析同时记成功与失败
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/diagnostic/BootstrapSelector.kt:46-81` — try 块内顺序 `resolveWithBootstrapDns → :52 recordResult(true) → :53-62 logger?.log(…) → :63 putCached → return`；`catch (:65)` 是宽 `catch (e: Exception)`，不区分异常来源，随后 `:66-67 removeCached(normalizedHost)`、`:69 recordResult(…, success = false)`、继续下一候选。`core/diagnostic/BootstrapLogger.kt:24-59` — `log()` suspend → `enqueue`：`pending.size >= BATCH_SIZE`（`:55`；`BATCH_SIZE = 20`，`:102`）时在**调用栈内同步** `flushLocked()` → `:85-90 dao.insertAll(batch)`，无 runCatching。
+- **机制/影响**：第 20 条日志的 Room 批量写抛异常（磁盘满、DB busy——A-046 记录的正是这批裸 insertAll 的崩溃面）→ 被解析 try 的宽 catch 吞成「该 bootstrap IP 解析失败」→ 对**刚刚成功**的条目二次记账：`consecutiveFailures+1`（连续 3 次进 30s 冷却，`BootstrapHealthEngine.kt:99-103`）、EWMA 不受影响但失败计数污染预测权重；`removeCached` 抹掉本已写入的正缓存（`:63` 在 `:53` 之后、异常在 `:53` 内抛出时缓存尚未写入，两种时序分别表现为「撤掉旧缓存」或「新缓存从未落地」）；客户端再收下一个候选 IP 的重复解析（时延翻倍）；成功日志缺失、失败日志 message 显示 SQL 异常，排障线索失真。`RaceModeSettingsViewModel.kt:48-49` 用单参构造（`flushScope=null`）时 2s 定时器不存在，批量写**只**走这条同步路径，异常必然落进 try。
+- **触发路径**：bootstrap 日志注入即达（Express 启动注入 `express/ExpressTunnelManager.kt:295`；测速页同样注入）→ 第 20 条时 DB 写失败（真机：满盘/写锁；单测：fake dao 每第 20 次 insertAll 抛 `SQLiteFullException`）→ 断言同 ipId 各有一次 `recordResult(true)`/`recordResult(false)`（当前实现即双记）。
+- **复现/验证**：与 A-046 区分：那条=flush 链异常外抛导致丢日志/崩协程；本条=异常被解析 try 吸收后**反向污染健康状态机并撤销正确缓存**。修复 = `recordResult(true)` 与 `putCached` 移到 try 外先落地，或 `logger.log` 处包 runCatching，或 catch 限定 `IOException`（解析异常类型）。
+
 ---
 
 ## 观察（未达到确认缺陷标准，供后续验证）
@@ -1447,6 +1455,10 @@
 - 【降级】Go 引擎子代理 #6「`Engine.Start` 失败路径锁外写 `e.running` + 新建 Resolver 不 Shutdown」：`engine.go:138 Engine.Start(fd,…)` 在生产**无调用者**——Kotlin 三条入口分别是 `engine.startFull`（`normal/GoInspectionTunnel.kt:94`）、`engine.startStandalone`（`server/backend/DnsServerEngine.kt:41`）、`engine.startStackMitm`（`GoInspectionCaManager.kt:21`），且 `DnsModeService.kt:139` 的 `engine.start()` 是 Kotlin 侧 `DnsServerEngine.start()` 包装（内部调 startStandalone），非 Go `Engine.Start`。竞争/泄漏面真实但不可达，子代理自己在存疑段也标注了同一点。列观察备查（若日后启用 legacy 路径需一并修）。
 - 【降级】Go 引擎子代理 #7「bootstrap 串行回退放大首查延迟」：`bootstrap_resolver.go` 的串行链与「同主机并发各自重复整轮」需配合**全部 bootstrap 站点黑洞**才显形；同族面已在 A-088（dataset 错读）与 O-150 第 4 项（Kotlin `BootstrapSelector` 的 3s×N×2 无总预算，可达性已核）登记，Go 侧维持观察。
 - 【未升级】Go 引擎子代理存疑 4 项（`dns_interceptor.go` 分片黑洞、StartFull↔Stop 交错遗留 fd/栈、`Engine.Start` 路径 dynamicBlocks 缺席、`log_aggregator.go:99-102` start/stop 竞态）：均因「当前无生产调用者」或「微秒窗口无确定性触发」维持存疑，与上两条降级理由同源，此处一并留痕避免后续轮次重复提出。
+
+### O-151 `SetRewriteRules` 值非字符串/字符串数组时静默跳过（生产构造点不产生该形态）与 `~denyallow` 反义丢失（低，条件性）
+- **Go `engine_config.go:93-95/103-110`**：`parseRewriteEntry` 对既非 JSON 字符串也非字符串数组的值（如 `{"a.com":8080}` 端口、`{"a.com":{}}` 对象）返回 nil，`:93` 处直接跳过**零 logf**，仅顶层 JSON 语法错在 `:70` 有日志——单条畸形值静默消失，与 O-150 的「解析错误吞掉」提示面同源。**可达性收窄**：Kotlin 两侧生产者（`normal/GoTunnelRuleManager.kt:82-96` `updateRewriteMap`、`server/backend/DnsServerEngine.kt:102` `buildRewriteRulesJson`←`DnsQueryFilter.kt:90-99` `buildRewriteRulesJson`）只写入 `JSONArray(targets)` 或 `String` 两种值形态，当前无可达的畸形值生产路径（除非 rewrite 表被外部写入或未来新增 value 类型），故列观察；修复建议（补一条 per-entry log）为卫生项。
+- **Kotlin `core/rule/AdblockRuleLineParser.kt:97-110` `~denyallow=`**：`:98 val isNegative = lower.startsWith("~denyallow=")` 计算后**从未参与赋值**，`:109 denyallow = cleanDomains.joinToString("|")` 正负两路相同——而对照同文件 `~dnstype=`（`:123-127` 正确保留 `~` 前缀落进 dnsType）可判定为遗漏而非设计取舍。规范语义 `$denyallow=X`=from 属 X 时不生效、`$~denyallow=X`=仅 from 属 X 时生效，此处完全反转的那一半丢失。放大项：`AdGuardRuleParser.kt:18-33 blockRuleKey` 的扩展形态只含 `denyallow` 串不含 isNegative，`||ads.com^$denyallow=cdn.com` 与 `||ads.com^$~denyallow=cdn.com` 生成同 key → `parseCategorized` 的 `putIfAbsent`（`:107-108`）把后者当重复丢弃（duplicateCount+1）。**降级理由**：DNS 路径无 `$from`/第三方上下文（`BlockRuleMatcher.kt:225-229` 仅按被请求域自身做例外跳过，denyallow 在 DNS 语义里本就是弱概念），且 denyallow/~denyallow 现网稀少、行为差异难归因；缺「订阅里真实出现 ~denyallow」的取证，列观察。修复 = 与 dnstype 对齐把 `~` 并入 denyallow 串（并让 blockRuleKey 感知），或显式 ignore。
 
 ### O-150 Kotlin 极速/诊断链的三项已核实但影响条件性/显示级的事实
 - **极速运行期 bootstrap 无总时间预算**（diag 子代理 #5，机制核实）：`core/diagnostic/BootstrapSelector.kt:43-82` 对有序候选**串行**逐个解析，每候选 `resolveWithBootstrapDns` 又串行发 A 与 AAAA 两查询、各 `queryUdp` 用 `DNS_TIMEOUT_MS=3000`（`:139/:161`）的 `soTimeout`，且 `socket.receive` 不响应协程取消 → 最坏 `候选数×2×3s`（默认 7 预设≈42s）；调用端 `express/ExpressTunnelManager.kt:408-410` 每个 UDP:53 查询包独立 `scope.launch(Dispatchers.IO)`、`resolveBootstrap:481-486` 用 `runBlocking` 包住，而 `:102-104` 注释自证设计前提是「resolve() 每次至多 5s」——前提与实现相反；客户端 5s 超时重传会再起新协程并发跑同一条链（成功前无 in-flight 去重）。仅在 UDP:53 被拦/弱网时显形，且成功后缓存 60s 吸收，故列观察级（修复方向同 Go 侧 O-149：共享总预算 + 负结果短缓存 + single-flight）。
