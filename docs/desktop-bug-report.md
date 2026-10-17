@@ -1313,6 +1313,12 @@
 ### O-146 「不再提示」建议忽略为全局 key，跨模式互相消音（意图待定）
 - `permission/ModePermissionStore.kt:46-56` — key=`recommendation_dismissed_`+permission.name，**无 mode 维度**；`permission/ModeReadinessState.kt:21-23` 按此过滤建议。banner/对话框按模式评估（`ModePermissionWarningAction.kt:219-228` 在极速对话框里点「不再提示」后，普通/DNS 模式的同类建议同样永久消失），且全仓无恢复入口。产品意图若是「该建议全局不再烦我」则只是注释缺失；若要 per-mode 需在 key 加 mode。缺声明性证据，列观察。
 
+### O-147 【证伪留痕】DNS_MODE 上游校验器与开机自启接收器三项候选全部排除（勿再提出）
+- (1) `validateHost(":::")` 疑似放行畸形 IPv6 → 本机 JDK 实跑 `InetAddress.getByName(":::")` 抛 `UnknownHostException: :::: invalid IPv6 address literal`，`isValidIpv6` 返回 false（`server/model/DnsUpstreamValidator.kt:80-91`，与其注释「which rejects malformed forms such as `:::`」一致）；`1:2`、`2001:db8::1::2`、`fe80::1%eth0`（无此网卡时）同被拒。初判「::: 被接受」系未跑运行期即采信，已证伪。
+- (2) DoH URL 端口不受 `validatePort` 约束（`:35` 对 DOH 直接 return null），`https://host:99999/dns-query` 可通过 → 核对为**设计一致**而非缺口：编辑对话框 DoH 分支根本不渲染端口输入框（`ui/components/ProviderManagementComponents.kt:194-242`，端口框位于 `else`（非 URL 型协议）分支内），`parsePort` 空文本兜底 443，引擎桥接 DOH 时发 `server:""` + `url:address`（`server/backend/DnsServerEngine.kt:190-205`），Go 侧 `validateDNSProvider` DOH 只验 `url.ParseRequestURI` + scheme + 非空 Host（`tunnel/dns_config.go:180-184`），端口属 URL 语义由用户显式书写——等同浏览器地址栏手填端口，不存在「校验通过但运行必炸」的不对称。`https:///dns-query`（空主机）与含空格 URL 亦已实跑证实被 `validateDohUrl`/`\s` 预检拒绝。
+- (3) `DnsModeBootReceiver` `android:exported="false"` + BOOT_COMPLETED 疑似收不到系统广播/直启期读 CE prefs 失败 → 打包合并清单中 Google 自家 `androidx.work.impl.background.systemalarm.RescheduleReceiver` 同为 `exported="false"` + BOOT_COMPLETED 过滤器（debug 合并清单 :266-277），且 BOOT_COMPLETED 按规范只在用户首次解锁后发出（解锁前对应的是 LOCKED_BOOT_COMPLETED），CE 存储此时可读；接收器三守卫（action / `WorkModeStore`==DNS / `isServiceActive`）+ `runCatching` 包裹 FGS 启动，判为无缺陷。
+- 附带卫生登记（未定级）：协议切换仅在目标为**非** URL 型协议时重置端口（`ProviderManagementComponents.kt:187-189`），DNS(:853) 编辑切 DoH 保存后 prefs 残留端口 853，但该值无任何读取方（引擎 DOH 分支不读 `upstream.port`），纯数据陈旧无后果。
+
 ### O-143 本地化引擎 32 位哈希键的理论碰撞面与不可刷新渠道名（卫生）
 - `ui/localization/LocalizationEngine.kt:37-41`：`localized_text_<31bit(hash)>` 作为资源名与 app 内中文串互映射，`values/values-en` 各注册 112 条且完全对称（脚本核 `values−values-en = ∅`），当前全仓中文串间碰撞 0 组；但 String.hashCode 32-bit 截断至 31 bit，新增串存在理论碰撞（后果：一条文案显示另一条的译文），且无测试守护。resource-id/translation 双缓存在语言切换 `recreate()` 后跨 Activity 共享 stale id（后果=回落原中文，仅体验降级）。渠道名创建即固化，语言切换后系统通知设置页不刷新——A-037 修复备注已含，此处登记哈希面。
 
