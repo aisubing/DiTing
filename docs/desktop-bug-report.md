@@ -20,6 +20,7 @@
 | A-007 | 低 | 快捷设置磁贴 | `requestListeningState` 使用拼接错误的组件名，运行状态变化时磁贴刷新请求全部失效 |
 | A-008 | 中 | 崩溃日志 | Android 7–9 上自动导出崩溃日志先走 API 29 的 MediaStore，回退目录又无写权限，连续崩溃备份静默失败 |
 | A-009 | 中 | Express 日志 | Express 模式的日志保留天数设置从未被执行，`diting_express` 中的 DNS/竞速/引导日志不会自动清理 |
+| A-010 | 中 | DNS 模式启动 | DNS 引擎先开始监听并标记运行，规则缓存随后才异步加载，启动窗口内的查询绕过拦截/放行与 hosts 改写 |
 
 ---
 
@@ -277,6 +278,41 @@
   3. 启动 Express 并保持运行超过 1 小时（`LogMaintenance` 的首次延迟 30 秒、之后每小时一次），重新查询该行仍然存在；同样操作在普通模式下会被 `deleteBefore` 删除。
   4. 静态核对：`grep -R "LogMaintenance\\.start"` 只有 `DnsVpnDatabaseComponents` 一处；`ExpressTunnelManager.kt` 中没有 `pruneExpiredLogs`、`deleteBefore` 或任何保留天数读取。
 - **备注**：应把清理逻辑抽成按 DAO 集合工作的函数，在 Express 服务启动时也注册同样的周期任务（使用 `SystemSettingsStore.logRetentionDays(context, RuleDataset.EXPRESS)` 作为提供者），并同时覆盖 `dns_log`、`race_log`、`bootstrap_log`。
+
+---
+
+## A-010 DNS 模式在规则加载完成前已开始监听并标记运行
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsModeService.kt:99-134`（`startDnsEngine()` 中 `engine.start()` → `onServiceStarted()` → `ensureFilterLoaded()`）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsModeService.kt:156-162`（规则加载放在 `serviceScope`（`Dispatchers.IO`）中异步执行）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsQueryFilter.kt:34`、`:68-75`（`loaded` 初始为 `false`，`reloadSync()` 依次加载 block/allow/rewrite 后才置 `true`）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsQueryFilter.kt:78-89`（读接口有 `loaded` 门控，但 `buildRuleSnapshotJson()` 没有）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsServerEngine.kt:36-50`（先 `configureEngine()`，再 `engine.startStandalone(port)`，返回时端口已开始监听）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsServerEngine.kt:94-106`（`syncRules()` 直接把当前规则快照推给 Go，没有“已加载完成”检查）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsServerEngine.kt:108-145`（`DomainChecker` 的 `checkDomain`/`isBlocked` 等方法直接调用 `queryFilter.policy.evaluate(...)`，绕过 `DnsQueryFilter.loaded`）
+  - `Android/app/src/main/java/com/haoze/diting/server/backend/DnsModeManager.kt:115-119`（`onServiceStarted()` 在规则加载前把状态置为 `RUNNING`）
+  - `Android/tunnel/engine_standalone.go:441-502`（Go 侧先绑定 UDP/TCP，再启动 serve goroutine 后立即返回）
+- **问题**
+  - DNS 模式每次启动、`START_STICKY` 重建或切换监听端口后，Go DNS 服务会先开始接受查询，`DnsModeManager` 也先把状态置为 `RUNNING`；而规则缓存由 `ensureFilterLoaded()` 在 IO 线程中稍后加载，加载完成前引擎使用空规则集。
+  - 这个窗口内：`configureEngine()` 首次 `syncRules()` 推给 Go 的是空快照；`DomainChecker` 读到的是空的内存 block/allow 缓存；`setRewriteRules` 得到的是空 hosts/CNAME 映射。因此拦截、放行例外和 hosts/rewrite 都不生效，查询按“默认允许 + 正常上游解析”返回。
+  - `DnsQueryFilter` 的 `loaded` 标志只保护了 `isBlocked()` 和 `rewriteAnswersFor()`，但这两个方法在实际 DNS 服务路径中没有调用；真正生效的 `buildRuleSnapshotJson()` 与 `DomainChecker` 都没有等待 `loaded`。因此“未加载完成”不会被任何运行时检查拦住。
+  - 加载不是原子完成的：`reloadSync()` 依次刷新 block、allow、rewrite。启动时是“全空”；规则刷新时若在 block 已换新、allow 尚未换新之间来查询，还可能看到新旧规则混合的状态（例如本应被新白名单放行的域名仍被 block 命中）。
+- **触发路径**
+  - DNS 模式点击启动；或 `DnsServerEngine.updateConfig()` 因修改监听端口/上游而 `stop()` + `start()`；或系统重启/进程重建后 `START_STICKY` 重新拉起服务。
+  - 规则量越大（大型订阅、hosts、rewrite 规则多），Room 查询和缓存构建耗时越长，空窗越明显；启动后立即由手机本身、局域网设备或系统 DNS 转发发出的查询都可能落在窗口内。
+  - 规则编辑后的 `ACTION_REFRESH` 也会先 `refreshDnsEngine()` 推旧快照、再 `ensureFilterLoaded()` 异步重载；虽然旧规则通常仍可拦截，但状态与规则版本同样存在短暂不一致。
+- **影响**
+  - 用户刚启动 DNS 模式时，广告/跟踪域名仍能正常解析，hosts 改写也不生效；UI 已显示“运行中”，用户无法判断规则尚未加载。
+  - 启动窗口内若解析了本应被拦截的域名，结果已返回给客户端；Go 侧 `syncRules()` 完成后会 `clearDNSCache()`，但客户端/上游的缓存不受此控制，仍可能继续使用窗口内的解析结果。
+  - 规则越多或设备越慢，窗口越长；对依赖 DNS 模式做家长控制/恶意域名拦截的场景，属于实际可感知的防护缺口。
+- **复现/验证**
+  1. DNS 模式添加 `||example.com^` 拦截规则和 `example.com -> 1.2.3.4` 的 hosts/rewrite 规则，确认规则列表已生效；强制停止应用（或重启手机）以清空进程内缓存。
+  2. 在局域网 PC 上对着手机 DNS 端口循环查询：`while true; do dig +short +time=1 +tries=1 @<手机IP> example.com; sleep 0.05; done`；在循环运行期间点击启动 DNS 模式。规则少时窗口可能只有几十毫秒，建议先导入数万条规则或把 `DnsQueryFilter.reloadSync()` 用调试构建延迟 2 秒来稳定观察。
+  3. 预期：启动后第一条查询就返回拦截响应/改写 IP；实际：窗口内查询返回真实解析结果，等 `reloadSync()` 完成后同一域名才被拦截/改写。
+  4. 日志/断点：`DnsModeService successfully started DNS server`（`DnsModeService.kt:127`）出现在 `DnsQueryFilter.reloadSync()` 返回之前；在 `reloadSync()` 入口和 `loaded.set(true)` 处打点即可看到 `onServiceStarted()` 与端口监听都早于规则就绪。
+  5. 单测方向：给 `DnsQueryFilter` 注入可延迟的 fake DAO（或抽出门面接口），在 `reloadSync()` 未完成时向 `DnsServerEngine` 发起查询，断言应按规则拦截却实际放行；同时断言 `DnsModeManager.status` 在规则就绪前不应为 `RUNNING`。
+- **备注**：应在 `startDnsEngine()` 中先同步完成首次 `reloadSync()`（或至少等待 `loaded` 变为 `true`）再 `engine.startStandalone()`，或者在 `loaded=false` 期间让 Go 侧直接拒绝/挂起查询；`onServiceStarted()` 应移到规则加载成功之后，加载失败则进入 `ERROR` 而不是保持 `RUNNING`。Go 侧 `StartStandalone` 目前先 bind 再起 goroutine，若不能调整启动顺序，需要在 `DomainChecker`/`buildRuleSnapshotJson` 层增加“未就绪”保护。与 A-005 的 Express 启动窗口属于同类现象，但本项是 DNS 模式独立的 `DnsModeService`/`DnsServerEngine` 调用链，需单独修复。
 
 ---
 
