@@ -15,6 +15,7 @@
 | A-002 | 高 | 元素隐藏 | 元素隐藏规则编译时忽略域名作用域，并把 `#@#` 例外反向编译为隐藏 |
 | A-003 | 中 | DNS 工具 | DNS 查询未把国际化域名转成 Punycode，中文域名被编码为 `??` |
 | A-004 | 中 | DNS 模式上游 | 自定义上游校验接受非法 IPv6 / `IPv4:端口` 字符串，保存后服务不可用 |
+| A-005 | 中 | 极速模式启动 | 规则缓存异步加载完成前 TUN 已开始处理查询，连接初期的拦截/放行规则不生效 |
 
 ---
 
@@ -130,6 +131,34 @@
   3. 单测：`DnsUpstreamValidator.validateAddress(DnsModeProtocol.DNS, "1.1.1.1:53")` 实际返回 `null`，期望 `"地址格式不正确"`；`":::"` 同理。
   4. 运行时探针（本机 Go 1.27）：`net.SplitHostPort("[1.1.1.1:53]:53")` 返回 `host="1.1.1.1:53", port="53", err=nil`；随后 `net.DialTimeout("udp", "[1.1.1.1:53]:53", ...)` 返回 `dial udp: lookup 1.1.1.1:53: no such host`，`[:::]:53`、`[1:2]:53`、`[2001:db8::1::2]:53` 同样失败，而合法 `[2001:db8::1]:53` 可拨通。
 - **备注**：应拒绝 DNS/DOT 地址中的端口写法（端口有独立字段），并用 `InetAddress`/`parseNumericAddressSafe` 校验 IPv6；DoH 分支可另外校验 URL 端口与路径。
+
+---
+
+## A-005 极速模式启动时规则缓存异步加载，TUN 已开始处理查询
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/express/ExpressTunnelManager.kt:277-284`
+  - `Android/app/src/main/java/com/haoze/diting/express/ExpressTunnelManager.kt:343-345`、`:370-427`
+  - `Android/app/src/main/java/com/haoze/diting/express/ExpressVpnService.kt:98-104`、`:116-126`
+  - `Android/app/src/main/java/com/haoze/diting/express/engine/ExpressDnsEngine.kt:94-117`
+  - `Android/app/src/main/java/com/haoze/diting/core/rule/BlockRuleCache.kt:19-20`
+  - `Android/app/src/main/java/com/haoze/diting/core/rule/DomainPolicyEngine.kt:52-71`
+- **问题**
+  - 极速模式启动时，`ExpressTunnelManager.start()` 先在 `scope.launch(Dispatchers.IO)` 中异步预热 block/allow 规则缓存，随后立即把 `isRunning` 置为 `true`、启动 TCP worker、重传任务和 `ExpressTunReader` 线程。
+  - 规则缓存初始状态是空对象（`BlockRuleCache` 的 `state = BlockRuleCacheState()`），`refreshCache()` 完成前，`DomainPolicy.evaluate()` 找不到任何拦截/放行规则，统一走“默认放行”。
+  - `start()` 没有等待预热任务完成，`ExpressVpnService` 也没有类似 `awaitRulesLoaded()` 的汇合点；因此从 VPN 建立到缓存加载完成之间的 A/AAAA 查询会绕过规则。
+  - 加载 block 与 allow 是两个独立协程（`j1`、`j2`），只保证两者都结束后才 `invalidateCache()`；若 block 先完成而 allow 尚未完成，带白名单例外的域名会在这个窗口内被误拦截。
+- **触发路径**
+  - 首次安装、导入大订阅或重启服务后连接极速模式；规则越多，Room 查询和索引构建耗时越长，窗口越明显。默认放行的查询还会写入 Express 的 DNS 缓存，但规则判断在缓存查询之前执行，缓存加载完成后拦截会恢复，因此主要表现为“刚连接时规则不生效”。
+- **影响**
+  - 用户连接极速模式后最初一段时间内，广告/跟踪域名仍可正常解析；若同时存在全局拦截和全局放行规则，放行例外也可能短暂失效。
+  - UI 在 `ExpressVpnService` 返回 `started=true` 后立即显示已连接，用户会认为规则已经生效，实际存在一个不可见的规则空窗期。
+- **复现/验证**
+  1. 在极速模式添加全局拦截 `||example.com^`，强制停止应用后重新连接；连接后立即连续查询 `probe-<时间戳>.example.com`。缓存加载完成前返回真实解析结果，加载完成后同一域名返回拦截响应。
+  2. 同时添加 `||example.com^` 与 `@@||example.com^`，重复上述步骤；若 block 缓存先加载完成，窗口内会出现“已有放行规则但仍被拦截”。
+  3. 断点/日志验证：在 `ExpressTunnelManager.kt:343` 与 `BlockRuleCache.reload()` 返回处打点，前者先于后者执行；给 `refreshCache()` 注入延迟即可稳定复现。
+  4. 单测方向：用可控延迟的 fake DAO 调用 `ExpressTunnelManager.start()`，在 `refreshCache` 未完成时发送查询，断言 `DomainPolicy` 应拦截但实际放行。
+- **备注**：应在启动 TUN 读取线程前 `join` 两个缓存加载任务，或用 `CompletableDeferred`/`isRulesReady` 门控 `engine.resolve()`；`ExpressVpnService` 也应等待默认规则种子任务和缓存就绪后再对外报告连接成功。
 
 ---
 
