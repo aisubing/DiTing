@@ -2,6 +2,14 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
 
+### 2026-10-18: Edit 锚点凭记忆书写两次落空 + 「先入库后核引证」返工（工具/流程类）
+- **现象**：(1) 向报告追加 A-098 正文时，old_string 用了记忆中 A-097 结尾的「备注」句——该句实际不存在（A-097 是我本轮刚写的，结尾是复现/验证行），Edit 报 not found。(2) A-089 正文初稿把 `engine_dns.go:189/211/332` 列为可达证据，写完才核实 `Engine.Start` 零生产调用者（Kotlin 只用 startFull/startStandalone/startStackMitm），只能再补一轮 Edit 收窄引证。(3) A-095 初版按子代理原文收录「$$ 转义+sinkhole」复合主张，提交前复核 `dnsrewriteIsBlock` 不置 `dnsrewriteTargetType` 才发现 sinkhole 主张不成立，行与正文均回炉。
+- **根因**：把「刚写过的内容」当作可信记忆直接当锚点/引证使用；长文档多轮追加后不重新 grep 定位；子代理引证未经第二遍 caller 核验就落进正文。
+- **教训**：
+  1. **Edit 锚点必须先 grep 现值再复制**，跨多轮的追加尤其如此——文件在会话里被自己改过多次，记忆中的「上一节结尾」常常是别的节。
+  2. **可达性引证在落笔前完成，不是提交后补**：给每条 Go/Kotlin 引证当场 grep caller 集合；本轮 A-089 的教训是「同函数被多入口共用」（serveDNS 同时是 standalone 与 full-tunnel 入口）与「路径整体无生产者」是两种相反情形，判据都是 caller grep，不能凭函数名（engine_dns=VPN 路径）猜。
+  3. 子代理报告的**组合主张拆开逐条验**：$$ 与 regex-# 同属「预处理截断」族，但 sinkhole-badfilter 一支依赖对错误变量置位假设，整族接受即把已证伪成员带入库。
+
 ### 2026-10-18: 子代理「高危触发面」未经调用者/写入者收窄即采信（验证不充分类）
 - **现象**：Room 数据层子代理报 D-01「`AppTrafficDao` 用 SQLite UPSERT → minSdk 24 全设备流量历史静默丢失」自评【高】，又称 Express「任意采样即触发」。回读：唯一写入链 `TrafficDatabaseSyncer.flushPendingDeltas` 只被 `TrafficStatsManager` 调用，而后者 `start()` 唯一入口是 `normal/DnsVpnService.kt:321`——**NORMAL 专属**，Express 全仓零引用 `TrafficDatabaseSyncer`；NORMAL 又被 UI 硬拦在 API 29+（`WorkModeComponents.kt:128-136`）。受害面从「24–29 全设备」收窄为「API 29/30」，且仓库自身 `DnsCacheDao.kt:46` 注释主张下限是 API 30 而非 24——子代理把「文件存在于 minSdk 24 工程」直接当成「24 全设备可触发」。同代理 D-03「DNS_MODE 跨库读 vpn_log 归属错」也被三条独立事实证伪（`dns_log` 仅 2 个写入者、DNS_MODE 从不写；统计页 dataset 不可达 DNS_MODE；Express 写读同库）。
 - **根因**：子代理从「缺陷代码存在」跳到「全量设备/场景触发」，中间缺**可达性收窄**这一步；其给出的严重度建立在未经核实的调用者集合与设备门假设上。我对协议位表已警惕，却险些同样接受其未经核实的**触发面**。
