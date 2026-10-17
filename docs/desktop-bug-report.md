@@ -330,6 +330,9 @@
 - **关联**：键源缺陷见 BUG-42（修复顺序建议同源一并处理）。
 
 ### BUG-44 · DNS64 合成 · 中 · EmbedIPv4InIPv6 对 /40、/48、/56 前缀的字节布局违反 RFC 6052 Table 2：合成的 AAAA 指向错误 IPv4，NAT64 流量黑洞化
+
+> **【第 10 轮复核：误报，无需修复】** 原判定把 RFC 6052 §2.2 读成「IPv4 紧随前缀连续、u 在其后」，实际规范规定 **u 字节固定在 bits 64–71（byte 8）**，/32–/64 前缀下 IPv4 本就被 u 分隔（代码注释的 case 描述与规范自洽）。以 RFC Table 1/2 官方样例向量（192.0.2.33×六种前缀）逐一对账，`EmbedIPv4InIPv6` 输出六例全部逐字命中——实现正确，缺陷不存在。原记录按「保留原有记录」原则不作删改，详见下文《第 10 轮》专节。
+
 - **位置**：[internal/core/dns64.go:110-161](Desktop/internal/core/dns64.go#L110)（`EmbedIPv4InIPv6`：case 56 把 IPv4 拆成 `v6[7]=v4[0]`、零填充 `v6[8]`、`copy(v6[9:12], v4[1:4])`——**零字节插在 IPv4 中间**；case 48/case 40 同样以 `v6[8]=0` 把本应连续的 4 字节 IPv4 拦腰截断。RFC 6052 §2.2 Table 2 规定 IPv4 必须**紧随前缀连续放置**，u 字节位于 IPv4 **之后**（/56 为 byte11、/48 为 byte10、/40 为 byte9），且合成前缀已入排除集（:78），错误结果不会再被拦截修正）；调用方 [internal/core/dns64.go:248-262](Desktop/internal/core/dns64.go#L248)（`SynthesizeFromAWithTTL` 对所有已配置前缀逐一嵌入）与 [internal/dns/dns64_middleware.go:89](Desktop/internal/dns/dns64_middleware.go#L89)
 - **现象**：使用非默认前缀长度（自定义 NAT64 部署常见的 /64 之外的 /48、/40、/56，以及运营商级 /32）时：/32、/64、/96 三种布局正确；/40、/48、/56 合成出的 AAAA 与 NAT64 网关按 RFC 6052 反解出的 IPv4 **不是同一个地址**——IPv6-only 客户端拿到“看似正确格式、实为错址”的合成记录，连接黑洞且无任何日志提示（合成链路本身成功）。默认 `64:ff9b::/96` 不受影响，故定级中。工程内既有测试只断言「byte8==0」（[internal/core/dns64_test.go:122-127](Desktop/internal/core/dns64_test.go#L122)），恰好被错误实现满足（代码正是在 byte8 塞零），所以单测全绿掩盖了布局错误。
 - **根因**：把「u 必须为 0」误写成「IPv4 拆两半、中间垫 0」；/56、/48、/40 三个 case 的注释与实现均按错误布局自述（如 case 56 注释「IPv4[0] | u(8) | IPv4[1-3]」），属对 Table 2 的系统性误读而非笔误。
@@ -498,6 +501,105 @@
 - [internal/ipc/routes.go:109-110](Desktop/internal/ipc/routes.go#L109)：`GET /api/v1/auth/background` 与 `/auth/background/image` 不经 `withAuth`（登录页未鉴权渲染所需，属设计面）；响应仅含 type/url/opacity/blur/updatedAt（[controller_bg.go:74-110](Desktop/cmd/service/controller_bg.go#L74)），不含口令与图片内容外的信息。POST/DELETE 有 `verifyBackgroundPermission` 且正确使用 `RemoteAddr`（[server_bg.go:46-49](Desktop/internal/ipc/server_bg.go#L46)，与 BUG-42 的 XFF 采信形成同工程不一致——同一鉴权族内一处防伪造一处不防，佐证 BUG-42 属遗漏而非设计）。恶意网页可匿名枚举自定义背景 URL/时间戳，暴露面小，列观察。
 - Windows 平台层代理深扫已排查并排除（防后续重复翻查）：`portcheck_native.go` 四张 MIB 表 rowSize/offset 与 iprtrmib 逐字段比对正确、句柄全 defer 关闭；`service_privilege.go` SHELLEXECUTEINFOW 字段偏移 amd64 对齐正确、伪令牌免 CloseHandle/FreeSid defer 齐；`screenshot.go` GDI 对象/DC 逆序释放无泄漏；`firewall_mgr.go/window_capturer.go/aspect_ratio_mgr.go` 薄委托干净；`autostart.go` 键均 Close、DeleteValue 对「本已缺失」容忍合理。
 - 核心引擎批次 B 与 Windows 平台层两份代理报告经源码复核后的**修正与降级**：批次 B 称「`DaysRemaining` 计算后全仓无消费者」不实（前端 [CertificateCard.vue:53-65](Desktop/frontend/src/components/encrypted/CertificateCard.vue#L53) 以 error/warning 色显示之，故本表 BUG-58 改述为「展示而非动作」——缺的是续期动作而非展示）；批次 B 称「前端 3-5s 轮询 `/encrypted/dns/status` 每次重跑 PKCS12 PBKDF2」的轮询前提不实（EncryptedDNSPanel 仅 onMounted 加载一次），相应内容降为观察；Windows 代理称 `queryStartType` NULL 缓冲探测可能返回非 INSUFFICIENT_BUFFER 错误——本机实机证伪（见下剔除节）。
+
+---
+
+## 第 10 轮（2026-10-17）— BUG-1~66 逐项二次排查（复核轮）
+
+> 复核方式：全部 66 条逐项对照当前源码复验，行号按当前代码重新锚定；其中 **15 条用临时 Go 测试当场重跑实证**（`zz_tmp_*`，运行后即删，本轮工作区只含文档改动）：BUG-5/34/35/37/38/40/44/45/51/56/57/59/61/62/65。前端集群（BUG-20~26/53~55）与 Linux 平台层（BUG-17~19/46~50）先由两路只读子代理定位，再对本会话未亲眼核对的每条断言与全部"纠偏"逐一回读源码后才采信。**结论汇总：65 条确认存在，待修复；1 条（BUG-44）为误报，无需修复**。观察项/已剔除项非立条缺陷，不在本次复核范围。
+
+### 逐项结论（〔〕内为复核判定）
+
+- **BUG-1** 〔确认存在，待修复〕`server.go:141-143` 空 token+回环放行原样存在；默认 `AuthToken:""`（config.go）；`cors.go:14/25` 反射 Origin+Credentials；`server_web.go:86` loopback 改密 `bypassOldAuth=true`。
+- **BUG-2** 〔确认存在，待修复〕`server_ws.go:84` 用同一 `verifyToken`，`CheckOrigin` 恒 true（:20-23）。
+- **BUG-3** 〔确认存在，待修复〕写 `p.ipcServer` 持锁于 controller_web.go:129-131；无锁读点 controller_metrics.go:128、main.go:255（runMetricsTicker 全程不取 p.mu）、main.go:290、controller_dns.go:90 均在。
+- **BUG-4** 〔确认存在，待修复〕aspect_ratio.go:139-146 仍用 `procSetWindowSubclass`；platform_windows.go:69-71 goroutine 丢弃返回值；AGENT_MISTAKES 实测该方法在本进程恒 FALSE。
+- **BUG-5** 〔确认存在，待修复〕**本轮实证**：内存记 10 条、`Search{Limit:3,Offset:5}` → entries=0（期望 3），与第 2 轮数字一致。
+- **BUG-6** 〔确认存在，待修复〕`acceptLoop`（server_dot.go:94-123）仍只判 `s.srv.serving()`，`d.stop` 在 accept 路径无读取方；对照 DoQ :105 显式 `errors.Is(err, quic.ErrServerClosed)`。
+- **BUG-7** 〔确认存在，待修复〕`ReloadEncrypted` server.go:77 解锁后 :93-114 调 start*，`s.dot=dl`（server_dot.go:80）无锁写 vs `DoTListenAddress` :21-23 持锁读；:97 解锁后裸读 `s.encrypted` 可被并发 `ReloadEncrypted(nil)` 置空。
+- **BUG-8** 〔确认存在，待修复〕flight fn 仍返回 `ctx.Resp` 原指针（cache_middleware.go:82）；跟随者 `c.val.Copy()`（cache_flight.go:44）在领导者 `Resp.Id/Truncate`（server.go:327/336）之前即被 `wg.Done()` 放行。
+- **BUG-9** 〔确认存在，待修复〕server_dot.go:140 握手后清全部期限；dot_conn.go:91 `d.conn.Write(framed)` 无任何期限；serve 只续读期限（:132）。
+- **BUG-10** 〔确认存在，待修复〕takeover.go:220-226 `Restore` 无论 err 均 `m.adapters=nil`+`stateStore.Clear()`；resetResidualLoopbackDNSNative 逐卡 `_ =` 吞错恒返 nil（dns_native.go:128-134）。
+- **BUG-11** 〔确认存在，待修复〕TakeoverSingle 失败路径（:173-189）仍只回滚簿记不调 restore；`a.ID==adapter.ID || a.Name==adapter.Name` 先命中即覆盖（:146-156）；RestoreSingle 同名多条目丢其余（:237-246）。子代理所称「Windows 侧先命中后 break 故不覆盖」经回读不成立——break 只停扫描，`m.adapters[i]=state` 本身就把同名的第一块卡快照覆盖了。
+- **BUG-12** 〔确认存在，待修复〕restore_script.go 仍把 `a.Name` 原样内插进 `echo` 与 `name="%s"`。
+- **BUG-13** 〔确认存在，待修复〕cli.go 仅显式 `-config` 才解析 StateFilePath；platform_windows.go:21 仍 `NewFileStateStore("")`。
+- **BUG-14** 〔确认存在，待修复〕service_mgr.go:325 `_ = stopServiceNative`；:329 硬编码 `defaultSCMQuery`（对照 :142-144 的可注入姿势）。
+- **BUG-15** 〔确认存在，待修复〕useConfirmModal.ts:38-40 二次 ask 覆写 `resolvePromise` 悬挂前一个 Promise，确证；useToast 复核修正：show() 其实有 clearTimeout 配对、dismiss 也清理，缺陷仅剩「无 onUnmounted 清理」（原验证方法中"无 setTimeout 被 clearTimeout 配对"一句不准确）。
+- **BUG-16** 〔确认存在，待修复〕ConfigureEncryptedDNS/ACL 全程持 `p.mu`（controller_encrypted.go:79-80、controller_acl.go:16-17）→ reloadDNSWithCurrentConfig（函数注释自述「在持有 p.mu 的前提下」）→ ReloadEncrypted→`oldDot.close()` 内 `wg.Wait()` 3s；在途查询经 controller_pipeline.go:34-43 等 getter 阻塞在同一把 `p.mu` 上。锁序倒置成立。
+- **BUG-17** 〔确认存在，待修复〕本轮 Grep 全仓 `diting.orig`：仅 restore_script.go:102/104 两处读取、零写入点；实际备份落 `DefaultDataDir()/backups/resolv.conf`（resolvconf.go:106-108），死分支确证。
+- **BUG-18** 〔确认存在，待修复〕RestoreSingle 匹配循环（takeover.go:199-208）无 break、命中项不进 remaining，确证；TakeoverSingle「先命中先覆盖」为快照覆盖语义（有 break 但 `m.adapters[i]=state` 即覆盖），原报告表述成立，子代理纠偏驳回。
+- **BUG-19** 〔确认存在，待修复〕service_mgr.go:71-88 候选含 `./build/bin/...` 相对路径且原样返回、commandExists 分支返回裸名；renderSystemdUnit 直拼 ExecStart，Linux 侧无 filepath.Abs（Windows 侧有，佐证遗漏）。
+- **BUG-20** 〔确认存在，待修复〕RulesPanel.vue:73/75 轮询整体覆写 `config`/`customRulesText`，全文件 dirty/焦点守卫检索为 0；usePoller 有 clearInterval（定时器清理不是本条缺陷点）。
+- **BUG-21** 〔① ② ④ 确认存在，待修复；③ 触发路径不成立〕①EncryptedListenersCard watch(props.status) 无条件回填 6 字段＋父 `onChanged` 整体替换，确证；②ReverseProxyCard computed 数组引用不稳，确证；④ClientsPanel 行内按钮成功后覆写 textarea 且请求体不含草稿，确证；**③SafeBrowsingCard 复核修正**：apply() 只在 onMounted 与自身保存回读时调用（注释明言"以回传值为准"属有意设计），父 PrivacyPanel 无轮询/ref/外部刷新路径——「外部状态刷新清草稿」在该处不可达，③ 不计。
+- **BUG-22** 〔确认存在，待修复〕QueryHistoryPanel.vue:37 普通 `let liveBuffer` 被 :285-286 模板消费、:147 push 无响应式伴随；:90 回包清空；回车路径无代次守卫。三点全部复现。
+- **BUG-23** 〔确认存在，待修复〕pollMetrics/handleSearch 双路径无守卫覆写 entries，确证；措辞修正：轮询请求其实携带当前 `currentSearch`，"闪回全量"应为"旧参数回包乱序覆写新参数结果"（竞态本体不变）。
+- **BUG-24** 〔确认存在，待修复〕`v-for idx→upstreams` 与 `providers` 双数组按 index 对齐、失败路径不重同步，确证。措辞修正：「forceSyncProviders 恒 false」不实——saveConfig **成功**路径有 `loadData(true)` 强制重同步（UpstreamPanel.vue:177），错位仅发生在失败路径；子代理据此判"根因成立"，采信。
+- **BUG-25** 〔确认存在，待修复〕UpstreamPanel.vue:178-180 裸 `setTimeout` 无句柄、全文件无 clearTimeout/onUnmounted，确证。
+- **BUG-26** 〔确认存在，待修复〕`:key="index"`+splice 属实；子代理"值不会粘错行"就 Vue 数据绑定而言正确，但报告所述症状本就以 shadow-DOM 焦点/内容错位为形态（删行后光标原位、后续输入写进上移分组），维持确认。
+- **BUG-27** 〔确认存在，待修复〕ConfigureClientGroups:88-93 换 `p.groupResolver` 字段，buildPipeline 按值捕获进五个中间件闭包（controller_pipeline.go，client/filter/filterResponse/cache/upstreamRoute），唯一调用点仍在 StartDNS；对照 controller_lan 的 Stop+Start。
+- **BUG-28** 〔确认存在，待修复〕GetStatus 锁内只取 `dnsRun`（controller_dns.go:155-157），随后 :159-248 无锁读 `p.resolver`/`p.cfg` 全量/`p.takeoverMgr`。
+- **BUG-29** 〔确认存在，待修复〕`UpdateConfig`（cache.go:81-95）仍不碰 `c.maxEntries`/分片容量（仅 :48-72 构造期折算）；淘汰点 :439、Stats :36、落盘 :63/:114 读旧值。
+- **BUG-30** 〔确认存在，待修复〕update 处理器（server_filter.go:127-149）无 URL 校验，add（:110-114）有；UpdateFilterList 无条件覆写（rule_engine_lists.go:76-78）。
+- **BUG-31** 〔确认存在，待修复〕janitor 仅构造期按 `cfg.Enabled` 启动（rate_limiter.go:104-106），UpdateConfig（:112-147）无启停；兜底为 maxBuckets=16384 内联淘汰。
+- **BUG-32** 〔确认存在，待修复〕controller_security.go:129-131 先改 `p.cfg.Upstream` 再 `_ = p.resolver.Configure(...)`，照常落盘返 nil。
+- **BUG-33** 〔确认存在，待修复〕四处 `req.TTL != nil && *req.TTL > 0` 原样在（rewrite:75、zone:55、safesearch:40、security:191）。
+- **BUG-34** 〔确认存在，待修复〕**本轮实证复现死锁**：全天计划+写者（PauseFor/ResumePause）并发下，第 2 次 `GetStats` 1.5s 未返回，栈转储 `GetStats`(rule_engine.go:181)→`currentTime`(rule_engine.go:270) 卡在 `sync.RWMutex.RLock`，与第 7 轮实证栈形一致。
+- **BUG-35** 〔确认存在，待修复〕**本轮实证复现**：`PutForGroup(kids)=true` → `Remove()=false` → 组内仍命中=true（首轮 harness 因未置 `Enabled:true` 假阴性，修正后确证）。
+- **BUG-36** 〔确认存在，待修复〕prefetch 回调 `c.Put(req,resp)` 写默认组键、`flight.Do(e.key)` 用分组键防抖（cache_prefetch.go:112-118），buildPrefetchRequest 不带组。
+- **BUG-37** 〔确认存在，待修复〕**本轮实证复现**：Lists[0].Enabled 翻转（条数不变）后 `CheckHost` 停用前=block、停用后=block。
+- **BUG-38** 〔确认存在，待修复〕**本轮实证复现**三种 panic：`/dns//query`「unclean path」、`/dns{query`「bad wildcard」、`/{ClientID}`「duplicate wildcard」；`normalizeDoHPath` 仍不收敛内部 `//`、不拒 `{`；全仓 `recover()` 仅 cache_flight.go 一处，main.go:76 `go p.run()` 裸协程 → 启动期 panic 即进程崩溃，崩溃链确证。
+- **BUG-39** 〔确认存在，待修复〕GET 分支（server_doh.go:248-258）解码无尺寸判据、POST 有；serveDoH 与流水线仅 `len(Question)==0` 早退，无 QDCOUNT==1/QR==0 校验。
+- **BUG-40** 〔确认存在，待修复〕**本轮实证复现**：带 OPT 请求进 `BuildDDRResponse` → `respIsEdns0=false、Extra=0、Answer=2`。
+- **BUG-41** 〔确认存在，待修复〕`soaZone := q.Name`（private_ptr_middleware.go:179）原样在。
+- **BUG-42** 〔确认存在，待修复〕`getClientIP`（server_static.go:126-141）无条件采信 XFF/X-Real-IP；server_web.go:34 直接作 Login 键；对照 realip.go 可信代理姿势。
+- **BUG-43** 〔确认存在，待修复〕`ipAttempts`/`ipLockedUntil` 仅登录成功 delete（auth.go:205-206），失败键无上限无回收。
+- **BUG-44** 〔**误报，无需修复**〕见下文专节。
+- **BUG-45** 〔确认存在，待修复〕**本轮实证复现**：`PauseFor(time.Duration(n)*time.Second)` n∈{-1,0,18446744073,10000000000} 四例全部 paused=true、remaining=876000h（100 年哨兵），溢出形态 -709.55ms/-2346317h 与第 8 轮记录逐字一致；n=300 正常 5m。
+- **BUG-46** 〔确认存在，待修复〕`pid == self → continue`（portcheck_owner.go）与 `isSelf` 判定链复核在；`case isSelf:` 与 hasSelfListener 为死代码成立（自身 socket 在 owners 表恒缺失）。
+- **BUG-47** 〔确认存在，待修复〕`/run/systemd/resolve/resolved.pid` 读取点与 `pid==0 → return nil` 短路复核在；措辞修正：isStub 仍有「stub 地址字面量」「进程名」两条子条件，准确的缺陷表述是「经此 pidfile 恒拿不到 PID、回退终止恒空操作返成功」，非「stub 识别整体废」。
+- **BUG-48** 〔确认存在，待修复〕`applied=append(applied,a)` 在 dns+domain 两命令全成功后才执行（backend_resolved.go:39-47），rollbackApplied 不含当前卡；TakeoverSingle（takeover.go:147-162）Apply 失败不调 backend.Restore，多卡路径（:96-99）有——两点均确证。
+- **BUG-49** 〔确认存在，待修复〕drop-in 先写（:55）→ restart 失败 → 回退因 BUG-47 恒 nil → 函数返 nil 谎报成功，链路复核在。
+- **BUG-50** 〔确认存在，待修复〕`Exec=%s` 原样拼 os.Executable()（autostart.go:71）、IsEnabled 仅 Stat 存在性，复核在。
+- **BUG-51** 〔确认存在，待修复〕**本轮实证复现**：`youtube.com##.video-ads` → 保留，Pattern="youtube.com"，Match(www.youtube.com) **Blocked=true Reason=blacklist**；`#@#`/`#?#` 同样漏网。
+- **BUG-52** 〔确认存在，待修复〕**本轮重新计数**：裸 `io.ReadAll(r.Body)` 恰 17 处、`io.ReadAll(io.LimitReader` 恰 13 处，与第 8 轮逐一吻合；http.Server 仍无请求体闸门（server.go:81-85）。
+- **BUG-53** 〔确认存在，待修复〕cache.ts:20 `params.set('q', query)` vs server_cache.go:35 `Get("query")`，字面量核对无误。
+- **BUG-54** 〔确认存在，待修复〕screenshot.ts:6 静态 import、main.ts 无条件引入、build 脚本无 wails 生成步、`git ls-files frontend/wailsjs` 为 0，全部复核在；引用路径修正：忽略规则在**仓库根** `.gitignore:22`（Desktop/ 下无独立 .gitignore），效果一致。
+- **BUG-55** 〔确认存在，待修复〕query 优先（App.vue:50）、handleNavigate 只写 hash、全文无 searchParams 清理，复核在；可达性与原报告「默认路径不触发、定级低」一致（应用内导航不产生 ?tab=，仅外部深链触发）。
+- **BUG-56** 〔确认存在，待修复〕**本轮实证复现（Windows）**：记 5 条→flush→`Clear(true)`→Search 仍 `Total=5 Entries=5`；且测试自身清理 TempDir 时报 `unlinkat ...jsonl: being used by another process`——写入器持句柄、删除失败当场二次取证。
+- **BUG-57** 〔确认存在，待修复〕**本轮实证复现**：原部署 certs 目录已不在本机，改以同构实验重跑——`MkdirAll(0700)+WriteFile(0600)+Chmod(0600)` 于 `C:\ProgramData` 下生成文件后 `icacls` 显示 `BUILTIN\Users:(I)(RX)`（继承 ProgramData 的 `(OI)(CI)(RX)`），与原报告取证完全一致；`writeFilePrivate`（cert_manager.go:424-435）仍无任何 Windows ACL 分支。
+- **BUG-58** 〔确认存在，待修复〕`EnsureSelfSigned` 见文件即短路（cert_manager.go:201-205）、TLSConfig 无 NotAfter 闸门（:123-131）、Go `X509KeyPair` 确不校验有效期；DaysRemaining 仅 CertificateCard 展示无动作分支。
+- **BUG-59** 〔确认存在，待修复〕**本轮实证复现**：30 万行文件、连续 UpdateConfig×Lookup 3 秒 → 20285 次查询 19585 次空返（**96.5%**，与第 9 轮 94.6% 同量级）；清空→锁外重填结构未变（hosts_resolver.go:100-123）。
+- **BUG-60** 〔确认存在，待修复〕MatchResponse 门控仍 `e.IsBlockingActive()`（rule_engine_response.go:74，全局语义），MatchForGroup 用 `IsBlockingActiveForGroup`（rule_engine.go:355）；调用方传 groupID 仅用于取 matcher，确证。
+- **BUG-61** 〔确认存在，待修复〕**本轮实证复现**：`buildRewriteRR(...,AAAA,{Value:"10.0.0.5"})` 返回 `x.lan. 60 IN AAAA ::ffff:10.0.0.5`；对照 A 分支拒收 `::1`，不对称复现。
+- **BUG-62** 〔确认存在，待修复〕**本轮实证复现**：`Lookup("dual.lan.", TypeA)` 应答 = `[CNAME(dual.lan.) A(dual.lan.)]` 同名并存。
+- **BUG-63** 〔确认存在，待修复〕scanAdaptersNative 全程无 `ctx.Done()` 检查（5 轮重试+逐卡解析）、NewAdapterScanner 弃用 executor 形参，复核在。
+- **BUG-64** 〔确认存在，待修复〕ImportPEM 落盘目标仍取 `SelfSignedCertFileName/SelfSignedKeyFileName`（cert_manager.go:264-265），与自签共用固定名，复核在。
+- **BUG-65** 〔确认存在，待修复〕**本轮实证复现**：内存空、落盘 100 条时 `Limit=10` 下 Offset=0/50/200 → Total=**10/60/100**，与第 9 轮记录逐字一致。
+- **BUG-66** 〔确认存在，待修复〕**本轮重新计数**：全仓 `json.NewDecoder(r.Body)` 共 14 处，其中 `server_bg.go:79` 前置 `MaxBytesReader`（有闸门），**无闸门实为 13 处**——原报告标题"14 处"与其列点清单（13 处）本就差一，本次以"14 读法、13 无闸"更正口径；缺陷本体（无统一 body 闸门 + login/setup 在鉴权前）不受影响。
+
+### BUG-44 误报判定专节（DNS64 EmbedIPv4InIPv6）
+
+- **判定**：误报，无需修复。原报告（第 8 轮）把 RFC 6052 §2.2 Table 2 读成「IPv4 必须紧随前缀连续放置、u 字节位于 IPv4 之后」，据此判 /40//48//56 三个分支把零字节插进了 IPv4 中间。
+- **复核依据（权威原文）**：RFC 6052 §2.2 规定 **u 字节固定在 bits 64–71（byte 8）**，对 /32–/64 前缀 IPv4 本就被该保留字节拦腰分隔（/40：IPv4 前 24 位在 bits 40–63 + 后 8 位在 bits 72–79；/48、/56 同型）；「IPv4 连续」只对 /64（u 在前）与 /96（无 u）成立——恰是原报告自认"正确"的两例。
+- **本轮实证（决定性）**：临时测试以 RFC 6052 Table 1/2 公布的官方样例（IPv4=192.0.2.33）逐一对账 `EmbedIPv4InIPv6` 输出，**六种前缀长度全部逐字命中规范样例**：/32→`2001:db8:c000:221::`、/40→`2001:db8:1c0:2:21::`、/48→`2001:db8:122:c000:2:2100::`、/56→`2001:db8:122:3c0:0:221::`、/64→`2001:db8:122:344:c0:2:2100::`、/96→`2001:db8:122:344::c000:221`。
+- **连带结论**：原报告「既有单测只断言 byte8==0、恰好被错误实现满足」同样反了——`v6[8]=0` 正是 RFC 对 u 字节的强制要求（"MUST be set to zero"），该单测断言的是正确性质；代码注释（如 case 56「IPv4[0] | u(8) | IPv4[1-3]」）与实现自洽且与规范一致。
+- **防重复翻查**：本条已含完整反证，后续轮次勿再以"连续布局"口径重报 DNS64 嵌入。
+
+### 复核中的表述修正汇总（缺陷本体均维持原判定，除所注降级/剔除点）
+
+1. BUG-44 整体误报（唯一剔除项，见专节）。
+2. BUG-21 的 ③（SafeBrowsingCard）外部刷新触发路径不可达，四同族点按三处计。
+3. BUG-15 useToast 的"定时器不清理"应限定为"缺 onUnmounted"（重弹/dismiss 均有 clearTimeout 配对）；useConfirmModal 部分原样成立。
+4. BUG-23 "闪回全量"应为"旧参数回包乱序覆写"（轮询携带的是当前过滤词）。
+5. BUG-24 括注「forceSyncProviders 恒 false」不实：成功路径 `loadData(true)` 会重同步，错位只在失败路径——报告现象段本就以失败为条件，根因不变。
+6. BUG-47 「stub 识别只剩两条路」偏强：isStub 的地址字面量与进程名子条件独立于 pidfile，准确口径是"pidfile 取 PID 恒败、回退终止恒空操作谎报成功"。
+7. BUG-54 gitignore 规则位于仓库根 `.gitignore`，非 `Desktop/.gitignore`（链接目标不存在），忽略效果一致。
+8. BUG-66 计数口径更正为"14 处 NewDecoder 读法、其中 13 处无闸门"（原文标题 14 与列点 13 自相矛盾）。
+9. 两条子代理纠偏经回读源码**驳回**：①「Windows TakeoverSingle 有 break 故同名覆盖不成立」——break 前 `m.adapters[i]=state` 已完成覆盖；②「BUG-24 根因不成立」——失败路径不重同步仍成立（该代理自己也据失败路径维持了确认）。
+
+### 复核残留处置
+
+本轮全部临时测试（`internal/querylog/zz_tmp_reverify_test.go`、`internal/core/zz_tmp_reverify2_test.go`、DoH panic 与 DNS64 样例临时 module、权限取证目录 `C:\ProgramData\DITING_PERMTEST`）验证后均已删除，`git status` 仅含本文档与 AGENT_MISTAKES.md。
 
 ---
 
