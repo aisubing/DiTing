@@ -9,6 +9,7 @@
   1. **Edit 锚点必须先 grep 现值再复制**，跨多轮的追加尤其如此——文件在会话里被自己改过多次，记忆中的「上一节结尾」常常是别的节。
   2. **可达性引证在落笔前完成，不是提交后补**：给每条 Go/Kotlin 引证当场 grep caller 集合；本轮 A-089 的教训是「同函数被多入口共用」（serveDNS 同时是 standalone 与 full-tunnel 入口）与「路径整体无生产者」是两种相反情形，判据都是 caller grep，不能凭函数名（engine_dns=VPN 路径）猜。
   3. 子代理报告的**组合主张拆开逐条验**：$$ 与 regex-# 同属「预处理截断」族，但 sinkhole-badfilter 一支依赖对错误变量置位假设，整族接受即把已证伪成员带入库。
+  4. **子代理给的计数/规模类事实一律自己数**：A-100 严重度理由最初引用「preset 仅 33 行」，实数 asset `https_passthrough.txt` 非注释非空行 =5 条，据此把触发面描述从「33 行」改「5 条」并留痕更正。计数直接决定定级（低 vs 中），比代码位置更易数错也更该自验；同一文件里的「实测 N 条」必须来自本会话的工具输出，不能来自报告。
 
 ### 2026-10-18: 子代理「高危触发面」未经调用者/写入者收窄即采信（验证不充分类）
 - **现象**：Room 数据层子代理报 D-01「`AppTrafficDao` 用 SQLite UPSERT → minSdk 24 全设备流量历史静默丢失」自评【高】，又称 Express「任意采样即触发」。回读：唯一写入链 `TrafficDatabaseSyncer.flushPendingDeltas` 只被 `TrafficStatsManager` 调用，而后者 `start()` 唯一入口是 `normal/DnsVpnService.kt:321`——**NORMAL 专属**，Express 全仓零引用 `TrafficDatabaseSyncer`；NORMAL 又被 UI 硬拦在 API 29+（`WorkModeComponents.kt:128-136`）。受害面从「24–29 全设备」收窄为「API 29/30」，且仓库自身 `DnsCacheDao.kt:46` 注释主张下限是 API 30 而非 24——子代理把「文件存在于 minSdk 24 工程」直接当成「24 全设备可触发」。同代理 D-03「DNS_MODE 跨库读 vpn_log 归属错」也被三条独立事实证伪（`dns_log` 仅 2 个写入者、DNS_MODE 从不写；统计页 dataset 不可达 DNS_MODE；Express 写读同库）。
