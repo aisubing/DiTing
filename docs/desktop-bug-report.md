@@ -39,7 +39,7 @@
 - **用户可见影响**
   - 触发条件真实存在：SLAAC RA 下发前缀但默认路由 router-lifetime=0（或被 DHCPv6 覆盖失败）、以及只配了站点内 v6 前缀、出口 v6 网关缺失的企业网络 —— 这类网络接口上会有 GUA 地址但没有可用 v6 默认路由。
   - AUTO（默认档）在这种网络上返回 true 后，`establishVpnInterface` 添加 `addAddress(VPN_ADDRESS_V6,64)`、`addDnsServer(DNS_SERVER_V6)`、`allowFamily(AF_INET6)`（`:166-170`）并下发 `2000::/3`（bypassLan=true，`:187`）或 `::/0`（`:200`）路由。系统据此偏好 AAAA/IPv6，流量进 TUN 后物理侧无 v6 网关，表现为仅开启 VPN 时 IPv6 目的地黑洞/超时（双栈站点变慢或部分打不开），关闭 VPN 或切到 IPv6=禁用即恢复。
-  - `DnsVpnNetworkMonitor.kt:69` 的 `scheduleIpv6AdaptationCheck` 也基于该探测做自适应，同样被短路结果误导。
+  - 仅影响建立时刻：`hasPhysicalIpv6Support` 只在 `establishVpnInterface`（`Ipv6Mode.AUTO` 分支）调用一次，会话期间物理网络变化不会重新评估（`DnsVpnNetworkMonitor.scheduleIpv6AdaptationCheck` 只回调 `onNetworkChanged`，而该回调在 `DnsVpnService.kt:57` 构造时未赋值即为 null）。因此错误的 IPv6 启用状态在整个 VPN 会话内保持，直至重连。
 - **复现/验证**
   1. JVM 单测方向：向 `hasPhysicalIpv6Support` 注入/构造含 `2000::/64` 链路地址、routes 仅有 IPv4 默认路由的 `LinkProperties`，断言应为 false；当前实现返回 true（`:136` 恒真）。
   2. 真机：路由器关闭 v6 前缀的默认路由（RA 里 router-lifetime=0 或只发前缀不发路由），手机获得 GUA；AUTO 档开启 VPN，`logcat | grep establishVpnInterface` 显示 `enableIpv6=true`；对比 v6-only 目标（如 `curl -6 https://[2606:4700:4700::1111]`）经 VPN 黑洞、直连正常。
