@@ -17,6 +17,7 @@
 | A-013 | 中 | 数据清理 | 「清理下载与临时缓存」删除 `filesDir/updates`，但更新安装包实际写入 `filesDir/app-update`，清理承诺落空且残留 APK 永久泄漏 | 待处理 |
 | A-014 | 中高 | 流量统计保留 | `app_traffic_daily` 只被「DNS 日志保留天数」（默认 7）清理，专属的「流量保留 30 天」设置无任何清理消费者；降低日志保留会静默销毁数周流量历史 | 待处理 |
 | A-015 | 中 | 流量实时速度 | Go 隧道模式（唯一生产路径）下每应用实时网速恒为 0：「按实时网速」排序与逐项 ↑/↓ 速度永不生效，而页面文案承诺展示 | 待处理 |
+| A-016 | 中 | 数据清理 | 「清除自定义背景缓存」删除 `appearance_settings` 偏好文件中的键，但背景设置实际存于 `dns_vpn_prefs`，清理后背景设置原样保留并继续生效 | 待处理 |
 
 ---
 
@@ -121,7 +122,39 @@
 
 ---
 
+## A-016 「清除自定义背景缓存」清空错误的偏好文件，背景设置与 URI 列表原样保留并继续生效
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/data/cleanup/DataCleanupManager.kt:429-438` — `clearCustomBackground()`：先 `CustomBackgroundManager.clearActiveCache(context)`，再对 `context.getSharedPreferences("appearance_settings", …)` 执行 `remove("custom_background_enabled") / remove("custom_background_uri") / remove("custom_background_uris")`，最后 `onBackgroundSettingsChanged(context, false, null)`
+  - `Android/app/src/main/java/com/haoze/diting/ui/settings/AppearanceSettingsStore.kt:1`（package `com.haoze.diting.ui.settings`）+ `:23-25`（键定义）+ `:121,127,133,171`（读写全部走 `PREFS_NAME`）
+  - `Android/app/src/main/java/com/haoze/diting/ui/settings/SettingsPreferencesExtensions.kt:8` — `internal const val PREFS_NAME = "dns_vpn_prefs"`：即 `AppearanceSettingsStore` 与同包 `StartupSelfCheck.kt:22` 实际使用的偏好文件是 **dns_vpn_prefs**，全仓没有任何代码读写名为 `appearance_settings` 的偏好文件（该字符串只出现在清理器 `:431` 与导航路由常量 `AppNavigationRoutes.kt:56`，后者是页面路由名，与 SharedPreferences 无关）
+  - UI 承诺：`normal/ui/DataCleanupScreen.kt:121` 与 `express/ui/ExpressDataCleanupScreen.kt:203` 的 `CUSTOM_BACKGROUND` 项 →「清除自定义背景缓存」
+- **问题**
+  - `remove` 打在空文件 `appearance_settings` 上，真实设置仍完整留在 `dns_vpn_prefs` 中。
+  - `onBackgroundSettingsChanged(context, false, null)`（`ui/background/CustomBackgroundManager.kt:265-271`）只做 `clearActiveCache`（丢弃已解码位图），**不写回** `custom_background_enabled`；因此下一次 `applyWindowBackground`（`:278-280`）仍从 `AppearanceSettingsStore.isCustomBackgroundEnabled()` 读到 true，随即按原 URI 重新加载背景。
+  - 与 A-013 同族：清理器对目标路径/键的引用与实现方各自硬编码字符串，无共享常量约束。
+- **用户可见影响**
+  - 用户点「清除自定义背景缓存」并确认后，当前会话中背景短暂消失（缓存被清），随后任意 Activity 创建/重建（切后台回前台、旋转、重进应用）背景即恢复；重启应用后背景完全如旧。设置页中的开关与图片列表也原样保留，用户感知「清理项无效」。
+  - `clearAllLocalData` 的全量清理（NORMAL `:533` 与 EXPRESS `:484`）同样调用该函数，「全面数据清理」后自定义背景仍在。
+- **触发路径**
+  1. 外观设置 → 开启自定义背景并选择图片。
+  2. 数据清理 → 清除自定义背景缓存 → 确认。
+  3. 回到桌面再重新打开应用：期望恢复默认背景，实际自定义背景仍在。
+- **复现/验证**
+  1. 静态：`DataCleanupManager.kt:431` 的 `"appearance_settings"` 与 `SettingsPreferencesExtensions.kt:8` 的 `"dns_vpn_prefs"` 对比；grep 全仓确认无任何 store 以 `appearance_settings` 为名调用 `getSharedPreferences`。
+  2. 真机：`run-as com.haoze.diting cat shared_prefs/dns_vpn_prefs.xml | grep custom_background` 在清理前后均含 `custom_background_enabled=true` 与 URI 列表（`appearance_settings.xml` 要么不存在、要么为空）。
+  3. 单测方向：Robolectric 下 `AppearanceSettingsStore.setCustomBackground(ctx, true, "content://x")` → `DataCleanupManager.clearCustomBackground(ctx)` → 断言 `isCustomBackgroundEnabled(ctx)` 为 false；当前实现返回 true，复现缺陷。
+- **备注**
+  - 修复方向：`clearCustomBackground` 应改用 `context.getSharedPreferences(PREFS_NAME, …)`（或直接调用 `AppearanceSettingsStore.setCustomBackground(context, false, null)` / 新增 `AppearanceSettingsStore.clearCustomBackground`，把键名与文件名的来源收敛到 store 内部）；同时核对 `custom_background_uris`（列表键）一并清理。
+  - 对照：同函数体内 `StartupSelfCheck.kt:52-61` 清理同名 JSON 键时用的就是 `PREFS_NAME`（`dns_vpn_prefs`），可见清理器此处属笔误而非设计。
+
+---
+
 ## 观察（未达到确认缺陷标准，供后续验证）
+
+### O-106 `StartupSelfCheck` 只消毒 NORMAL 偏好文件，Express/DNS_MODE 的同名键不覆盖
+- `ui/settings/StartupSelfCheck.kt:22` 固定 `getSharedPreferences(PREFS_NAME)`（`SettingsPreferencesExtensions.kt:8` = `"dns_vpn_prefs"`）消毒 `dns_resolution_mode`/`preset_dns_service`/`bootstrap_custom_json`；而 `ResolutionSettingsStore.kt:107-121` 等实际经 `datasetPrefs` 按数据集分文件存储（`RuleDataset.kt:24-28`：NORMAL=dns_vpn_prefs，EXPRESS=diting_express_prefs，DNS_MODE=diting_dns_mode_prefs）。NORMAL 恰好同文件被覆盖，Express/DNS_MODE 的损坏值不会被清理。
+- 未升级为缺陷：读取端本身安全（`getDnsResolutionMode` 对非法值 `?: SINGLE`，`getModeProviderIds` JSON 解析失败回落默认集），损坏值不致崩溃或错误行为，仅错过「修复落盘」的机会。确认方法：向 `diting_express_prefs` 注入非 JSON 的 `parallel_race_provider_ids`，跑自检后读回仍为损坏值（但功能已由 getter 兜底）。
 
 ### O-101 迁移 SQL 的 `DEFAULT` 与实体声明漂移（Room 容忍，非缺陷，仅规范卫生）
 - `MIGRATION_1_2`/`DNS_RULES_MIGRATION_1_2` 建表带 `enabled INTEGER NOT NULL DEFAULT 1`（`AppDatabase.kt:56`、`DnsRulesDatabase.kt:49`，含 `cosmetic_rule_source` 的 `:66`/`:59`），`MIGRATION_2_3`/`EXPRESS_MIGRATION_1_2` 的 ALTER 带 `isException ... DEFAULT 0`（`AppDatabase.kt:79` 等）；而实体列均无 `@ColumnInfo(defaultValue)`（`CosmeticRuleEntity.kt:28-29`、`CosmeticRuleSourceEntity.kt:17`）。
@@ -138,7 +171,6 @@
 - `normal/GoInspectionTunnel.kt:91-99`：`start()` 在 `scope.launch(Dispatchers.IO){ engine.startFull(...) }` 后立即返回 true，不确认 `startFull` 已进入；若 `stop()`（`:101-107`，`engine.stop()`）在 IO 协程到达 Go `StartFull` 的 `e.mu.Lock()`（`tunnel/engine_full_tunnel.go:92`）之前执行，Stop 见 `running=false` 直接返回，随后 StartFull 置 `running=true` 并新建 done channel，无人再持有。
 - 未升级原因：需要极快的 ACTION_STOP 或 IO 池饥饿才能命中，且 Kotlin 侧 `startJob?.cancel()` 若在 `startFull` 启动前生效可避免；无确定性触发。确认方法：start/stop 微压力测试轮询 `Engine.IsRunning()`。
 
-### O-105 原生崩溃批量收集的文件名用写入时刻（ms），同毫秒可覆盖丢一份
-- `crash/CrashLogManager.kt:53-54`：`saveCrashReport` 文件名 `crash_<yyyyMMdd_HHmmss_SSS>.log` 取的是**写入时** `Date()`，非崩溃标识；`checkAndCollectNativeCrashes` 在 `:320-341` 一个紧循环里最多迭代 10 条历史 `REASON_CRASH_NATIVE` 逐一落盘。两次迭代落入同一毫秒时，`FileOutputStream(file)` 截断覆盖前一份，历史原生崩溃静默丢失（现象：导出报告数少于待收集条数）。
+### O-105 原生崩溃批量收集的文件名用写入时刻（ms），同毫秒可覆盖丢一份- `crash/CrashLogManager.kt:53-54`：`saveCrashReport` 文件名 `crash_<yyyyMMdd_HHmmss_SSS>.log` 取的是**写入时** `Date()`，非崩溃标识；`checkAndCollectNativeCrashes` 在 `:320-341` 一个紧循环里最多迭代 10 条历史 `REASON_CRASH_NATIVE` 逐一落盘。两次迭代落入同一毫秒时，`FileOutputStream(file)` 截断覆盖前一份，历史原生崩溃静默丢失（现象：导出报告数少于待收集条数）。
 - 未升级为缺陷：每次迭代含 `fos.fd.sync()` 与 `pruneOldLogs` 的 `listFiles`+排序，真机通常 >1ms，需多条待收集原生崩溃且存储极快才命中。确认方法：预置两条同 `timestamp` 的 `ApplicationExitInfo`，观察只落一份文件。修复方向：文件名追加 `index`/`pid`/`exitInfo` 指纹或用存在即改名的去重。
 - 附带（非缺陷）：`CrashLogManager.kt:256-257` 的 `contains(X) || contains(X)` 两侧操作数相同，为无害复制粘贴；原生头 `DITING NATIVE CRASH REPORT` 不含 Java 子串 `DITING CRASH REPORT`，类型判定仍正确。
