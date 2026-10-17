@@ -17,6 +17,7 @@
 | A-004 | 中 | DNS 模式上游 | 自定义上游校验接受非法 IPv6 / `IPv4:端口` 字符串，保存后服务不可用 |
 | A-005 | 中 | 极速模式启动 | 规则缓存异步加载完成前 TUN 已开始处理查询，连接初期的拦截/放行规则不生效 |
 | A-006 | 中 | DNS 缓存清理 | 清理 DNS 缓存只清内存与数据库，未清待落盘队列，约 30 秒后缓存条目被重新写回 |
+| A-007 | 低 | 快捷设置磁贴 | `requestListeningState` 使用拼接错误的组件名，运行状态变化时磁贴刷新请求全部失效 |
 
 ---
 
@@ -190,6 +191,33 @@
   4. 如需直接取证：debug 包用 `adb shell run-as com.haoze.diting` 复制 `databases` 下的缓存库，清理前后查询 `dns_cache` 行数；清理后行数应保持 0，实际会在定时器后恢复为非 0。
   5. 单测方向：用 `TestScope` 和 fake DAO 调用 `resolve()` 产生 pending 写入，再调用 `DnsCacheController.clearAll()`，推进 30 秒，断言 `applyPendingWrites` 不应被调用或 `insertIfAbsent` 不应恢复已清空的 key。
 - **备注**：`DnsResponseCache` 已提供 `clear()`，但控制器未使用；应让 `clearAll()` 调用 `cache.clear()`（内部会清内存、取消并清空待写队列、清 DAO），再执行 Go 引擎清缓存回调，避免两处清理顺序竞争。
+
+---
+
+## A-007 快捷设置磁贴刷新使用了错误组件名，运行状态变化无法推送
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/tile/QuickSettingsTileUpdater.kt:15-25`
+  - `Android/app/src/main/java/com/haoze/diting/tile/DitingTileService.kt:158-181`、`:189-191`
+  - `Android/app/src/main/AndroidManifest.xml:82-85`
+  - 调用方：`Android/app/src/main/java/com/haoze/diting/normal/DnsVpnStatusNotifier.kt:19-25`、`Android/app/src/main/java/com/haoze/diting/express/ExpressVpnController.kt:170`、`Android/app/src/main/java/com/haoze/diting/server/backend/DnsModeService.kt:95`、`:126`
+- **问题**
+  - `QuickSettingsTileUpdater.requestTileUpdate()` 用 `ComponentName(appContext.packageName, "${appContext.packageName}.tile.DitingTileService")` 构造组件。
+  - `ComponentName` 的第二个参数要求完整类名。应用包名为 `com.haoze.diting`，因此实际得到的是 `com.haoze.diting.com.haoze.diting.tile.DitingTileService`，而清单中 `android:name=".tile.DitingTileService"` 对应的真实类名是 `com.haoze.diting.tile.DitingTileService`。
+  - `TileService.requestListeningState()` 按精确组件匹配；组件名错误时要么抛出异常、要么找不到目标磁贴，两种情况都不会让真实的 `DitingTileService` 收到 `onStartListening()` 回调。调用处的 `runCatching` 又会吞掉异常，只留下一条 warning 日志。
+- **触发路径**
+  - 正常/极速/DNS 模式在服务启停或状态变化时都会调用该刷新方法：正常模式经 `DnsVpnStatusNotifier.sendStatusBroadcast()`，极速模式经 `ExpressVpnController`，DNS 模式经 `DnsModeService.onStartCommand()`。
+  - 这些路径全部命中错误组件名；快捷设置面板已展开时，磁贴图标与副标题不会随服务状态更新，只有收起再展开（触发系统重新调用 `onStartListening()`）才恢复。
+- **影响**
+  - DNS 模式从磁贴启动后，`DnsModeManager.startService()` 先把状态置为 `STARTING`，`DitingTileService.toggleDnsService()` 随即按 `isRunning` 读取到“未运行”而保持 `STATE_INACTIVE`；服务启动完成后的刷新请求又因组件名错误失效，用户会看到“服务已启动但磁贴仍显示关闭”，直到重新展开面板。
+  - 正常/极速模式在面板展开期间被通知栏、其他入口或系统事件停止时，磁贴也可能继续显示为已开启。
+  - 该缺陷同时使 `DitingTileService.requestTileUpdate()` 这个公开入口完全无效。
+- **复现/验证**
+  1. 把磁贴添加到快捷设置，切到 DNS 模式，展开面板后点击磁贴启动服务；观察磁贴仍为关闭态，收起面板再展开后变为开启态。
+  2. 展开面板，用通知栏中的停止按钮关闭正常模式 VPN（或让服务因权限/系统原因停止），观察磁贴在面板展开期间仍显示开启。
+  3. 静态断言：`ComponentName("com.haoze.diting", "com.haoze.diting.tile.DitingTileService").flattenToString()` 应为 `com.haoze.diting/com.haoze.diting.tile.DitingTileService`；当前代码传入的类名多出一段包名。
+  4. 在 `requestTileUpdate()` 的 `onFailure` 中临时打印 `Log.e(TAG, "tile component", e)`，或直接过滤 logcat 中的 `QuickSettingsTileUpdater`，可看到每次服务状态变化都记录一次失败。
+- **备注**：应改为 `ComponentName(appContext, DitingTileService::class.java)`，或至少使用 `"${appContext.packageName}.tile.DitingTileService"` 作为完整类名而不是再拼一次包名；单元测试可直接断言 `ComponentName` 的 `className` 等于清单中的类名。
 
 ---
 
