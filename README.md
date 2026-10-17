@@ -181,7 +181,7 @@ python maintenance/app.py
 
 ```cmd
 REM 同步到目标版本（示例）
-.\Desktop\set_version.bat 1.4.0
+.\Desktop\set_version.bat 1.4.1
 ```
 
 ---
