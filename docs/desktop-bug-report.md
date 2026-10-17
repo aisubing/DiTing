@@ -232,7 +232,7 @@
   - `Android/app/src/main/AndroidManifest.xml:5-17`（未声明任何外部存储写权限）
 - **问题**
   - `exportToDownloads()` 首选 `MediaStore.Downloads.EXTERNAL_CONTENT_URI`、`MediaStore.MediaColumns.IS_PENDING`，这两个 API 都是 Android 10（API 29）才加入的。应用 minSdk 为 24，却没有 `Build.VERSION.SDK_INT >= 29` 分支。
-  - 在 Android 7.0–9（API 24–28）上，访问这些字段会在运行期抛出 `NoSuchFieldError`（属于 `Error`，被 `runCatching` 捕获），随后进入“直接写公共 Download 目录”的回退分支。
+  - 在 Android 7.0–9（API 24–28）上，访问这些 API 29 才存在的类/字段会在运行期抛出 `NoClassDefFoundError` 或 `NoSuchFieldError`（都属于 `Error`，被 `runCatching` 捕获），随后进入“直接写公共 Download 目录”的回退分支。
   - 回退分支调用 `Environment.getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS).writeText(...)`；应用没有声明 `WRITE_EXTERNAL_STORAGE`，且 targetSdk 为 36，在 API 24–28 上对公共目录的直接写入会被系统拒绝（`EACCES`），再次被 `runCatching` 吞掉并返回 `null`。
   - `onCrashOccurred()` 只有在 `uri != null` 时才设置 `KEY_PENDING_AUTO_EXPORT_NOTICE`，因此两条路径都失败时既不会生成备份，也不会给用户任何提示。
 - **触发路径**
