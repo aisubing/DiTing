@@ -2,6 +2,15 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；已被证伪的做法以「反例」形式并入相关条目，不单独成篇。
 
+### 2026-10-17: 桌面端冷启动依赖链存在"先有鸡还是先有蛋"（构建引导类）
+- **现象**：全新机器（无 `node_modules`、无 Go 模块缓存、无 `frontend/dist`）上 `go build ./...` 与 `wails generate module` 均直接失败：`frontend\embed.go:7:12: pattern all:dist: no matching files found`，导致 wailsjs 绑定无法生成，前端 `vue-tsc` 又因缺少 `../../wailsjs/go/main/App` 而无法构建。
+- **根因**：`frontend/embed.go` 用 `//go:embed all:dist` 把构建产物嵌入二进制，而 Go 编译期要求被嵌入目录至少存在一个文件；Wails 的 `generate module` 在编译 Go 包阶段即中断，无法走到生成绑定那一步，而绑定又是前端类型检查的前置。
+- **教训**：
+  1. **冷启动引导顺序固定为**：`go mod download` → `npm install` → `mkdir -p frontend/dist && echo '<!doctype html>' > frontend/dist/index.html`（占位）→ `wails generate module` → `npm run build` → `wails build`。占位文件仅用于打破循环，随后被 `vite build` 覆盖。
+  2. **`wails build` 本身会自动依次执行绑定生成、`npm install`、前端编译**，环境完好时无需手工分步；手工分步只用于在失败时定位是哪一环。
+  3. 依赖安装验证必须落到**真实构建产物**而非"命令退出码为 0"：本次以 `build/bin/diting-gui.exe` 启动出窗口（`[WebView2] Environment created successfully` + 进程持有主窗口标题）作为 WebView2 运行时与整条链路可用的证据。
+  4. `package-lock.json` 内版本号（1.3.8）与 `package.json`（1.3.10）不一致会在首次 `npm install` 时被改写，属无关 diff，应单独提交或还原，不要混进功能改动。
+
 ### 2026-10-17: 复核轮推翻自家"实证"结论：期望值须锚规范样例而非手算（验证不充分类）
 - **现象**：第 10 轮二次排查中，BUG-44（DNS64 /40//48//56 嵌入布局）被推翻判误报——第 8 轮的"实证"是把**同一份对 RFC 6052 的误读**同时写进代码预期与测试断言（"IPv4 连续、u 在其后"），而规范原文规定 u 字节**固定在 bits 64-71**、短前缀下 IPv4 本就被 u 拦腰分隔；以 RFC Table 1/2 公布的官方样例向量（192.0.2.33 × 六种前缀长度）直接对账代码输出，六例全部逐字命中，缺陷不存在。同轮另发现两处口径错：BUG-66 按 `grep json.NewDecoder(r.Body)` 计 14 处，未剔除前置 MaxBytesReader 的 1 处（server_bg），实际无闸 13 处；BUG-35 首轮回放测试假阴性（CacheConfig 忘置 Enabled:true，PutForGroup 在闸门处直接返回 false，根本没触达 Remove），险些误判"不复现"。
 - **根因**：
