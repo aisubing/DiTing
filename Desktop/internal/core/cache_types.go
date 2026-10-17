@@ -117,6 +117,9 @@ type CacheDomainStat struct {
 // cacheEntry 内部缓存条目模型
 type cacheEntry struct {
 	key          string
+	// group 记录条目所属客户端分组，供按组剔除与预取回源使用。
+	// key 里虽含组后缀，但反解字符串既脆弱又依赖分隔符约定。
+	group        string
 	domain       string
 	qtype        uint16
 	qclass       uint16

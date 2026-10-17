@@ -109,10 +109,17 @@ func (c *DNSCache) prefetchHotEntries(now time.Time) {
 		if req == nil {
 			continue
 		}
+		// 条目键带分组后缀，回源与写回都必须落在同一分组：
+		// 用默认组回源会把结果写到别的键上（分组热点永不刷新），
+		// 还会让默认组凭空多出非默认组流量触发的条目。
+		group := e.group
+		if group == "" {
+			group = DefaultClientGroupID
+		}
 		_, _, err := c.flight.Do(e.key, func() (*dns.Msg, error) {
-			resp, exErr := res.Exchange(context.Background(), req)
+			resp, exErr := exchangeForPrefetch(res, group, req)
 			if exErr == nil && resp != nil {
-				c.Put(req, resp)
+				c.PutForGroup(req, resp, group)
 			}
 			return resp, exErr
 		})
@@ -120,6 +127,22 @@ func (c *DNSCache) prefetchHotEntries(now time.Time) {
 			c.prefetchCount.Add(1)
 		}
 	}
+}
+
+// groupResolver 供预取按分组回源的解析器能力（*CoreResolver 实现）。
+type groupResolver interface {
+	ExchangeForGroup(ctx context.Context, group string, req *dns.Msg) (*dns.Msg, error)
+}
+
+// exchangeForPrefetch 按条目所属分组回源；非默认组优先走分组专属上游，
+// 解析器不支持分组或分组为默认组时回落全局解析。
+func exchangeForPrefetch(res Resolver, group string, req *dns.Msg) (*dns.Msg, error) {
+	if group != DefaultClientGroupID {
+		if gr, ok := res.(groupResolver); ok {
+			return gr.ExchangeForGroup(context.Background(), group, req)
+		}
+	}
+	return res.Exchange(context.Background(), req)
 }
 
 // collectPrefetchCandidates 收集符合预取条件的条目（至多 maxPrefetchPerTick 个）。

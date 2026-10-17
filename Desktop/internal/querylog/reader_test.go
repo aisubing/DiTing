@@ -86,7 +86,7 @@ func TestSearchFilesReverseEarlyStop(t *testing.T) {
 	paths := []string{filepath.Join(dir, day1), filepath.Join(dir, day2)}
 
 	var hits []Record
-	searchFilesReverse(paths, SearchQuery{Limit: 10}, 2, func(r Record) bool {
+	searchFilesReverse(paths, SearchQuery{Limit: 10}, 2, false, func(r Record) bool {
 		hits = append(hits, r)
 		return len(hits) >= 2
 	})
@@ -107,5 +107,37 @@ func TestFileDateMs(t *testing.T) {
 	}
 	if fileDateMs("garbage.txt") != 0 {
 		t.Fatalf("expected 0 for non-matching name")
+	}
+}
+
+// Total 必须是全量命中数，不能随 offset 截断：否则前端按 Total 算出的
+// 页数在第 1 页就只有 1 页，历史记录永远翻不到（BUG-65）。
+func TestSearchFilesTotalStableAcrossOffsets(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "querylog-20261012.jsonl")
+	recs := make([]Record, 0, 100)
+	for i := 0; i < 100; i++ {
+		recs = append(recs, Record{Timestamp: int64(1000 + i), Domain: "h.test", Status: StatusAllowed})
+	}
+	writeJSONL(t, path, recs)
+	paths := []string{path}
+
+	for _, offset := range []int{0, 50, 200} {
+		// 与 searchFiles 相同：候选只需补足 offset+limit 窗口内的部分
+		need := offset + 10
+		var hits []Record
+		total := searchFilesReverse(paths, SearchQuery{Limit: 10}, need, true, func(r Record) bool {
+			if len(hits) < need {
+				hits = append(hits, r)
+			}
+			// 与 searchFiles 一致：不请求提前停止，计数模式自行决定何时不再追加
+			return false
+		})
+		if total != 100 {
+			t.Fatalf("offset=%d 时 Total=%d，应为 100", offset, total)
+		}
+		if got := len(hits); got > need {
+			t.Fatalf("offset=%d 时候选数 %d 超过 need=%d", offset, got, need)
+		}
 	}
 }

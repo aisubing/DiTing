@@ -44,7 +44,7 @@ func TestCert_ImportPKCS12RoundTrip(t *testing.T) {
 
 	// PKCS#12 把私钥包在容器里，落盘前必须解出来重新编码成 PEM，
 	// 否则下一次重载按 PEM 去读会拿到一段二进制
-	keyPEM, err := os.ReadFile(filepath.Join(dir, SelfSignedKeyFileName))
+	keyPEM, err := os.ReadFile(filepath.Join(dir, ImportedKeyFileName))
 	if err != nil {
 		t.Fatalf("私钥未落盘: %v", err)
 	}

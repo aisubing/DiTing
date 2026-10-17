@@ -64,7 +64,12 @@ func (g *singleFlightGroup) Do(key string, fn func() (*dns.Msg, error)) (val *dn
 	}()
 
 	res, callErr := fn()
-	c.val = res
+	// 发布快照而不是调用方持有的活对象：领导者返回后仍会改写自己的
+	// ctx.Resp（重写 Id、按 UDP 尺寸截断），而跟随者此刻正从 c.val 复制。
+	// 只有把发布值钉成不可变副本，singleflight 的「发布后不可变」契约才成立。
+	if res != nil {
+		c.val = res.Copy()
+	}
 	c.err = callErr
 	if c.val != nil {
 		return c.val.Copy(), false, c.err

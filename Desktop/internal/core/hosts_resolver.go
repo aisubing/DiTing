@@ -97,7 +97,13 @@ func (r *HostsResolver) IsEnabled() bool {
 }
 
 // UpdateConfig 动态更新配置并热重载映射文件
+//
+// 先在新映射上构建完整结果、最后一次性换指针：旧实现在锁内清空映射、
+// 解锁后再逐文件重填，重填窗口内所有内网域名既解析不出、也不再被判定
+// 为本地权威，会被原样转发到公网上游（BUG-59）。
 func (r *HostsResolver) UpdateConfig(cfg HostsConfig) error {
+	v4, v6, ptr, loaded, err := r.buildMaps(cfg.Enabled, cfg.UseSystemHost, cfg.CustomFiles)
+
 	r.mu.Lock()
 	r.enabled = cfg.Enabled
 	r.useSystem = cfg.UseSystemHost
@@ -105,41 +111,71 @@ func (r *HostsResolver) UpdateConfig(cfg HostsConfig) error {
 	if cfg.TTL > 0 {
 		r.ttl = cfg.TTL
 	}
-	r.v4Map = make(map[string][]net.IP)
-	r.v6Map = make(map[string][]net.IP)
-	r.ptrMap = make(map[string][]string)
-	r.loadedFiles = nil
+	r.v4Map, r.v6Map, r.ptrMap, r.loadedFiles = v4, v6, ptr, loaded
 	r.mu.Unlock()
-
-	if cfg.Enabled {
-		if cfg.UseSystemHost {
-			_ = r.LoadFile(SystemHostsPath())
-		}
-		for _, f := range cfg.CustomFiles {
-			_ = r.LoadFile(f)
-		}
-	}
-	return nil
+	return err
 }
 
 // Reload 重新加载所有已注册的 hosts 文件
 func (r *HostsResolver) Reload() error {
-	r.mu.Lock()
+	r.mu.RLock()
 	files := make([]string, len(r.loadedFiles))
 	copy(files, r.loadedFiles)
-	r.v4Map = make(map[string][]net.IP)
-	r.v6Map = make(map[string][]net.IP)
-	r.ptrMap = make(map[string][]string)
-	r.loadedFiles = nil
-	r.mu.Unlock()
+	r.mu.RUnlock()
 
+	v4, v6, ptr, loaded, err := buildMapsFromFiles(files)
+
+	r.mu.Lock()
+	r.v4Map, r.v6Map, r.ptrMap, r.loadedFiles = v4, v6, ptr, loaded
+	r.mu.Unlock()
+	return err
+}
+
+// buildMaps 构建一份全新的映射；读取失败的文件跳过但仍记入 loadedFiles，
+// 与原先「加载成功才登记」的语义保持一致。
+func (r *HostsResolver) buildMaps(enabled, useSystem bool, customFiles []string) (
+	map[string][]net.IP, map[string][]net.IP, map[string][]string, []string, error,
+) {
+	if !enabled {
+		return emptyHostsMaps()
+	}
+	files := make([]string, 0, len(customFiles)+1)
+	if useSystem {
+		files = append(files, SystemHostsPath())
+	}
+	files = append(files, customFiles...)
+	return buildMapsFromFiles(files)
+}
+
+// buildMapsFromFiles 读取并解析给定文件列表，返回完整的新映射。
+func buildMapsFromFiles(files []string) (
+	map[string][]net.IP, map[string][]net.IP, map[string][]string, []string, error,
+) {
+	v4, v6, ptr := newHostsMaps()
+	loaded := make([]string, 0, len(files))
 	var lastErr error
 	for _, f := range files {
-		if err := r.LoadFile(f); err != nil {
+		fh, err := os.Open(f)
+		if err != nil {
 			lastErr = err
+			continue
 		}
+		parseHostsReader(fh, v4, v6, ptr)
+		_ = fh.Close()
+		loaded = append(loaded, f)
 	}
-	return lastErr
+	return v4, v6, ptr, loaded, lastErr
+}
+
+// newHostsMaps 创建一组空映射。
+func newHostsMaps() (map[string][]net.IP, map[string][]net.IP, map[string][]string) {
+	return make(map[string][]net.IP), make(map[string][]net.IP), make(map[string][]string)
+}
+
+// emptyHostsMaps 返回空映射与空文件列表（用于禁用状态）。
+func emptyHostsMaps() (map[string][]net.IP, map[string][]net.IP, map[string][]string, []string, error) {
+	v4, v6, ptr := newHostsMaps()
+	return v4, v6, ptr, nil, nil
 }
 
 // LoadFile 加载并解析指定的 hosts 文件内容
@@ -152,7 +188,7 @@ func (r *HostsResolver) LoadFile(path string) error {
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.parseReader(f)
+	parseHostsReader(f, r.v4Map, r.v6Map, r.ptrMap)
 	r.loadedFiles = append(r.loadedFiles, path)
 	return nil
 }
@@ -161,10 +197,11 @@ func (r *HostsResolver) LoadFile(path string) error {
 func (r *HostsResolver) LoadReader(rd io.Reader) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.parseReader(rd)
+	parseHostsReader(rd, r.v4Map, r.v6Map, r.ptrMap)
 }
 
-func (r *HostsResolver) parseReader(rd io.Reader) {
+// parseHostsReader 解析 hosts 文本并写入给定映射（不涉及任何锁）。
+func parseHostsReader(rd io.Reader, v4Map, v6Map map[string][]net.IP, ptrMap map[string][]string) {
 	scanner := bufio.NewScanner(rd)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -202,18 +239,18 @@ func (r *HostsResolver) parseReader(rd io.Reader) {
 
 			if isV4 {
 				v4 := ip.To4()
-				if !containsIP(r.v4Map[host], v4) {
-					r.v4Map[host] = append(r.v4Map[host], v4)
+				if !containsIP(v4Map[host], v4) {
+					v4Map[host] = append(v4Map[host], v4)
 				}
 			} else {
-				if !containsIP(r.v6Map[host], ip) {
-					r.v6Map[host] = append(r.v6Map[host], ip)
+				if !containsIP(v6Map[host], ip) {
+					v6Map[host] = append(v6Map[host], ip)
 				}
 			}
 
 			// 记录反向 PTR 查找（支持多别名映射）
-			if !containsString(r.ptrMap[ipStr], host) {
-				r.ptrMap[ipStr] = append(r.ptrMap[ipStr], host)
+			if !containsString(ptrMap[ipStr], host) {
+				ptrMap[ipStr] = append(ptrMap[ipStr], host)
 			}
 		}
 	}

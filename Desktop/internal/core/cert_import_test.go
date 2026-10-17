@@ -174,3 +174,85 @@ func TestCert_ParseChainEmpty(t *testing.T) {
 		t.Fatal("无证书块时应报错")
 	}
 }
+
+// 导入件必须与自签固定名隔离：共用一对文件名时，改回 self_signed 会复用
+// 导入证书（永不生成自签），点「重新签发」又会把导入件覆盖掉。
+func TestCert_ImportDoesNotCollideWithSelfSigned(t *testing.T) {
+	m, dir := newTestCertManager(t)
+
+	imported, err := GenerateSelfSignedCert(selfSignedCfg())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.ImportPEM(imported.CertPEM, imported.KeyPEM); err != nil {
+		t.Fatalf("导入 PEM 失败: %v", err)
+	}
+	importedOnDisk, err := os.ReadFile(filepath.Join(dir, ImportedCertFileName))
+	if err != nil {
+		t.Fatalf("导入件未落盘: %v", err)
+	}
+
+	// 切回自签来源后必须真正生成一张自签证书，而不是复用导入件
+	cfg := selfSignedCfg()
+	created, err := m.EnsureSelfSigned(cfg)
+	if err != nil {
+		t.Fatalf("生成自签证书失败: %v", err)
+	}
+	if !created {
+		t.Fatal("来源切回 self_signed 后应重新生成，而不是复用导入件")
+	}
+	if m.GetConfig().Source != CertSourceSelfSigned {
+		t.Fatalf("来源应切回自签，实得 %q", m.GetConfig().Source)
+	}
+
+	// 重签只动自签件，导入件必须原样保留
+	if err := m.RegenerateSelfSigned(cfg); err != nil {
+		t.Fatalf("重签失败: %v", err)
+	}
+	after, err := os.ReadFile(filepath.Join(dir, ImportedCertFileName))
+	if err != nil {
+		t.Fatalf("导入件丢失: %v", err)
+	}
+	if string(after) != string(importedOnDisk) {
+		t.Fatal("重签覆写了导入证书")
+	}
+}
+
+// 临近到期的自签证书必须被主动换掉：客户端握手会直接拒绝过期证书，
+// 而本端监听器不会报错，只靠「文件存在」永远发现不了。
+func TestCert_RenewSelfSignedWhenExpiringSoon(t *testing.T) {
+	m, dir := newTestCertManager(t)
+	cfg := selfSignedCfg()
+	cfg.ValidDays = 1
+	if _, err := m.EnsureSelfSigned(cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	// 重写一对 1 天有效期的证书，模拟 825 天自签已进入尾期
+	shortCfg := selfSignedCfg()
+	shortCfg.ValidDays = 1
+	gen, err := GenerateSelfSignedCert(shortCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, SelfSignedCertFileName), gen.CertPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, SelfSignedKeyFileName), gen.KeyPEM, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m.Reload()
+	if h := m.Health(); h.Expired || !h.Loaded {
+		t.Fatalf("刚生成的证书不应过期: %+v", h)
+	}
+	if h := m.Health(); h.DaysRemaining > int(CertRenewBefore.Hours()/24) {
+		t.Fatalf("有效期 1 天的证书应落入续签窗口: %+v", h)
+	}
+	renewed, err := m.RenewSelfSignedIfNeeded(selfSignedCfg())
+	if err != nil {
+		t.Fatalf("续签失败: %v", err)
+	}
+	if !renewed {
+		t.Fatal("即将到期的自签证书应被续签")
+	}
+}

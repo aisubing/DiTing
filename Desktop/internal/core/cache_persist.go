@@ -60,7 +60,7 @@ func (c *DNSCache) SaveToFile(path string) error {
 		Version:    cachePersistVersion,
 		SavedAt:    time.Now().UnixMilli(),
 		EntryCount: len(records),
-		MaxEntries: c.maxEntries,
+		MaxEntries: c.MaxEntries(),
 		Entries:    records,
 	}
 
@@ -111,7 +111,7 @@ func (c *DNSCache) LoadFromFile(path string) (int, error) {
 	}
 
 	now := time.Now()
-	limit := c.maxEntries
+	limit := c.MaxEntries()
 	if limit <= 0 {
 		limit = DefaultMaxCacheEntries
 	}

@@ -84,6 +84,21 @@ func ParseRules(r io.Reader, source string) ([]*ParsedRule, error) {
 	return rules, nil
 }
 
+// isCosmeticOrScriptRule 判断一行是否为 AdGuard 的元素隐藏 / 程序规则。
+//
+// 这些规则只作用于页面渲染，与 DNS 解析无关；不识别它们就会把
+// `域名##选择器` 当成域名黑名单。
+func isCosmeticOrScriptRule(line string) bool {
+	return strings.Contains(line, "##") ||
+		strings.Contains(line, "#@#") ||
+		strings.Contains(line, "#?#") ||
+		strings.Contains(line, "#@?#") ||
+		strings.Contains(line, "#$#") ||
+		strings.Contains(line, "#@$#") ||
+		strings.Contains(line, "#%#") ||
+		strings.Contains(line, "#@%#")
+}
+
 // ParseRuleLine 解析单行规则
 func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 	origLine := line
@@ -91,6 +106,14 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 
 	// 忽略空行、整行注释与列表头信息
 	if line == "" || line[0] == '!' || line[0] == '#' || line[0] == '[' {
+		return nil, false
+	}
+
+	// 网页/程序过滤规则 (##, #@#, #?#) 必须在本行任何 "#" 截断之前判定：
+	// AdGuard 语法里注释只在行首，中缀 "#" 是元素隐藏规则的分隔标记。
+	// 顺序颠倒后 `youtube.com##.video-ads` 会被截成 `youtube.com`，
+	// 降级成一条整域拦截规则——订阅含元素隐藏规则的列表即整站被拦。
+	if isCosmeticOrScriptRule(line) {
 		return nil, false
 	}
 
@@ -117,11 +140,6 @@ func ParseRuleLine(line, source string) (*ParsedRule, bool) {
 				}, true
 			}
 		}
-		return nil, false
-	}
-
-	// 忽略网页/CSS 过滤规则 (##, #@#, #?# 等非 DNS 规则)
-	if strings.Contains(line, "##") || strings.Contains(line, "#@#") || strings.Contains(line, "#?#") {
 		return nil, false
 	}
 

@@ -74,6 +74,12 @@ type RateLimiter struct {
 	maxBuckets int
 	stopCh     chan struct{}
 	clock      func() time.Time
+
+	// janitorCtx / janitorCancel 管理闲置桶回收协程的生命周期。
+	// 它的启停跟随 cfg.Enabled 热更新，而不是只在构造期判定一次。
+	janitorMu     sync.Mutex
+	janitorCtx    context.Context
+	janitorCancel context.CancelFunc
 }
 
 // NewRateLimiter 创建客户端限流引擎
@@ -100,12 +106,31 @@ func NewRateLimiter(ctx context.Context, cfg RateLimitConfig) *RateLimiter {
 		clock:      time.Now,
 	}
 	r.parseExemptions(cfg.ExemptIPs)
-
-	if cfg.Enabled {
-		go r.runJanitor(ctx, time.Minute)
-	}
+	r.janitorCtx = ctx
+	r.syncJanitorLocked(cfg.Enabled)
 
 	return r
+}
+
+// syncJanitorLocked 按启用状态启停闲置桶回收协程。调用方须持有 janitorMu。
+func (r *RateLimiter) syncJanitorLocked(enabled bool) {
+	if enabled {
+		if r.janitorCancel != nil {
+			return // 已在运行
+		}
+		ctx := r.janitorCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		janitorCtx, cancel := context.WithCancel(ctx)
+		r.janitorCancel = cancel
+		go r.runJanitor(janitorCtx, time.Minute)
+		return
+	}
+	if r.janitorCancel != nil {
+		r.janitorCancel()
+		r.janitorCancel = nil
+	}
 }
 
 // UpdateConfig 动态更新限流运行配置
@@ -122,6 +147,12 @@ func (r *RateLimiter) UpdateConfig(cfg RateLimitConfig) {
 	if cfg.IPv6Prefix <= 0 || cfg.IPv6Prefix > 128 {
 		cfg.IPv6Prefix = 128
 	}
+
+	// 回收协程的启停与配置更新同步：运行中把限流从关闭改为开启，
+	// 若不同时启动 janitor，历史桶就只能等 16384 上限的内联淘汰兜底。
+	r.janitorMu.Lock()
+	r.syncJanitorLocked(cfg.Enabled)
+	r.janitorMu.Unlock()
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -301,6 +332,12 @@ func (r *RateLimiter) cleanupIdleBuckets() {
 
 // Close 停止后台清理协程
 func (r *RateLimiter) Close() {
+	r.janitorMu.Lock()
+	if r.janitorCancel != nil {
+		r.janitorCancel()
+		r.janitorCancel = nil
+	}
+	r.janitorMu.Unlock()
 	select {
 	case <-r.stopCh:
 	default:

@@ -1,7 +1,6 @@
 package querylog
 
 import (
-	"os"
 	"sync"
 	"time"
 )
@@ -103,17 +102,15 @@ func (q *QueryLog) Search(sq SearchQuery) SearchResult {
 	fileOK := q.fileOK
 	q.mu.RUnlock()
 
-	mem, memTotal := ringRef.search(sq)
+	// 内存环返回全部命中（新→旧），分页统一在最外层做一次，避免双重偏移
+	mem, memTotal := ringRef.searchAll(sq)
 
 	// 内存结果不足以覆盖请求页时，回退扫描落盘文件补齐更早的历史
 	var fileHits []Record // 新→旧
 	var fileTotal int
 	needFile := sq.IncludeFile && fileOK && writerRef != nil && memTotal < sq.Offset+sq.Limit+1
 	if needFile {
-		fileHits, fileTotal = searchFiles(writerRef, sq, mem)
-	} else if !sq.IncludeFile {
-		// 不回退文件时，Total 仅反映内存环内命中
-		fileTotal = 0
+		fileHits, fileTotal = searchFiles(writerRef, sq, memTotal, ringRef.oldestTimestamp())
 	}
 
 	total := memTotal + fileTotal
@@ -136,25 +133,36 @@ func (q *QueryLog) Search(sq SearchQuery) SearchResult {
 
 // searchFiles 扫描落盘文件补齐更早的历史命中（返回新→旧顺序）。
 //
-// 以内存结果中最早一条记录的时间为上界，仅扫描更旧的部分，避免重复；
-// 文件数量按新→旧遍历，采足 sq.Offset+sq.Limit 条候选即可提前停止。
-func searchFiles(w *writer, sq SearchQuery, mem []Record) ([]Record, int) {
-	var memOldest int64
-	if len(mem) > 0 {
-		memOldest = mem[len(mem)-1].Timestamp
-	}
+// 以内存环最旧记录的时间为上界，仅扫描更旧的部分，避免与内存结果重复计数。
+// 仅收集到 offset+limit 条候选后不再追加，但继续计数。
+// searchFiles 扫描落盘文件补齐更早的历史命中（返回新→旧顺序）。
+//
+// 以内存环最旧记录的时间为上界，仅扫描更旧的部分，避免与内存结果重复计数。
+// 返回的 total 是文件窗口内的全部命中数（不是本页候选数），保证翻页时 Total 稳定。
+//
+// 同一次调用里既需要「补齐本页候选」又需要「准确总数」：分页页码由 Total 算出，
+// 若把「采满即停」当作总数，Total 会随 offset 增长、第 1 页永远没有下一页
+// （BUG-65）。因此这里始终走计数模式，候选收够后继续扫描但不再追加。
+func searchFiles(w *writer, sq SearchQuery, memTotal int, memOldest int64) ([]Record, int) {
 	fileQ := sq
 	if memOldest > 0 && (fileQ.EndMs == 0 || fileQ.EndMs > memOldest) {
 		fileQ.EndMs = memOldest - 1
 	}
 
-	need := sq.Offset + sq.Limit
+	// 文件部分只需补足内存未覆盖的页内候选
+	need := sq.Offset + sq.Limit - memTotal
+	if need < 0 {
+		need = 0
+	}
 	var hits []Record
-	searchFilesReverse(w.listFiles(), fileQ, need, func(r Record) bool {
+	total := searchFilesReverse(w.listFiles(), fileQ, need, true, func(r Record) bool {
+		if len(hits) >= need {
+			return false // 已采足候选，继续计数但不追加
+		}
 		hits = append(hits, r)
-		return len(hits) >= need
+		return false
 	})
-	return hits, len(hits)
+	return hits, total
 }
 
 // Stats 返回当前 24 小时滚动窗口的汇总统计。
@@ -237,9 +245,12 @@ func (q *QueryLog) UpdateConfig(cfg QueryLogConfig) error {
 }
 
 // Clear 清空内存环与统计（可选同时清空落盘文件）。
-func (q *QueryLog) Clear(removeFiles bool) {
+//
+// 删除落盘文件必须经由写入器关闭句柄后执行，否则 Windows 上删除失败、
+// POSIX 上写入进入孤儿 inode；失败时返回聚合错误供调用方如实上报。
+func (q *QueryLog) Clear(removeFiles bool) error {
 	if q == nil {
-		return
+		return nil
 	}
 	q.mu.RLock()
 	ringRef := q.ring
@@ -252,10 +263,9 @@ func (q *QueryLog) Clear(removeFiles bool) {
 	collector.Clear()
 
 	if removeFiles && fileOK && writerRef != nil {
-		for _, p := range writerRef.listFiles() {
-			_ = os.Remove(p)
-		}
+		return writerRef.removeFiles()
 	}
+	return nil
 }
 
 // Close 停止写入器并落盘。

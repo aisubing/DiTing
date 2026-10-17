@@ -8,7 +8,17 @@ import "time"
 // 若持久化，服务重启后无人值守的暂停会长期关闭过滤，属安全上不可接受的状态；
 // 因此进程重启即自动恢复拦截，由前端按需重新发起暂停。
 
+// MaxPauseDuration 单次定时暂停的上限，超出视为调用方错误。
+//
+// 没有上限时，D 秒数乘算溢出或传负数都会被静默解释成「暂停至手动恢复」，
+// 一次参数笔误就能让过滤事实上永久关闭。
+const MaxPauseDuration = 365 * 24 * time.Hour
+
 // PauseFor 暂停拦截指定时长（d <= 0 表示暂停至手动恢复）。
+//
+// 定时暂停只接受 (0, MaxPauseDuration]：负值与溢出后的值不该被当成
+// 「永久暂停」的另一种写法，否则调用方根本无从区分「我要停一周」和
+// 「参数算错了」。
 func (e *RuleEngine) PauseFor(d time.Duration) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -21,6 +31,9 @@ func (e *RuleEngine) PauseFor(d time.Duration) {
 		// 以远未来时刻表示「暂停至手动恢复」
 		e.pausedUntil = nowFn().Add(100 * 365 * 24 * time.Hour)
 		return
+	}
+	if d > MaxPauseDuration {
+		d = MaxPauseDuration
 	}
 	e.pausedUntil = nowFn().Add(d)
 }
@@ -56,15 +69,25 @@ func (e *RuleEngine) PauseState() (paused bool, remaining time.Duration, until t
 
 // pauseStateUnlocked 读取暂停状态（调用方须持有 e.mu，读锁或写锁均可）。
 func (e *RuleEngine) pauseStateUnlocked() (paused bool, until time.Time) {
+	return e.pauseStateUnlockedAt(e.clockNowUnlocked())
+}
+
+// pauseStateUnlockedAt 以给定时刻读取暂停状态（调用方须持有 e.mu）。
+func (e *RuleEngine) pauseStateUnlockedAt(now time.Time) (paused bool, until time.Time) {
 	if e.pausedUntil.IsZero() {
 		return false, time.Time{}
 	}
+	if !now.Before(e.pausedUntil) {
+		return false, e.pausedUntil
+	}
+	return true, e.pausedUntil
+}
+
+// clockNowUnlocked 读取注入时钟（调用方须持有 e.mu；不额外加锁）。
+func (e *RuleEngine) clockNowUnlocked() time.Time {
 	nowFn := e.now
 	if nowFn == nil {
 		nowFn = time.Now
 	}
-	if !nowFn().Before(e.pausedUntil) {
-		return false, e.pausedUntil
-	}
-	return true, e.pausedUntil
+	return nowFn()
 }

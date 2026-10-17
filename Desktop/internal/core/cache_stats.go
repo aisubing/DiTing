@@ -33,7 +33,7 @@ func (c *DNSCache) Stats() CacheStats {
 		NegativeHits:  c.negativeHits.Load(),
 		HitRatio:      ratio,
 		EntryCount:    count,
-		MaxEntries:    c.maxEntries,
+		MaxEntries:    c.MaxEntries(),
 		EvictionCount: c.evictions.Load(),
 		PrefetchCount: c.prefetchCount.Load(),
 	}

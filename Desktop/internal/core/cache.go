@@ -12,9 +12,11 @@ import (
 
 // DNSCache 实现 64 分片并发安全的高性能内存 LRU 缓存与 SWR 容灾体系
 type DNSCache struct {
-	configMu   sync.RWMutex
-	config     CacheConfig
-	shards     [NumDNSCacheShards]*cacheShard
+	configMu sync.RWMutex
+	config   CacheConfig
+	shards   [NumDNSCacheShards]*cacheShard
+	// capacityMu 保护 maxEntries：热更新容量时统计/落盘协程会并发读取
+	capacityMu sync.RWMutex
 	maxEntries int
 
 	flight *singleFlightGroup
@@ -91,6 +93,10 @@ func (c *DNSCache) UpdateConfig(cfg CacheConfig) {
 	} else if len(cfg.ExcludePatterns) == 0 {
 		c.excluder.Store(ex)
 	}
+
+	// 容量必须同步折算到运行期：只换 config 会让逐出阈值、落盘上限与
+	// Stats().MaxEntries 停留在启动值，界面显示"已扩容"而实际毫无变化。
+	c.resizeCapacity(cfg.MaxEntries)
 
 	// 落盘开关与间隔都可以在运行时调整。只在启动时判定一次，
 	// 会让"刚打开开关却迟迟不落盘"与"已关闭却仍在写盘"两种情形同时出现。
@@ -411,6 +417,7 @@ func (c *DNSCache) PutForGroup(req *dns.Msg, resp *dns.Msg, group string) bool {
 	key := CacheKeyForGroup(q.Name, q.Qtype, q.Qclass, group)
 	entry := &cacheEntry{
 		key:          key,
+		group:        normalizeCacheGroup(group),
 		domain:       strings.ToLower(strings.TrimSuffix(strings.TrimSpace(q.Name), ".")),
 		qtype:        q.Qtype,
 		qclass:       q.Qclass,
@@ -459,13 +466,21 @@ func (c *DNSCache) SingleFlight(key string, fn func() (*dns.Msg, error)) (*dns.M
 	return c.flight.Do(key, fn)
 }
 
-// Remove 从分片缓存中主动剔除指定请求的条目
+// Remove 从分片缓存中主动剔除指定请求的条目（默认组）。
 func (c *DNSCache) Remove(req *dns.Msg) bool {
+	return c.RemoveForGroup(req, DefaultClientGroupID)
+}
+
+// RemoveForGroup 按客户端分组剔除指定请求的条目。
+//
+// 分组隔离后条目键带组后缀，只删默认组键会让非默认组的被拦应答
+// 一直留到自然过期并持续重放——安全剔除路径必须与写入路径同组。
+func (c *DNSCache) RemoveForGroup(req *dns.Msg, group string) bool {
 	if req == nil || len(req.Question) == 0 {
 		return false
 	}
 	q := req.Question[0]
-	key := CacheKey(q.Name, q.Qtype, q.Qclass)
+	key := CacheKeyForGroup(q.Name, q.Qtype, q.Qclass, group)
 	shard := c.shard(key)
 	shard.mu.Lock()
 	defer shard.mu.Unlock()
@@ -478,4 +493,13 @@ func (c *DNSCache) Remove(req *dns.Msg) bool {
 		return true
 	}
 	return false
+}
+
+// normalizeCacheGroup 把分组名归一化为缓存层使用的形式（空串视为默认组）。
+func normalizeCacheGroup(group string) string {
+	g := strings.TrimSpace(group)
+	if g == "" {
+		return DefaultClientGroupID
+	}
+	return g
 }

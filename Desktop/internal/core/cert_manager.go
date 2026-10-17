@@ -7,11 +7,14 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/haoze-evolluling/diting/desktop/internal/platform/protect"
 
 	// 选 sslmate 的实现而不用 golang.org/x/crypto/pkcs12：后者只认
 	// 2000 年代的 3DES/SHA-1 容器，而 OpenSSL 3.x、Windows certutil
@@ -28,6 +31,9 @@ import (
 const (
 	SelfSignedCertFileName = "server.crt"
 	SelfSignedKeyFileName  = "server.key"
+	// 导入的证书单独命名，避免与自签固定名互相覆盖
+	ImportedCertFileName = "imported.crt"
+	ImportedKeyFileName  = "imported.key"
 )
 
 // CertManager 管理加密 DNS 服务端证书。
@@ -198,7 +204,9 @@ func (m *CertManager) EnsureSelfSigned(cfg CertConfig) (bool, error) {
 	certPath := filepath.Join(dir, SelfSignedCertFileName)
 	keyPath := filepath.Join(dir, SelfSignedKeyFileName)
 
-	if fileExists(certPath) && fileExists(keyPath) {
+	// 见文件即短路只在「确实是我们自己的自签件」时成立：导入的 PEM 会
+	// 被记到 file 来源，此时绝不能把导入证书当成自签再复用（BUG-64）。
+	if fileExists(certPath) && fileExists(keyPath) && m.ownedBySelfSigned() {
 		m.Configure(cfgSource(cfg, CertSourceSelfSigned))
 		return false, nil
 	}
@@ -216,6 +224,41 @@ func (m *CertManager) EnsureSelfSigned(cfg CertConfig) (bool, error) {
 
 	m.Configure(cfgSource(cfg, CertSourceSelfSigned))
 	return true, nil
+}
+
+// ownedBySelfSigned 报告当前配置是否本就指向自签固定文件。
+//
+// 来源为 file 且路径不是自签固定文件时，磁盘上的 server.crt/key 属于
+// 导入件，不能被自签流程复用或覆盖。
+func (m *CertManager) ownedBySelfSigned() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.cfg.Source == CertSourceSelfSigned || m.cfg.Source == "" {
+		return true
+	}
+	if m.cfg.Source != CertSourceFile {
+		return false
+	}
+	if !sameFilePath(m.cfg.CertFile, filepath.Join(m.dir, SelfSignedCertFileName)) {
+		return false
+	}
+	// 旧版本把导入件也落在 server.crt：只有内容确实是自签证书时才认作己有，
+	// 否则仍应重新生成自签件而不是复用那张外部证书。
+	return m.leaf != nil && isSelfSigned(m.leaf)
+}
+
+// sameFilePath 比较两个文件路径是否指向同一文件（忽略大小写与相对路径差异）。
+func sameFilePath(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	if pa, err := filepath.Abs(a); err == nil {
+		a = pa
+	}
+	if pb, err := filepath.Abs(b); err == nil {
+		b = pb
+	}
+	return strings.EqualFold(filepath.Clean(a), filepath.Clean(b))
 }
 
 // RegenerateSelfSigned 无条件重新签发一张自签证书。
@@ -262,8 +305,10 @@ func (m *CertManager) ImportPEM(certPEM, keyPEM []byte) error {
 	if dir == "" {
 		return fmt.Errorf("证书目录未配置")
 	}
-	certPath := filepath.Join(dir, SelfSignedCertFileName)
-	keyPath := filepath.Join(dir, SelfSignedKeyFileName)
+	// 导入件与自签件分开命名：共用一个文件名会让「来源切换」变成
+	// 互相踩踏——切回 self_signed 会复用导入件，重签又会覆盖导入件。
+	certPath := filepath.Join(dir, ImportedCertFileName)
+	keyPath := filepath.Join(dir, ImportedKeyFileName)
 
 	// 落盘的是从已解析的密钥对重新编码的结果，而不是用户交上来的那段
 	// 文本：后者可能夹带私钥之外的块或注释，证书目录里只该有我们认得的
@@ -421,9 +466,13 @@ func cfgSource(cfg CertConfig, src string) CertConfig {
 // 私钥一旦可被同机其他用户读取，这套加密监听就只剩「传输加密」而
 // 没有「身份认证」——任何人都能用同一个名字架一台假冒服务器。
 func writeFilePrivate(path string, data []byte) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("创建证书目录失败: %w", err)
 	}
+	// 目录也要收紧：Windows 下 0o700 不产生任何 ACL 效果，
+	// 新建文件会继承父目录（%ProgramData%\DITING）默认的 Users 读权限。
+	hardenPrivatePath(dir)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("写入 %s 失败: %w", filepath.Base(path), err)
 	}
@@ -431,7 +480,18 @@ func writeFilePrivate(path string, data []byte) error {
 	// 一个早先以 0644 落盘、之后被覆盖的私钥会一直保持可读。
 	// 失败不算致命——文件已写入，收紧权限只是加固。
 	_ = os.Chmod(path, 0o600)
+	hardenPrivatePath(path)
 	return nil
+}
+
+// hardenPrivatePath 在支持 ACL 的平台上把路径收紧为仅系统/管理员可访问。
+//
+// 其它平台是空操作：POSIX 下权限已由 mode 表达。失败只记录，
+// 不阻断证书落盘——没有证书整个加密监听都起不来，比权限放宽更糟。
+func hardenPrivatePath(path string) {
+	if err := protect.ProtectPathPrivate(path); err != nil {
+		log.Printf("收紧 %s 访问权限失败: %v", path, err)
+	}
 }
 
 // fileExists 判断常规文件是否存在

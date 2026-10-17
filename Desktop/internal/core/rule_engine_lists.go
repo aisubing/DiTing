@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -71,6 +72,12 @@ func (e *RuleEngine) UpdateFilterList(list FilterList) error {
 	}
 	if idx == -1 {
 		return fmt.Errorf("找不到订阅列表: %s", list.ID)
+	}
+
+	// 引擎侧同样拒收空 URL：控制器与引擎都可被直接调用，
+	// 只在 HTTP 入口加闸会让其他调用方仍能清空在用订阅源。
+	if strings.TrimSpace(list.URL) == "" {
+		return fmt.Errorf("订阅列表 %s 的 URL 不能为空", list.ID)
 	}
 
 	e.cfg.Lists[idx].Name = list.Name

@@ -39,6 +39,7 @@ type RuleEngine struct {
 // NewRuleEngine 初始化规则引擎并自动加载构建规则索引
 func NewRuleEngine(cfg FilterConfig) *RuleEngine {
 	NormalizeFilterConfig(&cfg)
+	cfg = cloneFilterConfig(cfg)
 
 	engine := &RuleEngine{
 		cfg:     cfg,
@@ -98,7 +99,22 @@ func (e *RuleEngine) SetEnabled(enabled bool) {
 func (e *RuleEngine) GetConfig() FilterConfig {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.cfg
+	return cloneFilterConfig(e.cfg)
+}
+
+// cloneFilterConfig 深拷贝配置中的切片字段。
+//
+// 引擎必须独占自己的配置存储：调用方拿到 GetConfig 的结果后改动再传回
+// UpdateConfig 是常见用法，共享底层数组会让「旧值」随调用方的修改一起变，
+// 变更检测（含订阅列表逐项比较）随之永远看不到差异。
+func cloneFilterConfig(cfg FilterConfig) FilterConfig {
+	cfg.CustomRules = append([]string(nil), cfg.CustomRules...)
+	cfg.Lists = append([]FilterList(nil), cfg.Lists...)
+	cfg.BlockedServices = append([]string(nil), cfg.BlockedServices...)
+	cfg.BlockedServiceGroups = append([]string(nil), cfg.BlockedServiceGroups...)
+	cfg.Schedules = append([]BlockingSchedule(nil), cfg.Schedules...)
+	cfg.BogusNXDomainNetworks = append([]string(nil), cfg.BogusNXDomainNetworks...)
+	return cfg
 }
 
 // UpdateConfig 更新过滤配置并热重载
@@ -115,6 +131,9 @@ func (e *RuleEngine) UpdateConfig(cfg FilterConfig) error {
 	if cfg.Lists == nil {
 		cfg.Lists = old.Lists
 	}
+	// 引擎只持有自己的副本：入参可能与 old（或 GetConfig 的返回值）共享
+	// 底层数组，不复制就无从比较新旧差异。
+	cfg = cloneFilterConfig(cfg)
 	if cfg.DataDir == "" {
 		cfg.DataDir = old.DataDir
 	}
@@ -136,12 +155,31 @@ func (e *RuleEngine) UpdateConfig(cfg FilterConfig) error {
 		equalStrings(old.CustomRules, cfg.CustomRules) &&
 		equalStrings(old.BlockedServices, cfg.BlockedServices) &&
 		equalStrings(old.BlockedServiceGroups, cfg.BlockedServiceGroups) &&
-		len(old.Lists) == len(cfg.Lists)
+		// 列表必须逐项比对：翻转 enabled、替换 URL、调整顺序都不改变条数，
+		// 只比长度会让界面显示已停用的列表继续拦截（与上面服务选择的注释同型）
+		equalFilterLists(old.Lists, cfg.Lists)
 	if matcherInputsUnchanged {
 		return nil
 	}
 
 	return e.rebuildUnlocked()
+}
+
+// equalFilterLists 逐项比较订阅列表的匹配器相关字段。
+//
+// 只比较会影响规则内容的字段：RulesCount/LastUpdated/Checksum 等是拉取
+// 结果，它们的更新本就伴随规则文件重载，不构成"匹配器需要重建"的依据。
+func equalFilterLists(a, b []FilterList) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].ID != b[i].ID || a[i].URL != b[i].URL || a[i].Enabled != b[i].Enabled ||
+			a[i].Name != b[i].Name {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *RuleEngine) getMatcher() *RuleMatcher {
@@ -152,6 +190,9 @@ func (e *RuleEngine) getMatcher() *RuleMatcher {
 
 // GetStats 获取当前运行时拦截与规则统计指标
 func (e *RuleEngine) GetStats() FilterStats {
+	// 先取时钟再取锁：currentTime 自身会请求读锁，而 sync.RWMutex 的读锁
+	// 不可重入。一旦有写者排队，锁内再 RLock 会与写者互相等待，永久死锁。
+	now := e.currentTime()
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
@@ -178,14 +219,14 @@ func (e *RuleEngine) GetStats() FilterStats {
 	// 计划关闭或未配置启用计划时恒为生效（避免重入加锁，直接内联判定）
 	scheduleActive := true
 	if e.cfg.ScheduleEnabled && HasEnabledSchedule(e.cfg.Schedules) {
-		scheduleActive = ActiveSchedule(e.cfg.Schedules, e.currentTime())
+		scheduleActive = ActiveSchedule(e.cfg.Schedules, now)
 	}
 
 	// 定时暂停为运行时状态，同样内联判定以免重入加锁
-	paused, pausedUntil := e.pauseStateUnlocked()
+	paused, pausedUntil := e.pauseStateUnlockedAt(now)
 	var pausedRemaining int64
 	if paused {
-		pausedRemaining = int64(pausedUntil.Sub(e.currentTime()).Seconds())
+		pausedRemaining = int64(pausedUntil.Sub(now).Seconds())
 		if pausedRemaining < 0 {
 			pausedRemaining = 0
 		}

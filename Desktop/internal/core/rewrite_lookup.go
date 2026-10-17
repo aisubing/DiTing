@@ -104,7 +104,35 @@ func (e *RewriteEngine) LookupDetailed(domain string, qtype uint16) (answers []d
 
 	answers = append(answers, e.matchShortcutRecords(cr, fqdn, norm, qtype)...)
 	answers = append(answers, e.matchExplicitRecords(cr, fqdn, qtype)...)
-	return answers, rcode, true
+	return mergeOwnerCNAME(answers), rcode, true
+}
+
+// mergeOwnerCNAME 保证同一属主名的 CNAME 与其他记录互斥（RFC 1034 §3.6.2）。
+//
+// 快捷字段与 Records 是两份可并存的配置，旧实现直接串接二者的结果，
+// 同一规则里同时写了 CNAME 与 A 就会返回 [CNAME, A]。存在 CNAME 时
+// 只保留 CNAME 链：它才定义了该名字的解析语义，同时给出其他类型会让
+// 严格的 stub 校验器整包丢弃、宽松的实现则各取所需。
+func mergeOwnerCNAME(answers []dns.RR) []dns.RR {
+	// 按属主名建索引：链式解析里后续的 A 记录属于另一个属主名，必须保留
+	owners := make(map[string]bool)
+	for _, rr := range answers {
+		if rr.Header().Rrtype == dns.TypeCNAME {
+			owners[strings.ToLower(rr.Header().Name)] = true
+		}
+	}
+	if len(owners) == 0 {
+		return answers
+	}
+	out := make([]dns.RR, 0, len(answers))
+	for _, rr := range answers {
+		hdr := rr.Header()
+		if owners[strings.ToLower(hdr.Name)] && hdr.Rrtype != dns.TypeCNAME {
+			continue
+		}
+		out = append(out, rr)
+	}
+	return out
 }
 
 // matchShortcutRecords 处理 IPs / CNAME / TXT 三个快捷字段

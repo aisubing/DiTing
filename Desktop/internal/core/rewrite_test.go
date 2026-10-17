@@ -230,3 +230,42 @@ func TestRewriteEngine_DynamicRules(t *testing.T) {
 		t.Fatalf("should not match after DeleteRule")
 	}
 }
+
+// 同一属主名不得同时返回 CNAME 与其他类型（RFC 1034 §3.6.2）。
+func TestRewriteEngine_ShortcutAndRecordsCNAMEExclusive(t *testing.T) {
+	cfg := RewriteConfig{
+		Enabled: true,
+		Rules: []RewriteRule{{
+			Domain: "dual.lan",
+			Records: []RewriteRecord{
+				{Type: "CNAME", Value: "final.lan."},
+				{Type: "A", Value: "10.1.2.3"},
+			},
+		}},
+	}
+	engine := NewRewriteEngine(cfg)
+	ans, matched := engine.Lookup("dual.lan", dns.TypeA)
+	if !matched {
+		t.Fatal("规则应命中")
+	}
+	for _, rr := range ans {
+		if rr.Header().Rrtype != dns.TypeCNAME {
+			t.Fatalf("同属主名不应与 CNAME 并存其他记录: %v", ans)
+		}
+	}
+}
+
+// IPv4 字面量不能被当成 AAAA 接受（To16 对 v4-mapped 恒非 nil）。
+func TestRewriteEngine_AAAARejectsIPv4Literal(t *testing.T) {
+	cfg := RewriteConfig{
+		Enabled: true,
+		Rules: []RewriteRule{{
+			Domain:  "bad6.lan",
+			Records: []RewriteRecord{{Type: "AAAA", Value: "10.0.0.5"}},
+		}},
+	}
+	engine := NewRewriteEngine(cfg)
+	if ans, _ := engine.Lookup("bad6.lan", dns.TypeAAAA); len(ans) != 0 {
+		t.Fatalf("IPv4 字面量不应被接受为 AAAA: %v", ans)
+	}
+}

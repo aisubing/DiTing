@@ -131,7 +131,9 @@ func buildRewriteRR(name string, qtype uint16, rec RewriteRecord, ttl uint32) (d
 
 	case dns.TypeAAAA:
 		ip := net.ParseIP(value)
-		if ip == nil || ip.To16() == nil {
+		// To16() 对 IPv4 字面量也会返回 v4-mapped 地址（恒非 nil），
+		// 单用它放行会合成 ::ffff:10.0.0.5 这种伪 AAAA；必须显式排除 IPv4。
+		if ip == nil || ip.To4() != nil || ip.To16() == nil {
 			return nil, fmt.Errorf("AAAA 记录的取值 %q 不是合法的 IPv6 地址", rec.Value)
 		}
 		return &dns.AAAA{Hdr: header, AAAA: ip.To16()}, nil

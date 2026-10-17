@@ -89,9 +89,12 @@ func emitLine(line []byte, fn func(Record) bool) bool {
 
 // searchFilesReverse 跨多个日志文件自新到旧检索，命中经 collect 回调（新→旧顺序）。
 //
-// collect 返回 true 表示已收集足够候选，提前停止。
+// needCount 为 true 时扫描全部命中以得到准确的 Total（分页页码依赖它）；
+// 为 false 时只做「采满候选即停」的快速检索，返回的 total 仅统计到停止点。
+// collect 返回 true 表示候选已足够，可提前停止。
 // 早于检索时间窗口下界的整份文件会被跳过。
-func searchFilesReverse(paths []string, q SearchQuery, need int, collect func(Record) bool) {
+func searchFilesReverse(paths []string, q SearchQuery, need int, needCount bool, collect func(Record) bool) int {
+	total := 0
 	for i := len(paths) - 1; i >= 0; i-- {
 		path := paths[i]
 		if q.StartMs > 0 {
@@ -107,6 +110,13 @@ func searchFilesReverse(paths []string, q SearchQuery, need int, collect func(Re
 			if !q.matches(rec) {
 				return true
 			}
+			total++
+			// 候选采满后仍回调：计数模式要继续扫描以得到准确 Total，
+			// 回调方自行决定是否追加（searchFiles 按 len(hits) 判定）。
+			// 快速模式（needCount=false）到此即可停止。
+			if !needCount && need > 0 && total > need {
+				return false
+			}
 			if collect(rec) {
 				stopped = true
 				return false
@@ -114,9 +124,10 @@ func searchFilesReverse(paths []string, q SearchQuery, need int, collect func(Re
 			return true
 		})
 		if stopped {
-			return
+			return total
 		}
 	}
+	return total
 }
 
 // fileDateMs 从文件名解析所属日期（本地时区当天 00:00 的毫秒时间戳）。

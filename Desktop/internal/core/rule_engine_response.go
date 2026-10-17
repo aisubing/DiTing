@@ -71,8 +71,14 @@ func normalizeCheckName(name string) string {
 // 与 MatchForGroup 的区别：不递增查询统计指标（一次查询只应计一次），
 // 返回首个命中的拦截结果；未命中任何候选域名时返回 pass。
 func (e *RuleEngine) MatchResponse(resp *dns.Msg, qname string, qtype uint16, groupID string) CheckHostResult {
-	if e == nil || !e.IsEnabled() || !e.IsBlockingActive() {
+	if e == nil || !e.IsEnabled() {
 		return CheckHostResult{Action: "pass"}
+	}
+	// 门控必须与请求侧 MatchForGroup 用同一把尺子：全局计划静默、某分组计划
+	// 活跃时，该分组的响应侧复检仍要跑（否则 CNAME 换域投毒漏拦）；反向的
+	// 分组静默期也不该在响应侧被拦。
+	if !e.IsBlockingActiveForGroup(groupID) {
+		return CheckHostResult{Action: "pass", Reason: ReasonScheduleInactive}
 	}
 
 	names := ExtractResponseCheckNames(resp, qname)

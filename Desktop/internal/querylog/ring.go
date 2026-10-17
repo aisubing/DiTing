@@ -95,11 +95,29 @@ func (r *ring) clear() {
 	r.size = 0
 }
 
-// search 在内存环内按条件检索。
+// search 在内存环内按条件检索并应用 offset/limit。
 //
-// 返回的匹配集合按"新→旧"（时间倒序）排列，便于日志查看器直接分页；
-// 自尾向前遍历以优先覆盖最近记录，命中 StartMs 窗口下界外时提前终止。
+// 返回的匹配集合按"新→旧"（时间倒序）排列；Total 为环内全部命中数。
+// 注意：分页只允许在最外层（QueryLog.Search）做一次，调用方若需自行分页
+// 应使用 searchAll。
 func (r *ring) search(q SearchQuery) ([]Record, int) {
+	all, total := r.searchAll(q)
+	if q.Offset > 0 {
+		if q.Offset >= len(all) {
+			return nil, total
+		}
+		all = all[q.Offset:]
+	}
+	if q.Limit > 0 && len(all) > q.Limit {
+		all = all[:q.Limit]
+	}
+	return all, total
+}
+
+// searchAll 返回内存环内全部命中（新→旧）及命中总数，不做分页截断。
+//
+// 自尾向前遍历以优先覆盖最近记录，命中 StartMs 窗口下界外时提前终止。
+func (r *ring) searchAll(q SearchQuery) ([]Record, int) {
 	if r == nil {
 		return nil, 0
 	}
@@ -122,13 +140,22 @@ func (r *ring) search(q SearchQuery) ([]Record, int) {
 			continue
 		}
 		total++
-		if total <= q.Offset {
-			continue
-		}
-		if q.Limit > 0 && len(matched) >= q.Limit {
-			continue // 仍在计数以得到准确 Total
-		}
 		matched = append(matched, rec)
 	}
 	return matched, total
+}
+
+// oldestTimestamp 返回环内最旧记录的时间戳；空环返回 0。
+//
+// 用于划清"内存覆盖范围"与"落盘历史"的边界，避免文件回退重复计入。
+func (r *ring) oldestTimestamp() int64 {
+	if r == nil {
+		return 0
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if r.size == 0 {
+		return 0
+	}
+	return r.at(0).Timestamp
 }

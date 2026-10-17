@@ -36,6 +36,7 @@ type writer struct {
 	dir           string
 	retentionDays int
 	ch            chan Record
+	clearReq      chan chan error // 删除落盘文件请求（由 run goroutine 关句柄后执行）
 	stop          chan struct{}
 	done          chan struct{}
 	closeOnce     sync.Once
@@ -75,6 +76,7 @@ func newWriter(dir string, retentionDays int, opts writerOptions) (*writer, erro
 		dir:           dir,
 		retentionDays: retentionDays,
 		ch:            make(chan Record, writerQueueSize),
+		clearReq:      make(chan chan error, 1),
 		stop:          make(chan struct{}),
 		done:          make(chan struct{}),
 		clock:         time.Now,
@@ -114,6 +116,8 @@ func (w *writer) run() {
 		select {
 		case rec := <-w.ch:
 			w.writeRecord(rec)
+		case reply := <-w.clearReq:
+			reply <- w.removeFilesLocked()
 		case <-ticker.C:
 			w.rotateIfNeeded()
 			w.flush()
@@ -241,6 +245,43 @@ func (w *writer) cleanup() {
 // parseDay 按本地时区解析 YYYYMMDD 日期串。
 func parseDay(day string) (time.Time, error) {
 	return time.ParseInLocation(dayLayout, day, time.Local)
+}
+
+// removeFiles 请求写入器关闭当天句柄并删除全部日志文件。
+//
+// 删除必须由持有句柄的 run goroutine 执行：Windows 上被占用文件无法删除，
+// POSIX 上删除后旧句柄会变成孤儿 inode，后续写入全部丢失。
+func (w *writer) removeFiles() error {
+	if w == nil {
+		return nil
+	}
+	reply := make(chan error, 1)
+	select {
+	case w.clearReq <- reply:
+	case <-w.done:
+		return nil
+	}
+	select {
+	case err := <-reply:
+		return err
+	case <-w.done:
+		return nil
+	}
+}
+
+// removeFilesLocked 在 run goroutine 内关闭当前文件并删除全部日志文件。
+func (w *writer) removeFilesLocked() error {
+	w.closeFile()
+	var errs []string
+	for _, p := range w.listFiles() {
+		if err := os.Remove(p); err != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", filepath.Base(p), err))
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("删除查询日志文件失败: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 // close 停止写入器并落盘。
