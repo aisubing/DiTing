@@ -245,6 +245,19 @@
 - `normal/GoInspectionTunnel.kt:91-99`：`start()` 在 `scope.launch(Dispatchers.IO){ engine.startFull(...) }` 后立即返回 true，不确认 `startFull` 已进入；若 `stop()`（`:101-107`，`engine.stop()`）在 IO 协程到达 Go `StartFull` 的 `e.mu.Lock()`（`tunnel/engine_full_tunnel.go:92`）之前执行，Stop 见 `running=false` 直接返回，随后 StartFull 置 `running=true` 并新建 done channel，无人再持有。
 - 未升级原因：需要极快的 ACTION_STOP 或 IO 池饥饿才能命中，且 Kotlin 侧 `startJob?.cancel()` 若在 `startFull` 启动前生效可避免；无确定性触发。确认方法：start/stop 微压力测试轮询 `Engine.IsRunning()`。
 
+### O-107 Kotlin 显示缓存把真实 TTL=0 的应答当「未知 TTL」落库，缓存统计页出现幽灵条目
+- `core/cache/DnsResponseCache.kt:150` — `rawTtl = if (upstreamTtl > 0L) upstreamTtl else currentPolicy.maxTtlSeconds.coerceAtLeast(300L)`，随后 `effectiveTtlSeconds` 与 `expiresAt = now + effectiveTtl*1000`（`:166`）：`recordResolved(upstreamTtl = 0)` 的分支把上游**明确的 0 TTL**（`DnsCachePolicy.kt:37` FOLLOW 模式本应原样取 0，`:33` `effectiveTtlSeconds` 对 `<=0` 返回 0）与「没带 TTL」混为一谈，最终写入一条 `expiresAt≈now+maxTTL/300s` 的行。
+- 触发链已核到底：Go `engine_dns.go:393-397` 对 `extractMinTTL` 返回 `(0, true)` 的应答置 `respTTL=0`；`log_aggregator.go:28` `json:"ttl,omitempty"` 使 TTL=0 在 JSON 中缺省；`normal/GoTunnelLogProcessor.kt:41` `optLong("ttl", 0L)` 读回 0，`:90` 调 `recordResolved(upstreamTtl = 0)`。Go 自身拒缓存该应答（`dns_cache.go` `effectiveTTL<=0 → return false`，每次查询都重新解析），Kotlin 行却长期「未过期」。
+- 影响面有限（故列观察）：`DnsResponseCache.resolve/get/put/materialize` 已确认为死代码（全仓仅 `warmUp`/`recordCacheHit`/`recordResolved`/`clear`/`updatePolicy` 被调用），该行只进「DNS 缓存」展示/计数（`countUnexpired` 等），不改变实际解析。确认方法：FOLLOW 策略下 `recordResolved(name, type, "1.2.3.4", upstreamTtl = 0)`，断言 `getUnexpired` 不含该键（当前实现含）。修复方向：`recordResolved` 增加「TTL 缺失」与「TTL=0」的区分（如 Go 侧去掉 omitempty 或 Kotlin 用 `-1` 表示缺失）。
+
+### O-108 共享 UID 应用在流量归因中坍缩为单一包名（Android 固有限制 + 主动截断）
+- `core/traffic/TrafficAppResolver.kt:40` — `appInfoByUid[uid] = info` 对 `getInstalledApplications` 中同 UID 的多包**后写覆盖**；`:54` 对 `getPackagesForUid()` 结果取 `.firstOrNull()` 主动截断；Go 模式按 uid 归因（`:49`、调用点 `:186`）。
+- 属 Android per-UID 统计的固有限制，且截断是显式选择；无多包共享 UID 的真实对照环境未验证，暂列观察。确认方法：安装一对共享 `android:sharedUserId` 的应用，制造流量后核对归因包名是否稳定取到「预期主包」。
+
+### O-109 busybox/toybox `ping6` 若输出 `hoplimit=` 则逐项应答解析为空
+- `core/diagnostic/NetworkPingTool.kt:248` — `REPLY_REGEX` 要求字面 `ttl=(\d+)`；注释（`:246-247`）已意识到 busybox 用 `seq=`（正则已兼容），但未覆盖 IPv6 常见的 `hoplimit=` 写法。若真机 `ping6` 打印 `hoplimit` 而非 `ttl`，逐序列应答列表为空，UI 显示「超时或无响应」（`:131-133`），而发送/接收/丢包/RTT 汇总仍解析正常（`:122-128`、`LOSS/TRANSMITTED/RECEIVED_REGEX`）。
+- 未升级原因：需要一台 `ping -6` 实际输出 `hoplimit=` 的设备取证；toybox 现代版本多以 `ttl=` 统一输出。确认方法：`adb shell ping6 -c 2 <v6>` 观察应答行关键字。
+
 ### O-105 原生崩溃批量收集的文件名用写入时刻（ms），同毫秒可覆盖丢一份
 - `crash/CrashLogManager.kt:53-54`：`saveCrashReport` 文件名 `crash_<yyyyMMdd_HHmmss_SSS>.log` 取的是**写入时** `Date()`，非崩溃标识；`checkAndCollectNativeCrashes` 在 `:320-341` 一个紧循环里最多迭代 10 条历史 `REASON_CRASH_NATIVE` 逐一落盘。两次迭代落入同一毫秒时，`FileOutputStream(file)` 截断覆盖前一份，历史原生崩溃静默丢失（现象：导出报告数少于待收集条数）。
 - 未升级为缺陷：每次迭代含 `fos.fd.sync()` 与 `pruneOldLogs` 的 `listFiles`+排序，真机通常 >1ms，需多条待收集原生崩溃且存储极快才命中。确认方法：预置两条同 `timestamp` 的 `ApplicationExitInfo`，观察只落一份文件。修复方向：文件名追加 `index`/`pid`/`exitInfo` 指纹或用存在即改名的去重。
