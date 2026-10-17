@@ -170,14 +170,14 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 </details>
 
 ### 🧰 维护工具箱
-要求 Python 3.8+。
+要求 Python 3.8+。首次运行可执行：
 
 ```bash
-pip install pywebview dnspython pillow
+python -m pip install -r maintenance/requirements.txt
 python maintenance/app.py
 ```
 
-也可双击 `maintenance/run_maintenance.bat`。发布新版本时，用工具箱的「统一版本管理」，或执行：
+也可直接双击 `maintenance/run_maintenance.bat`：脚本会检测缺失依赖并自动安装，异常退出时保留窗口以便查看报错。发布新版本时，用工具箱的「统一版本管理」，或执行：
 
 ```cmd
 REM 同步到目标版本（示例）

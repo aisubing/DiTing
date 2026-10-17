@@ -2,6 +2,14 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
 
+### 2026-10-17: 维护工具箱双击闪退（环境/启动类）
+- **现象**：双击 `maintenance/run_maintenance.bat` 窗口一闪而过；终端复现为 `ModuleNotFoundError: No module named 'webview'`。
+- **根因**：仓库缺少依赖清单，启动脚本直接执行 `python app.py`；Python 3.15 环境仅有 pip，缺 `pywebview`/`dnspython`/`Pillow` 时 traceback 随窗口立即关闭。
+- **教训**：
+  1. GUI 启动脚本先探测依赖，缺失时按 `requirements.txt` 自动安装；非零退出必须 `pause` 保留窗口。
+  2. 运行依赖清单随代码入库，README 同步给出 `python -m pip install -r ...`，不要依赖口头环境说明。
+  3. 双击脚本类故障先在终端直接复现，拿到真实 traceback 再谈修复，避免被「闪退」表象误导。
+
 ### 2026-10-17: 版本号统一范围遗漏与伪变更（发布工具类）
 - **现象**：桌面端已到 1.3.10，Android 仍为 1.2.12；`package-lock.json`、`wails_tools.nsh` 曾靠另起 chore 提交手工补；工具箱对同一版本重跑仍报「已更新」。
 - **根因**：`get_file_targets()` 硬编码 6 个桌面文件，未覆盖 Android Gradle、前端锁文件与生成的 NSIS 模板；`re.subn` 返回 `n>0` 即视为变更，未比较新旧内容。
