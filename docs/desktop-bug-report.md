@@ -33,7 +33,7 @@
   - 因此这是解析顺序造成的误判，而不是不支持该语法。`#` 同时是 hosts/Adblock 注释符，过滤逻辑没有先识别 `##`、`#@#`、`#?#`、`#$#` 分隔符。
 - **用户可见影响**
   - 订阅导入：`CategorizedRuleStreamImporter` 只累加 `invalidCount`/`unsupportedCount`，从不读取 `ignoredCount`；通用规则既不计入 `parsedRules`/`cosmeticCount`，也不计入无效/不支持统计，用户在导入结果中完全看不到规则被丢弃。
-  - 手动添加：输入合法规则却提示“元素隐藏规则格式无效”，功能表现为“不支持通用元素隐藏”。
+  - 手动添加：黑名单输入 `##.ad-banner` 提示“元素隐藏规则格式无效”；白名单输入 `#@#.ad-banner` 同样提示“元素放行规则格式无效”（`WhitelistViewModel.kt:407-413`）。功能表现为“不支持通用元素隐藏”。
   - 现有 `AdGuardRuleParserTest` 只覆盖带域名前缀的 cosmetic 规则，未覆盖该分支，回归未暴露。
 - **复现/验证**
   1. 普通模式 → 黑名单 → 手动输入 `##.ad-banner` → 添加；实际提示“元素隐藏规则格式无效”，期望添加成功并生成全局 CSS。
