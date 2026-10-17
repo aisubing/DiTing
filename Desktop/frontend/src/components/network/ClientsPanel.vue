@@ -42,6 +42,43 @@ const allowedText = ref('');
 const blockedText = ref('');
 const exemptText = ref('');
 
+/**
+ * 黑白名单 textarea 是否有未保存的改动。
+ * 行内「加入白名单/黑名单」按钮也走同一份名单，必须保留用户已输入但未保存的行，
+ * 旧实现直接用服务器列表重写 textarea，草稿被清空且请求体也不含它。
+ */
+const accessDraftDirty = ref(false);
+
+function markAccessDraftDirty() {
+  accessDraftDirty.value = true;
+}
+
+function splitList(text: string): string[] {
+  return text
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** 当前生效的名单：有未保存草稿时以草稿为准，否则用服务器配置 */
+function currentDraftLists(): { allowed: string[]; blocked: string[] } {
+  if (accessDraftDirty.value) {
+    return { allowed: splitList(allowedText.value), blocked: splitList(blockedText.value) };
+  }
+  return {
+    allowed: [...(accessConfig.value.allowedClients || [])],
+    blocked: [...(accessConfig.value.blockedClients || [])],
+  };
+}
+
+function applyAccessLists(allowed: string[], blocked: string[]) {
+  accessConfig.value.allowedClients = allowed;
+  accessConfig.value.blockedClients = blocked;
+  allowedText.value = allowed.join('\n');
+  blockedText.value = blocked.join('\n');
+  accessDraftDirty.value = false;
+}
+
 function formatTime(sec: number) {
   if (!sec) return '从未';
   return formatClockTimeMs(sec * 1000);
@@ -59,8 +96,10 @@ async function loadData() {
     if (st) {
       if (st.access) {
         accessConfig.value = st.access;
-        allowedText.value = (st.access.allowedClients || []).join('\n');
-        blockedText.value = (st.access.blockedClients || []).join('\n');
+        if (!accessDraftDirty.value) {
+          allowedText.value = (st.access.allowedClients || []).join('\n');
+          blockedText.value = (st.access.blockedClients || []).join('\n');
+        }
       }
       if (st.rateLimit) {
         rateLimitConfig.value = st.rateLimit;
@@ -100,21 +139,14 @@ async function saveAlias() {
 async function saveAccessControl() {
   savingAccess.value = true;
   try {
-    const allowed = allowedText.value
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const blocked = blockedText.value
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const allowed = splitList(allowedText.value);
+    const blocked = splitList(blockedText.value);
 
     await ipc.configureAccess({
       allowedClients: allowed,
       blockedClients: blocked,
     });
-    accessConfig.value.allowedClients = allowed;
-    accessConfig.value.blockedClients = blocked;
+    applyAccessLists(allowed, blocked);
     showToast('客户端黑白名单访问控制配置已成功保存！');
   } catch (err: any) {
     showToast(err.message || '保存访问控制失败', true);
@@ -132,8 +164,9 @@ function isClientBlocked(ip: string): boolean {
 }
 
 async function toggleClientAllowed(ip: string) {
-  const allowed = [...(accessConfig.value.allowedClients || [])];
-  const blocked = (accessConfig.value.blockedClients || []).filter((item) => item !== ip);
+  const lists = currentDraftLists();
+  const allowed = lists.allowed;
+  const blocked = lists.blocked.filter((item) => item !== ip);
   const idx = allowed.indexOf(ip);
   if (idx >= 0) {
     allowed.splice(idx, 1);
@@ -147,10 +180,7 @@ async function toggleClientAllowed(ip: string) {
       allowedClients: allowed,
       blockedClients: blocked,
     });
-    accessConfig.value.allowedClients = allowed;
-    accessConfig.value.blockedClients = blocked;
-    allowedText.value = allowed.join('\n');
-    blockedText.value = blocked.join('\n');
+    applyAccessLists(allowed, blocked);
     showToast(`客户端 [${ip}] 已${idx >= 0 ? '移出白名单' : '加入白名单'}`);
   } catch (err: any) {
     showToast(err.message || '更新客户端白名单失败', true);
@@ -160,8 +190,9 @@ async function toggleClientAllowed(ip: string) {
 }
 
 async function toggleClientBlocked(ip: string) {
-  const blocked = [...(accessConfig.value.blockedClients || [])];
-  const allowed = (accessConfig.value.allowedClients || []).filter((item) => item !== ip);
+  const lists = currentDraftLists();
+  const blocked = lists.blocked;
+  const allowed = lists.allowed.filter((item) => item !== ip);
   const idx = blocked.indexOf(ip);
   if (idx >= 0) {
     blocked.splice(idx, 1);
@@ -175,10 +206,7 @@ async function toggleClientBlocked(ip: string) {
       allowedClients: allowed,
       blockedClients: blocked,
     });
-    accessConfig.value.allowedClients = allowed;
-    accessConfig.value.blockedClients = blocked;
-    allowedText.value = allowed.join('\n');
-    blockedText.value = blocked.join('\n');
+    applyAccessLists(allowed, blocked);
     showToast(`客户端 [${ip}] 已${idx >= 0 ? '移出黑名单' : '加入黑名单阻断'}`);
   } catch (err: any) {
     showToast(err.message || '更新客户端黑名单失败', true);
@@ -396,6 +424,7 @@ onMounted(() => {
             </p>
             <textarea
               v-model="allowedText"
+              @input="markAccessDraftDirty"
               rows="3"
               placeholder="例如: 192.168.1.0/24 或 192.168.1.50"
               class="w-full rounded-md border border-surface-border bg-surface-card-sub p-2 font-mono text-xs text-text-main focus:outline-none focus:border-accent-seal"
@@ -411,6 +440,7 @@ onMounted(() => {
             </p>
             <textarea
               v-model="blockedText"
+              @input="markAccessDraftDirty"
               rows="3"
               placeholder="例如: 192.168.1.199 或 10.0.0.0/8"
               class="w-full rounded-md border border-surface-border bg-surface-card-sub p-2 font-mono text-xs text-text-main focus:outline-none focus:border-accent-seal"

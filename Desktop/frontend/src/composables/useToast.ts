@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { onUnmounted, ref } from 'vue';
 
 export interface ToastState {
   message: string;
@@ -34,6 +34,11 @@ export function useToast(defaultDurationMs = 3000) {
     timer = null;
     toast.value = null;
   }
+
+  // 卸载后残留的定时器仍会回调改写已无消费者的状态，违背工程自身的清理规范
+  // （useFlashMessage/useAuthForm 均有 onUnmounted）。onUnmounted 在组件外调用
+  // 只会给出警告，因此组合式函数被用在 setup 之外时依然可用。
+  onUnmounted(dismiss);
 
   return { toast, show, success, error, dismiss };
 }

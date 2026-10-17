@@ -41,16 +41,31 @@ const anyProtocolOn = computed(
   () => Boolean(cfg.value?.dotEnabled || cfg.value?.dohEnabled || cfg.value?.doqEnabled),
 );
 
+/** 网络参数草稿是否被用户改动过（改动后不被父级状态刷新回卷） */
+const draftDirty = ref(false);
+
+function markDraftDirty() {
+  draftDirty.value = true;
+}
+
+function applyServerNetwork(s: EncryptedDNSStatusResponse) {
+  listenAddress.value = s.config.listenAddress;
+  serverName.value = s.config.serverName;
+  dohPath.value = s.config.dohPath;
+  dotPort.value = s.config.dotPort;
+  dohPort.value = s.config.dohPort;
+  doqPort.value = s.config.doqPort;
+  draftDirty.value = false;
+}
+
 watch(
   () => props.status,
   (s) => {
     if (!s) return;
-    listenAddress.value = s.config.listenAddress;
-    serverName.value = s.config.serverName;
-    dohPath.value = s.config.dohPath;
-    dotPort.value = s.config.dotPort;
-    dohPort.value = s.config.dohPort;
-    doqPort.value = s.config.doqPort;
+    // 草稿未保存时不能回填：父级状态在任意卡片 changed / 刷新时都会整体替换，
+    // 旧实现会把用户正在输入的网络参数静默覆写回服务器值。
+    if (draftDirty.value) return;
+    applyServerNetwork(s);
   },
   { immediate: true },
 );
@@ -60,6 +75,7 @@ async function send(patch: ConfigureEncryptedDNSRequest, okText = '加密 DNS �
     saving.value = true;
     emit('saving', true);
     const res = await ipc.configureEncryptedDNS(patch);
+    draftDirty.value = false;
     emit('changed', res);
     emit('success', okText);
   } catch (err: any) {
@@ -127,6 +143,7 @@ async function resetNetwork() {
   dotPort.value = s.defaultDotPort;
   dohPort.value = s.defaultDohPort;
   doqPort.value = s.defaultDoqPort;
+  draftDirty.value = false;
 }
 
 const INPUT_CLS =
@@ -247,27 +264,27 @@ const INPUT_CLS =
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label class="text-[11px] font-semibold text-text-muted block mb-1">监听地址</label>
-            <input v-model="listenAddress" :class="INPUT_CLS" placeholder="留空表示全部网卡" />
+            <input v-model="listenAddress" @input="markDraftDirty" :class="INPUT_CLS" placeholder="留空表示全部网卡" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-text-muted block mb-1">服务器名（客户端连接用）</label>
-            <input v-model="serverName" :class="INPUT_CLS" placeholder="dns.lan" />
+            <input v-model="serverName" @input="markDraftDirty" :class="INPUT_CLS" placeholder="dns.lan" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-text-muted block mb-1">DoT 端口</label>
-            <input v-model.number="dotPort" type="number" min="1" max="65535" :class="INPUT_CLS" />
+            <input v-model.number="dotPort" @input="markDraftDirty" type="number" min="1" max="65535" :class="INPUT_CLS" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-text-muted block mb-1">DoH 端口</label>
-            <input v-model.number="dohPort" type="number" min="1" max="65535" :class="INPUT_CLS" />
+            <input v-model.number="dohPort" @input="markDraftDirty" type="number" min="1" max="65535" :class="INPUT_CLS" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-text-muted block mb-1">DoQ 端口</label>
-            <input v-model.number="doqPort" type="number" min="1" max="65535" :class="INPUT_CLS" />
+            <input v-model.number="doqPort" @input="markDraftDirty" type="number" min="1" max="65535" :class="INPUT_CLS" />
           </div>
           <div>
             <label class="text-[11px] font-semibold text-text-muted block mb-1">DoH 路径</label>
-            <input v-model="dohPath" :class="INPUT_CLS" placeholder="/dns-query" />
+            <input v-model="dohPath" @input="markDraftDirty" :class="INPUT_CLS" placeholder="/dns-query" />
           </div>
         </div>
         <p class="text-[11px] text-text-muted leading-relaxed">

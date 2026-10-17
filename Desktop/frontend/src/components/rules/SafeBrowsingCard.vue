@@ -26,12 +26,25 @@ const hitRate = computed(() => {
   return `${Math.round((s.cacheHits / s.lookups) * 100)}%`;
 });
 
-function apply(r: SafeBrowsingResponse | null | undefined) {
+/** 查询参数草稿是否被用户改动过（改动后不被服务端回包/开关刷新回卷） */
+const draftDirty = ref(false);
+
+function markDraftDirty() {
+  draftDirty.value = true;
+}
+
+/**
+ * 应用服务端回包。开关等非草稿操作只更新展示数据，不能顺手把用户
+ * 正在编辑的参数覆写回服务器旧值；只有保存成功才强制同步。
+ */
+function apply(r: SafeBrowsingResponse | null | undefined, forceSync = false) {
   if (!r) return;
   res.value = r;
+  if (draftDirty.value && !forceSync) return;
   timeoutMs.value = r.config.timeoutMs;
   cacheSize.value = r.config.cacheSize;
   cacheTTLSeconds.value = r.config.cacheTTLSeconds;
+  draftDirty.value = false;
 }
 
 async function fetchData() {
@@ -68,6 +81,7 @@ async function saveAdvanced() {
         cacheSize: Number(cacheSize.value),
         cacheTTLSeconds: Number(cacheTTLSeconds.value),
       }),
+      true,
     );
     emit('success', '查询参数已保存');
   } catch (err: any) {
@@ -152,6 +166,7 @@ fetchData();
           <label class="text-[11px] font-semibold text-text-muted block mb-1">查询超时 (毫秒)</label>
           <input
             v-model.number="timeoutMs"
+            @input="markDraftDirty"
             type="number"
             min="100"
             max="30000"
@@ -163,6 +178,7 @@ fetchData();
           <label class="text-[11px] font-semibold text-text-muted block mb-1">缓存条目上限</label>
           <input
             v-model.number="cacheSize"
+            @input="markDraftDirty"
             type="number"
             min="0"
             :disabled="!enabled"
@@ -173,6 +189,7 @@ fetchData();
           <label class="text-[11px] font-semibold text-text-muted block mb-1">缓存有效期 (秒)</label>
           <input
             v-model.number="cacheTTLSeconds"
+            @input="markDraftDirty"
             type="number"
             min="1"
             :disabled="!enabled"

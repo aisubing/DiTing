@@ -60,6 +60,22 @@ const ruleStats = computed<StatEntry[]>(() => [
 const saving = ref(false);
 const { toast, show: showToast, dismiss } = useToast();
 
+/** 草稿脏态：轮询期间不得用服务器快照覆盖用户正在编辑的输入 */
+const draftDirty = ref(false);
+/** 用户是否正在本面板的输入控件内操作（textarea / 输入框 / 单选） */
+const editing = ref(false);
+
+/** 服务器快照只回填「展示态」，编辑草稿由用户与保存动作驱动 */
+function applyServerConfig(cfg: FilterConfig) {
+  if (draftDirty.value || editing.value) {
+    // 只更新与编辑无关的只读字段（订阅列表等），保留草稿
+    config.value.lists = cfg.lists;
+    config.value.schedules = cfg.schedules;
+    return;
+  }
+  config.value = cfg;
+}
+
 async function fetchData() {
   try {
     const [st, cfg, l, rules, ps] = await Promise.all([
@@ -70,13 +86,24 @@ async function fetchData() {
       ipc.getFilterPause(),
     ]);
     if (st) stats.value = st;
-    if (cfg) config.value = cfg;
+    if (cfg) applyServerConfig(cfg);
     listCount.value = (l || []).length;
-    customRulesText.value = (rules || []).join('\n');
+    // 同理：正在编辑自定义规则时不覆盖 textarea
+    if (!draftDirty.value && !editing.value) {
+      customRulesText.value = (rules || []).join('\n');
+    }
     if (ps) pause.value = ps;
   } catch (err: any) {
     showToast(err?.message || '获取规则数据失败', true);
   }
+}
+
+function markDirty() {
+  draftDirty.value = true;
+}
+
+function markClean() {
+  draftDirty.value = false;
 }
 
 /** 暂停剩余时间的人类可读文本 */
@@ -109,6 +136,8 @@ async function toggleMasterSwitch(e: Event) {
     await ipc.updateFilterConfig({ enabled: nextVal });
     stats.value.enabled = nextVal;
     config.value.enabled = nextVal;
+    // 开关是显式提交的完整值，保存成功即不再算草稿
+    markClean();
     showToast(`规则拦截防护已${nextVal ? '开启' : '关闭'}`);
   } catch (err: any) {
     revertSwitch(e, !nextVal);
@@ -124,6 +153,7 @@ async function toggleResponseFilter(e: Event) {
     saving.value = true;
     await ipc.updateFilterConfig({ filterResponse: next });
     config.value.filterResponse = next;
+    markClean();
     showToast(`响应侧别名链复检已${next ? '开启' : '关闭'}`);
   } catch (err: any) {
     revertSwitch(e, !next);
@@ -139,6 +169,7 @@ async function toggleAllowlistOnly(e: Event) {
     saving.value = true;
     await ipc.updateFilterConfig({ allowlistOnly: next });
     config.value.allowlistOnly = next;
+    markClean();
     showToast(`仅白名单模式已${next ? '开启' : '关闭'}`);
   } catch (err: any) {
     revertSwitch(e, !next);
@@ -153,6 +184,7 @@ async function handleBogusToggle(next: boolean) {
     saving.value = true;
     await ipc.updateFilterConfig({ bogusNxDomain: next });
     config.value.bogusNxDomain = next;
+    markClean();
     showToast(`伪应答纠正已${next ? '开启' : '关闭'}`);
   } catch (err: any) {
     showToast(err?.message || '更新伪应答纠正开关失败', true);
@@ -167,6 +199,7 @@ async function handleBogusNetworksSave(networks: string[]) {
     saving.value = true;
     await ipc.updateFilterConfig({ bogusNxDomainNetworks: networks });
     config.value.bogusNxDomainNetworks = networks;
+    markClean();
     showToast(networks.length > 0 ? `已保存 ${networks.length} 条劫持地址` : '劫持地址清单已清空');
   } catch (err: any) {
     showToast(err?.message || '保存劫持地址清单失败', true);
@@ -184,6 +217,7 @@ async function saveCustomRules() {
       .map((l) => l.trim())
       .filter((l) => l.length > 0);
     await ipc.setCustomRules(lines);
+    markClean();
     showToast(`自定义规则已保存生效 (共 ${lines.length} 条)`);
     await fetchData();
   } catch (err: any) {
@@ -202,6 +236,7 @@ async function saveConfig() {
       blockingIPv6: config.value.blockingIPv6,
       updateIntervalHours: Number(config.value.updateIntervalHours) || 24,
     });
+    markClean();
     showToast('拦截策略配置已保存');
     await fetchData();
   } catch (err: any) {
@@ -392,6 +427,9 @@ usePoller(fetchData, 4000);
             <textarea
               v-model="customRulesText"
               rows="15"
+              @input="markDirty"
+              @focus="editing = true"
+              @blur="editing = false"
               placeholder="在此输入自定义拦截或信任规则，每行一条...&#10;||ad.example.com^&#10;@@||mysite.com^"
               class="w-full h-full min-h-[280px] bg-transparent border-0 resize-y p-2 text-xs font-mono text-text-main focus:outline-none placeholder:text-text-muted"
             ></textarea>
@@ -424,7 +462,7 @@ usePoller(fetchData, 4000);
             class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-colors app-interactive-card"
             :class="config.blockMode === 'null_ip' ? 'bg-brand-container/40 border-brand-primary/40' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
           >
-            <input type="radio" v-model="config.blockMode" value="null_ip" class="accent-brand-primary mt-0.5" />
+            <input type="radio" v-model="config.blockMode" value="null_ip" @change="markDirty" class="accent-brand-primary mt-0.5" />
             <div>
               <div class="font-bold text-text-main text-[13px]">立即返回空地址 (0.0.0.0 / ::)</div>
               <div class="text-[11px] text-text-sub mt-0.5 leading-relaxed">
@@ -437,7 +475,7 @@ usePoller(fetchData, 4000);
             class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-colors app-interactive-card"
             :class="config.blockMode === 'nxdomain' ? 'bg-brand-container/40 border-brand-primary/40' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
           >
-            <input type="radio" v-model="config.blockMode" value="nxdomain" class="accent-brand-primary mt-0.5" />
+            <input type="radio" v-model="config.blockMode" value="nxdomain" @change="markDirty" class="accent-brand-primary mt-0.5" />
             <div>
               <div class="font-bold text-text-main text-[13px]">提示域名不存在 (NXDOMAIN)</div>
               <div class="text-[11px] text-text-sub mt-0.5 leading-relaxed">
@@ -450,7 +488,7 @@ usePoller(fetchData, 4000);
             class="flex items-start gap-3 cursor-pointer p-3 rounded-md border transition-colors app-interactive-card"
             :class="config.blockMode === 'refused' ? 'bg-brand-container/40 border-brand-primary/40' : 'border-surface-border-sub bg-surface-card-sub hover:bg-surface-hover'"
           >
-            <input type="radio" v-model="config.blockMode" value="refused" class="accent-brand-primary mt-0.5" />
+            <input type="radio" v-model="config.blockMode" value="refused" @change="markDirty" class="accent-brand-primary mt-0.5" />
             <div>
               <div class="font-bold text-text-main text-[13px]">明确拒绝请求 (REFUSED)</div>
               <div class="text-[11px] text-text-sub mt-0.5 leading-relaxed">
@@ -481,6 +519,9 @@ usePoller(fetchData, 4000);
               v-model="config.updateIntervalHours"
               type="number"
               min="1"
+              @input="markDirty"
+              @focus="editing = true"
+              @blur="editing = false"
               class="w-full h-[34px] px-3 rounded-md border border-surface-border bg-surface-card-sub text-xs focus:outline-none focus:border-accent-seal text-text-main font-mono"
             />
             <span class="text-[10px] text-text-muted mt-1 block">定时从远程规则源获取更新并增量载入，默认 24 小时</span>
@@ -492,6 +533,9 @@ usePoller(fetchData, 4000);
               <input
                 v-model="config.blockingIPv4"
                 type="text"
+                @input="markDirty"
+                @focus="editing = true"
+                @blur="editing = false"
                 class="w-full h-[34px] px-3 rounded-md border border-surface-border bg-surface-card-sub text-xs focus:outline-none focus:border-accent-seal text-text-main font-mono"
               />
             </div>
@@ -501,6 +545,9 @@ usePoller(fetchData, 4000);
               <input
                 v-model="config.blockingIPv6"
                 type="text"
+                @input="markDirty"
+                @focus="editing = true"
+                @blur="editing = false"
                 class="w-full h-[34px] px-3 rounded-md border border-surface-border bg-surface-card-sub text-xs focus:outline-none focus:border-accent-seal text-text-main font-mono"
               />
             </div>

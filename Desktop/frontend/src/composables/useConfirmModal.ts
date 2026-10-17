@@ -26,6 +26,14 @@ export function useConfirmModal() {
   let resolvePromise: ((value: boolean) => void) | null = null;
 
   function ask(opts: ConfirmDialogOptions): Promise<boolean> {
+    // 上一个确认框若未作答就再次 ask（错误处理路径里连发两次确认），
+    // 旧 Promise 会被新 resolve 覆盖而永不 settle——其后的 saving/deleting
+    // 标志永久卡 true，按钮失活直到刷新。这里先把旧请求按「取消」结清。
+    if (resolvePromise) {
+      const pending = resolvePromise;
+      resolvePromise = null;
+      pending(false);
+    }
     options.value = {
       title: '确认操作',
       confirmText: '确定',

@@ -34,7 +34,10 @@ const { toast, show: showToast, dismiss } = useToast();
 const confirm = useConfirmModal();
 
 let unsubEvents: (() => void) | null = null;
-let liveBuffer: QueryLogRecord[] = [];
+// 必须是响应式引用：模板里展示「暂停期间新增 N 条」，普通 let 数组 push 不触发重渲染
+const liveBuffer = ref<QueryLogRecord[]>([]);
+// 检索请求代次：慢回包不能覆盖后发出的新检索结果
+let fetchSeq = 0;
 
 const qTypes = ['', 'A', 'AAAA', 'HTTPS', 'CNAME', 'PTR', 'TXT'] as const;
 const statusOptions: { value: string; label: string }[] = [
@@ -82,16 +85,21 @@ function currentQuery(offset: number): QueryLogSearchQuery {
 
 async function fetchPage(resetPage = false) {
   if (resetPage) page.value = 0;
+  const seq = ++fetchSeq;
+  // 在发请求前清空缓冲：请求期间到达的事件属于「本次快照之后」，
+  // 若等回包再清就会把它们一起丢掉，与提示语的承诺不符。
+  liveBuffer.value = [];
   loading.value = true;
   try {
     const res = await ipc.searchQueryLog(currentQuery(page.value * PAGE_SIZE));
+    if (seq !== fetchSeq) return;
     entries.value = res?.entries || [];
     total.value = res?.total || 0;
-    liveBuffer = [];
   } catch (err: any) {
+    if (seq !== fetchSeq) return;
     showToast(err.message || '加载查询历史失败', true);
   } finally {
-    loading.value = false;
+    if (seq === fetchSeq) loading.value = false;
   }
 }
 
@@ -144,7 +152,7 @@ function recordFromEvent(data: QueryEventData, ts: number): QueryLogRecord {
 /** 实时事件仅在「停留在第一页且未启用筛选」时插入，避免破坏分页语义 */
 function handleLiveQuery(data: QueryEventData, ts: number) {
   if (!live.value || page.value !== 0 || hasFilter.value) {
-    liveBuffer.push(recordFromEvent(data, ts));
+    liveBuffer.value.push(recordFromEvent(data, ts));
     return;
   }
   entries.value = [recordFromEvent(data, ts), ...entries.value].slice(0, PAGE_SIZE);
@@ -165,7 +173,7 @@ async function handleClear() {
     entries.value = [];
     total.value = 0;
     page.value = 0;
-    liveBuffer = [];
+    liveBuffer.value = [];
     showToast('查询历史与统计已清空');
   } catch (err: any) {
     showToast(`清空失败: ${err.message}`, true);

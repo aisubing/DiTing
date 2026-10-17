@@ -53,7 +53,8 @@ function confirmDelete() {
 
 <template>
   <div class="space-y-3">
-    <div v-for="(row, index) in rows" :key="index" class="app-card-sub p-3 space-y-3">
+    <!-- 用行对象本身作 key：删除中间行后 DOM 不会原位复用，焦点与输入不会串到上移的行 -->
+    <div v-for="(row, index) in rows" :key="row" class="app-card-sub p-3 space-y-3">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 min-w-0 flex-1">
           <md-outlined-text-field

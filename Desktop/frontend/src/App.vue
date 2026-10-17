@@ -47,10 +47,13 @@ function parseRoute() {
     const url = new URL(window.location.href);
     const hashParts = url.hash.replace(/^#\/?/, '').split('/');
     const hashTab = (hashParts[0] || '').split(/[?#]/)[0];
-    const rawTab = (url.searchParams.get('tab') || hashTab || '').toLowerCase();
-    // 子页签：查询参数优先，其次 hash 第二段
+    // hash 优先于 ?tab=：hash 是应用内导航的实时状态，query 只是首次深链的入口。
+    // 反过来的话，URL 一旦带上 ?tab=，parseRoute 在每次 hashchange 时都会把它
+    // 重新读回来，侧栏导航被永久锁死在同一页。
+    const rawTab = (hashTab || url.searchParams.get('tab') || '').toLowerCase();
+    // 子页签同理：hash 第二段优先，其次查询参数
     const hashSub = (hashParts[1] || '').split(/[?#]/)[0];
-    const rawSub = (url.searchParams.get('sub') || hashSub || '').toLowerCase();
+    const rawSub = (hashSub || url.searchParams.get('sub') || '').toLowerCase();
     const route = resolveRoute(rawTab, rawSub);
     if (route) {
       currentTab.value = route.tab;
@@ -83,6 +86,19 @@ function handleNavigate(tab: NavTab, sub?: string) {
     sub && SUB_TABS[tab]?.some((s) => s.id === sub) ? sub : '';
   currentSub.value = nextSub;
   try {
+    // 清掉一次性的深链参数：留着它们会让 URL 与当前视图长期不一致，
+    // 也会被外部工具当成「用户仍在那个页面」。
+    const url = new URL(window.location.href);
+    let changed = false;
+    for (const key of ['tab', 'sub']) {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    }
+    if (changed) {
+      window.history.replaceState(null, '', url.pathname + (url.search ? url.search : '') + url.hash);
+    }
     window.location.hash = nextSub ? `#/${tab}/${nextSub}` : `#/${tab}`;
   } catch {}
 }

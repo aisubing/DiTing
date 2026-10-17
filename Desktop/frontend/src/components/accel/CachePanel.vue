@@ -65,6 +65,8 @@ const entries = ref<CacheEntryItem[]>([]);
 const topDomains = ref<CacheDomainStat[]>([]);
 const totalEntriesCount = ref(0);
 const currentSearch = ref('');
+// 列表请求代次：4 秒轮询与手动检索是两条并发写路径，慢回包不能覆盖新结果
+let entriesSeq = 0;
 
 const loading = ref(false);
 const saving = ref(false);
@@ -79,6 +81,7 @@ const hitRatioPercent = computed(() => {
 
 async function loadData() {
   loading.value = true;
+  const seq = ++entriesSeq;
   try {
     const [st, cfg, entryRes, top, persist] = await Promise.all([
       ipc.getCacheStats(),
@@ -90,9 +93,11 @@ async function loadData() {
     ]);
     stats.value = st;
     config.value = cfg;
-    entries.value = entryRes?.entries || [];
-    totalEntriesCount.value = entryRes?.total || 0;
-    topDomains.value = top || [];
+    if (seq === entriesSeq) {
+      entries.value = entryRes?.entries || [];
+      totalEntriesCount.value = entryRes?.total || 0;
+      topDomains.value = top || [];
+    }
     persistInfo.value = persist;
   } catch (err: any) {
     showToast(err.message || '加载缓存数据失败', true);
@@ -102,16 +107,21 @@ async function loadData() {
 }
 
 async function pollMetrics() {
+  // 发出时即登记代次：若期间用户提交了检索，本次回包只能更新统计，不能回写列表
+  const seq = ++entriesSeq;
+  const search = currentSearch.value;
   try {
     const [st, entryRes, top] = await Promise.all([
       ipc.getCacheStats(),
-      ipc.getCacheEntries(currentSearch.value, 100),
+      ipc.getCacheEntries(search, 100),
       ipc.getCacheTopDomains(10),
     ]);
     stats.value = st;
-    entries.value = entryRes?.entries || [];
-    totalEntriesCount.value = entryRes?.total || 0;
-    topDomains.value = top || [];
+    if (seq === entriesSeq) {
+      entries.value = entryRes?.entries || [];
+      totalEntriesCount.value = entryRes?.total || 0;
+      topDomains.value = top || [];
+    }
   } catch {
     // 忽略静默遥测异常
   }
@@ -119,11 +129,14 @@ async function pollMetrics() {
 
 async function handleSearch(query: string) {
   currentSearch.value = query;
+  const seq = ++entriesSeq;
   try {
     const entryRes = await ipc.getCacheEntries(query, 100);
+    if (seq !== entriesSeq) return;
     entries.value = entryRes?.entries || [];
     totalEntriesCount.value = entryRes?.total || 0;
   } catch (err: any) {
+    if (seq !== entriesSeq) return;
     showToast(err.message, true);
   }
 }

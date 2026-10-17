@@ -87,6 +87,10 @@ export interface EncryptedDNSStatusResponse {
   dohUrls: string[];
   /** 可信来源里存在 0.0.0.0/0 或 ::/0，界面需给出显著警告 */
   unrestrictedTrust: boolean;
+  /** 自签证书已进入续签窗口（30 天内到期） */
+  certExpiresSoon: boolean;
+  /** 自签证书已过期：客户端握手必然失败，界面必须显式提示 */
+  certExpired: boolean;
 }
 
 /** 反向代理可信来源配置 */

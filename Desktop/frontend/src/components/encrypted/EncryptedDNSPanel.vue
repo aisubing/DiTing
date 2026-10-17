@@ -72,6 +72,16 @@ onMounted(() => {
     <InlineAlert v-if="loadError" type="error" :message="loadError" />
 
     <template v-if="status">
+      <InlineAlert
+        v-if="status.certExpired"
+        type="error"
+        message="服务端证书已过期：客户端 TLS 握手会全部失败。请立即在下方证书卡片中重新签发或导入有效证书。"
+      />
+      <InlineAlert
+        v-else-if="status.certExpiresSoon"
+        type="warning"
+        message="服务端自签证书将在 30 天内到期。到期后所有加密查询都会握手失败，建议尽早重新签发。"
+      />
       <CertificateCard
         :status="status"
         :saving="saving"

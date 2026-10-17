@@ -59,12 +59,27 @@ function isUnrestricted(entry: string): boolean {
   return Number.isFinite(prefix) && prefix === 0;
 }
 
-// 服务端刷新后同步草稿，避免界面停留在旧值上
+/** 编辑中的草稿是否已被用户改动：改动后不再被父级状态刷新回卷 */
+const draftDirty = ref(false);
+
+function markDraftDirty() {
+  draftDirty.value = true;
+}
+
+function syncDraft() {
+  sourcesText.value = sources.value.join('\n');
+  headerName.value = cfg.value?.clientIpHeader ?? '';
+  draftDirty.value = false;
+}
+
+// 服务端刷新后同步草稿，避免界面停留在旧值上。
+// 编辑中且已改动时不能回填：父级状态在任意卡片 changed / 刷新时都会整体替换，
+// 旧实现会静默覆写用户正在输入的条目。
 watch(
   [sources, () => cfg.value?.clientIpHeader],
   () => {
-    sourcesText.value = sources.value.join('\n');
-    headerName.value = cfg.value?.clientIpHeader ?? '';
+    if (editing.value && draftDirty.value) return;
+    syncDraft();
   },
   { immediate: true }
 );
@@ -96,6 +111,11 @@ async function toggle(e: Event) {
   }
 }
 
+function startEdit() {
+  syncDraft();
+  editing.value = true;
+}
+
 async function save() {
   const list = parseSources(sourcesText.value);
   // 全放行需要一个显式确认：光靠一条警告文案挡不住手快的人
@@ -113,6 +133,7 @@ async function save() {
       },
       '可信来源已保存'
     );
+    draftDirty.value = false;
   } catch {
     /* 错误已通过 emit 上报 */
   }
@@ -121,8 +142,7 @@ async function save() {
 function cancel() {
   editing.value = false;
   confirming.value = false;
-  sourcesText.value = sources.value.join('\n');
-  headerName.value = cfg.value?.clientIpHeader ?? '';
+  syncDraft();
 }
 </script>
 
@@ -163,7 +183,7 @@ function cancel() {
       <div v-if="!editing" class="space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-[11px] font-semibold text-text-sub">可信来源</span>
-          <button type="button" class="app-btn-secondary app-btn-compact" :disabled="saving" @click="editing = true">
+          <button type="button" class="app-btn-secondary app-btn-compact" :disabled="saving" @click="startEdit">
             <M3Icon name="edit" :size="13" />
             <span>编辑</span>
           </button>
@@ -194,6 +214,7 @@ function cancel() {
           <textarea
             v-model="sourcesText"
             rows="3"
+            @input="markDraftDirty"
             :class="AREA_CLS"
             placeholder="10.0.0.5&#10;192.168.1.0/24"
           ></textarea>
@@ -206,7 +227,7 @@ function cancel() {
           <label class="block text-[11px] font-semibold text-text-sub mb-1">
             自定义转发头（可留空）
           </label>
-          <input v-model="headerName" :class="INPUT_CLS" placeholder="CF-Connecting-IP" />
+          <input v-model="headerName" @input="markDraftDirty" :class="INPUT_CLS" placeholder="CF-Connecting-IP" />
           <p class="text-[11px] text-text-muted mt-1">
             留空时依次尝试 X-Forwarded-For 与 X-Real-IP；Cloudflare 等使用自有头名的服务需填写。
           </p>

@@ -17,7 +17,9 @@ export class CacheApi {
 
   public getEntries(query = '', limit = 50): Promise<CacheEntriesResponse> {
     const params = new URLSearchParams();
-    if (query) params.set('q', query);
+    // 参数名必须与后端一致：server_cache.go 读的是 query，
+    // 发 q 会让搜索静默失效、列表恒为全量。
+    if (query) params.set('query', query);
     if (limit) params.set('limit', limit.toString());
     return this.http.request<CacheEntriesResponse>(`/api/v1/cache/entries?${params.toString()}`);
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ipc } from '../../api/ipc';
 import type { StatusResponse, ProviderConfig, UpstreamInfo, BootstrapConfig } from '../../api/types';
 import StatusBadge from '../StatusBadge.vue';
@@ -35,6 +35,42 @@ const successMessage = ref('');
 // 延迟测试状态
 const probingId = ref<string | null>(null);
 const probeResults = ref<Record<string, number>>({});
+
+/**
+ * 卡片列表与编辑/删除共用 providers 这一份源数据。
+ * 旧实现用 getStatus 的 upstreams 渲染，却按同一 index 操作 providers：
+ * 任一次保存失败后两数组错位，「编辑」「删除」会命中错误条目。
+ * upstreams 只用来补充运行态（active / pinSet）。
+ */
+const displayNodes = computed(() => {
+  const runtime = new Map(upstreams.value.map((u) => [u.id, u]));
+  return providers.value.map((p, index) => {
+    const rt = runtime.get(p.id);
+    return {
+      index,
+      id: p.id,
+      protocol: p.protocol,
+      server: p.server,
+      url: p.url,
+      weight: p.weight ?? rt?.weight ?? 1,
+      active: rt?.active ?? true,
+      // 配置里有指纹即视为已固定；运行态回包可覆盖
+      pinSet: rt?.pinSet ?? Boolean(p.pin),
+    };
+  });
+});
+
+// 成功横幅定时器：新调度先取消旧调度，卸载时清理
+let successTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flashSuccess(message: string) {
+  successMessage.value = message;
+  if (successTimer) clearTimeout(successTimer);
+  successTimer = setTimeout(() => {
+    successMessage.value = '';
+    successTimer = null;
+  }, 3000);
+}
 
 // 编辑弹窗状态
 const isDialogOpen = ref(false);
@@ -161,6 +197,10 @@ async function saveConfig() {
   saving.value = true;
   errorMessage.value = '';
   successMessage.value = '';
+  if (successTimer) {
+    clearTimeout(successTimer);
+    successTimer = null;
+  }
   try {
     await ipc.configureUpstream({
       mode: currentMode.value.toUpperCase(),
@@ -173,11 +213,8 @@ async function saveConfig() {
       fallbackOnRcode: fallbackConfig.value.onRcode,
       fallbackOnError: fallbackConfig.value.onError,
     });
-    successMessage.value = 'DNS 服务器配置已更新并即时生效！';
     await loadData(true);
-    setTimeout(() => {
-      successMessage.value = '';
-    }, 3000);
+    flashSuccess('DNS 服务器配置已更新并即时生效！');
   } catch (err: any) {
     errorMessage.value = err.message || '更新 DNS 配置失败';
   } finally {
@@ -248,6 +285,13 @@ function handleSaveDialog(item: ProviderConfig) {
   isDialogOpen.value = false;
   saveConfig();
 }
+
+onUnmounted(() => {
+  if (successTimer) {
+    clearTimeout(successTimer);
+    successTimer = null;
+  }
+});
 
 onMounted(() => {
   loadData();
@@ -372,7 +416,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-if="upstreams.length === 0" class="app-card p-10 text-center border-dashed">
+      <div v-if="displayNodes.length === 0" class="app-card p-10 text-center border-dashed">
         <M3Icon name="router" :size="36" class="text-text-muted mx-auto mb-2 opacity-50" />
         <p class="text-[13px] font-medium text-text-main mb-1">暂无配置 DNS 服务器</p>
         <p class="text-[12px] text-text-sub mb-4">请点击右上角按钮添加主备 DNS 服务器</p>
@@ -385,8 +429,8 @@ onMounted(() => {
       <!-- 宽屏两列网格，窄屏单列 -->
       <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
         <AppCard
-          v-for="(node, idx) in upstreams"
-          :key="node.id"
+          v-for="node in displayNodes"
+          :key="node.index + ':' + node.id"
           :title="node.id"
           :subtitle="'权重: ' + (node.weight ?? 1)"
           icon="dns"
@@ -457,7 +501,7 @@ onMounted(() => {
               <div class="flex items-center gap-1.5">
                 <button
                   type="button"
-                  @click="openEditDialog(idx)"
+                  @click="openEditDialog(node.index)"
                   class="app-btn-icon"
                   title="编辑服务器"
                 >
@@ -466,8 +510,8 @@ onMounted(() => {
 
                 <button
                   type="button"
-                  @click="handleDeleteNode(idx)"
-                  :disabled="upstreams.length <= 1"
+                  @click="handleDeleteNode(node.index)"
+                  :disabled="displayNodes.length <= 1"
                   class="app-btn-icon app-btn-icon-danger"
                   title="删除服务器"
                 >

@@ -116,8 +116,8 @@ function addGroup() {
   drafts.value.push(newDraft(drafts.value.length));
 }
 
-function requestDelete(index: number) {
-  deleteIndex.value = index;
+function requestDelete(row: GroupDraft) {
+  deleteIndex.value = drafts.value.indexOf(row);
 }
 
 function confirmDelete() {
@@ -207,9 +207,10 @@ fetchData();
 
         <template v-if="enabled">
           <!-- 分组列表 -->
+          <!-- 用行对象本身作 key：删除中间分组后 DOM 不会原位复用，焦点与输入不会串到上移的分组 -->
           <div
-            v-for="(row, index) in drafts"
-            :key="index"
+            v-for="row in drafts"
+            :key="row"
             class="app-card-sub p-3 space-y-3"
           >
             <div class="flex items-center justify-between gap-2">
@@ -229,7 +230,7 @@ fetchData();
               <button
                 type="button"
                 class="app-btn-icon shrink-0"
-                @click="requestDelete(index)"
+                @click="requestDelete(row)"
                 title="删除该分组"
               >
                 <M3Icon name="delete" :size="15" />
