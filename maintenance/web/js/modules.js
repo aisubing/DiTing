@@ -293,7 +293,7 @@ window.BuildModule = {
 };
 
 window.VersionModule = {
-  latestDetectedVersion: '1.3.5',
+  latestDetectedVersion: '',
 
   async refreshVersions() {
     try {
@@ -319,7 +319,11 @@ window.VersionModule = {
   },
 
   bumpVersion(type) {
-    const base = this.latestDetectedVersion || '1.0.0';
+    const base = this.latestDetectedVersion;
+    if (!base) {
+      App.toast('版本状态尚未加载，请先刷新当前版本状态', 'warn');
+      return;
+    }
     const parts = base.split('.').map(x => parseInt(x) || 0);
     while (parts.length < 3) parts.push(0);
     if (type === 'patch') {

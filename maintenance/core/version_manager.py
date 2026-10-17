@@ -3,11 +3,12 @@
 
 """
 谛听 (DITING) 统一版本号管理引擎
-支持跨模块、安装包、脚本与前端配置的版本号统一检测、同步、MD5 校验与 Git 提交。
+支持跨桌面端、Android、安装包、脚本与前端配置的版本号统一检测、同步、MD5 校验与 Git 提交。
 """
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -28,13 +29,19 @@ def get_file_targets() -> List[Dict[str, str]]:
     root = get_root_dir()
     desktop = os.path.join(root, "Desktop")
     frontend = os.path.join(desktop, "frontend")
+    android = os.path.join(root, "Android")
     return [
         {"name": "桌面端主程序", "path": os.path.join(desktop, "main.go"), "type": "go"},
         {"name": "Linux 端主程序", "path": os.path.join(desktop, "main_linux.go"), "type": "go"},
+        {"name": "Linux 构建脚本", "path": os.path.join(desktop, "build_linux.sh"), "type": "sh"},
         {"name": "特权服务", "path": os.path.join(desktop, "cmd", "service", "main.go"), "type": "go"},
         {"name": "NSIS 主配置", "path": os.path.join(desktop, "build", "windows", "installer", "project.nsi"), "type": "nsi"},
+        {"name": "NSIS 工具模板", "path": os.path.join(desktop, "build", "windows", "installer", "wails_tools.nsh"), "type": "nsi"},
         {"name": "Wails 配置", "path": os.path.join(desktop, "wails.json"), "type": "wails"},
         {"name": "前端 package.json", "path": os.path.join(frontend, "package.json"), "type": "pkg"},
+        {"name": "前端锁文件", "path": os.path.join(frontend, "package-lock.json"), "type": "pkg-lock"},
+        {"name": "Android 应用配置", "path": os.path.join(android, "app", "build.gradle.kts"), "type": "gradle"},
+        {"name": "README 版本示例", "path": os.path.join(root, "README.md"), "type": "readme"},
     ]
 
 
@@ -47,6 +54,38 @@ def read_file(path: str) -> str:
 def write_file(path: str, content: str):
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(content)
+
+
+def _android_version_code(version: str) -> Optional[int]:
+    """由语义化版本推导 Android versionCode，保证单调递增且可重复执行。"""
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version)
+    if not m:
+        return None
+    major, minor, patch = (int(part) for part in m.groups())
+    return major * 10000 + minor * 100 + patch
+
+
+def _replace_lock_version(content: str, new_ver: str) -> Tuple[str, bool]:
+    """仅更新 package-lock.json 根节点与 packages[""] 的版本，保持其余结构不变。"""
+    try:
+        data = json.loads(content)
+    except (ValueError, TypeError):
+        return content, False
+
+    changed = False
+    if isinstance(data.get("version"), str) and data["version"] != new_ver:
+        data["version"] = new_ver
+        changed = True
+
+    packages = data.get("packages")
+    root_pkg = packages.get("") if isinstance(packages, dict) else None
+    if isinstance(root_pkg, dict) and isinstance(root_pkg.get("version"), str) and root_pkg["version"] != new_ver:
+        root_pkg["version"] = new_ver
+        changed = True
+
+    if not changed:
+        return content, False
+    return json.dumps(data, ensure_ascii=False, indent=2) + "\n", True
 
 
 def extract_version(item: Dict[str, str]) -> str:
@@ -68,24 +107,62 @@ def extract_version(item: Dict[str, str]) -> str:
     elif ftype == "pkg":
         m = re.search(r'"version":\s*"([^"]+)"', content)
         if m: return m.group(1)
+    elif ftype == "pkg-lock":
+        try:
+            data = json.loads(content)
+        except (ValueError, TypeError):
+            return "解析失败"
+        packages = data.get("packages")
+        root_pkg = packages.get("") if isinstance(packages, dict) else None
+        ver = None
+        if isinstance(root_pkg, dict):
+            ver = root_pkg.get("version")
+        ver = ver or data.get("version")
+        if ver: return str(ver)
+    elif ftype == "gradle":
+        m = re.search(r'(?m)^\s*val\s+appVersionName\s*=\s*"([^"]+)"', content)
+        if m: return m.group(1)
+    elif ftype == "readme":
+        m = re.search(r'set_version\.bat\s+(\d+\.\d+\.\d+)', content)
+        if m: return m.group(1)
+    elif ftype == "sh":
+        m = re.search(r'build_linux\.sh\s+-v\s+(\d+\.\d+\.\d+)', content)
+        if m: return m.group(1)
 
     return "未知"
 
 
 def replace_version_content(content: str, ftype: str, new_ver: str) -> Tuple[str, bool]:
-    changed = False
     if ftype == "go":
         new_content, n = re.subn(r'(?m)^(\s*(?:ServiceVersion|AppVersion|Version)\s*=\s*")[^"]+(")', rf'\g<1>{new_ver}\g<2>', content)
-        if n > 0: return new_content, True
+        if n > 0 and new_content != content: return new_content, True
     elif ftype in ("nsi", "nsh"):
         new_content, n = re.subn(r'(!define INFO_PRODUCTVERSION\s+")[^"]+(")', rf'\g<1>{new_ver}\g<2>', content)
-        if n > 0: return new_content, True
+        if n > 0 and new_content != content: return new_content, True
     elif ftype == "wails":
         new_content, n = re.subn(r'("productVersion":\s*")[^"]+(")', rf'\g<1>{new_ver}\g<2>', content)
-        if n > 0: return new_content, True
+        if n > 0 and new_content != content: return new_content, True
     elif ftype == "pkg":
         new_content, n = re.subn(r'("version":\s*")[^"]+(")', rf'\g<1>{new_ver}\g<2>', content)
-        if n > 0: return new_content, True
+        if n > 0 and new_content != content: return new_content, True
+    elif ftype == "pkg-lock":
+        return _replace_lock_version(content, new_ver)
+    elif ftype == "gradle":
+        new_content, n = re.subn(r'(?m)^(\s*val\s+appVersionName\s*=\s*")[^"]+(")', rf'\g<1>{new_ver}\g<2>', content)
+        if n > 0:
+            code = _android_version_code(new_ver)
+            if code is not None:
+                m = re.search(r'(?m)^(\s*val\s+appVersionCode\s*=\s*)(\d+)', new_content)
+                if m and int(m.group(2)) < code:
+                    new_content = re.sub(r'(?m)^(\s*val\s+appVersionCode\s*=\s*)\d+', rf'\g<1>{code}', new_content, count=1)
+            if new_content != content:
+                return new_content, True
+    elif ftype == "readme":
+        new_content, n = re.subn(r'(set_version\.bat\s+)\d+\.\d+\.\d+', rf'\g<1>{new_ver}', content)
+        if n > 0 and new_content != content: return new_content, True
+    elif ftype == "sh":
+        new_content, n = re.subn(r'(build_linux\.sh\s+-v\s+)\d+\.\d+\.\d+', rf'\g<1>{new_ver}', content)
+        if n > 0 and new_content != content: return new_content, True
 
     return content, False
 
@@ -113,7 +190,7 @@ def get_current_version() -> str:
     targets = get_file_targets()
     for item in targets:
         ver = extract_version(item)
-        if ver and ver not in ("未知", "文件不存在"):
+        if ver and ver not in ("未知", "文件不存在", "解析失败"):
             return ver
     return "0.0.0"
 

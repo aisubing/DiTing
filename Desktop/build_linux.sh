@@ -8,7 +8,7 @@
 #   用法:
 #     ./build_linux.sh                    # 构建 amd64 二进制
 #     ./build_linux.sh -a arm64           # 构建 arm64 二进制
-#     ./build_linux.sh -v 1.3.5           # 指定版本号
+#     ./build_linux.sh -v 1.4.0           # 指定版本号
 #     ./build_linux.sh --package          # 打包为 .deb 发行包
 #     ./build_linux.sh --clean            # 先清理旧产物
 # ============================================================================

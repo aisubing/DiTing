@@ -10,7 +10,7 @@ import (
 
 // Version 信息（与 Windows 端保持一致，可在编译期通过 -ldflags 注入）
 var (
-	Version   = "1.3.10"
+	Version   = "1.4.0"
 	BuildTime = "dev"
 	GitCommit = "dev"
 )

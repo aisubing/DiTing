@@ -2,6 +2,15 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
 
+### 2026-10-17: 版本号统一范围遗漏与伪变更（发布工具类）
+- **现象**：桌面端已到 1.3.10，Android 仍为 1.2.12；`package-lock.json`、`wails_tools.nsh` 曾靠另起 chore 提交手工补；工具箱对同一版本重跑仍报「已更新」。
+- **根因**：`get_file_targets()` 硬编码 6 个桌面文件，未覆盖 Android Gradle、前端锁文件与生成的 NSIS 模板；`re.subn` 返回 `n>0` 即视为变更，未比较新旧内容。
+- **教训**：
+  1. 版本工具的目标清单按全仓版本声明点维护（Go/Wails/NSIS/package+lock/Android/脚本/README 示例），新增平台时同步扩充并跑全量 dry-run。
+  2. 是否修改必须比较新旧内容，不能只看正则命中数，否则 sync 不幂等并可能产生空提交。
+  3. Android `versionCode` 由 `major*10000+minor*100+patch` 推导并取 `max(旧值, 新值)`，兼顾单调递增与重复执行。
+  4. 锁文件只改根节点与 `packages[""]`，用 JSON 解析回写避免改依赖版本；回写前先验证 round-trip 与 npm 原始格式逐字节一致。
+
 ### 2026-10-17: 批量修复中的跨模块契约陷阱（实现类）
 - **现象**：按 `docs/desktop-bug-report.md` 修复 60+ 项，编译与单测全绿仍漏三类：持 `p.mu` 调 `ReloadEncrypted` 后 `wg.Wait()` 等在途查询、查询经 getter 再取 `p.mu`，单次保存卡死解析数秒；流水线按值捕获 `groupResolver`，热替换不生效却回「已生效」；`os.WriteFile(_, 0o600)`/`os.Chmod` 在 Windows 只切只读位不设 ACL，路径大小写、systemd 相对 `ExecStart`、XDG `Exec` 转义亦然。
 - **根因**：锁归属、状态所有权、路径解析等跨模块契约未在类型系统表达，单模块单测照不到。
