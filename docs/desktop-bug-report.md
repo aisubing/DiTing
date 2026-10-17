@@ -86,6 +86,19 @@
 | A-082 | 中 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 `onRuntimeDnsSettingsChanged`：运行中引擎继续按旧 volatile 快照 prune（缩短不省空间、加长照样删数据）直到下次其它刷新；同屏日志模式项却正确触发（对照即证据） | 待处理 |
 | A-083 | 中 | SAF 授权泄漏 | 全仓 5 处 `takePersistableUriPermission`、0 处 `releasePersistableUriPermission`：删除背景图/订阅本地文件/全面清理后，对应用户文件的持久读授权永不撤销（系统可见「可访问的文件」只增不减） | 待处理 |
 | A-084 | 中 | 服务器模式向导 | DNS 模式「使用向导」接入信息把监听端口**硬编码为 1053**（5 处），从不读 `config.localListenPort`：用户改端口（验证器允许 1024–65535、设置页实时显示真实端口）后，向导仍指示「将 DNS 改为 IP:1053」，照做即把所有局域网设备指向无监听端口 → 全员解析超时 | 待处理 |
+| A-085 | 中高 | Go 全隧道半关闭 | `countingConn` 内嵌 `net.Conn` **接口**致 `CloseWrite` 方法不被提升，`bidiCopyFlow` 的类型断言恒 false：应用侧（被包装的一边）永远收不到 FIN，EOF 定界协议（无 Content-Length 应答/SSE/FTP/邮件）双向僵死直到 App 超时，文件头「支持 half-close」承诺对已归因 UID 流量失效 | 待处理 |
+| A-086 | 中 | Go 全隧道出站 | `bufferedTun.drain` 首次 TUN 写错误即 `return` 永久退出且永不重启，而 `Write` 恒 `return len(p), nil` 向 gVisor 谎报成功：出站包进 2048 队列→满→静默丢弃，网络 handover 一次瞬断后整个隧道输出黑洞化，只能重启 VPN 会话恢复 | 待处理 |
+| A-087 | 中 | DoT 阻断开关 | `SetBlockEncryptedDns` 是死开关：`blockEncryptedDNS` 全仓只有 Store 无 Load，`engine_full_tunnel.go` UDP/TCP:853 处理**无条件**丢弃并记 `blocked_encrypted_dns`；Kotlin 默认 false 而 UI 提供「阻断加密 DNS (DoT)」开关——关闭后 Private DNS(strict) 应用照样全部解析失败，开关与日志归因双双失真 | 待处理 |
+| A-088 | 中高 | 极速 bootstrap | `BootstrapSelector` 两处 Store 调用漏传 dataset（`BootstrapSelector.kt:25-26`，签名默认 NORMAL）：极速模式运行时永远读 `dns_vpn_prefs` 的 bootstrap 配置，而极速设置页写 `diting_express_prefs`——极速里开关/自定义 IP 全部失效，且普通模式关 bootstrap 会让极速 DoT/DoH 退化（与 A-079 同族、不同文件） | 待处理 |
+| A-089 | 中 | 应用放行闸门 | `rememberAppAllowlistResponse` 只在 `serveDNS` 新鲜解析尾部调用（`engine_standalone.go:384`），缓存命中/stale 分支提前 return 不续期，stale 后台刷新也绕开该函数：白名单应用的 IP 授权按 rrTTL 过期而缓存应答可远久于此 → 「DNS 解析成功但 TCP/UDP 连接恒被 app_allowlist_blocked」直至缓存彻底过期 | 待处理 |
+| A-090 | 中 | Go DNS 配置原子性 | `ApplyDNSConfig` 先提交 `responseType`/`dynamicResponse`/`dynamicBlocks.reset()` 再校验 providers（`dns_config.go:133-150`）：provider 校验失败返回 error 时 Kotlin 视为整份拒绝，Go 却保留新拦截应答类型并清空动态计数——UI 与引擎行为漂移且无自愈点 | 待处理 |
+| A-091 | 中 | 服务商健康页 | `ProviderHealthEngine` 全仓零实例化（grep 构造点仅命中类声明）、`recordResult` 零调用者 → `activeEngine` 恒 null：健康页 `flushActive` 恒 false、`loadAll` 恒空，「智能预测权重」显示 `?: 1.0` 兜底的均匀编造值（与 A-041 同族：重构后接线缺失，但本条表面是 UI 谎报而非功能报错） | 待处理 |
+| A-092 | 中 | bootstrap 健康双源 | `BootstrapHealthEngine` 三处并存实例（VPN 服务/测速 VM/Express 隧道）各自持内存快照，`flush→saveAll` **全表 JSON 覆盖** `dns_vpn_prefs` 单键，进程级单槽 `activeEngine` 被最后构造者顶掉：测速页 15s 定时/退出 flush 会整体抹掉服务引擎期间新记的成绩与冷却（及反向），健康统计随机倒退、冷却 IP 状态丢失 | 待处理 |
+| A-093 | 中 | regex 规则大小写 | Kotlin `BlockRuleMatcher`/`AllowRuleMatcher` 用 `Regex(pattern).containsMatchIn(domain)` **不注入 (?i)**（查询域名已 lowercased，但模式大小写保留），Go `policy_engine.go:112` 恒前置 `(?i)`：同一订阅 `/Ads\..*/` 在 VPN（Go 判定）命中、在服务器/回调兜底（Kotlin 判定）不命中，两模式拉黑结果相反；`$match-case` 还被 Kotlin 当 web-only 修饰 ignore（大小写敏感无法表达） | 待处理 |
+| A-094 | 中 | `#$@#` 例外解析 | `COSMETIC_DELIMITERS` 缺 `#$@#`（AdGuard 例外型元素隐藏=带域名的 `#@#`）：`example.com#$@#.ad` 不识别定界符→`substringBefore('#')` 得 `example.com`→**生成为整域 block 规则**——导入含例外行的列表反而把该域整站拉黑 | 待处理 |
+| A-095 | 低 | regex 注释截断 | `AdblockRuleLineParser:24` 的无差别 `substringBefore('#')` 早于 regex 提取（`:33+`）：`/banner#1/` 被截成 `/banner`，`lastSlash==0` 不落 regex 分支、域名分支 `normalizeDomain("/banner")` 判 invalid——regex 体内的 `#` 合法（模式字符），规则整条静默丢失（Go `rule_compiler.go:193` 同收 `#` 且拒 `/` 开头行，两端一致地丢） | 待处理 |
+| A-096 | 低中 | 规则索引残留 | `MappedSubscriptionRuleIndex.compileAndLoad` 的 `finally` 只删本线程 temp；进程被杀后 `block.trie.<nano>.tmp` 永久堆积——`RuleIndexLayout.deleteAll` **全仓零调用者**（grep 实证），无任何清理路径；`renameTo` 失败时退化 `temp.copyTo(overwrite=true)` 非原子，读端（Go `openDTRI`/Kotlin `load`）可读到半写文件→该轮订阅索引失效 | 待处理 |
+| A-097 | 低 | AI 报告渲染 | `MarkdownInlineAnnotator.kt:26` 斜体分支 `(?<!_)_(?!_)…(?<!_)_(?!_)` 未排除**词内下划线**：`dns_vpn_prefs` 中的 `_vpn_` 被匹配，两个下划线定界符被吃掉并以斜体输出 `vpn`（本机 Python re 等价复算实证 8 例中 5 例词内误中：`_vpn_`/`_haoze_`/`_LOG_` 等）；AI 分析报告正文里的配置键名/包名全部被改写变形 | 待处理 |
 
 ---
 
@@ -1195,6 +1208,103 @@
 - **复现/验证**：真机或 Robolectric：`DnsModeManager.updateConfig(config.copy(localListenPort = 8053))` → 打开 USAGE_WIZARD 到第三步 → 接入信息卡片显示 `…:1053`（预期 `…:8053`）。单测层面 `ModeOnboardingSteps` 的文案拼接可参数化后断言。修复方向 = 向导渲染时把 `1053` 替换为 `DnsModeManager.config.value.localListenPort`（Activity 已持有 context），或在 `ModeOnboardingActivity` 把端口作为参数下传。
 - **备注**：与 A-022（`loadConfig` 每次把 5353/5354 强改 1053）方向相反且互斥独立：A-022 是端口值被迁移逻辑篡改，本条是向导展示层无视端口值；两者可共存叠加（用户设 8053 → 显示 1053）。`ModeOnboardingSteps.kt` 414 行、`ModeOnboardingModels.kt` 204 行，均在 550 行限内，拆分无约定障碍。首屏 `localIps` 异步探测失败时显示「未连接 Wi-Fi…」占位（`:316` 的 else 分支），该降级本身正确，不另计。
 
+## A-085 `countingConn` 内嵌接口吞掉 `CloseWrite`：全隧道 TCP 半关闭永久失效（EOF 定界协议双向僵死）
+
+- **位置**：`Android/tunnel/traffic_tracker.go:105-109` — `type countingConn struct { net.Conn; tracker; uid }`，内嵌的是 **`net.Conn` 接口**（方法集只有 Read/Write/Close 等接口声明），Go 接口内嵌**不提升**具体类型才有的方法（`CloseWrite` 属 `*gonet.TCPConn`/`*net.TCPConn` 特有）；`tcp_stack_handlers.go:95-114` `bidiCopyFlow` 以 `if cw, ok := a.(interface{ CloseWrite() error })` 探测能力；`mitm_passthrough.go:81` `bidiCopyFlow(clientConn, remote)` 的 `clientConn` 即包装体（包装点 `engine_full_tunnel.go:246/275`、`mitm_handler.go:59`；`WrapClientConn` 仅 `uid<=0` 不包，Android 上多数流 uid 可解）。
+- **机制/影响**：第二个 goroutine `io.Copy(a,b)` 结束后探测 `a.(CloseWrite)` 恒 false → 服务器先关写方向（FIN/EOF）、等客户端读完再关的半关闭模式下，App 侧收不到 FIN；而 `io.Copy(b,a)` 又在等 App 先关 → 双向僵死直到 App 自身超时。期间 gVisor endpoint、两条 relay goroutine、远端 socket 全部滞留。HTTP 无 Content-Length 应答、SSE、FTP、邮件协议实测会挂；文件头注释（`tcp_stack_handlers.go:5`）「TCP Half-Close: bidiCopyFlow supports half-close」对生产路径为假。`mitm_passthrough.go:94-103` 同型探测同型失效。
+- **触发路径**：全隧道模式访问以 FIN 定界响应的端点（`Connection: close` 无长度头，或 SSE 客户端等 EOF）。
+- **复现/验证**：Go 单测：`_, ok := any(&countingConn{Conn: c}).(interface{ CloseWrite() error })` 断言当前 ok==false；或 net.Pipe + EOF 应答服务，断言客户端读不到 EOF。修复 = countingConn 显式提升 `CloseWrite`/`CloseRead`（类型断言转发内嵌 Conn）。
+- **备注**：`tcp_stack_handlers.go:51`（legacy 无包路径）不受影响——它传入未包装的 conn；缺陷恰在「有流量统计的新路径」上，与 O-135（Express protectSocket）无关。
+
+## A-086 `bufferedTun.drain` 一次写错误永久停摆出站面：`Write` 恒报成功掩盖黑洞
+
+- **位置**：`Android/tunnel/engine_full_tunnel.go:56-67`（`Write` 入队失败即 `default:` 丢包，**恒返回 `len(p), nil`**）、`:69-85`（`drain` 收到 TUN 写错误 → `logf` 一行 → `return`，无任何重启）、`:87`（`halt()` 仅由 `:176/:198` 会话收尾调用）。
+- **机制**：Android 网络切换/接口 flap 时向 tun fd 写入返回 ENETDOWN/EINVAL 是现实来源；drain 协程永久退出后，gVisor 栈仍从 `Write` 得到「成功」回执，出站包进 2048 深队列→满→无声丢弃；App 侧 TCP ACK/数据与 serveDNS 回包从此黑洞，栈按「已送达」持续指数重传。用户表现 = 切换网络后 App 全部连不上/卡死，关掉再开 VPN 才好。legacy `packetPipe` 同型（`engine_mitm.go:124-137` 首错 `return`）。
+- **触发路径**：真机 Wi-Fi↔蜂窝 handover 期间持续下载；logcat 出现 `StartFull: TUN drain write error, stopping writer` 后无任何恢复日志。
+- **复现/验证**：把 `*os.File` 抽成接口注入首次写失败，断言 drain 应能重启（当前不能）；或注入恒错 writer 断言 `Write` 应向上返回错误（当前恒 nil）。修复 = drain 出错退出时关闭 stop/置位错误标志，使 `Write` 返回错误让 gVisor 感知，或重建 drain。
+
+## A-087 `SetBlockEncryptedDns` 死开关：853 恒硬拦，UI 开关与日志归因双双失真
+
+- **位置**：`Android/tunnel/engine_full_tunnel.go:285-287`（Store）、`engine.go:93`（声明）——全仓 grep `blockEncryptedDNS` **无任何 Load**；消费点 UDP `:217-220`、TCP `:270-273` 无条件丢弃并记 `blocked_encrypted_dns`；`engine_mitm.go:62-67` 同型。Kotlin 侧：`normal/GoInspectionTunnel.kt:368` 每次启动如实透传，`ui/settings/AppRulesSettingsStore.kt:291-293` 默认 **false**，`normal/ui/HttpInspectionSettingsScreen.kt:200-212` 提供「阻断加密 DNS (DoT)」开关、副标题「阻断 TCP 853 端口，防止绕过域名规则」。
+- **机制**：用户把开关关掉（默认即关）→ Kotlin 传 false → Go 无读取点 → 853 仍被硬丢。Private DNS strict 模式设备/应用全部解析失败，而 UI 显示该功能未开启；日志归因 `blocked_encrypted_dns` 让排查者误判是用户主动阻断。
+- **触发路径**：默认设置 → 系统 Private DNS 填 `dns.google`（strict）→ 所有域名解析失败。
+- **复现/验证**：Go 单测：`SetBlockEncryptedDns(false)` 后走 UDP/TCP:853 handler，断言不应记 `blocked_encrypted_dns`（当前必记）。修复 = 消费点加 `if e.blockEncryptedDNS.Load()` 门（与 quicDrop `:231` 的 Load 用法对照即范例）。
+
+## A-088 `BootstrapSelector` 漏传 dataset：极速模式整套 bootstrap 设置失效（A-079 同族、不同文件）
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/diagnostic/BootstrapSelector.kt:25-26` — `loadEnabledBootstrapIpEntries(context)`、`isBootstrapEnabled(context)` 均走默认参数 `dataset = RuleDataset.NORMAL`（`ui/settings/BootstrapDnsSettingsStore.kt:24/44`），而 `data/RuleDataset.kt:24-28` NORMAL=`dns_vpn_prefs`、EXPRESS=`diting_express_prefs` 分文件；构造点 `express/ExpressTunnelManager.kt:292` 未传（构造器也没有 dataset 参数），`ui/RaceModeSettingsViewModel.kt:51` 虽以 EXPRESS 构造 VM 但 Selector 同样读 NORMAL。
+- **对照证据**：同族调用全部正确传 dataset（`BootstrapSettingsViewModel.kt:62-63`、`ConfigExporter.kt:100`）；写侧极速设置屏按 EXPRESS 写（`main/MainModeDispatcher.kt:44` → `SettingsRouteActivity.kt:421`）。
+- **机制/影响**：极速引擎运行时永远拿普通模式的 bootstrap 集合——极速里「启用 Bootstrap」开关、预设勾选、自定义 IP 全部不生效；反向：普通模式关 bootstrap 会让极速 DoT/DoH 上游退化为系统解析（`express/engine/ExpressUpstreamDispatcher.kt:64-67` bootstrapAddresses 空→`InetAddress.getAllByName` 直连）。极速测速（RaceMode VM）测的是错误配置。
+- **触发路径**：极速模式开/关 bootstrap → `ExpressDnsEngine.resolve` 行为不变；改 `dns_vpn_prefs` 反而变（adb 可断言 prefs 与解析日志）。
+- **复现/验证**：Robolectric：EXPRESS prefs `bootstrap_enabled=false`、NORMAL prefs true → Express `resolveBootstrap` 仍返回解析结果。修复 = Selector 构造入参加 dataset 并透传两调用。
+
+## A-089 `serveDNS` 缓存命中/stale 分支不续应用放行 IP 授权：白名单应用「解析成功、连接恒被拦」
+
+- **位置**：`Android/tunnel/engine_standalone.go:296-312`（`serveDNS` hit 分支 `return`）、`:314-340`（stale 分支 `return`，后台 singleFlight 刷新亦绕开授权）、`:384`（唯一 `rememberAppAllowlistResponse` 调用点，仅在新鲜路径尾部）；闸门 `engine_app_allowlist.go:83-92`（按 `ips[uid][ip]` 的过期时间判连），授权期=rr TTL（`:117-128`）。
+- **可达面（两条生产路径都中招）**：`serveDNS` 同时是服务器模式入口（`engine_standalone.go:25`）与全隧道 DNS 拦截入口（`engine_full_tunnel.go:332` UDP / `:395` TCP），而连接闸门在 `engine_full_tunnel.go:221/260` 与 `mitm_handler.go:43`——即 VPN 模式「DNS 应答」与「连接放行」共用这张授权表，非仅 standalone。`engine_dns.go:189/211/332` 是同型的 legacy `Engine.Start` 路径（生产无调用者，见 O-149），不作为本条证据。
+- **机制**：授权表只在真实上游解析成功时写入。缓存命中/stale 续命期间上游不被触碰 → rrTTL（常 60s）过期而缓存仍在应答（FIXED/负 TTL 覆盖下应答期可远大于授权期；stale 窗口内后台刷新同样不写授权）→ 白名单应用对已允许域名「DNS 解析成功但 TCP/UDP 连接被 `app_allowlist_blocked`」，直至缓存彻底过期重走新鲜分支才自愈。日志只有连接行 `app_allowlist_blocked`，排查面误导。
+- **触发路径**：strict 白名单 + 缓存 FIXED TTL 3600s + 上游 TTL 60s：查询一次 → 等 >60s → 发起 TCP → 被拦。
+- **复现/验证**：Go 单测：预热 put 缓存 → 推进时钟 → 查询走 hit 分支 → 断言 `appAllowlist.ips` 过期时间被刷新（当前不刷新）。修复 = hit/stale 分支按 ipList 同规则续授权（期取 max(rrTTL, 缓存剩余期)）。
+
+## A-090 `ApplyDNSConfig` 校验失败时部分配置已提交：「拒绝即回滚」承诺不成立
+
+- **位置**：`Android/tunnel/dns_config.go:133-138` — 先持锁写 `e.responseType`/`e.dynamicResponse` 并 `e.dynamicBlocks.reset()`，随后 `:140-150` 才做 providers 校验（空/single 多上游/`validateDNSProvider` 任一失败 `return err`），而 `e.dnsConfig` 只在成功尾部落账（`:161-163`）。
+- **机制/影响**：Kotlin 收到 error 视为整份拒绝（`DnsServerEngine.applyDnsConfig` runCatching），Go 却保留了**新**拦截应答类型与动态配置开关并清零动态计数；后续 `Start()/StartFull()` 用旧 `dnsConfig` 重建 resolver，应答类型却是新值——UI 显示与引擎行为漂移且无自愈点，动态拦截窗口被无端清零。
+- **触发路径**：构造 `providers[1].protocol="bogus"` 的 JSON 调 `applyDNSConfig` → 返回错误 → 断言 `standaloneBlock` 默认 rcode 已变（当前会变）。
+- **复现/验证**：Go 单测直接断言错误返回后 `e.responseType` 保持旧值。修复 = 全部校验前置，再一次性提交。
+
+## A-091 `ProviderHealthEngine` 全仓零实例化：服务商健康页恒空、预测权重是编造均匀值
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/diagnostic/ProviderHealthEngine.kt:12`（构造器）——grep `ProviderHealthEngine(` 仅命中类声明本身，零调用点；`recordResult`（`:33`）零调用者；Go 侧 grep `provider_health` 零命中 → `ProviderHealthStore.saveAll`（`:91`）唯一写者永不运行。
+- **消费链**：入口路由可达（`LogRouteActivity.kt:124` `Routes.PROVIDER_HEALTH -> ProviderHealthScreen`）；`ui/ProviderHealthScreen.kt:64-66` `flushActive`（`activeEngine` 恒 null → 恒 false）+ `loadAll` 恒空表；`:68-73` `predictionWeight ?: 1.0` → `normalizeWeightsToPercent` 对全部参与智能预测的服务商给等值权重——「权重 25%」是**未经任何测量的编造显示**；`ui/RaceModeSettingsViewModel.kt:111-113` 同源。`ProviderHealthStore.kt` 的 `hedgeMisses/decayedHedgeMisses` 及 cooldown 全为死代码（`hedgeMisses` 连写 API 都不存在）。
+- **与 A-041 族关系**：同为「重构后接线缺失」，但表面不同——本条是 UI 谎报（页面渲染正常、无报错），用户只感知「每行暂无运行数据 + 看似有据的权重」；`?:` 兜底解释了「现场不炸」。
+- **复现/验证**：真机进入健康页断言 attempts==0 且权重全等；修复 = 在实际上游解析完成处（`GoTunnelRuleManager`/`serveDNS` 回调或 Kotlin `DnsLatencyTester` 链）实例化并 `recordResult`。
+
+## A-092 `BootstrapHealthEngine` 多实例全量覆盖 prefs：双源互抹健康数据与冷却状态
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/diagnostic/BootstrapHealthEngine.kt:17`（`healthByIp` 实例内存快照）、`:23`（`init{activeEngine=this}` 后构造者抢占单槽）、`:119-125`（`flush→saveAll` **全表 JSON 覆盖**）、`BootstrapHealthStore.kt:53-54`（固定 `dns_vpn_prefs` 单键，跨 dataset 同文件）。并存实例三处：`normal/DnsVpnDatabaseComponents.kt:100`（VPN 服务）、`ui/RaceModeSettingsViewModel.kt:47`（测速页）、`express/ExpressTunnelManager.kt:291`。写源：`normal/GoInspectionTunnel.kt:322`（服务引擎）与 `core/diagnostic/BootstrapSelector.kt:52/69`（VM/Express 引擎）。
+- **机制**：两引擎各持构造时快照；VM 的 15s 定时 flush（`markDirty:160-167`）与 `onCleared→close→flush(commit=true)` 把 **VM 视角**的全表写回 prefs，整体抹掉期间服务引擎新记的成功/失败与 `cooldownUntil`；下次服务 flush 又反向回滚 VM 数据。`flushActive`（`BootstrapSettingsViewModel.kt:61`、`RaceModeSettingsViewModel.kt:111`）指向取决于谁最后构造——打开过测速页后它指向 VM。
+- **用户可见影响**：Bootstrap 设置页健康统计（准确率/冷却）随机倒退忽好忽坏；冷却中 IP 状态丢失导致对已知故障 IP 反复降级重试。
+- **触发路径**：开 VPN（Go 模式持续产生结果）→ 打开网络工具测速并停留 >15s → 退出 → 看 Bootstrap 设置页，服务引擎期间的记录消失。
+- **复现/验证**：单测：A `recordResult(ip1,false)×3`，B 未见过 ip1 → B `flush(commit)` → 读回 prefs 断言 ip1 记录消失（当前实现）。修复 = 单实例化（DI）或 saveAll 改合并写（按 ipId 读-改-写）。
+
+## A-093 Kotlin regex 规则匹配区分大小写，Go 恒 `(?i)`：双引擎对同一订阅给出相反结果
+
+- **位置**：Kotlin `core/rule/BlockRuleMatcher.kt:233-234`、`core/rule/AllowRuleMatcher.kt:199-200` — `runCatching { Regex(rule.pattern).containsMatchIn(domain) }`（模式按用户原文存储：`AdblockRuleLineParser.kt:192-195` regex 分支 `domain = regexPattern!!` 不归一大小写；查询侧域名 lowercased）；Go `tunnel/policy_engine.go:112-113` — `if !strings.HasPrefix(rxPattern, "(?i)") { rxPattern = "(?i)" + rxPattern }`、`policy_matcher.go:33` 同。
+- **机制/影响**：AdGuard 规范中 regex/域名匹配大小写无关（除非 `$match-case`，而 Kotlin 把 `match-case` 当 web-only 修饰 `isWebOnlyModifier→ignored`，`AdGuardDomainUtils.kt:25`——大小写敏感语义根本无法表达）。规则 `/Ads\..*/`：VPN 路径（Go `policyEngine.evaluate`，`engine_dns.go:187-200`/`engine_standalone.go` 同源判定）命中阻断；`DnsQueryFilter` 回调路径（`engine_dns.go:213-220` checker 兜底与 `DnsServerEngine` 的 DomainChecker）用 Kotlin 判定 → 不命中。同一订阅在服务器模式与 VPN 模式给出相反拦截结果，命中日志不一致。
+- **触发路径**：订阅含大写字母的 regex 规则（如 Anti-AD 偶发 `/Ad[Ss]\d/` 类）→ 极速/服务器模式放行、VPN 模式拦截（或反向）。
+- **复现/验证**：JVM：`Regex("Ads").containsMatchIn("ads") == false`；Go：`regexp.MatchString("(?i)Ads","ads") == true`。修复 = Kotlin 侧 `Regex(rule.pattern, RegexOption.IGNORE_CASE)`（保留大小写敏感须另行实现 `$match-case`，与 Go 对齐）。
+- **备注**：Go 的 `(?i)` 无条件注入同样忽略 `$match-case`，属两侧共同缺口；本条缺陷是**分叉**本身（一注一不注）。
+
+## A-094 `#$@#` 例外型元素隐藏未识别：`substringBefore('#')` 兜底把该域整站变成阻断规则
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/rule/AdblockRuleLineParser.kt:7` — `COSMETIC_DELIMITERS = listOf("#@#","##","#?#","#$#")`，缺规范中的 `#$@#`（domain-list 例外型元素隐藏，等价 `#@#`）；`:20-24` 识别失败后落入 `substringBefore('#')`；`:240-247` 定界符选择同缺。
+- **机制**：`example.com#$@#.ad` → 非 cosmetic → 截 `#` 得 `example.com` → **生成 block 规则** `example.com`，整域拉黑；`example.com#$@##.ad` 形式则被 `##` 分支接走 → domain=`example.com#$`（`parseCosmeticLine:253-262` 不校验主机合法性）+ selector=`.ad`，例外语义丢失、scope 是垃圾串。
+- **用户可见影响**：导入含 `#$@#` 例外行的 uBlock 风格列表 → 对应域名从「例外放行」反转为「整域阻断」，站点打不开；与 A-075（cosmetic 幽灵规则）同为 cosmetic 语法面但机制正交（本条在解析层，且后果是反向拉黑）。
+- **复现/验证**：JVM 单测 `parseCategorizedLine("example.com#\$@#.ad")` 断言当前落入 `blockRules`（期望 `isException` cosmetic）。修复 = 定界符表补 `#$@#`（先于 `#@#`/`##` 判长）。
+
+## A-095 regex 规则体内 `#` 被无差别截断：规则整条丢失且计为 invalid
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/rule/AdblockRuleLineParser.kt:24` — `var value = line.substringBefore('#').trim()` 早于 `:33-57` 的 regex 提取执行，cosmetic 预判（`:20-22`）只认四种定界符。
+- **机制**：规范中 `/pattern/` 内 `#` 属模式字符。`/banner#1/` → value=`/banner` → `lastSlash==0` 不进 regex 分支 → 域名分支 `normalizeDomain("/banner")` 含 `/` 返回 null → `invalidCount=1`，规则静默丢失。
+- **一致性反证（为何只列低）**：Go `tunnel/rule_compiler.go:193` 同样 `SplitN(line,"#")` 且 `:203` 直接拒绝 `/` 开头行——两端一致地丢，用户只见「规则无效」计数增加，无模式间行为分叉；`$comment` 与行尾注释场景使该截断不能简单移除。
+- **复现/验证**：对 `/a#b/` 断言 invalidCount；再统计真实订阅中 regex 含 `#` 的丢弃率（低出现率解释了现场无反馈）。修复 = regex 定界（首尾 `/`）内不截 `#`（行尾 `$` 修饰符再截）。
+
+## A-096 规则索引 `.tmp` 残留永久堆积 + `renameTo` 失败退化为非原子复制
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/core/rule/MappedSubscriptionRuleIndex.kt:128-151` — `finally` 只删本线程 temp；`:137-143` `target.delete()` 失败仅 `Log.w`，`temp.renameTo(target)` 失败改 `temp.copyTo(target, overwrite=true)`（流式复制非原子）。`RuleIndexLayout.deleteAll`（`RuleIndexLayout.kt:85-91`）grep 全仓**零调用者**。`MappedSubscriptionRewriteIndex.kt:147-161` 同构同病。
+- **机制/影响**：进程被杀（OOM/worker 崩溃）后 `block.trie.<nano>.tmp` 无人清理、无 TTL、无启动 glob 清理 → filesDir 永久堆积（单文件可达数 MB，×4 类 trie ×scope）；复制中途读端可见 magic 正确但 `sourceOffset+sourcesBytes != limit` 的半写文件——Kotlin `load` 的 `require` 抛错、Go `openDTRI`（`policy_dtri_reader.go:93-96`）返回 corrupted → `policy_engine.go:433-436` 记 `failed to open DTRI trie` 后 `snap.blockTrie=nil`：该轮订阅快照整体失去 trie，Go 侧无 Kotlin 的 fallback map → 依赖索引的订阅域名全部放行。
+- **触发路径**：中断一次大订阅导入后 `adb shell ls files/rule-index/domain/` 见 `.tmp`；受限条件下 rename 跨失败时复制窗口可被并发读命中。
+- **复现/验证**：单测注入 `renameTo` 失败断言 load 期间可见半文件；glob `rule-index/**/*.tmp` 无任何清理逻辑（grep 实证）。修复 = 启动/重建时删 `*.tmp`（或接入 `deleteAll`），复制走 temp+fsync+rename 双保险。
+
+## A-097 AI 报告 Markdown 渲染吃作词内下划线：配置键名/包名在正文被改写变形
+
+- **位置**：`Android/app/src/main/java/com/haoze/diting/ui/agent/MarkdownInlineAnnotator.kt:26` — 斜体分支 `(?<!_)_(?!_)[\s\S]+?(?<!_)_(?!_)` 的 lookaround 只排除**相邻**下划线（`__`），不排除词内下划线；`:132-138` 该分支输出时 `token.substring(1, token.length-1)` **吃掉两个下划线定界符**并斜体化。
+- **机制/实证**（本机复算，Python `re` 与 Java/Kotlin `java.util.regex` 对本模式语义一致；对照表含 8 例）：纯文本 `dns_vpn_prefs` 命中 `_vpn_`（前后字符均非 `_`，lookaround 全过）→ 渲染为斜体 `vpn` 且**下划线消失**；`com_haoze_diting`→`_haoze_`、`KEY_LOG_QUERIES_MIGRATED`→`_LOG_` 同理。反例（代码段安全）：`` `dns_vpn_prefs` `` 整体先被 backtick 分支捕获、按 code 渲染——子代理原报「代码段被斜体化」不成立，被证伪后修正为「裸文本词下划线被吃掉+斜体化」。跨行 `[\s\S]+?` 还使孤对下划线（如两行各一个标识符下划线）可跨行配对成「斜体」吞字。
+- **用户可见影响**：AI 分析报告正文中的 prefs 键名、常量名、包名（`dns_vpn_prefs`、`KEY_...`、`com_haoze_diting` 这类正是该 app 的常见内容）显示时缺下划线、局部斜体——信息失真且用户无从察觉来源；`ui/agent/MarkdownViewer.kt` 全链共用。
+- **触发路径**：让 AI 分析结果正文含裸文本 `dns_vpn_prefs`（不加反引号）→ 打开分析弹层观察。
+- **复现/验证**：JVM 单测 `formatMarkdownAnnotatedString("配置 dns_vpn_prefs 键", …)` 断言输出文本保留 `_`（当前丢失为 `配置 vpn 键` 斜体段）。修复 = 斜体分支补词边界（如 `(?<![\w_])_(?!_)[^_]+_(?![\w_])`）或按 CommonMark 规则排除 intra-word `_`。
+
 ---
 
 ## 观察（未达到确认缺陷标准，供后续验证）
@@ -1329,6 +1439,19 @@
 
 ### O-146 「不再提示」建议忽略为全局 key，跨模式互相消音（意图待定）
 - `permission/ModePermissionStore.kt:46-56` — key=`recommendation_dismissed_`+permission.name，**无 mode 维度**；`permission/ModeReadinessState.kt:21-23` 按此过滤建议。banner/对话框按模式评估（`ModePermissionWarningAction.kt:219-228` 在极速对话框里点「不再提示」后，普通/DNS 模式的同类建议同样永久消失），且全仓无恢复入口。产品意图若是「该建议全局不再烦我」则只是注释缺失；若要 per-mode 需在 key 加 mode。缺声明性证据，列观察。
+
+### O-149 本轮三份子代理报告中被证伪/降级的条目（勿再提出）
+- 【证伪】规则解析子代理 #8「`$dnrewrite=0.0.0.0,badfilter` 永远撤销不了 sinkhole 改写」：回读 `AdblockRuleLineParser.kt:139-140` — 值落 `SINKHOLE_ADDRESSES` 时**只置 `dnsrewriteIsBlock`，不置 `dnsrewriteTargetType`**；于是 `:211-216` 的 badfilter key 走 `dnsrewriteIsBlock || !allow` 分支取 `blockRuleKey`，与 `:228-230` 原规则产出 `blockRules` 时的 map key（`:107 blockRuleKey(rule)`）**同一体系**，撤销成立。子代理把 `:213` 的 `dnsrewriteTargetType != null` 首分支误当成命中分支。
+- 【证伪】规则解析子代理 #10「hosts 多域名行整体丢弃」：`HostsAndDnsmasqParser.kt:126-137` 非 sinkhole 分支与 sinkhole 分支同构——逐域名 `normalizeDomain`，失败的 `invalidCount++`、成功的入列，仅全失败才整行 invalid。其举的 `1.2.3.4 a.example.com b_1.example.com` 例子按现实现**保留** `a.example.com`，结论方向反了。
+- 【降级为观察，非确认缺陷】规则解析子代理 #6「`RuleIndexLayout.scopeDirectory` 忽略 scope 导致 DNS/HTTPS 索引互相覆盖」：`scopeDirectory` 确实丢弃 `scope` 参数（`:50-53` 直接 `return rootDirectory(...)`，与 `:12-19` 文档声明的 `rule-index/https/` 布局不符，属真实实现-文档不一致），**但后果不成立**——`BlockRuleEntity`/`RewriteRuleEntity` 无 scope 列（grep 实证仅有 `appScope`），`BlockRuleDao`/`RewriteRuleDao` 全部查询不带 scope 过滤（`enabledSubscriptionRulesPageKeyset:185-196`、`enabledNonSubscriptionRules:33` 等），故 HTTPS 作业与 DNS 作业编译的是**同一份全量规则**、写入同一文件的内容恒等，不存在互相覆盖丢数据。余留风险只有 §7 的 .tmp/半写面（已独立入库 A-096）。建议修复方向退化为「要么按文档真正分目录，要么删掉误导性的 scope 参数与注释」，属卫生项。
+- 【降级】Go 引擎子代理 #6「`Engine.Start` 失败路径锁外写 `e.running` + 新建 Resolver 不 Shutdown」：`engine.go:138 Engine.Start(fd,…)` 在生产**无调用者**——Kotlin 三条入口分别是 `engine.startFull`（`normal/GoInspectionTunnel.kt:94`）、`engine.startStandalone`（`server/backend/DnsServerEngine.kt:41`）、`engine.startStackMitm`（`GoInspectionCaManager.kt:21`），且 `DnsModeService.kt:139` 的 `engine.start()` 是 Kotlin 侧 `DnsServerEngine.start()` 包装（内部调 startStandalone），非 Go `Engine.Start`。竞争/泄漏面真实但不可达，子代理自己在存疑段也标注了同一点。列观察备查（若日后启用 legacy 路径需一并修）。
+- 【降级】Go 引擎子代理 #7「bootstrap 串行回退放大首查延迟」：`bootstrap_resolver.go` 的串行链与「同主机并发各自重复整轮」需配合**全部 bootstrap 站点黑洞**才显形；同族面已在 A-088（dataset 错读）与 O-150 第 4 项（Kotlin `BootstrapSelector` 的 3s×N×2 无总预算，可达性已核）登记，Go 侧维持观察。
+- 【未升级】Go 引擎子代理存疑 4 项（`dns_interceptor.go` 分片黑洞、StartFull↔Stop 交错遗留 fd/栈、`Engine.Start` 路径 dynamicBlocks 缺席、`log_aggregator.go:99-102` start/stop 竞态）：均因「当前无生产调用者」或「微秒窗口无确定性触发」维持存疑，与上两条降级理由同源，此处一并留痕避免后续轮次重复提出。
+
+### O-150 Kotlin 极速/诊断链的三项已核实但影响条件性/显示级的事实
+- **极速运行期 bootstrap 无总时间预算**（diag 子代理 #5，机制核实）：`core/diagnostic/BootstrapSelector.kt:43-82` 对有序候选**串行**逐个解析，每候选 `resolveWithBootstrapDns` 又串行发 A 与 AAAA 两查询、各 `queryUdp` 用 `DNS_TIMEOUT_MS=3000`（`:139/:161`）的 `soTimeout`，且 `socket.receive` 不响应协程取消 → 最坏 `候选数×2×3s`（默认 7 预设≈42s）；调用端 `express/ExpressTunnelManager.kt:408-410` 每个 UDP:53 查询包独立 `scope.launch(Dispatchers.IO)`、`resolveBootstrap:481-486` 用 `runBlocking` 包住，而 `:102-104` 注释自证设计前提是「resolve() 每次至多 5s」——前提与实现相反；客户端 5s 超时重传会再起新协程并发跑同一条链（成功前无 in-flight 去重）。仅在 UDP:53 被拦/弱网时显形，且成功后缓存 60s 吸收，故列观察级（修复方向同 Go 侧 O-149：共享总预算 + 负结果短缓存 + single-flight）。
+- **墙钟时间基在系统校时跳变下的瞬时失真**（diag #6）：`core/traffic/TrafficStatsManager.kt:245-246` `elapsedSeconds = max(0.2,(now-lastSampleTime)/1000)` 与 Go tick（`:178,198-199`）用 `System.currentTimeMillis()`；NTP 向后跳→clamp 0.2s→同一 delta 网速放大约 5×，向前跳→低估；`TrafficSpeedEstimator.kt:75-76 decayIdleSpeeds` 的「每调用=1s」假设在 tick 延迟时同样不成立。同族 `BootstrapHealthEngine.kt:29/40`、`BootstrapHealthStore.kt:34` 用墙钟判 `cooldownUntil`。开发者手动改时间可见、自愈，与 O-123 同根不同面。建议统一 `elapsedRealtime` 域。
+- **两处显示级陈旧态**：(1) `core/diagnostic/NetworkInfoProbe.kt:40-42` `isVpnActive = cm.allNetworks.any { hasTransport(TRANSPORT_VPN) }` 判「存在任意 VPN」而非本 app，第三方 VPN 连接 + 本 app 停止时 `ui/NetworkToolsScreen.kt:228` 徽标误亮（文件头注释声称与 `DnsVpnTunnelManager` 语义一致，后者按自身 `vpnInterface` 判——口径分裂）；(2) `core/traffic/TrafficAppResolver.kt:19-20/111/119` `unresolvablePackages` 是进程级永久负缓存，已卸载应用再安装后其标签在整进程生命周期内退化为原始包名（`:93 schedulePackageLookup` 直接 return 不重试），仅 `clear()`/重启恢复。
 
 ### O-148 违反 AGENTS.md 第 1 条「代码文件 ≤550 行」的文件清单（约定违例，非行为缺陷）
 - 全量扫描实证（`find -name '*.kt'/'*.go' ! -name '*_test.go'` 逐文件行数）：**Kotlin 13 个 + Go 1 个**超线——
