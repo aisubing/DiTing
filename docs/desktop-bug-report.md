@@ -14,6 +14,9 @@
 | 编号 | 严重度 | 模块 | 问题 | 状态 |
 | --- | --- | --- | --- | --- |
 | A-012 | 中 | VPN IPv6 探测 | AUTO 模式的网关/路由检查是死代码：只要接口有 GUA 地址就启用 IPv6，与函数文档「地址 AND 路由」相反（normal 与 Express 两份拷贝同犯） | 待处理 |
+| A-013 | 中 | 数据清理 | 「清理下载与临时缓存」删除 `filesDir/updates`，但更新安装包实际写入 `filesDir/app-update`，清理承诺落空且残留 APK 永久泄漏 | 待处理 |
+| A-014 | 中高 | 流量统计保留 | `app_traffic_daily` 只被「DNS 日志保留天数」（默认 7）清理，专属的「流量保留 30 天」设置无任何清理消费者；降低日志保留会静默销毁数周流量历史 | 待处理 |
+| A-015 | 中 | 流量实时速度 | Go 隧道模式（唯一生产路径）下每应用实时网速恒为 0：「按实时网速」排序与逐项 ↑/↓ 速度永不生效，而页面文案承诺展示 | 待处理 |
 
 ---
 
@@ -39,6 +42,82 @@
 - **备注**
   - 意图明显是让 `&&`（地址且有路由）或至少以 `hasIpv6Route` 为决定项；按函数文档修正即可。两份拷贝必须同步修复，或将探测抽成共用函数（`core/diagnostic/NetworkInfoProbe.kt:15` 已引用其语义注释）。
   - `hasIpv6Route` 中 `route.hasGateway()` 对 on-link 直写路由同样为 true 的宽松性属另一层语义问题，修正短路后建议一并复核（未单列）。
+
+---
+
+## A-013 「清理下载与临时缓存」删除的更新目录名与实际写入目录不一致，安装包残留无法清除
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/data/cleanup/DataCleanupManager.kt:406-414` — `clearDownloadAndTempCache()` 第 1 步删除 `File(context.filesDir, "updates")`
+  - `Android/app/src/main/java/com/haoze/diting/update/AppUpdateManager.kt:52` — `updateDirectory = File(context.filesDir, UPDATE_DIRECTORY)`
+  - `Android/app/src/main/java/com/haoze/diting/update/AppUpdateManager.kt:167` — `const val UPDATE_DIRECTORY = "app-update"`；下载产物为 `app-update/update-<ver>.apk` 与 `.update-<ver>.apk.part`（`:75-76`）
+  - UI 承诺文案：`normal/ui/DataCleanupScreen.kt:89` — 「清理下载与临时缓存 / 删除更新安装包、下载临时文件及应用临时缓存」；Express 侧 `express/ui/ExpressDataCleanupScreen.kt:150` 同文案，走同一函数（`:202`）
+- **问题**
+  - 清理函数删的是 `filesDir/updates`，而全仓库没有任何代码创建或写入 `updates` 目录（grep `File(context.filesDir, "updates")` 仅此一处命中）；真实 APK 目录 `filesDir/app-update` 从未被清理逻辑引用。
+  - 同函数顺带调用的 `SystemSettingsStore.clearAppUpdateDownload(context)`（`:409`）会清掉记录安装包路径的偏好，即清理后 UI 连“已下载 vX”的入口都消失，但 `app-update/` 下的 APK（约 10–30 MB/版）仍留在内部存储，用户无任何途径删除。
+  - `clearAllLocalData` 的 NORMAL/EXPRESS 全面清理分支（`:483`、`:450` 起）也复用该函数，同样漏删。
+- **用户可见影响**
+  - 用户在「数据清理」页点「清理下载与临时缓存」或执行全面清理并确认后，更新 APK 实际未被删除：磁盘占用不降；反复下载多个版本时残留累积。属于清理承诺与实现不一致的功能缺陷（非单纯低效）。
+- **触发路径**
+  1. 设置 → 检查更新 → 下载 vX APK（落盘 `filesDir/app-update/update-X.apk`）。
+  2. 数据清理 → 清理下载与临时缓存 → 确认。
+  3. 期望：`app-update/` 为空；实际：APK 仍在（`adb shell run-as com.haoze.diting ls -l files/app-update`），仅偏好记录被清。
+- **复现/验证**
+  1. 静态：对比 `DataCleanupManager.kt:408` 的 `"updates"` 与 `AppUpdateManager.kt:167` 的 `"app-update"`，并 grep 全仓确认 `"updates"` 无写入方。
+  2. 真机/模拟器按上述 3 步取证；或 JVM 单测：Robolectric 下写入 `files/app-update/x.apk`，调用 `clearDownloadAndTempCache` 后断言文件仍存在（当前实现如此），修复后应断言被删除。
+- **备注**
+  - 修复方向：`clearDownloadAndTempCache` 应删除 `File(context.filesDir, AppUpdateManager.UPDATE_DIRECTORY)`（需把常量提为 public/internal），或至少两处目录都清；`UPDATE_DIRECTORY` 常量与清理路径应收敛到单一来源，避免再次漂移。
+
+---
+
+## A-014 应用流量历史被「DNS 日志保留天数」清理，专属「流量保留 30 天」设置无任何清理消费者
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/log/LogMaintenanceManager.kt:50-63` — `pruneExpiredLogs(database, retentionDays)` 在 `:62` 执行 `database.appTrafficDao().deleteOlderThan(cutoffDate)`，cutoff 由传入的 `retentionDays` 推导
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnDatabaseComponents.kt:119` — `LogMaintenance.start(scope, db) { activeLogRetentionDays() }`；`:125` 启动即 `pruneExpiredLogs(db, activeLogRetentionDays())`（全仓唯二驱动流量清理的调用）
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnRuntimeConfigManager.kt:70` — `activeLogRetentionDays = SystemSettingsStore.logRetentionDays(context)` → 键 `log_retention_days`（`SystemSettingsStore.kt:9,47-50`，默认 7、钳制 1..30）
+  - `Android/app/src/main/java/com/haoze/diting/ui/settings/SystemSettingsStore.kt:27,31,120-130` — `traffic_stats_retention_days`（默认 30、钳制 1..90）的 get/set
+- **问题**
+  - `app_traffic_daily` 表的删除路径全仓仅两处：`AppTrafficDao.deleteOlderThan`（`dao/AppTrafficDao.kt:87`）唯一被 `LogMaintenanceManager.kt:62` 调用，其 cutoff 永远来自 **日志** 保留键。`getTrafficStatsRetentionDays` 的消费者仅 `ui/transfer/ConfigExporter.kt:326`（导出配置）与 `PreferenceConfigImporter.kt:109`（导入回填），无任何清理逻辑读取；`setTrafficStatsRetentionDays` 也只有导入器一个调用点（无 UI 写入方）。
+  - 结果：两个设置互不相干，流量历史的真实保留期 = `log_retention_days`（默认 7 天），而配置导出/导入却在往返一个从未生效的 30 天值。
+- **用户可见影响**
+  - 用户在「日志保留」里把保留调小（1–3 天，常规省空间操作）→ 每小时一次的 `MAINTENANCE_INTERVAL_MS` 周期（`LogMaintenanceManager.kt:24`）或服务启动即按 7/3/1 天 cutoff 删除 `app_traffic_daily`；「应用流量统计」的「本月/全部历史」视图（`normal/ui/AppTrafficStatsViewModel.kt:182-201` 按 30 天/全时段查询）只剩几天的数据，历史总量少报，且不可恢复。
+  - 反向亦然：用户期望流量统计独立保留 30–90 天（键与默认值即此语义），实际随日志设置漂移。
+- **触发路径**
+  1. 正常使用 VPN 数天，`app_traffic_daily` 已有 >7 天记录。
+  2. 设置 → 日志保留改为 1 天。
+  3. 等待周期清理或重启 VPN 服务 → 打开「应用流量统计 → 本月」：只剩 1–2 天记录。
+- **复现/验证**
+  1. 静态：`grep -rn "appTrafficDao().deleteOlderThan"` 全仓仅 `LogMaintenanceManager.kt:62`；`grep -rn getTrafficStatsRetentionDays` 仅导出/导入两处。
+  2. 单测方向：向 Room in-memory `AppDatabase` 插入 `day = today-10` 的 `app_traffic_daily` 行，以 `retentionDays=7` 调 `pruneExpiredLogs`，断言行被删（当前实现如此）；修复后应以流量专属保留期（`traffic_stats_retention_days`）推导其 cutoff，与日志 cutoff 分离。
+- **备注**
+  - 修复方向：`pruneExpiredLogs` 把 `appTrafficDao().deleteOlderThan` 的 cutoff 改为 `getTrafficStatsRetentionDays` 推导；或为流量清理单列周期任务。同时应提供该值的 UI 入口（当前无写入方）或在文档层面移除「独立 30 天」的暗示，避免导出往返幽灵配置。
+  - Express 分支 `pruneExpiredLogs(dataSources, null, …)`（`ExpressTunnelManager.kt:283` 起）不含流量 DAO（Express 无 `AppTrafficDailyEntity`），本条仅影响 NORMAL 库。
+
+---
+
+## A-015 Go 隧道模式（唯一生产路径）下每应用实时网速恒为 0，排序与速度展示永不生效
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/traffic/TrafficStatsManager.kt:96-100` — `fun start(context, isGoTunnelActive)`；`:113-115` `if (!isGoTunnelActive) { startSamplingLoop(appContext) }`
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnService.kt:321` — 全仓唯一 `TrafficStatsManager.start` 调用点：`start(this, true)`（字面量 true；Express 侧从不调用它）
+  - `TrafficStatsManager.kt:231-269` — `startSamplingLoop` 内 `:255` `speedEstimator.updateSingleAppSpeedEma(...)` 是全仓唯一写入每应用 EMA 的地方（`onAppIdle` 的 `decaySingleAppSpeed` 同在此循环）
+  - `TrafficStatsManager.kt:167-206` — Go 路径 `onGoTrafficTick`：`recordAppTraffic`（`:285-297`，只加总字节/会话/DB 增量，不碰速度）与 `:200` `updateSpeedEma(totalTxDelta, totalRxDelta, …)`（只更新总量 EMA）
+  - `core/traffic/TrafficSpeedEstimator.kt:15,20` — `appSpeedEma` 仅由 `updateSingleAppSpeedEma` 填充；`getAppSpeed` 读它
+  - `TrafficStatsManager.kt:397-400,411-412` — `buildAppStatsList` 用 `getAppSpeed(pkg)` 生成 `currentTxSpeedBps/currentRxSpeedBps`，Go 模式下恒为 null → 0
+  - 消费方：`normal/ui/AppTrafficStatsViewModel.kt:350` `REALTIME_SPEED -> sortedByDescending { it.currentTotalSpeedBps }`；`ui/traffic/AppTrafficRankItem.kt:122,152`（速度行仅 `>0` 时渲染）；`ui/traffic/TrafficAttributionDialog.kt:114` 文案承诺「本页面展示的各应用实时网速…」
+- **问题**
+  - 生产唯一入口 `start(this, true)` ⇒ `isGoTunnelActive` 恒 true ⇒ `startSamplingLoop` 永不运行 ⇒ `appSpeedEma` 永不被写入 ⇒ 每应用速度恒 0。Go 的 `onGoTrafficTick` 明明拿到逐 uid 的 `tx/rx` 增量（`:184-190`），却只喂总队列，丢弃了计算每应用 EMA 所需的数据。
+  - `ensureGoDecayWatchdog`/`decayIdleSpeeds`（`:215-229`、`TrafficSpeedEstimator.kt:62-71`）只衰减已有的每应用 map，空 map 时无效。
+  - 「按实时网速」是用户可选排序项（`AppTrafficStatsModels.kt:17`），排序键恒全 0 ⇒ 排序静默无操作；逐项 ↑/↓ 速度文本因 `>0` 门槛永不出现；说明页对「各应用实时网速」的承诺落空。总量仪表不受影响（`updateSpeedEma` 在 tick 路径有调用）。
+- **触发路径**
+  1. 启动 VPN（Go 隧道，即普通模式正常路径），让 2 个以上应用产生流量。
+  2. 打开「应用流量统计」，切换排序为「按实时网速」：列表顺序与「总流量」排序一致（全 0 稳定排序不重排）；任何应用条目下都不出现速度行。
+- **复现/验证**
+  1. 静态：`grep -rn updateSingleAppSpeedEma` → 仅 `TrafficStatsManager.kt:255`（采样循环内部）；`grep -rn "TrafficStatsManager.start("` → 仅 `DnsVpnService.kt:321` 字面 `true`。
+  2. 单测方向：以 `start(context, isGoTunnelActive = true)` 后调用 `onGoTrafficTick(json)`（两条 uid 增量），断言 `buildAppStatsList` 中 `currentTxSpeedBps > 0` ——当前实现返回 0，复现缺陷。
+- **备注**
+  - 修复方向：`onGoTrafficTick` 的循环内（`:188` 附近）对每个 `appInfo` 调用 `speedEstimator.updateSingleAppSpeedEma(appInfo.packageName, tx, rx, elapsedSeconds)`（`elapsedSeconds` 用同一 tick 间隔），并对无增量应用走 `decaySingleAppSpeed`；或让 UI 在 Go 模式下隐藏「实时网速」项。两种都要同步核对 `TrafficAttributionDialog` 文案。
 
 ---
 
