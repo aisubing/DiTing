@@ -56,8 +56,7 @@ func (p *program) ClearQueryLog(ctx context.Context) error {
 	if ql == nil {
 		return fmt.Errorf("查询日志尚未初始化")
 	}
-	ql.Clear(true)
-	return nil
+	return ql.Clear(true)
 }
 
 // GetQueryLogConfig 实现 ServiceController 接口

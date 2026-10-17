@@ -72,7 +72,12 @@ func (p *program) ConfigureRewrite(ctx context.Context, req ipc.ConfigureRewrite
 	if req.Enabled != nil {
 		cfg.Enabled = *req.Enabled
 	}
-	if req.TTL != nil && *req.TTL > 0 {
+	// 显式提交非正 TTL 是非法输入而非「未提供」：静默丢弃仍报成功会让用户
+	// 以为已保存，GET 回读却还是旧值。
+	if req.TTL != nil {
+		if *req.TTL <= 0 {
+			return fmt.Errorf("TTL 必须为正整数")
+		}
 		cfg.TTL = *req.TTL
 	}
 	if req.Rules != nil {

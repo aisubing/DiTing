@@ -27,8 +27,17 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 	if rebindMgr == nil {
 		rebindMgr = ditingdns.NewRebindProtectionManager(p.cfg.Rebind)
 	}
-	// 分组标记必须在缓存之前写入，否则缓存键会退化为默认组而失去分组隔离
-	clientMw := ditingdns.NewClientMiddlewareWithGroups(p.clientResolver, p.groupResolver)
+	// 分组标记必须在缓存之前写入，否则缓存键会退化为默认组而失去分组隔离。
+	//
+	// 分组解析器一律以取值函数传入：ConfigureClientGroups 会整体替换
+	// p.groupResolver，而流水线只在 StartDNS 时装配一次。按值捕获旧实例
+	// 会让新增分组/成员对转发路径完全不生效，API 却回复「已更新并生效」。
+	groupRef := func() *core.GroupResolver {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		return p.groupResolver
+	}
+	clientMw := ditingdns.NewClientMiddlewareWithGroups(p.clientResolver, groupRef)
 	accessMw := ditingdns.NewAccessMiddleware(p.accessControl)
 	rateLimitMw := ditingdns.NewRateLimitMiddleware(p.rateLimiter)
 	edeMw := ditingdns.NewEDEMiddleware(func() bool {
@@ -104,7 +113,7 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		defer p.mu.Unlock()
 		return p.cfg.DNS.BlockANYMode
 	})
-	filterMw := ditingdns.NewFilterMiddlewareWithGroups(p.filterEngine, p.groupResolver)
+	filterMw := ditingdns.NewFilterMiddlewareWithGroups(p.filterEngine, groupRef)
 	// 声誉查询紧跟在本地规则之后：本地规则是免费的，先让它筛掉绝大多数请求，
 	// 只有到这里仍未被拦的域名才值得花一次外部查询。它也必须在缓存之前——
 	// 缓存的键里没有「谁拦的」这一维度，拦下的应答进了缓存会掩盖真实判断。
@@ -115,14 +124,14 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		return p.filterEngine.GetConfig()
 	})
 	rebindMw := ditingdns.NewRebindMiddleware(rebindMgr, p.cache)
-	filterResponseMw := ditingdns.NewFilterResponseMiddleware(p.filterEngine, p.groupResolver, func() bool {
+	filterResponseMw := ditingdns.NewFilterResponseMiddleware(p.filterEngine, groupRef, func() bool {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		return p.cfg.Filter.FilterResponse
 	}, p.cache)
 	dns64Mw := ditingdns.NewDNS64Middleware(p.dns64Synth, p.resolver)
 	ecsMw := ditingdns.NewECSMiddleware(p.ecsMgr)
-	cacheMw := ditingdns.NewCacheMiddlewareWithGroups(p.cache, p.resolver, p.groupResolver)
+	cacheMw := ditingdns.NewCacheMiddlewareWithGroups(p.cache, p.resolver, groupRef)
 	// 伪应答纠正必须紧贴缓存之后：在缓存之前会让纠正后的 NXDOMAIN 无法被缓存，
 	// 伪地址仍可能被写入；在回源之后则已写入的伪记录无法撤回。
 	bogusNxMw := ditingdns.NewBogusNXDomainMiddleware(func() *core.BogusNXDomainMatcher {
@@ -131,7 +140,7 @@ func (p *program) buildPipeline() *ditingdns.Pipeline {
 		}
 		return p.filterEngine.BogusNXDomainMatcher()
 	})
-	upstreamRouteMw := ditingdns.NewUpstreamRouteMiddleware(p.resolver, p.groupResolver)
+	upstreamRouteMw := ditingdns.NewUpstreamRouteMiddleware(p.resolver, groupRef)
 	forwardMw := ditingdns.NewForwardMiddleware(p.resolver)
 
 	return ditingdns.NewPipeline(

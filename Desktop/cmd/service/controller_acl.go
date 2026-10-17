@@ -13,7 +13,12 @@ import (
 // 监听器才生效——否则用户点了保存，实际生效的仍是旧列表。
 func (p *program) ConfigureEncryptedACL(ctx context.Context, req ipc.ConfigureACLRequest) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	defer func() {
+		p.mu.Unlock()
+		// 重建监听器必须发生在解锁之后：ReloadEncrypted 要等在途查询退出，
+		// 而在途查询正阻塞在 p.mu 上（见 reloadDNSWithCurrentConfig 注释）。
+		p.reloadDNSWithCurrentConfig()
+	}()
 
 	cfg := p.cfg.Encrypted.ReverseProxy
 
@@ -41,7 +46,6 @@ func (p *program) ConfigureEncryptedACL(ctx context.Context, req ipc.ConfigureAC
 
 	p.cfg.Encrypted.ReverseProxy = cfg
 	p.persistConfigLocked("反向代理可信来源")
-	// 可信列表在构建 EncryptedServerConfig 时被固化进监听器，必须重建
-	p.reloadDNSWithCurrentConfig()
+	// 可信列表在构建 EncryptedServerConfig 时被固化进监听器，必须重建（在 defer 中解锁后执行）
 	return nil
 }

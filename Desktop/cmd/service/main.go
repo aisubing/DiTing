@@ -188,10 +188,12 @@ func (p *program) run() error {
 			certCfg.DNSNames, certCfg.IPAddresses = core.DeriveCertNames(
 				cfg.Encrypted.ServerName, cfg.Encrypted.ListenAddress, nil)
 		}
-		if created, err := p.certManager.EnsureSelfSigned(certCfg); err != nil {
-			log.Printf("[加密DNS] 自签证书生成失败: %v\n", err)
+		// 续签而非仅补齐：证书到期后客户端握手全部失败，而本端监听器
+		// 不会因此报错，只能在启动时主动换掉将到期的自签证书。
+		if created, err := p.certManager.RenewSelfSignedIfNeeded(certCfg); err != nil {
+			log.Printf("[加密DNS] 自签证书生成/续签失败: %v\n", err)
 		} else if created {
-			log.Printf("[加密DNS] 已生成自签证书至 %s\n", platform.DefaultCertDir())
+			log.Printf("[加密DNS] 已生成/续签自签证书至 %s\n", platform.DefaultCertDir())
 		}
 	}
 	p.clientResolver = core.NewClientResolver(cfg.Client, p.hostsResolver, p.rewriteEngine)
@@ -243,6 +245,16 @@ func (p *program) run() error {
 	return nil
 }
 
+// currentIPCServer 在锁内读取 IPC 服务实例。
+//
+// p.ipcServer 会被 ConfigureWeb 整体替换（Web 平滑重启），而 DNS 热路径、
+// 定时广播与停机路径都要读它。约定与 p.cfg 一致：读该字段必须持 p.mu。
+func (p *program) currentIPCServer() *ipc.Server {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.ipcServer
+}
+
 func (p *program) runMetricsTicker() {
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
@@ -252,9 +264,9 @@ func (p *program) runMetricsTicker() {
 		case <-p.stopped:
 			return
 		case <-ticker.C:
-			if p.ipcServer != nil {
+			if srv := p.currentIPCServer(); srv != nil {
 				snapshot := p.metrics.Snapshot()
-				p.ipcServer.Broadcast(ipc.Event{
+				srv.Broadcast(ipc.Event{
 					Type:      "metrics",
 					Timestamp: time.Now().UnixMilli(),
 					Data:      snapshot,
@@ -287,8 +299,8 @@ func (p *program) Stop(s service.Service) error {
 	if p.cache != nil {
 		p.cache.Close()
 	}
-	if p.ipcServer != nil {
-		_ = p.ipcServer.Shutdown(context.Background())
+	if srv := p.currentIPCServer(); srv != nil {
+		_ = srv.Shutdown(context.Background())
 	}
 	if p.resolver != nil {
 		_ = p.resolver.Shutdown()

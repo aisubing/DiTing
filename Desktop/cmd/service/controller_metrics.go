@@ -16,6 +16,7 @@ import (
 func (p *program) newMetricsMiddleware() ditingdns.Middleware {
 	// 提前捕获引用：查询日志记录位于 DNS 热路径，回调内不得再取 p.mu
 	ql := p.queryLog
+	metrics := p.metrics
 
 	return ditingdns.NewMetricsMiddleware(func(dctx *ditingdns.DNSContext, duration time.Duration, err error) {
 		qName := ""
@@ -25,7 +26,7 @@ func (p *program) newMetricsMiddleware() ditingdns.Middleware {
 			qType = miekgdns.TypeToString[dctx.Req.Question[0].Qtype]
 		}
 		success := (err == nil)
-		p.metrics.RecordQuery(duration, success)
+		metrics.RecordQuery(duration, success)
 
 		cacheHitStr := ""
 		if val, ok := dctx.Get("cache_hit"); ok {
@@ -125,12 +126,12 @@ func (p *program) newMetricsMiddleware() ditingdns.Middleware {
 			})
 		}
 
-		if p.ipcServer != nil {
+		if srv := p.currentIPCServer(); srv != nil {
 			errStr := ""
 			if err != nil {
 				errStr = err.Error()
 			}
-			p.ipcServer.Broadcast(ipc.Event{
+			srv.Broadcast(ipc.Event{
 				Type:      "query",
 				Timestamp: time.Now().UnixMilli(),
 				Data: ipc.QueryEventData{

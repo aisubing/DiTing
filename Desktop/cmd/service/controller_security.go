@@ -123,11 +123,18 @@ func (p *program) ConfigurePrivacy(ctx context.Context, req ipc.ConfigurePrivacy
 		if padding < 0 {
 			padding = 0
 		}
+		// 先同步引擎再改共享配置：引擎拒绝（如上游列表为空）时必须整体失败，
+		// 否则内存配置与磁盘落盘已是新值、运行中的 resolver 仍是旧值，
+		// 当前会话行为与重启后不一致，而界面显示「已更新」。
+		if p.resolver != nil {
+			next := p.cfg.Upstream
+			next.EDNSPadding = padding
+			if err := p.resolver.Configure(next); err != nil {
+				return fmt.Errorf("更新 EDNS 填充配置失败: %w", err)
+			}
+		}
 		p.cfg.DNS.EDNSPadding = padding
 		p.cfg.Upstream.EDNSPadding = padding
-		if p.resolver != nil {
-			_ = p.resolver.Configure(p.cfg.Upstream)
-		}
 	}
 	if req.BlockANY != nil {
 		p.cfg.DNS.BlockANY = *req.BlockANY
@@ -188,7 +195,12 @@ func (p *program) ConfigureHosts(ctx context.Context, req ipc.ConfigureHostsRequ
 	if req.CustomFiles != nil {
 		p.cfg.Hosts.CustomFiles = req.CustomFiles
 	}
-	if req.TTL != nil && *req.TTL > 0 {
+	// 显式提交非正 TTL 视为非法输入而非「未提供」：静默丢弃后仍报成功，
+	// 用户会以为已保存。0 在这里没有「不缓存」的合法语义，故直接拒绝。
+	if req.TTL != nil {
+		if *req.TTL <= 0 {
+			return fmt.Errorf("TTL 必须为正整数")
+		}
 		p.cfg.Hosts.TTL = *req.TTL
 	}
 

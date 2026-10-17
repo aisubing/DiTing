@@ -87,8 +87,8 @@ func (p *program) StopDNS(ctx context.Context) error {
 		log.Println("[DNS] 停止 DNS 监听前检测到接管生效中，自动先还原系统 DNS 接管...")
 		if err := p.takeoverMgr.Restore(ctx); err != nil {
 			log.Printf("[DNS警告] 自动还原系统 DNS 接管失败: %v\n", err)
-		} else if p.ipcServer != nil {
-			p.ipcServer.Broadcast(ipc.Event{Type: "takeover", Timestamp: time.Now().UnixMilli(), Data: "disabled"})
+		} else if srv := p.currentIPCServer(); srv != nil {
+			srv.Broadcast(ipc.Event{Type: "takeover", Timestamp: time.Now().UnixMilli(), Data: "disabled"})
 		}
 	}
 
@@ -151,14 +151,27 @@ func (p *program) GetAdapters(ctx context.Context) ([]platform.AdapterInfo, erro
 }
 
 // GetStatus 实现 ServiceController 接口
+//
+// 所有 p.cfg / p.resolver / p.takeoverMgr / p.metrics 的读取都在 p.mu 内完成：
+// 这些字段被各 Configure* 路径在持锁状态下整体替换，锁外读同一结构体是
+// 货真价实的数据竞争（切片头撕裂可让 range 越界直接崩掉服务进程）。
 func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
+	// 网卡枚举是独立的系统调用，先做掉再进临界区：持 p.mu 去等它会让
+	// 每条 DNS 查询的中间件 getter 陪跑上百毫秒。
+	lanAddrs, _ := platform.GetLANAddresses()
+
 	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	dnsRun := p.dnsRunning
-	p.mu.Unlock()
+	cfg := p.cfg
+	resolver := p.resolver
+	takeoverMgr := p.takeoverMgr
+	metrics := p.metrics
 
 	upstreams := make([]ipc.UpstreamInfo, 0)
-	if p.resolver != nil {
-		stats := p.resolver.GetProviderStats()
+	if resolver != nil {
+		stats := resolver.GetProviderStats()
 		for _, stat := range stats {
 			upstreams = append(upstreams, ipc.UpstreamInfo{
 				ID:           stat.ID,
@@ -173,8 +186,8 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 				PinSet:       stat.PinSet,
 			})
 		}
-	} else if p.cfg != nil {
-		for _, prov := range p.cfg.Upstream.Providers {
+	} else if cfg != nil {
+		for _, prov := range cfg.Upstream.Providers {
 			w := prov.Weight
 			if w <= 0 {
 				w = 1
@@ -193,18 +206,36 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 
 	var takenAdapters []platform.AdapterState
 	takeoverActive := false
-	if p.takeoverMgr != nil {
-		takenAdapters = p.takeoverMgr.GetTakenOverAdapters()
-		takeoverActive = p.takeoverMgr.IsTakeoverActive()
+	if takeoverMgr != nil {
+		takenAdapters = takeoverMgr.GetTakenOverAdapters()
+		takeoverActive = takeoverMgr.IsTakeoverActive()
 	}
-	lanAddrs, _ := platform.GetLANAddresses()
-	effUDP, _ := p.cfg.DNS.EffectiveListenAddresses()
-
 	var metricsSnap ipc.MetricsStatus
-	if p.metrics != nil {
-		metricsSnap = p.metrics.Snapshot()
+	if metrics != nil {
+		metricsSnap = metrics.Snapshot()
 	}
 
+	// 缓存/过滤/客户端统计各自内部有锁，不依赖 p.mu；放在这里只是为了
+	// 与配置快照保持同一临界区，避免一次响应里出现新旧混合的两代状态。
+	cacheSnap := p.getCacheStatsSnapshot()
+	filterSnap := p.getFilterStatsSnapshot()
+	clientsSnap := p.getClientsSnapshot()
+
+	if cfg == nil {
+		return &ipc.StatusResponse{
+			Version:       Version,
+			PID:           os.Getpid(),
+			UptimeSeconds: int64(time.Since(p.startTime).Seconds()),
+			DNS:           ipc.DNSStatus{Running: dnsRun, Upstreams: upstreams, LANAddresses: lanAddrs},
+			Takeover:      ipc.TakeoverStatus{Active: takeoverActive, Adapters: takenAdapters},
+			Metrics:       metricsSnap,
+			Cache:         cacheSnap,
+			Filter:        filterSnap,
+			Clients:       clientsSnap,
+		}, nil
+	}
+
+	effUDP, _ := cfg.DNS.EffectiveListenAddresses()
 	return &ipc.StatusResponse{
 		Version:       Version,
 		PID:           os.Getpid(),
@@ -212,40 +243,39 @@ func (p *program) GetStatus(ctx context.Context) (*ipc.StatusResponse, error) {
 		DNS: ipc.DNSStatus{
 			Running:           dnsRun,
 			ListenAddresses:   effUDP,
-			AllowLAN:          p.cfg.DNS.AllowLAN,
+			AllowLAN:          cfg.DNS.AllowLAN,
 			LANAddresses:      lanAddrs,
-			Mode:              p.cfg.Upstream.Mode,
+			Mode:              cfg.Upstream.Mode,
 			Upstreams:         upstreams,
-			Bootstrap:         p.cfg.Upstream.Bootstrap,
-			ConditionalRoutes: p.cfg.Upstream.ConditionalRoutes,
-			EnableEDE:         p.cfg.DNS.EnableEDE,
-			BlockUnqualified:  p.cfg.DNS.BlockUnqualified,
-			BlockPrivatePTR:   p.cfg.DNS.BlockPrivatePTR,
-			BlockIPv6:         p.cfg.DNS.BlockIPv6,
-			BlockECH:          p.cfg.DNS.BlockECH,
-			EDNSPadding:       p.cfg.DNS.EDNSPadding,
-			BlockANY:          p.cfg.DNS.BlockANY,
-			BlockANYMode:      p.cfg.DNS.BlockANYMode,
+			Bootstrap:         cfg.Upstream.Bootstrap,
+			ConditionalRoutes: cfg.Upstream.ConditionalRoutes,
+			EnableEDE:         cfg.DNS.EnableEDE,
+			BlockUnqualified:  cfg.DNS.BlockUnqualified,
+			BlockPrivatePTR:   cfg.DNS.BlockPrivatePTR,
+			BlockIPv6:         cfg.DNS.BlockIPv6,
+			BlockECH:          cfg.DNS.BlockECH,
+			EDNSPadding:       cfg.DNS.EDNSPadding,
+			BlockANY:          cfg.DNS.BlockANY,
+			BlockANYMode:      cfg.DNS.BlockANYMode,
 		},
 		Takeover: ipc.TakeoverStatus{
 			Active:   takeoverActive,
 			Adapters: takenAdapters,
 		},
-		Metrics:    metricsSnap,
-		Cache:      p.getCacheStatsSnapshot(),
-		Filter:     p.getFilterStatsSnapshot(),
-		Hosts:      p.cfg.Hosts,
-		Rebind:     p.cfg.Rebind,
-		Access:     p.cfg.Access,
-		RateLimit:  p.cfg.RateLimit,
-		DNS64:      p.cfg.DNS64,
-		Rewrite:    p.cfg.Rewrite,
-		Zone:       p.cfg.Zone,
-		SafeSearch: p.cfg.SafeSearch,
-
-		SafeBrowsing: p.cfg.SafeBrowsing,
-		ECS:          p.cfg.ECS,
-		Clients:      p.getClientsSnapshot(),
+		Metrics:      metricsSnap,
+		Cache:        cacheSnap,
+		Filter:       filterSnap,
+		Hosts:        cfg.Hosts,
+		Rebind:       cfg.Rebind,
+		Access:       cfg.Access,
+		RateLimit:    cfg.RateLimit,
+		DNS64:        cfg.DNS64,
+		Rewrite:      cfg.Rewrite,
+		Zone:         cfg.Zone,
+		SafeSearch:   cfg.SafeSearch,
+		SafeBrowsing: cfg.SafeBrowsing,
+		ECS:          cfg.ECS,
+		Clients:      clientsSnap,
 	}, nil
 }
 

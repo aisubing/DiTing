@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/haoze-evolluling/diting/desktop/internal/config"
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
 	"github.com/kardianos/service"
 )
@@ -20,12 +19,9 @@ func printVersion() {
 
 func executeEmergencyRestore(customConfigPath string) {
 	fmt.Println("[谛听] 正在执行独立离线 DNS 紧急恢复...")
-	statePath := ""
-	if customConfigPath != "" {
-		if cfg, err := config.LoadConfig(customConfigPath); err == nil {
-			statePath = cfg.Takeover.StateFilePath
-		}
-	}
+	// 不带 -config 时也要读到服务实际使用的状态文件：服务按配置写入，
+	// 应急通道若只认默认路径，自定义路径的部署在此处报「无残留」而网卡仍被劫持。
+	statePath := platform.ResolveStateFilePath("", customConfigPath)
 	store := platform.NewFileStateStore(statePath)
 	exec := platform.NewDefaultExecutor()
 	mgr := newDNSManager(exec, store, Version)

@@ -15,6 +15,11 @@ const (
 	MaxFailedAttempts = 5
 	LockoutDuration   = 5 * time.Minute
 	DefaultSessionTTL = 7 * 24 * time.Hour
+
+	// maxTrackedClients 防爆破表的条目上限，防止大量不同来源把内存撑爆
+	maxTrackedClients = 4096
+	// attemptEntryTTL 无锁定的失败计数在最后一次失败后保留的时长
+	attemptEntryTTL = LockoutDuration
 )
 
 var (
@@ -53,7 +58,11 @@ type Manager struct {
 	sessionTimeout time.Duration
 
 	// 防爆破频控 (按客户端 IP 跟踪)
+	//
+	// 两张表都必须有界：键来自网络对端地址，长时间运行的失败登录洪水
+	// 若只增不减，会把与 DNS 核心同进程的服务内存拖垮。
 	ipAttempts    map[string]int
+	ipAttemptAt   map[string]time.Time // 最后一次失败时间，用于过期回收
 	ipLockedUntil map[string]time.Time
 
 	// 活跃会话
@@ -74,6 +83,7 @@ func NewManager(username, passwordHash, salt string, sessionTimeout time.Duratio
 		salt:           salt,
 		sessionTimeout: sessionTimeout,
 		ipAttempts:     make(map[string]int),
+		ipAttemptAt:    make(map[string]time.Time),
 		ipLockedUntil:  make(map[string]time.Time),
 		sessions:       make(map[string]*Session),
 	}
@@ -168,12 +178,63 @@ func (m *Manager) UpdateCredentials(username, oldPassword, newPassword string, b
 	return nil
 }
 
+// pruneLocked 回收过期的锁定与失败计数，并在超限时淘汰最旧条目。
+//
+// 调用方须持有写锁。没有这一步，失败的 IP 键会永久驻留。
+func (m *Manager) pruneLocked(now time.Time) {
+	for ip, until := range m.ipLockedUntil {
+		if !now.Before(until) {
+			delete(m.ipLockedUntil, ip)
+			delete(m.ipAttempts, ip)
+			delete(m.ipAttemptAt, ip)
+		}
+	}
+	for ip, at := range m.ipAttemptAt {
+		if now.Sub(at) > attemptEntryTTL {
+			delete(m.ipAttemptAt, ip)
+			delete(m.ipAttempts, ip)
+		}
+	}
+	// 仍在窗口内但条目过多时，按最后失败时间淘汰最旧的一批
+	if len(m.ipAttempts) <= maxTrackedClients {
+		return
+	}
+	excess := len(m.ipAttempts) - maxTrackedClients
+	for ip := range m.ipAttempts {
+		if excess <= 0 {
+			break
+		}
+		if _, locked := m.ipLockedUntil[ip]; locked {
+			continue // 保留仍处于锁定中的条目
+		}
+		delete(m.ipAttempts, ip)
+		delete(m.ipAttemptAt, ip)
+		excess--
+	}
+}
+
+// recordFailureLocked 记录一次失败尝试并在达到阈值时施加锁定。
+//
+// 调用方须持有写锁。返回错误供上层直接透出。
+func (m *Manager) recordFailureLocked(clientIP string, now time.Time) error {
+	m.ipAttempts[clientIP]++
+	m.ipAttemptAt[clientIP] = now
+	if m.ipAttempts[clientIP] >= MaxFailedAttempts {
+		m.ipLockedUntil[clientIP] = now.Add(LockoutDuration)
+		m.ipAttempts[clientIP] = 0
+		return fmt.Errorf("密码连续错误 %d 次，已临时锁定 5 分钟", MaxFailedAttempts)
+	}
+	remainingAttempts := MaxFailedAttempts - m.ipAttempts[clientIP]
+	return fmt.Errorf("%w (剩余重试次数: %d)", ErrInvalidCredentials, remainingAttempts)
+}
+
 // Login 校验管理员用户名和密码并颁发会话 Token
 func (m *Manager) Login(username, plainPassword, clientIP string) (*Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	now := time.Now()
+	m.pruneLocked(now)
 	// 1. 检查客户端 IP 是否处于防爆破锁定保护中
 	if until, ok := m.ipLockedUntil[clientIP]; ok && now.Before(until) {
 		remaining := int64(until.Sub(now).Seconds())
@@ -191,18 +252,12 @@ func (m *Manager) Login(username, plainPassword, clientIP string) (*Session, err
 	passMatch := (subtle.ConstantTimeCompare([]byte(calcHash), []byte(m.passwordHash)) == 1)
 
 	if !userMatch || !passMatch {
-		m.ipAttempts[clientIP]++
-		if m.ipAttempts[clientIP] >= MaxFailedAttempts {
-			m.ipLockedUntil[clientIP] = now.Add(LockoutDuration)
-			m.ipAttempts[clientIP] = 0
-			return nil, fmt.Errorf("密码连续错误 %d 次，已临时锁定 5 分钟", MaxFailedAttempts)
-		}
-		remainingAttempts := MaxFailedAttempts - m.ipAttempts[clientIP]
-		return nil, fmt.Errorf("%w (剩余重试次数: %d)", ErrInvalidCredentials, remainingAttempts)
+		return nil, m.recordFailureLocked(clientIP, now)
 	}
 
 	// 4. 登录成功，清理失败频控计数
 	delete(m.ipAttempts, clientIP)
+	delete(m.ipAttemptAt, clientIP)
 	delete(m.ipLockedUntil, clientIP)
 
 	// 5. 颁发高熵安全会话 Token
@@ -287,6 +342,7 @@ func (m *Manager) VerifyPasswordWithIP(clientIP, plainPassword string) (bool, er
 	defer m.mu.Unlock()
 
 	now := time.Now()
+	m.pruneLocked(now)
 	// 1. 检查客户端 IP 是否已被锁定
 	if until, ok := m.ipLockedUntil[clientIP]; ok && now.Before(until) {
 		remaining := int64(until.Sub(now).Seconds())
@@ -302,18 +358,12 @@ func (m *Manager) VerifyPasswordWithIP(clientIP, plainPassword string) (bool, er
 	passMatch := (subtle.ConstantTimeCompare([]byte(calcHash), []byte(m.passwordHash)) == 1)
 
 	if !passMatch {
-		m.ipAttempts[clientIP]++
-		if m.ipAttempts[clientIP] >= MaxFailedAttempts {
-			m.ipLockedUntil[clientIP] = now.Add(LockoutDuration)
-			m.ipAttempts[clientIP] = 0
-			return false, fmt.Errorf("密码连续错误 %d 次，已临时锁定 5 分钟", MaxFailedAttempts)
-		}
-		remainingAttempts := MaxFailedAttempts - m.ipAttempts[clientIP]
-		return false, fmt.Errorf("%w (剩余重试次数: %d)", ErrInvalidCredentials, remainingAttempts)
+		return false, m.recordFailureLocked(clientIP, now)
 	}
 
 	// 密码匹配，清理频控计数
 	delete(m.ipAttempts, clientIP)
+	delete(m.ipAttemptAt, clientIP)
 	delete(m.ipLockedUntil, clientIP)
 	return true, nil
 }

@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/haoze-evolluling/diting/desktop/frontend"
@@ -18,7 +19,9 @@ import (
 // NewApp 为 Windows 平台构造带有完整原生实现的 App 实例。
 func NewApp() *App {
 	exec := platform.NewDefaultExecutor()
-	store := platform.NewFileStateStore("")
+	// 与服务端同源解析状态文件路径：服务可能配置了自定义 takeover.stateFilePath，
+	// GUI 的应急恢复必须读同一份文件，否则会误报「无残留接管」。
+	store := platform.NewFileStateStore(platform.ResolveStateFilePath("", ""))
 	dnsMgr := windows.NewDNSManager(exec, store, Version)
 	serviceMgr := windows.NewServiceManager(exec, nil)
 	autoStart := windows.NewAutoStartManager()
@@ -67,7 +70,11 @@ func runGUI(app *App, startMinimized bool) {
 		},
 		OnDomReady: func(ctx context.Context) {
 			go func() {
-				windows.LockWindowAspectRatio(windows.DefaultWindowTitle, 16.0/9.0)
+				// 返回值必须检查：SetWindowSubclass 曾在本进程静默失败，
+				// 丢弃返回值让「比例锁定」整整一代版本没有生效。
+				if !windows.LockWindowAspectRatio(windows.DefaultWindowTitle, 16.0/9.0) {
+					log.Printf("[GUI] 窗口比例锁定安装失败，窗口可被拉成任意比例")
+				}
 			}()
 			// 主窗口此时必定已创建，可安全挂载托盘图标与消息子类。
 			app.initTray()

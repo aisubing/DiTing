@@ -23,12 +23,14 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 	p.mu.Unlock()
 
 	var info core.CertInfo
+	var health core.CertHealth
 	dir := ""
 	if certMgr != nil {
-		if !certMgr.Info().Loaded {
-			certMgr.Reload()
-		}
+		// 每次查询都重载一次：证书文件可能被外部替换，且只有重新载入
+		// 才能发现「已过期」这类仅靠缓存对象看不出来的问题
+		certMgr.Reload()
 		info = certMgr.Info()
+		health = certMgr.Health()
 		dir = certMgr.Dir()
 	}
 
@@ -54,6 +56,8 @@ func (p *program) GetEncryptedDNS(ctx context.Context) (*ipc.EncryptedDNSStatusR
 		DefaultDoHPort:    core.DefaultDoHPort,
 		DefaultDoQPort:    core.DefaultDoQPort,
 		DefaultDoHPath:    core.DefaultDoHPath,
+		CertExpiresSoon:   health.ExpiresSoon,
+		CertExpired:       health.Expired,
 	}, nil
 }
 
@@ -77,7 +81,11 @@ func (p *program) dohURLs(cfg core.EncryptedDNSConfig) []string {
 // ConfigureEncryptedDNS 更新加密 DNS 配置并持久化
 func (p *program) ConfigureEncryptedDNS(ctx context.Context, req ipc.ConfigureEncryptedDNSRequest) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	defer func() {
+		p.mu.Unlock()
+		// 重建监听器必须在解锁之后（见 reloadDNSWithCurrentConfig 注释）
+		p.reloadDNSWithCurrentConfig()
+	}()
 
 	cfg := p.cfg.Encrypted
 	if req.Enabled != nil {
@@ -134,25 +142,32 @@ func (p *program) ConfigureEncryptedDNS(ctx context.Context, req ipc.ConfigureEn
 				certCfg.DNSNames, certCfg.IPAddresses = core.DeriveCertNames(
 					cfg.ServerName, cfg.ListenAddress, nil)
 			}
-			if _, err := p.certManager.EnsureSelfSigned(certCfg); err != nil {
-				log.Printf("[加密DNS] 自签证书补齐失败: %v\n", err)
+			if _, err := p.certManager.RenewSelfSignedIfNeeded(certCfg); err != nil {
+				log.Printf("[加密DNS] 自签证书补齐/续签失败: %v\n", err)
 			} else {
 				cfg.Cert = p.certManager.GetConfig()
 			}
+		} else if renewed, err := p.certManager.RenewSelfSignedIfNeeded(cfg.Cert); err != nil {
+			log.Printf("[加密DNS] 自签证书续签失败: %v\n", err)
+		} else if renewed {
+			cfg.Cert = p.certManager.GetConfig()
 		}
 	}
 
 	p.cfg.Encrypted = cfg
 	p.persistConfigLocked("加密 DNS 配置")
-	// 端口、证书、服务器名都只在监听器启动时读取一次，改完必须重建才生效
-	p.reloadDNSWithCurrentConfig()
+	// 端口、证书、服务器名都只在监听器启动时读取一次，改完必须重建才生效（在 defer 中解锁后执行）
 	return nil
 }
 
 // GenerateEncryptedCert 生成（或按 Force 重新签发）自签证书
 func (p *program) GenerateEncryptedCert(ctx context.Context, req ipc.GenerateCertRequest) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	defer func() {
+		p.mu.Unlock()
+		// 换了证书就得重握手，且重建必须在解锁之后
+		p.reloadDNSWithCurrentConfig()
+	}()
 
 	if p.certManager == nil {
 		return fmt.Errorf("证书管理器未就绪")
@@ -192,16 +207,17 @@ func (p *program) GenerateEncryptedCert(ctx context.Context, req ipc.GenerateCer
 	// 把实际生效的参数写回配置，界面下次打开看到的就是证书的真实内容
 	p.cfg.Encrypted.Cert = p.certManager.GetConfig()
 	p.persistConfigLocked("加密 DNS 证书")
-	// 换了证书就得重握手：已建立的 DoT 连接仍持有旧证书，不重建的话
-	// 新证书要等到下一次服务重启才会真正生效
-	p.reloadDNSWithCurrentConfig()
+	// 换了证书就得重握手：已建立的 DoT 连接仍持有旧证书（重建在 defer 中解锁后执行）
 	return nil
 }
 
 // ImportEncryptedCert 导入一对 PEM 或一个 PKCS#12 容器
 func (p *program) ImportEncryptedCert(ctx context.Context, req ipc.ImportCertRequest) error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	defer func() {
+		p.mu.Unlock()
+		p.reloadDNSWithCurrentConfig()
+	}()
 
 	if p.certManager == nil {
 		return fmt.Errorf("证书管理器未就绪")
@@ -229,7 +245,6 @@ func (p *program) ImportEncryptedCert(ctx context.Context, req ipc.ImportCertReq
 
 	p.cfg.Encrypted.Cert = p.certManager.GetConfig()
 	p.persistConfigLocked("加密 DNS 证书")
-	p.reloadDNSWithCurrentConfig()
 	return nil
 }
 

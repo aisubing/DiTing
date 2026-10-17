@@ -10,7 +10,8 @@ import (
 // NewApp 为 Linux 平台构造带有系统实现与存根的 App 实例。
 func NewApp() *App {
 	exec := platform.NewDefaultExecutor()
-	store := platform.NewFileStateStore("")
+	// 与服务端同源解析状态文件路径（见 platform.ResolveStateFilePath）。
+	store := platform.NewFileStateStore(platform.ResolveStateFilePath("", ""))
 	dnsMgr := linux.NewDNSManager(exec, store, Version)
 	serviceMgr := linux.NewServiceManager(exec, nil)
 	autoStart := linux.NewAutoStartManager()

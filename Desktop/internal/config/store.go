@@ -18,6 +18,20 @@ var (
 	storeMu sync.Mutex
 )
 
+// init 向 platform 注册「从配置文件读取接管状态路径」的读取器。
+//
+// 应急恢复通道（`-restore` / GUI）可能不带 -config，需要按默认配置路径
+// 反查服务实际使用的 stateFilePath，否则自定义路径的部署会读错文件。
+func init() {
+	platform.RegisterStatePathReader(func(configPath string) (string, error) {
+		cfg, err := LoadConfig(configPath)
+		if err != nil || cfg == nil {
+			return "", err
+		}
+		return cfg.Takeover.StateFilePath, nil
+	})
+}
+
 // DefaultConfigFileName 默认配置文件名称
 const DefaultConfigFileName = "config.json"
 

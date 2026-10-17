@@ -111,9 +111,16 @@ func (p *program) ConfigureWeb(ctx context.Context, req ipc.ConfigureWebRequest)
 
 	// 若运行状态或监听发生变化，在后台异步协程中平滑重启 IPC/Web 服务
 	// 避免在当前 HTTP 请求处理函数中同步 Shutdown 引发自死锁
-	if (wasEnabled != req.Enabled || oldListenAddr != targetListenAddr) && p.ipcServer != nil {
-		oldServer := p.ipcServer
-		go func(srv *ipc.Server, targetAddr string) {
+	//
+	// 所有可变字段都在锁内取快照：协程运行期间 ConfigureWeb 可能再次被调用
+	// （切换局域网开关），裸读 p.ipcServer / p.cfg 会与写侧构成数据竞争。
+	p.mu.Lock()
+	oldServer := p.ipcServer
+	authToken := p.cfg.IPC.AuthToken
+	p.mu.Unlock()
+
+	if (wasEnabled != req.Enabled || oldListenAddr != targetListenAddr) && oldServer != nil {
+		go func(srv *ipc.Server, targetAddr, token string) {
 			// 短暂延时确保当前的 HTTP 响应已成功发送给客户端
 			time.Sleep(100 * time.Millisecond)
 			log.Printf("[Web] 正在平滑重启服务以应用新监听设置 (%s)...\n", targetAddr)
@@ -121,7 +128,7 @@ func (p *program) ConfigureWeb(ctx context.Context, req ipc.ConfigureWebRequest)
 			defer cancel()
 			_ = srv.Shutdown(shutdownCtx)
 
-			newServer := ipc.NewServer(targetAddr, p.cfg.IPC.AuthToken, p)
+			newServer := ipc.NewServer(targetAddr, token, p)
 			p.initAssetsForServer(newServer)
 			if err := newServer.Start(); err != nil {
 				log.Printf("[Web] 重启服务失败: %v\n", err)
@@ -131,7 +138,7 @@ func (p *program) ConfigureWeb(ctx context.Context, req ipc.ConfigureWebRequest)
 				p.mu.Unlock()
 				log.Printf("[Web] 服务已成功平滑重启于: %s\n", newServer.Addr())
 			}
-		}(oldServer, targetListenAddr)
+		}(oldServer, targetListenAddr, authToken)
 	}
 
 	return nil

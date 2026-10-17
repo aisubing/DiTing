@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/config"
@@ -95,7 +96,17 @@ func (p *program) SetFilterPause(ctx context.Context, req ipc.FilterPauseRequest
 	}
 
 	if req.Paused {
-		engine.PauseFor(time.Duration(req.DurationSec) * time.Second)
+		// 负值与溢出在入口已拒绝（ipc.maxFilterPauseSeconds），这里再兜一层：
+		// PauseFor 对 d <= 0 的语义是「暂停至手动恢复」，绝不能让它由
+		// 错误输入或乘算溢出触发。0 是文档化的永久暂停，按原样传入。
+		sec := req.DurationSec
+		if sec < 0 {
+			return fmt.Errorf("durationSec 不能为负数")
+		}
+		if sec > 0 && sec > math.MaxInt64/int64(time.Second) {
+			return fmt.Errorf("durationSec 过大")
+		}
+		engine.PauseFor(time.Duration(sec) * time.Second)
 	} else {
 		engine.ResumePause()
 	}

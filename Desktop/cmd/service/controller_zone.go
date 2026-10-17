@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/config"
@@ -52,7 +53,11 @@ func (p *program) ConfigureZone(ctx context.Context, req ipc.ConfigureZoneReques
 	if req.Enabled != nil {
 		cfg.Enabled = *req.Enabled
 	}
-	if req.TTL != nil && *req.TTL > 0 {
+	// 显式提交非正 TTL 是非法输入而非「未提供」（见 ConfigureRewrite 同型说明）
+	if req.TTL != nil {
+		if *req.TTL <= 0 {
+			return fmt.Errorf("TTL 必须为正整数")
+		}
 		cfg.TTL = *req.TTL
 	}
 	if req.Zones != nil {
