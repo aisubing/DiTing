@@ -77,6 +77,9 @@
 | A-073 | 低中 | Go 连接日志 | 包级全局 `connLogSeen sync.Map` 仅在 `StartFull` 清空：standalone/inspection 模式无回收点，去重键单调增长（内存缓涨+跨引擎实例压制新会话日志） | 待处理 |
 | A-074 | 低 | Go bloom 加载 | `LoadBloomFilter` 不校验 `bitCount/hashCount > 0`：`bitCount=0` 的畸形文件通过尺寸校验，首个 `MightContain` 触发 `%0` integer divide by zero panic | 待处理 |
 | A-075 | 中 | Express 规则添加 | Express 黑名单可添加元素隐藏规则（仅 DNS_MODE 被拦）：写入 `diting_express` 却提示成功；`CosmeticRuleManager` 硬编码只从 NORMAL 库编译 CSS，且 Express 列表又不显示 cosmetic 行 → 不可见、不生效、无法删除的幽灵规则 | 待处理 |
+| A-076 | 高 | VPN 路由覆盖 | 默认开启的「绕过局域网」IPv4 补集枚举漏掉 116–119/8 与 122–123/8（电信/联通/阿里云/腾讯云在用公网段）：这些直连 IP 流量完全绕过 TUN，域名规则/MITM/QUIC·DoT 阻断/禁止联网/流量统计对其全部失效 | 待处理 |
+| A-077 | 中 | HTTPS 检查证书 | 本会话是否 MITM 由**缓存位** `isHttpsInspectionReady` 决定，异步真校验失败后只写偏好、不重启隧道：根证书已被卸载仍继续 MITM → 目标 App TLS 握手失败/证书告警，与设置页显示矛盾至下次重连 | 待处理 |
+| A-078 | 中 | 会话统计归零 | 编辑排除/禁止联网/检查名单或数据清理触发 `restartVpnLocked` → `TrafficStatsManager.start()` 无条件清 sessionTx/Rx/时长：本地列表编辑使「本会话↑↓」与「已连接」静默归零并瞬断（对照 allowlist 走热更新不重启，口径不一致） | 待处理 |
 
 ---
 
@@ -1047,6 +1050,52 @@
 
 ---
 
+## A-076 默认开启的「绕过局域网」IPv4 补集枚举漏掉 116–119/8 与 122–123/8：约 1 亿在用公网 IP 的直连流量完全绕过 VPN 隧道，全部管控承诺对其静默失效
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnTunnelManager.kt:172-184` — `if (bypassLan) { IPV4_BYPASS_LAN_ROUTES.forEach { builder.addRoute(addr, len) }; addRoute(DNS_SERVER_V4, 32) }`；`:197-202` else 分支为全量 `0.0.0.0/0`
+  - `:318-365` — `IPV4_BYPASS_LAN_ROUTES` 手写「公网补集」表：`112.0.0.0/6`（覆盖 112–115）、`120.0.0.0/7`（120–121）、`124.0.0.0/7`（124–125）、`126.0.0.0/8`——**116–119 与 122–123 无任何条目覆盖**
+  - `:213-214` `establish()`；`:280` `bypassLan = SystemSettingsStore.isBypassLanEnabled(this)`；`ui/settings/SystemSettingsStore.kt:12` — `DEFAULT_BYPASS_LAN_ENABLED = true`（**默认开**）
+  - 消费语义：Android `VpnService.Builder.addRoute` 是「命中该路由才进 TUN」，未被任何 route 覆盖的目的 IP 直接走物理网卡（与 `addDisallow`/排除路由无关——Android 无排除路由原语，补集枚举是此模式的唯一手段）
+  - **独立覆盖校验**（本地脚本按逐 route 对 0–255 全部第一字节做掩码匹配）：未完全覆盖的第一字节恰为 `0,10,116,117,118,119,122,123,127,169(254 段),172(16-31 段),192(168 段),224–255`——除 116–119、122–123 外全部是有意的 RFC1918/回环/链路本地/组播保留段
+  - 受影响面：116/8、117/8（中国电信 CN2/163 大众段）、118/8、119/8（移动/联通）、122/8、123/8（联通/网宿等）——中国境内 CDN、云厂商、大量自建服务的活跃地址空间
+  - 对照 Express：`express/ExpressTunnelManager.kt:214-225` 走「窄路由 + 劫持 IP 逐条 /32」设计，不用本表——**NORMAL 模式专属缺陷**
+- **机制/影响**：`bypassLan=true`（默认）下，目的 IP 落在 116–119/122–123 的连接**完全不进用户态栈**：域名规则的连接级复核、HTTPS MITM（`engine_mitm` 全链）、QUIC/DoT:853 阻断（`engine_full_tunnel.go:217,270`）、禁止联网按 UID 阻断（`isUIDBlocked`）、`TrafficStatsManager` 的 Go 计流全部不触发——而这些能力正是普通模式的产品承诺。App 硬编码 IP、直连 CDN IP、部分 P2P/测速流量可整体逃逸。
+  - 为何现场不炸（反证成立）：绝大多数浏览走域名→DNS 阶段已被 NXDOMAIN/黑洞拦下，用户看不到 IP 层逃逸；IPv6 侧 `2000::/3`（`:187`）整体捕获不存在枚举问题——v4/v6 行为不对称正说明 v4 表是手写疏漏而非有意设计（v4 表里 169/172/192 的细粒度补集显然按「排除私网」意图认真算过，唯独这两组大段漏了）。
+- **触发路径**：默认安装开 VPN → 用 `adb shell` 或某 App 直连 `116.***.***.***` 类地址（如某些 CDN 的边缘节点 IP、`122.***.***.***` 域名解析后的直连）→ `dumpsys connectivity` /抓包见该流走 wlan0 不进 tun0；对照组 `114.xxx`（112/6 覆盖）走 tun0。
+- **复现/验证**：纯函数级单测即可定案：对 {116,117,118,119,122,123}∪{0..255} 做逐 route 匹配断言全覆盖（当前 6 个字节段 MISS）。修复：补 `116.0.0.0/6`（116–119）与 `122.0.0.0/7`+`124` 重排，或直接改 `112.0.0.0/4` 覆盖 112–127 再精确挖掉 124–125/126–127 既有段；改完必须全 0–255 掩码回归（防再次手误）。
+- **备注**：本条与 A-012（IPv6 探测死代码）同在 `establishVpnInterface`，修复路由表时可一并复核。禁止联网/家长控制在此段的失效是**安全语义级**，严重度定为高。
+
+---
+
+## A-077 HTTPS 检查按「缓存的证书就绪位」决定本次会话是否 MITM，异步真校验发现证书已卸载后不回滚运行中的隧道
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnService.kt:240-245` — `inspectionRequested = inspectionConfigured && tunnelManager.isHttpsInspectionCertificateInstalled(this)`（同步、读缓存）；`if (inspectionConfigured) verifyHttpsInspectionCertificateAsync(this, serviceScope)`（异步真校验，**结果不参与本会话决策**）
+  - `normal/DnsVpnTunnelManager.kt:49-51` — `isHttpsInspectionCertificateInstalled` = `AppRulesSettingsStore.isHttpsInspectionReady(context)`（纯偏好缓存）
+  - `:57-64` — `verifyHttpsInspectionCertificateAsync`：`GoInspectionCaManager.isInstalled` 查真实 AndroidCAStore；失败仅 `setHttpsInspectionReady(false)+setHttpInspectionEnabled(false)`——**不触碰运行中的 engine、不 restart**
+  - 生效点：`:269-270` `activeInspectionPackages = if (inspectionRequested) …` → `startTunnel(inspectionEnabled=…)` → `GoInspectionTunnel.kt` `startStackMitm`
+- **机制/影响**：用户从系统设置删掉本 App 的 CA 根证书后立即开 VPN：缓存仍为 true → 本会话照常 MITM → 客户端 App 校验链里已无该根 → 目标 App TLS 握手失败/证书告警（浏览器红锁、App 报网络错误）；异步校验随后把开关置灰，但隧道不重启——「通知显示已连接、HTTPS 检查显示已关、流量却仍被 MITM 掐死」三相矛盾持续到下次手动重连。
+- **反证（为何现场少报）**：缓存位平时准确（证书装/卸都同步更新），仅「上次刷新与本次启动之间证书被移除」窗口触发——删证书本就是低频操作，且多数用户删证书是因为不再用该功能。
+- **触发路径**：装好 HTTPS 检查并运行过 → 系统安全设置删除 DITING CA → 开启 VPN → 目标 App（如某银行/购物）访问被检查域 → 证书错误。
+- **复现/验证**：单测方向：mock `isHttpsInspectionReady=true` + `GoInspectionCaManager.isInstalled=false`，断言异步回调后触发 `restartVpnLocked`/`stopStackMitm`（当前无任何引擎侧动作）。修复：异步校验失败且本会话 `inspectionRequested==true` 时回调 `configManager` 重下发（走 `refreshRuntimeConfig` 既有热路径或按需重启）。
+
+---
+
+## A-078 编辑排除/禁止联网/HTTPS 检查名单触发全量 VPN 重启，`TrafficStatsManager.start()` 无条件把「本会话」流量与时长清零并瞬断（allowlist 同类编辑却走热更新，口径不一致）
+
+- **位置**
+  - 链：`ui/blockedapps/BlockedAppsScreen.kt:55`、`normal/ui/AppRuleViewModel.kt:99,321`、`data/cleanup/DataCleanupManager.kt:380,389,399` → `core/rule/RuntimeDnsSettingsRefresher.kt:160-170`（ACTION_REFRESH_APP_EXCLUSIONS）→ `normal/DnsVpnService.kt:133` → `normal/DnsVpnRuntimeConfigManager.kt:175-186`（`refreshAppExclusions` → `onRestartVpn()`）→ `DnsVpnService.kt:345-349` `restartVpnLocked`（stop→`startVpn(startIntent)`）→ `:320-322` `TrafficStatsManager.start(this, true)`
+  - `core/traffic/TrafficStatsManager.kt:84-97` — `start()` 无条件 `sessionStartTime.set(now); sessionTxTotal.set(0); sessionRxTotal.set(0); sessionAppBytes.clear()`（`:97` 注释自认「restartVpnLocked path can call start() again without a stop()」）
+  - 不一致对照：同文件 `:189-205` `refreshAppAllowlist` → `goInspectionTunnel?.syncAppAllowlist(rules)` **热更新不重启**；而排除应用必须重启有其客观原因——`addDisallowedApplication` 在 `establish()` 时固化（`DnsVpnTunnelManager.kt:204-211`），无法热改
+- **机制/影响**：用户在 VPN 运行中「把一个应用加进排除列表/禁止联网名单」这类**普通编辑操作** → TUN 重建（秒级黑洞，正在下载的东西断流重连）+ 「本会话 ↑/↓ 字节、已连接时长、各应用本会话排行」全部静默归零。日累计有 dbSyncer 持久化不丢，但「本会话」面板语义被一条编辑摧毁；用户无任何提示（无 toast、无日志页事件）。allowlist 同类操作无此代价，同一屏内两种名单行为分叉，用户无从预期。
+- **反证（为何不算设计意图）**：若「重连即新会话」成立，则系统网络切换重连清零合理；但此处触发源是**本地列表编辑**，产品文案（`ui/traffic/` 页面「本会话」）与实际行为矛盾；且 restart 路径 `startVpn(startIntent)` 重放旧 intent 还有 O-103/存疑-b 的会话配置重解析问题。
+- **触发路径**：开 VPN → 流量页记一会话数据 → 返回把任一应用加入「排除应用」 → 回流量页：计数与时长归零、连接瞬断。
+- **复现/验证**：Robolectric/单测：`TrafficStatsManager.start()` 前后 session 字段（当前必清零）。修复方向：restart 路径把「会话保持」交给调用侧——`restartVpnLocked` 增加 `preserveSession` 参数（编辑类重启不清 sessionTx/Rx/startTime，仅重建 TUN 与 disallowed 列表）；或 start() 拆分 `ensureRunning()`（首次初始化）与 `reattach()`（重建不重置）。
+- **备注**：存疑-a/b（provider intent 不可达 + refresh 丢弃运行时自定义上游）与 d（restartVpnLocked 释放顺序不对称）见 O-141/O-142。
+
+---
+
 ## 观察（未达到确认缺陷标准，供后续验证）
 
 ### O-106 `StartupSelfCheck` 只消毒 NORMAL 偏好文件，Express/DNS_MODE 的同名键不覆盖
@@ -1163,6 +1212,16 @@
 ### O-135 `DotTransport`/`ExpressDotTransport` 丢弃 `protectSocket()` 返回值，与 `PlainDnsTransport` 的抛错处理不对称
 - `core/dns/DotTransport.kt:71` 与 `express/transport/ExpressDotTransport.kt:116`：`protectSocket?.invoke(rawSocket)` 返回的 Boolean 被丢；对照 `core/dns/PlainDnsTransport.kt:49-51` `if (protectSocket != null && !protectSocket(socket)) throw IOException("Failed to protect DNS UDP socket")`（Express Plain 孪生同抛）。`VpnService.protect()` 在服务停止/重建窗口返回 false。
 - 未升级为缺陷（子代理复核后自证影响不成立）：两种模式的 builder 都 `addDisallowedApplication(自身包名)`（`normal/DnsVpnTunnelManager.kt:204-207`、`express/ExpressTunnelManager.kt:229`），未 protect 的本包 socket 仍直连物理网络，不构成「上游经自身 TUN 回环」黑洞；可观察后果仅剩「慢失（烧满 5s soTimeout）而非快失」与错误原因被掩盖。建议统一为抛错口径，属健壮性/一致性卫生项。
+
+### O-141 运行时自定义上游的两处潜在缺陷（provider 重载路径当前不可达）
+- (a) `normal/DnsVpnProviderResolver.kt:36-51`：intent 协议为明文 `DNS` 且省略 `EXTRA_DNS_PORT` 时默认落到 `DEFAULT_DOT_PORT`(853)——明文 DNS 发进 DoT 端口。全仓 `startIntent(context, provider)` 带 provider 实参零调用（仅无 provider 重载在用），故今天不可触发；一旦有「临时上游」入口即炸。
+- (b) `normal/DnsVpnService.kt:228-231 + DnsVpnRuntimeConfigManager.refreshRuntimeConfig`：以 intent 携带运行时自定义 DoH/DoT 启动的会话，收到任何 `ACTION_REFRESH_RUNTIME_CONFIG`（intent=null）后按**持久化**上游重解析，静默丢弃启动时的自定义 provider。同因 (a) 的入口不可达而暂未升级。确认方法：给 (a) 造一个调用点后走 refresh 比对 `configManager.activeProviders`。
+
+### O-142 `restartVpnLocked` 与 `stopVpn` 的 TUN 释放顺序不对称（无实害）
+- `normal/DnsVpnService.kt:345-349` restart 先 `stopInspectionDataPlane()`（`goInspectionTunnel=null`）再 `disconnectVpnInterface()`，使后者内 `goInspectionTunnel?.releaseTun()` 恒为 no-op；stopVpn 路径顺序相反。已核 Go `Engine.Stop()` 关闭 tunFile（`tunnel/engine.go:229-231`），无 fd 泄漏，仅路径不对称；统一顺序可消除误读风险。另：`normal/DnsVpnNetworkMonitor.kt` 的 `onNetworkChanged` 回调在 `DnsVpnService.kt:57` 构造时未传（恒 null），四个 NetworkCallback 的 IPv6 自适应检查为空转——注册/注销配对完好无泄漏，属死码（A-012 备注已覆盖其后果）。
+
+### O-143 本地化引擎 32 位哈希键的理论碰撞面与不可刷新渠道名（卫生）
+- `ui/localization/LocalizationEngine.kt:37-41`：`localized_text_<31bit(hash)>` 作为资源名与 app 内中文串互映射，`values/values-en` 各注册 112 条且完全对称（脚本核 `values−values-en = ∅`），当前全仓中文串间碰撞 0 组；但 String.hashCode 32-bit 截断至 31 bit，新增串存在理论碰撞（后果：一条文案显示另一条的译文），且无测试守护。resource-id/translation 双缓存在语言切换 `recreate()` 后跨 Activity 共享 stale id（后果=回落原中文，仅体验降级）。渠道名创建即固化，语言切换后系统通知设置页不刷新——A-037 修复备注已含，此处登记哈希面。
 
 ### O-138 `AppTrafficDao.upsertDelta` 用 SQLite UPSERT 语法：API 29 设备（NORMAL 模式可达下限）若其 bundled SQLite < 3.24 则流量历史静默全丢（版本下限未取证）
 - `data/dao/AppTrafficDao.kt:48-56` — `INSERT … ON CONFLICT(date, package_name) DO UPDATE SET …`（经 `upsertBatchDeltas:66-77` 事务循环调用）；UPSERT 需 SQLite ≥ 3.24。
