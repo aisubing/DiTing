@@ -2,6 +2,19 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；已被证伪的做法以「反例」形式并入相关条目，不单独成篇。
 
+### 2026-10-17: 批量修复 Bug 文档时遇到的锁/平台/配置快照陷阱（实现类）
+- **现象**：本轮按 `docs/desktop-bug-report.md` 批量修复 60+ 项，其中三类问题反复出现，且在编译与现有测试全绿时完全不暴露：
+  1. **锁序倒置**：`ConfigureEncryptedDNS` 持 `p.mu` 调用 `ReloadEncrypted`，后者 `wg.Wait()` 等在途查询，而在途查询经流水线 getter 又要拿 `p.mu`——单次保存会让整条解析停滞数秒。同类还有 `GetStats` 在读锁内调用会二次 RLock 的 `currentTime()`。
+  2. **指针捕获**：流水线中间件在构建时按值捕获 `p.groupResolver`，之后 `ConfigureClientGroups` 换字段对运行中流水线毫无影响，API 却回复「已生效」。
+  3. **平台语义错位**：`os.WriteFile(_, 0o600)` / `os.Chmod` 在 Windows 只切换只读属性、不设 ACL；`strings.ToUpper` 之外的路径比较、systemd 单元里的相对 `ExecStart`、XDG `Exec` 未转义同理——同一段代码在 Linux 单测里正确、在交付平台失效。
+- **根因**：三类问题都不是「写错一行」，而是**跨模块契约**（谁持锁、谁拥有状态、谁解析路径）没有在类型系统里表达，只能靠阅读调用链发现；单测通常只覆盖单模块，跑得再绿也照不到。
+- **教训**：
+  1. **凡在持锁路径里调用「可能等待外部事件」的方法，先画出它会不会回到同一把锁**：`wg.Wait`、网络写、`time.Sleep`、以及任何回调注入点都是嫌疑；修法统一为「锁内只做快照，锁外做重活」。
+  2. **长生命周期对象（流水线/协程）不得按值捕获会被热替换的字段**，改注入 getter（`func() *T`）或 atomic 指针；修复后要检查所有构造点与测试桩是否同步。
+  3. **权限/路径/编码类断言必须在目标平台验证，不能用 POSIX 单测代签**：Windows 权限用 `icacls` 实测；systemd/XDG 产物直接读生成文件比对规范；无法在 CI 覆盖的平台差异用 `//go:build` 分包，并提供 no-op 桩保证其他平台可编译。
+  4. **拆分超出 550 行的文件时先确认新文件仍属同一包且无 import 遗漏**：本轮 `cache.go` 逼近上限，把容量重算整块移到 `cache_capacity.go` 后需重新 `go build ./...` 与相关测试，而不是只看行数。
+  5. **修复跨平台包后至少跑一次 `GOOS=linux go build ./...`（或对应平台）**：Windows 上 `go build ./...` 不编译 `//go:build linux` 文件，本轮 Linux 平台层改动全靠交叉编译才发现语法错误。
+
 ### 2026-10-17: 桌面端冷启动依赖链存在"先有鸡还是先有蛋"（构建引导类）
 - **现象**：全新机器（无 `node_modules`、无 Go 模块缓存、无 `frontend/dist`）上 `go build ./...` 与 `wails generate module` 均直接失败：`frontend\embed.go:7:12: pattern all:dist: no matching files found`，导致 wailsjs 绑定无法生成，前端 `vue-tsc` 又因缺少 `../../wailsjs/go/main/App` 而无法构建。
 - **根因**：`frontend/embed.go` 用 `//go:embed all:dist` 把构建产物嵌入二进制，而 Go 编译期要求被嵌入目录至少存在一个文件；Wails 的 `generate module` 在编译 Go 包阶段即中断，无法走到生成绑定那一步，而绑定又是前端类型检查的前置。
