@@ -18,6 +18,9 @@
 | A-014 | 中高 | 流量统计保留 | `app_traffic_daily` 只被「DNS 日志保留天数」（默认 7）清理，专属的「流量保留 30 天」设置无任何清理消费者；降低日志保留会静默销毁数周流量历史 | 待处理 |
 | A-015 | 中 | 流量实时速度 | Go 隧道模式（唯一生产路径）下每应用实时网速恒为 0：「按实时网速」排序与逐项 ↑/↓ 速度永不生效，而页面文案承诺展示 | 待处理 |
 | A-016 | 中 | 数据清理 | 「清除自定义背景缓存」删除 `appearance_settings` 偏好文件中的键，但背景设置实际存于 `dns_vpn_prefs`，清理后背景设置原样保留并继续生效 | 待处理 |
+| A-017 | 中 | Go 引擎生命周期 | `dnsCache` 清理协程无停止路径，且 CA 管理器每次调用新建一个 `Engine` 且从不 `Stop()`：每次证书校验/导出泄漏一个后台 ticker 协程与全套缓存内存 | 待处理 |
+| A-018 | 中高 | Go 引擎并发 | `SetBlockResponseType`/`SetDomainChecker` 等 setter 不加锁写 `Engine` 字段，服务中的查询协程同样不加锁读；`e.mu` 不构成 happens-before → 数据竞争（可撕裂接口值/读到旧响应类型） | 待处理 |
+| A-019 | 中 | Go DNS | UDP 上游响应从不检查 TC（截断）位、无 TCP 重试，截断响应被原样转发且写入缓存，客户端 TCP 重试命中同一份截断缓存，高记录数域名在 TTL 内持续返回残缺答案 | 待处理 |
 
 ---
 
@@ -147,6 +150,77 @@
 - **备注**
   - 修复方向：`clearCustomBackground` 应改用 `context.getSharedPreferences(PREFS_NAME, …)`（或直接调用 `AppearanceSettingsStore.setCustomBackground(context, false, null)` / 新增 `AppearanceSettingsStore.clearCustomBackground`，把键名与文件名的来源收敛到 store 内部）；同时核对 `custom_background_uris`（列表键）一并清理。
   - 对照：同函数体内 `StartupSelfCheck.kt:52-61` 清理同名 JSON 键时用的就是 `PREFS_NAME`（`dns_vpn_prefs`），可见清理器此处属笔误而非设计。
+
+---
+
+## A-017 `dnsCache` 清理协程无停止路径 + CA 管理器按调用新建 `Engine`，每次证书校验泄漏一个常驻 goroutine 与缓存对象图
+
+- **位置**
+  - `Android/tunnel/dns_cache_policy.go:95-108` — `startCleaner()` 启动 `go func(){ for { select { case <-c.stopCleaner: …; case now := <-ticker.C: c.cleanupExpired(now) } } }()`（30s ticker），唯一退出通道是 `c.stopCleaner`
+  - `Android/tunnel/dns_cache.go:66` — `newDNSCache()` 内即调用 `cache.startCleaner()`；`:101` `func (c *dnsCache) close()` 关闭 `stopCleaner`，**但全仓 `close()` 的调用方只有 `dns_cache_test.go`（5 处），生产代码零调用**
+  - `Android/tunnel/engine.go:120-134` — `NewEngine()` 固定 `dnsCache: newDNSCache(...)`；`Stop()`（`:209-329`）逐项拆解 interceptor/router/tunFile/flowOutbound/standalone servers/blooms/logAggregator/trafficTracker/policyEngine —— **没有 `dnsCache` 一行**（逐行 grep 确认）
+  - `Android/app/src/main/java/com/haoze/diting/core/cert/GoInspectionCaManager.kt:18-24` — `certificatePem()` 每次调用 `val engine = Engine()`，只 `startStackMitm`/`stopStackMitm`，从不调 `engine.stop()`；`fingerprintSha256`/`isInstalled`/`exportCertificateToUri` 全部经由它
+  - `Android/tunnel/engine_mitm.go:44-49` — `StopStackMitm()` 仅置空 `stackCertMgr`/`stackMitmFilter` 两字段，无任何缓存/协程回收
+- **机制**
+  - 每构造一个 `Engine`（含仅取一次证书 PEM 的临时 Engine），其 `dnsCache` 的 cleaner goroutine 就永久存活：`select` 只在 `stopCleaner` 关闭时退出，而生产路径无人能关闭它；goroutine 引用 → `dnsCache`（64 个分片 map、flight map、entry 对象）永远不可 GC。
+  - `Engine.Stop()` 也不回收，意味着**即使是正常跑完的 VPN 会话**，每启动一次也滞留一个 cleaner goroutine + 缓存对象图（Go 绑定对象本身可被 GC，但 goroutine 持有 `stopCleaner`/`ticker.C` 通道与 `c`，整个 `dnsCache` 逃逸于 GC）。
+  - CA 场景放大：`isInstalled` 的调用面 —— `normal/DnsVpnTunnelManager.kt:58-64`（`verifyHttpsInspectionCertificateAsync`，VPN 启动/配置刷新时异步校验证书）、`CaCertificateSettingsScreen.kt` 的界面状态检查与导出/指纹路径。每次调用 = 一个 `newDNSCache` = 一个永不退出的 goroutine + 每 30 秒一次的空转唤醒。
+- **用户可见影响**
+  - 长时间保持 VPN 运行、频繁进入证书设置页/触发证书校验的设备：goroutine 数与常驻内存随调用次数线性增长（每千次约 1000 个空转 timer goroutine）；30s 周期唤醒对功耗有轻微持续影响。单进程寿命内不至于 OOM，但属于「可验证的无界泄漏」。
+- **触发路径**
+  1. 打开 CA 证书设置页并反复点「检查是否已安装」N 次（或反复重启 VPN）。
+  2. 观察 Go 侧运行时统计。
+- **复现/验证**
+  1. 静态：`grep -rn "dnsCache" tunnel/engine.go` 确认 `Stop()` 无 `dnsCache` 回收；`grep -rn "\.close()" tunnel/*.go`（排除 _test）无 dnsCache 命中。
+  2. 运行取证：在 Go 单测或临时调试构建里循环调用 `NewEngine()` N 次后 `runtime.NumGoroutine()` 断言增量 ≈ N（当前实现如此）；修复方向：`Engine.Stop()` 调用 `e.dnsCache.close()`，`GoInspectionCaManager.certificatePem` 复用单例引擎或改用不建缓存的轻量入口（`startStackMitm` 本身并不使用 `dnsCache`）。
+- **备注**：修复必须同时处理「Stop 不回收」与「CA 管理器按调用 new Engine」两处；只改其一仍留另一半泄漏面。
+
+---
+
+## A-018 引擎 setter 与查询协程对同一字段均不加锁：`e.mu` 不建立 happens-before，构成数据竞争
+
+- **位置**
+  - 写侧（无锁）：`Android/tunnel/engine_config.go:47-49` `SetDomainChecker`（`e.domainChecker = checker`）、`:273-287` `SetFirewallChecker`/`SetAppResolver`/`SetAppUidResolver`/`SetLogCallback` 全部裸赋值；`:385-387` `SetBlockResponseType`（`e.responseType = ParseResponseType(responseType)`）
+  - 写侧（持锁对照，证明字段语义上属于 `e.mu` 域）：`Android/tunnel/dns_config.go:133-136` — `applyDNSConfig` 写同一 `e.responseType` 时是 `e.mu.Lock()` … `Unlock()`
+  - 读侧（无锁）：`Android/tunnel/engine_dns.go:260`、`:280` `switch e.responseType`（查询处理协程内）；`engine_standalone.go:248-252` 同样裸读；`engine_dns.go` 各回调分发点裸读 `e.domainChecker`/`e.firewallChecker`/`e.appResolver` 等接口字段
+  - 字段声明：`Android/tunnel/engine.go:45` — `responseType ResponseType`（普通 int，非 atomic）；接口字段同为普通字段
+  - 并发运行时可达性：`Android/app/src/main/java/com/haoze/diting/server/backend/DnsServerEngine.kt:95-105` — `syncRules()` 在引擎**已服务**期间调用 `engine.setRewriteRules(...)`、`engine.setBlockResponseType(...)`；触发源 `DnsModeService.kt:159-171`（`ACTION_REFRESH` → `refreshDnsEngine()` → `syncRules()`）：用户在 DNS 模式运行中改一条规则即命中
+- **机制**
+  - Go 内存模型：读侧不持 `e.mu`、其中一个写侧也不持 `e.mu`，因此对 `responseType`/`domainChecker` 等字段没有任何同步边；`ApplyDNSConfig`（持锁）与 `SetBlockResponseType`（不持锁）写同一字段还会互相竞争。int 撕裂在 arm64 上罕见，但**接口值（2 字：类型指针+数据指针）的非原子写读可能观察到类型与数据不配对**，一旦发生即调度进错误的 Kotlin 回调对象或崩溃；至少 `go test -race` 会判 UB。
+  - 与 Express/VPN 启动路径不同：那条链路 setter 都在 `startFull` 之前完成（`GoInspectionTunnel.kt:91-99` 先 `configureEngine` 后 launch），不构成竞争；本条的竞争窗口在 **DNS 模式运行中刷新**（`syncRules` 与 serve goroutine 并发）与 `DnsServerEngine.applyDnsConfig`（`:214` `engine.applyDNSConfig(json)` 运行中调用）。
+- **用户可见影响**
+  - 概率性、非确定：表现为 DNS 模式改规则/改封锁响应类型瞬间偶发错误响应类型（如设 NXDOMAIN 却回 0.0.0.0）、回调串线或（接口撕裂时）进程崩溃。静态上这是对共享字段的未同步并发读写，属必须修的缺陷类别。
+- **复现/验证**
+  1. `cd Android/tunnel && go test -race ./...` 配一个并发压测：一个 goroutine 循环 `SetBlockResponseType`，另一路查询流量（本机 `go1.27.2` 可跑；现有测试不覆盖该并发，当前套件绿不代表安全）。
+  2. 静态核对：`e.responseType` 的全部读点（engine_dns.go:260/280、engine_standalone.go:248）与 `SetBlockResponseType` 写点（engine_config.go:385）均不在 `e.mu` 临界区。
+- **备注**
+  - 修复方向：把 `responseType` 改为 `atomic.Int32`（或全部读写统一进 `e.mu`）；`domainChecker` 等接口字段统一 `atomic.Value`/带锁 getter 快照（项目经验教训「长生命周期对象不得按值捕获会被热替换的字段」同源）。`SetBlockResponseType` 至少应像 `dns_config.go:133` 一样持锁。
+
+---
+
+## A-019 UDP 上游截断（TC=1）响应既不重试 TCP 也不拒缓存：客户端 TCP 重试命中同一截断缓存，残缺答案在 TTL 内固化
+
+- **位置**
+  - `Android/tunnel/resolver_plain.go:70-107` — `queryPlainContext` UDP 读 `buf := make([]byte, 4096)`，`return buf[:n]` 前无任何 TC 检查/转 TCP；全包 `grep Truncated` 零命中（非 _test）
+  - 对照组（证明并非无人手滑）：`Android/app/src/main/java/com/haoze/diting/express/transport/ExpressPlainDnsTransport.kt:48-52`（Kotlin Express 路径）**有**截断转 TCP 逻辑 `if (ExpressDnsMessageUtils.isTruncatedResponse(response)) { queryTcp(...) }` —— 同功能在 Go 主 VPN 路径缺失
+  - `Android/tunnel/dns_cache.go:242-278` — `putMsg` 仅按 rcode/answer 数/TTL 决定入库，从不看 `respMsg.Truncated`；`dns_cache_flight.go:74-79` 把原样响应喂进 `put`
+  - `Android/tunnel/engine_standalone.go:295-304` — 命中缓存后 `w.Write(cachedResp)` 原样回给客户端（含 TC=1）
+- **机制**
+  1. 上游对大应答（多记录 CDN、DNSSEC、长 TXT）置 TC=1 截断 UDP 返回（默认 512B 截断，Go 查询未带 EDNS0 bufsize —— 全包 `grep Edns0` 零命中）。
+  2. 引擎不重试 TCP，把截断响应返回客户端并缓存。
+  3. 解析器客户端（Android bionic/Chrome）见 TC=1 按 RFC 5966 走 **TCP** 重查同一问题 → `serveDNS`（TCP 也进同一函数）→ `dnsCache.getFast` 命中刚存的**截断 UDP 报文** → 回写残缺答案，且 TCP 通道本可拿全量也被截断缓存短路。
+  4. TTL 内每次查询（UDP 直接命中缓存、TCP 命中截断缓存）都拿不到完整记录集。
+- **用户可见影响**
+  - 记录数多的域名（大型 CDN 轮换、DNSSEC 签名区）在 VPN/DNS 模式下间歇性解析不全：连接变慢（客户端耗尽残缺列表后重查）、多栈偏好下 IPv6 记录恰好被截掉时回退 v4 甚至失败。日志表现为同一域名反复「解析成功但连接异常」。
+- **触发路径**
+  1. VPN 或 DNS 模式运行，上游选普通 53 端口 UDP。
+  2. 查询一个应答 >512B 且上游未启 EDNS0 的域名（如部分 DNSSEC 签名域的 ANY/TXT，或多记录 CDN 域）。
+  3. `dig +tcp @<手机> <域名>` 与 `dig +udp` 对比：TCP 本应拿全量，实际两者都返回同一份 TC=1 截断结果。
+- **复现/验证**
+  1. 静态：resolver_plain.go 无 TC 分支、无 `queryPlainTCPContext` 的截断后调用（`:47` 那处调用是显式 `forceTCP` 策略路径，非 TC 触发）；`putMsg`/`getFast` 路径无 `Truncated` 判断。
+  2. 运行：`go test` 构造 TC=1 假上游，断言 (a) resolver 应转 TCP 重查（当前不转）；(b) `putMsg` 应拒收截断报文（当前入库）。
+- **备注**
+  - 修复方向（任一即可断链，建议双做）：`queryPlainContext` 读包后 `msg.Header.Truncated` 为真时走 `queryPlainTCPContext`；`putMsg` 对 `respMsg.Truncated` 直接返回 false 不缓存。Express Kotlin 侧已有正确实现可作语义参照。
 
 ---
 
