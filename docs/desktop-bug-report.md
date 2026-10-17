@@ -19,6 +19,7 @@
 | A-006 | 中 | DNS 缓存清理 | 清理 DNS 缓存只清内存与数据库，未清待落盘队列，约 30 秒后缓存条目被重新写回 |
 | A-007 | 低 | 快捷设置磁贴 | `requestListeningState` 使用拼接错误的组件名，运行状态变化时磁贴刷新请求全部失效 |
 | A-008 | 中 | 崩溃日志 | Android 7–9 上自动导出崩溃日志先走 API 29 的 MediaStore，回退目录又无写权限，连续崩溃备份静默失败 |
+| A-009 | 中 | Express 日志 | Express 模式的日志保留天数设置从未被执行，`diting_express` 中的 DNS/竞速/引导日志不会自动清理 |
 
 ---
 
@@ -247,6 +248,35 @@
   3. logcat 过滤 `CrashLogManager`：可看到 `Failed to export crash log to Downloads via MediaStore`，随后回退写入抛出 `EACCES`（具体异常文本随 ROM 不同）。
   4. 静态核对：`exportToDownloads()` 中没有任何 `SDK_INT` 判断；`AndroidManifest.xml` 没有 `WRITE_EXTERNAL_STORAGE`，也没有 `requestLegacyExternalStorage`。
 - **备注**：API 29 以下应直接走兼容路径并申请/声明旧版存储权限，或改用 `FileProvider` + `ACTION_CREATE_DOCUMENT` 让用户选择位置；至少要在两条路径都失败时设置失败提示，而不是静默返回 `null`。
+
+---
+
+## A-009 Express 模式的日志保留策略从未执行
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/log/LogMaintenanceManager.kt:17-56`（唯一负责按保留天数清理日志的组件；只接收 `AppDatabase`）
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnDatabaseComponents.kt:118`（普通模式启动 `LogMaintenance.start(scope, db)`）
+  - `Android/app/src/main/java/com/haoze/diting/express/ExpressTunnelManager.kt:257-268`（Express 直接创建 `ExpressRulesDatabase` 与三个 logger，没有启动任何清理任务）
+  - `Android/app/src/main/java/com/haoze/diting/data/ExpressRulesDatabase.kt:49-53`（`dns_log`、`race_log`、`bootstrap_log` 都存在 Express 独立库中）
+  - `Android/app/src/main/java/com/haoze/diting/main/MainModeDispatcher.kt:51`、`ui/LogRetentionSettingsScreen.kt:65`（Express 设置页仍允许单独设置保留天数）
+- **问题**
+  - 全项目只有 `DnsVpnDatabaseComponents` 调用 `LogMaintenance.start()`，且传入的是普通模式的 `AppDatabase`；`ExpressTunnelManager.start()` 只创建 `DnsLogger`、`RaceLogger`、`BootstrapLogger`，没有对应的周期清理。
+  - `LogMaintenance.pruneExpiredLogs()` 的参数类型是 `AppDatabase`，没有接受 `ExpressRulesDatabase` 或 DAO 集合的入口，因此即使 Express 想复用也必须先改接口。
+  - Express 设置页通过 `LogRetentionSettingsScreen(dataset = EXPRESS)` 把保留天数写入 Express 专属偏好；`ExpressVpnService` 只读取日志模式，从不读取 `logRetentionDays`，该设置实际是无操作。
+  - `DnsLogger` 的类注释写明“Expiry cleanup is scheduled centrally by [LogMaintenance]”，但 Express 的实例没有接到这个中央清理。
+- **触发路径**
+  - 在 Express 模式设置 `日志保留 = 1 天`（或任意非“永久”值），正常使用 Express 产生 DNS 请求日志；超过保留期后重新启动 Express 或长时间驻留，`diting_express` 中的旧行仍然存在。
+  - 竞速日志和引导日志同样不会被清理，因为它们也只在 Express 侧创建。
+- **影响**
+  - Express 用户看到的“按天保留”设置完全不生效；`dns_log` 会随使用时长无限增长，日志列表查询、统计和数据库体积逐步恶化。
+  - 与普通模式的清理行为不一致：同样设置 1 天，普通模式会按时删除，Express 模式不会，属于同一 UI 下的行为分叉。
+  - 由于没有清理，`DataCleanupManager.clearRequestLogs()` 之外没有任何自动回收手段，长期使用只能手动“清空日志”。
+- **复现/验证**
+  1. 切到 Express 模式，将日志保留设为 1 天；使用 Express 产生若干 DNS 日志。
+  2. 通过调试包 `run-as com.haoze.diting` 打开 `databases/diting_express`，插入一条 `timestamp = now - 2 天` 的 `dns_log`（或直接等待两天）。
+  3. 启动 Express 并保持运行超过 1 小时（`LogMaintenance` 的首次延迟 30 秒、之后每小时一次），重新查询该行仍然存在；同样操作在普通模式下会被 `deleteBefore` 删除。
+  4. 静态核对：`grep -R "LogMaintenance\\.start"` 只有 `DnsVpnDatabaseComponents` 一处；`ExpressTunnelManager.kt` 中没有 `pruneExpiredLogs`、`deleteBefore` 或任何保留天数读取。
+- **备注**：应把清理逻辑抽成按 DAO 集合工作的函数，在 Express 服务启动时也注册同样的周期任务（使用 `SystemSettingsStore.logRetentionDays(context, RuleDataset.EXPRESS)` 作为提供者），并同时覆盖 `dns_log`、`race_log`、`bootstrap_log`。
 
 ---
 
