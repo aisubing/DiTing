@@ -6,4 +6,7 @@
     <files-path
         name="crash_logs"
         path="crash_logs/" />
+    <external-files-path
+        name="crash_export"
+        path="Download/" />
 </paths>

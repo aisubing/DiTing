@@ -176,7 +176,7 @@ object AdGuardRuleParser {
     /** Parses one line without retaining cross-line state for streaming imports. */
     fun parseCategorizedLine(originalLine: String): CategorizedLine {
         val line = originalLine.trim().trimStart('\uFEFF')
-        if (line.isEmpty() || line.startsWith("!") || line.startsWith("#") ||
+        if (line.isEmpty() || line.startsWith("!") || isCommentLine(line) ||
             (line.startsWith("[") && line.endsWith("]"))
         ) {
             return CategorizedLine(ignoredCount = 1)
@@ -208,6 +208,14 @@ object AdGuardRuleParser {
         val cat = parseCategorizedLine(line)
         return if (allowRule) cat.allowRules.firstOrNull() else cat.blockRules.firstOrNull()
     }
+
+    /**
+     * A leading `#` starts a comment only when the line is not an element
+     * hiding rule. Generic rules such as `##.ad` or `#@#.ad` also start with
+     * `#`, so the cosmetic delimiters must be recognized first.
+     */
+    private fun isCommentLine(line: String): Boolean =
+        line.startsWith("#") && !AdblockRuleLineParser.isCosmeticRuleLine(line)
 
     fun looksLikeLiteralIp(value: String): Boolean =
         AdGuardDomainUtils.looksLikeLiteralIp(value)

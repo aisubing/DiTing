@@ -111,14 +111,14 @@ internal class GoTunnelRuleManager(
 
     fun updateCosmeticRules() {
         if (!inspectionEnabled) {
-            engine.setCosmeticCSS("")
+            engine.setCosmeticRules("")
             return
         }
         scope.launch(Dispatchers.IO) {
             runCatching {
-                val css = cosmeticRuleManager.compileAllToCss()
-                engine.setCosmeticCSS(css)
-            }.onFailure { Log.w(TAG, "Failed to push cosmetic CSS to Go engine", it) }
+                val scopedJson = cosmeticRuleManager.compileScopedCss()
+                engine.setCosmeticRules(scopedJson)
+            }.onFailure { Log.w(TAG, "Failed to push cosmetic rules to Go engine", it) }
         }
     }
 

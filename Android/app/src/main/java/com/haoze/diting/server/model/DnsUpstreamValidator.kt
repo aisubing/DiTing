@@ -58,11 +58,35 @@ object DnsUpstreamValidator {
     }
 
     private fun validateHost(host: String): String? {
-        val isValid = when {
-            ipv4Regex.matches(host) -> host.split('.').all { it.toInt() in 0..255 }
-            host.contains(':') -> ipv6CharsRegex.matches(host)
-            else -> hostnameRegex.matches(host)
+        if (host.contains(':')) {
+            // The port has its own field, so `1.1.1.1:53` or an unbracketed
+            // `2001:db8::1:53` here is a user mistake, not a valid IPv6 address.
+            return if (isValidIpv6(host)) null else "地址格式不正确"
+        }
+        val isValid = if (ipv4Regex.matches(host)) {
+            host.split('.').all { it.toIntOrNull()?.let { octet -> octet in 0..255 } == true }
+        } else {
+            hostnameRegex.matches(host)
         }
         return if (isValid) null else "地址格式不正确"
+    }
+
+    /**
+     * Structural IPv6 check. [InetAddress.getByName] parses a colon-containing
+     * string as an IPv6 literal (never a DNS lookup), which rejects malformed
+     * forms such as `:::`, `1:2` or `2001:db8::1::2` that the character-class
+     * regex alone accepted.
+     */
+    private fun isValidIpv6(host: String): Boolean {
+        val bare = host.removePrefix("[").removeSuffix("]")
+        if (!ipv6CharsRegex.matches(bare)) return false
+        // `1:2` has too few groups to be an IPv6 address; require a `::`
+        // compression or the full eight groups so single-colon typos fail.
+        if (!bare.contains("::") && bare.count { it == ':' } != 7 && !bare.contains('.')) return false
+        return try {
+            java.net.InetAddress.getByName(bare) is java.net.Inet6Address
+        } catch (_: Exception) {
+            false
+        }
     }
 }

@@ -7,15 +7,17 @@ import androidx.room.PrimaryKey
 /**
  * An element-hiding CSS cosmetic rule evaluated during HTTP(S) inspection.
  *
- * @param domain target package name or domain (e.g. "com.generalcomp.batian"), empty for global rules
+ * @param domain target domain (e.g. "example.com"), empty for global rules
  * @param selector CSS selector (e.g. ".ad-container", "[class*=\"ad-\"]")
  * @param rawLine original rule line, kept for display and diagnostics
  * @param addedAt timestamp when rule was added
  * @param enabled whether the rule is active
+ * @param isException whether this is a `#@#` exception that un-hides the selector
+ *   on the matching domain instead of hiding it
  */
 @Entity(
     tableName = "cosmetic_rule",
-    indices = [Index(value = ["domain", "selector"], unique = true)]
+    indices = [Index(value = ["domain", "selector", "isException"], unique = true)]
 )
 data class CosmeticRuleEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -23,5 +25,6 @@ data class CosmeticRuleEntity(
     val selector: String,
     val rawLine: String,
     val addedAt: Long,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val isException: Boolean = false
 )

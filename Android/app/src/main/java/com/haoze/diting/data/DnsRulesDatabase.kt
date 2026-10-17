@@ -65,6 +65,18 @@ val DNS_RULES_MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
     }
 }
 
+val DNS_RULES_MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE cosmetic_rule ADD COLUMN isException INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE cosmetic_rule SET isException = 1 WHERE rawLine LIKE '%#@#%'")
+        db.execSQL("DROP INDEX IF EXISTS index_cosmetic_rule_domain_selector")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_cosmetic_rule_domain_selector_isException " +
+                "ON cosmetic_rule (domain, selector, isException)"
+        )
+    }
+}
+
 @Database(
     entities = [
         BlockRuleEntity::class,
@@ -82,7 +94,7 @@ val DNS_RULES_MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
         CosmeticRuleEntity::class,
         CosmeticRuleSourceEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class DnsRulesDatabase : RoomDatabase(), RuleDataSources {
@@ -110,7 +122,7 @@ abstract class DnsRulesDatabase : RoomDatabase(), RuleDataSources {
                     DATABASE_NAME
                 )
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                    .addMigrations(DNS_RULES_MIGRATION_1_2)
+                    .addMigrations(DNS_RULES_MIGRATION_1_2, DNS_RULES_MIGRATION_2_3)
                     .fallbackToDestructiveMigration(true)
                     .build().also { INSTANCE = it }
             }

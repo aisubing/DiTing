@@ -4,6 +4,16 @@ import com.haoze.diting.data.entity.RewriteTargetType
 
 internal object AdblockRuleLineParser {
 
+    private val COSMETIC_DELIMITERS = listOf("#@#", "##", "#?#", "#$#")
+
+    /**
+     * Whether the line uses an element-hiding delimiter. A line starting with
+     * `#` may be either a comment or a generic cosmetic rule (`##.ad`), so the
+     * delimiter has to be recognized before comment filtering.
+     */
+    fun isCosmeticRuleLine(line: String): Boolean =
+        COSMETIC_DELIMITERS.any { line.contains(it) }
+
     fun parseAdblockOrDomainLine(line: String, originalLine: String, allow: Boolean): CategorizedLine {
         // 1. Element hiding (cosmetic) rules: ##, #@#, #?#, #$#
         val cosmetic = parseCosmeticLine(line, originalLine)

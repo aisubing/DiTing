@@ -29,7 +29,6 @@ import (
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
-	"syscall"
 
 	"github.com/miekg/dns"
 )
@@ -166,14 +165,14 @@ func (e *Engine) Start(fd int, protector SocketProtector) {
 	}
 	e.mu.Unlock()
 
-	dupFd, err := syscall.Dup(fd)
+	newFd, err := dupFd(fd)
 	if err != nil {
 		logf("Failed to dup TUN fd %d: %v", fd, err)
 		e.running = false
 		return
 	}
 
-	e.tunFile = os.NewFile(uintptr(dupFd), "tun")
+	e.tunFile = os.NewFile(uintptr(newFd), "tun")
 	if e.tunFile == nil {
 		logf("Failed to open TUN fd %d", fd)
 		e.running = false

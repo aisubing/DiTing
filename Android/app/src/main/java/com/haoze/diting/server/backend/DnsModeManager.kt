@@ -151,7 +151,13 @@ object DnsModeManager {
         val server = DnsUpstreamServer(
             id = "custom_" + UUID.randomUUID().toString(),
             name = name.trim(),
-            address = address.trim(),
+            // Bracketed IPv6 input (`[2001:db8::1]`) is accepted by validation
+            // but stored bare so the engine's own bracket wrapping stays correct.
+            address = if (protocol != DnsModeProtocol.DOH) {
+                address.trim().removePrefix("[").removeSuffix("]")
+            } else {
+                address.trim()
+            },
             port = port,
             protocol = protocol,
             isCustom = true
@@ -164,7 +170,12 @@ object DnsModeManager {
 
     fun updateCustomUpstream(context: Context, server: DnsUpstreamServer) {
         if (!server.isCustom) return
-        customUpstreams = customUpstreams.map { if (it.id == server.id) server else it }
+        val normalized = if (server.protocol != DnsModeProtocol.DOH) {
+            server.copy(address = server.address.trim().removePrefix("[").removeSuffix("]"))
+        } else {
+            server
+        }
+        customUpstreams = customUpstreams.map { if (it.id == normalized.id) normalized else it }
         _upstreams.value = DnsUpstreamServer.PRESETS + customUpstreams
         DnsModePreferences.saveCustomUpstreams(context, customUpstreams)
         if (_config.value.selectedUpstreamId == server.id) {

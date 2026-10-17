@@ -358,7 +358,7 @@ class WhitelistViewModel(
                 }
                 WhitelistType.COSMETIC -> {
                     cosmeticRuleDao.setEnabled(item.id, enabled)
-                    CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                    CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
                     syncUrlRules()
                 }
             }
@@ -386,7 +386,7 @@ class WhitelistViewModel(
                 }
                 WhitelistType.COSMETIC -> {
                     cosmeticRuleDao.deleteRule(item.id)
-                    CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                    CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
                     syncUrlRules()
                 }
             }
@@ -416,11 +416,12 @@ class WhitelistViewModel(
                 selector = cosmeticRule.selector,
                 rawLine = raw,
                 addedAt = System.currentTimeMillis(),
-                enabled = true
+                enabled = true,
+                isException = true
             )
             val inserted = cosmeticRuleDao.insertForSource(entity, "useradd", sourceEnabled = true)
             return@withContext if (inserted) {
-                CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
                 syncUrlRules()
                 refreshAll()
                 Result.success("已添加元素放行规则")
@@ -507,10 +508,11 @@ class WhitelistViewModel(
                 selector = cosmeticRule.selector,
                 rawLine = trimmed,
                 addedAt = System.currentTimeMillis(),
-                enabled = item.enabled
+                enabled = item.enabled,
+                isException = true
             )
             val inserted = cosmeticRuleDao.insertForSource(entity, "useradd", sourceEnabled = item.enabled)
-            CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+            CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
             syncUrlRules()
             refreshAll()
             return@withContext if (inserted) Result.success("元素放行规则已修改") else Result.failure(IllegalArgumentException("修改失败"))
@@ -572,7 +574,7 @@ class WhitelistViewModel(
             goUrlRuleDao.deleteByKindAndSource(com.haoze.diting.data.entity.GoUrlRuleKind.ALLOW, GoUrlRuleManager.USER_SOURCE)
             if (dataset == RuleDataset.NORMAL) {
                 cosmeticRuleDao.deleteUserAllowRules()
-                CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
             }
             syncDnsAndPassthrough()
             syncUrlRules()

@@ -4,37 +4,85 @@
 // - Scans the uncompressed response stream for <head> tags (case-insensitive) using a sliding buffer.
 // - Injects a lightweight <link rel="stylesheet"> pointing to the in-memory asset host (local.pwhs.app),
 //   avoiding inline injection of 50-100KB CSS payloads and enabling client browser caching.
+// - The stylesheet URL carries the page hostname (`/cosmetic.css?h=<host>`), so the local asset server
+//   can serve the subset of rules scoped to that host plus `#@#` exceptions.
 
 package tunnel
 
 import (
 	"bytes"
 	"io"
+	"net"
+	"net/url"
 	"strings"
 	"sync"
 )
 
-const injectionTags = `<link rel="stylesheet" href="https://local.pwhs.app/cosmetic.css">`
-
 var headTagBytes = []byte("<head")
 
 const scanLimit = 16 * 1024
+
+// cosmeticAssetPath is the path the injected <link> points at; queries are
+// rebuilt per page hostname, so the constant value is only a fallback.
+const cosmeticAssetPath = "/cosmetic.css"
 
 var (
 	cosmeticMu  sync.RWMutex
 	cosmeticCSS string
 )
 
-func SetCosmeticCSS(css string) {
+// SetCosmeticRules replaces the scoped cosmetic rule set.
+//
+// The payload is JSON of the shape:
+//
+//	{"globalHide":["sel"],"globalException":["sel"],
+//	 "domains":{"example.com":{"hide":["sel"],"exception":["sel"]}}}
+//
+// so rule matching happens per inspected hostname instead of applying every
+// rule to every site. An empty string disables injection.
+func SetCosmeticRules(payload string) {
 	cosmeticMu.Lock()
-	cosmeticCSS = css
+	cosmeticCSS = payload
 	cosmeticMu.Unlock()
-	logf("Cosmetic CSS updated: %d bytes", len(css))
+	logf("Cosmetic rules updated: %d bytes", len(payload))
+}
+
+func cosmeticRulesEmpty() bool {
+	cosmeticMu.RLock()
+	defer cosmeticMu.RUnlock()
+	return strings.TrimSpace(cosmeticCSS) == ""
 }
 
 func ShouldInjectHTML(contentType string) bool {
 	ct := strings.ToLower(contentType)
 	return strings.Contains(ct, "text/html")
+}
+
+// cosmeticLinkTag builds the stylesheet tag for one page hostname.
+func cosmeticLinkTag(host string) string {
+	href := "https://" + LocalAssetHost + cosmeticAssetPath
+	if h := normalizeCosmeticHost(host); h != "" {
+		href += "?h=" + url.QueryEscape(h)
+	}
+	return `<link rel="stylesheet" href="` + href + `">`
+}
+
+// normalizeCosmeticHost lowercases the host, drops any port and strips the
+// trailing root label so it matches the stored rule domains.
+func normalizeCosmeticHost(host string) string {
+	h := strings.ToLower(strings.TrimSpace(host))
+	if strings.HasPrefix(h, "[") {
+		if idx := strings.LastIndex(h, "]"); idx != -1 {
+			h = h[:idx+1]
+		}
+		return h
+	}
+	if idx := strings.LastIndex(h, ":"); idx != -1 {
+		if _, _, err := net.SplitHostPort(h); err == nil {
+			h = h[:idx]
+		}
+	}
+	return strings.TrimSuffix(h, ".")
 }
 
 type injectingReader struct {
@@ -43,11 +91,13 @@ type injectingReader struct {
 	pending      []byte
 	carry        []byte
 	scannedBytes int
+	linkTag      []byte
 }
 
-func NewInjectingReader(upstream io.Reader) io.Reader {
+func NewInjectingReader(upstream io.Reader, host string) io.Reader {
 	return &injectingReader{
 		upstream: upstream,
+		linkTag:  []byte(cosmeticLinkTag(host)),
 	}
 }
 
@@ -159,7 +209,7 @@ func (r *injectingReader) Read(p []byte) (int, error) {
 func (r *injectingReader) doInject(p []byte, data []byte, tagEnd int, upstreamErr error) (int, error) {
 	r.injected = true
 
-	script := []byte(injectionTags)
+	script := r.linkTag
 
 	before := data[:tagEnd]
 	after := data[tagEnd:]

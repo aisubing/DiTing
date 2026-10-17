@@ -210,6 +210,16 @@ class DnsModeTest {
         assertNotNull(validator.validateAddress(DnsModeProtocol.DOH, "http://dns.alidns.com/dns-query"))
         assertNotNull(validator.validateAddress(DnsModeProtocol.DNS, ""))
         assertNotNull(validator.validateAddress(DnsModeProtocol.DNS, "1 1 1 1"))
+        // The port is a separate field; a port suffix or a malformed IPv6
+        // literal must be rejected instead of being accepted and failing later.
+        assertNotNull(validator.validateAddress(DnsModeProtocol.DNS, "1.1.1.1:53"))
+        assertNotNull(validator.validateAddress(DnsModeProtocol.DNS, ":::"))
+        assertNotNull(validator.validateAddress(DnsModeProtocol.DNS, "1:2"))
+        assertNotNull(validator.validateAddress(DnsModeProtocol.DNS, "2001:db8::1::2"))
+        // `2001:db8::1:53` is a valid IPv6 address, not a host:port pair.
+        assertNull(validator.validateAddress(DnsModeProtocol.DNS, "2001:db8::1:53"))
+        assertNull(validator.validateAddress(DnsModeProtocol.DNS, "[2001:db8::1]"))
+        assertNull(validator.validateAddress(DnsModeProtocol.DNS, "2001:db8:0:0:0:0:0:1"))
 
         assertNull(validator.validatePort("", DnsModeProtocol.DNS))
         assertNull(validator.validatePort("853", DnsModeProtocol.DOT))

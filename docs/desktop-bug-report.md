@@ -9,18 +9,20 @@
 
 ## 汇总
 
-| 编号 | 严重度 | 模块 | 问题 |
-| --- | --- | --- | --- |
-| A-001 | 中高 | 规则解析 | 通用元素隐藏规则（`##`、`#@#`、`#?#`、`#$#`）被当作注释整行丢弃 |
-| A-002 | 高 | 元素隐藏 | 元素隐藏规则编译时忽略域名作用域，并把 `#@#` 例外反向编译为隐藏 |
-| A-003 | 中 | DNS 工具 | DNS 查询未把国际化域名转成 Punycode，中文域名被编码为 `??` |
-| A-004 | 中 | DNS 模式上游 | 自定义上游校验接受非法 IPv6 / `IPv4:端口` 字符串，保存后服务不可用 |
-| A-005 | 中 | 极速模式启动 | 规则缓存异步加载完成前 TUN 已开始处理查询，连接初期的拦截/放行规则不生效 |
-| A-006 | 中 | DNS 缓存清理 | 清理 DNS 缓存只清内存与数据库，未清待落盘队列，约 30 秒后缓存条目被重新写回 |
-| A-007 | 低 | 快捷设置磁贴 | `requestListeningState` 使用拼接错误的组件名，运行状态变化时磁贴刷新请求全部失效 |
-| A-008 | 中 | 崩溃日志 | Android 7–9 上自动导出崩溃日志先走 API 29 的 MediaStore，回退目录又无写权限，连续崩溃备份静默失败 |
-| A-009 | 中 | Express 日志 | Express 模式的日志保留天数设置从未被执行，`diting_express` 中的 DNS/竞速/引导日志不会自动清理 |
-| A-010 | 中 | DNS 模式启动 | DNS 引擎先开始监听并标记运行，规则缓存随后才异步加载，启动窗口内的查询绕过拦截/放行与 hosts 改写 |
+> 处理状态：本轮逐项复核后全部确认为真实缺陷，无“问题不存在”条目，均已修复。修复说明见各节末尾的“修复”小节。
+
+| 编号 | 严重度 | 模块 | 问题 | 状态 |
+| --- | --- | --- | --- | --- |
+| A-001 | 中高 | 规则解析 | 通用元素隐藏规则（`##`、`#@#`、`#?#`、`#$#`）被当作注释整行丢弃 | 已修复 |
+| A-002 | 高 | 元素隐藏 | 元素隐藏规则编译时忽略域名作用域，并把 `#@#` 例外反向编译为隐藏 | 已修复 |
+| A-003 | 中 | DNS 工具 | DNS 查询未把国际化域名转成 Punycode，中文域名被编码为 `??` | 已修复 |
+| A-004 | 中 | DNS 模式上游 | 自定义上游校验接受非法 IPv6 / `IPv4:端口` 字符串，保存后服务不可用 | 已修复 |
+| A-005 | 中 | 极速模式启动 | 规则缓存异步加载完成前 TUN 已开始处理查询，连接初期的拦截/放行规则不生效 | 已修复 |
+| A-006 | 中 | DNS 缓存清理 | 清理 DNS 缓存只清内存与数据库，未清待落盘队列，约 30 秒后缓存条目被重新写回 | 已修复 |
+| A-007 | 低 | 快捷设置磁贴 | `requestListeningState` 使用拼接错误的组件名，运行状态变化时磁贴刷新请求全部失效 | 已修复 |
+| A-008 | 中 | 崩溃日志 | Android 7–9 上自动导出崩溃日志先走 API 29 的 MediaStore，回退目录又无写权限，连续崩溃备份静默失败 | 已修复 |
+| A-009 | 中 | Express 日志 | Express 模式的日志保留天数设置从未被执行，`diting_express` 中的 DNS/竞速/引导日志不会自动清理 | 已修复 |
+| A-010 | 中 | DNS 模式启动 | DNS 引擎先开始监听并标记运行，规则缓存随后才异步加载，启动窗口内的查询绕过拦截/放行与 hosts 改写 | 已修复 |
 
 ---
 
@@ -46,6 +48,9 @@
   2. 对 `AdGuardRuleParser.parseCategorizedLine("##.ad-banner")` 断言：实际 `ignoredCount == 1`、`cosmeticRules.isEmpty()`；对照 `parseCategorizedLine("example.com##.ad-banner")` 返回 1 条规则。
   3. 导入含 `##.ad-banner` 的规则文件，`RuleImportSummary.cosmeticCount` 为 0，且该行不会出现在任何无效/忽略计数中（`ignoredCount` 未被汇总），对比同一文件的 `example.com##.ad-banner` 会计入 `cosmeticCount`。
 - **备注**：修复时需要先识别 cosmetic 分隔符，再判断整行是否为注释；不能简单放宽所有 `#` 开头的行。
+- **修复**：
+  - `AdGuardRuleParser` 的注释判定改为 `isCommentLine()`：先由 `AdblockRuleLineParser.isCosmeticRuleLine()` 识别 `##`/`#@#`/`#?#`/`#$#`，仅对不含分隔符的 `#` 行按注释忽略；`!`、空行、`[header]` 行为不变。
+  - 回归测试：`AdGuardRuleParserTest.genericCosmeticRulesAreNotTreatedAsComments` 覆盖四种通用分隔符及真实注释。
 
 ---
 
@@ -79,6 +84,12 @@
   2. 导入含 `example.com#@#.banner-ad` 的规则文件；在 `CosmeticRuleDao.allowRules()` 中能看到该规则，但 `compileAllToCss()` 输出 `.banner-ad { display: none !important; }`。
   3. 单元测试：用假 `CosmeticRuleDao` 让 `enabledRules()` 返回 `domain="example.com", selector=".ad", rawLine="example.com##.ad"`，调用 `compileAllToCss()`，实际输出 `.ad { display: none !important; }`，没有任何域名限定；再把 `rawLine` 换成 `example.com#@#.ad`，输出仍然是隐藏而非例外。
 - **备注**：修复需要按目标页面域名筛选规则，并单独维护 `#@#` 例外集合；当前只向 Go 引擎传一份 CSS，若引擎接口不支持按域名注入，需要先扩展协议。
+- **修复**：
+  - 数据层：`CosmeticRuleEntity` 新增 `isException` 列，唯一索引改为 `(domain, selector, isException)`；三个数据库分别新增迁移（`MIGRATION_2_3`、`DNS_RULES_MIGRATION_2_3`、`EXPRESS_MIGRATION_1_2`），迁移时按 `rawLine LIKE '%#@#%'` 回填历史例外规则。`CosmeticRuleDao` 的黑/白名单统计改按该列区分，不再依赖 `rawLine`。所有写入点（导入、手动添加/修改、批量导入）都会持久化例外标记。
+  - 编译层：`CosmeticRuleManager.compileScopedCss()` 输出 `{globalHide, globalException, domains:{host:{hide,exception}}}` JSON；已被全局隐藏规则覆盖的域名级规则会被去重，避免大型订阅的每请求 CSS 膨胀。
+  - 运行时：Go 引擎新增 `SetCosmeticRules`（协议扩展），注入的 `<link>` 改为 `/cosmetic.css?h=<页面 host>`；本地资源服务按 host 及其父域合并规则、排除例外，并对被例外放行的选择器输出 `display: revert !important`。无任何规则时不改写 HTML 响应（不再无条件删除 CSP/Content-Encoding 等头）。
+  - 回归测试：`CosmeticRuleManagerTest`（作用域分组、去重、例外不编译为隐藏）、`Android/tunnel/mitm_cosmetic_test.go`（跨站点不外溢、例外生效、按 host 提供 CSS）。
+  - 已重新生成 `Android/app/libs/tunnel.aar` 以包含新的 Go 接口。
 
 ---
 
@@ -105,6 +116,10 @@
   3. UI：网络工具 → DNS 查询 → 输入 `中文.com` → A 记录 → 查询；实际失败/无结果，期望返回 `xn--fiq228c.com` 的 A 记录。
   4. 同类输入 `例子.中国` 的期望形式为 `xn--fsqu00a.xn--fiqs8s`。
 - **备注**：修复时除转换 QNAME 外，Punycode 后的 label 字节数会变长，`questionLen` 必须按转换后的字节数计算，不能继续使用原始字符长度；`DnsLookupTool` 展示的 `queryName` 建议保留用户输入或同时显示 Punycode。
+- **修复**：
+  - `DnsMessageUtils.buildQuery()` 改为先经 `IDN.toASCII` 转成 Punycode 生成 wire label，`questionLen` 按转换后的字节数计算；长度非法的 label 会被丢弃。由于 `buildQuery` 被 DNS 查询工具、延迟测试与 Bootstrap 解析共用，这三条诊断路径同时修复。
+  - `DnsLookupTool` 在展示名与输入不同（即发生了 Punycode 转换）时显示实际查询名。
+  - 回归测试：`DnsMessageUtilsTest.buildQueryConvertsIdnToPunycode` 断言 `中文.com` → `xn--fiq228c`、报文总长按 Punycode 计算，且大小写/末尾点写法归一。
 
 ---
 
@@ -136,6 +151,11 @@
   3. 单测：`DnsUpstreamValidator.validateAddress(DnsModeProtocol.DNS, "1.1.1.1:53")` 实际返回 `null`，期望 `"地址格式不正确"`；`":::"` 同理。
   4. 运行时探针（本机 Go 1.27）：`net.SplitHostPort("[1.1.1.1:53]:53")` 返回 `host="1.1.1.1:53", port="53", err=nil`；随后 `net.DialTimeout("udp", "[1.1.1.1:53]:53", ...)` 返回 `dial udp: lookup 1.1.1.1:53: no such host`，`[:::]:53`、`[1:2]:53`、`[2001:db8::1::2]:53` 同样失败，而合法 `[2001:db8::1]:53` 可拨通。
 - **备注**：应拒绝 DNS/DOT 地址中的端口写法（端口有独立字段），并用 `InetAddress`/`parseNumericAddressSafe` 校验 IPv6；DoH 分支可另外校验 URL 端口与路径。
+- **修复**：
+  - `DnsUpstreamValidator.validateHost()` 对含 `:` 的地址改用 `InetAddress.getByName` 做结构校验（并拒绝组数不足的单冒号写法），`1.1.1.1:53`、`:::`、`1:2`、`2001:db8::1::2` 均返回“地址格式不正确”；`[2001:db8::1]` 与完整 8 组 IPv6 仍接受。
+  - `DnsModeManager` 保存自定义上游时统一去掉方括号；`DnsServerEngine.applyDnsConfig()` 统一重新加方括号，避免出现 `[[2001:db8::1]]:53`。
+  - Go 侧 `validateDNSProvider` 在 `SplitHostPort` 之后再次校验 host：仅真实 IPv6 字面量可含 `:`，`[1.1.1.1:53]:53`、`[:::]:53` 会在配置应用阶段直接报错。
+  - 回归测试：`DnsModeTest` 补充非法/合法 IPv6 用例，`dns_config_test.go` 补充 Go 侧端点校验用例。
 
 ---
 
@@ -164,6 +184,10 @@
   3. 断点/日志验证：在 `ExpressTunnelManager.kt:343` 与 `BlockRuleCache.reload()` 返回处打点，前者先于后者执行；给 `refreshCache()` 注入延迟即可稳定复现。
   4. 单测方向：用可控延迟的 fake DAO 调用 `ExpressTunnelManager.start()`，在 `refreshCache` 未完成时发送查询，断言 `DomainPolicy` 应拦截但实际放行。
 - **备注**：应在启动 TUN 读取线程前 `join` 两个缓存加载任务，或用 `CompletableDeferred`/`isRulesReady` 门控 `engine.resolve()`；`ExpressVpnService` 也应等待默认规则种子任务和缓存就绪后再对外报告连接成功。
+- **修复**：
+  - `ExpressTunnelManager.start()` 改为 `suspend`，block/allow 两个缓存加载并发完成后才继续；随后用 `ensureActive()` 确认启动未被取消，再置 `isRunning`、启动 TCP worker 与读线程。`join`/`wait` 后不再存在“block 已换新、allow 未换新”的混合窗口。
+  - `ExpressVpnService.startVpn()` 在建好 TUN 后于 `serviceScope` 中先 `join` 默认规则种子任务，再调用 `start()`；只有在 `start()` 返回成功后才更新通知、悬浮窗并向外报告已连接，失败则关闭 pfd 并停止服务。
+  - 说明：本次未新增 JVM 单测（`start()` 依赖 `VpnService` 与真实 Room 数据库）；已通过完整 Kotlin 编译、单测套件、APK 构建与 Go 测试验证。
 
 ---
 
@@ -194,6 +218,9 @@
   4. 如需直接取证：debug 包用 `adb shell run-as com.haoze.diting` 复制 `databases` 下的缓存库，清理前后查询 `dns_cache` 行数；清理后行数应保持 0，实际会在定时器后恢复为非 0。
   5. 单测方向：用 `TestScope` 和 fake DAO 调用 `resolve()` 产生 pending 写入，再调用 `DnsCacheController.clearAll()`，推进 30 秒，断言 `applyPendingWrites` 不应被调用或 `insertIfAbsent` 不应恢复已清空的 key。
 - **备注**：`DnsResponseCache` 已提供 `clear()`，但控制器未使用；应让 `clearAll()` 调用 `cache.clear()`（内部会清内存、取消并清空待写队列、清 DAO），再执行 Go 引擎清缓存回调，避免两处清理顺序竞争。
+- **修复**：
+  - `DnsCacheController.clearAll()` 在缓存已注册时改为调用 `cache.clear()`，取消 30 秒定时任务并清空 `pendingWrites`/`pendingHits`；仅在缓存未注册（例如 Express 自有表）时回退为直接 `dao.clearAll()`，避免重复清理。
+  - 回归测试：`DnsResponseCachePersistenceTest.clearingThroughControllerDropsPendingWrites` 先产生未落盘条目，经控制器清理后再 `flushPendingWrites()`，断言表仍为空。
 
 ---
 
@@ -221,6 +248,9 @@
   3. 静态断言：`ComponentName("com.haoze.diting", "com.haoze.diting.tile.DitingTileService").flattenToString()` 应为 `com.haoze.diting/com.haoze.diting.tile.DitingTileService`；当前代码传入的类名多出一段包名。
   4. 在 `requestTileUpdate()` 的 `onFailure` 中临时打印 `Log.e(TAG, "tile component", e)`，或直接过滤 logcat 中的 `QuickSettingsTileUpdater`，可看到每次服务状态变化都记录一次失败。
 - **备注**：应改为 `ComponentName(appContext, DitingTileService::class.java)`，或至少使用 `"${appContext.packageName}.tile.DitingTileService"` 作为完整类名而不是再拼一次包名；单元测试可直接断言 `ComponentName` 的 `className` 等于清单中的类名。
+- **修复**：
+  - `QuickSettingsTileUpdater` 改用常量 `TILE_SERVICE_CLASS = "com.haoze.diting.tile.DitingTileService"`（完整类名），不再二次拼接包名。
+  - `DitingTileService.toggleDnsService()` 在启动请求发出后按“已开启”重绘磁贴：DNS 服务要等规则加载完才置 `RUNNING`，此前立即读取状态会把磁贴重新画成关闭；服务就绪后会通过修复后的刷新入口推送真实状态。
 
 ---
 
@@ -249,6 +279,9 @@
   3. logcat 过滤 `CrashLogManager`：可看到 `Failed to export crash log to Downloads via MediaStore`，随后回退写入抛出 `EACCES`（具体异常文本随 ROM 不同）。
   4. 静态核对：`exportToDownloads()` 中没有任何 `SDK_INT` 判断；`AndroidManifest.xml` 没有 `WRITE_EXTERNAL_STORAGE`，也没有 `requestLegacyExternalStorage`。
 - **备注**：API 29 以下应直接走兼容路径并申请/声明旧版存储权限，或改用 `FileProvider` + `ACTION_CREATE_DOCUMENT` 让用户选择位置；至少要在两条路径都失败时设置失败提示，而不是静默返回 `null`。
+- **修复**：
+  - `exportToDownloads()` 增加 `SDK_INT >= Q` 分支：API 24–28 直接写入应用专属外部目录 `getExternalFilesDir(DIRECTORY_DOWNLOADS)`（无需存储权限），再通过已配置的 `FileProvider`（新增 `external-files-path` 映射）返回可分享的 URI；MediaStore 失败时也回退到该目录，不再尝试无权限的公共 Download 目录。
+  - 应用专属目录的备份在卸载时会被系统清理，但仍能在崩溃后通过文件管理器定位；保留天数/手动导出的 SAF 路径不受影响。
 
 ---
 
@@ -278,6 +311,10 @@
   3. 启动 Express 并保持运行超过 1 小时（`LogMaintenance` 的首次延迟 30 秒、之后每小时一次），重新查询该行仍然存在；同样操作在普通模式下会被 `deleteBefore` 删除。
   4. 静态核对：`grep -R "LogMaintenance\\.start"` 只有 `DnsVpnDatabaseComponents` 一处；`ExpressTunnelManager.kt` 中没有 `pruneExpiredLogs`、`deleteBefore` 或任何保留天数读取。
 - **备注**：应把清理逻辑抽成按 DAO 集合工作的函数，在 Express 服务启动时也注册同样的周期任务（使用 `SystemSettingsStore.logRetentionDays(context, RuleDataset.EXPRESS)` 作为提供者），并同时覆盖 `dns_log`、`race_log`、`bootstrap_log`。
+- **修复**：
+  - `LogMaintenance` 新增基于 `DnsRuntimeDataSources` + 可选 `HttpRequestLogDao` 的 `pruneExpiredLogs()`/`start()` 重载，普通模式保留原有入口。
+  - `ExpressTunnelManager.start()` 注册同样的周期清理任务，保留天数取自 `SystemSettingsStore.logRetentionDays(context, RuleDataset.EXPRESS)`，覆盖 `dns_log`、`race_log`、`bootstrap_log`（Express 库无 HTTP 日志表）。
+  - 顺带修正普通模式首次清理延迟 30 秒的问题：服务启动时立即执行一次清理，之后维持每小时一次。
 
 ---
 
@@ -313,6 +350,11 @@
   4. 日志/断点：`DnsModeService successfully started DNS server`（`DnsModeService.kt:127`）出现在 `DnsQueryFilter.reloadSync()` 返回之前；在 `reloadSync()` 入口和 `loaded.set(true)` 处打点即可看到 `onServiceStarted()` 与端口监听都早于规则就绪。
   5. 单测方向：给 `DnsQueryFilter` 注入可延迟的 fake DAO（或抽出门面接口），在 `reloadSync()` 未完成时向 `DnsServerEngine` 发起查询，断言应按规则拦截却实际放行；同时断言 `DnsModeManager.status` 在规则就绪前不应为 `RUNNING`。
 - **备注**：应在 `startDnsEngine()` 中先同步完成首次 `reloadSync()`（或至少等待 `loaded` 变为 `true`）再 `engine.startStandalone()`，或者在 `loaded=false` 期间让 Go 侧直接拒绝/挂起查询；`onServiceStarted()` 应移到规则加载成功之后，加载失败则进入 `ERROR` 而不是保持 `RUNNING`。Go 侧 `StartStandalone` 目前先 bind 再起 goroutine，若不能调整启动顺序，需要在 `DomainChecker`/`buildRuleSnapshotJson` 层增加“未就绪”保护。与 A-005 的 Express 启动窗口属于同类现象，但本项是 DNS 模式独立的 `DnsModeService`/`DnsServerEngine` 调用链，需单独修复。
+- **修复**：
+  - `DnsModeService.startDnsEngine()` 改为协程内串行执行：先 `DnsQueryFilter.reloadSync()` 完整加载 block/allow/rewrite，成功后才创建并 `start()` 引擎；因此端口开始监听时规则已就绪。
+  - `DnsModeManager.onServiceStarted()` 移到引擎启动成功之后；规则加载失败时进入 `ERROR` 并停止服务，不再显示“运行中”。
+  - 刷新路径 `refreshDnsEngine()` 同样先重载规则、再 `updateConfig()`/`syncRules()`，避免推送半更新的规则快照；`startJob` 用于防止重复启动请求抢占同一端口。
+  - 说明：本项依赖真实 Room 数据库与 Go 引擎启动，未新增单测；已通过 Kotlin 编译、单测套件、APK 构建与 Go 测试验证。
 
 ---
 

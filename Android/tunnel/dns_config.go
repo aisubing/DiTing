@@ -167,8 +167,15 @@ func (e *Engine) ApplyDNSConfig(configJSON string) error {
 func validateDNSProvider(cfg dnsProviderConfig) error {
 	switch cfg.Protocol {
 	case "PLAIN", "DOT":
-		if _, _, err := net.SplitHostPort(cfg.Server); err != nil {
+		host, _, err := net.SplitHostPort(cfg.Server)
+		if err != nil {
 			return fmt.Errorf("invalid %s endpoint %q: %w", cfg.Protocol, cfg.Server, err)
+		}
+		// SplitHostPort accepts "[1.1.1.1:53]:53" as host "1.1.1.1:53". Only a
+		// real IPv6 literal may contain a colon after splitting, so anything
+		// else means the address itself had a port appended and cannot dial.
+		if host == "" || (strings.Contains(host, ":") && net.ParseIP(host) == nil) {
+			return fmt.Errorf("invalid %s endpoint %q: host is not a valid IP literal", cfg.Protocol, cfg.Server)
 		}
 	case "DOH":
 		u, err := url.ParseRequestURI(cfg.URL)

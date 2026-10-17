@@ -7,13 +7,27 @@
 package tunnel
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
 
 const LocalAssetHost = "local.pwhs.app"
+
+// cosmeticRuleSet mirrors the JSON pushed from Kotlin (CosmeticRuleManager).
+type cosmeticRuleSet struct {
+	GlobalHide      []string                       `json:"globalHide"`
+	GlobalException []string                       `json:"globalException"`
+	Domains         map[string]cosmeticDomainRules `json:"domains"`
+}
+
+type cosmeticDomainRules struct {
+	Hide      []string `json:"hide"`
+	Exception []string `json:"exception"`
+}
 
 func ServeLocalAsset(req *http.Request) *http.Response {
 	path := req.URL.Path
@@ -28,24 +42,108 @@ func ServeLocalAsset(req *http.Request) *http.Response {
 	}
 }
 
-func serveCSS(req *http.Request) *http.Response {
-	cosmeticMu.RLock()
-	css := cosmeticCSS
-	cosmeticMu.RUnlock()
-
-	if css == "" {
-		css = "/* DITING: no cosmetic rules loaded */"
+// buildCosmeticCss renders the stylesheet for one page hostname.
+//
+// Hide rules apply to the host and all of its subdomains; `#@#` exceptions on
+// a host (or any parent domain) remove the selector from the hide set and emit
+// a `display: revert` override so a more specific rule cannot win.
+func buildCosmeticCss(payload, host string) string {
+	trimmed := strings.TrimSpace(payload)
+	if trimmed == "" {
+		return "/* DITING: no cosmetic rules loaded */"
 	}
 
-	return buildTextResponse(req, 200, "text/css; charset=utf-8", css)
+	var rules cosmeticRuleSet
+	if err := json.Unmarshal([]byte(trimmed), &rules); err != nil {
+		return "/* DITING: invalid cosmetic rules */"
+	}
+
+	hide := make(map[string]struct{}, len(rules.GlobalHide))
+	for _, selector := range rules.GlobalHide {
+		hide[selector] = struct{}{}
+	}
+	exceptions := make(map[string]struct{}, len(rules.GlobalException))
+
+	// Walk from the page host down to its parents, so a rule scoped to
+	// `example.com` also applies on `ads.example.com`.
+	for _, domain := range hostSuffixes(host) {
+		entry, ok := rules.Domains[domain]
+		if !ok {
+			continue
+		}
+		for _, selector := range entry.Hide {
+			hide[selector] = struct{}{}
+		}
+		for _, selector := range entry.Exception {
+			exceptions[selector] = struct{}{}
+		}
+	}
+
+	hidden := make([]string, 0, len(hide))
+	for selector := range hide {
+		if _, excepted := exceptions[selector]; excepted {
+			continue
+		}
+		hidden = append(hidden, selector)
+	}
+	sort.Strings(hidden)
+
+	excepted := make([]string, 0, len(exceptions))
+	for selector := range exceptions {
+		excepted = append(excepted, selector)
+	}
+	sort.Strings(excepted)
+
+	var sb strings.Builder
+	for _, selector := range hidden {
+		sb.WriteString(selector)
+		sb.WriteString(" { display: none !important; }\n")
+	}
+	for _, selector := range excepted {
+		sb.WriteString(selector)
+		sb.WriteString(" { display: revert !important; }\n")
+	}
+	return sb.String()
+}
+
+// hostSuffixes returns the host followed by each parent domain, e.g.
+// ["ads.example.com", "example.com", "com"].
+func hostSuffixes(host string) []string {
+	h := normalizeCosmeticHost(host)
+	if h == "" {
+		return nil
+	}
+	suffixes := []string{h}
+	for {
+		idx := strings.IndexByte(h, '.')
+		if idx < 0 || idx == len(h)-1 {
+			return suffixes
+		}
+		h = h[idx+1:]
+		suffixes = append(suffixes, h)
+	}
+}
+
+func serveCSS(req *http.Request) *http.Response {
+	cosmeticMu.RLock()
+	payload := cosmeticCSS
+	cosmeticMu.RUnlock()
+
+	css := buildCosmeticCss(payload, normalizeCosmeticHost(req.URL.Query().Get("h")))
+	resp := buildTextResponse(req, 200, "text/css; charset=utf-8", css)
+	// The stylesheet depends on the hostname in the query string, so it must
+	// not be reused for another site through a shared cache.
+	resp.Header.Set("Vary", "X-DITING-Host")
+	resp.Header.Set("Cache-Control", "private, max-age=300")
+	return resp
 }
 
 func serveHealth(req *http.Request) *http.Response {
 	cosmeticMu.RLock()
-	cssLen := len(cosmeticCSS)
+	payload := cosmeticCSS
 	cosmeticMu.RUnlock()
 
-	body := fmt.Sprintf(`{"status":"ok","css_bytes":%d}`, cssLen)
+	body := fmt.Sprintf(`{"status":"ok","css_bytes":%d}`, len(payload))
 	return buildTextResponse(req, 200, "application/json", body)
 }
 

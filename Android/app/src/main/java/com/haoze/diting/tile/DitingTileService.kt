@@ -58,10 +58,14 @@ class DitingTileService : TileService() {
     private fun toggleDnsService() {
         if (DnsModeManager.status.value.isRunning) {
             DnsModeManager.stopService(this)
+            updateTileState()
         } else {
             DnsModeManager.startService(this)
+            // The service is only RUNNING after it loaded its rules, so polling
+            // status here would immediately repaint the tile as inactive; the
+            // service pushes the real state via requestTileUpdate once ready.
+            updateTileState(running = true)
         }
-        updateTileState()
     }
 
     private fun toggleVpnService() {

@@ -283,7 +283,7 @@ class BlacklistViewModel(
                 }
                 BlacklistType.COSMETIC -> {
                     cosmeticRuleDao.setEnabled(item.id, enabled)
-                    CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                    CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
                     syncUrlRules()
                 }
             }
@@ -307,7 +307,7 @@ class BlacklistViewModel(
                 }
                 BlacklistType.COSMETIC -> {
                     cosmeticRuleDao.deleteRule(item.id)
-                    CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                    CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
                     syncUrlRules()
                 }
             }
@@ -340,11 +340,12 @@ class BlacklistViewModel(
                 selector = cosmeticRule.selector,
                 rawLine = raw,
                 addedAt = System.currentTimeMillis(),
-                enabled = true
+                enabled = true,
+                isException = false
             )
             val inserted = cosmeticRuleDao.insertForSource(entity, "useradd", sourceEnabled = true)
             return@withContext if (inserted) {
-                CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+                CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
                 syncUrlRules()
                 refreshAll()
                 Result.success("已添加元素隐藏规则")
@@ -428,10 +429,11 @@ class BlacklistViewModel(
                 selector = cosmeticRule.selector,
                 rawLine = trimmed,
                 addedAt = System.currentTimeMillis(),
-                enabled = item.enabled
+                enabled = item.enabled,
+                isException = false
             )
             val inserted = cosmeticRuleDao.insertForSource(entity, "useradd", sourceEnabled = item.enabled)
-            CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+            CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
             syncUrlRules()
             refreshAll()
             return@withContext if (inserted) Result.success("元素隐藏规则已修改") else Result.failure(IllegalArgumentException("修改失败"))
@@ -480,7 +482,7 @@ class BlacklistViewModel(
             blockRuleDao.deleteUserRules()
             goUrlRuleDao.deleteByKindAndSource(GoUrlRuleKind.BLOCK, GoUrlRuleManager.USER_SOURCE)
             cosmeticRuleDao.deleteUserBlockRules()
-            CosmeticRuleManager.getInstance(getApplication()).compileAllToCss()
+            CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
             syncDnsAndPassthrough()
             syncUrlRules()
             refreshAll()

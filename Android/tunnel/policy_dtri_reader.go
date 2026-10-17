@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -58,7 +56,7 @@ func openDTRI(path string) (*dtriReader, error) {
 		return nil, fmt.Errorf("file %s too small to be a valid DTRI", path)
 	}
 
-	data, err := unix.Mmap(int(f.Fd()), 0, int(size), unix.PROT_READ, unix.MAP_SHARED)
+	data, err := mapFileReadOnly(f.Fd(), int(size))
 	if err != nil {
 		f.Close()
 		return nil, fmt.Errorf("mmap failed for %s: %w", path, err)
@@ -66,14 +64,14 @@ func openDTRI(path string) (*dtriReader, error) {
 
 	magic := binary.BigEndian.Uint32(data[0:4])
 	if magic != dtriMagic {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("invalid DTRI magic: expected %X, got %X", dtriMagic, magic)
 	}
 
 	version := binary.BigEndian.Uint32(data[4:8])
 	if version != dtriVersion {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("invalid DTRI version: expected %d, got %d", dtriVersion, version)
 	}
@@ -92,7 +90,7 @@ func openDTRI(path string) (*dtriReader, error) {
 	sourceOffset := labelOffset + labelsBytes
 
 	if sourceOffset+sourcesBytes > len(data) {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("corrupted DTRI file %s", path)
 	}
@@ -139,7 +137,7 @@ func (r *dtriReader) close() {
 		return
 	}
 	if r.data != nil {
-		_ = unix.Munmap(r.data)
+		unmapFile(r.data)
 		r.data = nil
 	}
 	if r.file != nil {

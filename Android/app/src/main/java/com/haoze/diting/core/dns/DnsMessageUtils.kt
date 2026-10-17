@@ -101,9 +101,9 @@ object DnsMessageUtils {
      * @param transactionId transaction ID; when 0 a random value is generated
      */
     fun buildQuery(qname: String, qtype: Int, transactionId: Int = 0): ByteArray {
-        val labels = qname.trim().lowercase().split('.').filter { it.isNotEmpty() }
+        val labels = toWireLabels(qname)
         var questionLen = 1 // terminating zero
-        labels.forEach { questionLen += 1 + it.length }
+        labels.forEach { questionLen += 1 + it.size }
         questionLen += 4 // QTYPE + QCLASS
 
         val query = ByteArray(HEADER_LEN + questionLen)
@@ -120,8 +120,7 @@ object DnsMessageUtils {
         writeShort(query, 10, 0)
 
         var offset = HEADER_LEN
-        labels.forEach { label ->
-            val bytes = label.toByteArray(Charsets.US_ASCII)
+        labels.forEach { bytes ->
             query[offset++] = bytes.size.toByte()
             bytes.copyInto(query, offset)
             offset += bytes.size
@@ -130,6 +129,33 @@ object DnsMessageUtils {
         writeShort(query, offset, qtype)
         writeShort(query, offset + 2, 1) // QCLASS = IN
         return query
+    }
+
+    /**
+     * Converts a query name to wire-format labels. Internationalized domains are
+     * converted to Punycode first (`中文.com` -> `xn--fiq228c.com`); without this
+     * the ASCII encoder would silently replace every non-ASCII byte with `?`.
+     */
+    /** Converts an internationalized domain to its Punycode form, or the input when invalid. */
+    fun toAsciiQueryName(qname: String): String {
+        val trimmed = qname.trim().trimEnd('.').lowercase()
+        if (trimmed.isEmpty()) return trimmed
+        return runCatching {
+            java.net.IDN.toASCII(trimmed, java.net.IDN.ALLOW_UNASSIGNED)
+        }.getOrDefault(trimmed)
+    }
+
+    private fun toWireLabels(qname: String): List<ByteArray> {
+        val trimmed = qname.trim().trimEnd('.').lowercase()
+        if (trimmed.isEmpty()) return emptyList()
+        val ascii = runCatching {
+            java.net.IDN.toASCII(trimmed, java.net.IDN.ALLOW_UNASSIGNED)
+        }.getOrDefault(trimmed)
+        val labels = ascii.split('.').filter { it.isNotEmpty() }
+        if (labels.any { it.toByteArray(Charsets.US_ASCII).size !in 1..63 }) {
+            return emptyList()
+        }
+        return labels.map { it.toByteArray(Charsets.US_ASCII) }
     }
 
     fun buildBlockedResponse(query: ByteArray, mode: BlockResponseMode): ByteArray {

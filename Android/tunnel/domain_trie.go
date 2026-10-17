@@ -13,8 +13,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -51,7 +49,7 @@ func LoadMmapTrie(path string) (*MmapTrie, error) {
 		return nil, fmt.Errorf("file too small to be a valid trie")
 	}
 
-	data, err := unix.Mmap(int(f.Fd()), 0, int(size), unix.PROT_READ, unix.MAP_SHARED)
+	data, err := mapFileReadOnly(f.Fd(), int(size))
 	if err != nil {
 		f.Close()
 		return nil, fmt.Errorf("mmap failed: %w", err)
@@ -59,14 +57,14 @@ func LoadMmapTrie(path string) (*MmapTrie, error) {
 
 	magic := binary.BigEndian.Uint32(data[0:4])
 	if magic != trieMagic {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("invalid trie magic: expected %X, got %X", trieMagic, magic)
 	}
 
 	version := binary.BigEndian.Uint32(data[4:8])
 	if version != trieVersion {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("invalid trie version: expected %d, got %d", trieVersion, version)
 	}
@@ -80,7 +78,7 @@ func LoadMmapTrie(path string) (*MmapTrie, error) {
 
 func (m *MmapTrie) Close() {
 	if m.buffer != nil {
-		unix.Munmap(m.buffer)
+		unmapFile(m.buffer)
 		m.buffer = nil
 	}
 	if m.file != nil {

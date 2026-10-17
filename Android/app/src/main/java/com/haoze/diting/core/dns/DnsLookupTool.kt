@@ -87,7 +87,10 @@ object DnsLookupTool {
                 .map { it.value }
                 .distinct()
             Result(
-                queryName = name,
+                // Show the wire name when it differs, so the user can verify the
+                // Punycode form actually sent (e.g. 中文.com -> xn--fiq228c.com).
+                queryName = DnsMessageUtils.toAsciiQueryName(name)
+                    .takeIf { it != name.lowercase() } ?: name,
                 recordTypeLabel = recordType.label,
                 server = serverLabel,
                 records = records,

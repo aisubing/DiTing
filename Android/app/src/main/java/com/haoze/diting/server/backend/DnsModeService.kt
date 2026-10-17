@@ -22,6 +22,7 @@ import com.haoze.diting.ui.localizedText
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -31,6 +32,7 @@ class DnsModeService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var dnsServerEngine: DnsServerEngine? = null
     private var queryFilter: DnsQueryFilter? = null
+    private var startJob: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
 
@@ -55,7 +57,6 @@ class DnsModeService : Service() {
             ACTION_REFRESH -> {
                 refreshNotification()
                 refreshDnsEngine()
-                ensureFilterLoaded()
                 return START_STICKY
             }
             ACTION_START -> {
@@ -87,6 +88,7 @@ class DnsModeService : Service() {
 
     override fun onDestroy() {
         isServiceAlive = false
+        startJob?.cancel()
         stopDnsEngine()
         releaseLocks()
         serviceScope.cancel()
@@ -96,70 +98,91 @@ class DnsModeService : Service() {
         super.onDestroy()
     }
 
+    /**
+     * Loads the rule base before the engine binds its port. Binding first meant
+     * the service reported RUNNING and answered queries from an empty rule set
+     * until the asynchronous reload finished, so blocked domains and hosts
+     * rewrites did not apply for the first queries after every start.
+     */
     private fun startDnsEngine() {
-        acquireLocks()
-        val config = DnsModeManager.config.value
-        val upstream = DnsModeManager.getActiveUpstream()
-        if (queryFilter == null) {
-            queryFilter = DnsQueryFilter(this)
-        }
+        // Re-entrant ACTION_START intents arrive while the first start is still
+        // loading rules; a second engine would race for the same port.
+        if (startJob?.isActive == true) return
+        startJob = serviceScope.launch {
+            acquireLocks()
+            val config = DnsModeManager.config.value
+            val upstream = DnsModeManager.getActiveUpstream()
+            val filter = queryFilter ?: DnsQueryFilter(this@DnsModeService).also { queryFilter = it }
 
-        dnsServerEngine?.stop()
-        val engine = DnsServerEngine(
-            config = config,
-            upstream = upstream,
-            onQueryProcessed = { cacheHit, blocked, failed, latencyMs ->
-                DnsModeManager.recordQuery(
-                    cacheHit = cacheHit,
-                    blocked = blocked,
-                    failed = failed,
-                    latencyMs = latencyMs
-                )
-            },
-            queryFilter = queryFilter
-        )
+            if (!loadRules(filter)) {
+                DnsModeManager.onServiceError("DNS 规则加载失败，请重试")
+                DnsModePreferences.setServiceActive(this@DnsModeService, false)
+                stopSelf()
+                return@launch
+            }
 
-        if (engine.start()) {
-            dnsServerEngine = engine
-            DnsModeManager.onServiceStarted()
-            ensureFilterLoaded()
-            QuickSettingsTileUpdater.requestTileUpdate(this)
-            Log.i(TAG, "DnsModeService successfully started DNS server on port ${config.localListenPort}")
-        } else {
-            Log.e(TAG, "DnsModeService failed to start DNS server on port ${config.localListenPort}")
-            DnsModeManager.onServiceError("DNS 服务启动失败，监听端口可能被占用")
-            DnsModePreferences.setServiceActive(this, false)
-            stopSelf()
-        }
-    }
+            dnsServerEngine?.stop()
+            val engine = DnsServerEngine(
+                config = config,
+                upstream = upstream,
+                onQueryProcessed = { cacheHit, blocked, failed, latencyMs ->
+                    DnsModeManager.recordQuery(
+                        cacheHit = cacheHit,
+                        blocked = blocked,
+                        failed = failed,
+                        latencyMs = latencyMs
+                    )
+                },
+                queryFilter = filter
+            )
 
-    private fun refreshDnsEngine() {
-        val engine = dnsServerEngine ?: return
-        val config = DnsModeManager.config.value
-        val upstream = DnsModeManager.getActiveUpstream()
-        if (!engine.updateConfig(config, upstream)) {
-            Log.e(TAG, "DNS engine stopped during config refresh (port change restart likely failed)")
-            DnsModeManager.onServiceError("DNS 服务更新失败，监听端口可能被占用")
-            stopSelf()
-        } else {
-            engine.syncRules()
+            if (engine.start()) {
+                dnsServerEngine = engine
+                // Rules are already loaded, so RUNNING is truthful from the
+                // first query the port accepts.
+                DnsModeManager.onServiceStarted()
+                QuickSettingsTileUpdater.requestTileUpdate(this@DnsModeService)
+                Log.i(TAG, "DnsModeService successfully started DNS server on port ${config.localListenPort}")
+            } else {
+                Log.e(TAG, "DnsModeService failed to start DNS server on port ${config.localListenPort}")
+                DnsModeManager.onServiceError("DNS 服务启动失败，监听端口可能被占用")
+                DnsModePreferences.setServiceActive(this@DnsModeService, false)
+                stopSelf()
+            }
         }
     }
 
     /**
-     * Reloads the rule base on every start and every config refresh, so rule
-     * edits made in the DNS mode rule screens apply on the next refresh
-     * instead of waiting for a service restart. Rewrite (hosts) answers work
-     * regardless of the filtering master switch, so rules load unconditionally;
-     * blocking itself is gated in the engine.
+     * Reloads the rule base, then applies the config change. Rules load before
+     * the engine resyncs so a refresh never pushes a partially updated snapshot.
      */
-    private fun ensureFilterLoaded() {
-        val filter = queryFilter ?: return
+    private fun refreshDnsEngine() {
         serviceScope.launch {
-            filter.reloadSync()
-            dnsServerEngine?.syncRules()
+            val filter = queryFilter ?: return@launch
+            loadRules(filter)
+            val engine = dnsServerEngine ?: return@launch
+            val config = DnsModeManager.config.value
+            val upstream = DnsModeManager.getActiveUpstream()
+            if (!engine.updateConfig(config, upstream)) {
+                Log.e(TAG, "DNS engine stopped during config refresh (port change restart likely failed)")
+                DnsModeManager.onServiceError("DNS 服务更新失败，监听端口可能被占用")
+                stopSelf()
+            } else {
+                engine.syncRules()
+            }
         }
     }
+
+    /**
+     * Rewrite (hosts) answers work regardless of the filtering master switch,
+     * so rules load unconditionally; blocking itself is gated in the engine.
+     *
+     * @return whether the rule base is now loaded
+     */
+    private suspend fun loadRules(filter: DnsQueryFilter): Boolean =
+        runCatching { filter.reloadSync() }
+            .onFailure { Log.e(TAG, "Failed to load DNS rules", it) }
+            .isSuccess
 
     private fun stopDnsEngine() {
         dnsServerEngine?.stop()

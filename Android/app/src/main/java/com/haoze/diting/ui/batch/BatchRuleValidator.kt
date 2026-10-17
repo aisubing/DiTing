@@ -200,7 +200,12 @@ class BatchRuleValidator(
             return
         }
 
-        if (cosmeticRuleDao.idByDomainAndSelector(classified.domain, classified.selector) > 0) {
+        if (cosmeticRuleDao.idByDomainAndSelector(
+                classified.domain,
+                classified.selector,
+                classified.isException
+            ) > 0
+        ) {
             val reason = if (classified.isException) "白名单中已存在该规则" else "黑名单中已存在该规则"
             duplicateItems.add(BatchRuleItem.Duplicate(lineNo, raw, key, reason, category))
             return
@@ -355,7 +360,8 @@ class BatchRuleValidator(
                 selector = item.selector,
                 rawLine = item.rawLine,
                 addedAt = now,
-                enabled = true
+                enabled = true,
+                isException = item.isException
             )
             val src = if (item.isException) DefaultWhitelistSeeder.SOURCE_USER else "useradd"
             if (cosmeticRuleDao.insertForSource(entity, src, sourceEnabled = true)) {
@@ -363,7 +369,7 @@ class BatchRuleValidator(
             }
         }
         if (cosmeticItems.isNotEmpty()) {
-            CosmeticRuleManager.getInstance(context).compileAllToCss()
+            CosmeticRuleManager.getInstance(context).compileScopedCss()
             RuntimeDnsSettingsRefresher.syncHttpsRequestRulesIfRunning(context)
         }
 

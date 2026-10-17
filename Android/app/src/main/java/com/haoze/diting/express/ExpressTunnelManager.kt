@@ -29,6 +29,7 @@ import com.haoze.diting.core.diagnostic.BootstrapHealthEngine
 import com.haoze.diting.core.diagnostic.BootstrapLogger
 import com.haoze.diting.core.diagnostic.BootstrapSelector
 import com.haoze.diting.core.log.DnsLogger
+import com.haoze.diting.core.log.LogMaintenance
 import com.haoze.diting.core.dns.DnsProvider
 import com.haoze.diting.core.rule.DomainDecision
 import com.haoze.diting.core.rule.DomainPolicy
@@ -36,15 +37,20 @@ import com.haoze.diting.core.log.LogResult
 import com.haoze.diting.core.log.RaceLogger
 import com.haoze.diting.core.rule.RuleIndexLayout
 import com.haoze.diting.core.rule.subscriptionIdOrNull
+import com.haoze.diting.ui.settings.SystemSettingsStore
 import com.haoze.diting.express.cache.ExpressRoomDnsCache
 import com.haoze.diting.express.transport.ExpressDohTransport
 import com.haoze.diting.core.cache.DnsCachePolicy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -238,8 +244,14 @@ class ExpressTunnelManager {
 
     /**
      * Initializes components, warms up rules, and launches the TUN read/write loop.
+     *
+     * The rule caches are loaded *before* the reader thread starts: otherwise
+     * the TUN interface answers queries with an empty rule set for as long as
+     * the Room queries take, so ad/tracker domains resolve normally right after
+     * the user connects. Block and allow are loaded together before the toggle
+     * flips, so a half-loaded state can never block an allow-listed domain.
      */
-    fun start(
+    suspend fun start(
         service: VpnService,
         pfd: ParcelFileDescriptor,
         scope: CoroutineScope,
@@ -266,6 +278,16 @@ class ExpressTunnelManager {
         dnsLogger = DnsLogger(db.dnsLogDao(), flushScope = scope) { dnsLogModeProvider() }
         raceLogger = RaceLogger(db.raceLogDao(), flushScope = scope)
         bootstrapLogger = BootstrapLogger(db.bootstrapLogDao(), flushScope = scope)
+        // Express owns its own database, so it must schedule the same retention
+        // sweep as normal mode; without this the "keep N days" setting never ran.
+        LogMaintenance.start(
+            scope = scope,
+            dataSources = db,
+            httpRequestLogDao = null,
+            retentionDaysProvider = {
+                SystemSettingsStore.logRetentionDays(service, RuleDataset.EXPRESS)
+            }
+        )
         bootstrapHealthEngine = BootstrapHealthEngine(service, scope)
         bootstrapSelector = BootstrapSelector(
             context = service,
@@ -274,14 +296,17 @@ class ExpressTunnelManager {
             protectDatagramSocket = { sock -> service.protect(sock) }
         )
 
-        // Pre-warm rule caches asynchronously off the main thread
-        scope.launch(Dispatchers.IO) {
-            val j1 = launch { runCatching { blockListManager.refreshCache() } }
-            val j2 = launch { runCatching { allowListManager.refreshCache() } }
-            j1.join()
-            j2.join()
-            domainPolicy.invalidateCache()
+        // Load rule caches before the TUN reader starts (see the KDoc above).
+        // Callers invoke this off the main thread, so the blocking load is safe.
+        coroutineScope {
+            val j1 = async(Dispatchers.IO) { runCatching { blockListManager.refreshCache() } }
+            val j2 = async(Dispatchers.IO) { runCatching { allowListManager.refreshCache() } }
+            j1.await()
+            j2.await()
         }
+        domainPolicy.invalidateCache()
+        // A stop during the rule load must not be undone by the code below.
+        currentCoroutineContext().ensureActive()
 
         val transportInvoker = ExpressUpstreamDispatcher.DefaultExpressTransportInvoker(
             protectDatagramSocket = { sock -> service.protect(sock) },

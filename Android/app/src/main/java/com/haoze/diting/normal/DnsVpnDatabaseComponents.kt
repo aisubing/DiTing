@@ -23,6 +23,7 @@ import com.haoze.diting.core.cache.DnsResponseCache
 import com.haoze.diting.core.traffic.TrafficStatsManager
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -118,6 +119,12 @@ class DnsVpnDatabaseComponents {
         LogMaintenance.start(scope, db) { activeLogRetentionDays() }
 
         // Fully load rules into the in-memory caches at startup and warm the DNS cache
+        // Prune before the long-running periodic task (first tick after 30s)
+        // so oversized log tables from a previous session are trimmed at start.
+        scope.launch(Dispatchers.IO) {
+            runCatching { LogMaintenance.pruneExpiredLogs(db, activeLogRetentionDays()) }
+        }
+
         rulesInitializationJob = scope.launch {
             val j1 = launch { runCatching { blockListManager.refreshCache() } }
             val j2 = launch { runCatching { allowListManager.refreshCache() } }

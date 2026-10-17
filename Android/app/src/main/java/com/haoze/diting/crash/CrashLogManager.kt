@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -160,8 +161,17 @@ object CrashLogManager {
 
     /**
      * Exports the log content to the system Download directory.
+     *
+     * MediaStore.Downloads and IS_PENDING only exist on Android 10+ (API 29).
+     * On older versions the app has no public-storage write permission, so the
+     * only path that works without user interaction is the app-private external
+     * "Downloads" folder. Previously the API 29 branch ran on 7.0-9 and both
+     * attempts failed silently, so the auto-backup never happened at all.
      */
     fun exportToDownloads(context: Context, fileName: String, content: String): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return exportToPrivateDownloads(context, fileName, content)
+        }
         return runCatching {
             val resolver = context.contentResolver
             val values = ContentValues().apply {
@@ -180,14 +190,27 @@ object CrashLogManager {
             resolver.update(uri, values, null, null)
             uri
         }.getOrElse { e ->
-            Log.e(TAG, "Failed to export crash log to Downloads via MediaStore, trying direct file", e)
-            runCatching {
-                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!dir.exists()) dir.mkdirs()
-                val file = File(dir, fileName)
-                file.writeText(content, Charsets.UTF_8)
-                Uri.fromFile(file)
-            }.getOrNull()
+            Log.e(TAG, "Failed to export crash log to Downloads via MediaStore, trying app-specific dir", e)
+            exportToPrivateDownloads(context, fileName, content)
+        }
+    }
+
+    /**
+     * Fallback for API < 29 (and for MediaStore failures): writes into the
+     * app-specific external Download folder. No permission is required and the
+     * file survives app restarts, but it is removed on uninstall.
+     */
+    private fun exportToPrivateDownloads(context: Context, fileName: String, content: String): Uri? {
+        return runCatching {
+            val root = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                ?: File(context.filesDir, "downloads")
+            if (!root.exists()) root.mkdirs()
+            val file = File(root, fileName)
+            file.writeText(content, Charsets.UTF_8)
+            FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        }.getOrElse { e ->
+            Log.e(TAG, "Failed to write crash log to app-specific Downloads", e)
+            null
         }
     }
 

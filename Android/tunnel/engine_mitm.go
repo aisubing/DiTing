@@ -217,8 +217,10 @@ func (e *Engine) ClearMitmBlacklist() {
 	}
 }
 
-func (e *Engine) SetCosmeticCSS(css string) {
-	SetCosmeticCSS(css)
+// SetCosmeticRules replaces the domain-scoped cosmetic rule set (JSON, see
+// SetCosmeticRules in mitm_cosmetic_inject.go).
+func (e *Engine) SetCosmeticRules(payload string) {
+	SetCosmeticRules(payload)
 }
 
 func (e *Engine) logHTTPEvent(flow flowID, authority, protocol, outcome, matchedRule string) {

@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/miekg/dns"
@@ -143,12 +142,12 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 
 	mitmActive := certMgr != nil && filter != nil
 
-	dupFd, err := syscall.Dup(fd)
+	newFd, err := dupFd(fd)
 	if err != nil {
 		fail("StartFull: dup TUN fd %d failed: %v", fd, err)
 		return
 	}
-	tunFile := os.NewFile(uintptr(dupFd), "tun")
+	tunFile := os.NewFile(uintptr(newFd), "tun")
 	if tunFile == nil {
 		fail("StartFull: open TUN fd %d failed", dupFd)
 		return

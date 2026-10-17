@@ -29,7 +29,12 @@ func requestAcceptsHTML(req *http.Request) bool {
 	return strings.Contains(strings.ToLower(accept), "text/html")
 }
 
-func wrapResponseForInjection(resp *http.Response) {
+func wrapResponseForInjection(resp *http.Response, host string) {
+	// Nothing to inject when no cosmetic rule exists at all; leaving the body
+	// untouched also keeps Content-Length and Content-Encoding intact.
+	if cosmeticRulesEmpty() {
+		return
+	}
 	encoding := strings.ToLower(strings.TrimSpace(resp.Header.Get("Content-Encoding")))
 
 	var bodyReader io.Reader
@@ -57,7 +62,7 @@ func wrapResponseForInjection(resp *http.Response) {
 		return
 	}
 
-	resp.Body = io.NopCloser(NewInjectingReader(bodyReader))
+	resp.Body = io.NopCloser(NewInjectingReader(bodyReader, host))
 	resp.ContentLength = -1
 	resp.Header.Del("Content-Length")
 	resp.Header.Del("Content-Encoding")

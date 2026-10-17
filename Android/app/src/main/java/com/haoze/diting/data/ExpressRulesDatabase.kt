@@ -44,6 +44,18 @@ import com.haoze.diting.data.entity.SubscriptionGroupEntity
  * dns_log, race_log, bootstrap_log). Explicitly excludes HttpRequestLogEntity and
  * AppTrafficDailyEntity.
  */
+val EXPRESS_MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE cosmetic_rule ADD COLUMN isException INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE cosmetic_rule SET isException = 1 WHERE rawLine LIKE '%#@#%'")
+        db.execSQL("DROP INDEX IF EXISTS index_cosmetic_rule_domain_selector")
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_cosmetic_rule_domain_selector_isException " +
+                "ON cosmetic_rule (domain, selector, isException)"
+        )
+    }
+}
+
 @Database(
     entities = [
         DnsCacheEntity::class,
@@ -65,7 +77,7 @@ import com.haoze.diting.data.entity.SubscriptionGroupEntity
         CosmeticRuleEntity::class,
         CosmeticRuleSourceEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class ExpressRulesDatabase : RoomDatabase(), RuleDataSources, DnsRuntimeDataSources {
@@ -97,6 +109,7 @@ abstract class ExpressRulesDatabase : RoomDatabase(), RuleDataSources, DnsRuntim
                     DATABASE_NAME
                 )
                     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                    .addMigrations(EXPRESS_MIGRATION_1_2)
                     .fallbackToDestructiveMigration(true)
                     .build().also { INSTANCE = it }
             }

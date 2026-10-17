@@ -25,7 +25,6 @@ package tunnel
 import (
 	"encoding/binary"
 	"fmt"
-	"golang.org/x/sys/unix"
 	"hash/fnv"
 	"math"
 	"os"
@@ -148,7 +147,7 @@ func LoadBloomFilter(path string) (*BloomFilter, error) {
 		return nil, fmt.Errorf("file too small to be a valid bloom filter")
 	}
 
-	data, err := unix.Mmap(int(f.Fd()), 0, int(size), unix.PROT_READ, unix.MAP_SHARED)
+	data, err := mapFileReadOnly(f.Fd(), int(size))
 	if err != nil {
 		f.Close()
 		return nil, fmt.Errorf("mmap failed: %w", err)
@@ -156,14 +155,14 @@ func LoadBloomFilter(path string) (*BloomFilter, error) {
 
 	magic := binary.BigEndian.Uint32(data[0:4])
 	if magic != bloomMagic {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("invalid bloom magic: expected %X, got %X", bloomMagic, magic)
 	}
 
 	version := binary.BigEndian.Uint32(data[4:8])
 	if version != bloomVersion {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("invalid bloom version: expected %d, got %d", bloomVersion, version)
 	}
@@ -173,7 +172,7 @@ func LoadBloomFilter(path string) (*BloomFilter, error) {
 
 	expectedSize := int64(bloomHeaderSize) + int64(bitCount/8)
 	if size < expectedSize {
-		unix.Munmap(data)
+		unmapFile(data)
 		f.Close()
 		return nil, fmt.Errorf("bloom file truncated: expected %d bytes, got %d", expectedSize, size)
 	}
@@ -188,7 +187,7 @@ func LoadBloomFilter(path string) (*BloomFilter, error) {
 
 func (bf *BloomFilter) Close() {
 	if bf.buffer != nil {
-		unix.Munmap(bf.buffer)
+		unmapFile(bf.buffer)
 		bf.buffer = nil
 	}
 	if bf.file != nil {

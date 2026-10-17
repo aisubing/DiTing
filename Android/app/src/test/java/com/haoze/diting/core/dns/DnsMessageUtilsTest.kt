@@ -82,6 +82,31 @@ class DnsMessageUtilsTest {
     }
 
     @Test
+    fun buildQueryConvertsIdnToPunycode() {
+        val query = DnsMessageUtils.buildQuery("中文.com", DnsMessageUtils.TYPE_A, 0x4242)
+        // QNAME at offset 12: length byte + label bytes, then the root label.
+        val firstLabelLen = query[12].toInt() and 0xFF
+        val firstLabel = String(query, 13, firstLabelLen, Charsets.US_ASCII)
+        assertEquals("xn--fiq228c", firstLabel)
+
+        // The question length must be computed from the Punycode byte count,
+        // not the original character count.
+        val expectedName = "xn--fiq228c.com"
+        var expectedQuestionLen = 1
+        expectedName.split('.').forEach { expectedQuestionLen += 1 + it.length }
+        expectedQuestionLen += 4
+        assertEquals(12 + expectedQuestionLen, query.size)
+
+        // Uppercase and a trailing root dot must normalize to the same wire name.
+        assertEquals(
+            DnsMessageUtils.extractQuestion(query)?.name,
+            DnsMessageUtils.extractQuestion(
+                DnsMessageUtils.buildQuery("中文.COM.", DnsMessageUtils.TYPE_A, 0x4242)
+            )?.name
+        )
+    }
+
+    @Test
     fun rewriteResponseReturnsNullWhenNoTargetFits() {
         // A query with only a CNAME target: no IP answer fits.
         val queryA = DnsMessageUtils.buildQuery("hosts.example", DnsMessageUtils.TYPE_A, 0x3003)

@@ -3,6 +3,11 @@ package com.haoze.diting.core.log
 import com.haoze.diting.core.traffic.TrafficStatsManager
 import com.haoze.diting.util.dayStringAt
 import com.haoze.diting.data.AppDatabase
+import com.haoze.diting.data.DnsRuntimeDataSources
+import com.haoze.diting.data.dao.BootstrapLogDao
+import com.haoze.diting.data.dao.DnsLogDao
+import com.haoze.diting.data.dao.HttpRequestLogDao
+import com.haoze.diting.data.dao.RaceLogDao
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,12 +52,68 @@ object LogMaintenance {
         val cutoff = System.currentTimeMillis() - retentionDays * DAY_MS
         val cutoffDate = dayStringAt(cutoff)
         withContext(Dispatchers.IO) {
-            runCatching { database.dnsLogDao().deleteBefore(cutoff) }
-            runCatching { database.httpRequestLogDao().deleteBefore(cutoff) }
-            runCatching { database.raceLogDao().deleteBefore(cutoff) }
-            runCatching { database.bootstrapLogDao().deleteBefore(cutoff) }
+            pruneLogDaos(
+                dnsLogDao = database.dnsLogDao(),
+                raceLogDao = database.raceLogDao(),
+                bootstrapLogDao = database.bootstrapLogDao(),
+                httpRequestLogDao = database.httpRequestLogDao(),
+                cutoff = cutoff
+            )
             runCatching { database.appTrafficDao().deleteOlderThan(cutoffDate) }
         }
+    }
+
+    /**
+     * Runs the retention sweep for any log data source, including Express
+     * mode's dedicated database, which has no HTTP log table.
+     */
+    suspend fun pruneExpiredLogs(
+        dataSources: DnsRuntimeDataSources,
+        httpRequestLogDao: HttpRequestLogDao?,
+        retentionDays: Int
+    ) {
+        if (retentionDays <= 0) return
+        val cutoff = System.currentTimeMillis() - retentionDays * DAY_MS
+        withContext(Dispatchers.IO) {
+            pruneLogDaos(
+                dnsLogDao = dataSources.dnsLogDao(),
+                raceLogDao = dataSources.raceLogDao(),
+                bootstrapLogDao = dataSources.bootstrapLogDao(),
+                httpRequestLogDao = httpRequestLogDao,
+                cutoff = cutoff
+            )
+        }
+    }
+
+    /** Starts the periodic retention sweep for a plain log data source. */
+    fun start(
+        scope: CoroutineScope,
+        dataSources: DnsRuntimeDataSources,
+        httpRequestLogDao: HttpRequestLogDao? = null,
+        retentionDaysProvider: () -> Int
+    ): Job {
+        return scope.launch(Dispatchers.IO) {
+            delay(INITIAL_DELAY_MS)
+            while (isActive) {
+                runCatching {
+                    pruneExpiredLogs(dataSources, httpRequestLogDao, retentionDaysProvider())
+                }
+                delay(MAINTENANCE_INTERVAL_MS)
+            }
+        }
+    }
+
+    private suspend fun pruneLogDaos(
+        dnsLogDao: DnsLogDao,
+        raceLogDao: RaceLogDao,
+        bootstrapLogDao: BootstrapLogDao,
+        httpRequestLogDao: HttpRequestLogDao?,
+        cutoff: Long
+    ) {
+        runCatching { dnsLogDao.deleteBefore(cutoff) }
+        runCatching { httpRequestLogDao?.deleteBefore(cutoff) }
+        runCatching { raceLogDao.deleteBefore(cutoff) }
+        runCatching { bootstrapLogDao.deleteBefore(cutoff) }
     }
 
     @Volatile

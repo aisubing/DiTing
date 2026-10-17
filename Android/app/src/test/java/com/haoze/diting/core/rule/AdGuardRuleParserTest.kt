@@ -367,6 +367,30 @@ class AdGuardRuleParserTest {
     }
 
     @Test
+    fun genericCosmeticRulesAreNotTreatedAsComments() {
+        val hide = AdGuardRuleParser.parseCategorizedLine("##.ad-banner")
+        assertEquals(0, hide.ignoredCount)
+        assertEquals(1, hide.cosmeticRules.size)
+        assertEquals("", hide.cosmeticRules[0].domain)
+        assertEquals(".ad-banner", hide.cosmeticRules[0].selector)
+        assertFalse(hide.cosmeticRules[0].isException)
+
+        val exception = AdGuardRuleParser.parseCategorizedLine("#@#.ad-banner")
+        assertEquals(0, exception.ignoredCount)
+        assertEquals(1, exception.cosmeticRules.size)
+        assertTrue(exception.cosmeticRules[0].isException)
+
+        val extended = AdGuardRuleParser.parseCategorizedLine("#?#div")
+        assertEquals(1, extended.cosmeticRules.size)
+        val style = AdGuardRuleParser.parseCategorizedLine("#\$#body{background:none}")
+        assertEquals(1, style.cosmeticRules.size)
+
+        // Real comments must still be ignored.
+        assertEquals(1, AdGuardRuleParser.parseCategorizedLine("# comment").ignoredCount)
+        assertEquals(1, AdGuardRuleParser.parseCategorizedLine("! comment").ignoredCount)
+    }
+
+    @Test
     fun badfilterWithP1Modifiers() {
         val text = """
             /^ad.*\.com$/

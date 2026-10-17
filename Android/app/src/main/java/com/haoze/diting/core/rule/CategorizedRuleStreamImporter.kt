@@ -173,7 +173,8 @@ internal class CategorizedRuleStreamImporter(
                         selector = rule.selector,
                         rawLine = rule.rawLine,
                         addedAt = now,
-                        enabled = enabled
+                        enabled = enabled,
+                        isException = rule.isException
                     )
                     if (dao.insertForSource(entity, source, enabled)) {
                         insertedCosmetic++

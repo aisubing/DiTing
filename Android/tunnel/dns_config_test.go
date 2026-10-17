@@ -77,6 +77,31 @@ func TestValidateDNSProvider(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "Valid IPv6 PLAIN",
+			cfg: dnsProviderConfig{
+				Protocol: "PLAIN",
+				Server:   "[2001:db8::1]:53",
+			},
+			wantErr: false,
+		},
+		{
+			// Kotlin used to bracket a host that already carried a port.
+			name: "Invalid PLAIN with port inside host",
+			cfg: dnsProviderConfig{
+				Protocol: "PLAIN",
+				Server:   "[1.1.1.1:53]:53",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid PLAIN with malformed IPv6",
+			cfg: dnsProviderConfig{
+				Protocol: "PLAIN",
+				Server:   "[:::]:53",
+			},
+			wantErr: true,
+		},
+		{
 			name: "Invalid DOH http",
 			cfg: dnsProviderConfig{
 				Protocol: "DOH",

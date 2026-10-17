@@ -158,7 +158,7 @@ func relayHTTPFlow(clientConn, serverConn net.Conn, hostname string, blocker adB
 			return
 		}
 		if ShouldInjectHTML(resp.Header.Get("Content-Type")) {
-			wrapResponseForInjection(resp)
+			wrapResponseForInjection(resp, reqHost)
 		}
 		if err := resp.Write(clientConn); err != nil {
 			resp.Body.Close()

@@ -149,6 +149,25 @@ class DnsResponseCachePersistenceTest {
     }
 
     @Test
+    fun clearingThroughControllerDropsPendingWrites() = runBlocking {
+        val dao = FakeDnsCacheDao()
+        val cache = newCache(dao)
+        DnsCacheController.register(cache)
+
+        // Nothing flushed yet: the entry only lives in the pending write queue.
+        cache.recordResolved("a.com", 1, "1.2.3.4", upstreamTtl = 300)
+        assertEquals(0, dao.storage.size)
+
+        DnsCacheController.clearAll(dao)
+
+        // The old controller only cleared memory and the table, so the trailing
+        // 30s flush wrote the queued entry back right after the user deleted it.
+        cache.flushPendingWrites()
+        assertEquals(0, dao.storage.size)
+        DnsCacheController.unregister(cache)
+    }
+
+    @Test
     fun hitWithoutResolvedRowUpdatesNothing() = runBlocking {
         val dao = FakeDnsCacheDao()
         val cache = newCache(dao)

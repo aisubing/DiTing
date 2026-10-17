@@ -95,14 +95,6 @@ class ExpressVpnService : VpnService() {
         // Bring service to foreground immediately to fulfill Android 8.0+ system requirement
         updateForegroundNotification()
 
-        // Sync rules asynchronously once defaults seeder finishes without blocking the main UI thread
-        serviceScope.launch(Dispatchers.IO) {
-            defaultsSeedJob?.join()
-            if (tunnelManager.vpnInterface != null) {
-                tunnelManager.syncRules(this)
-            }
-        }
-
         val ipv6Mode = SystemSettingsStore.getIpv6Mode(this, RuleDataset.EXPRESS)
         val pfd = tunnelManager.establishVpnInterface(this, ipv6Mode) ?: run {
             Log.e(TAG, "Failed to establish VPN interface")
@@ -113,29 +105,35 @@ class ExpressVpnService : VpnService() {
             return
         }
 
-        val started = tunnelManager.start(
-            service = this,
-            pfd = pfd,
-            scope = serviceScope,
-            providersProvider = { activeProviders },
-            resolutionModeProvider = { activeResolutionMode },
-            blockResponseModeProvider = { AppRulesSettingsStore.getBlockResponseMode(this, RuleDataset.EXPRESS) },
-            domainRulesEnabledProvider = { AppRulesSettingsStore.isDomainRulesEnabled(this, RuleDataset.EXPRESS) },
-            cachePolicyProvider = { DnsCacheSettingsStore.getDnsCachePolicy(this, RuleDataset.EXPRESS) },
-            dnsLogModeProvider = { SystemSettingsStore.getDnsLogMode(this, RuleDataset.EXPRESS) }
-        )
-        if (!started) {
-            Log.e(TAG, "Failed to start Express tunnel data plane")
-            ExpressVpnController.onServiceStateChanged(this, false)
-            stopForegroundCompat()
-            stopSelf()
-            return
-        }
+        // Rule caches must be loaded before the TUN reader answers queries, so
+        // start() is suspending and runs here rather than blocking onStartCommand.
+        serviceScope.launch(Dispatchers.IO) {
+            defaultsSeedJob?.join()
+            val started = tunnelManager.start(
+                service = this@ExpressVpnService,
+                pfd = pfd,
+                scope = serviceScope,
+                providersProvider = { activeProviders },
+                resolutionModeProvider = { activeResolutionMode },
+                blockResponseModeProvider = { AppRulesSettingsStore.getBlockResponseMode(this@ExpressVpnService, RuleDataset.EXPRESS) },
+                domainRulesEnabledProvider = { AppRulesSettingsStore.isDomainRulesEnabled(this@ExpressVpnService, RuleDataset.EXPRESS) },
+                cachePolicyProvider = { DnsCacheSettingsStore.getDnsCachePolicy(this@ExpressVpnService, RuleDataset.EXPRESS) },
+                dnsLogModeProvider = { SystemSettingsStore.getDnsLogMode(this@ExpressVpnService, RuleDataset.EXPRESS) }
+            )
+            if (!started) {
+                Log.e(TAG, "Failed to start Express tunnel data plane")
+                runCatching { pfd.close() }
+                ExpressVpnController.onServiceStateChanged(this@ExpressVpnService, false)
+                stopForegroundCompat()
+                stopSelf()
+                return@launch
+            }
 
-        updateForegroundNotification()
-        floatingLogOverlay.setVpnRunning(true)
-        VpnMonitorManager.onVpnStarted(this)
-        ExpressVpnController.onServiceStateChanged(this, true)
+            updateForegroundNotification()
+            floatingLogOverlay.setVpnRunning(true)
+            VpnMonitorManager.onVpnStarted(this@ExpressVpnService)
+            ExpressVpnController.onServiceStateChanged(this@ExpressVpnService, true)
+        }
     }
 
     private fun updateForegroundNotification() {

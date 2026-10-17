@@ -191,7 +191,13 @@ class DnsServerEngine(
                         DnsModeProtocol.DNS, DnsModeProtocol.DOT -> {
                             val addr = upstream.address
                             val p = upstream.port
-                            if (addr.contains(':') && !addr.startsWith('[')) "[$addr]:$p" else "$addr:$p"
+                            if (addr.contains(':')) {
+                                // Always normalize: strip stray brackets before
+                                // wrapping and appending the port.
+                                "[" + addr.removePrefix("[").removeSuffix("]") + "]:$p"
+                            } else {
+                                "$addr:$p"
+                            }
                         }
                         DnsModeProtocol.DOH -> ""
                     })
