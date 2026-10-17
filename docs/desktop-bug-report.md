@@ -85,6 +85,7 @@
 | A-081 | 中 | 动态拦截极速侧 | 极速模式「动态拦截策略」可开可存，`express/` 全包无任何读取端（引擎只用静态 `blockResponseModeProvider`）：开关纯空转、副标题谎报生效（与 A-023 同文案不同库，本条为 EXPRESS 面） | 待处理 |
 | A-082 | 中 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 `onRuntimeDnsSettingsChanged`：运行中引擎继续按旧 volatile 快照 prune（缩短不省空间、加长照样删数据）直到下次其它刷新；同屏日志模式项却正确触发（对照即证据） | 待处理 |
 | A-083 | 中 | SAF 授权泄漏 | 全仓 5 处 `takePersistableUriPermission`、0 处 `releasePersistableUriPermission`：删除背景图/订阅本地文件/全面清理后，对应用户文件的持久读授权永不撤销（系统可见「可访问的文件」只增不减） | 待处理 |
+| A-084 | 中 | 服务器模式向导 | DNS 模式「使用向导」接入信息把监听端口**硬编码为 1053**（5 处），从不读 `config.localListenPort`：用户改端口（验证器允许 1024–65535、设置页实时显示真实端口）后，向导仍指示「将 DNS 改为 IP:1053」，照做即把所有局域网设备指向无监听端口 → 全员解析超时 | 待处理 |
 
 ---
 
@@ -1180,6 +1181,22 @@
 
 ---
 
+## A-084 DNS 模式「使用向导」局域网接入信息硬编码端口 1053，从不读 `localListenPort`：改端口后向导指引用户把所有 LAN 设备配到错误端口
+
+- **位置**（端口 1053 以字面量出现 5 处，全仓 grep `onboarding/*.kt` 实证；向导代码零引用 `DnsModeManager`/`localListenPort`，grep `localListenPort` 在 onboarding 包命中 0）：
+  - `onboarding/ModeOnboardingSteps.kt:316` — `localIps.joinToString(" / ") { "$it:1053" }`（「本机局域网服务接入信息」卡片，含一键复制交互的显示文本）
+  - `onboarding/ModeOnboardingSteps.kt:361` — 「…并将端口设为 1053（标准设备可使用路由器 DNS 转发）」
+  - `onboarding/ModeOnboardingSteps.kt:140` — 「服务器模式仅在本地 1053 端口提供局域网服务…」（免 VPN 声明）
+  - `onboarding/ModeOnboardingModels.kt:162` — 「本机直接监听 0.0.0.0:1053（UDP/TCP）…」
+  - `onboarding/ModeOnboardingModels.kt:187` — 「服务默认在端口 1053 监听…」
+- **机制**：`localListenPort` 用户可改：设置页 `server/ui/DnsMainScreen.kt:232-238` 经 `DnsPortEditDialog` 保存任意端口，验证器 `server/model/DnsListenPortValidator.kt` 允许 1024–65535；引擎按真实端口监听（`server/backend/DnsServerEngine.kt:38-46` `startStandalone(port)`）。而向导步骤内容全部来自静态 `ModeOnboardingRegistry.getConfig(mode)` 文案 + `localIps` 拼接，`ModeOnboardingActivity` 只把 `NetworkInfoProbe` 的 IP 列表传入（`:93-98`），没有任何一条路径读 prefs 里的端口。设置页 `server/ui/DnsSettingsScreen.kt:100` 显示 `${config.localListenPort}` 真实值——同一事实两个界面一个动态一个写死，即口径分裂。
+- **触发路径（可达性已核）**：向导并非一次性：`ui/SettingsSearchCatalog.kt:45` 把 `Routes.USAGE_WIZARD`（「使用向导」）注册进设置搜索目录，`SettingsRouteActivity.kt:96-100/210-213/514-518` 三处随时可重新打开 `ModeOnboardingActivity`。用户流：改端口为 8053 → LAN 设备照设置页配置正常 → 某日按设置搜索重开向导复习配置 → 向导显示 `192.168.x.x:1053` → 把设备 DNS 改回 1053 → 该设备解析全部超时（本机已不监听 1053）。
+- **用户可见影响**：向导的核心承诺「教你把其他设备接进来」在端口被修改后系统性给出错误配置指令，且用户无从察觉错误来源（文案通篇以事实句呈现，无「默认」限定——`:187` 那句虽有「默认在端口 1053」字样，但 `:316/:361/:140` 三处均为无条件陈述，`:316` 更是可复制的「接入信息」卡片）。
+- **复现/验证**：真机或 Robolectric：`DnsModeManager.updateConfig(config.copy(localListenPort = 8053))` → 打开 USAGE_WIZARD 到第三步 → 接入信息卡片显示 `…:1053`（预期 `…:8053`）。单测层面 `ModeOnboardingSteps` 的文案拼接可参数化后断言。修复方向 = 向导渲染时把 `1053` 替换为 `DnsModeManager.config.value.localListenPort`（Activity 已持有 context），或在 `ModeOnboardingActivity` 把端口作为参数下传。
+- **备注**：与 A-022（`loadConfig` 每次把 5353/5354 强改 1053）方向相反且互斥独立：A-022 是端口值被迁移逻辑篡改，本条是向导展示层无视端口值；两者可共存叠加（用户设 8053 → 显示 1053）。`ModeOnboardingSteps.kt` 414 行、`ModeOnboardingModels.kt` 204 行，均在 550 行限内，拆分无约定障碍。首屏 `localIps` 异步探测失败时显示「未连接 Wi-Fi…」占位（`:316` 的 else 分支），该降级本身正确，不另计。
+
+---
+
 ## 观察（未达到确认缺陷标准，供后续验证）
 
 ### O-106 `StartupSelfCheck` 只消毒 NORMAL 偏好文件，Express/DNS_MODE 的同名键不覆盖
@@ -1312,6 +1329,12 @@
 
 ### O-146 「不再提示」建议忽略为全局 key，跨模式互相消音（意图待定）
 - `permission/ModePermissionStore.kt:46-56` — key=`recommendation_dismissed_`+permission.name，**无 mode 维度**；`permission/ModeReadinessState.kt:21-23` 按此过滤建议。banner/对话框按模式评估（`ModePermissionWarningAction.kt:219-228` 在极速对话框里点「不再提示」后，普通/DNS 模式的同类建议同样永久消失），且全仓无恢复入口。产品意图若是「该建议全局不再烦我」则只是注释缺失；若要 per-mode 需在 key 加 mode。缺声明性证据，列观察。
+
+### O-148 违反 AGENTS.md 第 1 条「代码文件 ≤550 行」的文件清单（约定违例，非行为缺陷）
+- 全量扫描实证（`find -name '*.kt'/'*.go' ! -name '*_test.go'` 逐文件行数）：**Kotlin 13 个 + Go 1 个**超线——
+  `ui/WhitelistViewModel.kt` 602、`ui/dashboard/ModernLogDashboardModeViews.kt` 599、`core/dns/DnsMessageUtils.kt` 597、`ui/localization/RulesAndSubscriptionLocalization.kt` 587、`ui/BlacklistViewModel.kt` 581、`normal/ui/ConfigTransferScreen.kt` 580、`ui/components/SettingsComponents.kt` 579、`ui/SubscriptionViewModel.kt` 575、`SettingsRouteActivity.kt` 569、`express/engine/ExpressPacketCodec.kt` 572、`core/rule/RuleOperationWorker.kt` 572、`normal/DnsVpnService.kt` 560、`data/dao/AllowRuleDao.kt` 554；Go：`tunnel/bootstrap_resolver.go` 558。
+- 与行为缺陷分开计：这些文件当前**无已知正确性问题源于长度**，长度违例的代价是可维护性（AGENTS.md 明文上限即为此设）。修复方向为按既有职责切分（如 `Whitelist/BlacklistViewModel` 同构可提公共基类、`SettingsRouteActivity` 的 `SettingsRouteContent` when-分支表可拆 route→composable 映射表），但属代码修改，不在本记录（只记录不修改）范围。
+- 后续轮次勿重复计数：以上清单即全量，新增超线文件才需登记。
 
 ### O-147 【证伪留痕】DNS_MODE 上游校验器与开机自启接收器三项候选全部排除（勿再提出）
 - (1) `validateHost(":::")` 疑似放行畸形 IPv6 → 本机 JDK 实跑 `InetAddress.getByName(":::")` 抛 `UnknownHostException: :::: invalid IPv6 address literal`，`isValidIpv6` 返回 false（`server/model/DnsUpstreamValidator.kt:80-91`，与其注释「which rejects malformed forms such as `:::`」一致）；`1:2`、`2001:db8::1::2`、`fe80::1%eth0`（无此网卡时）同被拒。初判「::: 被接受」系未跑运行期即采信，已证伪。
