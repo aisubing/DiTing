@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
 )
@@ -44,13 +45,80 @@ func xdgAutoStartPresent() bool {
 	if p == "" {
 		return false
 	}
-	_, err := os.Stat(p)
-	return err == nil
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return false
+	}
+	// 只判断文件存在会把「Exec 指向已不存在的二进制」也报成已启用；
+	// 能解析出路径时按可执行文件是否存在判定，解析不了才退回存在性。
+	if exe := parseDesktopExec(string(data)); exe != "" {
+		info, statErr := os.Stat(exe)
+		return statErr == nil && !info.IsDir()
+	}
+	return true
+}
+
+// parseDesktopExec 从桌面条目的 Exec 行提取可执行文件路径（支持引号与反斜杠转义）。
+func parseDesktopExec(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		if !strings.HasPrefix(line, "Exec=") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(line, "Exec="))
+		if value == "" {
+			return ""
+		}
+		if value[0] == '"' {
+			var b strings.Builder
+			escaped := false
+			for i := 1; i < len(value); i++ {
+				c := value[i]
+				if escaped {
+					b.WriteByte(c)
+					escaped = false
+					continue
+				}
+				if c == '\\' {
+					escaped = true
+					continue
+				}
+				if c == '"' {
+					return b.String()
+				}
+				b.WriteByte(c)
+			}
+			return b.String()
+		}
+		return strings.Fields(value)[0]
+	}
+	return ""
 }
 
 // IsEnabled 检查 Linux 桌面自启条目是否存在。
 func (m *LinuxAutoStartManager) IsEnabled() bool {
 	return xdgAutoStartPresent()
+}
+
+// execValue 按 Desktop Entry 规范（GShell / GSEsc）转义 Exec 的可执行路径。
+//
+// 路径里的空格是 argv 分隔符、`%` 是字段码占位符、反斜杠/引号/反引号/美元
+// 有 shell 语义，都需要转义或加引号，否则自启条目会静默启动失败。
+func execValue(path string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range path {
+		switch r {
+		case '\\', '"', '`', '$':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		case '%':
+			b.WriteString("%%")
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 // SetEnabled 创建或移除 ~/.config/autostart/diting.desktop。
@@ -68,7 +136,7 @@ func (m *LinuxAutoStartManager) SetEnabled(enable bool) (bool, error) {
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 			return false, fmt.Errorf("创建自启目录失败: %w", err)
 		}
-		entry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=谛听 DNS\nExec=%s\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\n", exePath)
+		entry := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=谛听 DNS\nExec=%s\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true\n", execValue(exePath))
 		if err := os.WriteFile(p, []byte(entry), 0o644); err != nil {
 			return false, fmt.Errorf("写入自启桌面条目失败: %w", err)
 		}

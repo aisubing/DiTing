@@ -94,7 +94,10 @@ func (m *LinuxDNSManager) Takeover(ctx context.Context, adapters []platform.Adap
 	_ = GenerateRestoreScript(m.backend.Kind(), states, scriptPath)
 
 	if err := m.backend.Apply(ctx, adapters); err != nil {
-		_ = m.backend.Restore(ctx, states)
+		if restoreErr := m.backend.Restore(ctx, states); restoreErr != nil {
+			// 回滚没成功时保留状态文件，下次启动仍可据此还原，不能把唯一线索抹掉
+			return fmt.Errorf("接管网卡 DNS 失败: %w（回滚亦失败: %v，已保留状态文件）", err, restoreErr)
+		}
 		_ = m.stateStore.Clear()
 		return fmt.Errorf("接管网卡 DNS 失败: %w", err)
 	}
@@ -145,6 +148,9 @@ func (m *LinuxDNSManager) TakeoverSingle(ctx context.Context, adapter platform.A
 	_ = GenerateRestoreScript(m.backend.Kind(), m.adapters, scriptPath)
 
 	if err := m.backend.Apply(ctx, []platform.AdapterInfo{adapter}); err != nil {
+		// 回滚已生效的系统修改：后端契约要求 Apply 失败不留半成品，
+		// 但单卡路径此前完全没有补偿，DNS 会永久指向 127.0.0.1
+		restoreErr := m.backend.Restore(ctx, []platform.AdapterState{state})
 		m.adapters = oldAdapters
 		m.active = oldActive
 		if len(oldAdapters) == 0 {
@@ -157,6 +163,9 @@ func (m *LinuxDNSManager) TakeoverSingle(ctx context.Context, adapter platform.A
 				Timestamp: time.Now(),
 				Adapters:  oldAdapters,
 			})
+		}
+		if restoreErr != nil {
+			return fmt.Errorf("%w（回滚亦失败: %v）", err, restoreErr)
 		}
 		return err
 	}
@@ -196,22 +205,23 @@ func (m *LinuxDNSManager) RestoreSingle(ctx context.Context, adapterID string) e
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var target *platform.AdapterState
+	// 同名多条目必须全部命中并一并还原：旧实现只保留最后一条，其余匹配项
+	// 既不还原也不留在 remaining，函数却返回成功，状态文件与实况脱节。
+	var targets []platform.AdapterState
 	var remaining []platform.AdapterState
 	for _, a := range m.adapters {
 		if a.ID == adapterID || a.Name == adapterID {
-			curr := a
-			target = &curr
+			targets = append(targets, a)
 		} else {
 			remaining = append(remaining, a)
 		}
 	}
 
-	if target == nil {
+	if len(targets) == 0 {
 		return nil
 	}
 
-	if err := m.backend.Restore(ctx, []platform.AdapterState{*target}); err != nil {
+	if err := m.backend.Restore(ctx, targets); err != nil {
 		return err
 	}
 	_ = m.FlushDNSCache(ctx)

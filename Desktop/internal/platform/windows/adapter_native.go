@@ -21,6 +21,11 @@ func scanAdaptersNative(ctx context.Context) ([]platform.AdapterInfo, error) {
 	var err error
 
 	for i := 0; i < 5; i++ {
+		// 每轮都检查取消：调用方（IPC 请求、接管流程）带着超时 ctx，
+		// 重试与后续逐网卡的注册表读取都必须能被它叫停。
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, cerr
+		}
 		buf = make([]byte, size)
 		aa := (*windows.IpAdapterAddresses)(unsafe.Pointer(&buf[0]))
 		err = windows.GetAdaptersAddresses(windows.AF_UNSPEC, flags, 0, aa, &size)
@@ -39,6 +44,10 @@ func scanAdaptersNative(ctx context.Context) ([]platform.AdapterInfo, error) {
 	cur := (*windows.IpAdapterAddresses)(unsafe.Pointer(&buf[0]))
 
 	for cur != nil {
+		// 逐网卡会读注册表，网卡多时同样可能耗时，取消点放在每张卡之前
+		if cerr := ctx.Err(); cerr != nil {
+			return nil, cerr
+		}
 		id := normalizeGUID(windows.BytePtrToString(cur.AdapterName))
 		name := windows.UTF16PtrToString(cur.FriendlyName)
 		description := windows.UTF16PtrToString(cur.Description)

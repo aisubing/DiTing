@@ -5,6 +5,7 @@ package windows
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -102,13 +103,21 @@ func (m *WindowsDNSManager) Takeover(ctx context.Context, adapters []platform.Ad
 
 	// 2. 生成离线应急恢复脚本 restore-dns.bat
 	scriptPath := filepath.Join(filepath.Dir(m.stateStore.GetFilePath()), "restore-dns.bat")
-	_ = GenerateRestoreScript(states, scriptPath)
+	if err := GenerateRestoreScript(states, scriptPath); err != nil {
+		// 应急脚本生成失败不阻断接管（网卡仍能正常工作），但绝不能静默：
+		// 用户被告知「以管理员运行 restore-dns.bat」时该文件可能根本不存在。
+		log.Printf("[Takeover] 生成离线应急恢复脚本失败 (%s): %v", scriptPath, err)
+	}
 
 	// 3. 执行 DNS 指向修改 (IPv4: 127.0.0.1, IPv6: ::1)
 	for _, a := range states {
 		if err := m.applyTakeoverOnAdapter(ctx, a); err != nil {
-			// 接管部分网卡失败时，尝试回滚已接管的网卡并清理状态
-			_ = m.RestoreAdapters(ctx, states)
+			// 接管部分网卡失败时，尝试回滚已接管的网卡并清理状态。
+			// 回滚失败时绝不能清状态文件：那是下次启动自愈的唯一依据，
+			// 丢掉它就等于把网卡永久钉在 127.0.0.1 且无人知晓原始配置。
+			if rollbackErr := m.RestoreAdapters(ctx, states); rollbackErr != nil {
+				return fmt.Errorf("接管网卡 [%s] 失败: %w（回滚亦失败，已保留状态文件供自愈: %v）", a.Name, err, rollbackErr)
+			}
 			_ = m.stateStore.Clear()
 			return fmt.Errorf("接管网卡 [%s] 失败: %w", a.Name, err)
 		}
@@ -143,9 +152,11 @@ func (m *WindowsDNSManager) TakeoverSingle(ctx context.Context, adapter platform
 	copy(oldAdapters, m.adapters)
 	oldActive := m.active
 
+	// 只按 GUID 匹配：显示名不是唯一身份。两块 USB 网卡同叫「以太网」时，
+	// 按名匹配会把第一块的原始快照覆盖掉，还原时再也找不到它。
 	found := false
-	for i, a := range m.adapters {
-		if a.ID == adapter.ID || a.Name == adapter.Name {
+	for i := range m.adapters {
+		if state.ID != "" && m.adapters[i].ID == state.ID {
 			m.adapters[i] = state
 			found = true
 			break
@@ -168,10 +179,31 @@ func (m *WindowsDNSManager) TakeoverSingle(ctx context.Context, adapter platform
 	}
 
 	scriptPath := filepath.Join(filepath.Dir(m.stateStore.GetFilePath()), "restore-dns.bat")
-	_ = GenerateRestoreScript(m.adapters, scriptPath)
+	if err := GenerateRestoreScript(m.adapters, scriptPath); err != nil {
+		log.Printf("[Takeover] 生成离线应急恢复脚本失败 (%s): %v", scriptPath, err)
+	}
 
 	if err := m.applyTakeoverOnAdapter(ctx, state); err != nil {
-		// 回滚内部适配器列表及持久化状态
+		// 双栈接管可能只成功了一半（IPv4 已指向 127.0.0.1、IPv6 失败），
+		// 仅回滚簿记会让状态文件声称「未接管」而网卡实际仍被劫持。
+		// 先按快照把该网卡的 DNS 还原，再回滚内部列表与持久化状态。
+		if restoreErr := m.restoreSingleAdapter(ctx, state); restoreErr != nil {
+			// 还原失败：保留状态文件，交给下次启动的自愈流程
+			m.adapters = oldAdapters
+			m.active = oldActive
+			healStates := mergeAdapterState(oldAdapters, state)
+			if saveErr := m.stateStore.Save(&platform.TakeoverState{
+				Active:    true,
+				Version:   m.version,
+				PID:       os.Getpid(),
+				Timestamp: time.Now(),
+				Adapters:  healStates,
+			}); saveErr != nil {
+				return fmt.Errorf("%w（接管回滚失败且状态保存失败: %v）", err, saveErr)
+			}
+			return fmt.Errorf("%w（接管回滚亦失败，已保留状态文件供自愈: %v）", err, restoreErr)
+		}
+
 		m.adapters = oldAdapters
 		m.active = oldActive
 		if len(oldAdapters) == 0 {
@@ -204,18 +236,54 @@ func (m *WindowsDNSManager) applyTakeoverOnAdapter(ctx context.Context, a platfo
 	return setAdapterDNSDualStackNative(a.ID, []string{"127.0.0.1"}, []string{"::1"})
 }
 
+// mergeAdapterState 返回把 state 合并进 base 后的新切片（按 GUID 替换，否则追加）。
+func mergeAdapterState(base []platform.AdapterState, state platform.AdapterState) []platform.AdapterState {
+	out := append([]platform.AdapterState(nil), base...)
+	for i := range out {
+		if state.ID != "" && out[i].ID == state.ID {
+			out[i] = state
+			return out
+		}
+	}
+	return append(out, state)
+}
+
 // Restore 将当前被接管的网卡完全还原回原初始配置
 func (m *WindowsDNSManager) Restore(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var err error
-	if len(m.adapters) > 0 {
-		err = m.RestoreAdapters(ctx, m.adapters)
-	} else if m.stateStore != nil {
+	states := m.adapters
+	if len(states) == 0 && m.stateStore != nil {
 		if state, loadErr := m.stateStore.Load(); loadErr == nil && state != nil && len(state.Adapters) > 0 {
-			err = m.RestoreAdapters(ctx, state.Adapters)
+			states = state.Adapters
 		}
+	}
+
+	var err error
+	if len(states) > 0 {
+		err = m.RestoreAdapters(ctx, states)
+	}
+
+	if err != nil {
+		// 还原失败时保留状态文件与内存快照：它们是下次启动自愈的唯一依据。
+		// 先清空再指望兜底清扫，会把原本配置静态 DNS 的网卡抹成 DHCP，
+		// 原始地址在快照已毁的情况下永久丢失。
+		m.active = true
+		if len(m.adapters) == 0 {
+			m.adapters = states
+		}
+		if m.stateStore != nil {
+			_ = m.stateStore.Save(&platform.TakeoverState{
+				Active:    true,
+				Version:   m.version,
+				PID:       os.Getpid(),
+				Timestamp: time.Now(),
+				Adapters:  states,
+			})
+		}
+		_ = m.FlushDNSCache(ctx)
+		return err
 	}
 
 	m.active = false
@@ -224,9 +292,9 @@ func (m *WindowsDNSManager) Restore(ctx context.Context) error {
 		_ = m.stateStore.Clear()
 	}
 
-	// 无论原状态如何，均主动执行一次全网卡残留回环地址排查兜底
+	// 还原成功后再做兜底清扫：只清理仍指向回环的残留，不会动正常配置
 	_ = m.ResetResidualLoopbackDNS(ctx)
-	return err
+	return nil
 }
 
 // RestoreSingle 还原指定单个网卡的 DNS 接管
@@ -234,23 +302,63 @@ func (m *WindowsDNSManager) RestoreSingle(ctx context.Context, adapterID string)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var target *platform.AdapterState
-	var remaining []platform.AdapterState
+	// 按 GUID 优先匹配；显示名仅在唯一命中时才作为回落键。
+	// 两块同名网卡时按名匹配会把未选中的那条静默移出状态却从不还原。
+	var targets []platform.AdapterState
 	for _, a := range m.adapters {
-		if a.ID == adapterID || a.Name == adapterID {
-			curr := a
-			target = &curr
-		} else {
+		if a.ID == adapterID {
+			targets = append(targets, a)
+		}
+	}
+	if len(targets) == 0 {
+		for _, a := range m.adapters {
+			if a.Name == adapterID {
+				targets = append(targets, a)
+			}
+		}
+	}
+
+	if len(targets) == 0 {
+		return nil
+	}
+
+	remaining := make([]platform.AdapterState, 0, len(m.adapters))
+	for _, a := range m.adapters {
+		matched := false
+		for _, t := range targets {
+			if a.ID == t.ID {
+				matched = true
+				break
+			}
+		}
+		if !matched {
 			remaining = append(remaining, a)
 		}
 	}
 
-	if target == nil {
-		return nil
+	var restoreErr error
+	for _, t := range targets {
+		if err := m.restoreSingleAdapter(ctx, t); err != nil {
+			// 失败的网卡留在状态里供下次自愈；已成功还原的不再重复记录
+			remaining = append(remaining, t)
+			restoreErr = err
+		}
 	}
-
-	if err := m.restoreSingleAdapter(ctx, *target); err != nil {
-		return err
+	if restoreErr != nil {
+		m.adapters = remaining
+		if len(remaining) == 0 {
+			m.active = false
+			_ = m.stateStore.Clear()
+		} else {
+			_ = m.stateStore.Save(&platform.TakeoverState{
+				Active:    true,
+				Version:   m.version,
+				PID:       os.Getpid(),
+				Timestamp: time.Now(),
+				Adapters:  remaining,
+			})
+		}
+		return restoreErr
 	}
 	_ = m.FlushDNSCache(ctx)
 

@@ -5,6 +5,7 @@ package linux
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
@@ -31,6 +32,13 @@ func (b *resolvConfBackend) Apply(ctx context.Context, adapters []platform.Adapt
 		if err := writeBackupContent("resolv.conf", content); err != nil {
 			return fmt.Errorf("备份 resolv.conf 失败: %w", err)
 		}
+		// 离线恢复脚本读取的是 /etc/resolv.conf.diting.orig，必须与接管同时落盘，
+		// 否则该脚本的首选还原分支永远不存在（BUG-17）。
+		if err := writeResolvConfOriginal(content); err != nil {
+			return fmt.Errorf("备份 /etc/resolv.conf.diting.orig 失败: %w", err)
+		}
+	} else {
+		_ = os.Remove(resolvConfOriginalPath)
 	}
 
 	if err := writeResolvConfAtomically(renderResolvConf([]string{"127.0.0.1", "::1"})); err != nil {
@@ -49,6 +57,8 @@ func (b *resolvConfBackend) Restore(ctx context.Context, adapters []platform.Ada
 	if err := writeResolvConfAtomically(content); err != nil {
 		return err
 	}
+	// 还原成功后原始备份不再有用，留着会被下次接管误当成「更早的原配置」
+	_ = os.Remove(resolvConfOriginalPath)
 	return b.Flush(ctx)
 }
 
@@ -59,6 +69,14 @@ func (b *resolvConfBackend) Flush(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+// resolvConfOriginalPath 是离线恢复脚本 restore-dns.sh 读取的接管前原始文件。
+const resolvConfOriginalPath = "/etc/resolv.conf.diting.orig"
+
+// writeResolvConfOriginal 将接管前的 resolv.conf 原文写到脚本约定的路径。
+func writeResolvConfOriginal(content string) error {
+	return os.WriteFile(resolvConfOriginalPath, []byte(content), 0o600)
 }
 
 // writeBackupContent 将文本内容备份至数据目录。

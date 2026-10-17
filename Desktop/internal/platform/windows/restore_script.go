@@ -12,6 +12,36 @@ import (
 	"github.com/haoze-evolluling/diting/desktop/internal/platform"
 )
 
+// batchEchoText 转义批处理 echo 行中的文本。
+//
+// 网卡显示名由驱动/安装程序决定，可能含 `&`、`%`、`^` 等 cmd 元字符：
+// 原样内插会让脚本行被拆成多条命令（`&`）或被变量展开吞掉（`%`），
+// 应急还原因此静默失效甚至执行意外命令。
+func batchEchoText(s string) string {
+	r := strings.NewReplacer(
+		"^", "^^",
+		"%", "%%",
+		"&", "^&",
+		"|", "^|",
+		"<", "^<",
+		">", "^>",
+		"(", "^(",
+		")", "^)",
+	)
+	return r.Replace(s)
+}
+
+// batchQuotedArg 转义双引号参数内部的文本（netsh name="..."）。
+//
+// 双引号内 cmd 只对 `%` 与 `"` 敏感：`%` 需写成 `%%`；`"` 无法在双引号内转义，
+// 含它的名字直接拒绝，交由调用方报错——生成一个必然错位的脚本更危险。
+func batchQuotedArg(s string) (string, error) {
+	if strings.ContainsAny(s, "\"\r\n") {
+		return "", fmt.Errorf("网卡名称含无法安全写入批处理的字符: %q", s)
+	}
+	return strings.ReplaceAll(s, "%", "%%"), nil
+}
+
 // GenerateRestoreScript 生成独立离线恢复脚本 restore-dns.bat
 // 该脚本不依赖本程序，用于程序无法启动时手动还原网卡 DNS
 func GenerateRestoreScript(adapters []platform.AdapterState, outputPath string) error {
@@ -32,27 +62,31 @@ func GenerateRestoreScript(adapters []platform.AdapterState, outputPath string) 
 
 	for _, raw := range adapters {
 		a := platform.CleanAdapterState(raw)
-		sb.WriteString(fmt.Sprintf("echo 正在恢复适配器 [%s] ...\r\n", a.Name))
+		name, err := batchQuotedArg(a.Name)
+		if err != nil {
+			return err
+		}
+		sb.WriteString(fmt.Sprintf("echo 正在恢复适配器 [%s] ...\r\n", batchEchoText(a.Name)))
 		if a.IPv4DHCP || len(a.IPv4DNS) == 0 {
-			sb.WriteString(fmt.Sprintf("netsh interface ipv4 set dnsservers name=\"%s\" source=dhcp\r\n", a.Name))
+			sb.WriteString(fmt.Sprintf("netsh interface ipv4 set dnsservers name=\"%s\" source=dhcp\r\n", name))
 		} else {
 			for i, dnsIP := range a.IPv4DNS {
 				if i == 0 {
-					sb.WriteString(fmt.Sprintf("netsh interface ipv4 set dnsservers name=\"%s\" static %s primary validate=no\r\n", a.Name, dnsIP))
+					sb.WriteString(fmt.Sprintf("netsh interface ipv4 set dnsservers name=\"%s\" static %s primary validate=no\r\n", name, dnsIP))
 				} else {
-					sb.WriteString(fmt.Sprintf("netsh interface ipv4 add dnsservers name=\"%s\" %s index=%d validate=no\r\n", a.Name, dnsIP, i+1))
+					sb.WriteString(fmt.Sprintf("netsh interface ipv4 add dnsservers name=\"%s\" %s index=%d validate=no\r\n", name, dnsIP, i+1))
 				}
 			}
 		}
 
 		if a.IPv6DHCP || len(a.IPv6DNS) == 0 {
-			sb.WriteString(fmt.Sprintf("netsh interface ipv6 set dnsservers name=\"%s\" source=dhcp\r\n", a.Name))
+			sb.WriteString(fmt.Sprintf("netsh interface ipv6 set dnsservers name=\"%s\" source=dhcp\r\n", name))
 		} else {
 			for i, dnsIP := range a.IPv6DNS {
 				if i == 0 {
-					sb.WriteString(fmt.Sprintf("netsh interface ipv6 set dnsservers name=\"%s\" static %s primary validate=no\r\n", a.Name, dnsIP))
+					sb.WriteString(fmt.Sprintf("netsh interface ipv6 set dnsservers name=\"%s\" static %s primary validate=no\r\n", name, dnsIP))
 				} else {
-					sb.WriteString(fmt.Sprintf("netsh interface ipv6 add dnsservers name=\"%s\" %s index=%d validate=no\r\n", a.Name, dnsIP, i+1))
+					sb.WriteString(fmt.Sprintf("netsh interface ipv6 add dnsservers name=\"%s\" %s index=%d validate=no\r\n", name, dnsIP, i+1))
 				}
 			}
 		}

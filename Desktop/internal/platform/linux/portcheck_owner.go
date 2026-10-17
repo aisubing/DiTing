@@ -22,13 +22,14 @@ func socketInodeOwners() map[int]int {
 		return owners
 	}
 
-	self := os.Getpid()
+	// 本进程也必须登记：下游用 pid == selfPID 判定「自身监听」，
+	// 旧实现把自己排除后该判定永远拿不到输入，自身监听会被误报为第三方冲突。
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
 		}
 		pid, err := strconv.Atoi(e.Name())
-		if err != nil || pid == self {
+		if err != nil {
 			continue
 		}
 		collectSocketFds(pid, owners)
@@ -79,17 +80,29 @@ func processName(pid int) string {
 	return strings.TrimSpace(string(data))
 }
 
-// systemdResolvedPID 读取 systemd-resolved 的 PID，未运行时返回 0。
+// systemdResolvedPID 扫描 /proc 定位 systemd-resolved 的 PID，未运行时返回 0。
+//
+// systemd-resolved 是 Type=notify 服务，不创建任何 pidfile；
+// 旧实现读取 /run/systemd/resolve/resolved.pid（该文件从不产生），恒得 0，
+// 使 stub 识别与兜底终止整体失效。这里按进程名扫描，无特权时也能覆盖同名进程。
 func systemdResolvedPID() int {
-	data, err := os.ReadFile("/run/systemd/resolve/resolved.pid")
+	entries, err := os.ReadDir("/proc")
 	if err != nil {
 		return 0
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil {
+			continue
+		}
+		if isSystemdResolvedProcess(pid) {
+			return pid
+		}
 	}
-	return pid
+	return 0
 }
 
 // isSystemdResolvedProcess 判断进程是否为 systemd-resolved。

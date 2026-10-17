@@ -322,11 +322,21 @@ func (m *ServiceManager) StopService(ctx context.Context) error {
 // RestartService 按需提权重启核心服务
 func (m *ServiceManager) RestartService(ctx context.Context) error {
 	if m.privExec.IsElevated() {
-		_ = stopServiceNative(m.serviceName)
-		// 轮询等待服务停止（最多等待 3 秒）
+		stopErr := stopServiceNative(m.serviceName)
+		if stopErr != nil && !errors.Is(stopErr, windows.ERROR_SERVICE_NOT_ACTIVE) {
+			// 停止失败（依赖服务占用、权限被拒等）时继续轮询只会白等 3 秒，
+			// 随后启动大概率仍失败，用户最终看到的是与根因无关的笼统错误。
+			return fmt.Errorf("停止核心服务失败: %w", stopErr)
+		}
+		// 轮询等待服务停止（最多等待 3 秒）。必须走可注入的查询函数，
+		// 否则单测无法观察这段等待，也无法在桩环境里跳过。
+		queryFn := m.scmQuery
+		if queryFn == nil {
+			queryFn = defaultSCMQuery
+		}
 		for i := 0; i < 30; i++ {
 			time.Sleep(100 * time.Millisecond)
-			_, running, _, _ := defaultSCMQuery(m.serviceName)
+			_, running, _, _ := queryFn(m.serviceName)
 			if !running {
 				break
 			}

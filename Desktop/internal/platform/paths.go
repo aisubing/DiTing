@@ -57,6 +57,37 @@ func DefaultStateFilePath() string {
 	return filepath.Join(DefaultDataDir(), DefaultStateFileName)
 }
 
+// statePathReader 由 config 包注入：读取配置文件中 takeover.stateFilePath。
+//
+// platform 不能反向依赖 config（config 依赖 platform 的路径与 core 类型），
+// 因此用注入而非直接导入。未注入时应急通道只认默认路径。
+var statePathReader func(configPath string) (string, error)
+
+// RegisterStatePathReader 注册配置文件读取器（由 config 包在 init 中调用）。
+func RegisterStatePathReader(fn func(configPath string) (string, error)) {
+	statePathReader = fn
+}
+
+// ResolveStateFilePath 解析接管状态文件路径。
+//
+// 服务端按配置中的 takeover.stateFilePath 读写状态，而应急恢复通道
+// （GUI 的「应急恢复」与 `-restore`）不总带 -config 参数。若两边各用各的
+// 默认值，配置了自定义路径的部署在最需要应急恢复时读不到状态文件，
+// 应急通道恰恰在最需要它的时候失效。
+//
+// 解析顺序：显式值 > 配置文件 > 平台默认。
+func ResolveStateFilePath(explicit, configPath string) string {
+	if explicit != "" {
+		return explicit
+	}
+	if statePathReader != nil {
+		if p, err := statePathReader(configPath); err == nil && p != "" {
+			return p
+		}
+	}
+	return DefaultStateFilePath()
+}
+
 // DefaultFilterDir 返回默认规则源缓存目录绝对路径。
 func DefaultFilterDir() string {
 	return filepath.Join(DefaultDataDir(), DefaultFilterDirName)

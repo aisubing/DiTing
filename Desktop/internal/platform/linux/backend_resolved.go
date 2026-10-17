@@ -30,7 +30,7 @@ func (b *resolvedBackend) Apply(ctx context.Context, adapters []platform.Adapter
 		return fmt.Errorf("无有效网卡可供接管")
 	}
 
-	var applied []platform.AdapterInfo
+	var applied []string
 	for _, a := range adapters {
 		iface := interfaceNameFromAdapter(a)
 		if iface == "" {
@@ -40,24 +40,22 @@ func (b *resolvedBackend) Apply(ctx context.Context, adapters []platform.Adapter
 			_ = b.rollbackApplied(ctx, applied)
 			return fmt.Errorf("设置网卡 [%s] 解析地址失败: %w", iface, err)
 		}
+		// 已改 DNS 的网卡必须立即登记进回退集合：若下一步 domain 失败，
+		// 它同样处于半成品状态，不能只回退前面「全完成」的网卡。
+		applied = append(applied, iface)
 		if _, err := runCommand(ctx, b.executor, "resolvectl", "domain", iface, "~."); err != nil {
 			_ = b.rollbackApplied(ctx, applied)
 			return fmt.Errorf("设置网卡 [%s] 域名路由失败: %w", iface, err)
 		}
-		applied = append(applied, a)
 	}
 
 	return nil
 }
 
 // rollbackApplied 在接管中途失败时回退已生效的网卡。
-func (b *resolvedBackend) rollbackApplied(ctx context.Context, adapters []platform.AdapterInfo) error {
+func (b *resolvedBackend) rollbackApplied(ctx context.Context, ifaces []string) error {
 	var lastErr error
-	for _, a := range adapters {
-		iface := interfaceNameFromAdapter(a)
-		if iface == "" {
-			continue
-		}
+	for _, iface := range ifaces {
 		if _, err := runCommand(ctx, b.executor, "resolvectl", "revert", iface); err != nil {
 			lastErr = err
 		}

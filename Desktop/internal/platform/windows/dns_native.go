@@ -118,18 +118,24 @@ func resetAdapterDNSNative(guidStr string) error {
 	return setAdapterDNSDualStackNative(guidStr, nil, nil)
 }
 
-// resetResidualLoopbackDNSNative 枚举所有网卡并针对配置了回环地址 (127.*, ::1 等) 的网卡执行原生 DNS 重置
+// resetResidualLoopbackDNSNative 枚举所有网卡并针对配置了回环地址 (127.*, ::1 等) 的网卡执行原生 DNS 重置。
+//
+// 每张网卡的重置结果都会聚合返回：旧实现逐个 `_ =` 吞错并恒返 nil，
+// 调用方据此报告「兜底自愈成功」，而网卡实际仍指向 127.0.0.1。
 func resetResidualLoopbackDNSNative(ctx context.Context) error {
 	adapters, err := scanAdaptersNative(ctx)
 	if err != nil {
 		return err
 	}
 
+	var errs []error
 	for _, a := range adapters {
 		if !a.HasResidualLoopback {
 			continue
 		}
-		_ = resetAdapterDNSNative(a.ID)
+		if err := resetAdapterDNSNative(a.ID); err != nil {
+			errs = append(errs, fmt.Errorf("重置网卡 [%s] 残留 DNS 失败: %w", a.Name, err))
+		}
 	}
-	return nil
+	return errors.Join(errs...)
 }

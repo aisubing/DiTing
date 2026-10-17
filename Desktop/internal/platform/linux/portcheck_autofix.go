@@ -42,8 +42,10 @@ func (c *LinuxPortChecker) AutofixPort53ForAddresses(ctx context.Context, udpAdd
 	}
 	if after.Available {
 		after.Diagnostic = "已成功关闭 systemd-resolved 的 stub 监听器，53 端口现已可用。\n" + after.Diagnostic
+		return after, nil
 	}
-	return after, nil
+	// 修复动作执行完但端口仍被占用：必须报错，否则上层会当成「已修复」静默继续
+	return after, fmt.Errorf("已关闭 systemd-resolved stub 监听器，但 53 端口仍不可用，请查看诊断信息")
 }
 
 // disableResolvedStubListener 写入 DNSStubListener=no 并重启 systemd-resolved。
@@ -59,7 +61,7 @@ func disableResolvedStubListener(ctx context.Context, executor platform.CommandE
 	if _, err := runCommand(ctx, executor, "systemctl", "restart", "systemd-resolved"); err != nil {
 		// 部分 WSL/容器环境无 systemd 单元，回退尝试直接终止 stub 进程
 		if fallbackErr := stopResolvedStubProcess(ctx, executor); fallbackErr != nil {
-			return fmt.Errorf("重启 systemd-resolved 失败 (%v)，且回退停止 stub 亦失败: %w", err, fallbackErr)
+			return fmt.Errorf("重启 systemd-resolved 失败 (%v)，且回退停止 stub 亦失败: %w（已写入 %s，卸载谛听后请手动删除）", err, fallbackErr, resolvedDropFile)
 		}
 	}
 	return nil
@@ -76,11 +78,13 @@ DNSStubListener=no
 // stopResolvedStubProcess 在无 systemd 单元时直接终止 stub 进程作为兜底。
 func stopResolvedStubProcess(ctx context.Context, executor platform.CommandExecutor) error {
 	pid := systemdResolvedPID()
+	// 找不到进程不是「无需处理」而是「无法处理」：返回 nil 会让调用方
+	// 把一次没生效的自愈当成成功（drop-in 已写入、stub 仍在监听）。
 	if pid == 0 {
-		return nil
+		return errors.New("未能定位 systemd-resolved 进程，无法终止 stub 监听器")
 	}
 	if !isSystemdResolvedProcess(pid) {
-		return nil
+		return fmt.Errorf("PID %d 不是 systemd-resolved 进程，拒绝终止", pid)
 	}
 	_, err := runCommand(ctx, executor, "kill", "-TERM", fmt.Sprint(pid))
 	return err

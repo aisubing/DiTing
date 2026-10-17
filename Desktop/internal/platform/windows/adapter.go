@@ -16,7 +16,11 @@ import (
 type NativeAdapterScanner struct{}
 
 // NewAdapterScanner 创建网卡扫描器。
-func NewAdapterScanner(executor platform.CommandExecutor) *NativeAdapterScanner {
+//
+// executor 形参保留是为了与跨平台构造签名一致；Windows 侧全部走原生 API，
+// 不执行任何外部命令，因此不使用它（此前实现了却静默丢弃，容易让人以为
+// 注入的执行器会生效）。
+func NewAdapterScanner(_ platform.CommandExecutor) *NativeAdapterScanner {
 	return &NativeAdapterScanner{}
 }
 

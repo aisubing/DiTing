@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -77,17 +79,34 @@ func (m *LinuxServiceManager) LocateExecutable() (string, error) {
 	}
 	for _, c := range candidates {
 		if fileExists(c) {
-			return c, nil
+			// systemd 以 / 为工作目录解析 ExecStart，相对路径写进单元必然失败，
+			// 这里统一归一为绝对路径。
+			return absExecutablePath(c), nil
 		}
 	}
 
 	for _, name := range []string{"diting-service"} {
 		if commandExists(name) {
-			return name, nil
+			if resolved, err := exec.LookPath(name); err == nil {
+				return absExecutablePath(resolved), nil
+			}
+			return absExecutablePath(name), nil
 		}
 	}
 
 	return "", errors.New("未找到 diting-service 可执行文件")
+}
+
+// absExecutablePath 将可执行路径归一为绝对路径，失败时原样返回。
+func absExecutablePath(path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return path
+	}
+	return abs
 }
 
 // executableFromUnit 从 systemctl show 的 ExecStart 字段解析可执行文件路径。
@@ -292,7 +311,7 @@ func (m *LinuxServiceManager) InstallService(ctx context.Context, exePath string
 		exePath = p
 	}
 
-	unit := renderSystemdUnit(exePath)
+	unit := renderSystemdUnit(absExecutablePath(exePath))
 	if err := writeFileMode("/etc/systemd/system/"+m.unitName, []byte(unit), 0o644); err != nil {
 		return fmt.Errorf("写入 systemd 单元失败: %w", err)
 	}
