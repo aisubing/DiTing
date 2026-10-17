@@ -16,6 +16,7 @@
 | A-003 | 中 | DNS 工具 | DNS 查询未把国际化域名转成 Punycode，中文域名被编码为 `??` |
 | A-004 | 中 | DNS 模式上游 | 自定义上游校验接受非法 IPv6 / `IPv4:端口` 字符串，保存后服务不可用 |
 | A-005 | 中 | 极速模式启动 | 规则缓存异步加载完成前 TUN 已开始处理查询，连接初期的拦截/放行规则不生效 |
+| A-006 | 中 | DNS 缓存清理 | 清理 DNS 缓存只清内存与数据库，未清待落盘队列，约 30 秒后缓存条目被重新写回 |
 
 ---
 
@@ -159,6 +160,36 @@
   3. 断点/日志验证：在 `ExpressTunnelManager.kt:343` 与 `BlockRuleCache.reload()` 返回处打点，前者先于后者执行；给 `refreshCache()` 注入延迟即可稳定复现。
   4. 单测方向：用可控延迟的 fake DAO 调用 `ExpressTunnelManager.start()`，在 `refreshCache` 未完成时发送查询，断言 `DomainPolicy` 应拦截但实际放行。
 - **备注**：应在启动 TUN 读取线程前 `join` 两个缓存加载任务，或用 `CompletableDeferred`/`isRulesReady` 门控 `engine.resolve()`；`ExpressVpnService` 也应等待默认规则种子任务和缓存就绪后再对外报告连接成功。
+
+---
+
+## A-006 清理 DNS 缓存后，待落盘队列会在约 30 秒后把条目写回
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/cache/DnsCacheController.kt:28-33`
+  - `Android/app/src/main/java/com/haoze/diting/core/cache/DnsResponseCache.kt:118-122`、`:255-260`、`:285-298`、`:300-327`
+  - `Android/app/src/main/java/com/haoze/diting/data/cleanup/DataCleanupManager.kt:83-95`
+  - `Android/app/src/main/java/com/haoze/diting/normal/DnsVpnDatabaseComponents.kt:132-133`
+  - `Android/app/src/main/java/com/haoze/diting/normal/ui/DataCleanupScreen.kt:111`
+  - `Android/app/src/main/java/com/haoze/diting/data/dao/DnsCacheDao.kt:82-103`、`:111-112`
+- **问题**
+  - 正常模式的 DNS 缓存写入是延迟批处理：`put()` 成功解析后把 `DnsCacheEntity` 放入 `pendingWrites`，不足 200 条时只启动一个 30 秒后的 `pendingWriteFlushJob`，到点再调用 `dao.applyPendingWrites()`。
+  - `DnsCacheController.clearAll()` 只做了三件事：`cache.clearMemory()`、调用 Go 引擎清缓存回调、`dao.clearAll()`；它没有调用 `DnsResponseCache.clear()`（该方法会同时清 `pendingWrites`、取消定时任务），也没有取消 `pendingWriteFlushJob`。
+  - 因此清理时仍在 `pendingWrites` 中的条目会在定时器到期后重新落盘。`applyPendingWrites()` 对已不存在的 key 执行 `insertIfAbsent(e)`，把旧的响应字节、域名、TTL 一并插回 `dns_cache` 表。
+  - 应用下次启动的 `warmUp()` 会从表中重新加载这些条目到内存，所以“清理 DNS 缓存”在跨进程重启后也不成立。
+- **触发路径**
+  - 正常模式 + 开启 DNS 缓存 + 最近 30 秒内解析过域名（尤其是几个新域名）→ 设置 → 数据清理 → 删除 DNS 缓存。清理后 30 秒内不做任何查询，等待定时器触发即可看到条目回来。
+- **影响**
+  - 用户为隐私清理访问记录时会得到“已删除”提示，但访问过的域名与被解析 IP 在约 30 秒后重新写入本地数据库，并在下次启动时重新进入缓存。
+  - 缓存条目复活后仍会按旧 TTL 命中，用户以为清理后应重新查询的域名继续返回旧结果。
+  - “清理全部本地数据”也会调用同一路径，同样存在残余缓存回流。
+- **复现/验证**
+  1. 打开正常模式，确认 DNS 缓存策略为开启；通过 VPN 访问若干新域名（确保产生待落盘写入）。
+  2. 30 秒内进入“数据清理 → 删除 DNS 缓存”，确认提示成功；立即打开 DNS 缓存列表，条目为空。
+  3. 保持应用在前台或后台等待超过 30 秒且不再产生新查询，重新打开 DNS 缓存列表；先前域名重新出现。
+  4. 如需直接取证：debug 包用 `adb shell run-as com.haoze.diting` 复制 `databases` 下的缓存库，清理前后查询 `dns_cache` 行数；清理后行数应保持 0，实际会在定时器后恢复为非 0。
+  5. 单测方向：用 `TestScope` 和 fake DAO 调用 `resolve()` 产生 pending 写入，再调用 `DnsCacheController.clearAll()`，推进 30 秒，断言 `applyPendingWrites` 不应被调用或 `insertIfAbsent` 不应恢复已清空的 key。
+- **备注**：`DnsResponseCache` 已提供 `clear()`，但控制器未使用；应让 `clearAll()` 调用 `cache.clear()`（内部会清内存、取消并清空待写队列、清 DAO），再执行 Go 引擎清缓存回调，避免两处清理顺序竞争。
 
 ---
 
