@@ -14,10 +14,15 @@ func NewCacheMiddleware(cache *core.DNSCache, resolver core.Resolver) Middleware
 
 // NewCacheMiddlewareWithGroups 创建带客户端分组隔离的缓存中间件。
 //
-// groups 为 nil 时键退回默认组，行为与既有版本逐字一致。
+// groups 为取值函数（分组热更新会替换解析器实例，流水线只装配一次）；
+// 为 nil 时键退回默认组，行为与既有版本逐字一致。
 // 非 nil 时按分组隔离：不同分组可能被路由到不同上游、得到不同应答，
 // 共用缓存会让 A 组的结果被 B 组命中，分组的策略隔离随之失效。
-func NewCacheMiddlewareWithGroups(cache *core.DNSCache, resolver core.Resolver, groups *core.GroupResolver) Middleware {
+//
+// 注：分组判定本身由 client 中间件写入上下文，这里只消费上下文属性，
+// 参数保留是为了让调用方签名统一、并可在装配期做 nil 判定。
+func NewCacheMiddlewareWithGroups(cache *core.DNSCache, resolver core.Resolver, groups func() *core.GroupResolver) Middleware {
+	_ = groups
 	return func(ctx *DNSContext, next func() error) error {
 		if cache == nil || !cache.IsEnabled() || ctx.Req == nil || len(ctx.Req.Question) == 0 {
 			return next()
@@ -33,7 +38,7 @@ func NewCacheMiddlewareWithGroups(cache *core.DNSCache, resolver core.Resolver, 
 			return next()
 		}
 
-		group := cachedGroup(ctx, groups)
+		group := cachedGroup(ctx)
 		cachedResp, hit, isStale, staleCandidate := cache.GetForGroup(req, group)
 
 		// 1. 有效期内新鲜命中 (Fresh Hit)
@@ -137,12 +142,10 @@ func NewCacheMiddlewareWithGroups(cache *core.DNSCache, resolver core.Resolver, 
 
 // cachedGroup 取出该查询的客户端分组；未启用分组时返回默认组。
 //
-// 分组由 client 中间件在流水线早期写入；此处读不到时回落默认组，
-// 与「未启用分组」保持同一语义。
-func cachedGroup(ctx *DNSContext, groups *core.GroupResolver) string {
-	if groups == nil {
-		return core.DefaultClientGroupID
-	}
+// 分组由 client 中间件在流水线早期写入上下文；此处读不到时回落默认组，
+// 与「未启用分组」保持同一语义。所有缓存键的构造与剔除都必须经由此函数，
+// 否则同一查询在写入与剔除两侧会落到不同的键上。
+func cachedGroup(ctx *DNSContext) string {
 	if v, ok := ctx.Get(attrClientGroup); ok {
 		if s, ok := v.(string); ok && s != "" {
 			return s

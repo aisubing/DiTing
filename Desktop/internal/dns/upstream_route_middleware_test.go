@@ -61,7 +61,7 @@ func routeCtx(ip string) *DNSContext {
 
 // 分组标记由 client 中间件写入，取答中间件依赖它做判定
 func markGroup(ctx *DNSContext, groups *core.GroupResolver) {
-	_ = NewClientMiddlewareWithGroups(nil, groups)(ctx, func() error { return nil })
+	_ = NewClientMiddlewareWithGroups(nil, func() *core.GroupResolver { return groups })(ctx, func() error { return nil })
 }
 
 func TestUpstreamRoute_ShortCircuitsForBoundGroup(t *testing.T) {
@@ -75,7 +75,7 @@ func TestUpstreamRoute_ShortCircuitsForBoundGroup(t *testing.T) {
 	markGroup(ctx, groups)
 
 	nextCalled := false
-	mw := NewUpstreamRouteMiddleware(stub, groups)
+	mw := NewUpstreamRouteMiddleware(stub, func() *core.GroupResolver { return groups })
 	if err := mw(ctx, func() error { nextCalled = true; return nil }); err != nil {
 		t.Fatalf("middleware error: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestUpstreamRoute_PassesThroughUnboundGroup(t *testing.T) {
 	markGroup(ctx, groups)
 
 	nextCalled := false
-	if err := NewUpstreamRouteMiddleware(stub, groups)(ctx, func() error {
+	if err := NewUpstreamRouteMiddleware(stub, func() *core.GroupResolver { return groups })(ctx, func() error {
 		nextCalled = true
 		return nil
 	}); err != nil {
@@ -132,7 +132,7 @@ func TestUpstreamRoute_DefaultGroupNeverRoutes(t *testing.T) {
 	markGroup(ctx, groups)
 
 	nextCalled := false
-	if err := NewUpstreamRouteMiddleware(stub, groups)(ctx, func() error {
+	if err := NewUpstreamRouteMiddleware(stub, func() *core.GroupResolver { return groups })(ctx, func() error {
 		nextCalled = true
 		return nil
 	}); err != nil {
@@ -155,7 +155,7 @@ func TestUpstreamRoute_FallsBackOnError(t *testing.T) {
 	markGroup(ctx, groups)
 
 	nextCalled := false
-	if err := NewUpstreamRouteMiddleware(stub, groups)(ctx, func() error {
+	if err := NewUpstreamRouteMiddleware(stub, func() *core.GroupResolver { return groups })(ctx, func() error {
 		nextCalled = true
 		return nil
 	}); err != nil {
@@ -174,7 +174,7 @@ func TestUpstreamRoute_NilDependenciesAreNoOps(t *testing.T) {
 	groups := routeGroups(t, map[string]string{"kids": "192.168.1.0/24"})
 
 	for name, mw := range map[string]Middleware{
-		"nil resolver": NewUpstreamRouteMiddleware(nil, groups),
+		"nil resolver": NewUpstreamRouteMiddleware(nil, func() *core.GroupResolver { return groups }),
 		"nil groups":   NewUpstreamRouteMiddleware(&stubGroupResolver{}, nil),
 	} {
 		ctx := routeCtx("192.168.1.9")
@@ -212,8 +212,8 @@ func TestCacheMiddleware_IsolatesGroups(t *testing.T) {
 	}
 
 	pipeline := NewPipeline(
-		NewClientMiddlewareWithGroups(nil, groups),
-		NewCacheMiddlewareWithGroups(cache, nil, groups),
+		NewClientMiddlewareWithGroups(nil, func() *core.GroupResolver { return groups }),
+		NewCacheMiddlewareWithGroups(cache, nil, func() *core.GroupResolver { return groups }),
 		innerMw,
 	)
 

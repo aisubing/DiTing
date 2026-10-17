@@ -14,7 +14,12 @@ func NewClientMiddleware(resolver *core.ClientResolver) Middleware {
 //
 // 分组标记必须在流水线早期写入：缓存中间件依赖它做按组隔离的键，
 // 若注册位置晚于缓存，缓存键会退化为默认组，分组隔离随之失效。
-func NewClientMiddlewareWithGroups(resolver *core.ClientResolver, groups *core.GroupResolver) Middleware {
+//
+// groups 是**取值函数**而非解析器实例：分组配置热更新会整体替换解析器，
+// 而流水线在 DNS 启动时一次性装配、之后逐查询复用。按值捕获旧实例会让
+// 新增分组/成员在转发路径上永久不生效，直到监听器重启。
+// 传 nil 表示不启用分组标记。
+func NewClientMiddlewareWithGroups(resolver *core.ClientResolver, groups func() *core.GroupResolver) Middleware {
 	return func(ctx *DNSContext, next func() error) error {
 		if resolver != nil && ctx.ClientIP != nil {
 			name := resolver.IdentifyClient(ctx.ClientIP)
@@ -32,7 +37,9 @@ func NewClientMiddlewareWithGroups(resolver *core.ClientResolver, groups *core.G
 		}
 
 		if groups != nil && ctx.ClientIP != nil {
-			ctx.Set(attrClientGroup, groups.Resolve(ctx.ClientIP))
+			if gr := groups(); gr != nil {
+				ctx.Set(attrClientGroup, gr.Resolve(ctx.ClientIP))
+			}
 		}
 
 		return next()

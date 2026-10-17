@@ -43,11 +43,11 @@ type dotListener struct {
 	stop  bool
 }
 
-// startDoT 绑定并激活 DoT 监听器（RFC 7858）。
+// startDoTLocked 绑定并激活 DoT 监听器（RFC 7858）。
 //
 // 绑定失败会如实返回错误，由调用方决定降级还是放弃——加密监听是附加能力，
-// 不让它拖垮明文解析的启动。
-func (s *Server) startDoT() error {
+// 不让它拖垮明文解析的启动。调用方须持有 s.mu。
+func (s *Server) startDoTLocked() error {
 	cfg := s.encrypted
 	if cfg == nil {
 		return fmt.Errorf("未启用加密 DNS 监听")
@@ -91,11 +91,14 @@ func (s *Server) startDoT() error {
 }
 
 // acceptLoop 接受 DoT 连接，每个连接单独起协程处理。
+//
+// 退出条件同时看进程级 serving() 与监听器自身的 stop：热重载时旧监听器
+// 已被 close，若只看 serving() 就会在已关闭的 listener 上以 20 次/秒空转。
 func (d *dotListener) acceptLoop(readTimeout, idleTimeout time.Duration) {
-	for d.srv.serving() {
+	for d.srv.serving() && !d.isStopped() {
 		conn, err := d.ln.Accept()
 		if err != nil {
-			if !d.srv.serving() {
+			if !d.srv.serving() || d.isStopped() || errors.Is(err, net.ErrClosed) {
 				return
 			}
 			// 监听器仍开着却出错（如瞬时句柄耗尽）：稍等再试，
@@ -140,6 +143,7 @@ func (d *dotListener) handleConn(conn *tls.Conn, readTimeout, idleTimeout time.D
 	_ = conn.SetDeadline(time.Time{})
 
 	dc := NewDoTConn(conn, d.srv)
+	dc.writeTimeout = readTimeout
 	if !d.track(dc) {
 		// 关闭已经开始，不必再收下这条连接
 		_ = conn.Close()
@@ -148,6 +152,13 @@ func (d *dotListener) handleConn(conn *tls.Conn, readTimeout, idleTimeout time.D
 	defer d.untrack(dc)
 
 	dc.serve(readTimeout, idleTimeout)
+}
+
+// isStopped 报告监听器是否已进入关闭流程。
+func (d *dotListener) isStopped() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.stop
 }
 
 // track 登记一条在途连接；监听器已在关闭中时返回 false。

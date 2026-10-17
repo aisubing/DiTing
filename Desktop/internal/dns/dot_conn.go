@@ -30,6 +30,10 @@ type dotConn struct {
 	// 关闭流程，需要与写出互斥
 	writeMu sync.Mutex
 	closed  bool
+
+	// writeTimeout 是单次写出的期限。TCP 零窗口客户端会让 Write 永久阻塞，
+	// 没有期限时一条连接就能钉住一个协程与整条流水线状态
+	writeTimeout time.Duration
 }
 
 // NewDoTConn 以已完成的 TLS 连接构造 DoT 响应写入器。
@@ -88,6 +92,10 @@ func (d *dotConn) Write(b []byte) (int, error) {
 		// 而返回错误会让上层再走一遍 dns.HandleFailed 的写出路径
 		return 0, nil
 	}
+	if d.writeTimeout > 0 {
+		// 写期限与读期限相互独立：读完立即设写期限，写完再交还给读循环
+		_ = d.conn.SetWriteDeadline(time.Now().Add(d.writeTimeout))
+	}
 	n, err := d.conn.Write(framed)
 	if err != nil {
 		return 0, err
@@ -129,6 +137,8 @@ func (d *dotConn) serve(readTimeout, idleTimeout time.Duration) {
 
 	timeout := readTimeout
 	for d.srv.serving() {
+		// 上一次写出会留下写期限；读之前必须清掉，否则空闲等待也会被写期限打断
+		_ = d.conn.SetWriteDeadline(time.Time{})
 		if err := d.conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 			return
 		}

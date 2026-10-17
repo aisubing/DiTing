@@ -80,6 +80,31 @@ func IsPrivateReverseZone(domain string) bool {
 	return false
 }
 
+// PrivateReverseZoneApex 返回给定名称所属私有反向解析区的区顶点（含末尾点）。
+//
+// RFC 6303 §3 要求合成的否定应答以「区顶点」为 SOA 所有者名，而不是查询名本身：
+// 对 1.2.168.192.in-addr.arpa 而言区顶点是 168.192.in-addr.arpa。用查询名当 SOA
+// 所有者会让解析器误以为每个地址都是独立授权区，既破坏否定缓存（NXDOMAIN 无法
+// 按区聚合），也不符合任何真实权威服务器的应答形态。
+// 未命中任何私有后缀时返回空串。
+func PrivateReverseZoneApex(domain string) string {
+	clean := strings.ToLower(strings.Trim(domain, "."))
+	best := ""
+	for _, suffix := range privateReverseSuffixes {
+		if clean != suffix && !strings.HasSuffix(clean, "."+suffix) {
+			continue
+		}
+		// 取最长匹配：IPv6 的 ::1 等条目本身覆盖在更短的 ip6.arpa 条目之下
+		if len(suffix) > len(best) {
+			best = suffix
+		}
+	}
+	if best == "" {
+		return ""
+	}
+	return best + "."
+}
+
 // ParsePTRIP 将类似 "1.1.168.192.in-addr.arpa." 或 IPv6 nibble 格式还原解析为 net.IP
 func ParsePTRIP(ptrName string) net.IP {
 	clean := strings.ToLower(strings.Trim(ptrName, "."))
@@ -176,9 +201,13 @@ func NewPrivatePTRMiddleware(enabledFunc func() bool, clientResolver *core.Clien
 		resp.RecursionAvailable = true
 		resp.Rcode = dns.RcodeNameError
 
-		soaZone := q.Name
-		if !strings.HasSuffix(soaZone, ".") {
-			soaZone += "."
+		soaZone := PrivateReverseZoneApex(q.Name)
+		if soaZone == "" {
+			// 理论上不可达（上面刚判定过 IsPrivateReverseZone），兜底沿用查询名
+			soaZone = q.Name
+			if !strings.HasSuffix(soaZone, ".") {
+				soaZone += "."
+			}
 		}
 		resp.Ns = append(resp.Ns, &dns.SOA{
 			Hdr: dns.RR_Header{

@@ -59,6 +59,11 @@ func BuildDDRResponse(req *dns.Msg, answer DDRAnswer) *dns.Msg {
 	resp.SetReply(req)
 	resp.Authoritative = true
 	resp.RecursionAvailable = true
+	// SetReply 不复制 OPT，而 SVCB 仅在 EDNS(0) 下有意义：应答缺 OPT 会被
+	// 合规客户端（RFC 6891 §6.2.1）当作「不支持 EDNS」而丢弃整条应答
+	if opt := req.IsEdns0(); opt != nil {
+		resp.SetEdns0(opt.UDPSize(), opt.Do())
+	}
 
 	if !strings.EqualFold(q.Name, ddrQueryName) || q.Qtype != dns.TypeSVCB {
 		return resp

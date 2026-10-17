@@ -57,8 +57,8 @@ type doqListener struct {
 	stop  bool
 }
 
-// startDoQ 绑定并激活 DoQ 监听器（RFC 9250）。
-func (s *Server) startDoQ() error {
+// startDoQLocked 绑定并激活 DoQ 监听器（RFC 9250）。调用方须持有 s.mu。
+func (s *Server) startDoQLocked() error {
 	cfg := s.encrypted
 	if cfg == nil {
 		return fmt.Errorf("未启用加密 DNS 监听")

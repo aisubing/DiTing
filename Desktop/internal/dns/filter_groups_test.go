@@ -60,7 +60,7 @@ func TestFilterMiddlewareGroupScopedBlock(t *testing.T) {
 		t.Fatalf("NewGroupResolver 失败: %v", err)
 	}
 
-	mw := NewFilterMiddlewareWithGroups(engine, resolver)
+	mw := NewFilterMiddlewareWithGroups(engine, func() *core.GroupResolver { return resolver })
 
 	// kids 客户端：命中广告列表 → 拦截
 	ctx := groupCtx("192.168.1.9")
@@ -118,7 +118,7 @@ func TestFilterMiddlewareGroupBlockModeOverride(t *testing.T) {
 		t.Fatalf("NewGroupResolver 失败: %v", err)
 	}
 
-	mw := NewFilterMiddlewareWithGroups(engine, resolver)
+	mw := NewFilterMiddlewareWithGroups(engine, func() *core.GroupResolver { return resolver })
 	ctx := groupCtx("192.168.1.9")
 	if err := mw(ctx, func() error { return nil }); err != nil {
 		t.Fatalf("中间件返回错误: %v", err)

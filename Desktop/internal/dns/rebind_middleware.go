@@ -172,6 +172,7 @@ func NewRebindMiddleware(mgr *RebindProtectionManager, cache ...*core.DNSCache) 
 	if len(cache) > 0 {
 		c = cache[0]
 	}
+	// 分组由前置 client 中间件写入上下文；这里只读，不改变中间件签名
 
 	return func(ctx *DNSContext, next func() error) error {
 		err := next()
@@ -202,9 +203,10 @@ func NewRebindMiddleware(mgr *RebindProtectionManager, cache ...*core.DNSCache) 
 		ctx.Set("filter_blocked", true)
 		ctx.Set("filter_reason", reason)
 
-		// 同步从缓存中剔除被投毒的记录
+		// 同步从缓存中剔除被投毒的记录（按查询所属分组，避免删错键）。
+		// 分组来自前置 client 中间件写入的上下文属性，无需解析器参与。
 		if c != nil {
-			c.Remove(ctx.Req)
+			c.RemoveForGroup(ctx.Req, cachedGroup(ctx))
 		}
 
 		// 替换为安全的空应答或指定拒绝

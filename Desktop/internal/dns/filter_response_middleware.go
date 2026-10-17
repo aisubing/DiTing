@@ -16,9 +16,11 @@ import (
 // 必须置于流水线中「包裹缓存」的位置（echMw 之后、cacheMw 之前，且不在 cacheMw 之后）：
 // 缓存命中路径不执行 next()（见 cache_middleware.go），只有外层中间件才能覆盖缓存响应；
 // 同时保证每条响应都会被复检，配置热关闭后立即生效而非等待 TTL 过期。
+//
+// groupResolver 是取值函数而非解析器实例：分组热更新替换实例，流水线只装配一次。
 func NewFilterResponseMiddleware(
 	engine *core.RuleEngine,
-	groupResolver *core.GroupResolver,
+	groupResolver func() *core.GroupResolver,
 	enabled func() bool,
 	cache ...*core.DNSCache,
 ) Middleware {
@@ -54,7 +56,9 @@ func NewFilterResponseMiddleware(
 
 		groupID := core.DefaultClientGroupID
 		if groupResolver != nil && ctx.ClientIP != nil {
-			groupID = groupResolver.Resolve(ctx.ClientIP)
+			if gr := groupResolver(); gr != nil {
+				groupID = gr.Resolve(ctx.ClientIP)
+			}
 		}
 
 		res := engine.MatchResponse(ctx.Resp, qname, q.Qtype, groupID)
@@ -76,9 +80,10 @@ func NewFilterResponseMiddleware(
 		ctx.Set(attrClientGroup, groupID)
 		ctx.Set("response_filtered", true)
 
-		// 同步剔除缓存中被投毒（别名指向黑名单域）的条目，防止后续命中重放
+		// 同步剔除缓存中被投毒（别名指向黑名单域）的条目，防止后续命中重放。
+		// 必须按本条查询所属分组剔除：分组键带组后缀，删默认组键是空操作。
 		if c != nil {
-			c.Remove(ctx.Req)
+			c.RemoveForGroup(ctx.Req, groupID)
 		}
 
 		return err

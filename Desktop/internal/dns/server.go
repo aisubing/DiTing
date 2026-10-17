@@ -49,6 +49,10 @@ type Server struct {
 	dot *dotListener
 	doh *dohListener
 	doq *doqListener
+
+	// reloadMu 串行化加密监听器热重载：关闭旧监听器期间不能持 s.mu
+	// （close 会等待在途连接），但两次重载仍须互斥，否则会并发 start
+	reloadMu sync.Mutex
 }
 
 // SetEncryptedConfig 设置加密 DNS 监听配置，须在 Start 之前调用。
@@ -66,6 +70,9 @@ func (s *Server) SetEncryptedConfig(cfg *EncryptedServerConfig) {
 // 仅启停加密监听端口（853 / 443 等），无需重启主 53 端口明文监听，
 // 避免产生 53 端口重新绑定冲突或造成明文解析瞬断。
 func (s *Server) ReloadEncrypted(cfg *EncryptedServerConfig) {
+	s.reloadMu.Lock()
+	defer s.reloadMu.Unlock()
+
 	s.mu.Lock()
 	oldDot := s.dot
 	oldDoH := s.doh
@@ -90,26 +97,40 @@ func (s *Server) ReloadEncrypted(cfg *EncryptedServerConfig) {
 		return
 	}
 
+	s.startEncryptedListeners(cfg)
+}
+
+// startEncryptedListeners 按配置逐项启动加密监听器。
+//
+// 启动/写入共享字段全程持锁：DDR 等热路径 getter 持锁读取 s.dot/s.doh/s.doq，
+// 无锁赋值即数据竞争。监听器内部不回调 Server 的加锁方法，故不会自死锁。
+func (s *Server) startEncryptedListeners(cfg *EncryptedServerConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.encrypted != cfg {
+		s.encrypted = cfg
+	}
 	if cfg.DoTEnabled {
-		if err := s.startDoT(); err != nil {
+		if err := s.startDoTLocked(); err != nil {
 			log.Printf("[DNS] DoT 监听器启动失败，加密解析暂不可用: %v\n", err)
 		} else {
-			log.Printf("[DNS] DoT 监听器已就绪: %s\n", s.encrypted.DoTListenAddress())
+			log.Printf("[DNS] DoT 监听器已就绪: %s\n", cfg.DoTListenAddress())
 		}
 	}
 	if cfg.DoHEnabled {
-		if err := s.startDoH(); err != nil {
+		if err := s.startDoHLocked(); err != nil {
 			log.Printf("[DNS] DoH 监听器启动失败，加密解析暂不可用: %v\n", err)
 		} else {
 			log.Printf("[DNS] DoH 监听器已就绪: https://%s%s\n",
-				s.encrypted.DoHListenAddress(), normalizeDoHPath(s.encrypted.DoHPath))
+				cfg.DoHListenAddress(), normalizeDoHPath(cfg.DoHPath))
 		}
 	}
 	if cfg.DoQEnabled {
-		if err := s.startDoQ(); err != nil {
+		if err := s.startDoQLocked(); err != nil {
 			log.Printf("[DNS] DoQ 监听器启动失败，加密解析暂不可用: %v\n", err)
 		} else {
-			log.Printf("[DNS] DoQ 监听器已就绪: quic://%s\n", s.encrypted.DoQListenAddress())
+			log.Printf("[DNS] DoQ 监听器已就绪: quic://%s\n", cfg.DoQListenAddress())
 		}
 	}
 }
@@ -243,30 +264,12 @@ func (s *Server) Start() error {
 	}
 
 	// 加密监听是附加能力：绑定失败只记日志，不能让明文解析跟着起不来
-	if s.encrypted != nil {
-		if s.encrypted.DoTEnabled {
-			if err := s.startDoT(); err != nil {
-				log.Printf("[DNS] DoT 监听器启动失败，加密解析暂不可用: %v\n", err)
-			} else {
-				log.Printf("[DNS] DoT 监听器已就绪: %s\n", s.encrypted.DoTListenAddress())
-			}
-		}
-		if s.encrypted.DoHEnabled {
-			if err := s.startDoH(); err != nil {
-				log.Printf("[DNS] DoH 监听器启动失败，加密解析暂不可用: %v\n", err)
-			} else {
-				log.Printf("[DNS] DoH 监听器已就绪: https://%s%s\n",
-					s.encrypted.DoHListenAddress(), normalizeDoHPath(s.encrypted.DoHPath))
-			}
-		}
-		if s.encrypted.DoQEnabled {
-			if err := s.startDoQ(); err != nil {
-				log.Printf("[DNS] DoQ 监听器启动失败，加密解析暂不可用: %v\n", err)
-			} else {
-				log.Printf("[DNS] DoQ 监听器已就绪: quic://%s\n", s.encrypted.DoQListenAddress())
-			}
-		}
+	encCfg := s.encrypted
+	s.mu.Unlock()
+	if encCfg != nil {
+		s.startEncryptedListeners(encCfg)
 	}
+	s.mu.Lock()
 
 	return nil
 }
@@ -277,6 +280,13 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 		return
 	}
 	if s.closed.Load() {
+		dns.HandleFailed(w, r)
+		return
+	}
+	// RFC 1035 §4.1.1：入口只接受标准查询。多题报文会让过滤/缓存只看第一题，
+	// 其余题原样透传上游，形成「拦不住第二题」的假阴性；QR=1 的应答型报文
+	// 也不该走完整流水线。
+	if !isStandardQuery(r) {
 		dns.HandleFailed(w, r)
 		return
 	}
@@ -339,6 +349,14 @@ func (s *Server) handleQuery(w dns.ResponseWriter, r *dns.Msg, origin queryOrigi
 	} else {
 		dns.HandleFailed(w, r)
 	}
+}
+
+// isStandardQuery 判断报文是否为单题的标准查询（QDCOUNT==1、QR=0、OPCODE=QUERY）。
+func isStandardQuery(r *dns.Msg) bool {
+	if r.Response || r.Opcode != dns.OpcodeQuery {
+		return false
+	}
+	return len(r.Question) == 1
 }
 
 // serving 报告服务是否仍在接收查询。

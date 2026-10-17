@@ -27,13 +27,17 @@ type GroupUpstreamResolver interface {
 // 早于转发才能在默认上游之前接管。
 //
 // resolver 或 groups 为 nil 时本中间件永远是空操作，调用方可无条件注册。
-func NewUpstreamRouteMiddleware(resolver GroupUpstreamResolver, groups *core.GroupResolver) Middleware {
+// groups 是取值函数（分组热更新会替换解析器实例，流水线只装配一次）。
+func NewUpstreamRouteMiddleware(resolver GroupUpstreamResolver, groups func() *core.GroupResolver) Middleware {
+	if groups == nil {
+		return func(ctx *DNSContext, next func() error) error { return next() }
+	}
 	return func(ctx *DNSContext, next func() error) error {
-		if resolver == nil || groups == nil || ctx.Req == nil || len(ctx.Req.Question) == 0 {
+		if resolver == nil || groups() == nil || ctx.Req == nil || len(ctx.Req.Question) == 0 {
 			return next()
 		}
 
-		group := cachedGroup(ctx, groups)
+		group := cachedGroup(ctx)
 		if group == core.DefaultClientGroupID || !resolver.HasGroupUpstreams(group) {
 			return next()
 		}

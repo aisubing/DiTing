@@ -265,7 +265,7 @@ func TestFilterResponseGroupScoped(t *testing.T) {
 		t.Fatalf("NewGroupResolver 失败: %v", err)
 	}
 
-	mw := NewFilterResponseMiddleware(engine, resolver, func() bool { return true })
+	mw := NewFilterResponseMiddleware(engine, func() *core.GroupResolver { return resolver }, func() bool { return true })
 
 	// 默认组：命中黑名单 → 阻断
 	ctx := responseFilterCtx("cdn.example.com", "ad.tracker.com", "10.0.0.9")

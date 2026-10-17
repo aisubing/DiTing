@@ -15,8 +15,9 @@ func NewFilterMiddleware(engine *core.RuleEngine) Middleware {
 
 // NewFilterMiddlewareWithGroups 创建带客户端分组感知的规则过滤中间件。
 //
-// groupResolver 为 nil 时等价于按默认组评估，行为与 NewFilterMiddleware 一致。
-func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver *core.GroupResolver) Middleware {
+// groupResolver 是取值函数：分组热更新会替换解析器实例，流水线却只装配一次，
+// 按值捕获旧实例会让新分组规则永久不生效。为 nil 时等价于按默认组评估。
+func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver func() *core.GroupResolver) Middleware {
 	return func(ctx *DNSContext, next func() error) error {
 		if engine == nil || !engine.IsEnabled() || ctx.Req == nil || len(ctx.Req.Question) == 0 {
 			return next()
@@ -31,7 +32,9 @@ func NewFilterMiddlewareWithGroups(engine *core.RuleEngine, groupResolver *core.
 		// 解析客户端所属分组（未启用分组或未命中时回落 default）
 		groupID := core.DefaultClientGroupID
 		if groupResolver != nil && ctx.ClientIP != nil {
-			groupID = groupResolver.Resolve(ctx.ClientIP)
+			if gr := groupResolver(); gr != nil {
+				groupID = gr.Resolve(ctx.ClientIP)
+			}
 		}
 
 		res := engine.MatchForGroup(domain, q.Qtype, groupID)

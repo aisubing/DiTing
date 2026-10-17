@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	pathpkg "path"
 	"strings"
 	"time"
 
@@ -88,11 +89,60 @@ func normalizeDoHPath(path string) string {
 	if p == "" {
 		return "/dns-query"
 	}
+	// ServeMux 的模式语法对非法 pattern 直接 panic：内部 "//" 会报
+	// "unclean path"，花括号会被当成通配段。用户输入必须在这里收敛成
+	// 一个绝不会 panic 的普通字面路径。
+	//
+	// DDR 模板里的 "{?dns}" 占位符不是路径的一部分，先剥掉再统一拼回，
+	// 避免同一份配置在「注册路由」与「广播 DDR」两处得到不同结果。
+	p = stripDoHTemplate(p)
+	p = pathpkg.Clean(p)
+	if p == "/" || p == "." {
+		return "/dns-query"
+	}
+	p = sanitizeDoHPathSegment(p)
+	if p == "" || p == "/" {
+		return "/dns-query"
+	}
 	return p
 }
 
+// stripDoHTemplate 去掉路径里的 "{...}" 占位段（如 DDR 的 "{?dns}"）。
+func stripDoHTemplate(p string) string {
+	for {
+		start := strings.IndexByte(p, '{')
+		if start < 0 {
+			return p
+		}
+		end := strings.IndexByte(p[start:], '}')
+		if end < 0 {
+			return p[:start]
+		}
+		p = p[:start] + p[start+end+1:]
+	}
+}
+
+// sanitizeDoHPathSegment 把路径中会破坏 ServeMux 模式的字符替换掉。
+//
+// 花括号是 Go 1.22 模式语法里的通配段标记，空格/控制字符也不该出现在
+// 一个会被逐字拼进 URL 的路径里。替换而非拒绝：保存路径的调用方已经
+// 落盘，返回一个可用的路径比让服务反复起不来更安全。
+func sanitizeDoHPathSegment(p string) string {
+	var b strings.Builder
+	for _, r := range p {
+		switch {
+		case r == '{' || r == '}' || r < 0x20 || r == 0x7f:
+			b.WriteRune('-')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // startDoH 绑定并激活 DoH 监听器（RFC 8484）。
-func (s *Server) startDoH() error {
+// startDoHLocked 绑定并激活 DoH 监听器。调用方须持有 s.mu。
+func (s *Server) startDoHLocked() error {
 	cfg := s.encrypted
 	if cfg == nil {
 		return fmt.Errorf("未启用加密 DNS 监听")
@@ -186,6 +236,11 @@ func (s *Server) serveDoH(clientIDFromPath string) http.HandlerFunc {
 			http.Error(w, "DNS 报文无法解析", http.StatusBadRequest)
 			return
 		}
+		// RFC 8484 §4.1：不合语法的报文（非单题查询 / QR=1）应返回 400
+		if !isStandardQuery(req) {
+			http.Error(w, "只接受单题标准查询报文", http.StatusBadRequest)
+			return
+		}
 
 		// 路径里的 ClientID 先做一次校验：非法就让调用方知道，
 		// 否则它会以为自己带着一个生效的身份在查询
@@ -251,9 +306,17 @@ func readDoHQuery(r *http.Request) ([]byte, error) {
 			return nil, fmt.Errorf("缺少 %s 参数", dohGetParam)
 		}
 		// RFC 8484 允许省略填充，base64.RawURLEncoding 正好对应
+		// 与 POST 分支同一道尺寸闸门：GET 报文经 base64 膨胀后可达数倍，
+		// 不设上限时单个匿名请求即可放大 Unpack 的内存开销
+		if len(raw) > base64.RawURLEncoding.EncodedLen(dohMaxBody) {
+			return nil, fmt.Errorf("%s 参数超过 %d 字节上限", dohGetParam, dohMaxBody)
+		}
 		decoded, err := base64.RawURLEncoding.DecodeString(raw)
 		if err != nil {
 			return nil, fmt.Errorf("%s 参数不是合法的 base64url", dohGetParam)
+		}
+		if len(decoded) > dohMaxBody {
+			return nil, fmt.Errorf("%s 参数超过 %d 字节", dohGetParam, dohMaxBody)
 		}
 		return decoded, nil
 
