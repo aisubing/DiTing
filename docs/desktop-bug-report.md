@@ -972,5 +972,16 @@
 ### O-134 `DnsCacheController` 单全局槽位 `activeCache`，第二 dataset 注册会顶掉首个的清理回调配对
 - `core/cache/DnsCacheController.kt:9-16`；当前仅 `normal/DnsVpnDatabaseComponents.kt:139` 一处注册，无并发第二注册证据。latent，列观察。
 
+### O-135 `DotTransport`/`ExpressDotTransport` 丢弃 `protectSocket()` 返回值，与 `PlainDnsTransport` 的抛错处理不对称
+- `core/dns/DotTransport.kt:71` 与 `express/transport/ExpressDotTransport.kt:116`：`protectSocket?.invoke(rawSocket)` 返回的 Boolean 被丢；对照 `core/dns/PlainDnsTransport.kt:49-51` `if (protectSocket != null && !protectSocket(socket)) throw IOException("Failed to protect DNS UDP socket")`（Express Plain 孪生同抛）。`VpnService.protect()` 在服务停止/重建窗口返回 false。
+- 未升级为缺陷（子代理复核后自证影响不成立）：两种模式的 builder 都 `addDisallowedApplication(自身包名)`（`normal/DnsVpnTunnelManager.kt:204-207`、`express/ExpressTunnelManager.kt:229`），未 protect 的本包 socket 仍直连物理网络，不构成「上游经自身 TUN 回环」黑洞；可观察后果仅剩「慢失（烧满 5s soTimeout）而非快失」与错误原因被掩盖。建议统一为抛错口径，属健壮性/一致性卫生项。
+
+### O-137 Express DNS 缓存键忽略 DO/CD 位，与共享 `DnsCacheKey.storageKey` 分歧
+- `express/cache/ExpressRoomDnsCache.kt:62,99`：键为 `"$name#${type}#${qclass}"`，不含 `question.dnssecOk`/`checkingDisabled`（同文件解析器 `express/dns/ExpressDnsMessageUtils.kt:34-35,56,61` 已提取这两个位）；对照共享实现 `core/cache/DnsCacheKey.kt:31-42` 追加 `|dnssecOk|checkingDisabled`。Express 上游每次查询都带 EDNS+DO（`express/transport/ExpressPlainDnsTransport.kt:39-43` / `ExpressDotTransport.kt:40` 经 `ensureEdns0`），故 DO=1 与 DO=0 的应答塌缩为同一条目：验证型客户端可能被喂无 RRSIG 缓存（RFC 4035 §3.1.1），反向则给非验证客户端塞 DNSSEC 大块。
+- 未升级为缺陷：Android 系统 netd 解析器默认不设 DO，普通用户不触发；仅自跑验证/转发 stub 或加密 DNS 路径受影响（Express 专属，normal 走共享键无此问题）。确认方法：以 DO=0 查询缓存某 A，再以 DO=1 查同名观察应答缺 OPT/RRSIG。修复 = 键并入两布尔位对齐 `DnsCacheKey`。
+
+### O-136 `HttpRequestLogger` 次构造器静默吞掉 `retentionDays`；`DnsLookupTool` queryName 显示选取仅装饰性
+- `core/log/HttpRequestLogger.kt:35-40` 次构造器接收 `retentionDays` 但不落任何字段——当前所有调用方走主构造器，无观察后果，是留给下一个调用方的陷阱；`core/dns/DnsLookupTool.kt:92-93` 的 `toAsciiQueryName(name).takeIf{…} ?: name` 只影响展示选择。均卫生级，列观察。
+
 ### O-113 `BatteryOptimizationHelper` 的 200ms 防抖缓存无任何读取方（死但无害）
 - `permission/BatteryOptimizationHelper.kt:54-65`：缓存分支仅在 `forceRefresh=false` 时读取；全仓调用点（`permission/AppPermission.kt:139`、本文件 `:130/:207/:213`）均用默认 `forceRefresh=true`（grep `isGranted(` 实证无显式 false 调用），`cachedIsIgnored` 只写不读；且各变更点都先 `invalidateCache()`。每次走真实 Binder 查询，功能正确，仅防抖设计落空。确认方法：`grep "forceRefresh = false\|isGranted(.*, false)"` 无命中（当前）。
