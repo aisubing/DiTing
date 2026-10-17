@@ -2,6 +2,14 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
 
+### 2026-10-18: 子代理「高危触发面」未经调用者/写入者收窄即采信（验证不充分类）
+- **现象**：Room 数据层子代理报 D-01「`AppTrafficDao` 用 SQLite UPSERT → minSdk 24 全设备流量历史静默丢失」自评【高】，又称 Express「任意采样即触发」。回读：唯一写入链 `TrafficDatabaseSyncer.flushPendingDeltas` 只被 `TrafficStatsManager` 调用，而后者 `start()` 唯一入口是 `normal/DnsVpnService.kt:321`——**NORMAL 专属**，Express 全仓零引用 `TrafficDatabaseSyncer`；NORMAL 又被 UI 硬拦在 API 29+（`WorkModeComponents.kt:128-136`）。受害面从「24–29 全设备」收窄为「API 29/30」，且仓库自身 `DnsCacheDao.kt:46` 注释主张下限是 API 30 而非 24——子代理把「文件存在于 minSdk 24 工程」直接当成「24 全设备可触发」。同代理 D-03「DNS_MODE 跨库读 vpn_log 归属错」也被三条独立事实证伪（`dns_log` 仅 2 个写入者、DNS_MODE 从不写；统计页 dataset 不可达 DNS_MODE；Express 写读同库）。
+- **根因**：子代理从「缺陷代码存在」跳到「全量设备/场景触发」，中间缺**可达性收窄**这一步；其给出的严重度建立在未经核实的调用者集合与设备门假设上。我对协议位表已警惕，却险些同样接受其未经核实的**触发面**。
+- **教训**：
+  1. **严重度 = 缺陷机制 × 可达面**，两个都得单独核：可达面靠 `grep 调用者/写入者` 追到唯一入口（本例 `TrafficDatabaseSyncer`/`dnsLogDao()` 的全部 caller），并查设备/模式门（`isSupportedOnCurrentDevice` + UI 拦截 + `runtimeForDataset` 分支）是否把触发收窄。
+  2. **优先用仓库自身注释当反证**：`DnsCacheDao` 已写明 UPSERT 需「API 30」并据此实现回退——同一工程里的作者认知是比记忆更硬的期望源，子代理漏读即结论方向错。
+  3. 一手版本表（AOSP external/sqlite VERSION）取不到时，宁可降级为「记录已修正的收窄触发面 + 标注待定版事实缺口」交真机 logcat 定版，也不按子代理原severity入库。误报/撤回均留痕（见 O-138 修正说明、O-139 证伪条目）。
+
 ### 2026-10-18: 位段/线格式断言须显式列出规范位表再判定（验证不充分类）
 - **现象**：DNS 审计子代理以「MEDIUM、带安全色彩」上报 `writeResponseHeader/buildQuery` 违反 RFC 1035 标志位（称 `query[2]=0x01` 写进了 Z 位、响应 `byte3|=0x80` 是无条件伪造 AD）。我第一反应同样按记忆中的位序准备接受；逐位显式展开规范（byte2: QR 0x80/opcode/AA 0x04/TC 0x02/**RD 0x01**；byte3: **RA 0x80**/Z/AD 0x20/**CD 0x10**/RCODE）后确认代码全部正确，判定为**误报予以否决**——子代理用的是一张错误的位表。
 - **根因**：flags 跨两个字节、且 RD 在第二字节末位（0x0100 拆成 byte2 0x01），凭「RD=0x0100 所以 byte2 高位段」的模糊记忆极易推错；双方（子代理与我的初判）都拿记忆当期望源。

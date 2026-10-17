@@ -63,6 +63,20 @@
 | A-059 | 低 | 密钥混淆 | `KeyObfuscator` 把 UTF-16 code unit 截成单字节：非 ASCII 密钥 seal/open 往返静默损坏/返回空串（与 A-032 不同机制） | 待处理 |
 | A-060 | 低 | 更新清理 | 下载失败 catch 无条件清全局单槽位记录：新版本失败抹掉已下载旧版本记录 → 旧 APK 成孤儿并强制全量重下 | 待处理 |
 | A-061 | 低 | 本地化 | 「当前筛选下暂无 DNS 请求日志」（Express 空态文案）无字典条目，落入前缀替换模板 → 英文界面输出半中半英拼接串 | 待处理 |
+| A-062 | 高 | Go MITM 分帧 | 元素隐藏注入后响应删光 Content-Length/TE 且 `Uncompressed=true`：stdlib 不再补 `Connection: close`，HTTP/1.1 keep-alive 下 body 无任何定界 → 浏览器文档永不结束/挂死，代理双向互等 | 待处理 |
+| A-063 | 中 | Go 元素隐藏 | `buildCosmeticCss` 从不把 `rules.GlobalException` 并入 exceptions（只填按域 entry.Exception）：全局 `#@#` 例外静默失效，误隐藏无法豁免 | 待处理 |
+| A-064 | 低中 | Go MITM 注入器 | `InjectingReader` EOF/提前返回路径丢弃 `carry` 中残留的 ≤5 字节 `<head` 前缀：无 `<head>` 且恰以该前缀结尾的文档输出被截断 | 待处理 |
+| A-065 | 中 | Express 缓存统计 | Express `dns_cache` 每次 put 用 `OnConflictStrategy.REPLACE` 整行覆盖：hitCount/lastHitAt 在重缓存时归零，仪表盘 totalHitCount 系统性偏低（NORMAL 侧注释明确防此问题） | 待处理 |
+| A-066 | 低 | 数据清理计数 | 「清理全部域名规则」删 HOSTS 订阅的 v4/v6 覆写但保留订阅行且不复位 ruleCount：徽标数与实际规则持续不符；为此准备的 `resetAfterRuleCleanup` 全仓零调用 | 待处理 |
+| A-067 | 高 | Go DNS v6 应答 | `buildIPv6UDPPacket` 在校验和**之后**才写入 payload：所有合成 IPv6 UDP 应答（拦截/NXDOMAIN/重写/转发）校验和恒错，内核强校验下整包丢弃 | 待处理 |
+| A-068 | 高 | Go 规则热更新 | `SetTries` 锁内 `Close()` 旧 trie（munmap），读者锁外解引用同一 `*MmapTrie`：规则重载与 DNS 流量并发 → use-after-unmap SIGSEGV（不可 recover） | 待处理 |
+| A-069 | 中 | Go DNS 缓存 | `dnsCache.clear()` 用 `lruList.Init()` 而不 `Remove`：并发命中提升把 `elem.list` 仍指向本表的孤儿元素重新链回 → LRU 与 map 失同步 | 待处理 |
+| A-070 | 中 | Go 规则装载 | trie 与 bloom 各自「成功才 append」按下标配对：任一 bloom 加载失败即整体错位一格，预过滤假阴性令整个 trie 被跳过 → 静默漏拦 | 待处理 |
+| A-071 | 中 | Go MITM 证书缓存 | `CertManager.certCache` 为无上限 `sync.Map`、仅过期命中时删除，与文件头注释「LRU 512 entries」不符：长会话拦截多子域内存单调增长 | 待处理 |
+| A-072 | 低中 | Go MITM 流关闭 | gzip/deflate 注入路径替换 `resp.Body` 后原始 body 永不 Close/排空：同连接 keep-alive 下一轮 `ReadResponse` 因 chunk 终结符未消费而错位 | 待处理 |
+| A-073 | 低中 | Go 连接日志 | 包级全局 `connLogSeen sync.Map` 仅在 `StartFull` 清空：standalone/inspection 模式无回收点，去重键单调增长（内存缓涨+跨引擎实例压制新会话日志） | 待处理 |
+| A-074 | 低 | Go bloom 加载 | `LoadBloomFilter` 不校验 `bitCount/hashCount > 0`：`bitCount=0` 的畸形文件通过尺寸校验，首个 `MightContain` 触发 `%0` integer divide by zero panic | 待处理 |
+| A-075 | 中 | Express 规则添加 | Express 黑名单可添加元素隐藏规则（仅 DNS_MODE 被拦）：写入 `diting_express` 却提示成功；`CosmeticRuleManager` 硬编码只从 NORMAL 库编译 CSS，且 Express 列表又不显示 cosmetic 行 → 不可见、不生效、无法删除的幽灵规则 | 待处理 |
 
 ---
 
@@ -859,6 +873,180 @@
 
 ---
 
+## A-062 元素隐藏注入后的 HTTP/1.1 响应没有任何 body 定界：浏览器文档永不结束（挂死/转圈），代理与客户端双向互等
+
+- **位置**
+  - `Android/tunnel/mitm_common.go:65-73`（`wrapResponseForInjection` 尾部）— `resp.Body = io.NopCloser(NewInjectingReader(bodyReader, host))`；`resp.ContentLength = -1`；`Header.Del("Content-Length")`；`Header.Del("Transfer-Encoding")`；`resp.TransferEncoding = nil`；**`resp.Uncompressed = true`**
+  - 调用点 `Android/tunnel/mitm_relay.go:160-173`：`if ShouldInjectHTML(...) { wrapResponseForInjection }` → `resp.Write(clientConn)` → keep-alive 循环回 `http.ReadRequest`
+  - stdlib 判定（**本机 Go 源码逐字核对**，`C:\Program Files\Go\src\net\http\response.go:296`）：`if r1.ContentLength == -1 && !r1.Close && r1.ProtoAtLeast(1, 1) && !chunked(r1.TransferEncoding) && !r1.Uncompressed { r1.Close = true }` —— `Uncompressed=true` 使 `Close` **不被补齐**；于是 writeHeader 既不发 `Content-Length`（字段 -1）、不发 `Transfer-Encoding: chunked`（nil）、也不写 `Connection: close`
+- **机制/影响**：命中「非空 cosmetic 规则 + `Content-Type: text/html` + 域名闸门」的每一个响应，在线上是一个「HTTP/1.1 200 且零定界」：客户端只能等到连接关闭才知道 body 结束，而代理不关闭并回头等下一个请求 → **双向互等**。浏览器表现为页面一直转圈、文档不结束、SPA 卡死。
+- **触发路径**：启用 HTTPS 检查 → 添加任意元素隐藏规则（如 `example.com##.banner`）→ 访问返回 text/html 的拦截域 → 浏览器挂死（curl 会挂到超时）。
+- **复现/验证**：Go 单测：构造非空 cosmetic 规则，对注入后 `resp` 调 `resp.Write(&buf)`，断言 buf 含 `Transfer-Encoding: chunked`、`Content-Length:`、`Connection: close` **三者之一**（当前三者皆无 → 失败）。修复二选一：`resp.TransferEncoding = []string{"chunked"}`（保 keep-alive，推荐）或删去 `Uncompressed=true`（接受 close-delimited 断连）。
+- **备注**：附带同一函数未特判 HEAD（`noResponseBodyExpected`）——HEAD 也会删掉真实 CL；修 [1] 时一并处理。反证（为何现场少报）：元素隐藏默认关闭、命中面仅 text/html；对照 `writeBlockedHTTPResponse` 未设 Uncompressed 因而被 stdlib 正确补 close，本地 asset 走 `buildTextResponse` CL 一致不受影响——已逐一核过非误报。
+
+---
+
+## A-063 全局元素隐藏例外（`#@#`，域为空）被 `buildCosmeticCss` 静默丢弃：无法取消隐藏、也不产生 `display: revert`
+
+- **位置**
+  - `Android/tunnel/mitm_local_server.go:61-79`（`buildCosmeticCss`）— `hide` 有 `for _, selector := range rules.GlobalHide` 填充循环；`exceptions := make(map[string]struct{}, len(rules.GlobalException))` **只用作容量**，随后仅有按域循环 `entry.Exception → exceptions[selector]`，**无任何 `range rules.GlobalException`**
+  - 消费：`:81-89` `hidden` 过滤与 `:91-105` excepted 输出都只读 `exceptions` map → 全局例外两条通道皆空
+  - Kotlin 侧确实在填该字段：`core/rule/CosmeticRuleManager.kt:36,45,59` — `domain.isEmpty() && rule.isException → globalException`，JSON 键 `globalException`
+  - 遮蔽证据：`mitm_cosmetic_test.go:16` fixture `globalException:[]` 恒空、`CosmeticRuleManagerTest.kt:37` 断言长度 0——两侧都用空值覆盖，测试恒绿
+- **机制/影响**：用户添加全局取消隐藏规则（`#@#.ad-banner`）后：该选择器**既不豁免**按域隐藏，**也不输出** `display: revert !important`——凡被任何 hide 规则命中的同名元素一律误隐藏且无法解除。方向性错误发生在用户明确尝试「解封」时。
+- **触发路径**：加 `##.ad` 与 `#@#.ad` 两规则 → 浏览器访问任意页 → `.ad` 仍隐藏。
+- **复现/验证**：Go 单测 `buildCosmeticCss(`{"globalHide":[".x"],"globalException":[".x"]}`, "a.com")` 输出应不含 `.x { display: none`（当前含）；修复 = 补 `for _, s := range rules.GlobalException { exceptions[s] = struct{}{} }`。
+
+---
+
+## A-064 `InjectingReader` 在 EOF/短读路径丢弃 `carry` 中的 ≤5 字节 `<head` 前缀：特定文档输出截尾
+
+- **位置**
+  - `Android/tunnel/mitm_cosmetic_inject.go:111-113` — `n, err := r.upstream.Read(p); if n == 0 || r.injected { return n, err }`：**返回前从不检查/写出 `r.carry`**
+  - `:145-158` — 末块尾部命中 `<h`/`<he`/… 前缀时 `r.carry = …` 留待拼接；若该块即 EOF（`len(outData)==0 → return 0, err`），下一次 Read `n==0` 直接走 `:112`，carry 永不输出
+- **机制/影响**：文档 ≤scanLimit 且不含完整 `<head>`、且恰以 `<head` 前缀（`<h`、`<he`…）结尾时，尾部 1–5 字节被吞。正常 HTML `<head>` 在前 16KB 内完整匹配走 `doInject` 即不再用 carry——这正是现场不现形的反证；触发面极窄但数据损坏确定发生（静态可证）。
+- **复现/验证**：单测 `io.ReadAll(NewInjectingReader(strings.NewReader("x<he"), "a.com"))`（配非空 cosmetic 规则）期望 `"x<he"`，当前返回 `"x"`。修复 = 在 `n==0 || r.injected` 早退前把残留 carry 排入 pending/输出。
+
+---
+
+## A-065 Express DNS 缓存写入用 `OnConflictStrategy.REPLACE` 整行覆盖：命中计数在重缓存时归零（NORMAL 侧注释明确防的就是这件事）
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/express/cache/ExpressRoomDnsCache.kt:112-126` — 每次 `put` 都以 `hitCount = 0, lastHitAt = null` 构造实体 → `dao.insert(entity)`（`:126`）
+  - `data/dao/DnsCacheDao.kt:33-34` — `@Insert(onConflict = OnConflictStrategy.REPLACE) insert`（REPLACE = 删旧行+插新行；`DnsCacheEntity.kt:18` 以 `key` 为唯一 `@PrimaryKey`，同 key 必然触发删除重插）
+  - 读取侧确在累加：`ExpressRoomDnsCache.kt:86` `dao.recordHit(key, now)`（`DnsCacheDao.kt:74`）
+  - **同库的自证**：`DnsCacheDao.kt:40-47` `updateMetadata` KDoc 原文——「deliberately does NOT touch `hitCount`/`lastHitAt`, so a batched response refresh can never clobber the counters accumulated by addHits」；NORMAL 走 `applyPendingWrites`（update→0 行→insertIfAbsent）保计数，Express 的 put 没走这条路
+- **机制/影响**：热域名每次 TTL 过期重解析后再 put → 命中数归零；`totalHitCount()`（`DnsCacheDao.kt:30-31` SUM(hitCount) → `ui/ModernLogDashboardViewModel.kt:200`）系统性偏低、缓存页各条目命中数失实、`lastHitAt` 排序退化（`index_dns_cache_lastHitAt` 的 ORDER 退到 createdAt 序）。仅统计/展示失真，不影响解析正确性；只犯 Express 库（`diting_express`，`ExpressRulesDatabase.kt:61`）——与「共享 DnsResponseCache 死代码」的 O-107 不同库不同机制，不重复。
+- **触发路径**：Express 开 DNS 缓存 → 对同一域名命中数次 → 等 TTL 过期再命中触发 put → 该域名 hitCount 从 N 跳回 0。
+- **复现/验证**：单测：同 key 连调 `put` 两次（前置 `recordHit` 一次），断言 `hitCount` 仍 ≥1（当前 =0）。修复 = put 改走 `updateMetadata` + 0 行回落 `insertIfAbsent`（`applyPendingWrites` 的 entities 半可直接复用）；或改 `@Upsert`。
+
+---
+
+## A-066 「清理全部域名规则」删除 HOSTS 订阅的 v4/v6 覆写却不复位其 ruleCount：专用复位函数 `resetAfterRuleCleanup` 全仓零调用
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/data/cleanup/DataCleanupManager.kt:193-208`（`clearDomainRulesData`）— `rewriteDao.clearByTargetTypes(listOf(IPV4, IPV6))`（连删其 source 行，`RewriteRuleDao.kt:121-124` 同事务自洽）→ `subscriptionDao.deleteByKind(SubscriptionKind.DOMAIN)` **只删域名类订阅**：HOSTS 订阅行保留，`ruleCount/lastUpdated` 原样
+  - `data/dao/SubscriptionDao.kt:92-96` — `resetAfterRuleCleanup()` 正为本场景准备；grep 全仓（含测试）**除声明外零调用**
+  - 不自愈：下次成功更新才修；304 命中走 `markNotModified`（`core/rule/SubscriptionManager.kt:462-470`）只刷新 `lastAttemptAt/etag`，ruleCount 永不重算
+- **机制/影响**：清理后 HOSTS 订阅徽标/「规则数」显示的是删除前的数量，而库里实际可解析覆写已为空/部分为空——直到下一次真更新前持续失真。无崩溃、无额外丢数据（丢的正是承诺删的），纯陈旧计数。
+- **触发路径**：订阅列表含 hosts 订阅 → 设置→清理全部域名规则 → 打开订阅列表看 hosts 项规则数与实际（`select count(*) … source='sub_<id>'`）不符。
+- **复现/验证**：Robolectric：造 hosts 订阅（ruleCount=10）+10 条 v4 覆写 → `clearDomainRulesData` → 断言 `ruleCount==0` 或订阅被删（当前保留 10）。修复 = 清理流程调 `resetAfterRuleCleanup`（或 `deleteByKind(HOSTS)` 一并删）。
+
+---
+
+## A-067 `buildIPv6UDPPacket` 先算校验和后写 payload：所有合成 IPv6 UDP 应答校验和恒错，内核强校验整包丢弃
+
+- **位置**
+  - `Android/tunnel/dns_packet.go:305-328` — `:322` `csum := calculateUDPIPv6Checksum(srcIP.To16(), dstIP.To16(), packet, udpOffset, udpLen)`；`:323` 写入；**`:325` `copy(packet[udpOffset+udpHeaderSize:], payload)` 在校验和计算之后**——计算时 payload 区还是 `make` 出的全零
+  - `:362-364` 累加范围 `udpOffset..udpOffset+udpLen` 含 payload 区（伪首部 + UDP 全段，RFC 1071/2460 8.1 正确写法，只是时序错）
+  - 唯一入口 `:275`（`queryInfo.IsIPv6` 分支）→ `BuildBlockedResponse/BuildNXDomainResponse/BuildRefusedResponse/BuildServfailResponse/BuildRedirectResponse/buildRewriteIPResponse/BuildForwardedResponse` 的 v6 路径全部受害
+  - 对照 IPv4：UDP 校验和写 0（RFC 允许不校验），所以只有 v6 出错——「现场不炸」的一半解释
+- **机制/影响**：IPv6 下 UDP 校验和为强制（内核不允许 0/错误值），错误校验和的包在 TUN/路由出口被静默丢弃。客户端表现为：v6 查询无应答直到超时，Happy Eyeballs 回退 v4 后被误记成「解析慢/偶发重试」；IPv6-only 网络或把手机当 v6 DNS 上游（DNS 模式）则**全部失败**。
+- **触发路径**：普通模式开拦截，`nsquery -6` AAAA 被拦域名（或 DNS 模式 LAN 客户端走 v6）→ `tcpdump ip6` 见校验和错误、客户端收不到。
+- **复现/验证**：Go 单测：`buildIPv6UDPPacket(..., payload=[…非零])` 后用独立 RFC1071 实现重算，断言与 `packet[udpOffset+6:8]` 相等（当前必不等）。修复 = 把 `:325` 的 copy 移到 `:322` 之前。
+- **备注**：与 A-019（TC 截断）、O-104（start/stop 交错）无关；`calculateUDPIPv6Checksum` 内 saved/restore 逻辑本身正确。
+
+---
+
+## A-068 `SetTries` 锁内 Close 旧 trie（munmap）、读者锁外解引用：规则热重载与活跃 DNS 流量并发 → use-after-unmap SIGSEGV
+
+- **位置**
+  - `Android/tunnel/domain_trie.go:79-88` — `Close()`：`unmapFile(m.buffer); m.buffer = nil`（`mmap_unix.go` 的 `unix.Munmap`），自身无任何锁
+  - `Android/tunnel/engine_rules.go:17-47` — `SetTries` 在 `e.mu` 下对旧 `adTries/secTries/adBlooms/secBlooms` 逐个 `Close()` 后重建
+  - 读取侧模式（三处同构）：`engine_rules.go:140-148`（`hasImportantMatch`：锁内只拷 slice → 锁外 `trie.ContainsOrParent`）、`engine_dns.go:132-160`、`engine_standalone.go:201-226`——`ContainsOrParent`（`domain_trie.go:90-96`）检查 `m.buffer == nil` 后进入 `matchWithWildcard/findChildOffset` 对 buffer 的长期裸读；即使躲过 nil 检查，munmap 已在读中途发生
+  - 触发者（Kotlin）：`GoTunnelRuleManager.kt`/`BlockRuleCache` 重载路径在**服务运行中**调 `SetTries`（规则/订阅更新、启停刷新），与 serve goroutine 并发
+- **机制/影响**：`e.mu` 只保护指针数组的替换，不保护被指向对象的生命周期。读者持有的旧 `*MmapTrie` 被并发 `Close()` → 页解除映射 → 后续偏移读取落在无效 VMA：**SIGSEGV 是信号而非 Go panic，`recover()` 无法捕获，进程直接死**（ gomobile 侧表现为原生崩溃，进 A-055 的批量收集路径）。次生：`m.buffer=nil` 与读取竞态本身即数据竞争（`go test -race` 可报）。
+- **现场不炸反证**：重载频率低且多发生在会话边界；munmap 后页常短暂仍在 RSS，读出旧值不崩（掩盖成「规则延迟生效」）；Windows 测试路径 `mmap_windows.go` 用 `io.ReadFull` 读堆内存，天然不复现。
+- **触发路径**：大规则库 + 持续 DNS 流量下点「更新订阅」（触发 SetTries）→ 偶发进程原生崩溃。
+- **复现/验证**：`go test -race`：goroutine A 循环 `trie.ContainsOrParent`，B 循环 `LoadMmapTrie+Close`，必报竞争。修复 = 整套 tries 用 `atomic.Pointer[trieSet]` 快照替换、旧集合延迟/引用计数后再 Close；或 per-trie RWMutex（读侧开销略增）。
+- **备注**：与 A-018（Engine 字段 setter 无锁）同属「e.mu 不构成对嵌套对象生命周期的保护」，但本条是**释放后使用**（崩溃级），A-018 是值撕裂，机制与修复均不同，分立记录。
+
+---
+
+## A-069 `dnsCache.clear()` 用 `lruList.Init()` 不 `Remove`：并发命中提升把孤儿元素重新链回，LRU 与 map 永久失同步
+
+- **位置**
+  - `Android/tunnel/dns_cache.go:108-120` — `clear()`：`shard.mu.Lock()` 下把 `e.elem=nil`、重建 entries、`shard.lruList.Init()`
+  - 本机 Go 源码逐字核对：`container/list/list.go:54-59` `Init()` 只重置 `root/len`，**不动任何 element 的 `.list/.prev/.next`**；仅 `Remove()`（`:113` `e.list = nil`）会断开归属
+  - `:175-188` 命中提升分支：RLock 下快照 `elem` → RUnlock → 再 Lock → `if elem.Value != nil && Front() != elem { MoveToFront(elem) }`——clear 插队后，孤儿 elem 的 `Value` 未被 Init 清空、`e.list == l` 仍成立，`MoveToFront` 把它重新链进刚清空的表
+  - 消费点：`ClearDNSCache` 被 Kotlin 运行期热调用（`normal/GoInspectionTunnel.kt:115`、`server/backend/DnsServerEngine.kt:104`）
+- **机制/影响**：清缓存后 `lruList.Len() ≠ 0` 且 Front/Back 指向已不在 map 的 entry；后续 `putMsg` 淘汰（`:321-331`）从 Back 取 `*cacheEntry` delete 不存在的 key（空转），真实热点条目被错误提升/淘汰，LRU 次序失真持续影响命中率，直到下次全量 clear 再叠加。
+- **复现/验证**：Go 单测：put 两条 → 手工模拟提升窗口（先捕获 elem，再 `clear()`，然后在 Lock 内执行与 `:181-187` 相同的判断+`MoveToFront`），断言 `lruList.Len()==0`（当前 =1）。修复 = clear 内逐个 `shard.lruList.Remove(e.elem)` 替代 `Init()`（或提升前重查 `entries` 归属）。
+- **备注**：与 A-017（清理协程泄漏）、O-107（TTL=0 镜像行）无关；`elem.Value != nil` 守卫说明作者知道要防悬挂，但防的是 Remove 场景，Init 场景漏防。
+
+---
+
+## A-070 trie 与 bloom 各自「成功才 append」按下标配对：单个 bloom 加载失败即整体错位一格，预过滤假阴性跳过整个 trie → 静默漏拦
+
+- **位置**
+  - `Android/tunnel/engine_rules.go:49-108`（`SetTries`）— adTries/adTrieIDs 在 trie 循环内成功才 append，adBlooms 在**另一个独立循环**里成功才 append（失败仅 `logf` 跳过）；sec 侧同型
+  - 判定端 `:205-218`：`for i, adTrie := range adTries { adBloom := adBlooms[i]（若 i < len）; if adBloom == nil || adBloom.MightContainDomainOrParent(host) { adTries[i].ContainsOrParent… } }`；`engine_dns.go:132-160`、`engine_standalone.go:201-226` 同构
+- **机制/影响**：第 k 个 bloom 文件损坏/缺失而 trie 全在时，`adBlooms` 短一格且**索引前移**：`adBlooms[j]` 被拿去预过滤 `adTries[j+1]` 的词表。bloom 预过滤说「不含」→ 该 trie 整个被跳过 → 命中它的域名**不再被拦**（假阴性漏拦）。注意 bloom 正常假阳性不会误拦（仍要 trie 复核，fail-safe）——危害只来自错位。错位后 `adTrieIDs[i]` 与 `adTries[i]` 仍对齐（同循环 append），所以日志归因看着正常，更难发现。
+- **现场不炸反证**：Kotlin 侧（`MappedSubscriptionRuleIndex`）同批成对产出 bloom+trie，缺件属断电/清理半截等异常态。
+- **触发路径**：手工删除 `/data/data/…/rule-index/domain/` 下任一 bloom 文件 → 重启服务 → 对应列表规则静默失效。
+- **复现/验证**：Go 单测：2 trie + 1 bloom（仅覆盖 trie#1 词表）调 `SetTries`，查「在 trie#0、不在 bloom#0」的域名，断言应命中（当前被跳过）。修复 = (trie, bloom, id) 三元组同进同退：任一失败丢弃整对，或按文件名配对一次性 append。
+
+---
+
+## A-071 MITM `CertManager.certCache` 无上限无淘汰（文件头注释承诺的「LRU 512 entries」不存在）：拦截子域越多内存单调增长
+
+- **位置**
+  - `Android/tunnel/mitm_cert_manager.go:6-7`（头注释「LRU Cache: Maintains an in-memory certificate cache (512 entries) …」）对照实现 `:41` `certCache sync.Map`、`:326` `Store`——全文件无容量检查、无 LRU 结构、无周期清扫；仅 `:84-87`/`:271-274` 在同 host 再次命中**且证书已过期**时 `Delete` 单条
+  - 每条含 ECDSA 私钥 + 两张 DER（叶证书+链）
+- **机制/影响**：被拦截过但不再访问的 host，其过期/未过期证书**永久驻留**直至整个 CertManager 废弃（即 Engine 重建，A-017 场景反而顺带清了它）。长时间开启 HTTPS 检查、遍历大量不同子域（CDN 域名爆炸）时内存单调增长；注释与实现相悖会误导容量规划与排查方向。
+- **现场不炸反证**：单会话唯一 host 数有限、单条几 KB，短时不 OOM；本条独立于 A-017（那里是「每调用新建 Engine 不 Stop」，这里是「缓存自身无 cap」）。
+- **复现/验证**：Go 单测：循环 `getCertForHost("hN.example.com")` N=1000 后 `certCache.Range` 计数，断言 ≤512（当前 =1000）。修复 = 实现真 LRU（heap/list + 锁）或至少 `len>cap` 时随机/最旧驱逐；退一步改注释亦可消除误导，但建议实现补齐。
+
+---
+
+## A-072 MITM 注入的 gzip/deflate 路径替换 `resp.Body` 后原始 body 永不 Close/排空：同连接 keep-alive 下一轮 `ReadResponse` 错位
+
+- **位置**
+  - `Android/tunnel/mitm_common.go:43-49`（`gzip.NewReader(resp.Body)` 无 defer Close，随后 `:65` `resp.Body = io.NopCloser(...)` 顶掉原 body）、`:52-60`（deflate/zlib 分支 `io.ReadAll` 后同样丢弃原 body）
+  - `mitm_relay.go:173` `resp.Body.Close()` 此刻关的是 **NopCloser**（no-op），上游 `*http.body` 的 chunked 终结块/trailer 永不消费；`mitmTLSFlow` 同一 serverConn 上循环 `http.ReadResponse`（`:153`）
+- **机制/影响**：上游响应未读到协议层结束即开始下一请求的解析 → 剩余字节被当作下个响应头，解析错位/报错，该连接上后续请求失败（视站点表现为「第二页起打不开」）。与 A-062 叠加时客户端本就挂死，用户难以归因，属独立的「流未排空」缺陷。
+- **现场不炸反证**：多数站点每连接单请求即 close，`resp.Close` 分支提前断开掩盖 desync。
+- **复现/验证**：Go 单测：mock 上游对同连接两个连续 GET 返回 chunked gzip HTML，过 relay 断言第二响应解析成功（当前失败/错位）。修复 = 保留原 body 引用，注入读完后 `orig.Close()`（或 gzip Reader 包一层 `Close = gr.Close + orig.Close`）。
+- **备注**：顺带记录：`wrapResponseForInjection` 对 HEAD 响应也会删真实 CL/TE（无 `noResponseBodyExpected` 特判），归入 A-062 的修复注记。
+
+---
+
+## A-073 包级全局 `connLogSeen sync.Map` 仅在 `StartFull` 清空：非全隧道模式无回收点，去重键单调增长且跨引擎实例互相压制
+
+- **位置**
+  - `Android/tunnel/engine_connection_log.go:31` — `var connLogSeen sync.Map`（**包级**，非 Engine 字段）；`:56`/`:99` `LoadOrStore(key)` 去重，键 `app|ip|port|proto` 与 `blk|…|reason`
+  - 全仓唯一清理点：`engine_full_tunnel.go:102`（`StartFull` 内 `Range+Delete`）——standalone（DNS 模式）与 inspection-only 会话从不经过
+- **机制/影响**：① CDN/P2P/随机高端口的长会话持续产生新键，Map 只增不减 → 内存缓涨（低-中，非崩溃级）；② 键永不过期 + 全局共享：同一设备第二个 Engine 实例（A-017 的 CA 管理器路径）的新会话日志会被**旧实例遗留键压制**，连接日志漏记。
+- **复现/验证**：Go 基准：对不同 dest 反复 `logConnection`，`Range` 计数不回落（当前）。修复 = 移入 Engine 实例字段 + TTL/LRU 清理，或至少 Start/Stop 钩子成对清空。
+
+---
+
+## A-074 `LoadBloomFilter` 不校验 `bitCount/hashCount` 下界：`bitCount=0` 的畸形文件通过尺寸校验，首个 `MightContain` 触发 `%0` panic
+
+- **位置**
+  - `Android/tunnel/domain_bloom_filter.go:170-186` — 读 `bitCount`（8:16）/`hashCount`（16:20）后仅校验 `size < bloomHeaderSize + bitCount/8`；`bitCount=0, hashCount=4` 的 24 字节头文件恰好 `expectedSize=24` 被 Accept
+  - `:199-215` — `MightContain` 内 `:205` `idx := (h1 + uint64(i)*h2) % bf.bitCount` → runtime error **integer divide by zero**（Go 里是 panic，可被 recover，但发生在 gomobile 回调热路径 → Kotlin 崩溃链）
+- **机制/影响**：规则索引文件被写坏/写满/半截落盘（与 O-116/A-068 的崩溃-重建窗口呼应）后，下一次域名判定即 panic；不像 C 级损坏只影响单列表，这里炸的是解析热线程。
+- **现场不炸反证**：`BloomBuilder.SaveToFile` 经 `OptimalBloomParams` 产出的 `bitCount ≥ 64`（expectedItems=1 也抬到 %8 补齐），正常文件恒非零——仅损坏/截断文件命中。
+- **复现/验证**：Go 单测：手写 24 字节头（magic+ver+bitCount=0+hashCount=4）调 `LoadBloomFilter` 断言返回错误（当前成功），`MightContain` 断言不 panic。修复 = Load 内 `bitCount==0 || hashCount==0 || hashCount>64` 即报错；顺带校验 `bitCount/8 ≤ size-headerSize` 的整段覆盖。
+
+---
+
+## A-075 Express 模式可添加元素隐藏规则并提示成功，但该库的规则永不参与 CSS 编译、列表也不显示：产生不可见、不生效、无法删除的幽灵规则
+
+- **位置**
+  - 入口可达：`Android/app/src/main/java/com/haoze/diting/main/MainModeDispatcher.kt:49` — `onNavigateToBlacklist = { onNavigateToSettings(Routes.BLACKLIST_MANAGEMENT, RuleDataset.EXPRESS) }`（极速模式主屏确实把黑名单页以 EXPRESS dataset 挂载）
+  - 校验只拦 DNS_MODE：`ui/BlacklistViewModel.kt:331-333` — 元素隐藏分支仅 `if (dataset == RuleDataset.DNS_MODE) return failure("元素隐藏规则仅普通模式支持")`；EXPRESS 直通
+  - 写入 EXPRESS 库：`:340-347` — `cosmeticRuleDao.insertForSource(entity, "useradd", …)`，该 `cosmeticRuleDao` 来自 dataset 路由（EXPRESS → `ExpressRulesDatabase`，`data/DnsRulesDatabase.kt:137` 家族），随后返回 `Result.success("已添加元素隐藏规则")`
+  - 编译端只读 NORMAL 库：`core/rule/CosmeticRuleManager.kt:22-28` — `getInstance` 硬编码 `AppDatabase.getInstance(...).cosmeticRuleDao()`，与 VM 中 `CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()`（`:348`）编译的是 **NORMAL 库**，刚写进 `diting_express` 的行永不参与
+  - 列表端不可见：`ui/BlacklistViewModel.kt:154` — cosmetic 取数包在 `if (dataset == RuleDataset.NORMAL)` 内，EXPRESS 下 `allCosmetics = emptyList()`（`:159`）
+- **机制/影响**：三个条件叠加使该路径成为单向黑洞：用户（在极速模式黑名单页）粘贴 `example.com##.banner` → 提示「已添加元素隐藏规则」→ 列表里查不到该条（cosmetic 不显示）→ 也永不生效（CSS 从 NORMAL 库编译，且极速模式本身不做 HTTPS 检查/元素隐藏，`express/` 内无 MITM）→ 该行残留在 `diting_express.cosmetic_rule`，普通「清空手动」路径（`BlockRuleDao.deleteUserRules`）不含 cosmetic 表，故用户无任何 UI 手段删除。用户认知是「加了但没用」，磁盘上留下永久垃圾行。
+- **触发路径**：极速模式 → 黑名单 → 输入 `example.com##.ad` → 成功提示 → 列表无此行 → 重启仍在（残留）→ 无任何入口删除。
+- **复现/验证**：Robolectric/真机：EXPRESS dataset 下 `addRule("a.com##.x")` 返回 success，随后 `cosmeticRuleDao`（diting_express）行数 +1、列表 items 不含它、`compileScopedCss()` 输出不含 `.x`。修复二选一：与 DNS_MODE 同样拒绝 EXPRESS（**推荐**，与「极速模式无 HTTPS 检查」的产品事实一致），或让 `CosmeticRuleManager.getInstance` 接收 dataset 并在 Express 引擎接线（但极速模式无 MITM 注入点，故前者为正解）。
+- **备注**：`CosmeticRuleManager` 的 dataset 硬编码与 O-102（`RuleOperationWorker` 硬编码 AppDatabase）同型但**不同文件、且本条经可达性验证**，故升级为确认缺陷；同一硬编码模式还有 `ui/apprule/AppRuleViewModel.kt:27`（O-130 已登记，因其路由不可达而未升级——本条的差异正在于路由可达）。
+
+---
+
 ## 观察（未达到确认缺陷标准，供后续验证）
 
 ### O-106 `StartupSelfCheck` 只消毒 NORMAL 偏好文件，Express/DNS_MODE 的同名键不覆盖
@@ -975,6 +1163,22 @@
 ### O-135 `DotTransport`/`ExpressDotTransport` 丢弃 `protectSocket()` 返回值，与 `PlainDnsTransport` 的抛错处理不对称
 - `core/dns/DotTransport.kt:71` 与 `express/transport/ExpressDotTransport.kt:116`：`protectSocket?.invoke(rawSocket)` 返回的 Boolean 被丢；对照 `core/dns/PlainDnsTransport.kt:49-51` `if (protectSocket != null && !protectSocket(socket)) throw IOException("Failed to protect DNS UDP socket")`（Express Plain 孪生同抛）。`VpnService.protect()` 在服务停止/重建窗口返回 false。
 - 未升级为缺陷（子代理复核后自证影响不成立）：两种模式的 builder 都 `addDisallowedApplication(自身包名)`（`normal/DnsVpnTunnelManager.kt:204-207`、`express/ExpressTunnelManager.kt:229`），未 protect 的本包 socket 仍直连物理网络，不构成「上游经自身 TUN 回环」黑洞；可观察后果仅剩「慢失（烧满 5s soTimeout）而非快失」与错误原因被掩盖。建议统一为抛错口径，属健壮性/一致性卫生项。
+
+### O-138 `AppTrafficDao.upsertDelta` 用 SQLite UPSERT 语法：API 29 设备（NORMAL 模式可达下限）若其 bundled SQLite < 3.24 则流量历史静默全丢（版本下限未取证）
+- `data/dao/AppTrafficDao.kt:48-56` — `INSERT … ON CONFLICT(date, package_name) DO UPDATE SET …`（经 `upsertBatchDeltas:66-77` 事务循环调用）；UPSERT 需 SQLite ≥ 3.24。
+- **子代理原报「高危：minSdk 24 全设备静默丢失」的触发面已被证伪修正**：唯一调用链 `core/traffic/TrafficDatabaseSyncer.kt:117-129`（整体 `catch (e: Exception) Log.w`，异常确被吞）只由 `TrafficStatsManager` 驱动，而 `TrafficStatsManager.start(...)` 唯一调用点是 `normal/DnsVpnService.kt:321`——**NORMAL 模式专属**（全仓 grep `TrafficDatabaseSyncer` 仅命中 core/traffic 两文件，Express 零引用）。NORMAL 在 UI 层被 `ui/mode/WorkModeComponents.kt:128-136` 硬性拦在 API 29+（不支持即 toast「仅支持 Android 10 (API 29) 及以上系统」），且 `WorkModeStore.getAppWorkMode`（`:10-14`）无设备能力回退、配置导入导出不含工作模式键（grep 实证）。因此受害面收窄为「**API 29/30 设备 + NORMAL 模式**」。
+- 未定级的决定性事实缺口：**API 29 出厂 bundled SQLite 是否 ≥ 3.24**。仓库自身注释与之一致地主张 API 30 下限——`data/dao/DnsCacheDao.kt:46-47` 原文「(INSERT ... ON CONFLICT DO UPDATE would need SQLite 3.24 / **API 30**, but minSdk is 24, so this portable form is used instead)」并据此为 `updateMetadata` 实现了 UPDATE→0 行→insertIfAbsent 的可移植回退；若该「API 30」经验真，则 A 面是 API 29 而非「24–29」，且 Express/API24–28 完全不相干。本次多路取证（AOSP `external/sqlite` VERSION 各 ref、android.googlesource `?format=TEXT`、aosp-mirror 分支、developer.android.com SQLite 页）均返回 404/导航占位或乱码解码，**未能取得可引用的一手版本表**，故不升级为确认缺陷。
+- 确认方法（缺一手版本表亦可运行期定版）：API 29 真机/模拟器跑 NORMAL 模式产生 >1MB 或跨 15s 流量 → logcat 过滤 `Failed to flush traffic deltas to Room`（伴随 `near "CONFLICT": syntax error`）→ 命中即升级为高危（今日视图内存态可用，杀进程归零、THIS_WEEK/ALL_HISTORY 恒 0、跨零点 rollover 丢昨天整日）；无该行则说明 API 29 的 SQLite ≥ 3.24，降级为「与同库 DnsCacheDao 注释不一致」的卫生项。修复方向同注释：UPDATE→0 行→INSERT 回退，或 `@Upsert` + 版本门。
+- 附带（子代理 S-1/S-3/S-4/S-5 四项，证据不足，一并登记）：`data/repository/DnsCacheRepository.kt:57`/`DnsLogRepository.kt:156` 的 PagingSource `prevKey = offset`（本页自身偏移）在 prepend 时会重载同页，但当前 UI 无触发反向翻页的路径（首屏 prevKey=null、invalidate 走 getRefreshKey→从头加载），latent；`data/dao/AllowRuleDao.kt:219-233` `enabledRuleByPattern` 不带 important 条件却返回单个 `EnabledRule?`（同 pattern 双行时 Room 取首行不报错，`syncCachedPattern` 可能同步到非预期那条；能否构造出双行未确认）；`data/cleanup/DataCleanupManager.kt:52-56` EXPRESS 清理未先冲 DnsLogger 内存批（500ms 窗口可回写少量行）；`data/dao/CosmeticRuleDao.kt:19-23` `insertForSource` 依赖的 `idByDomainAndSelector` 无行返回 0，理论上可生成 ruleId=0 孤儿 source 行，且 `cosmetic_rule_source` 是唯一**无外键 CASCADE** 的 `*_rule_source` 表（`CosmeticRuleSourceEntity.kt` 全文无 foreignKeys）——仅在并发删除时可达，未证实 UI 路径。
+
+### O-139 【证伪留痕】Express/DNS_MODE 拦截统计「跨库 id 错配」不成立（勿再提出）
+- 曾拟记录：`runtimeForDataset(DNS_MODE) -> AppDatabase`（`data/DnsRulesDatabase.kt:148-152`）+ 统计页 hits 用 runtime 库、订阅列表用 dataset 库（`ui/SubscriptionInterceptionStatsViewModel.kt:35-41,66-76`）→「VPN 的 dns_log 被按 DNS 库订阅 id 解释，出现已删除订阅行/占比错位」。
+- 复核否决，三条独立事实：(1) `dns_log` **只有两个写入者**——`express/ExpressTunnelManager.kt:278`（diting_express）与 `normal/DnsVpnDatabaseComponents.kt:97`（AppDatabase）；`server/backend/` 下无任何 DnsLogger/logQuery 接线，即 **DNS_MODE 从不写 dns_log**，被「错读」的表里根本没有 DNS_MODE 场景的新数据；(2) 统计页 dataset 只来自 `LogRouteActivity.kt:24-30` 的 intent 缺省（NORMAL 或 EXPRESS），`MainNavigationCoordinator.kt:73-76` 的 `launchLogRoute(dataset)` 与 `normal/ui/MainScreen.kt:291-295`/`express/ui/ExpressMainScreen.kt:252` 均不传 DNS_MODE，`SettingsRouteActivity` 也未挂载该路由（`DnsSettingsScreen.kt:51-56` 的 DNS_MODE 只进 5 个规则/缓存页）——**DNS_MODE dataset 不可达**；(3) EXPRESS 侧写读同库（diting_express，`ExpressRulesDatabase.kt:62,91` 含 DnsLogEntity+SubscriptionEntity），`blockSubscriptionId ← "sub_<id>"`（`core/rule/SubscriptionUrlHelper.kt:57-58`）与本库订阅 id 同空间，不存在错配。子代理报告中的「与隔离承诺相悖」是对 `runtimeForDataset` 注释语义的过度推断。
+
+### O-140 Engine 回调/配置字段无锁读写：Go 数据竞争（与 A-018 同族，本波补充未定级面）
+- 写侧 `engine_config.go` 全无锁：`:48 e.domainChecker`、`:274 e.firewallChecker`、`:278 e.appResolver`、`:282 e.appUidResolver`、`:386 e.responseType`（`dns_config.go:134` 同）；读侧热路径无锁：`engine_dns.go:41,48,76,106,260,280`、`engine_rules.go:168`、`engine_connection_log.go:19-20,40-45`、`engine_standalone.go:60,97,121,248`。
+- 与已入库 A-018（SetBlockResponseType/SetDomainChecker 不加锁 → 撕裂）为**同一处事实的不同取证视角**，故不另立编号；本条仅登记 A-018 未点到的其余四个字段（firewallChecker/appResolver/appUidResolver/responseType 的 dns_config 侧写入），修复时须一并覆盖，勿只修两个 setter。
+- 另：`domain_trie.go:98-129` `matchWithWildcard` 每层同时试 exact 与 `*` 两支，最坏 2^(labels) 递归、深度=len(labels)。现实 trie 不会逐层放通配且标签数 ≤6，未构造出可达恶意输入（域名上限 127 label 需配合逐层通配的规则库）。建议加递归预算或 (node,index) memo；列为观察。
 
 ### O-137 Express DNS 缓存键忽略 DO/CD 位，与共享 `DnsCacheKey.storageKey` 分歧
 - `express/cache/ExpressRoomDnsCache.kt:62,99`：键为 `"$name#${type}#${qclass}"`，不含 `question.dnssecOk`/`checkingDisabled`（同文件解析器 `express/dns/ExpressDnsMessageUtils.kt:34-35,56,61` 已提取这两个位）；对照共享实现 `core/cache/DnsCacheKey.kt:31-42` 追加 `|dnssecOk|checkingDisabled`。Express 上游每次查询都带 EDNS+DO（`express/transport/ExpressPlainDnsTransport.kt:39-43` / `ExpressDotTransport.kt:40` 经 `ensureEdns0`），故 DO=1 与 DO=0 的应答塌缩为同一条目：验证型客户端可能被喂无 RRSIG 缓存（RFC 4035 §3.1.1），反向则给非验证客户端塞 DNSSEC 大块。
