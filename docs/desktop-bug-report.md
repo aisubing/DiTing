@@ -18,6 +18,7 @@
 | A-005 | 中 | 极速模式启动 | 规则缓存异步加载完成前 TUN 已开始处理查询，连接初期的拦截/放行规则不生效 |
 | A-006 | 中 | DNS 缓存清理 | 清理 DNS 缓存只清内存与数据库，未清待落盘队列，约 30 秒后缓存条目被重新写回 |
 | A-007 | 低 | 快捷设置磁贴 | `requestListeningState` 使用拼接错误的组件名，运行状态变化时磁贴刷新请求全部失效 |
+| A-008 | 中 | 崩溃日志 | Android 7–9 上自动导出崩溃日志先走 API 29 的 MediaStore，回退目录又无写权限，连续崩溃备份静默失败 |
 
 ---
 
@@ -218,6 +219,34 @@
   3. 静态断言：`ComponentName("com.haoze.diting", "com.haoze.diting.tile.DitingTileService").flattenToString()` 应为 `com.haoze.diting/com.haoze.diting.tile.DitingTileService`；当前代码传入的类名多出一段包名。
   4. 在 `requestTileUpdate()` 的 `onFailure` 中临时打印 `Log.e(TAG, "tile component", e)`，或直接过滤 logcat 中的 `QuickSettingsTileUpdater`，可看到每次服务状态变化都记录一次失败。
 - **备注**：应改为 `ComponentName(appContext, DitingTileService::class.java)`，或至少使用 `"${appContext.packageName}.tile.DitingTileService"` 作为完整类名而不是再拼一次包名；单元测试可直接断言 `ComponentName` 的 `className` 等于清单中的类名。
+
+---
+
+## A-008 Android 7–9 上崩溃日志自动备份静默失败
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt:94-134`（连续崩溃达到 3 次后调用 `exportToDownloads`）
+  - `Android/app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt:164-192`（MediaStore 与直接文件两条导出路径）
+  - `Android/app/build.gradle.kts:79`（`minSdk = 24`）
+  - `Android/app/src/main/AndroidManifest.xml:5-17`（未声明任何外部存储写权限）
+- **问题**
+  - `exportToDownloads()` 首选 `MediaStore.Downloads.EXTERNAL_CONTENT_URI`、`MediaStore.MediaColumns.IS_PENDING`，这两个 API 都是 Android 10（API 29）才加入的。应用 minSdk 为 24，却没有 `Build.VERSION.SDK_INT >= 29` 分支。
+  - 在 Android 7.0–9（API 24–28）上，访问这些字段会在运行期抛出 `NoSuchFieldError`（属于 `Error`，被 `runCatching` 捕获），随后进入“直接写公共 Download 目录”的回退分支。
+  - 回退分支调用 `Environment.getExternalStoragePublicDirectory(DIRECTORY_DOWNLOADS).writeText(...)`；应用没有声明 `WRITE_EXTERNAL_STORAGE`，且 targetSdk 为 36，在 API 24–28 上对公共目录的直接写入会被系统拒绝（`EACCES`），再次被 `runCatching` 吞掉并返回 `null`。
+  - `onCrashOccurred()` 只有在 `uri != null` 时才设置 `KEY_PENDING_AUTO_EXPORT_NOTICE`，因此两条路径都失败时既不会生成备份，也不会给用户任何提示。
+- **触发路径**
+  - 在 Android 7.0–9 设备上，24 小时内连续崩溃 3 次（或原生崩溃被 `checkAndCollectNativeCrashes()` 逐条补录并累计到 3 次），且用户此前没有手动导出过崩溃日志。
+  - 每次崩溃后 `onCrashOccurred()` 都会尝试自动备份，但 `exportToDownloads()` 在 API 29 字段处失败，回退写公共目录又因无权限失败。
+- **影响**
+  - “连续崩溃 3 次自动备份到 Download”这一救援机制在仍受支持的 Android 7–9 上完全失效；用户只能看到本地 `crash_logs` 文件，无法在文件管理器中找到自动备份。
+  - 由于没有设置待提示标志，应用也不会告知备份失败，问题表现为“功能从未出现过”，难以被用户或测试发现。
+  - 手动“导出崩溃日志”走 SAF `CreateDocument`，不经过该函数，因此在旧系统上仍可用；受影响的只有自动备份。
+- **复现/验证**
+  1. 用 API 24/26/28 模拟器或真机安装应用，先确保崩溃日志目录中有内容；在 24 小时内触发 3 次崩溃（可在 debug 包中连续调用 `CrashLogManager.onCrashOccurred(context)` 三次模拟）。
+  2. 检查 `/sdcard/Download/`：不会出现 `DITING-crash-auto-backup-*.txt`，重新启动应用也不会出现“已自动备份”提示。
+  3. logcat 过滤 `CrashLogManager`：可看到 `Failed to export crash log to Downloads via MediaStore`，随后回退写入抛出 `EACCES`（具体异常文本随 ROM 不同）。
+  4. 静态核对：`exportToDownloads()` 中没有任何 `SDK_INT` 判断；`AndroidManifest.xml` 没有 `WRITE_EXTERNAL_STORAGE`，也没有 `requestLegacyExternalStorage`。
+- **备注**：API 29 以下应直接走兼容路径并申请/声明旧版存储权限，或改用 `FileProvider` + `ACTION_CREATE_DOCUMENT` 让用户选择位置；至少要在两条路径都失败时设置失败提示，而不是静默返回 `null`。
 
 ---
 
