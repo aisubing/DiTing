@@ -80,6 +80,10 @@
 | A-076 | 高 | VPN 路由覆盖 | 默认开启的「绕过局域网」IPv4 补集枚举漏掉 116–119/8 与 122–123/8（电信/联通/阿里云/腾讯云在用公网段）：这些直连 IP 流量完全绕过 TUN，域名规则/MITM/QUIC·DoT 阻断/禁止联网/流量统计对其全部失效 | 待处理 |
 | A-077 | 中 | HTTPS 检查证书 | 本会话是否 MITM 由**缓存位** `isHttpsInspectionReady` 决定，异步真校验失败后只写偏好、不重启隧道：根证书已被卸载仍继续 MITM → 目标 App TLS 握手失败/证书告警，与设置页显示矛盾至下次重连 | 待处理 |
 | A-078 | 中 | 会话统计归零 | 编辑排除/禁止联网/检查名单或数据清理触发 `restartVpnLocked` → `TrafficStatsManager.start()` 无条件清 sessionTx/Rx/时长：本地列表编辑使「本会话↑↓」与「已连接」静默归零并瞬断（对照 allowlist 走热更新不重启，口径不一致） | 待处理 |
+| A-079 | 高 | 缓存设置串档 | 极速模式「缓存设置」屏四处调用 `DnsCacheSettingsStore` 全部漏传 dataset（默认 NORMAL）：读写的其实是普通模式策略——极速缓存开关永不生效、改动却偷改普通模式防护（引擎端只认 diting_express_prefs） | 待处理 |
+| A-080 | 高 | AI 分析串库 | `AgentAnalysisSheet` 硬编码 `AppDatabase`+NORMAL 广播：极速模式 DNS 缓存页的 AI 流量分析读普通模式旧日志，「加白/黑名单并热更生效」提示为假（写进 NORMAL 库且 `isNormalRunning=false` 直接早退，极速引擎收不到同步） | 待处理 |
+| A-081 | 中 | 动态拦截极速侧 | 极速模式「动态拦截策略」可开可存，`express/` 全包无任何读取端（引擎只用静态 `blockResponseModeProvider`）：开关纯空转、副标题谎报生效（与 A-023 同文案不同库，本条为 EXPRESS 面） | 待处理 |
+| A-082 | 中 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 `onRuntimeDnsSettingsChanged`：运行中引擎继续按旧 volatile 快照 prune（缩短不省空间、加长照样删数据）直到下次其它刷新；同屏日志模式项却正确触发（对照即证据） | 待处理 |
 
 ---
 
@@ -1096,6 +1100,68 @@
 
 ---
 
+## A-079 极速模式「缓存设置」屏四处 Store 调用全部漏传 dataset：读写打到 NORMAL prefs，极速引擎永不感知，改动反而偷改普通模式
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/CacheSettingsScreen.kt:37`（屏收 `dataset: RuleDataset = RuleDataset.NORMAL` 参数）、`:41`（仅用它判 `isDnsMode`）——非 DNS_MODE 分支的四处调用 **`:45` `DnsCacheSettingsStore.isCacheEnabled(context)`、`:51` `getDnsCachePreset(context)`、`:61`/`:72` `setDnsCachePolicy(context, …)` 全部不传 dataset**
+  - `ui/settings/DnsCacheSettingsStore.kt:28,39,61,72` — 四方法签名 `dataset: RuleDataset = RuleDataset.NORMAL`：缺省即 `datasetPrefs` → NORMAL=`dns_vpn_prefs`（分库路由 `data/RuleDataset.kt` 家族，A-016/O-106 已证同名 key 分文件语义）
+  - 挂载证据：`main/MainModeDispatcher.kt:60` — Express 主页 `onNavigateToCacheSettings = { onNavigateToSettings(Routes.CACHE_SETTINGS, RuleDataset.EXPRESS) }`；`SettingsRouteActivity.kt:430` 把 `requestedRuleDataset` 传入屏（屏却只在 isDnsMode 三分法里用了它）
+  - 引擎读取端：`express/ExpressVpnService.kt:120` — `cachePolicyProvider = { DnsCacheSettingsStore.getDnsCachePolicy(this@ExpressVpnService, RuleDataset.EXPRESS) }`（**只认 diting_express_prefs**）；初始值由 `express/ExpressDefaultsSeeder.kt:68` `setCacheEnabled(appContext, true, RuleDataset.EXPRESS)` 种入
+- **机制/影响**（三观察面）：
+  1. 极速模式缓存屏显示/修改的是**普通模式**的策略：在极速里关掉「本地 DNS 缓存」，`diting_express_prefs` 不变 → 极速引擎照旧命中缓存（用户以为关了，日志仍见 cached=true）；
+  2. 这次修改**实际写进 `dns_vpn_prefs`** → 切回普通模式后 `DnsVpnRuntimeConfigManager.refreshRuntimeConfig`（`:90`）读到被极速界面偷改的值，普通 VPN 的缓存防护行为**无声突变**；
+  3. 保存后 `onRuntimeDnsSettingsChanged()` 触发的 ACTION_REFRESH 让极速引擎重读 EXPRESS prefs——值没变 → 「保存成功但什么都没发生」的假象闭环。
+  - 为何现场不炸：值恒为合法布尔/枚举，屏自身读写一致（都打 NORMAL），功能降级静默无报错。
+- **触发路径**：极速模式主页→功能聚合→缓存设置→关开关/换档位→回极速主页抓 DNS 日志仍显示 cached；再开普通模式 VPN 比对缓存行为与设置页显示错位。
+- **复现/验证**：debug 包 `run-as` 切极速缓存开关 → `dns_vpn_prefs.xml` 的 `dns_cache_enabled*` 变、`diting_express_prefs.xml` 不变（当前行为）；修复后应相反。修复 = `:45/51/61/72` 补传 `dataset`（isDnsMode 分支已示范正确取值）。
+- **备注**：同屏 `isDnsMode ? DnsModeManager.config` 分支写法说明作者完全清楚 dataset 语义，EXPRESS/NORMAL 二分支漏传是纯笔误。
+
+---
+
+## A-080 `AgentAnalysisSheet` 硬编码 NORMAL 库与 NORMAL 广播：极速模式 DNS 缓存页的 AI 分析读错日志库，加白/黑名单「热更生效」提示为假
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/agent/AgentAnalysisSheet.kt:95` — `val database = remember(context) { AppDatabase.getInstance(context) }`（NORMAL=diting_database，无 dataset 参数）；`:126/:137` 近期流量统计、`:141` http_request_log 全打该库
+  - 挂载错位：`ui/DnsCacheScreen.kt:88` 屏自身按 dataset 取库（`RuleDatabases.forDataset`，列表显示极速库缓存），`LogRouteActivity.kt:120` 允许 dataset=EXPRESS 进入（`express/ui/ExpressMainScreen.kt:249`→`ExpressLogDashboardScreen` 导航链）；`:150` AutoAwesome 按钮 → `AgentAnalysisSheet(target=RecentTraffic)` **无 dataset 传入**
+  - 写规则：`:312` `AllowListManager(database.allowRuleDao(), scope = RuleScope.DNS).addRule(domain)`、`:329` `BlockListManager(database.blockRuleDao(), …)` — 写进 **NORMAL** 库
+  - 热更：`:315/:332` `RuntimeDnsSettingsRefresher.syncRuleIfRunning(context, "allow"/"block", domain, RuleScope.DNS)` — **dataset 缺省 NORMAL**（`core/rule/RuntimeDnsSettingsRefresher.kt:75`），`:78-90` when 分支 NORMAL 走 `isNormalRunning`，极速运行时**为 false → 直接 return**：ACTION_EXPRESS_SYNC_RULES 永不发出
+  - UI 提示：`AgentAnalysisSheet` 成功分支文案「已加入…并生效」类（对照 DnsCacheScreen `:262-268` 长按域名加白路径）
+- **机制/影响**：极速模式运行中，在极速自己的 DNS 缓存页用 AI 分析→加白名单：规则落进普通模式库、极速引擎既读不到（读 EXPRESS 库）也收不到同步广播——**拦截照常、提示是假的**；「网络流量分析」面板展示的也是普通模式的历史日志（或空），与用户正在排查的极速流量张冠李戴。
+- **反证（为何主路径不炸）**：RequestLogScreen/AgentApiSettingsScreen 的常规入口都在普通模式，AppDatabase+NORMAL 广播恰好全对；极速日志台→DNS缓存→AI 分析这条链是唯一错位组合。
+- **触发路径**：极速模式运行且拦截某域 → 日志→DNS 缓存→右上角 AI 图标→「加入白名单」→ 成功提示 → 该域在极速下仍被拦；Express 规则管理页查无此条；`diting_express` allow 表无新增。
+- **复现/验证**：Robolectric：dataset=EXPRESS 场景调 `syncRuleIfRunning`（缺省 NORMAL）断言无 Express intent 发出（当前）；修复 = Sheet 增 `dataset` 参数，database 改 `RuleDatabases.forDataset(context, dataset)`、两处 syncRuleIfRunning 与 Manager scope 传 dataset（对照 `ui/DnsCacheScreen.kt:92` 已有正确写法可抄）。
+- **备注**：与 O-102/O-130 同型（硬编码 AppDatabase），本条升级为确认缺陷的依据是**用户可达链已验证**（LogRouteActivity dataset 传递 + ExpressMainScreen 入口）。
+
+---
+
+## A-081 极速模式「动态拦截策略」开关可开可存但 `express/` 全包零读取：功能纯空转，副标题谎报「先 NODATA 后 NXDOMAIN」
+
+- **位置**
+  - 写链完整：`express/ui/ExpressRuleControlScreen.kt:128-136` 渲染动态开关与参数 → `ui/settings/RuleSettingsAccess.kt:67-77` dataset 路由到 `AppRulesSettingsStore.setDynamicBlockResponseConfig(context, config, EXPRESS)`（diting_express_prefs，存取本身正确）
+  - 零消费证据：grep `express/` 全包（含 `ExpressDnsEngine.kt:26,103`、`ExpressVpnService.kt:118`）只读 `blockResponseModeProvider`（静态模式），无 `getDynamicBlockResponseConfig`/`DynamicBlockResponseTracker` 任何命中
+  - 对照 NORMAL 有真消费者：`normal/DnsVpnRuntimeConfigManager.kt:98/109` 把 dynamic config 传进 Go 隧道（`tunnel/dns_config.go` `dynamicResponse` 生效）
+  - UI 承诺：`normal/ui/RuleControlScreen.kt:170-177` 副标题「动态策略：先 NODATA，高频请求后 NXDOMAIN」（极速屏经 RuleSettingsAccess 共用同一组件文案）
+  - 桩件旁证：`core/rule/DynamicBlockResponsePolicy.kt:26-41` `DynamicBlockResponseTracker` 本身只 clear 不 record（Kotlin 侧从未实现计数），NORMAL 靠 Go 实现——极速/DNS 都没有 Go 隧道可借
+- **机制/影响**：极速用户开启动态策略并设阈值：prefs 落盘成功、界面显示生效中，实际拦截响应恒为所选静态 RCODE（先 NODATA/升级逻辑不存在）；重启服务亦不变（根本没有读取端）。与 A-023（DNS_MODE 的 `applyDnsConfig` 漏 JSON 键——**有读取端但没喂数据**）不同：本条 EXPRESS 连读取端都不存在，属**引擎未实现**，修复工作量也不同（A-023 补一个键，本条要在 ExpressDnsEngine 里实现整套频率升级或明确砍掉极速侧入口）。
+- **触发路径**：极速模式→规则管控→拦截响应→开动态、阈值 2 → LAN 无关，本机高频查询被拦域名 → 应答 RCODE 恒定不变。
+- **复现/验证**：静态 grep 即闭环（express 包零读取）；修复方向二选一：ExpressDnsEngine 实现 tracker+升级响应，或 Express UI 隐藏动态入口并注释「仅普通模式支持」——两案都比现状（静默空转）诚实。
+
+---
+
+## A-082 普通模式「日志保留天数」改后不触发运行时刷新：运行中引擎继续按旧 volatile 快照 prune（同屏日志模式项正确触发，对照即证据）
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/LogRetentionSettingsScreen.kt:193-203` — 天数项 onClick：`SystemSettingsStore.setLogRetentionDays(context, days, dataset)` 后**无** `onRuntimeDnsSettingsChanged()`
+  - 对照 `:168-172` — 日志模式项 onClick：`setDnsLogMode(…)` 后**有** `onRuntimeDnsSettingsChanged()`（同屏同构控件，一有一无即疏漏而非设计）
+  - 快照消费链：`normal/DnsVpnService.kt:101` — `activeLogRetentionDays = { configManager.activeLogRetentionDays }`（volatile 快照）→ `normal/DnsVpnDatabaseComponents.kt:119/125` 传给 `LogMaintenance`；该字段仅在 `refreshRuntimeConfig`（`normal/DnsVpnRuntimeConfigManager.kt:96`）重读
+  - 极速侧无此问题：`express/ExpressTunnelManager.kt:286-289` provider 每轮现读 prefs（Lambda 直通）
+- **机制/影响**：VPN 运行中把保留期 30→1 天：内存快照仍 30，旧数据继续按 30 天保留（用户想省空间不生效）；1→30：仍按 1 天删（**用户以为数据保住了，实际持续被删**——方向上更危险）。直到下一次任意触发 refresh 的设置变更或重连才纠偏；日志量大的设备「1→30 仍被删」窗口可长达数天。
+- **触发路径**：开 VPN、日志保留设 1 天、跑两天攒日志 → 改 30 天 → 等一轮 prune → 老日志仍被删。
+- **复现/验证**：单测：`setLogRetentionDays` 后断言 `configManager.activeLogRetentionDays` 已更新（当前旧值）；或按 A-082 修复：onClick 补 `onRuntimeDnsSettingsChanged()`。一行修复，优先级不高但语义明确。
+- **备注**：dataset 传参本身正确（`SystemSettingsStore.setLogRetentionDays(context, days, dataset)`），本条纯是**缺刷新调用**，与 O-103（下发失败分支不对称）是两处独立问题。
+
+---
+
 ## 观察（未达到确认缺陷标准，供后续验证）
 
 ### O-106 `StartupSelfCheck` 只消毒 NORMAL 偏好文件，Express/DNS_MODE 的同名键不覆盖
@@ -1219,6 +1285,15 @@
 
 ### O-142 `restartVpnLocked` 与 `stopVpn` 的 TUN 释放顺序不对称（无实害）
 - `normal/DnsVpnService.kt:345-349` restart 先 `stopInspectionDataPlane()`（`goInspectionTunnel=null`）再 `disconnectVpnInterface()`，使后者内 `goInspectionTunnel?.releaseTun()` 恒为 no-op；stopVpn 路径顺序相反。已核 Go `Engine.Stop()` 关闭 tunFile（`tunnel/engine.go:229-231`），无 fd 泄漏，仅路径不对称；统一顺序可消除误读风险。另：`normal/DnsVpnNetworkMonitor.kt` 的 `onNetworkChanged` 回调在 `DnsVpnService.kt:57` 构造时未传（恒 null），四个 NetworkCallback 的 IPv6 自适应检查为空转——注册/注销配对完好无泄漏，属死码（A-012 备注已覆盖其后果）。
+
+### O-144 DNS_MODE 数据清理与 NORMAL 共用 `rule-index/` 目录（入口当前不可达，latent）
+- `core/rule/RuleIndexLayout.kt:43-45` — `rootDirectory(DNS_MODE)` 与 `rootDirectory(NORMAL)` 返回同一 `File(filesDir, "rule-index")`；`data/cleanup/DataCleanupManager.kt:158/237/316/513` 的 DNS_MODE 分支删该目录 → 一旦可达即连带删掉 VPN 模式正在 mmap 的规则索引（读者持旧指针场景再叠加 A-068）。当前全仓没有以 dataset=DNS_MODE 打开清理页/触发清理动作的用户入口（`DnsSettingsScreen.kt:51-56` 只暴露 cache/rules/black/white/rewrite 五路由；`MainModeDispatcher.kt:61,111` 传 EXPRESS/null），且规则写侧对 DNS_MODE 均 `if (dataset == DNS_MODE) null` 走纯内存（`RuleOperationWorker.kt:157`、`SubscriptionAutoUpdateEngine.kt:312`——与「索引归 VPN 模式」的注释语义一致）。确认方法：给 DNS_MODE 清理入口造一个（或单测直调 `clearAllLocalData(DNS_MODE)`）后检查 NORMAL trie 文件是否消失；修复方向：DNS_MODE 分支跳过索引目录，或 RuleIndexLayout 给 DNS_MODE 独立子目录。
+
+### O-145 `WorkModeLifecycleRegistry` 默认前后台 lambda 写向无人读取的 `system_settings` 文件（窗口极窄）
+- `core/WorkModeLifecycleRegistry.kt:43-51` — `updateNormalFloatingLogAppState` 的**默认实现**写 `getSharedPreferences("system_settings")` 的 `main_activity_foreground`；而读取端 `ui/settings/SystemSettingsStore.kt:84-94`（PREFS_NAME=dns_vpn_prefs）与 `ui/floating/FloatingLogOverlayController.kt:62` 都不看这个文件。`normal/DnsVpnService.kt:461` companion init 会用正确实现覆盖该 lambda，故只有「本进程从未加载 DnsVpnService 类 + Express 悬浮日志」窗口内值落进死文件（默认 true 与典型前台态一致，几乎不可见）。属 A-048 同族的双源残留，卫生级。另登记：`ui/settings/NetworkToolsSettingsStore.kt:11` 自有 prefs `network_tools_settings` 不在 `clearAllLocalData` 任何分支清单内（工具偏好是否有意保留未见声明注释）；`ui/subscription/AddSubscriptionScreen.kt:94` 的 `takePersistableUriPermission` 失败分支是否阻断保存未追完（content:// 订阅源跨重启可能 SecurityException）。
+
+### O-146 「不再提示」建议忽略为全局 key，跨模式互相消音（意图待定）
+- `permission/ModePermissionStore.kt:46-56` — key=`recommendation_dismissed_`+permission.name，**无 mode 维度**；`permission/ModeReadinessState.kt:21-23` 按此过滤建议。banner/对话框按模式评估（`ModePermissionWarningAction.kt:219-228` 在极速对话框里点「不再提示」后，普通/DNS 模式的同类建议同样永久消失），且全仓无恢复入口。产品意图若是「该建议全局不再烦我」则只是注释缺失；若要 per-mode 需在 key 加 mode。缺声明性证据，列观察。
 
 ### O-143 本地化引擎 32 位哈希键的理论碰撞面与不可刷新渠道名（卫生）
 - `ui/localization/LocalizationEngine.kt:37-41`：`localized_text_<31bit(hash)>` 作为资源名与 app 内中文串互映射，`values/values-en` 各注册 112 条且完全对称（脚本核 `values−values-en = ∅`），当前全仓中文串间碰撞 0 组；但 String.hashCode 32-bit 截断至 31 bit，新增串存在理论碰撞（后果：一条文案显示另一条的译文），且无测试守护。resource-id/translation 双缓存在语言切换 `recreate()` 后跨 Activity 共享 stale id（后果=回落原中文，仅体验降级）。渠道名创建即固化，语言切换后系统通知设置页不刷新——A-037 修复备注已含，此处登记哈希面。
