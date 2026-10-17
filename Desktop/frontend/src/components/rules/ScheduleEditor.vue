@@ -4,6 +4,7 @@ import M3Icon from '../M3Icon.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import { ref } from 'vue';
 import { extractSwitchValue } from '../../utils/switch';
+import { createRowKey } from '../../utils/rowKey';
 
 /** 时间计划编辑组件：全局分时拦截与客户端分组计划复用同一套 UI。 */
 
@@ -22,6 +23,8 @@ const WEEKDAYS = [
 ] as const;
 
 const deleteIndex = ref(-1);
+/** 行对象的稳定渲染 key（见 utils/rowKey.ts），替代下标 key 以避免删除后 DOM 原位复用 */
+const rowKey = createRowKey<BlockingSchedule>();
 
 function toggleWeekday(row: BlockingSchedule, key: string) {
   const idx = row.weekdays.indexOf(key);
@@ -53,8 +56,8 @@ function confirmDelete() {
 
 <template>
   <div class="space-y-3">
-    <!-- 用行对象本身作 key：删除中间行后 DOM 不会原位复用，焦点与输入不会串到上移的行 -->
-    <div v-for="(row, index) in rows" :key="row" class="app-card-sub p-3 space-y-3">
+    <!-- 用绑定行对象引用的稳定 key：删除中间行后 DOM 不会原位复用，焦点与输入不会串到上移的行 -->
+    <div v-for="(row, index) in rows" :key="rowKey(row)" class="app-card-sub p-3 space-y-3">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 min-w-0 flex-1">
           <md-outlined-text-field

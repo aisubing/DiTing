@@ -2,6 +2,15 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
 
+### 2026-10-17: 行对象直接作 Vue key 中断桌面端构建（构建/前端类型类）
+- **现象**：`Desktop/build.bat` / `build_manager.py -t exe` 在 Wails 前端编译阶段失败：`ClientGroupsCard.vue(213,14)`、`ScheduleEditor.vue(57,40)` 均报 `TS2322: Type '...' is not assignable to type 'PropertyKey | undefined'`，整个桌面端打包中止。
+- **根因**：`a9a2c0d` 为修复「下标 key 删除中间行后 DOM 原位复用、焦点串行」把 `:key="index"` 改成 `:key="row"`；Vue 的 `:key` 类型为 `PropertyKey`，对象在 `vue-tsc` 严格检查下非法。该提交只做了局部验证，未跑完整桌面端构建，因此回归直到本次打包才暴露。
+- **教训**：
+  1. 需要「按对象身份稳定」的列表 key 时，用 `WeakMap<object, string>` 生成稳定字符串（`frontend/src/utils/rowKey.ts` 的 `createRowKey`），不要直接把对象塞进 `:key`，也不要退回下标 key。
+  2. 改 `.vue` 模板后必须跑 `npm run build`（含 `vue-tsc --noEmit`）；只跑 `vite build`、热重载或浏览器观看会漏掉模板类型错误。
+  3. 涉及构建/模板的「修复」提交合入前，至少跑一次目标平台完整流水线（`python maintenance/core/build_manager.py -t exe`），不要以单文件可读或 dev 模式正常作为完成标准。
+  4. 构建工具会因 CRLF 规范化让 `go.mod` 出现「哈希相同但 status 显示 M」的假变更；`git update-index --really-refresh` 可消除，禁止把此类噪音提交。
+
 ### 2026-10-17: 维护工具箱双击闪退（环境/启动类）
 - **现象**：双击 `maintenance/run_maintenance.bat` 窗口一闪而过；终端复现为 `ModuleNotFoundError: No module named 'webview'`。
 - **根因**：仓库缺少依赖清单，启动脚本直接执行 `python app.py`；Python 3.15 环境仅有 pip，缺 `pywebview`/`dnspython`/`Pillow` 时 traceback 随窗口立即关闭。

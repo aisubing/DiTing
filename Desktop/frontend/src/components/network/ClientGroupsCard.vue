@@ -15,6 +15,7 @@ import ToastBanner from '../ToastBanner.vue';
 import ConfirmModal from '../ConfirmModal.vue';
 import ScheduleEditor from '../rules/ScheduleEditor.vue';
 import { extractSwitchValue } from '../../utils/switch';
+import { createRowKey } from '../../utils/rowKey';
 import { useToast } from '../../composables/useToast';
 
 /** 分组编辑草稿：成员以多行文本编辑，保存时切回数组 */
@@ -40,6 +41,8 @@ const deleteIndex = ref(-1);
 const { toast, show: showToast, dismiss } = useToast();
 
 const enabledGroups = computed(() => drafts.value.filter((g) => g.enabled).length);
+/** 行对象的稳定渲染 key（见 utils/rowKey.ts），替代下标 key 以避免删除后 DOM 原位复用 */
+const rowKey = createRowKey<GroupDraft>();
 
 function toDraft(g: ClientGroup): GroupDraft {
   const { clients, schedules, ...rest } = g;
@@ -207,10 +210,10 @@ fetchData();
 
         <template v-if="enabled">
           <!-- 分组列表 -->
-          <!-- 用行对象本身作 key：删除中间分组后 DOM 不会原位复用，焦点与输入不会串到上移的分组 -->
+          <!-- 用绑定行对象引用的稳定 key：删除中间分组后 DOM 不会原位复用，焦点与输入不会串到上移的分组 -->
           <div
             v-for="row in drafts"
-            :key="row"
+            :key="rowKey(row)"
             class="app-card-sub p-3 space-y-3"
           >
             <div class="flex items-center justify-between gap-2">
