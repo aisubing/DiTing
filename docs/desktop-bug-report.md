@@ -84,6 +84,7 @@
 | A-080 | 高 | AI 分析串库 | `AgentAnalysisSheet` 硬编码 `AppDatabase`+NORMAL 广播：极速模式 DNS 缓存页的 AI 流量分析读普通模式旧日志，「加白/黑名单并热更生效」提示为假（写进 NORMAL 库且 `isNormalRunning=false` 直接早退，极速引擎收不到同步） | 待处理 |
 | A-081 | 中 | 动态拦截极速侧 | 极速模式「动态拦截策略」可开可存，`express/` 全包无任何读取端（引擎只用静态 `blockResponseModeProvider`）：开关纯空转、副标题谎报生效（与 A-023 同文案不同库，本条为 EXPRESS 面） | 待处理 |
 | A-082 | 中 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 `onRuntimeDnsSettingsChanged`：运行中引擎继续按旧 volatile 快照 prune（缩短不省空间、加长照样删数据）直到下次其它刷新；同屏日志模式项却正确触发（对照即证据） | 待处理 |
+| A-083 | 中 | SAF 授权泄漏 | 全仓 5 处 `takePersistableUriPermission`、0 处 `releasePersistableUriPermission`：删除背景图/订阅本地文件/全面清理后，对应用户文件的持久读授权永不撤销（系统可见「可访问的文件」只增不减） | 待处理 |
 
 ---
 
@@ -1159,6 +1160,23 @@
 - **触发路径**：开 VPN、日志保留设 1 天、跑两天攒日志 → 改 30 天 → 等一轮 prune → 老日志仍被删。
 - **复现/验证**：单测：`setLogRetentionDays` 后断言 `configManager.activeLogRetentionDays` 已更新（当前旧值）；或按 A-082 修复：onClick 补 `onRuntimeDnsSettingsChanged()`。一行修复，优先级不高但语义明确。
 - **备注**：dataset 传参本身正确（`SystemSettingsStore.setLogRetentionDays(context, days, dataset)`），本条纯是**缺刷新调用**，与 O-103（下发失败分支不对称）是两处独立问题。
+
+---
+
+## A-083 SAF 持久读授权只取不还：全仓 5 处 `takePersistableUriPermission`、0 处 `releasePersistableUriPermission`，删图/删订阅/全面清理后授权永久残留
+
+- **位置**
+  - 取授权（全部只 `runCatching` 吞异常，从不配对释放）：
+    - `Android/app/src/main/java/com/haoze/diting/ui/CustomBackgroundSettingsScreen.kt:83`（背景图选择）
+    - `ui/AddSubscriptionScreen.kt:94`（本地订阅文件）
+    - `ui/RuleManagementViewModel.kt:78,160`（本地规则/hosts 导入）
+    - `ui/SubscriptionViewModel.kt:176`（本地订阅导入）
+  - 全仓 grep `releasePersistableUriPermission` → **0 命中**
+  - 对应「移除」操作存在且不回收授权：`ui/settings/AppearanceSettingsStore.kt:154-166` `removeCustomBackgroundUri` 只改 `custom_background_uri/uris` 键；`core/rule/SubscriptionManager.kt:521` `deleteSubscription` 只删 DB 行；`data/cleanup/DataCleanupManager.kt` `clearAllLocalData` 删 prefs/DB/文件——SAF 授权按 URI 记在**系统** `content` 权限表中，与 app 自身数据无关，全部不随之撤销
+- **机制/影响**：Android 的 persistable URI 授权跨重启存续、卸载才清（部分 ROM 连卸载都残留记录）。用户「删除这张背景图」「删除这个本地订阅」「全面数据清理（恢复出厂观感）」之后，DITING 对这些 content URI 指向的用户文件（图片/文本，可能含隐私内容）的**读权限在系统层面永久保留**：系统设置→应用→权限里可见「可访问的文件」只增不减；用户以为已撤销的授权实际从未收回。属隐私语义缺陷（授权面失控），非功能故障。
+- **触发路径**：选 10 张背景图再逐一删除 → `adb shell dumpsys content` 或在 DocumentsUI 权限页看 DITING 的持久授权列表仍含全部 URI。
+- **复现/验证**：Robolectric/真机：take → removeCustomBackgroundUri → 对新上下文 `contentResolver.persistedUriPermissions` 仍含该 URI（当前）。修复 = 在 `removeCustomBackgroundUri`、`deleteSubscription`（本地文件类）、`clearCustomBackground`/`clearAllLocalData` 对应路径调用 `releasePersistableUriPermission(uri, FLAG_GRANT_READ_URI_PERMISSION)`（需 try/catch：部分 URI 本非 persistable）。
+- **备注**：take 时未校验返回 URI 是否真支持 persist（`FLAG_GRANT_PERSISTABLE`）——失败被 runCatching 吞掉后规则照常保存，跨重启读取将抛 SecurityException，属同一族的输入面问题（settings 代理存疑-4 亦指向此处，一并修复）。与 A-016（prefs 键删错文件）互斥独立：那条说 URI 列表留在 prefs，这条说授权本身在系统层泄漏，两者修复不重叠。
 
 ---
 
