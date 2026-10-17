@@ -39,6 +39,30 @@
 | A-035 | 中 | 配置导入 | 通知栏自定义文案要求运行/停止两条**都**非空才写入：只填一条（UI 明示合法）导出后导入，已填的一条也静默丢失；且「清空文案」永远无法经导入传播 | 待处理 |
 | A-036 | 低 | 通知设置入口 | `openNotificationSettings` 用 API 26+ 的 `ACTION_APP_NOTIFICATION_SETTINGS` 且 `runCatching` 吞异常：Android 7.x（Express 模式 minSdk 24 可达）点「系统通知权限」毫无反应 | 待处理 |
 | A-037 | 低 | 应用内语言 | 磁贴标签/常驻监控通知/规则渠道名用未包装 context 的 `getString`（跟随系统语言），同屏其它文案走 `localizedText`（应用内语言）：中英混杂 | 待处理 |
+| A-038 | 高 | 订阅暂存隔离 | `staging_sub_*` 不匹配 `NOT LIKE 'sub_%'`：更新窗口内暂存规则被全链路当作「手动规则」显示/计数，「清空手动」误删在途暂存 → 订阅静默缺规则且计数虚报 | 待处理 |
+| A-039 | 高 | 订阅崩溃恢复 | `recoverInterruptedImports` 只清 block/allow/rewrite 三表（漏 goUrl/cosmetic），`deleteSubscription` 从不清 staging → 半导入订阅的 URL/元素隐藏规则永久生效且成孤儿 | 待处理 |
+| A-040 | 高 | Express 生命周期 | Express start↔stop 竞态：`stop()` 关 pfd 但不取消 start 协程，`FileInputStream` 重开已关 fd、`isRunning` 复活 true、读线程一次 EBADF 即死，`start()` 仍返回 true → UI 显示运行、DNS 全黑洞 | 待处理 |
+| A-041 | 高 | 网络诊断 | `TunnelDiagnosticsResolver.tunnelResolver` 自 `58ca123` 重构后从无赋值点：经隧道 DNS 查询/Ping/Traceroute 恒报「VPN 未运行」（`DnsVpnService.resolveThroughTunnel` 成孤儿函数） | 待处理 |
+| A-042 | 中高 | DNS 测速 | `DnsLatencyTester.testDoh` 的 `provider.url.toHttpUrl()` 在 try 外，DoH 校验仅前缀匹配：畸形但过校验的 URL 测速 → 未捕获 `IllegalArgumentException` → 进程崩溃 | 待处理 |
+| A-043 | 中高 | DNS 查询工具 | `isIpLiteral` 以「含冒号即 IP 字面量」放行 `8.8.8.8:53` 类输入，`InetAddress.getByName` 无保护调用 → `UnknownHostException` 未捕获崩溃；`1.2.3.4:80` 还会被当字面量误报解析成功 | 待处理 |
+| A-044 | 中 | DNS 缓存 | `DnsResponseCache.clear()` 与 `flushPendingWrites` 锁外写库交错：drain 后、apply 前执行 clearAll → 最多 200 行「已清空」缓存复活 | 待处理 |
+| A-045 | 中 | DNS 测速 | 测速计时窗口包含 bootstrap/系统域名解析（DoT/DoH/Plain 三路径同犯）：未预热主机名的上游被冤枉慢数百 ms~秒，竞速排序据此误导选优 | 待处理 |
+| A-046 | 中 | 日志写入 | `RaceLogger/HttpRequestLogger` 批量插入无 `runCatching`（对照 DnsLogger 有）：SQLITE_FULL 等 → 服务作用域未捕获崩溃，且停机 flush 链中断丢弃后续日志与流量统计 | 待处理 |
+| A-047 | 中高 | 应用更新 | 下载进度仅按 256KB 字节节流、无时间下限：快网每 5–50ms 一次 runOnUiThread+notify IPC，通知风暴/掉帧 | 待处理 |
+| A-048 | 中高 | Express 悬浮窗 | Express 的前后台状态写入被 `isRunning` 门控（NORMAL 侧无条件写）：服务停止期间所有前后台切换丢失 → 偏好陈旧 → 悬浮球该出不出/该隐藏却盖在自身 UI 上 | 待处理 |
+| A-049 | 中 | 日志仪表盘 | 仪表盘把防火墙拦截的连接行标「旁路」：`resultLabel = if (isConn) "旁路"` 忽略 `result==BLOCKED`，红色拦截状态配「旁路」文字；同屏另两处渲染器均正确分流 | 待处理 |
+| A-050 | 中 | 悬浮窗兼容 | `TYPE_APPLICATION_OVERLAY`（API 26+）无 SDK 分支硬编码，minSdk 24：Android 7.x（只能跑 Express）addView 必抛 → 悬浮日志永久不可用+反复失败 toast | 待处理 |
+| A-051 | 中 | 规则列表 | 黑/白/重写列表 `loadPage` 无任务取消：仅搜索防抖，筛选切换/翻页/ON_RESUME 并发加载可旧覆新，列表与计数显示上一筛选数据 | 待处理 |
+| A-052 | 中 | 黑名单筛选 | 黑名单「规则订阅」页签漏掉订阅携带的 URL 拦截规则（仅域名+元素隐藏），计数同缺；白名单同位置显式注释承认此不对称 | 待处理 |
+| A-053 | 中高 | 崩溃备份 | 连崩阈值用 `>=` 且自动导出成功后不置抑制标志：第 3 次起每崩一次向系统 Download 刷一份全量备份文件并重复弹提示 | 待处理 |
+| A-054 | 中 | 崩溃计数 | `collectMinimalReport` 无保护在先、`onCrashOccurred` 在后：StackOverflowError/OOM 深栈使计数步骤永不执行——恰是最需自动备份的崩溃循环计数恒 0 | 待处理 |
+| A-055 | 中 | 原生崩溃收集 | 批量收集的水位线在整循环结束后才 apply：中途进程死亡 → 下轮整批重采、报告重复且计数虚增 | 待处理 |
+| A-056 | 低 | 统计边界 | `dayStartMillis` 用当前 UTC 偏移折算固定 86400s 网格：DST 切换日「今日」窗口偏 1 小时，且与同文件 `dayStringAt` 真历法矛盾 | 待处理 |
+| A-057 | 低 | 流量页时钟 | 「已连接 HH:MM:SS」仅组合期取值，空闲时上游 StateFlow 不发射→无重组：时长冻结在最后流量时刻 | 待处理 |
+| A-058 | 低 | 崩溃导出 | 手动导出成功标记由可取消的 `rememberCoroutineScope` 在 IO 完成后执行：写完即切页 → 已导出但阈值仍武装 | 待处理 |
+| A-059 | 低 | 密钥混淆 | `KeyObfuscator` 把 UTF-16 code unit 截成单字节：非 ASCII 密钥 seal/open 往返静默损坏/返回空串（与 A-032 不同机制） | 待处理 |
+| A-060 | 低 | 更新清理 | 下载失败 catch 无条件清全局单槽位记录：新版本失败抹掉已下载旧版本记录 → 旧 APK 成孤儿并强制全量重下 | 待处理 |
+| A-061 | 低 | 本地化 | 「当前筛选下暂无 DNS 请求日志」（Express 空态文案）无字典条目，落入前缀替换模板 → 英文界面输出半中半英拼接串 | 待处理 |
 
 ---
 
@@ -519,6 +543,322 @@
 
 ---
 
+## A-038 订阅暂存规则 `staging_sub_*` 不被任何「排除订阅」查询识别：更新窗口内暂存规则以「手动规则」身份显示、计数并可被「清空手动」误删
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/rule/SubscriptionRuleStorage.kt:35` — `stagingSourceTag(id) = "staging_sub_$id"`
+  - `core/rule/SubscriptionDownloader.kt:136-138,190-199` — 下载即向全部规则表插入 `source = staging_sub_<id>`、`enabled = subscription.enabled` 的行，整个导入窗口（大列表数十秒~分钟）存在
+  - 识别谓词全部只看前缀 `sub_`：`data/dao/BlockRuleDao.kt:201`（`enabledCustomRules NOT LIKE 'sub_%'`）、`:362-375`（`userRulesPaged/userRulesCount`）、`:426`（`deleteUserSources: DELETE … WHERE source NOT LIKE 'sub_%'`）；`AllowRuleDao.kt:187,370`；`RewriteRuleDao.kt:33`（`NOT GLOB 'sub_*'` → `RewriteRuleManager.kt:28` `manualRules`）——SQLite `_` 是单字符通配但 `sub_` 必须从串首匹配，`"staging_sub_5"` 不匹配 `LIKE 'sub_%'` → 被归为**非订阅**
+  - 消费面：`ui/BlacklistViewModel.kt:106,191,257`（「手动添加」页签与统计）、`:480-483` `clearUserBlacklist()`、`WhitelistViewModel.kt` 同型、`core/rule/BlockRuleCacheLoader.kt:199`/`AllowRuleCacheLoader.kt:197`（`enabledCustomRules` 进自定义桶 → Go 快照/回调）、`ui/BlocklistViewModel.kt:232`（`!source.startsWith("sub_")` 判「用户规则」徽章）
+  - 删除执行者：`BlockRuleDao.kt:426-431`（`deleteUserRules` → `deleteUserSources`）——在途 `staging_sub_*` 行连 `block_rule_source` 带 `block_rule` 一起删
+- **机制/影响**：任一次订阅更新（手动「更新」或后台自动更新，`SubscriptionAutoUpdateEngine` 亦走 staging）期间：
+  1. 黑名单「手动添加」页签与「手动 N 条」统计混入数千条订阅规则（正常模式下这些行还会进 custom 桶参与匹配——好在 staging 与 sub_ 内容相同，行为暂时无差，但身份/展示全错）；
+  2. 用户此刻点「清空手动屏蔽规则」→ staging 行被删 → 更新继续走 `publishStagedRules`（`SubscriptionRuleStorage.kt:65-83`，promote 剩余行）并 `ruleCount = summary.importedCount`（`SubscriptionManager.kt:475` 报告导入前计数）→ **订阅静默缺规则、计数虚报，无任何错误**；
+  3. 更新结束后 staging 清空，症状消失——用户只看到「规则莫名少了」。
+- **触发路径**：添加大订阅（数万条）→ 点「更新」→ 更新进行中打开黑名单→筛选「手动添加」→ 可见成排订阅规则；点「清空手动规则」→ 等待更新完成 → 订阅卡片仍显示旧 ruleCount，实际生效规则缺失。
+- **复现/验证**：Robolectric：`insert(source="staging_sub_1")` 后 `userRulesCount()` 应 0、现 ≥1；或导入中途调 `deleteUserRules()` 后断言 staging 行数下降。
+- **备注**：根治在 SQL：判定应排除 `sub_%` **与** `staging_sub_%`（两 DAO 家族 6+ 处谓词逐一同步），或改 staging 命名为 `sub_staging_<id>` 使既有前缀谓词天然覆盖（推荐，改动面最小）。A-030 的 `kind` 缺陷与本条独立。
+
+---
+
+## A-039 崩溃恢复只清 5 张表中的 3 张，`deleteSubscription` 又从不触 staging：半导入订阅的 URL/元素隐藏规则永久生效，订阅删除后成无主孤儿
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/rule/SubscriptionImportRecovery.kt:17-28` — `recoverInterruptedImports` 仅 `blockRuleDao/allowRuleDao/rewriteRuleDao.deleteBySource(stagingSource)`；同函数初始导入分支（`:25-28`）同样只删三表；`RuleDataSources` 明明暴露 `goUrlRuleDao()/cosmeticRuleDao()`（调用点 `SubscriptionManager.kt:45-46,53-54` 证明可得）
+  - 对照正常失败路径清理**五表**：`SubscriptionRuleStorage.kt:38-44` `removeRulesBySource`（含 `goUrlRuleDao?.deleteBySource` / `cosmeticRuleDao?.deleteBySource`）——作者知道完整集合，恢复路径漏两张
+  - staging 确实写这两表：`CategorizedRuleStreamImporter`（urlBlock/cosmetic 类别无条件收集，见 A-030）以 `source = staging_sub_<id>` 入 `go_url_rule_source`/`cosmetic_rule_source`
+  - 生效通道不看 source 前缀：`GoUrlRuleDao.enabledRules()`（`WHERE r.enabled=1 AND s.enabled=1`，任意 source）→ `GoUrlRuleManager.jsonSnapshot()` → `engine.setRequestRules`（`normal/GoTunnelRuleManager.kt:104-110`）；`CosmeticRuleDao.enabledRules()` → `CosmeticRuleManager.compileScopedCss()`（`:77`）
+  - `SubscriptionManager.kt:521-526` `deleteSubscription` → 仅 `removeSubscriptionRules(id)` = `removeRulesBySource("sub_$id")`——**从不**清 `staging_sub_$id`；删除后行消失，恢复器 `importing()` 再也看不到它，staging 行永久残留（且按 A-038 还以「手动规则」身份出现在列表）
+- **机制/影响**：更新中途进程死亡（崩溃/重启/划掉，WorkManager 停止）→ `importState=IMPORTING` 残留 + 部分行落库。下次任何规则操作触发恢复（`RuleOperationWorker.kt:192`、`SubscriptionAutoUpdateEngine.kt:69/147`）：block/allow/rewrite 被清，**goUrl/cosmetic 的 staging 行 enabled=1 存活并立即参与 HTTPS 拦截**——订阅卡片还显示旧 ruleCount/「保留原有规则」，实际半个残包在生效。若用户随后删除该订阅：恢复器无从触发（订阅行没了），staging 残留成无主孤儿——URL/隐藏规则持续生效，UI 显示为「手动」，普通用户无从按订阅清理。
+- **触发路径**：大订阅开自动更新 → 导入中途强杀应用 → 重启 → 更新另一订阅（触发恢复）→ `SELECT count(*) FROM go_url_rule_source WHERE source LIKE 'staging_sub_%'` >0 且 HTTPS 检查命中半包规则；再删除原订阅 → 残留永久。
+- **复现/验证**：单测：预置 IMPORTING 订阅 + goUrl/cosmetic staging 行，跑 `recoverInterruptedImports`，断言五表 staging 全清（当前两表不清）。修复：恢复器补齐两 DAO 删除（与非初始导入分支同样处理 sub_ 前缀），`deleteSubscription` 改调 `removeRulesBySource(stagingSourceTag)` 一并清。
+- **备注**：与 A-038 是同族（staging 生命周期治理），但触发面、代码位置、后果都独立。
+
+---
+
+## A-040 Express start↔stop 竞态：`stop()` 关闭 pfd 却不取消 start 协程，`FileInputStream` 在已关 fd 上重建、`isRunning` 复活，读线程一次 EBADF 即永久退出而 `start()` 返回 true → UI 报运行、DNS 全黑洞
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/express/ExpressVpnService.kt:99`（`establishVpnInterface` 拿 pfd）→ `:110-122`（`serviceScope.launch` 调挂起 `tunnelManager.start(service, pfd, …)`）；`:40` `serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)`——**不随协程树取消**，仅 `:214` onDestroy `serviceScope.cancel()`
+  - `:188-197` `stopVpn()`：`ExpressVpnController.onServiceStateChanged(false)` → `tunnelManager.stop()` → `stopSelf()`；**不取消 start 协程、不置任何 start 侧可见标志**
+  - `express/ExpressTunnelManager.kt:301-309`：挂起窗口（规则加载）后仅 `currentCoroutineContext().ensureActive()`——协程未被取消即放行（stopVpn 从不取消它）
+  - `:364-368`：`FileInputStream(pfd.fileDescriptor)` 包**刚被 stop() 关闭的同一 fd**（`:493-512` `stop()`：`inputStream?.close()`/`vpnInterface?.close()`——两者是同一 fd），随后 `isRunning = true` 复活 stop 刚置的 false
+  - `:395-403`：读线程 `while(isRunning){ inStream.read … catch(_:Exception){ break } }`——对 EBADF 读一次即 break，线程静默死亡，无 supervisor/重试
+  - 回到 Service `:123`：`start()` 照常**返回 true**（它不知道 stop 发生过）→ `:132-135` `updateForegroundNotification()/floatingLogOverlay.setVpnRunning(true)/VpnMonitorManager.onVpnStarted/ExpressVpnController.onServiceStateChanged(true)`——在 stopVpn 已广播 false **之后**把 UI 翻回运行
+- **两个失败窗口**（都经源码确认）：
+  1. stop 落在挂起窗口（`:301-307` 规则加载 / 首启 `defaultsSeedJob.join()`）：如上，重开已关 fd → 读线程瞬死 → 「运行中 + 零响应」。
+  2. stop 落在 `:368` 之后：stop 把 `inputStream/outputStream/vpnInterface` 置 null 并 close——`FileInputStream.close()` 关闭**底层 fd**（不依赖 finalizer；ParcelFileDescriptor 非 auto-close，fd 归 PFD 所有），所以读线程拿到异常 break、`writePacket`（`:457-464`）见 null 静默丢——同样黑洞，且 `isRunning` 停在 false 与 UI 的 true 分裂。
+- **反证检查（为何现场不炸）**：Express 是 minSdk 24/25 设备唯一模式，用户基数小；窗口需「启动后秒级内停止」——通知栏快速连点电源键/模式切换/`onRevoke` 都能给；START_STICKY 重启走 ACTION_STOP 分支？不：重启 intent 为 null（`:66` 直接 return START_STICKY），黑洞持续到用户手动停一次再开（第二次 start 的 `if (isRunning) stop()` `:265-267` 此时 isRunning=false 不再伤新 fd）。全部不矛盾。
+- **用户可见影响**：极速模式显示「已开启」（通知/主页/磁贴三处一致为运行），实际所有 DNS 查询无人应答 → 断网假象；用户反复开关才自愈。
+- **触发路径**：Express 首启（种子化+规则加载数秒）→ 立即下拉通知点「停止」→ 再开再停复现。或：规则多时每次开机自动拉起后手动秒停。
+- **复现/验证**：Instrumentation 测试：start 后 100ms 发 ACTION_STOP，断言 `ExpressVpnController.isRunning.value`（期望 false）实际 true 且 tunThread 已死。修复方向：stopVpn 取消专属 startJob（或 `serviceScope.coroutineContext` 内建 stop 检查点）；`start()` 内每次重资源前校验 `stopGeneration`；读线程 break 后回报服务置停止。
+- **备注**：`ensureActive()` 的注释（`:308`「A stop during the rule load must not be undone」）证明作者意图正是防这个，但选择了取消语义而 stop 从不取消——修复只需 stopVpn 持有并 cancel startJob，与注释意图一致。O-104（normal 模式同类微窗口）不重复。
+
+---
+
+## A-041 `TunnelDiagnosticsResolver.tunnelResolver` 从无赋值点：「通过 Go 隧道解析」的 DNS 查询/Ping/Traceroute 在 VPN 运行时也恒报「VPN 未运行」（`58ca123` 重构回归）
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/diagnostic/TunnelDiagnosticsResolver.kt:13`（`@Volatile var tunnelResolver … = null` 声明）与 `:40`（`val json = tunnelResolver?.invoke(…) ?: return null` 唯一读取）——**全仓 grep `tunnelResolver` 仅此两处，无任何赋值**
+  - `git show 58ca123`：重构把原 `DnsVpnService.resolveThroughTunnel(domain, preferIpv4)` 直调改成钩子，但没有在任何 `onCreate/init/Application` 补接线；`normal/DnsVpnService.kt:557` `resolveThroughTunnel` 现为**零调用**孤儿
+  - 消费链：`ui/NetworkToolsViewModel.kt:211`（DNS 查询 viaTunnel→resolve() null→`:217` 提示「VPN 未运行，无法通过 Go 隧道解析」）、`:301-302` `resolveTargetForProbe`→`TunnelProbeResolution.Failed("VPN 未运行…")`→ `runPing:180-184`、`runTraceRoute:277-281` 中止
+  - 开关持久化 ON 则跨重启保持（`ui/settings/NetworkToolsSettingsStore.kt:25-31`，默认 false——用户手动开启后受害）
+- **机制/影响**：钩子恒 null → `resolve()` 恒 null → 三个诊断工具的「经隧道」路径 100% 失败，文案还指向错误原因（VPN 明明在跑）。非隧道路径不受影响。用户结论只能是「这功能坏了」。
+- **触发路径**：网络工具→打开「通过 Go 隧道解析」→ 启动 VPN → 域名目标 Ping/追踪/DNS 查询 → 恒「VPN 未运行」。
+- **复现/验证**：静态 grep 即闭环；修复 = 在 `DnsVpnService` 启动路径赋值 `tunnelResolver = { d, v -> resolveThroughTunnel(d, v) }` 并停机时置 null，或干脆恢复直调。
+- **备注**：属「重构引入的死功能」——`58ca123` 提交本意是解耦，缺了半个接线。同时 `Result.errorLabel()` 的 `"tunnel resolver not active"` 分支（`:32-35`）也从不可达，可一并复核语义。
+
+---
+
+## A-042 `DnsLatencyTester.testDoh` 的 `toHttpUrl()` 在 try 之外：过校验的畸形 DoH URL 测速 → 未捕获异常直接杀进程
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/dns/DnsLatencyTester.kt:118` — `val httpUrl = provider.url.toHttpUrl()`（okhttp 对非完整 http(s) URL 抛 `IllegalArgumentException`），而 `return try {` 在 `:149`——**构造期抛错落在 catch(`:169`) 之外**
+  - 校验放行了非完整 URL：`core/dns/DnsProvider.kt:339-342` `isValidDohUrl = trimmed.startsWith("https://")` 前缀匹配；`https://dns alidns.com/dns-query`（空格）、`https:///x`（空 host）、`https://a.dns:99999/`（非法端口）均过校验并被持久化（调用点 `ui/ProviderManagementViewModel.kt:165`、`ui/ProviderManagementScreen.kt:182,204`、导入路径 `ui/transfer/ConfigTransferParser.kt:46` 同）
+  - 逃逸路径：`test():61`/`testAverage():83`（`(1..n).map{ test(…) }` 无 runCatching）→ `ui/RaceModeSettingsViewModel.kt:276-290` `viewModelScope.launch(Dispatchers.IO){ async … deferreds.map{await()} }` 无 try——`async` 的失败经 await 抛出，`Dispatchers.IO` 协程未捕获异常 → 默认 handler → 进程崩溃
+- **机制/影响**：用户输入带空格的 DoH 地址（复制粘贴常见）保存成功 → 测速/竞速页点测速 → **App 直接闪退**；同文件其余错误路径全部刻意降级为 `Result(success=false)`（`:169-178`），唯 `:118` 破功。
+- **触发路径**：供应商管理→添加 DoH→`https://a b/dns-query`→保存→测速设置选它→开始测速。
+- **复现/验证**：JVM 单测：`runCatching { testDoh(provider with url="https://a b/c", …) }` 现抛 `IllegalArgumentException`，期望返回失败 Result。修复：`toHttpUrlOrNull()` + 失败 Result，或并入 try。
+- **备注**：`testDot/testPlainDns` 不用 toHttpUrl 不受影响；但同样的前缀校验还喂给别处（如 bootstrap），修复时顺带审。
+
+---
+
+## A-043 `isIpLiteral` 把任何含冒号串当 IP 字面量放行，`InetAddress.getByName("8.8.8.8:53")` 无保护调用 → 崩溃；`1.2.3.4:80` 更被当字面量答案误报解析成功
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/dns/DnsProvider.kt:373-381` — `if (trimmed.contains(":")) return true`（IPv6 判定被写成「有冒号就是 IP」，`::1`、`fe80::`、`http://`、`8.8.8.8:53` 一律 true）
+  - 崩溃消费点：`ui/NetworkToolsViewModel.kt:239-246` `DnsServerMode.CUSTOM` 分支——`!isIpLiteral` 即拒；通过后 `listOf(InetAddress.getByName(customServer))` **裸调用**（`viewModelScope.launch(Dispatchers.IO)` `:204`，无 runCatching；同函数另一分支 `:231` 反而 `runCatching` 包了 getByName——不对称即意图证据）
+  - 误报消费点：`core/dns/DnsLookupTool.kt:58-72` 查询名先过 `isIpLiteral` → `1.2.3.4:80` 被直接当答案返回 `success=true, value="1.2.3.4:80"`
+- **机制/影响**：用户在 DNS 查询工具自定义服务器粘 `8.8.8.8:53`（带端口是极常见直觉）→ `UnknownHostException` 未捕获 → 进程崩溃；查 `1.2.3.4:80` 显示解析成功且值离谱。`18319ed` 修的是 Go 侧 provider 地址端口拒绝，Kotlin 侧此路没动。
+- **触发路径**：网络工具→DNS 查询→服务器选「自定义」→输入 `8.8.8.8:53`→点查询。
+- **复现/验证**：JVM：`isIpLiteral("8.8.8.8:53")` 现 true（期望 false）；`InetAddress.getByName("8.8.8.8:53")` 抛 `UnknownHostException`。修复：字面量判定改真解析（`android-text.util`/`InetAddress.getAllByName` 对纯字面量不触网可 try 包），或至少显式拒绝带端口形态并给提示。
+- **备注**：修一处谓词全链受益（`isValidDnsHost/isValidDotHost` 也用它）。
+
+---
+
+## A-044 `DnsResponseCache.clear()` 与 30 秒批量 flush 交错：drain 后、DAO 写库前执行 clearAll → 「已清空」的缓存行复活并继续显示为缓存
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/cache/DnsResponseCache.kt:118-122` — `clear() = clearMemory(); clearPendingWrites(); dao.clearAll()`（只能撤**还在队列里**的）
+  - `:300-308` — `flushPendingWrites`：`pendingWriteMutex.withLock{ 快照并清空两个 map }` 后**在锁外** `dao.applyPendingWrites(writes, hits)`；`:291-296` `markPendingLocked` 排 30s `WRITE_FLUSH_DELAY_MS` 尾随 flush
+  - `applyPendingWrites` 是 `insertIfAbsent/updateMetadata` 语义（恢复重放分支 `:308-315` 亦证明写入会复活行）
+  - 消费点：`data/cleanup/DataCleanupManager.kt:93`（「清空 DNS 缓存」按钮）→ `DnsCacheController.clearAll`
+- **机制/影响**：flush 协程已 drain（队列空）正跑 Room 事务时，用户点清空：`clearPendingWrites()` 无事可清 → `dao.clearAll()` 先完成或后完成均无排序保证 → 并发 `applyPendingWrites` 把最多 `WRITE_BATCH_SIZE=200` 行重新写回 → 缓存页刷新后条目复活，且这些行仍带旧 expiresAt 继续算「有效缓存」。`18319ed` 修的是队列未 drain 场景，本 in-flight 窗口未覆盖。
+- **触发路径**：批量解析制造几十条缓存 → 等 30s flush 定时器触发瞬间（大 WAL 写耗时）点「清空 DNS 缓存」→ 条目仍在。
+- **复现/验证**：现有 `FakeDnsCacheDao` 测试基建：让 `applyPendingWrites` drain 后挂起等信号 → 并发调 `clear()` → 断言表非空（当前实现）；修复 = `clear()` 与 flush 共享一把写锁（仿 `DnsLogger.writeMutex` `:172-183` 的正确形状）。
+
+---
+
+## A-045 DNS 测速把 bootstrap/系统域名解析计时进窗口（DoT/DoH/Plain 三路径同犯）：未预热上游被系统性冤枉「慢数百 ms~秒」，竞速选优被误导
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/dns/DnsLatencyTester.kt:186-193`（testDot：`start` 后才 `bootstrapSelector.resolveHost(provider.host)`）、`:148-155`（testDoh 同型）、`:220-230`（testPlainDns：`bootstrapSelector?.resolveHost ?: InetAddress.getAllByName(provider.host)` 在 start 后）
+  - `core/dns/BootstrapSelector.kt:161-163` — 每次尝试 3s 超时×多回退、主机名缓存 60s：attempt1 背解析成本、attempt2/3 不背 → `testAverage`（`DnsLatencyTester.kt:82-102`）平均**基线不一致**的样本
+  - 消费：`ui/RaceModeSettingsViewModel.kt:291-296` 按 elapsedMs 排序展示并指导用户选竞速集合；类文档（`DnsLatencyTester.kt:22-29`）承诺测的是「发送单条 A 查询的往返时间」
+- **机制/影响**：域名形态上游（`doh.dns.sb`、`dns.alidns.com`）首测必然包含一次公网域名解析（数十 ms ~ 3s），与 IP 直连上游同屏比较时恒被排到「慢」端——用户按测速结果换掉实际更快的上游；`resolveHost` 失败还把 bootstrap 错误记成该上游的错误消息。
+- **触发路径**：竞速设置里同时选 `1.2.3.4`（IP 上游）与 `dns.alidns.com`（域名 DoH）测速，清冷启动后第一组对比。
+- **复现/验证**：单测注入 sleep 1s 的 fake `BootstrapSelector` 对秒回 DoT：`elapsedMs ≥ 1000`（当前实现）；修复 = 解析提到 `start` 之前（预热语义）并在失败时单列原因。
+
+---
+
+## A-046 `RaceLogger/HttpRequestLogger` 批量 DAO 插入无 runCatching（同族 DnsLogger 刻意包了）：磁盘满即未捕获崩溃，停机 flush 链还把后续日志/流量统计一起带崩
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/core/log/RaceLogger.kt:132-138` — `flushLocked()` 裸 `dao.insertAll(batch)`（对比 `core/log/DnsLogger.kt:116-131` 两处 `runCatching{ insertAll }`——同需求不同防护，意图证据）
+  - `core/log/HttpRequestLogger.kt:100` 同型裸插入
+  - 崩溃面：`normal/GoInspectionTunnel.kt:286-292` `scope.launch{ raceLogger.log(...) }` 跑在**服务作用域**（`normal/DnsVpnService.kt:47` `SupervisorJob+Dispatchers.IO`，无 handler）→ Room 抛（`SQLITE_FULL`/DB 损坏）→ 未捕获 → 进程杀
+  - 停机链：`normal/DnsVpnDatabaseComponents.kt:147-163` `flushLoggers` 顺序 `raceLogger.flush()`（`:158`）→ `bootstrapLogger.flush()`（`:161`）→ `TrafficStatsManager.flush()`（`:163`），第一步抛则后两步不执行；调用点 `stopVpn()/onDestroy`（`DnsVpnService.kt:380,407`）——**每次停止丢一批竞速日志+bootstrap 日志+本会话流量统计**
+- **机制/影响**：数据分区写满（DNS 日志本身能写满它——讽刺但真实）后：VPN 运行中随机崩；每次停止静默丢日志与流量数据。用户表现：流量排行莫名缩水、应用频繁重启。
+- **触发路径**：填满 /data（或 `adb shell` 把 DB 设只读模拟 SQLITE_CORRUPT）→ 正常跑竞速解析 → 崩；或停止 VPN → logcat 见 flush 异常、重启后流量页缺口。
+- **复现/验证**：单测：fake DAO 抛 `SQLiteFullException`，断言 `flushLoggers` 后 bootstrapLogger/TrafficStats 仍被 flush（当前不执行）。修复：两处 insertAll 包 runCatching（对齐 DnsLogger）+ flushLoggers 各步独立 runCatching。
+
+---
+
+## A-047 应用更新下载进度仅按 256KB 字节节流、无时间下限：快网下每 5–50ms 一次主线程回调 + `NotificationManager.notify`，通知风暴/掉帧
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/update/AppUpdateManager.kt:89-95` — `reportProgress` 判据 `downloadedBytes - lastReportedBytes >= PROGRESS_UPDATE_BYTES`（`:169` = 256KB），无「距上次上报 ≥N ms」维度；读循环每 chunk 调（`:97-111`）
+  - `update/AppUpdateHost.kt:82-98` — 回调体 `activity.runOnUiThread { state = state.copy(…) ; notifier.showProgress(…) }` → `update/AppUpdateNotifier.kt:28` `notificationManager.notify` 每次一条系统 IPC + Compose 全对象重组
+  - 50MB/s ≈ 每 5ms 一次（~195 次/s）；10MB/s ≈ 40 次/s；且 `SettingsRouteActivity` 路径（`:153`）触发下载后 `onStop` 不取消，回前台照打
+- **机制/影响**：下载期间主线程被高频 binder call/重组挤占 → 界面掉帧、发热；OEM 通知限流导致进度条跳变/通知被静默丢弃的次生怪象。属性能/稳定性缺陷（用户可感知）。
+- **触发路径**：Wi-Fi 快网，设置→检查更新→下载。
+- **复现/验证**：logcat 统计下载窗口 `NotificationManager.notify` 频次（当前 ≈ 速度/256KB；修复后 ≈ 1/s）。修复 = 加 `&& now - lastReportedAt >= 1000`（或双条件取严）。
+- **备注**：与 A-013（清理目录错位）同文件域但不同缺陷。
+
+---
+
+## A-048 Express 的前后台状态只在服务运行时下发：服务停止期所有 Activity onStart/onStop 被丢弃，悬浮球偏好陈旧 → 「该显示不显示」或「盖在自己 UI 上」
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/express/ExpressVpnController.kt:150-155` — `updateFloatingLogAppState`：`if (isRunning(context)) { startService(…) }` ——**不运行即整条丢弃**
+  - 唯一写偏好点在服务侧：`express/ExpressVpnService.kt:74-77`（ACTION_FLOATING_LOG_APP_STATE → `setMainActivityForeground`）；全仓 grep `setMainActivityForeground` 无 Activity 侧直写（`normal/DnsVpnService.kt:525-533`、`core/WorkModeLifecycleRegistry.kt:43-52`、本条服务分支）
+  - 对照 NORMAL 孪生路径**先无条件写偏好再判运行**：`normal/DnsVpnService.kt:525-526`——不对称即 bug 证据
+  - 陈旧偏好消费者：`ui/floating/FloatingLogOverlayController.kt:62` — `appInForeground` 在**构造时**读 `isMainActivityForeground`（默认 true，`ui/settings/SystemSettingsStore.kt:84-87`）；`:141` `if (!vpnRunning || appInForeground || …) removeWindow()`
+  - 分发方：`MainActivity.kt:214/232`、`LogRouteActivity.kt:68/77`、`SettingsRouteActivity.kt:183/196`（ON_START/ON_STOP）；服务构造点 `ExpressVpnService.kt:54`
+  - 产品承诺：`ui/LogRetentionSettingsScreen.kt:183-188`「VPN 运行且应用在后台时显示悬浮球，回到应用前台时悬浮窗会自动隐藏」
+- **机制/影响**（两症状）：
+  1. 用户离开应用（onStop→false **被丢**，偏好停在上次运行期的 true 或默认 true）→ 从磁贴启 Express（无 Activity 经历 onStart）→ 服务构造 controller `appInForeground=true` → 永隐藏，悬浮球不出现直至进出一次应用；
+  2. 反相：最后一次运行中后台过（偏好=false），停止 Express，期间进出应用（true 被丢，偏好仍 false）→ 应用内启 Express → controller 以 `appInForeground=false` 构造 → 悬浮球直接叠在当前页面之上，违背承诺文案。
+- **触发路径**：上述两步序。
+- **复现/验证**：静态：grep 写偏好仅服务分支 + Express 分发门控；真机按序两步。修复 = `updateFloatingLogAppState` 对齐 NORMAL：先 `setMainActivityForeground`，再按运行态决定是否 startService；controller 构造读偏好处亦可改实时查 Activity 生命周期更稳。
+
+---
+
+## A-049 日志仪表盘把「被防火墙拦截的连接」标成「旁路」：`resultLabel = if (isConn) "旁路"` 完全忽略 `result==BLOCKED`，红色拦截配「旁路」字样
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/ModernLogDashboardViewModel.kt:293-296`（isConn：`queryType==0 || "TCP "/"UDP " 前缀 || blocked_by=connection`）与 `:322` — `resultLabel = if (isConn) "旁路" else resultLabel(log.result)`（`status` 字段 `:318-321` 正确算出 blocked，**label 不看它**）
+  - 生产者：Go `tunnel/engine_connection_log.go:102-105` 对拦截连接 `notifyLog("TCP ip:port", blocked=true, queryType=0, …)` → `normal/GoTunnelLogProcessor.kt:33`（t=0）`:43-47`（blocked→LogResult.BLOCKED）入库
+  - 渲染：`ui/dashboard/ModernLogDashboardComponents.kt:349-365` — `tagColor` 按 status 取红色 error，`tag = localizedText(item.resultLabel)` → **红点+「旁路」**
+  - 两处正确孪生证明意图：`ui/floating/FloatingLogMapper.kt:42-43`（`拦截/直连` 分流）、`ui/RequestLogItem.kt:47-51`（同）；仪表盘自身 SQL 也把 firewall 行排除出旁路桶：`data/repository/RequestLogRepository.kt:69`（`NOT LIKE '%blocked_by=firewall:%'`）
+- **机制/影响**：禁止联网/加密 DNS 拦截触发一条连接日志后，主仪表盘（NORMAL/EXPRESS 共用本 VM：`express/ui/ExpressLogDashboardScreen.kt:57-60`）显示成「红色·旁路」——向用户**断言**该连接被放行，实际被拦死；同一条日志在请求日志页显示「TCP拦截」，两页互相矛盾。安全语义误导。
+- **触发路径**：开禁止联网含某应用 → 该应用发起 TCP → 看主页仪表盘最近请求。
+- **复现/验证**：单测 mapper：输入 blocked+queryType=0，期望 label 走 blocked 文案（当前恒「旁路」）。修复 = `resultLabel = if (isConn && log.result != BLOCKED) "旁路" else resultLabel(log.result)` 或按 FloatingLogMapper 的 `proto+拦截/直连` 拆法对齐。
+
+---
+
+## A-050 悬浮窗 `TYPE_APPLICATION_OVERLAY`（API 26+）硬编码且无 SDK 回退：Android 7.x（Express 唯一模式设备）addView 必抛 → 悬浮日志永久失效+失败 toast 循环
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/floating/FloatingLogOverlayController.kt:297-301` — `WindowManager.LayoutParams(..., TYPE_APPLICATION_OVERLAY, ...)` 常量直用；`:172-178` `runCatching{ windowManager.addView(…) }.onFailure { 置 null + toast「悬浮窗日志启动失败」 }`
+  - 全仓 grep `TYPE_APPLICATION_OVERLAY` 仅此一处，`TYPE_PHONE` 等旧常量零出现（无回退分支）；`app/build.gradle.kts:79` `minSdk = 24`
+  - 可达面：Express 服务构造 controller（`ExpressVpnService.kt:54`）；开关 UI 在共用设置页 `ui/LogRetentionSettingsScreen.kt:183-188`（经 `SettingsRouteActivity.kt:431` LOG_RETENTION_SETTINGS 路由，Express 可达——`MainActivity.kt:221` `updateFloatingLogAppState` 亦按模式分发）
+  - API 24/25 上 `addView` 对未知 type 抛（SecurityException/IllegalArgumentException 族），runCatching 吞后功能静默死
+- **机制/影响**：Android 7 设备开启悬浮日志：每次同步可见性（亮屏/VPN 切换）重试→再抛→再 toast，**永久不可用且骚扰性弹窗循环**；而极速模式宣传（`AppWorkMode.kt:41`「支持 Android 7+」）包含悬浮能力。与 A-036/A-032 同族（Express 把 API 26+ 假设带进 minSdk 24 面）。
+- **触发路径**：7.x 设备→悬浮窗权限授予→开悬浮日志→启 Express→退后台。
+- **复现/验证**：API 24 模拟器即现。修复 = `SDK_INT >= O ? TYPE_APPLICATION_OVERLAY : @Suppress("DEPRECATION") TYPE_PHONE`。
+- **备注**：建议与 A-032/036/43 合并做一轮「Express 可达面 NewApi 全扫」，此族已四条。
+
+---
+
+## A-051 黑/白/重写列表 `loadPage` 无任务句柄与取消：筛选/翻页/ON_RESUME 并发加载竞写，旧任务完成在后把旧筛选的列表/计数刷进现视图
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/BlacklistViewModel.kt:124-126`（`fun loadPage(page) { viewModelScope.launch(IO) { …` **无 job 字段**）、`:241-246`（尾部 `withContext(Main){ _items/_currentPage/_totalPages/_totalCount = … }` 盲写）；`WhitelistViewModel.kt:149 + :325-330`、`RewriteListViewModel.kt:155 + :247-252` 同型
+  - 仅搜索有防抖：`BlacklistViewModel.kt:88`/`WhitelistViewModel.kt:103` `searchJob?.cancel()`；`setFilter`（`:78-82`/`:93-97`/`RewriteListViewModel.kt:106-110`）直接再 launch 一个；翻页 `BlacklistScreen.kt:258` `onLoadPage = viewModel::loadPage`；`ON_RESUME → refreshAll`（`BlacklistScreen.kt:113-117`）
+  - 各源延迟不等（域名单查 vs URL+cosmetic+订阅计数多查 vs 大表分页），完成序不保
+- **机制/影响**：快速切筛选（全部→手动）、后台回前台撞上在飞 refreshAll、订阅更新完成触发的刷新与手动翻页并发——先发的旧任务后完成，列表行与「共 N 条」显示的是**上一个筛选/页**的数据，而筛选 chip/页码状态显示新值；点进去编辑的行不属于当前筛选。无 job 句柄所以无法取消，只有搜索路径承认了这个需求（证据）。
+- **触发路径**：数万条规则库 + 慢盘：连点两个筛选 chip。
+- **复现/验证**：单测：fake DAO 让第一页查询延迟 1s、第二查询即回，并发 loadPage 后断言 `_items` 属于最后一次筛选（当前可旧覆新）。修复 = 学 searchJob 各 VM 存 `loadJob` 先 cancel 再启，或写回前校验快照代数。
+
+---
+
+## A-052 黑名单「规则订阅」页签丢失订阅内 URL 拦截规则且计数同缺：白名单同位置注释自认此不对称
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/BlacklistViewModel.kt:133-136` — URL 取数白名单仅 `ALL/USER_ADDED/URL`，`SUBSCRIPTION → emptyList()`
+  - 同函数 cosmetic 取数 `:154-159` **含** SUBSCRIPTION、域名计数 `:193-194` 走 `subscriptionRulesCount()`；`:180` `SUBSCRIPTION → cosmeticItems`（urlItems 缺席）；`:199` `total = nonDomainCount + domainCount` 同缺 URL 数
+  - 订阅确实产生 URL 规则：`core/rule/SubscriptionManager.kt:45/53` 把 `goUrlRuleDao()` 接进 importer/storage，`core/rule/SubscriptionImportModels.kt:13/24` 统计 `urlBlockCount`，A-030 已证六类全收
+  - 有意不对称的反证：`ui/WhitelistViewModel.kt:169-178` SUBSCRIPTION 页签**取** url entities，`:256-259` 注释原文「unlike the blacklist (whose URL list is empty for that filter) … belong in this tab」——白名单作者知晓并处理，黑名单侧没做
+- **机制/影响**：含 `http(s)://` 拦截行的订阅（Anti-AD 类常见）更新后：规则**实际生效**（Go 快照吃 enabledRules 全量），但黑名单页签「规则订阅」看不到这些行、总数也少——用户以为订阅没带 URL 规则，去重复添加/换订阅。展示/计数与实际执行面不一致。
+- **触发路径**：导入含 URL 行的订阅 → 黑名单 → 规则订阅 chip → 搜索该 URL 串：查无（对比「全部」页签可见）。
+- **复现/验证**：Robolectric：插 `source=sub_1` 的 goUrl BLOCK 行，`setFilter(SUBSCRIPTION)` 后断言 items 含之（当前不含）。修复 = `:133-136` 分支加 SUBSCRIPTION 并按 `sub_*` 过滤 urlItems，计数同步。
+
+---
+
+## A-053 连崩自动备份用 `>=` 且成功后不置任何抑制标志：第 3 次起每崩一次就往系统下载目录刷一份全量备份、重复弹提示
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt:118` — `if (newCount >= CONSECUTIVE_THRESHOLD && !hasExported)`，`newCount` 24h 窗口内单调涨（`:103-107`），`hasExported` 仅 `markManuallyExported:141-147` 或 `clearCrashLogs:354-361` 置位——**自动导出成功分支（`:124-129`）只写 `KEY_PENDING_AUTO_EXPORT_NOTICE`，从不写抑制位**
+  - 每次满足即 `generateExportContent`（全量读 ≤8 份报告）→ `exportToDownloads` 新文件名（`:121-122` 秒级时戳，互不覆盖）→ 下次启动 `consumePendingAutoExportNotice` 再弹 toast（`main/MainStartupCoordinator.kt` 消费点）
+- **机制/影响**：崩溃循环（如 A-032 的 API24 Base64 必崩路径）第 3、4、5…次各写一份几百 KB 重复大文件到用户下载目录并反复提示；「自动备份」语义应为一次性，现在是每崩必刷。
+- **触发路径**：24h 内让 app 崩 4 次（不手动导出）→ 下载目录 2 份 `DITING-crash-auto-backup-*.txt`。
+- **复现/验证**：Robolectric：预置 count=2 连调两次 `onCrashOccurred`，断言 `resolver.insert` 第二次不应发生（现发生）。修复 = 成功后记 `last_auto_export_count`，条件加 `newCount > lastAuto…` 或直接把阈值判定改「恰好跨过且未再导出」。
+- **备注**：与 A-054/055 同文件域，三者共同决定备份触发时机的正确性，修复建议一并做。
+
+---
+
+## A-054 `CrashHandler` 里 `collectMinimalReport` 裸调用在前、`onCrashOccurred` 在后：恰是 StackOverflowError/OOM 时计数步骤永不执行——最该触发自动备份的崩溃循环计数恒 0
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/crash/CrashHandler.kt:30-46` — `CrashBreadcrumbs.record` 与 `:40` `collectMinimalReport(…)` **不在任何 runCatching 内**（对照 `:55-63` collectReport 有）；`:78` `CrashLogManager.onCrashOccurred(appContext)` 位于同一 try 尾部；`:79` `catch (e: Throwable)` 吞一切后 `finally` 交还系统 handler
+  - `crash/CrashCollector.kt:320` 附近 `collectMinimalReport` 含 `throwable.stackTraceToString()`——SOE 栈帧数万条时构造巨型字符串可再抛 OOME/自身失败
+- **机制/影响**：SOE/OOM 类崩溃（天然连环、最需要 3 连崩自动备份把证据带出下载目录）：minimal 段一抛即跳到 `:79`，`onCrashOccurred` 不执行 → `consecutive_crash_count` 恒 0 → A-053 的阈值永不触发，用户永远拿不到自动备份；崩溃文件本身也可能没落（record 先抛则无 minimal）。普通异常栈浅不炸，故长期无人报——正是「为何现场没炸」反证成立的解释。
+- **触发路径**：写递归溢出函数进启动路径，循环 3 次 → `diting_crash_state` 的 count 仍 0。
+- **复现/验证**：单测：mock `collectMinimalReport` 抛 OOME，断言 `onCrashOccurred` 被调用（当前不会）。修复 = 计数挪进 `finally`（或最早执行）。
+
+---
+
+## A-055 原生崩溃批量收集的水位线在整循环结束后才 `apply()`：收集途中进程再死 → 下次冷启动整批重采，重复报告+连崩计数虚增
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt:313-345` — 循环 `:320-341` 逐条 `saveCrashReport`（含 fsync）+ `onCrashOccurred`（binder+fsync，窗口大），`:343-344` 才 `putLong(KEY_LAST_RECORDED_NATIVE_EXIT_TIME, maxTimestamp).apply()`（异步落盘，进程立死可丢）
+  - 过滤条件 `:314` `timestamp > lastRecordedTime`；调用点 `DitingApp.kt:45-47` 裸线程冷启动并发跑（与主线程 Java 崩溃可交错——A-053 计数竞争面另列观察）
+- **机制/影响**：收集 10 条历史原生崩溃期间再崩/被划掉 → 水位线未动 → 重启后已入库的几条**再收一遍**：重复 crash_*.log（还触发 O-105 覆盖窗口）+ 每次重复都调 `onCrashOccurred` → count 虚增提前/反复触发自动备份风暴（A-053 放大）。
+- **触发路径**：预置 ≥2 条 REASON_CRASH_NATIVE → 启动后立即制造 Java 崩溃 → 重启看 count 与文件数翻倍。
+- **复现/验证**：单测：mock ActivityManager 两条 exitInfo，第二条处理前抛/退出，断言水位线已含第一条（当前为旧值）。修复 = 每条 `commit()` 增量水位线。
+
+---
+
+## A-056 `dayStartMillis` 用当前 UTC 偏移折算固定 86400s 网格：DST 切换日「今日」统计起点偏 1 小时，与同文件 `dayStringAt` 真历法互相矛盾
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/util/DateTimeUtils.kt:10-14` — `(now + zoneOffset)/86_400_000*86_400_000 - zoneOffset`，`zoneOffset = TimeZone.getDefault().getOffset(now)`（假设本地日与 UTC 日网格对齐且全天恒定）
+  - 消费：`statsRangeStartMillis(TODAY)`（`:17-21`）→ `ui/ModernLogDashboardViewModel.kt:168,183` dailyStats「今日」窗口；对照 `:24-25` `dayStringAt` 用 `SimpleDateFormat` 真历法——同文件两把尺
+- **机制/影响**：DST 起始日（春季拨快）本地零点真实偏移 ≠ 当前偏移，TODAY 起点偏 ±3600s：切换日凌晨~次日，仪表盘「今日」少/多算一小时窗口内的 DNS/HTTP 日志，且按日聚合字符串分组与「今日」数对不上。Asia/Shanghai 无 DST——主用户群恒不可见，这就是不炸原因；验证须换 `TZ=America/New_York`。
+- **触发路径**：纽约时区设备 3 月第二个周日 00:30 本地看「今日」统计与逐日表对账。
+- **复现/验证**：JVM 单测：`TimeZone.setDefault(NY)` + 固定 now=切换日 01:30 EDT，断言 `dayStartMillis()` == 真本地零点（当前差 1h）。修复 = `Calendar.set(Y,M,D,0,0,0)` 或 `atStartOfDay` 语义。
+- **备注**：文件小、函数纯，修复几乎零成本。
+
+---
+
+## A-057 流量页「已连接 HH:MM:SS」只在组合期取 `currentTimeMillis`，空闲无流量时不重组 → 时钟冻结在最后流量时刻
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/traffic/TrafficGaugeCard.kt:144-146` — 组合中直接 `System.currentTimeMillis() - sessionStartTimeMs`，无 ticker/produceState
+  - 上游节流：`core/traffic/TrafficStatsManager.kt:339-351` 「无变化快路径」比较字段不含 `updatedAt`（`:364` 才写）→ 空闲会话速度 0/字节不变 → StateFlow 不发射 → 无重组
+  - 页面采集：`normal/ui/AppTrafficStatsScreen.kt:74` 仅 `collectAsStateWithLifecycle`；grep 证实该屏无秒级 ticker
+- **机制/影响**：开流量页静置 2 分钟，「已连接」秒针纹丝不动；随便来点后台流量它跳变追平——用户误判页面卡死或会话异常。纯显示新鲜度问题，数据无害。
+- **复现/验证**：Compose UI 测试：冻结 StateFlow 发射 + 推进时钟，断言文本变化（当前不变）。修复 = `LaunchedEffect { while(true){ delay(1000); now.value=… } }`。
+
+---
+
+## A-058 崩溃日志「已手动导出」标记由可取消的 `rememberCoroutineScope` 在 IO 完成后才写：写完文件即切页 → 文件已导出但阈值仍武装（A-053 的抑制器漏写窗口）
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/ui/LogRetentionSettingsScreen.kt:74-94` — CreateDocument 回调 `scope.launch { runCatching{ withContext(IO){…write…} } ; if (success) markManuallyExported(context) }`；`scope = rememberCoroutineScope()`（`:72`）随组合销毁取消
+  - `crash/CrashLogManager.kt:141-147`（markManuallyExported 语义：置位+清零）、`:118`（消费方）
+- **机制/影响**：用户在导出 SAF 写盘完成的瞬间返回/旋转/杀页 → launch 被取消，`markManuallyExported` 未执行 → prefs 无手动导出记录、计数不清 → 下次第 3 连崩自动备份照常刷文件+弹提示（用户「明明导出过」）。窗口窄但机制确定；与 A-053 叠加时表现为「关不掉的自动备份」。
+- **复现/验证**：单测：模拟 `result.isSuccess` 后协程取消路径，断言 prefs `has_manually_exported`（当前 false）。修复 = 标记挪进 `withContext(IO)` 成功分支同一事务点，或用 `NonCancellable`。
+
+---
+
+## A-059 `KeyObfuscator` 把 UTF-16 code unit 截成单字节：非 ASCII 密钥 seal/open 往返静默损坏，open 失败又以空串吞掉
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/util/KeyObfuscator.kt:23-27` — `plain[i].code.toByte()`：'中'(U+4E2D)→0x2D('-')，高位信息丢失；非 ASCII 序列产出的字节多半非法 UTF-8，`:36` `decodeToString()` 以 U+FFFD 静默替换
+  - `:37-39` `catch (_: Exception) return ""`：base64 解码失败与真空密钥不可区分；调用方 `ui/settings/AgentApiSettingsStore.kt:331-337` revealApiKey/sealApiKey 直接透传
+  - 与 A-032（`java.util.Base64` API-26 崩溃）不同机制：这条是数据完整性，全 API 等级都犯
+- **机制/影响**：用户在 AI 供应商里贴含非 ASCII 的密钥/服务名衍生键（少见但合法——密钥字段无字符集提示）→ 保存成功、回显变味、AI 请求 401 且无法解释；`syncProviderToConfig`（`:339-347`）把损坏明文再写进 agent config，污染面扩大。ASCII 常规 `sk-…` 安全，故主路径不炸（反证成立）。
+- **复现/验证**：JVM：`open(seal("密钥abc")) != "密钥abc"`（现真）；`open(seal("日本語キー"))` 含 U+FFFD。修复 = 用 UTF-8 字节流做异或掩码（`plain.toByteArray()` 后按原样长度还原，格式不变），或入口拒绝非 ASCII 并提示。
+
+---
+
+## A-060 下载失败 catch 无条件清全局单槽位下载记录：检查到新版失败会抹掉**已下载旧版**记录 → 磁盘旧 APK 成孤儿、回到同版本强制全量重下
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/update/AppUpdateManager.kt:125-129` — catch 分支 `finalFile.delete(); SystemSettingsStore.clearAppUpdateDownload(context)`（删的是**本次尝试版本**的 finalFile，但清的是 prefs **全局唯一**记录）
+  - `ui/settings/SystemSettingsStore.kt:161-166` — `KEY_APP_UPDATE_DOWNLOAD_PATH/VERSION` 单槽位，无版本维度
+  - `update/AppUpdateHost.kt:69-79` — 再点同版本下载先 `finalFile.delete()` → 全量重下
+- **机制/影响**：v1 下载完成（记录在案，APK 在 `app-update/`）→ 服务器发 v2 → 用户下 v2 失败（断网）→ prefs 里 v1 记录被清 → v1 APK 磁盘残留但 UI 不可见（又叠加 A-013 清理目录错位=永久孤儿）；用户回头装 v1 需重下整包，耗流量。
+- **复现/验证**：依次完成一次下载、制造一次不同版本下载失败，查 prefs（路径键消失）与 `files/app-update/`（v1 文件仍在）。修复 = clear 前比较记录版本==本次版本，或改按版本键存多槽。
+- **备注**：触发需「旧版已下+新版检查失败」两步，中频场景。
+
+---
+
+## A-061 「当前筛选下暂无 DNS 请求日志」（Express 请求日志空态）无任何字典/模板覆盖，前缀替换吐出半英文拼接串
+
+- **位置**
+  - `Android/app/src/main/java/com/haoze/diting/express/ui/ExpressRequestLogScreen.kt:252` — `localizedText("当前筛选下暂无 DNS 请求日志")`
+  - 精确表无此条：`ui/localization/LogsAndStatsLocalization.kt:54` 只有「当前筛选下暂无**请求日志**」、`:107` 模板只接「暂无请求记录」；`ui/localization/CommonLocalization.kt:436` 又是另一近义句——该句唯独漏收
+  - 落入兜底：`ui/localization/DynamicPatternLocalization.kt:150` — `startsWith("当前筛选下") → replace("当前筛选下","No records for the current filter")` → 输出 `"No records for the current filter暂无 DNS 请求日志"`
+  - 资源侧无注册：全仓 grep `localized_text_2081635827`（该串哈希名）在 `values/values-en` 均 0 命中
+- **机制/影响**：英文界面下 Express 请求日志空态显示中英杂交串，其余近义空态全部正常——明显是词表维护漏行而非设计。
+- **复现/验证**：JVM：`translate("当前筛选下暂无 DNS 请求日志", ctx)` 结果含未替换中文；修复 = LogsAndStats 精确表补一行。
+- **备注**：扫描词表时发现 `DynamicPatternLocalization.kt` 有 14 处 when 分支永不命中（`:63,74,119-120,132,136,138-139,142-143,151,172` 等，重复前缀被更早前分支吞并），其中 `:151` 的 `startsWith("成功 ")` 兜底分支正是防「导入失败：成功 2 项」这类嵌套串的最后防线，删重复分支时**必须保留它**（`:57` 先命中，无害）。
+
+---
+
 ## 观察（未达到确认缺陷标准，供后续验证）
 
 ### O-106 `StartupSelfCheck` 只消毒 NORMAL 偏好文件，Express/DNS_MODE 的同名键不覆盖
@@ -568,6 +908,69 @@
 
 ### O-112 DNS 模式启动失败后磁贴短暂停留 ACTIVE（乐观更新无失败回滚）
 - `tile/DitingTileService.kt:63-67` `toggleDnsService` 启动分支乐观 `updateTileState(running = true)`；`server/backend/DnsModeManager.kt:79-85` `startService` 走 catch 置 ERROR 时不发 `requestTileUpdate`（对照成功路径 `DnsModeService.kt:144`、停止路径 `:97` 均主动刷新）。ERROR 后磁贴仍显示 ACTIVE，直至下次面板打开 `onStartListening`（`:36-39`）自愈。与已修复的「DNS 启动重绘顺序」部分重叠，且自愈窗口短，列观察。
+
+### O-114 超大 DNS 应答写回 1400-MTU TUN 且 DF=1，未夹紧也未分片（Express）
+- `express/ExpressTunnelManager.kt:411-419` 把 `engine.resolve` 的原始应答经 `buildUdpResponse` 单包写回，不查 `VPN_MTU`（`:82`）；`express/engine/ExpressPacketCodec.kt:362` IPv4 头恒置 DF。>MTU 的应答（DNSSEC 大记录/多答案）理论上被 TUN 丢弃。未升级：未能从源码证明 Android TUN 对超限写是丢弃还是截断（legacy Go `tunnel/engine.go:357` 同样裸写），需真机 `ip -d link` + 大包上游对拍。
+
+### O-115 Express 域名规则仅对 A/AAAA 生效，非地址类型记录放行（Go 侧对全部类型评估）
+- `express/engine/ExpressDnsEngine.kt:95-96` `isAddressQuery` 门控规则评估；对照 Go `engine_dns.go:89` 对任意 qtype 调 `policyEngine.evaluate`。被拦域名的 HTTPS/SVCB(65) 记录在 Express 会透传。无连接绕过路径（连通仍需被拦的 A/AAAA），属信息泄漏面；是否构成缺陷取决于产品对「拦截」定义，暂列观察。
+
+### O-116 `DnsResponseCache.resolve/get/put/materialize` 死代码内含真实取消缺陷（接线之日即须修）
+- `core/cache/DnsResponseCache.kt:84` `catch (e: Exception)` 吞 `CancellationException`，`:67` `coroutineScope+async` 下单路失败会取消整个 scope 连带 leader 的 `finally inFlight` 清理。当前无生产调用（normal 走 Go、Express 自带实现），仅作 latent 记录。
+
+### O-117 OkHttp `Call.await` 不随协程取消；测速每次 new OkHttpClient
+- `core/dns/DnsLatencyTester.kt:247-257` `suspendCoroutine` 未注册 `invokeOnCancellation { call.cancel() }`：离开页面后在途 HTTPS 探测最长跑满 5s；`:120-139` 每 attempt 新建 client，弃用的连接池靠 OkHttp 空闲驱逐。有界自愈，列观察。
+
+### O-118 `isUsableUpstreamResponse` 仅验 QR+TXID，不比对 QNAME/QTYPE/rcode
+- `core/dns/DnsMessageUtils.kt:298-301`（Express 孪生 `ExpressDnsMessageUtils.kt:222-225` 至少钉 rcode）。UDP 冒充需猜 16-bit ID，硬化缺口而非确定性错误。
+
+### O-119 DNS_MODE CNAME 覆写在 UI 显示「未生效」但实际仍被下发
+- `ui/RewriteListViewModel.kt:228-229` CNAME 行 masterEnabled 取 `addressRulesOperational`（DNS_MODE 恒 false），而 `server/backend/DnsServerEngine.kt:102` 无条件 `setRewriteRules(含 cnameRedirects)`（不受 `:87-88` adBlock 闸门约束，`DnsModeService.kt:176-178` 注释亦称 hosts 类答案独立于过滤总开关）。Go DNS-server 层是否真应用字符串值未从 .aar 定版；显示与执行不一致，待 Go 侧取证再升级。
+
+### O-120 竞速设置页对供应商列表一次性快照：从供应商管理返回可见旧列表
+- `ui/RaceModeSettingsViewModel.kt:99-102` `activated` 守卫一次，`ui/DnsSpeedTestSection.kt:87` 仅 NavigationSettledEffect 触发，无 ON_RESUME 重读。仅当 VM 跨导航存活时命中（Compose 导航同图返回场景），未构造确定路径。
+
+### O-121 `RaceModeSettingsViewModel` 三处 `getApplication().getString` 走未包装 Application locale
+- `ui/RaceModeSettingsViewModel.kt:155,156,272`：Application 无 `attachBaseContext` 包装，应用内语言≠系统语言时这三条 toast/消息回落系统 locale。资源双语齐备，纯语言一致性问题。
+
+### O-122 tombstone protobuf 字段号未经真机金标准对拍
+- `crash/TombstoneProtobufDecoder.kt:58-61,97-100,182,231-233,307-325` 的字段号（root 9=processName、SignalInfo 5/6、Thread 3/4、BacktraceFrame 2/4/5/6）在线取 AOSP `tombstone.proto` 原文失败（镜像 404/需登录）。若 root 9 实为 message、或 Thread.frames 实为嵌套 Backtrace，则进程名乱码/帧恒 0 退化文本恢复。建议拉一份 API30+ 设备 `ApplicationExitInfo.traceInputStream` 建金标准单测。
+
+### O-123 `clearCrashLogs` 把墙钟写进原生崩溃水位线：校时回拨后原生崩溃停采
+- `crash/CrashLogManager.kt:360` 写 `System.currentTimeMillis()`，`:314` 与 `exitInfo.timestamp` 比较；用户调快时钟→清空日志→调回，其后的真实原生崩溃在时钟追平前被 `>` 过滤。`onCrashOccurred:103` 的 24h 窗口同受校时跳变影响（负差值不超窗继续累加）。条件性（需手动校时），列观察；建议改 `elapsedRealtime` 域或单调化比较。
+
+### O-124 连崩计数读-改-写与启动收集线程并发，增量可丢失
+- `crash/CrashLogManager.kt:99-113` get→commit 非原子；`DitingApp.kt:45-47` 的 NativeCrashCollector 线程逐条 `onCrashOccurred`（每条 binder+fsync 窗口大）与主线程 `CrashHandler.kt:78` 可交错。方向与 A-055 相反（丢增量→延后触发）。窗口小、概率低，列观察。
+
+### O-125 `exportToPrivateDownloads` 兜底目录 `files/downloads` 无 FileProvider 映射
+- `crash/CrashLogManager.kt:205-206` `getExternalFilesDir` 返回 null 时回落 `File(filesDir,"downloads")`，而 `app/src/main/res/xml/file_paths.xml` 只映射 `app-update/`、`crash_logs/`、external `Download/`——`getUriForFile` 必抛被吞 → 文件已写出却被判「备份失败」且成永久孤儿（不在 prune/clear 管辖）。仅未挂载/直启阶段命中，条件性成立，列观察（修复 = 补 `<files-path name="crash_fallback" path="downloads/"/>` 或失败前删文件）。
+
+### O-126 崩溃导出页计数一次性组合期采样，后台原生崩溃晚到则按钮保持禁用
+- `ui/LogRetentionSettingsScreen.kt:69` `remember { getCrashLogCount(context) }` 无 key/无刷新钩子（仅 `:259` 清空后置 0），`DitingApp.kt:45-47` 收集线程含 binder+fsync：冷启动直奔该页可先于收集完成组合 → 「当前无崩溃记录」+导出禁用，须退出重进。体验级，列观察。
+
+### O-127 双 AppUpdateHost 并行下载竞态 / FileProvider 授权存续 / ABI 资产选择（update 模块存疑三则）
+- S1：`MainActivity.kt:41` 与 `SettingsRouteActivity.kt:80` 各持一个 Host/Manager，`generation` 仅 Host 内有效，两页同点下载时单槽位 prefs 互相覆盖（`AppUpdateManager.kt:70-73` 的 Idle 前置检查存在 TOCTOU）——需双入口同时可点，难触发。S2：`AppUpdateManager.kt:158-162` 拉起安装器的 URI 读授权随任务栈回收，用户在安装器停留期间从最近任务划掉 DITING 时可能失效（ROM 行为不一，未实测）。S3：`:178-184` arm64 优先否则取首个 .apk，若 Release 混传 splits 会装错 ABI 包（取决于发布习惯）。均列观察。
+
+### O-128 `SettingsRouteActivity` 离开不取消下载、无取消提示（可能是后台续传设计）
+- 对照 `MainActivity.kt:231-234` 调 `cancelActiveDownload`，`SettingsRouteActivity.onStop(:195-198)` 不调；从设置页返回时 Host 随 Activity 销毁、`lifecycleScope` 取消下载半途作废且静默。若「后台续传」为意图则应有续传 UI，现状两头不靠——意图未证实，列观察。
+
+### O-129 悬浮球面板 × 关闭不注销屏幕广播接收器（幂等、无实害）
+- `ui/floating/FloatingLogOverlayController.kt:288-293` `hideForCurrentBackground()` 走 removeWindow 但跳过 `unregisterScreenReceiver()`，接收器存活至下次 syncVisibility（`:143/:149`）；`expanded` 先置 false 使 `applyScreenOn(:123-131)` 无法重启循环，register/unregister 均幂等（`:110/:118`）。无可观察损害，列观察。
+
+### O-130 应用管控 VM 硬编码 NORMAL 数据集，但当前无路由以其它 dataset 挂载
+- `normal/ui/AppRuleViewModel.kt:27` `AppDatabase.getInstance(application)`，经 `SettingsRouteActivity`（routes 带 dataset）挂载，理论上 EXPRESS/DNS_MODE 可达——全仓 grep 未发现以非 NORMAL dataset 打开 APP_ALLOWLIST/APP_RULE_MANAGEMENT 的导航（`MainModeDispatcher.kt:82-96` 仅 NORMAL 分支）。latent，列观察（与 O-102 同族）。
+
+### O-131 `FloatingLogMapper.fromHttpLog` 副标题未过 `localizedText`
+- `ui/floating/FloatingLogMapper.kt:118` 与兄弟行 `:45` 不一致，英文界面该副标题保持中文。纯文本一致性问题，列观察。
+
+### O-132 请求日志页防火墙行在 SQL 层被排除出旁路桶，仪表盘却在 UI 层标旁路（A-049 的口径佐证）
+- `data/repository/RequestLogRepository.kt:69` `(queryType=0 OR …) AND (message IS NULL OR message NOT LIKE '%blocked_by=firewall:%')`——app 自身定义「旁路=非拦截」，A-049 的 `:322` label 与之矛盾；若修 A-049 需同时核对仪表盘「旁路」统计卡是否复用同一行集。记录口径，不重复计缺陷。
+
+### O-133 `DynamicPatternLocalization` 14 处 when 分支被更早前缀吞并（死分支清单，修复 A-061 时注意勿删 `:151` 兜底）
+- 逐行核对：`:74`（`全部失败（` 同 `:30`）、`:119` 被 `:57` 挡、`:132` 被 `:119/57`、`:136/138/139/142/143`（`已处理` `平均胜出耗时` `首选命中` `原始 TTL` `最后命中` 各被 `:61/39/16/10/14` 挡）、`:151` 为泛化兜底**必须保留**（防「导入失败：成功 2 项…」嵌套串）、`:108/109` 被 `:63/:64` 挡、`:172` 被 `:173-175` 家族顺序问题（`更新 ` 在 `设置 ` 后，互不冲突，仅登记冗余）。死分支无害（重复即前序命中），但删减评审若误删 `:151` 会引入回归。列观察。
+
+### O-134 `DnsCacheController` 单全局槽位 `activeCache`，第二 dataset 注册会顶掉首个的清理回调配对
+- `core/cache/DnsCacheController.kt:9-16`；当前仅 `normal/DnsVpnDatabaseComponents.kt:139` 一处注册，无并发第二注册证据。latent，列观察。
 
 ### O-113 `BatteryOptimizationHelper` 的 200ms 防抖缓存无任何读取方（死但无害）
 - `permission/BatteryOptimizationHelper.kt:54-65`：缓存分支仅在 `forceRefresh=false` 时读取；全仓调用点（`permission/AppPermission.kt:139`、本文件 `:130/:207/:213`）均用默认 `forceRefresh=true`（grep `isGranted(` 实证无显式 false 调用），`cachedIsIgnored` 只写不读；且各变更点都先 `invalidateCache()`。每次走真实 Binder 查询，功能正确，仅防抖设计落空。确认方法：`grep "forceRefresh = false\|isGranted(.*, false)"` 无命中（当前）。
