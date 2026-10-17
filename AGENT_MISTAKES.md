@@ -2,6 +2,14 @@
 
 > 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
 
+### 2026-10-17: Windows 有 Go 但 WSL 无 Go 导致 deb 打包失败（构建环境类）
+- **现象**：`build_deb.bat` / `build_manager.py -t deb` 通过 WSL 存在性预检后，`build_linux.sh` 报「未找到 Go 工具链」，`.deb` 未生成；Windows 侧 `go version` 正常。
+- **根因**：deb 流程把编译与打包都交给 WSL，但预检只查 `wsl` 不查 WSL 内 Go；Windows 的 `C:\Program Files\Go\bin` 虽在 WSL PATH 中，Linux 不会自动解析 `go.exe`，`command -v go` 仍失败。
+- **教训**：
+  1. **宿主与 WSL 的工具链分别取证**：跨子系统构建不能以宿主 `go`/`node` 可用推断 WSL 可用，预检须在实际执行环境内跑 `command -v`。
+  2. **交叉编译优先放宿主**：`GOOS=linux GOARCH=... CGO_ENABLED=0 go build` 可在 Windows 完成，WSL 只承担 `dpkg-deb` 组装；`build_linux.sh --prebuilt` 复用产物。
+  3. 产物验证落到包内 ELF 与运行输出（`dpkg-deb -x` 后执行 `--version`），不能只看 `.deb` 文件存在。
+
 ### 2026-10-17: 行对象直接作 Vue key 中断桌面端构建（构建/前端类型类）
 - **现象**：`Desktop/build.bat` / `build_manager.py -t exe` 在 Wails 前端编译阶段失败：`ClientGroupsCard.vue(213,14)`、`ScheduleEditor.vue(57,40)` 均报 `TS2322: Type '...' is not assignable to type 'PropertyKey | undefined'`，整个桌面端打包中止。
 - **根因**：`a9a2c0d` 为修复「下标 key 删除中间行后 DOM 原位复用、焦点串行」把 `:key="index"` 改成 `:key="row"`；Vue 的 `:key` 类型为 `PropertyKey`，对象在 `vue-tsc` 严格检查下非法。该提交只做了局部验证，未跑完整桌面端构建，因此回归直到本次打包才暴露。

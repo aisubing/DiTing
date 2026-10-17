@@ -10,6 +10,7 @@
 #     ./build_linux.sh -a arm64           # 构建 arm64 二进制
 #     ./build_linux.sh -v 1.4.0           # 指定版本号
 #     ./build_linux.sh --package          # 打包为 .deb 发行包
+#     ./build_linux.sh --prebuilt         # 复用 build/bin/diting-service（Windows 交叉编译）
 #     ./build_linux.sh --clean            # 先清理旧产物
 # ============================================================================
 
@@ -23,10 +24,11 @@ VERSION=""
 BUILD_TYPE="release"
 CLEAN=0
 PACKAGE=0
+PREBUILT=0
 OUTPUT_DIR="$SCRIPT_DIR/build/bin"
 
 usage() {
-    sed -n '2,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -38,6 +40,7 @@ while [ $# -gt 0 ]; do
         -o|--output)  OUTPUT_DIR="$2"; shift 2 ;;
         --clean)      CLEAN=1; shift ;;
         --package)    PACKAGE=1; shift ;;
+        --prebuilt)   PREBUILT=1; shift ;;
         -h|--help)    usage ;;
         *) echo "[错误] 未知参数: $1" >&2; usage 1 ;;
     esac
@@ -47,15 +50,6 @@ case "$ARCH" in
     amd64|arm64|arm) ;;
     *) echo "[错误] 不支持的架构: $ARCH (可选: amd64 / arm64 / arm)" >&2; exit 1 ;;
 esac
-
-if ! command -v go >/dev/null 2>&1; then
-    if [ -x /usr/local/go/bin/go ]; then
-        export PATH="$PATH:/usr/local/go/bin"
-    else
-        echo "[错误] 未找到 Go 工具链，请先安装 Go 1.21+。" >&2
-        exit 1
-    fi
-fi
 
 if [ -z "$VERSION" ]; then
     VERSION="$(grep -m1 -oE 'Version[[:space:]]*=[[:space:]]*"[^"]+"' cmd/service/main.go 2>/dev/null | grep -oE '"[^"]+"' | tr -d '"' || true)"
@@ -71,7 +65,9 @@ BIN_PATH="$OUTPUT_DIR/$BIN_NAME"
 if [ "$CLEAN" -eq 1 ]; then
     # 仅清理本脚本自身的 Linux 产物（二进制 / 旧 .deb / 临时目录），保留同目录下的 Windows 安装包
     echo ">>> 清理旧构建产物 (仅 Linux 侧): $OUTPUT_DIR"
-    rm -f "$OUTPUT_DIR/$BIN_NAME"
+    if [ "$PREBUILT" -eq 0 ]; then
+        rm -f "$OUTPUT_DIR/$BIN_NAME"
+    fi
     rm -rf "$OUTPUT_DIR"/diting_*_linux_*
 fi
 mkdir -p "$OUTPUT_DIR"
@@ -87,15 +83,31 @@ echo " 谛听 (DITING) Linux 构建"
 echo " 目标架构: linux/$ARCH   版本: $VERSION   类型: $BUILD_TYPE"
 echo "============================================================"
 
-echo ">>> 正在编译 $BIN_NAME ..."
-CGO_ENABLED=0 GOOS=linux GOARCH="$ARCH" go build -trimpath -ldflags "$LDFLAGS" -o "$BIN_PATH" ./cmd/service
+if [ "$PREBUILT" -eq 1 ]; then
+    if [ ! -f "$BIN_PATH" ]; then
+        echo "[错误] --prebuilt 需要已存在的 Linux 二进制: $BIN_PATH" >&2
+        exit 1
+    fi
+    echo ">>> 复用预编译 Linux 二进制: $BIN_PATH"
+else
+    if ! command -v go >/dev/null 2>&1; then
+        if [ -x /usr/local/go/bin/go ]; then
+            export PATH="$PATH:/usr/local/go/bin"
+        else
+            echo "[错误] 未找到 Go 工具链，请先安装 Go 1.25+，或在 Windows 侧交叉编译后使用 --prebuilt。" >&2
+            exit 1
+        fi
+    fi
+    echo ">>> 正在编译 $BIN_NAME ..."
+    CGO_ENABLED=0 GOOS=linux GOARCH="$ARCH" go build -trimpath -ldflags "$LDFLAGS" -o "$BIN_PATH" ./cmd/service
 
-if [ ! -f "$BIN_PATH" ]; then
-    echo "[错误] 编译失败，未生成 $BIN_PATH" >&2
-    exit 1
+    if [ ! -f "$BIN_PATH" ]; then
+        echo "[错误] 编译失败，未生成 $BIN_PATH" >&2
+        exit 1
+    fi
 fi
 chmod +x "$BIN_PATH"
-echo "[OK] 编译成功: $BIN_PATH ($(du -h "$BIN_PATH" | cut -f1))"
+echo "[OK] Linux 二进制就绪: $BIN_PATH ($(du -h "$BIN_PATH" | cut -f1))"
 
 # ---------------------------------------------------------------------------
 # 发行包

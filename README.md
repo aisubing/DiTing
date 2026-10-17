@@ -110,7 +110,7 @@ cd Android
 产物：`Android/app/build/outputs/apk/<buildType>/`。
 
 ### 💻 Windows
-要求 Go 1.23+、Node.js 18+、Wails v2（`go install github.com/wailsapp/wails/v2/cmd/wails@latest`）；打包独立安装包需 NSIS（可选）。
+要求 Go 1.25+、Node.js 18+、Wails v2（`go install github.com/wailsapp/wails/v2/cmd/wails@latest`）；打包独立安装包需 NSIS（可选）。
 
 ```cmd
 cd Desktop
@@ -136,7 +136,7 @@ wails build -platform windows/amd64 -o diting-gui.exe
 </details>
 
 ### 🐧 Linux
-要求 Go 1.23+；生成 `.deb` 需 `dpkg-deb`（可选）。
+要求 Go 1.25+；生成 `.deb` 需 `dpkg-deb`（可选）。
 
 ```bash
 cd Desktop
@@ -144,7 +144,7 @@ cd Desktop
 ./build_linux.sh -a arm64 --package   # 指定 amd64 / arm64 / arm
 ```
 
-在 Windows 上可通过 `build_deb.bat` 联动 WSL 打包。产物为 `Desktop/build/bin/` 下的 `.deb` 或单二进制。
+在 Windows 上可通过 `build_deb.bat` 打包：Windows 本机 Go 交叉编译 Linux 二进制，WSL 仅用 `dpkg-deb` 组装，无需在 WSL 内安装 Go。产物为 `Desktop/build/bin/` 下的 `.deb` 或单二进制。
 
 安装为 systemd 服务：
 
@@ -189,8 +189,8 @@ REM 同步到目标版本（示例）
 ## 技术栈
 
 - **Android**：Kotlin / Jetpack Compose / Material 3 / Coroutines & Flow / Room / DataStore / VpnService / OkHttp / WorkManager
-- **Windows**：Go 1.23+ / Wails v2 / Vue 3 / TypeScript / Vite / Material Web / Win32 API / Windows Service
-- **Linux**：Go 1.23+ / systemd / resolvectl / nmcli / netlink / Vue 3 内嵌控制台
+- **Windows**：Go 1.25+ / Wails v2 / Vue 3 / TypeScript / Vite / Material Web / Win32 API / Windows Service
+- **Linux**：Go 1.25+ / systemd / resolvectl / nmcli / netlink / Vue 3 内嵌控制台
 - **DNS 引擎**：Go / gVisor netstack / miekg/dns / quic-go / Singleflight
 - **维护工具箱**：Python 3 / PyWebView (WebView2) / HTML5 / CSS3 / JavaScript
 

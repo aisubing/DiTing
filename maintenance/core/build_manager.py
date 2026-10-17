@@ -184,6 +184,50 @@ def run_cmd_live(cmd: list, cwd: str, on_log: Callable[[str, str], None], is_can
     return stream_process_output(cmd=cmd, cwd=cwd, on_log=on_log, is_cancelled=is_cancelled, env=env) == 0
 
 
+def cross_compile_linux_binary(
+    desktop_dir: str,
+    bin_dir: str,
+    arch: str,
+    version: str,
+    build_type: str,
+    git_commit: str,
+    build_time: str,
+    on_log: Callable[[str, str], None],
+    is_cancelled: Callable[[], bool],
+) -> Optional[str]:
+    """用本机 Go 交叉编译 Linux 服务二进制，供 WSL 仅做 deb 组装。
+
+    WSL 内不必安装 Go，避免 Windows 与 WSL 两套工具链版本漂移。
+    """
+    bin_path = os.path.join(bin_dir, "diting-service")
+    ldflags = []
+    if build_type.lower() == "release":
+        ldflags += ["-s", "-w"]
+    ldflags += [
+        "-X", f"main.Version={version}",
+        "-X", f"main.GitCommit={git_commit}",
+        "-X", f"main.BuildTime={build_time}",
+    ]
+    env = os.environ.copy()
+    env.update({"GOOS": "linux", "GOARCH": arch, "CGO_ENABLED": "0"})
+    on_log("info", f">>> 正在使用本机 Go 交叉编译 Linux 二进制 (linux/{arch})...")
+    cmd = ["go", "build", "-trimpath", "-ldflags", " ".join(ldflags), "-o", bin_path, "./cmd/service"]
+    if not run_cmd_live(cmd, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled, env=env):
+        return None
+    if not os.path.exists(bin_path):
+        on_log("error", f"交叉编译未生成二进制: {bin_path}")
+        return None
+    try:
+        with open(bin_path, "rb") as f:
+            if f.read(4) != b"\x7fELF":
+                on_log("error", f"交叉编译产物不是 Linux ELF 文件: {bin_path}")
+                return None
+    except OSError as e:
+        on_log("error", f"无法校验交叉编译产物: {e}")
+        return None
+    return bin_path
+
+
 def ensure_frontend_dist(desktop_dir: str) -> None:
     """确保 frontend/dist 目录存在，避免 Go embed 在未构建前端时直接报错中断"""
     dist_dir = os.path.join(desktop_dir, "frontend", "dist")
@@ -313,12 +357,12 @@ def build_pipeline(
                 return {"success": False, "message": "缺少 NSIS"}
 
         if need_deb:
+            if not tools["go"]["found"]:
+                on_log("error", "未找到 Go 环境，无法交叉编译 Linux 服务。")
+                return {"success": False, "message": "缺少 Go 环境"}
             if sys.platform == "win32" and not shutil.which("wsl"):
                 on_log("error", "未检测到 WSL 环境。在 Windows 上打包 deb 安装包需要 WSL 支持。")
                 return {"success": False, "message": "缺少 WSL 环境"}
-            if sys.platform != "win32" and not tools["go"]["found"]:
-                on_log("error", "未找到 Go 环境，无法继续编译。")
-                return {"success": False, "message": "缺少 Go 环境"}
 
     # 3. 清理旧产物
     if clean and os.path.exists(bin_dir):
@@ -420,8 +464,14 @@ def build_pipeline(
         on_log("info", f">>> 正在打包 Linux 发行包 (.deb, linux/{arch})...")
         # 始终以 bash 显式执行，避免脚本缺失可执行位（如 Windows 克隆检出）导致失败
         if sys.platform == "win32":
+            bin_path = cross_compile_linux_binary(
+                desktop_dir, bin_dir, arch, version, build_type, git_commit, build_time,
+                on_log=on_log, is_cancelled=is_cancelled,
+            )
+            if not bin_path:
+                return {"success": False, "message": "Linux 二进制交叉编译失败"}
             wsl_dir = desktop_dir.replace("\\", "/")
-            cmd_pkg = ["wsl.exe", "-e", "bash", "-c", f"cd \"$(wslpath '{wsl_dir}')\" && exec bash ./build_linux.sh --package -a {arch} -v {version} -b {build_type}"]
+            cmd_pkg = ["wsl.exe", "-e", "bash", "-c", f"cd \"$(wslpath '{wsl_dir}')\" && exec bash ./build_linux.sh --package --prebuilt -a {arch} -v {version} -b {build_type}"]
             ok = run_cmd_live(cmd_pkg, cwd=desktop_dir, on_log=on_log, is_cancelled=is_cancelled)
         else:
             cmd_pkg = ["bash", "./build_linux.sh", "--package", "-a", arch, "-v", version, "-b", build_type]
