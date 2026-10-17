@@ -138,6 +138,17 @@ func (s *Server) handleFilterListUpdate(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, Response[any]{Success: false, Error: "解析订阅源失败: " + err.Error()})
 		return
 	}
+	// 与 add 对称的入口校验：update 是全量覆盖语义，省略 url 字段会被反序列化成
+	// 空串并把在用订阅源清空——此后每轮刷新对空 URL 拉取恒失败，规则静默消失，
+	// 而接口仍回 200「已成功更新」。
+	if strings.TrimSpace(list.ID) == "" {
+		writeJSON(w, http.StatusBadRequest, Response[any]{Success: false, Error: "订阅源 ID 不能为空"})
+		return
+	}
+	if strings.TrimSpace(list.URL) == "" {
+		writeJSON(w, http.StatusBadRequest, Response[any]{Success: false, Error: "订阅源 URL 不能为空"})
+		return
+	}
 	if err := s.controller.UpdateFilterList(r.Context(), list); err != nil {
 		writeJSON(w, http.StatusInternalServerError, Response[any]{Success: false, Error: err.Error()})
 		return

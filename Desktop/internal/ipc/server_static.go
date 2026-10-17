@@ -123,16 +123,12 @@ func extractToken(r *http.Request) string {
 	return r.URL.Query().Get("token")
 }
 
+// getClientIP 返回用于防爆破计数的客户端地址。
+//
+// IPC 服务在桌面/Web 模式下都是直连（无自有反向代理），因此只采信
+// TCP 对端地址。X-Forwarded-For / X-Real-IP 完全由客户端控制，若采信
+// 则攻击者每次请求换一个伪造值即可无限次尝试口令，也能反向锁死他人。
 func getClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
-		return strings.TrimSpace(xrip)
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err == nil {
 		return host

@@ -83,7 +83,8 @@ func (s *Server) handleAuthPassword(w http.ResponseWriter, r *http.Request) {
 
 	// 检查是否为受信任本地 IPC 免验原密调用
 	token := extractToken(r)
-	bypassOldAuth := (s.token != "" && token == s.token) || (s.token == "" && isLoopbackRequest(r))
+	bypassOldAuth := (s.token != "" && token == s.token) ||
+		(s.token == "" && isLoopbackRequest(r) && isTrustedOrigin(r))
 
 	if err := s.controller.ChangePassword(r.Context(), req, bypassOldAuth); err != nil {
 		writeJSON(w, http.StatusBadRequest, Response[any]{Success: false, Error: err.Error()})

@@ -32,7 +32,11 @@ func (s *Server) handleCacheEntries(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, Response[any]{Success: false, Error: "只支持 GET 请求"})
 		return
 	}
+	// 同时接受 q：历史前端版本发的是 q，兼容旧客户端可避免搜索静默失效。
 	query := r.URL.Query().Get("query")
+	if query == "" {
+		query = r.URL.Query().Get("q")
+	}
 	limitStr := r.URL.Query().Get("limit")
 	limit := 100
 	if limitStr != "" {

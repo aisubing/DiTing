@@ -35,6 +35,10 @@ type EncryptedDNSStatusResponse struct {
 	// UnrestrictedTrust 可信代理列表里存在 0.0.0.0/0 或 ::/0；
 	// 界面需据此给出「任何人都能伪造来源」的显著警告
 	UnrestrictedTrust bool `json:"unrestrictedTrust"`
+	// CertExpiresSoon 自签证书已进入续签窗口（30 天内到期）
+	CertExpiresSoon bool `json:"certExpiresSoon"`
+	// CertExpired 自签证书已过期：客户端握手必然失败，界面必须显式提示
+	CertExpired bool `json:"certExpired"`
 }
 
 // ConfigureEncryptedDNSRequest 更新加密 DNS 配置。

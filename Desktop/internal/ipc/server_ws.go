@@ -18,8 +18,10 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		// 允许本地进程、GUI 客户端及常规来源连接
-		return true
+		// 只允许本地进程、Wails 运行时与回环页面连接。
+		// 浏览器 WebSocket 握手不受 CORS 约束，若恒 true 则任意网页
+		// 都能订阅本机查询日志事件流。
+		return isTrustedOrigin(r)
 	},
 }
 

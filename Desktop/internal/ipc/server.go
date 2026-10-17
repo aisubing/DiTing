@@ -79,7 +79,7 @@ func (s *Server) Start() error {
 	s.mu.Lock()
 	s.listener = ln
 	s.httpServer = &http.Server{
-		Handler:      corsMiddleware(mux),
+		Handler:      corsMiddleware(bodyLimitMiddleware(mux)),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
@@ -110,6 +110,23 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+// maxRequestBodyBytes 单个管理 API 请求体的硬上限。
+//
+// 最大的合法请求体是 DNS 区文本（业务上限 1 MiB），留出余量取 4 MiB。
+// 统一在此处截断，避免各 handler 自行 io.ReadAll / json.NewDecoder 时
+// 把任意大小的请求体整块读入内存（服务与 DNS 核心同进程）。
+const maxRequestBodyBytes = 4 << 20
+
+// bodyLimitMiddleware 为所有请求套上统一尺寸闸门。
+func bodyLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // withAuth 校验 Bearer Token、X-API-Token 或 Web 会话凭证
 func (s *Server) withAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +155,11 @@ func (s *Server) verifyToken(r *http.Request) bool {
 	}
 
 	// 3. 本地回环免密直连 (来自本机 127.0.0.1 或 [::1] 且未强制配置专用 IPC 密钥)
-	if s.token == "" && isLoopbackRequest(r) {
+	//
+	// 回环地址本身不足以证明来源可信：浏览器中的任意网页访问 127.0.0.1 时
+	// RemoteAddr 同样是回环。因此还要求请求不带跨站 Origin（受信来源见
+	// isTrustedOrigin），杜绝恶意网页借助本机回环绕过鉴权。
+	if s.token == "" && isLoopbackRequest(r) && isTrustedOrigin(r) {
 		return true
 	}
 
