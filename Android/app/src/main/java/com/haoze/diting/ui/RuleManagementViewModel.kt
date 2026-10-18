@@ -1,7 +1,6 @@
 package com.haoze.diting.ui
 
 import android.app.Application
-import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +12,7 @@ import com.haoze.diting.data.entity.RuleScope
 import com.haoze.diting.core.rule.RuleOperationScheduler
 import com.haoze.diting.core.rule.RuleOperationType
 import com.haoze.diting.core.rule.RewriteRuleManager
+import com.haoze.diting.util.PersistableUriPermissions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -74,12 +74,7 @@ class RuleManagementViewModel(
         kind: String = com.haoze.diting.data.entity.SubscriptionKind.DOMAIN,
         onResult: (String) -> Unit
     ) {
-        runCatching {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
+        PersistableUriPermissions.take(getApplication(), uri)
         observeResult(
             RuleOperationScheduler.enqueue(
                 getApplication(),
@@ -87,7 +82,11 @@ class RuleManagementViewModel(
                 uri = uri,
                 kind = com.haoze.diting.data.entity.SubscriptionKind.normalize(kind)
             ).id,
-            onResult
+            onResult,
+            // The WorkManager job reads the file after this call returns, so the
+            // grant has to outlive the request; it is released once the job
+            // finishes instead of being kept forever.
+            releaseUri = uri
         )
     }
 
@@ -156,26 +155,29 @@ class RuleManagementViewModel(
     }
 
     fun importHostsRules(uri: Uri, onResult: (String) -> Unit) {
-        runCatching {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
+        PersistableUriPermissions.take(getApplication(), uri)
         observeResult(
             RuleOperationScheduler.enqueue(
                 getApplication(), RuleOperationType.IMPORT_HOSTS_RULES, uri = uri
             ).id,
-            onResult
+            onResult,
+            releaseUri = uri
         )
     }
 
-    private fun observeResult(workId: java.util.UUID, onResult: (String) -> Unit) {
+    private fun observeResult(
+        workId: java.util.UUID,
+        onResult: (String) -> Unit,
+        releaseUri: Uri? = null
+    ) {
         viewModelScope.launch {
             WorkManager.getInstance(getApplication<Application>())
                 .getWorkInfoByIdFlow(workId)
                 .collect { info ->
                     if (info?.state?.isFinished == true) {
+                        // The import has already copied the file contents into the
+                        // database, so the persisted read grant is no longer needed.
+                        releaseUri?.let { PersistableUriPermissions.release(getApplication(), it) }
                         val success = info.outputData.getBoolean(RuleOperationScheduler.KEY_SUCCESS, false)
                         val message = info.outputData.getString(RuleOperationScheduler.KEY_MESSAGE)
                             ?: "操作失败"

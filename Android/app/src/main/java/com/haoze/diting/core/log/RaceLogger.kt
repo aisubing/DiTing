@@ -134,7 +134,14 @@ class RaceLogger(
         if (pending.isEmpty()) return
         val batch = pending.toList()
         pending.clear()
-        dao.insertAll(batch)
+        // A failing insert must never propagate into the caller: this runs on
+        // the DNS/HTTPS hot path and inside the shutdown flush chain, where an
+        // exception would abort the remaining loggers' flush and crash the
+        // service. Mirror DnsLogger: swallow the error, keep the batch so the
+        // next flush retries it.
+        runCatching { dao.insertAll(batch) }.onFailure {
+            pending.addAll(0, batch)
+        }
     }
 
     suspend fun clearAll() {

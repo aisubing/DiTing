@@ -510,6 +510,7 @@ internal fun translateCommonExact(text: String): String? = when (text) {
     "白名单域名规则格式无效" -> "Invalid whitelist domain rule format"
     "黑名单域名规则格式无效" -> "Invalid blacklist domain rule format"
     "dnsmasq 规则格式无效" -> "Invalid dnsmasq rule format"
+    "元素隐藏规则仅普通模式支持（极速模式与服务器模式无法生效）" -> "Element hiding rules are only supported in normal mode (they cannot take effect in express or server mode)"
     "元素隐藏" -> "Element hiding"
     "元素放行" -> "Element unhide"
     "已添加元素隐藏规则" -> "Element hiding rule added"

@@ -58,7 +58,12 @@ object DnsModePreferences {
             cachePreset = cachePreset,
             cacheTtlSeconds = prefs.getInt(KEY_CACHE_TTL, 300),
             adBlockEnabled = prefs.getBoolean(KEY_AD_BLOCK_ENABLED, false),
-            logQueries = prefs.getBoolean(KEY_LOG_QUERIES, false)
+            logQueries = prefs.getBoolean(KEY_LOG_QUERIES, false),
+            // Block-response settings live in the same prefs file but are owned by
+            // DnsRuleSettings (the block-response screen writes them there). Read
+            // them through it rather than duplicating the keys, so there is one
+            // writer and one clamp implementation.
+            dynamicBlockResponse = DnsRuleSettings.dynamicBlockResponseConfig(context)
         )
     }
 

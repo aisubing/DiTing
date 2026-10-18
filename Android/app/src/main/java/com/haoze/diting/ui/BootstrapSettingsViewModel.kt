@@ -58,10 +58,10 @@ class BootstrapSettingsViewModel(
     fun load() {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
-            BootstrapHealthEngine.flushActive(commit = true)
+            BootstrapHealthEngine.flushActive(commit = true, dataset = dataset)
             val enabled = BootstrapDnsSettingsStore.isBootstrapEnabled(context, dataset)
             val entries = BootstrapDnsSettingsStore.loadBootstrapIpEntries(context, dataset)
-            val health = BootstrapHealthStore.loadAll(context)
+            val health = BootstrapHealthStore.loadAll(context, dataset)
             withContext(Dispatchers.Main) {
                 _enabled.value = enabled
                 _entries.value = entries
@@ -111,10 +111,10 @@ class BootstrapSettingsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             BootstrapDnsSettingsStore.deleteCustomBootstrapIp(context, id, dataset)
-            BootstrapHealthStore.remove(context, id)
+            BootstrapHealthStore.remove(context, id, dataset)
             RuntimeDnsSettingsRefresher.refreshIfRunning(context, "bootstrap_ip_deleted", dataset = dataset)
             val entries = BootstrapDnsSettingsStore.loadBootstrapIpEntries(context, dataset)
-            val health = BootstrapHealthStore.loadAll(context)
+            val health = BootstrapHealthStore.loadAll(context, dataset)
             withContext(Dispatchers.Main) {
                 _entries.value = entries
                 _healthByIp.value = health

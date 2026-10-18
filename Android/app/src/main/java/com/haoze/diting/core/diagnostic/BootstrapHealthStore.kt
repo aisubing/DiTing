@@ -1,6 +1,8 @@
 package com.haoze.diting.core.diagnostic
 
 import android.content.Context
+import android.content.SharedPreferences
+import com.haoze.diting.data.RuleDataset
 import org.json.JSONObject
 
 data class BootstrapHealthSnapshot(
@@ -49,16 +51,29 @@ data class BootstrapHealthSnapshot(
     }
 }
 
+/**
+ * Persists Bootstrap DNS health samples.
+ *
+ * Entries are scoped per [RuleDataset]: the ordinary tunnel and the Express
+ * engine each run their own Bootstrap DNS settings, so sharing one JSON blob
+ * made whichever engine flushed last erase the other engine's samples and
+ * cooldowns. Writes merge instead of replacing the whole blob so two engines
+ * living in the same dataset cannot drop each other's entries either.
+ */
 object BootstrapHealthStore {
-    private const val PREFS_NAME = "dns_vpn_prefs"
     private const val KEY_BOOTSTRAP_HEALTH_JSON = "bootstrap_health_json"
     private const val DEFAULT_LATENCY_MS = 250.0
-    private val listeners = mutableSetOf<BootstrapHealthStoreListener>()
+    private val listeners = mutableMapOf<RuleDataset, MutableSet<BootstrapHealthStoreListener>>()
+
+    private fun prefs(context: Context, dataset: RuleDataset): SharedPreferences =
+        context.getSharedPreferences(dataset.prefsName(), Context.MODE_PRIVATE)
 
     @Synchronized
-    fun loadAll(context: Context): Map<String, BootstrapHealthSnapshot> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val root = parseRoot(prefs.getString(KEY_BOOTSTRAP_HEALTH_JSON, null))
+    fun loadAll(
+        context: Context,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ): Map<String, BootstrapHealthSnapshot> {
+        val root = HealthStoreJson.parseRoot(prefs(context, dataset).getString(KEY_BOOTSTRAP_HEALTH_JSON, null))
         val result = mutableMapOf<String, BootstrapHealthSnapshot>()
         val keys = root.keys()
         while (keys.hasNext()) {
@@ -80,78 +95,100 @@ object BootstrapHealthStore {
         return result
     }
 
+    /**
+     * Merges [snapshots] into the stored entries, keeping entries owned by other
+     * engines of the same dataset. Deletions go through [reset]/[clearAll].
+     */
     @Synchronized
     fun saveAll(
         context: Context,
         snapshots: Map<String, BootstrapHealthSnapshot>,
+        dataset: RuleDataset = RuleDataset.NORMAL,
         commit: Boolean = false
     ): Boolean {
-        val root = JSONObject()
-        snapshots.forEach { (ipId, snapshot) ->
-            root.put(
-                ipId,
-                JSONObject().apply {
-                    put("successes", snapshot.successes)
-                    put("failures", snapshot.failures)
-                    put("ewmaMs", snapshot.ewmaMs)
-                    put("jitterMs", snapshot.jitterMs)
-                    put("consecutiveFailures", snapshot.consecutiveFailures)
-                    put("cooldownUntil", snapshot.cooldownUntil)
-                    put("decayedSuccesses", snapshot.decayedSuccesses)
-                    put("decayedFailures", snapshot.decayedFailures)
-                    put("lastUpdatedAt", snapshot.lastUpdatedAt)
-                }
-            )
+        val prefs = prefs(context, dataset)
+        val root = HealthStoreJson.merge(
+            prefs.getString(KEY_BOOTSTRAP_HEALTH_JSON, null),
+            snapshots.mapValues { (_, snapshot) -> snapshot.toJson() }
+        )
+        return write(prefs, root, commit)
+    }
+
+    /**
+     * Overwrites the stored entries with exactly [snapshots]. Used after a reset
+     * so merged writes cannot resurrect the ids that were just removed.
+     */
+    @Synchronized
+    fun replaceAll(
+        context: Context,
+        snapshots: Map<String, BootstrapHealthSnapshot>,
+        dataset: RuleDataset = RuleDataset.NORMAL,
+        commit: Boolean = false
+    ): Boolean {
+        val root = HealthStoreJson.replace(snapshots.mapValues { (_, snapshot) -> snapshot.toJson() })
+        return write(prefs(context, dataset), root, commit)
+    }
+
+    fun reset(
+        context: Context,
+        ipIds: Set<String>,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ) {
+        val notifyListeners = synchronized(this) {
+            val prefs = prefs(context, dataset)
+            val root = HealthStoreJson.remove(prefs.getString(KEY_BOOTSTRAP_HEALTH_JSON, null), ipIds)
+            prefs.edit().putString(KEY_BOOTSTRAP_HEALTH_JSON, root.toString()).apply()
+            listeners[dataset]?.toList().orEmpty()
         }
-        val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_BOOTSTRAP_HEALTH_JSON, root.toString())
+        notifyListeners.forEach { it.onBootstrapHealthReset(ipIds) }
+    }
+
+    fun remove(context: Context, ipId: String, dataset: RuleDataset = RuleDataset.NORMAL) {
+        reset(context, setOf(ipId), dataset)
+    }
+
+    fun clearAll(context: Context, dataset: RuleDataset = RuleDataset.NORMAL) {
+        val notifyListeners = synchronized(this) {
+            prefs(context, dataset).edit().remove(KEY_BOOTSTRAP_HEALTH_JSON).apply()
+            listeners[dataset]?.toList().orEmpty()
+        }
+        notifyListeners.forEach { it.onBootstrapHealthCleared() }
+    }
+
+    @Synchronized
+    fun registerListener(
+        listener: BootstrapHealthStoreListener,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ) {
+        listeners.getOrPut(dataset) { mutableSetOf() }.add(listener)
+    }
+
+    @Synchronized
+    fun unregisterListener(
+        listener: BootstrapHealthStoreListener,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ) {
+        listeners[dataset]?.remove(listener)
+    }
+
+    private fun write(prefs: SharedPreferences, root: JSONObject, commit: Boolean): Boolean {
+        val editor = prefs.edit().putString(KEY_BOOTSTRAP_HEALTH_JSON, root.toString())
         return if (commit) editor.commit() else {
             editor.apply()
             true
         }
     }
 
-    fun reset(context: Context, ipIds: Set<String>) {
-        val notifyListeners = synchronized(this) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val root = parseRoot(prefs.getString(KEY_BOOTSTRAP_HEALTH_JSON, null))
-            ipIds.forEach { root.remove(it) }
-            prefs.edit().putString(KEY_BOOTSTRAP_HEALTH_JSON, root.toString()).apply()
-            listeners.toList()
-        }
-        notifyListeners.forEach { it.onBootstrapHealthReset(ipIds) }
-    }
-
-    fun remove(context: Context, ipId: String) {
-        reset(context, setOf(ipId))
-    }
-
-    fun clearAll(context: Context) {
-        val notifyListeners = synchronized(this) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit().remove(KEY_BOOTSTRAP_HEALTH_JSON).apply()
-            listeners.toList()
-        }
-        notifyListeners.forEach { it.onBootstrapHealthCleared() }
-    }
-
-    @Synchronized
-    fun registerListener(listener: BootstrapHealthStoreListener) {
-        listeners.add(listener)
-    }
-
-    @Synchronized
-    fun unregisterListener(listener: BootstrapHealthStoreListener) {
-        listeners.remove(listener)
-    }
-
-    private fun parseRoot(json: String?): JSONObject {
-        return try {
-            if (json.isNullOrBlank()) JSONObject() else JSONObject(json)
-        } catch (_: Exception) {
-            JSONObject()
-        }
+    private fun BootstrapHealthSnapshot.toJson(): JSONObject = JSONObject().apply {
+        put("successes", successes)
+        put("failures", failures)
+        put("ewmaMs", ewmaMs)
+        put("jitterMs", jitterMs)
+        put("consecutiveFailures", consecutiveFailures)
+        put("cooldownUntil", cooldownUntil)
+        put("decayedSuccesses", decayedSuccesses)
+        put("decayedFailures", decayedFailures)
+        put("lastUpdatedAt", lastUpdatedAt)
     }
 }
 
@@ -159,4 +196,3 @@ interface BootstrapHealthStoreListener {
     fun onBootstrapHealthReset(ipIds: Set<String>)
     fun onBootstrapHealthCleared() {}
 }
-

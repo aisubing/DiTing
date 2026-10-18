@@ -125,7 +125,17 @@ class AppUpdateManager(
         } catch (_: Throwable) {
             temporaryFile.delete()
             finalFile.delete()
-            SystemSettingsStore.clearAppUpdateDownload(context)
+            // Only drop the persisted download record when it belongs to this
+            // version: a failed download of a *newer* version must not wipe the
+            // already-downloaded older APK's record, which would orphan the file
+            // on disk and force a re-download.
+            if (shouldClearDownloadRecord(
+                    SystemSettingsStore.getAppUpdateDownloadVersion(context),
+                    update.version
+                )
+            ) {
+                SystemSettingsStore.clearAppUpdateDownload(context)
+            }
             AppUpdateDownloadState(version = update.version, status = AppUpdateDownloadStatus.Failed)
         }
     }
@@ -163,11 +173,22 @@ class AppUpdateManager(
         }.isSuccess
     }
 
-    private companion object {
+    companion object {
+        /** 更新安装包的下载目录名，数据清理等外部模块需与之保持一致。 */
         const val UPDATE_DIRECTORY = "app-update"
-        const val RELEASE_URL = "https://api.github.com/repos/haoze-evolluling/DITING/releases/latest"
-        const val PROGRESS_UPDATE_BYTES = 256L * 1024L
+        private const val RELEASE_URL = "https://api.github.com/repos/haoze-evolluling/DITING/releases/latest"
+        private const val PROGRESS_UPDATE_BYTES = 256L * 1024L
     }
+}
+
+/**
+ * Whether the persisted download record must be dropped after a failed
+ * download. A record for a *different* version still points at a valid APK and
+ * must be preserved; wiping it would orphan the file and force a re-download.
+ */
+internal fun shouldClearDownloadRecord(recordedVersion: String?, failedVersion: String): Boolean {
+    if (recordedVersion.isNullOrBlank()) return false
+    return recordedVersion == failedVersion
 }
 
 internal fun parseLatestRelease(payload: String, currentVersion: String): AppUpdateInfo? {

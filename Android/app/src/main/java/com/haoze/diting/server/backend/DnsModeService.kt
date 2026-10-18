@@ -33,6 +33,8 @@ class DnsModeService : Service() {
     private var dnsServerEngine: DnsServerEngine? = null
     private var queryFilter: DnsQueryFilter? = null
     private var startJob: Job? = null
+    // Invalidates an in-flight start when a stop lands mid-bind; see the class doc.
+    private val startGuard = DnsModeStartGuard()
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
 
@@ -50,6 +52,14 @@ class DnsModeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                // Cancel the start coroutine and invalidate its token *before*
+                // stopSelf(): a start that is already blocked inside the engine's
+                // port bind cannot be interrupted by cancellation, so without the
+                // guard it would publish RUNNING after onDestroy and leave an
+                // orphan engine holding the port.
+                startGuard.onStopRequested()
+                startJob?.cancel()
+                startJob = null
                 DnsModePreferences.setServiceActive(this, false)
                 stopSelf()
                 return START_NOT_STICKY
@@ -88,7 +98,9 @@ class DnsModeService : Service() {
 
     override fun onDestroy() {
         isServiceAlive = false
+        startGuard.onStopRequested()
         startJob?.cancel()
+        startJob = null
         stopDnsEngine()
         releaseLocks()
         serviceScope.cancel()
@@ -108,6 +120,7 @@ class DnsModeService : Service() {
         // Re-entrant ACTION_START intents arrive while the first start is still
         // loading rules; a second engine would race for the same port.
         if (startJob?.isActive == true) return
+        val startToken = startGuard.beginStart()
         startJob = serviceScope.launch {
             acquireLocks()
             val config = DnsModeManager.config.value
@@ -120,6 +133,9 @@ class DnsModeService : Service() {
                 stopSelf()
                 return@launch
             }
+
+            // A stop can land while the rules load; do not bind the port at all.
+            if (!startGuard.canPublishRunning(startToken)) return@launch
 
             dnsServerEngine?.stop()
             val engine = DnsServerEngine(
@@ -136,7 +152,17 @@ class DnsModeService : Service() {
                 queryFilter = filter
             )
 
-            if (engine.start()) {
+            // engine.start() binds the port and is not a suspension point, so a
+            // stop arriving mid-bind cannot cancel this coroutine. Re-check the
+            // token afterwards and tear the engine down rather than publishing
+            // RUNNING for a service that is already gone.
+            val started = engine.start()
+            if (!startGuard.canPublishRunning(startToken)) {
+                engine.stop()
+                Log.i(TAG, "Discarding DNS engine: service stopped while starting")
+                return@launch
+            }
+            if (started) {
                 dnsServerEngine = engine
                 // Rules are already loaded, so RUNNING is truthful from the
                 // first query the port accepts.
@@ -161,7 +187,11 @@ class DnsModeService : Service() {
             val filter = queryFilter ?: return@launch
             loadRules(filter)
             val engine = dnsServerEngine ?: return@launch
-            val config = DnsModeManager.config.value
+            // Re-read the persisted config rather than trusting the manager's
+            // in-memory copy: the block-response screen (dynamic escalation) and
+            // the rule settings write straight to preferences, so the cached copy
+            // is stale and a running server would never pick the change up.
+            val config = DnsModeManager.reloadConfig(this@DnsModeService)
             val upstream = DnsModeManager.getActiveUpstream()
             if (!engine.updateConfig(config, upstream)) {
                 Log.e(TAG, "DNS engine stopped during config refresh (port change restart likely failed)")

@@ -10,6 +10,7 @@ import com.haoze.diting.core.rule.BlockListManager
 import com.haoze.diting.core.rule.BlockResponseMode
 import com.haoze.diting.core.rule.DomainDecision
 import com.haoze.diting.core.rule.DomainPolicy
+import com.haoze.diting.server.model.DnsFilterMasterSwitch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +29,15 @@ import java.util.concurrent.atomic.AtomicBoolean
  * copy to avoid two modes writing the same index files.
  */
 class DnsQueryFilter(context: Context) {
+
+    /**
+     * Master filtering switch (`DnsModeConfig.adBlockEnabled`). [DnsServerEngine]
+     * pushes the current value in before every snapshot build; the policy reads
+     * it so both the Kotlin decision path and the snapshot handed to the Go
+     * engine honour it. Without this the snapshot always claimed filtering was
+     * on, and the standalone server kept blocking after the user turned it off.
+     */
+    val masterSwitch = DnsFilterMasterSwitch()
 
     private val appContext = context.applicationContext
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -54,7 +64,7 @@ class DnsQueryFilter(context: Context) {
         reloadCacheAfterChanges = false
     )
 
-    private val domainPolicy = DomainPolicy(allowListManager, blockListManager)
+    private val domainPolicy = DomainPolicy(allowListManager, blockListManager) { masterSwitch.isEnabled() }
 
     @Volatile
     var blockResponseMode: BlockResponseMode = BlockResponseMode.NXDOMAIN

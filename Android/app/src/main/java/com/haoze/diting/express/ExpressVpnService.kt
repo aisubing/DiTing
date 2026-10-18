@@ -39,6 +39,8 @@ class ExpressVpnService : VpnService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val tunnelManager = ExpressTunnelManager()
+    // Invalidates an in-flight start when a stop lands mid-start; see the class doc.
+    private val lifecycleGuard = ExpressLifecycleGuard()
     private lateinit var floatingLogOverlay: FloatingLogOverlayController
 
     private var startIntent: Intent? = null
@@ -86,6 +88,7 @@ class ExpressVpnService : VpnService() {
             ExpressVpnController.onServiceStateChanged(this, true)
             return
         }
+        val startToken = lifecycleGuard.beginStart()
         startIntent = intent
         activeResolutionMode = ResolutionSettingsStore.getDnsResolutionMode(this, RuleDataset.EXPRESS)
         activeProviders = resolveActiveProviders(intent)
@@ -120,6 +123,16 @@ class ExpressVpnService : VpnService() {
                 cachePolicyProvider = { DnsCacheSettingsStore.getDnsCachePolicy(this@ExpressVpnService, RuleDataset.EXPRESS) },
                 dnsLogModeProvider = { SystemSettingsStore.getDnsLogMode(this@ExpressVpnService, RuleDataset.EXPRESS) }
             )
+            // A stop that landed while the rule caches loaded already closed the
+            // interface and reported the service stopped. Publishing "running"
+            // here would resurrect a data plane over a closed descriptor, so tear
+            // the start down instead of reporting a tunnel nobody can use.
+            if (!lifecycleGuard.canPublishRunning(startToken)) {
+                if (started) tunnelManager.stop()
+                runCatching { pfd.close() }
+                Log.i(TAG, "Discarding Express tunnel: service stopped while starting")
+                return@launch
+            }
             if (!started) {
                 Log.e(TAG, "Failed to start Express tunnel data plane")
                 runCatching { pfd.close() }
@@ -187,6 +200,7 @@ class ExpressVpnService : VpnService() {
 
     private fun stopVpn() {
         CrashBreadcrumbs.record("ExpressVPN", "stopVpn called")
+        lifecycleGuard.onStopRequested()
         wasStopped = true
         if (::floatingLogOverlay.isInitialized) floatingLogOverlay.setVpnRunning(false)
         ExpressVpnController.onServiceStateChanged(this, false)
@@ -206,6 +220,7 @@ class ExpressVpnService : VpnService() {
 
     override fun onDestroy() {
         CrashBreadcrumbs.record("ExpressVPN", "ExpressVpnService onDestroy")
+        lifecycleGuard.onStopRequested()
         if (::floatingLogOverlay.isInitialized) floatingLogOverlay.destroy()
         isServiceAlive = false
         if (activeService === this) activeService = null

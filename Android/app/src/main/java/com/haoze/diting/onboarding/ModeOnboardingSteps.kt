@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.haoze.diting.permission.AppPermission
 import com.haoze.diting.permission.PermissionLevel
+import com.haoze.diting.server.model.DnsListenPortValidator
 import com.haoze.diting.ui.localizedText
 import com.haoze.diting.ui.mode.AppWorkMode
 
@@ -108,7 +109,8 @@ fun OnboardingPermissionStep(
     config: ModeOnboardingConfig,
     permissionStates: Map<AppPermission, Boolean>,
     onGrant: (AppPermission) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dnsListenPort: Int = DnsListenPortValidator.DEFAULT_PORT
 ) {
     val context = LocalContext.current
 
@@ -137,7 +139,7 @@ fun OnboardingPermissionStep(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = localizedText(context, "免 VPN 声明：服务器模式仅在本地 1053 端口提供局域网服务，不创建 VPN 接口，无需授予 VPN 权限。"),
+                        text = localizedText(context, DnsListenPortValidator.noVpnDisclaimer(dnsListenPort)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onTertiaryContainer
                     )
@@ -271,7 +273,8 @@ fun OnboardingPermissionStep(
 fun OnboardingGuideStep(
     config: ModeOnboardingConfig,
     localIps: List<String>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dnsListenPort: Int = DnsListenPortValidator.DEFAULT_PORT
 ) {
     val context = LocalContext.current
 
@@ -313,7 +316,7 @@ fun OnboardingGuideStep(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     val ipText = if (localIps.isNotEmpty()) {
-                        localIps.joinToString(" / ") { "$it:1053" }
+                        DnsListenPortValidator.formatEndpoints(localIps, dnsListenPort)
                     } else {
                         localizedText(context, "未连接 Wi-Fi 或正在获取 IP...")
                     }
@@ -358,10 +361,22 @@ fun OnboardingGuideStep(
 
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = localizedText(context, "在电脑、手机、电视的 Wi-Fi 设置中，将 DNS 改为上述 IP，并将端口设为 1053（标准设备可使用路由器 DNS 转发）。"),
+                        text = localizedText(context, DnsListenPortValidator.accessInstruction(dnsListenPort)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    // A fallback port must never look like the user's own setting:
+                    // say so, otherwise they configure the router for a port the
+                    // engine never bound.
+                    DnsListenPortValidator.unusablePortWarning(dnsListenPort)?.let { warning ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = localizedText(context, warning),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         }

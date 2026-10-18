@@ -61,9 +61,9 @@ fun ProviderHealthScreen(
     var rows by remember(dataset) { mutableStateOf(emptyList<ProviderHealthRow>()) }
 
     fun reloadRows() {
-        ProviderHealthEngine.flushActive(commit = true)
+        ProviderHealthEngine.flushActive(commit = true, dataset = dataset)
         val providers = DnsProvider.loadRuntimeProviders(context, dataset)
-        val healthByProvider = ProviderHealthStore.loadAll(context)
+        val healthByProvider = ProviderHealthStore.loadAll(context, dataset)
         val smartPredictionProviderIds = ResolutionSettingsStore.getSmartPredictionProviderIds(context, dataset)
         val normalizedWeights = ProviderHealthStore.normalizeWeightsToPercent(
             providers

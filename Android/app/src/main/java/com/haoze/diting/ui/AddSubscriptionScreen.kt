@@ -23,7 +23,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Application
 import android.content.ContentResolver
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,6 +33,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.platform.LocalContext
 import com.haoze.diting.data.entity.SubscriptionSourceType
 import com.haoze.diting.ui.showToast
+import com.haoze.diting.util.PersistableUriPermissions
+import com.haoze.diting.util.SafGrantDecisions
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -90,14 +91,16 @@ fun AddSubscriptionScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            }
+            PersistableUriPermissions.take(context, uri)
             val fileName = queryFileName(context, uri) ?: "rules.txt"
-            if (!fileName.endsWith(".txt", ignoreCase = true)) {
+            val accepted = fileName.endsWith(".txt", ignoreCase = true)
+            // Rejected picks and replaced picks both orphan a persisted grant.
+            SafGrantDecisions.releasesOnPick(
+                previousUri = localFileUri?.toString(),
+                pickedUri = uri.toString(),
+                accepted = accepted
+            ).forEach { stale -> PersistableUriPermissions.releaseString(context, stale) }
+            if (!accepted) {
                 context.showToast(localizedText(context, "请选择扩展名为 .txt 的规则文件"))
                 return@rememberLauncherForActivityResult
             }

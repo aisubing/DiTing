@@ -197,8 +197,12 @@ fun LogRetentionSettingsScreen(
                             selected = logRetention == days,
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
                             onClick = {
-                                logRetention = days
-                                SystemSettingsStore.setLogRetentionDays(context, days, dataset)
+                                LogRetentionSettingsActions.applyRetentionDays(
+                                    days = days,
+                                    updateState = { logRetention = it },
+                                    persist = { SystemSettingsStore.setLogRetentionDays(context, it, dataset) },
+                                    notifyRuntime = onRuntimeDnsSettingsChanged
+                                )
                             }
                         )
                     }

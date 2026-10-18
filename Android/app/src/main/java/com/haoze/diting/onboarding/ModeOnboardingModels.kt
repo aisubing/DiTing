@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.haoze.diting.permission.AppPermission
+import com.haoze.diting.server.model.DnsListenPortValidator
 import com.haoze.diting.ui.mode.AppWorkMode
 
 /**
@@ -51,7 +52,17 @@ data class ModeOnboardingConfig(
 
 object ModeOnboardingRegistry {
 
-    fun getConfig(mode: AppWorkMode): ModeOnboardingConfig {
+    /**
+     * @param dnsListenPort the user's configured DNS mode listen port. Only the
+     *   DNS mode branch embeds it in its copy; the other modes ignore it. It is
+     *   a parameter (rather than a hardcoded 1053) because the wizard renders
+     *   LAN access instructions that are wrong as soon as the port is changed.
+     */
+    fun getConfig(
+        mode: AppWorkMode,
+        dnsListenPort: Int = DnsListenPortValidator.DEFAULT_PORT
+    ): ModeOnboardingConfig {
+        val dnsPort = DnsListenPortValidator.displayPort(dnsListenPort)
         return when (mode) {
             AppWorkMode.NORMAL -> ModeOnboardingConfig(
                 mode = mode,
@@ -159,7 +170,7 @@ object ModeOnboardingRegistry {
                 features = listOf(
                     ModeFeatureItem(
                         title = "局域网独立 DNS 监听",
-                        description = "本机直接监听 0.0.0.0:1053（UDP/TCP），供局域网内的路由器、电脑、电视与手机作为 DNS 上游使用。",
+                        description = "本机直接监听 0.0.0.0:$dnsPort（UDP/TCP），供局域网内的路由器、电脑、电视与手机作为 DNS 上游使用。",
                         icon = Icons.Outlined.Lan
                     ),
                     ModeFeatureItem(
@@ -184,7 +195,7 @@ object ModeOnboardingRegistry {
                 guideTips = listOf(
                     QuickGuideTip(
                         title = "查看本机局域网 IP 与端口",
-                        description = "服务默认在端口 1053 监听。向导下方已自动探测到本机当前局域网 IP 地址。",
+                        description = "服务默认在端口 $dnsPort 监听。向导下方已自动探测到本机当前局域网 IP 地址。",
                         icon = Icons.Outlined.Lan
                     ),
                     QuickGuideTip(

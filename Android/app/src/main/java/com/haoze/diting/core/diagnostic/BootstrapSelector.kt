@@ -2,6 +2,7 @@ package com.haoze.diting.core.diagnostic
 
 import com.haoze.diting.core.dns.DnsMessageUtils
 import android.content.Context
+import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.ui.settings.BootstrapDnsSettingsStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,18 +13,27 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 
+/**
+ * Resolves hosts through the user's Bootstrap DNS list.
+ *
+ * [dataset] selects which settings set the Bootstrap list comes from: the
+ * ordinary tunnel reads [RuleDataset.NORMAL], the Express engine reads
+ * [RuleDataset.EXPRESS]. Reading the wrong one made the Express engine ignore
+ * the user's Express Bootstrap configuration entirely.
+ */
 class BootstrapSelector(
     private val context: Context,
     private val healthEngine: BootstrapHealthEngine,
     private val logger: BootstrapLogger? = null,
-    private val protectDatagramSocket: ((DatagramSocket) -> Boolean)? = null
+    private val protectDatagramSocket: ((DatagramSocket) -> Boolean)? = null,
+    private val dataset: RuleDataset = RuleDataset.NORMAL
 ) {
     private val cacheLock = Any()
     private val hostCache = HashMap<String, CachedBootstrapResolution>()
 
     suspend fun resolveHost(host: String): List<InetAddress> = withContext(Dispatchers.IO) {
-        val entries = BootstrapDnsSettingsStore.loadEnabledBootstrapIpEntries(context)
-        if (!BootstrapDnsSettingsStore.isBootstrapEnabled(context) || entries.isEmpty()) {
+        val entries = BootstrapDnsSettingsStore.loadEnabledBootstrapIpEntries(context, dataset)
+        if (!BootstrapDnsSettingsStore.isBootstrapEnabled(context, dataset) || entries.isEmpty()) {
             return@withContext emptyList()
         }
         val normalizedHost = host.lowercase()
@@ -43,44 +53,82 @@ class BootstrapSelector(
         orderedIndices.forEachIndexed { attemptIndex, entryIndex ->
             val entry = entries[entryIndex]
             val startedAt = System.nanoTime()
-            try {
-                val result = resolveWithBootstrapDns(host, entry.ip)
-                if (result.isEmpty()) {
-                    throw IOException("Bootstrap DNS returned no A/AAAA records")
+            // Only the Bootstrap DNS round trip belongs inside this try: health
+            // bookkeeping and log persistence are side effects, and letting their
+            // failures reach the catch block recorded a successful resolution as a
+            // failure (double count) and evicted the freshly cached entry.
+            val addresses = try {
+                resolveWithBootstrapDns(host, entry.ip).also { resolved ->
+                    if (resolved.isEmpty()) {
+                        throw IOException("Bootstrap DNS returned no A/AAAA records")
+                    }
                 }
-                val elapsedMs = max(1L, (System.nanoTime() - startedAt) / 1_000_000L)
-                healthEngine.recordResult(entry.id, success = true, elapsedMs = elapsedMs)
-                logger?.log(
-                    ipId = entry.id,
-                    ipName = entry.name,
-                    ip = entry.ip,
-                    host = host,
-                    success = true,
-                    elapsedMs = elapsedMs,
-                    fallbackUsed = attemptIndex > 0,
-                    message = "exploration".takeIf { plan.exploration && attemptIndex == 0 }
-                )
-                putCached(normalizedHost, sourceKey, result)
-                return@withContext result
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
+                lastError = e
                 removeCached(normalizedHost)
-                val elapsedMs = max(1L, (System.nanoTime() - startedAt) / 1_000_000L)
-                healthEngine.recordResult(entry.id, success = false, elapsedMs = elapsedMs)
-                logger?.log(
-                    ipId = entry.id,
-                    ipName = entry.name,
-                    ip = entry.ip,
+                recordOutcome(
+                    entry = entry,
                     host = host,
                     success = false,
-                    elapsedMs = elapsedMs,
+                    elapsedMs = max(1L, (System.nanoTime() - startedAt) / 1_000_000L),
                     fallbackUsed = attemptIndex > 0,
                     message = e.message
                 )
-                lastError = e
+                null
+            }
+
+            if (addresses != null) {
+                putCached(normalizedHost, sourceKey, addresses)
+                recordOutcome(
+                    entry = entry,
+                    host = host,
+                    success = true,
+                    elapsedMs = max(1L, (System.nanoTime() - startedAt) / 1_000_000L),
+                    fallbackUsed = attemptIndex > 0,
+                    message = "exploration".takeIf { plan.exploration && attemptIndex == 0 }
+                )
+                return@withContext addresses
             }
         }
         throw lastError ?: IllegalStateException("All Bootstrap DNS attempts failed")
+    }
+
+    /**
+     * Records the outcome without letting the health store or the log database
+     * decide whether the resolution itself succeeded.
+     */
+    private suspend fun recordOutcome(
+        entry: BootstrapIpEntry,
+        host: String,
+        success: Boolean,
+        elapsedMs: Long,
+        fallbackUsed: Boolean,
+        message: String?
+    ) {
+        try {
+            healthEngine.recordResult(entry.id, success = success, elapsedMs = elapsedMs)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Health bookkeeping is advisory; never fail the resolution over it.
+        }
+        try {
+            logger?.log(
+                ipId = entry.id,
+                ipName = entry.name,
+                ip = entry.ip,
+                host = host,
+                success = success,
+                elapsedMs = elapsedMs,
+                fallbackUsed = fallbackUsed,
+                message = message
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // A log write failure must not be reported as a DNS failure.
+        }
     }
 
     private fun getCached(host: String, sourceKey: String): List<InetAddress>? {

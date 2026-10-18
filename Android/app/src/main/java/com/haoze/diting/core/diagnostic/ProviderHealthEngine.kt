@@ -1,26 +1,27 @@
 package com.haoze.diting.core.diagnostic
 
 import android.content.Context
+import com.haoze.diting.data.RuleDataset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.pow
 
 class ProviderHealthEngine(
     private val context: Context,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val dataset: RuleDataset = RuleDataset.NORMAL
 ) : ProviderHealthStoreListener {
-    private val healthByProvider = ProviderHealthStore.loadAll(context).toMutableMap()
+    private val healthByProvider = ProviderHealthStore.loadAll(context, dataset).toMutableMap()
     private var dirty = false
     private var closed = false
     private var scheduledFlushJob: Job? = null
 
     init {
-        activeEngine = this
-        ProviderHealthStore.registerListener(this)
+        activeEngines.set(dataset, this)
+        ProviderHealthStore.registerListener(this, dataset)
     }
 
     @Synchronized
@@ -44,45 +45,46 @@ class ProviderHealthEngine(
                 decayedFailures = 0.0
             )
 
-        val safeElapsed = elapsedMs.coerceAtLeast(1L).toDouble()
-        val nextSuccesses = current.successes + if (success) 1 else 0
-        val nextFailures = current.failures + if (success) 0 else 1
-        val nextEwma = if (success) {
-            current.ewmaMs * (1.0 - EWMA_ALPHA) + safeElapsed * EWMA_ALPHA
-        } else {
-            current.ewmaMs
-        }
-        val nextJitter = if (success) {
-            current.jitterMs * (1.0 - JITTER_ALPHA) + abs(safeElapsed - current.ewmaMs) * JITTER_ALPHA
-        } else {
-            current.jitterMs
-        }
-        val nextConsecutiveFailures = if (success) 0 else current.consecutiveFailures + 1
-        val cooldownUntil = if (nextConsecutiveFailures >= COOLDOWN_FAILURE_THRESHOLD) {
-            now + COOLDOWN_MS
-        } else {
-            0L
-        }
-
+        val bootstrapSample = HealthSnapshotMath.applySample(
+            current = current.toBootstrapShape(),
+            success = success,
+            elapsedMs = elapsedMs,
+            now = now
+        )
         healthByProvider[providerId] = current.copy(
-            successes = nextSuccesses,
-            failures = nextFailures,
-            ewmaMs = nextEwma,
-            jitterMs = nextJitter,
-            consecutiveFailures = nextConsecutiveFailures,
-            cooldownUntil = cooldownUntil,
-            decayedSuccesses = current.decayedSuccesses + if (success) 1.0 else 0.0,
-            decayedFailures = current.decayedFailures + if (success) 0.0 else 1.0,
-            lastUpdatedAt = now
+            successes = bootstrapSample.successes,
+            failures = bootstrapSample.failures,
+            ewmaMs = bootstrapSample.ewmaMs,
+            jitterMs = bootstrapSample.jitterMs,
+            consecutiveFailures = bootstrapSample.consecutiveFailures,
+            cooldownUntil = bootstrapSample.cooldownUntil,
+            decayedSuccesses = bootstrapSample.decayedSuccesses,
+            decayedFailures = bootstrapSample.decayedFailures,
+            lastUpdatedAt = bootstrapSample.lastUpdatedAt
         )
         markDirty()
     }
+
+    /** Views the provider snapshot through the shared sample-update rules. */
+    private fun ProviderHealthSnapshot.toBootstrapShape(): BootstrapHealthSnapshot =
+        BootstrapHealthSnapshot(
+            ipId = providerId,
+            successes = successes,
+            failures = failures,
+            ewmaMs = ewmaMs,
+            lastUpdatedAt = lastUpdatedAt,
+            jitterMs = jitterMs,
+            consecutiveFailures = consecutiveFailures,
+            cooldownUntil = cooldownUntil,
+            decayedSuccesses = decayedSuccesses,
+            decayedFailures = decayedFailures
+        )
 
     @Synchronized
     fun flush(commit: Boolean = false) {
         if (!dirty && !commit) return
         cancelScheduledFlush()
-        ProviderHealthStore.saveAll(context, loadAll(), commit = commit)
+        ProviderHealthStore.saveAll(context, loadAll(), dataset, commit = commit)
         dirty = false
     }
 
@@ -99,17 +101,18 @@ class ProviderHealthEngine(
         synchronized(this) {
             cancelScheduledFlush()
         }
-        ProviderHealthStore.unregisterListener(this)
-        if (activeEngine === this) {
-            activeEngine = null
-        }
+        ProviderHealthStore.unregisterListener(this, dataset)
+        activeEngines.clearIfCurrent(dataset, this)
         flush(commit = true)
     }
 
     @Synchronized
     override fun onProviderHealthReset(providerIds: Set<String>) {
         providerIds.forEach { healthByProvider.remove(it) }
-        flush(commit = true)
+        // Replace, not merge: a merge would re-add the ids that were just removed.
+        cancelScheduledFlush()
+        ProviderHealthStore.replaceAll(context, loadAll(), dataset, commit = true)
+        dirty = false
     }
 
     @Synchronized
@@ -146,11 +149,14 @@ class ProviderHealthEngine(
     }
 
     companion object {
-        @Volatile
-        private var activeEngine: ProviderHealthEngine? = null
+        // One engine per dataset: the ordinary tunnel and the Express engine run
+        // their own provider lists, so a single shared slot made flushActive()
+        // flush whichever engine was created last — the wrong dataset's samples,
+        // while the caller's own engine stayed unflushed.
+        private val activeEngines = ActiveHealthEngineRegistry<ProviderHealthEngine>()
 
-        fun flushActive(commit: Boolean = true): Boolean {
-            val engine = activeEngine ?: return false
+        fun flushActive(commit: Boolean = true, dataset: RuleDataset = RuleDataset.NORMAL): Boolean {
+            val engine = activeEngines.get(dataset) ?: return false
             engine.flush(commit = commit)
             return true
         }

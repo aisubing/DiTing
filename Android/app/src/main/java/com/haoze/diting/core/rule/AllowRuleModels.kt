@@ -38,8 +38,17 @@ data class ExportedInvertedAllowRule(
     val excludedApps: Set<String>
 )
 
+/**
+ * Special allow rule (regex / denyallow / dnsType) exported for the Go engine.
+ *
+ * [source] records which rule source the entry came from, mirroring
+ * [ExportedSpecialBlockRule]. Without it the cache could not tell a subscription
+ * rule (`sub_<id>`) from a user rule, and had to de-duplicate against user rules
+ * by pattern alone — see [AllowRuleCache]'s merge step.
+ */
 data class ExportedSpecialAllowRule(
     val pattern: String,
+    val source: String = USER_SOURCE,
     val important: Boolean = false,
     val appScope: String? = null,
     val appInverted: Boolean = false,
@@ -47,7 +56,11 @@ data class ExportedSpecialAllowRule(
     val denyallow: String? = null,
     val isRegex: Boolean = false,
     val dnsType: String? = null
-)
+) {
+    companion object {
+        const val USER_SOURCE = "useradd"
+    }
+}
 
 /**
  * Read-only view of the allow rule cache state used for matching.

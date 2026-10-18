@@ -13,19 +13,21 @@ object SubscriptionImportRecovery {
     /**
      * Works on any rule database: the room instance provides transactions and
      * the sources provide the rule DAOs of the same dataset.
+     *
+     * Every DAO a staging import can write to must be cleaned, otherwise the
+     * leftover `staging_sub_<id>` rows of an interrupted import stay in the
+     * database forever: the next import only clears its own staging tag before
+     * writing, and nothing else ever deletes that source. URL and cosmetic rules
+     * were missing from both lists, so an interrupted import leaked those rows
+     * permanently.
      */
     suspend fun recoverInterruptedImports(room: RoomDatabase, sources: RuleDataSources) {
         sources.subscriptionDao().importing().forEach { subscription ->
             room.withTransaction {
                 val stagingSource = "staging_sub_${subscription.id}"
-                sources.blockRuleDao().deleteBySource(stagingSource)
-                sources.allowRuleDao().deleteBySource(stagingSource)
-                sources.rewriteRuleDao().deleteBySource(stagingSource)
+                deleteSource(sources, stagingSource)
                 if (subscription.ruleCount == 0 && subscription.lastUpdated == 0L) {
-                    val source = "sub_${subscription.id}"
-                    sources.blockRuleDao().deleteBySource(source)
-                    sources.allowRuleDao().deleteBySource(source)
-                    sources.rewriteRuleDao().deleteBySource(source)
+                    deleteSource(sources, "sub_${subscription.id}")
                     sources.subscriptionDao().markInterruptedImportFailed(
                         subscription.id,
                         SubscriptionImportState.FAILED,
@@ -40,5 +42,19 @@ object SubscriptionImportRecovery {
                 }
             }
         }
+    }
+
+    /**
+     * Deletes every rule row tagged with [source] across all rule families.
+     *
+     * Internal (not private) so a unit test can assert that every family a
+     * staging import can write to is actually cleaned.
+     */
+    internal suspend fun deleteSource(sources: RuleDataSources, source: String) {
+        sources.blockRuleDao().deleteBySource(source)
+        sources.allowRuleDao().deleteBySource(source)
+        sources.rewriteRuleDao().deleteBySource(source)
+        sources.goUrlRuleDao().deleteBySource(source)
+        sources.cosmeticRuleDao().deleteBySource(source)
     }
 }

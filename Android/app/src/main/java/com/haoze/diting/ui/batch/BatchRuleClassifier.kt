@@ -5,6 +5,7 @@ import com.haoze.diting.data.entity.RewriteTargetType
 import com.haoze.diting.core.rule.AdGuardDomainUtils
 import com.haoze.diting.core.rule.AdGuardRuleParser
 import com.haoze.diting.core.rule.HostsAndDnsmasqParser
+import com.haoze.diting.core.rule.cosmeticRuleRejection
 
 internal sealed class ClassifiedLine {
     object Ignored : ClassifiedLine()
@@ -16,6 +17,7 @@ internal sealed class ClassifiedLine {
         val isAllow: Boolean,
         val rawLine: String,
         val appScope: String? = null,
+        val appInverted: Boolean = false,
         val important: Boolean = false,
         val isWildcard: Boolean = false,
         val denyallow: String? = null,
@@ -46,6 +48,39 @@ internal sealed class ClassifiedLine {
 
 internal object BatchRuleClassifier {
 
+    /**
+     * Index where the `$modifier` section starts, or `-1` when the line has no
+     * modifier section.
+     *
+     * Only a `$` followed by a modifier name (a letter or `~`) opens a modifier
+     * section. That guard keeps regex rules such as `/ads\.example\.com$/`, where
+     * `$` is an anchor rather than a separator, on the no-modifier path. Every
+     * consumer must use this single predicate so the checks cannot drift apart.
+     */
+    private fun modifierSectionStart(raw: String): Int {
+        val dollar = raw.indexOf('$')
+        if (dollar < 0 || dollar + 1 >= raw.length) return -1
+        val next = raw[dollar + 1]
+        return if (next.isLetter() || next == '~') dollar else -1
+    }
+
+    /**
+     * Appends the canonical trailing `^` without corrupting a modifier section.
+     *
+     * `^` marks the end of the domain portion, so it has to sit *before* the
+     * `$modifier` tail. A naive `"$raw^"` on `||a.com^$~app=x` produces
+     * `||a.com^$~app=x^`, which makes the parser read `appScope` as `"x^"` — the
+     * scope then never matches a real package name, silently breaking `$app=` /
+     * `~app=` on every bulk import.
+     */
+    private fun ensureCaret(raw: String): String {
+        val modifierIndex = modifierSectionStart(raw)
+        if (modifierIndex < 0) return if (raw.endsWith("^")) raw else "$raw^"
+        val head = raw.substring(0, modifierIndex)
+        val tail = raw.substring(modifierIndex)
+        return if (head.endsWith("^")) raw else head + "^" + tail
+    }
+
     fun classify(
         raw: String,
         mode: BatchRecognitionMode,
@@ -62,8 +97,8 @@ internal object BatchRuleClassifier {
         if (trimmed.contains("##") || trimmed.contains("#@#") ||
             trimmed.contains("#?#") || trimmed.contains("#$#")
         ) {
-            if (dataset == RuleDataset.DNS_MODE) {
-                return listOf(ClassifiedLine.Invalid("元素隐藏规则仅普通模式支持"))
+            cosmeticRuleRejection(dataset)?.let {
+                return listOf(ClassifiedLine.Invalid(it))
             }
             val cat = AdGuardRuleParser.parseCategorizedLine(trimmed)
             if (cat.cosmeticRules.isNotEmpty()) {
@@ -140,6 +175,7 @@ internal object BatchRuleClassifier {
                         isAllow = false,
                         rawLine = raw,
                         appScope = b.appScope,
+                        appInverted = b.appInverted,
                         important = b.important,
                         isWildcard = b.isWildcard,
                         denyallow = b.denyallow,
@@ -160,6 +196,7 @@ internal object BatchRuleClassifier {
                         isAllow = false,
                         rawLine = raw,
                         appScope = it.appScope,
+                        appInverted = it.appInverted,
                         important = it.important,
                         isWildcard = it.isWildcard,
                         denyallow = it.denyallow,
@@ -184,10 +221,17 @@ internal object BatchRuleClassifier {
             }
         }
 
-        // 5. Explicit mapping arrows (->, =>, =)
-        val hasArrow = trimmed.contains("->") || trimmed.contains("=>") || trimmed.contains("=")
+        // 5. Explicit mapping arrows (->, =>, =), but only outside a $modifier
+        // section: `safe.example.com$~app=com.foo` is a domain rule whose `=`
+        // belongs to the modifier, not a rewrite mapping. Branch 3 already took
+        // $dnsrewrite, so stripping the modifier tail here is safe.
+        val modifierStart = modifierSectionStart(trimmed)
+        val withoutModifiers = if (modifierStart >= 0) trimmed.substring(0, modifierStart) else trimmed
+        val hasArrow = withoutModifiers.contains("->") ||
+            withoutModifiers.contains("=>") ||
+            withoutModifiers.contains("=")
         if (hasArrow && !trimmed.startsWith("@@") && !trimmed.startsWith("||")) {
-            val rewritePairs = BatchRewriteParser.parseRewriteTokens(trimmed)
+            val rewritePairs = BatchRewriteParser.parseRewriteTokens(withoutModifiers)
             if (rewritePairs.isNotEmpty()) {
                 val results = mutableListOf<ClassifiedLine>()
                 for ((rawDomain, rawTarget) in rewritePairs) {
@@ -282,7 +326,7 @@ internal object BatchRuleClassifier {
 
         // 7. Explicit whitelist prefix (@@)
         if (trimmed.startsWith("@@")) {
-            val normalized = if (trimmed.startsWith("@@||")) trimmed else "@@||${trimmed.removePrefix("@@")}^"
+            val normalized = if (trimmed.startsWith("@@||")) trimmed else ensureCaret("@@||${trimmed.removePrefix("@@")}")
             val parsed = AdGuardRuleParser.parseAllowLine(normalized)
                 ?: AdGuardRuleParser.parseAllowLine(trimmed)
 
@@ -296,6 +340,7 @@ internal object BatchRuleClassifier {
                     isAllow = true,
                     rawLine = raw,
                     appScope = parsed.appScope,
+                    appInverted = parsed.appInverted,
                     important = parsed.important,
                     isWildcard = parsed.isWildcard,
                     denyallow = parsed.denyallow,
@@ -307,7 +352,7 @@ internal object BatchRuleClassifier {
 
         // 8. Explicit blacklist prefix (||)
         if (trimmed.startsWith("||")) {
-            val normalized = if (trimmed.endsWith("^")) trimmed else "$trimmed^"
+            val normalized = ensureCaret(trimmed)
             val parsed = AdGuardRuleParser.parseLine(normalized)
                 ?: AdGuardRuleParser.parseLine(trimmed)
 
@@ -321,6 +366,7 @@ internal object BatchRuleClassifier {
                     isAllow = false,
                     rawLine = raw,
                     appScope = parsed.appScope,
+                    appInverted = parsed.appInverted,
                     important = parsed.important,
                     isWildcard = parsed.isWildcard,
                     denyallow = parsed.denyallow,
@@ -334,7 +380,7 @@ internal object BatchRuleClassifier {
         val isWhitelistMode = mode == BatchRecognitionMode.WHITELIST_FIRST
 
         if (isWhitelistMode) {
-            val normalized = "@@||$trimmed^"
+            val normalized = ensureCaret("@@||$trimmed")
             val parsed = AdGuardRuleParser.parseAllowLine(normalized)
                 ?: AdGuardRuleParser.parseAllowLine("@@$trimmed")
 
@@ -348,6 +394,7 @@ internal object BatchRuleClassifier {
                     isAllow = true,
                     rawLine = raw,
                     appScope = parsed.appScope,
+                    appInverted = parsed.appInverted,
                     important = parsed.important,
                     isWildcard = parsed.isWildcard,
                     denyallow = parsed.denyallow,
@@ -356,7 +403,7 @@ internal object BatchRuleClassifier {
                 )
             )
         } else {
-            val normalized = "||$trimmed^"
+            val normalized = ensureCaret("||$trimmed")
             val parsed = AdGuardRuleParser.parseLine(normalized)
                 ?: AdGuardRuleParser.parseLine(trimmed)
 
@@ -370,6 +417,7 @@ internal object BatchRuleClassifier {
                     isAllow = false,
                     rawLine = raw,
                     appScope = parsed.appScope,
+                    appInverted = parsed.appInverted,
                     important = parsed.important,
                     isWildcard = parsed.isWildcard,
                     denyallow = parsed.denyallow,

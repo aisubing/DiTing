@@ -5,6 +5,7 @@ import com.haoze.diting.data.dao.GoUrlRuleDao
 import com.haoze.diting.data.entity.CosmeticRuleEntity
 import com.haoze.diting.data.entity.GoUrlRuleEntity
 import com.haoze.diting.data.entity.GoUrlRuleKind
+import com.haoze.diting.data.entity.SubscriptionKind
 import java.io.BufferedReader
 
 /**
@@ -24,24 +25,57 @@ internal class CategorizedRuleStreamImporter(
     companion object {
         const val CHUNK_SIZE = 1000
 
-        fun countRules(reader: BufferedReader, badfilterKeys: Set<String> = emptySet()): Int {
+        /**
+         * Counts the rules [import] would accept for [kind], so the progress
+         * total matches the number of rules actually processed. Under the hosts
+         * kind the allow / URL / cosmetic families are not imported, so counting
+         * them made the progress bar stall short of its total.
+         */
+        fun countRules(
+            reader: BufferedReader,
+            badfilterKeys: Set<String> = emptySet(),
+            kind: String = SubscriptionKind.DOMAIN
+        ): Int {
+            val countsDomainOnlyFamilies = acceptsDomainOnlyFamilies(kind)
             var count = 0
             reader.forEachLine { line ->
                 val parsed = AdGuardRuleParser.parseCategorizedLine(line)
-                if (badfilterKeys.isEmpty()) {
-                    count += parsed.blockRules.size + parsed.allowRules.size + parsed.rewriteRules.size +
-                        parsed.urlBlockRules.size + parsed.urlAllowRules.size + parsed.cosmeticRules.size
+                val blockCount = if (badfilterKeys.isEmpty()) {
+                    parsed.blockRules.size
                 } else {
-                    count += parsed.blockRules.count { AdGuardRuleParser.blockRuleKey(it) !in badfilterKeys } +
+                    parsed.blockRules.count { AdGuardRuleParser.blockRuleKey(it) !in badfilterKeys }
+                }
+                val rewriteCount = if (badfilterKeys.isEmpty()) {
+                    parsed.rewriteRules.size
+                } else {
+                    parsed.rewriteRules.count { AdGuardRuleParser.rewriteRuleKey(it) !in badfilterKeys }
+                }
+                count += blockCount + rewriteCount
+                if (countsDomainOnlyFamilies) {
+                    count += if (badfilterKeys.isEmpty()) {
+                        parsed.allowRules.size + parsed.urlBlockRules.size +
+                            parsed.urlAllowRules.size + parsed.cosmeticRules.size
+                    } else {
                         parsed.allowRules.count { AdGuardRuleParser.allowRuleKey(it) !in badfilterKeys } +
-                        parsed.rewriteRules.count { AdGuardRuleParser.rewriteRuleKey(it) !in badfilterKeys } +
-                        parsed.urlBlockRules.count { "url_block:${it.pattern}:${it.appScope}" !in badfilterKeys } +
-                        parsed.urlAllowRules.count { "url_allow:${it.pattern}:${it.appScope}" !in badfilterKeys } +
-                        parsed.cosmeticRules.size
+                            parsed.urlBlockRules.count { "url_block:${it.pattern}:${it.appScope}" !in badfilterKeys } +
+                            parsed.urlAllowRules.count { "url_allow:${it.pattern}:${it.appScope}" !in badfilterKeys } +
+                            parsed.cosmeticRules.size
+                    }
                 }
             }
             return count
         }
+
+        /**
+         * Whether rules from the allow / URL / cosmetic families are importable
+         * for [kind]. A hosts file cannot express them, so a source declaring the
+         * hosts kind that only holds those rules is a type mismatch rather than an
+         * empty subscription. Block rules are accepted by both kinds (a hosts file
+         * blocks via a sinkhole address), and so are rewrite rules (an adblock
+         * list legitimately carries `$dnsrewrite`).
+         */
+        fun acceptsDomainOnlyFamilies(kind: String): Boolean =
+            !SubscriptionKind.isHosts(SubscriptionKind.normalize(kind))
 
         fun countHostsRules(reader: BufferedReader): Int {
             var count = 0
@@ -56,6 +90,13 @@ internal class CategorizedRuleStreamImporter(
      * [onEmpty] is invoked when there is not a single importable valid rule;
      * its argument tells whether the source did contain rules of the other
      * type. The caller decides which exception to throw.
+     *
+     * [kind] selects which rule families this import accepts; see
+     * [acceptsDomainOnlyFamilies]. It used to be accepted and then ignored, so a
+     * subscription declared as hosts silently swallowed adblock-style allow and
+     * cosmetic rules, and the resulting "no importable rule" error could never
+     * say "your type selection is wrong" because the type mismatch counter had no
+     * write site.
      */
     suspend fun import(
         reader: BufferedReader,
@@ -68,6 +109,8 @@ internal class CategorizedRuleStreamImporter(
         onEmpty: (typeMismatchOnly: Boolean) -> Nothing,
         onProgress: (suspend (processed: Int, total: Int) -> Unit)? = null
     ): RuleImportSummary {
+        val importDomainOnlyFamilies = acceptsDomainOnlyFamilies(kind)
+
         val blockBatch = ArrayList<ParsedRule>(chunkSize)
         val allowBatch = ArrayList<ParsedRule>(chunkSize)
         val rewriteBatch = ArrayList<RewriteRule>(chunkSize)
@@ -192,55 +235,78 @@ internal class CategorizedRuleStreamImporter(
                 invalid += parsed.invalidCount
                 unsupported += parsed.unsupportedCount
 
-                val lineRuleCount = parsed.blockRules.size + parsed.allowRules.size + parsed.rewriteRules.size +
-                    parsed.urlBlockRules.size + parsed.urlAllowRules.size + parsed.cosmeticRules.size
-                parsedRules += lineRuleCount
-
+                // A subscription carries exactly one kind of rule (see
+                // SubscriptionKind). Block and rewrite rules are legitimate in
+                // both kinds: a hosts file expresses blocking as a sinkhole
+                // address, and an adblock list legitimately carries
+                // `$dnsrewrite`. The allow / URL / cosmetic families cannot be
+                // expressed by a hosts file at all, so under the hosts kind they
+                // are counted in [typeSkipped] instead of [parsedRules] — which is
+                // what lets `onEmpty` tell "the file only holds rules of the other
+                // type" apart from "the file holds nothing usable". [kind] used to
+                // be accepted and then ignored entirely, so [typeSkipped] had no
+                // write site and that message could never be produced.
                 for (rule in parsed.blockRules) {
                     if (badfilterKeys.isNotEmpty() && AdGuardRuleParser.blockRuleKey(rule) in badfilterKeys) {
                         badfiltered++
                     } else {
+                        parsedRules++
                         blockBatch += rule
                         if (blockBatch.size == chunkSize) flushBlock()
                     }
                 }
                 for (rule in parsed.allowRules) {
-                    if (badfilterKeys.isNotEmpty() && AdGuardRuleParser.allowRuleKey(rule) in badfilterKeys) {
-                        badfiltered++
-                    } else {
-                        allowBatch += rule
-                        if (allowBatch.size == chunkSize) flushAllow()
+                    when {
+                        !importDomainOnlyFamilies -> typeSkipped++
+                        badfilterKeys.isNotEmpty() && AdGuardRuleParser.allowRuleKey(rule) in badfilterKeys -> badfiltered++
+                        else -> {
+                            parsedRules++
+                            allowBatch += rule
+                            if (allowBatch.size == chunkSize) flushAllow()
+                        }
                     }
                 }
                 for (rule in parsed.rewriteRules) {
                     if (badfilterKeys.isNotEmpty() && AdGuardRuleParser.rewriteRuleKey(rule) in badfilterKeys) {
                         badfiltered++
                     } else {
+                        parsedRules++
                         rewriteBatch += rule
                         if (rewriteBatch.size == chunkSize) flushRewrite()
                     }
                 }
                 for (rule in parsed.urlBlockRules) {
                     val key = "url_block:${rule.pattern}:${rule.appScope}"
-                    if (badfilterKeys.isNotEmpty() && key in badfilterKeys) {
-                        badfiltered++
-                    } else {
-                        urlBlockBatch += rule
-                        if (urlBlockBatch.size == chunkSize) flushUrlBlock()
+                    when {
+                        !importDomainOnlyFamilies -> typeSkipped++
+                        badfilterKeys.isNotEmpty() && key in badfilterKeys -> badfiltered++
+                        else -> {
+                            parsedRules++
+                            urlBlockBatch += rule
+                            if (urlBlockBatch.size == chunkSize) flushUrlBlock()
+                        }
                     }
                 }
                 for (rule in parsed.urlAllowRules) {
                     val key = "url_allow:${rule.pattern}:${rule.appScope}"
-                    if (badfilterKeys.isNotEmpty() && key in badfilterKeys) {
-                        badfiltered++
-                    } else {
-                        urlAllowBatch += rule
-                        if (urlAllowBatch.size == chunkSize) flushUrlAllow()
+                    when {
+                        !importDomainOnlyFamilies -> typeSkipped++
+                        badfilterKeys.isNotEmpty() && key in badfilterKeys -> badfiltered++
+                        else -> {
+                            parsedRules++
+                            urlAllowBatch += rule
+                            if (urlAllowBatch.size == chunkSize) flushUrlAllow()
+                        }
                     }
                 }
                 for (rule in parsed.cosmeticRules) {
-                    cosmeticBatch += rule
-                    if (cosmeticBatch.size == chunkSize) flushCosmetic()
+                    if (!importDomainOnlyFamilies) {
+                        typeSkipped++
+                    } else {
+                        parsedRules++
+                        cosmeticBatch += rule
+                        if (cosmeticBatch.size == chunkSize) flushCosmetic()
+                    }
                 }
             }
         }

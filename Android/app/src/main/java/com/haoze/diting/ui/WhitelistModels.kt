@@ -1,11 +1,16 @@
 package com.haoze.diting.ui
 
 import com.haoze.diting.core.rule.DefaultWhitelistSeeder
+import com.haoze.diting.core.rule.GoUrlRuleManager
+import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.data.dao.AllowRuleDao
+import com.haoze.diting.data.dao.CosmeticRuleDao
+import com.haoze.diting.data.dao.GoUrlRuleDao
 import com.haoze.diting.data.dao.SubscriptionDao
 import com.haoze.diting.data.entity.AllowRuleEntity
 import com.haoze.diting.data.entity.CosmeticRuleEntity
 import com.haoze.diting.data.entity.GoUrlRuleEntity
+import com.haoze.diting.data.entity.GoUrlRuleKind
 
 enum class WhitelistType {
     DOMAIN,
@@ -127,6 +132,108 @@ internal suspend fun SubscriptionDao.lookupSubscriptionNames(
 internal fun matchesSearchQuery(query: String, vararg fields: String?): Boolean {
     if (query.isEmpty()) return true
     return fields.any { it?.lowercase()?.contains(query) == true }
+}
+
+/**
+ * Assembles the URL / cosmetic allow rows shown above the paged domain rows.
+ *
+ * URL and cosmetic rules have no paged DAO queries, so this list is still built in
+ * memory; extracting it keeps [WhitelistViewModel] under the 550-line limit.
+ *
+ * The SUBSCRIPTION filter keeps both kinds (unlike the blacklist, whose URL branch
+ * is empty for that filter): allow-listed URL rules with a subscription source do
+ * belong in that tab.
+ */
+internal suspend fun buildWhitelistNonDomainItems(
+    filter: WhitelistFilter,
+    query: String,
+    dataset: RuleDataset,
+    goUrlRuleDao: GoUrlRuleDao,
+    cosmeticRuleDao: CosmeticRuleDao,
+    subscriptionDao: SubscriptionDao,
+    masterEnabled: Boolean
+): List<WhitelistItem> {
+    val urlItems = goUrlRuleDao.queryWhitelistUrlItems(filter, query, subscriptionDao, masterEnabled)
+    val cosmeticItems = cosmeticRuleDao.queryWhitelistCosmeticItems(
+        filter, query, dataset, subscriptionDao, masterEnabled
+    )
+    return when (filter) {
+        WhitelistFilter.URL -> urlItems
+        WhitelistFilter.COSMETIC -> cosmeticItems
+        WhitelistFilter.SUBSCRIPTION -> cosmeticItems + urlItems
+        else -> cosmeticItems + urlItems
+    }
+}
+
+private suspend fun GoUrlRuleDao.queryWhitelistUrlItems(
+    filter: WhitelistFilter,
+    query: String,
+    subscriptionDao: SubscriptionDao,
+    masterEnabled: Boolean
+): List<WhitelistItem> {
+    val all = when (filter) {
+        WhitelistFilter.ALL, WhitelistFilter.USER_ADDED, WhitelistFilter.SUBSCRIPTION, WhitelistFilter.URL ->
+            byKind(GoUrlRuleKind.ALLOW)
+        else -> emptyList()
+    }
+    if (all.isEmpty()) return emptyList()
+
+    val sources = sourcesForRuleIds(all.map { it.id }).groupBy { it.ruleId }
+    val names = subscriptionDao.lookupSubscriptionNames(sources.values.flatten().map { it.ruleId to it.source })
+
+    return all.mapNotNull { entity ->
+        val rows = sources[entity.id].orEmpty()
+        val subSource = rows.firstOrNull { it.source.startsWith("sub_") }
+        val isSub = subSource != null
+        val isUser = rows.isEmpty() || rows.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
+        if (filter == WhitelistFilter.USER_ADDED && !isUser) return@mapNotNull null
+        if (filter == WhitelistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
+        val subName = subSource?.let { names[it.source] }
+        if (!matchesSearchQuery(query, entity.pattern, entity.rawLine, null, null, subName)) return@mapNotNull null
+        entity.toItem(
+            isUserRule = isUser,
+            isSubscription = isSub,
+            subscriptionName = subName,
+            masterEnabled = masterEnabled
+        )
+    }
+}
+
+private suspend fun CosmeticRuleDao.queryWhitelistCosmeticItems(
+    filter: WhitelistFilter,
+    query: String,
+    dataset: RuleDataset,
+    subscriptionDao: SubscriptionDao,
+    masterEnabled: Boolean
+): List<WhitelistItem> {
+    // Only NORMAL has a CSS compiler feeding the Go engine.
+    if (dataset != RuleDataset.NORMAL) return emptyList()
+    val all = when (filter) {
+        WhitelistFilter.ALL, WhitelistFilter.USER_ADDED, WhitelistFilter.SUBSCRIPTION, WhitelistFilter.COSMETIC ->
+            allowRules()
+        else -> emptyList()
+    }
+    if (all.isEmpty()) return emptyList()
+
+    val sources = sourcesForRuleIds(all.map { it.id }).groupBy { it.ruleId }
+    val names = subscriptionDao.lookupSubscriptionNames(sources.values.flatten().map { it.ruleId to it.source })
+
+    return all.mapNotNull { entity ->
+        val rows = sources[entity.id].orEmpty()
+        val subSource = rows.firstOrNull { it.source.startsWith("sub_") }
+        val isSub = subSource != null
+        val isUser = rows.isEmpty() || rows.any { it.source == "useradd" || !it.source.startsWith("sub_") }
+        if (filter == WhitelistFilter.USER_ADDED && !isUser) return@mapNotNull null
+        if (filter == WhitelistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
+        val subName = subSource?.let { names[it.source] }
+        if (!matchesSearchQuery(query, entity.rawLine, entity.domain, entity.selector, null, subName)) return@mapNotNull null
+        entity.toItem(
+            isUserRule = isUser,
+            isSubscription = isSub,
+            subscriptionName = subName,
+            masterEnabled = masterEnabled
+        )
+    }
 }
 
 internal fun GoUrlRuleEntity.toItem(

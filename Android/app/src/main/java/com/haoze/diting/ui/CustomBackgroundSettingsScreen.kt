@@ -1,6 +1,5 @@
 package com.haoze.diting.ui
 
-import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -49,6 +48,8 @@ import com.haoze.diting.ui.components.SettingsSurfaceGroup
 import com.haoze.diting.ui.components.SettingsSwitchItem
 import com.haoze.diting.ui.components.SettingsCardMargin
 import com.haoze.diting.ui.settings.AppearanceSettingsStore
+import com.haoze.diting.util.PersistableUriPermissions
+import com.haoze.diting.util.SafGrantDecisions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -79,9 +80,7 @@ fun CustomBackgroundSettingsScreen(
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { selected ->
         if (selected != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(selected, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
+            PersistableUriPermissions.take(context, selected)
             AppearanceSettingsStore.addCustomBackgroundUri(context, selected.toString())
             applyBackgroundChange(enabled = true, uri = selected.toString())
         }
@@ -154,6 +153,11 @@ fun CustomBackgroundSettingsScreen(
                 destructive = true,
                 onConfirm = {
                     AppearanceSettingsStore.removeCustomBackgroundUri(context, uri)
+                    // The wallpaper is gone from the app, so its persisted read
+                    // grant must go too; otherwise the app keeps access to a file
+                    // the user deleted from the list.
+                    SafGrantDecisions.releasesOnRemove(uri)
+                        .forEach { stale -> PersistableUriPermissions.releaseString(context, stale) }
                     val currentEnabled = AppearanceSettingsStore.isCustomBackgroundEnabled(context)
                     val currentUri = AppearanceSettingsStore.getCustomBackgroundUri(context)
                     com.haoze.diting.ui.background.CustomBackgroundManager.onBackgroundSettingsChanged(context, currentEnabled, currentUri)

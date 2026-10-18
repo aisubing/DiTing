@@ -6,19 +6,24 @@ import com.haoze.diting.data.BootstrapOverallStats
 import com.haoze.diting.data.BootstrapStats
 import com.haoze.diting.data.BootstrapStatsRange
 import com.haoze.diting.data.dao.BootstrapLogDao
+import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.ui.settings.BootstrapDnsSettingsStore
 import com.haoze.diting.util.statsRangeStartMillis
 import com.haoze.diting.core.diagnostic.BootstrapHealthStore
 
 class BootstrapLogRepository(
     private val context: Context,
-    private val dao: BootstrapLogDao
+    private val dao: BootstrapLogDao,
+    private val dataset: RuleDataset = RuleDataset.NORMAL
 ) {
     suspend fun stats(range: BootstrapStatsRange): BootstrapStats {
         val since = statsRangeStartMillis(range)
         val overallRow = dao.overallStats(since)
-        val healthByIp = BootstrapHealthStore.loadAll(context)
-        val entriesById = BootstrapDnsSettingsStore.loadBootstrapIpEntries(context).associateBy { it.id }
+        // Health and entry lookups must use the same dataset as the log DAO,
+        // otherwise the Express engine's stats screen shows the ordinary
+        // tunnel's weights and IP names.
+        val healthByIp = BootstrapHealthStore.loadAll(context, dataset)
+        val entriesById = BootstrapDnsSettingsStore.loadBootstrapIpEntries(context, dataset).associateBy { it.id }
 
         return BootstrapStats(
             overall = BootstrapOverallStats(

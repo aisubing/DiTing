@@ -96,7 +96,7 @@ internal class SubscriptionDownloader(
                     AdGuardRuleParser.extractBadfilterKeys(reader)
                 }
                 val totalRules = tempFile.bufferedReader().use { reader ->
-                    CategorizedRuleStreamImporter.countRules(reader, badfilterKeys)
+                    CategorizedRuleStreamImporter.countRules(reader, badfilterKeys, kind)
                 }
                 val summary = tempFile.bufferedReader().use { reader ->
                     ruleStreamer.import(
@@ -184,7 +184,7 @@ internal class SubscriptionDownloader(
                     AdGuardRuleParser.extractBadfilterKeys(reader)
                 }
                 val totalRules = tempFile.bufferedReader().use { reader ->
-                    CategorizedRuleStreamImporter.countRules(reader, badfilterKeys)
+                    CategorizedRuleStreamImporter.countRules(reader, badfilterKeys, kind)
                 }
                 val summary = tempFile.bufferedReader().use { reader ->
                     ruleStreamer.import(

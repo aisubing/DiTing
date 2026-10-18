@@ -1,6 +1,8 @@
 package com.haoze.diting.core.diagnostic
 
 import android.content.Context
+import android.content.SharedPreferences
+import com.haoze.diting.data.RuleDataset
 import org.json.JSONObject
 
 data class ProviderHealthSnapshot(
@@ -54,16 +56,27 @@ data class ProviderHealthSnapshot(
     }
 }
 
+/**
+ * Persists DNS provider health samples.
+ *
+ * Scoped per [RuleDataset] for the same reason as [BootstrapHealthStore]: the
+ * ordinary tunnel and the Express engine keep separate provider lists, so one
+ * shared blob let the engine that flushed last erase the other's samples.
+ */
 object ProviderHealthStore {
-    private const val PREFS_NAME = "dns_vpn_prefs"
     private const val KEY_PROVIDER_HEALTH_JSON = "provider_health_json"
     private const val DEFAULT_LATENCY_MS = 250.0
-    private val listeners = mutableSetOf<ProviderHealthStoreListener>()
+    private val listeners = mutableMapOf<RuleDataset, MutableSet<ProviderHealthStoreListener>>()
+
+    private fun prefs(context: Context, dataset: RuleDataset): SharedPreferences =
+        context.getSharedPreferences(dataset.prefsName(), Context.MODE_PRIVATE)
 
     @Synchronized
-    fun loadAll(context: Context): Map<String, ProviderHealthSnapshot> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val root = parseRoot(prefs.getString(KEY_PROVIDER_HEALTH_JSON, null))
+    fun loadAll(
+        context: Context,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ): Map<String, ProviderHealthSnapshot> {
+        val root = HealthStoreJson.parseRoot(prefs(context, dataset).getString(KEY_PROVIDER_HEALTH_JSON, null))
         val result = mutableMapOf<String, ProviderHealthSnapshot>()
         val keys = root.keys()
         while (keys.hasNext()) {
@@ -87,38 +100,32 @@ object ProviderHealthStore {
         return result
     }
 
+    /** Merges [snapshots] into the stored entries instead of replacing them. */
     @Synchronized
     fun saveAll(
         context: Context,
         snapshots: Map<String, ProviderHealthSnapshot>,
+        dataset: RuleDataset = RuleDataset.NORMAL,
         commit: Boolean = false
     ): Boolean {
-        val root = JSONObject()
-        snapshots.forEach { (providerId, snapshot) ->
-            root.put(
-                providerId,
-                JSONObject().apply {
-                    put("successes", snapshot.successes)
-                    put("failures", snapshot.failures)
-                    put("ewmaMs", snapshot.ewmaMs)
-                    put("jitterMs", snapshot.jitterMs)
-                    put("consecutiveFailures", snapshot.consecutiveFailures)
-                    put("cooldownUntil", snapshot.cooldownUntil)
-                    put("decayedSuccesses", snapshot.decayedSuccesses)
-                    put("decayedFailures", snapshot.decayedFailures)
-                    put("hedgeMisses", snapshot.hedgeMisses)
-                    put("decayedHedgeMisses", snapshot.decayedHedgeMisses)
-                    put("lastUpdatedAt", snapshot.lastUpdatedAt)
-                }
-            )
-        }
-        val editor = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_PROVIDER_HEALTH_JSON, root.toString())
-        return if (commit) editor.commit() else {
-            editor.apply()
-            true
-        }
+        val prefs = prefs(context, dataset)
+        val root = HealthStoreJson.merge(
+            prefs.getString(KEY_PROVIDER_HEALTH_JSON, null),
+            snapshots.mapValues { (_, snapshot) -> snapshot.toJson() }
+        )
+        return write(prefs, root, commit)
+    }
+
+    /** Overwrites the stored entries with exactly [snapshots]. */
+    @Synchronized
+    fun replaceAll(
+        context: Context,
+        snapshots: Map<String, ProviderHealthSnapshot>,
+        dataset: RuleDataset = RuleDataset.NORMAL,
+        commit: Boolean = false
+    ): Boolean {
+        val root = HealthStoreJson.replace(snapshots.mapValues { (_, snapshot) -> snapshot.toJson() })
+        return write(prefs(context, dataset), root, commit)
     }
 
     fun normalizeWeightsToPercent(weights: List<Pair<String, Double>>): Map<String, Int> {
@@ -142,54 +149,68 @@ object ProviderHealthStore {
         }
     }
 
-    fun reset(context: Context, providerIds: Set<String>) {
+    fun reset(
+        context: Context,
+        providerIds: Set<String>,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ) {
         val notifyListeners = synchronized(this) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val root = parseRoot(prefs.getString(KEY_PROVIDER_HEALTH_JSON, null))
-            providerIds.forEach { root.remove(it) }
+            val prefs = prefs(context, dataset)
+            val root = HealthStoreJson.remove(prefs.getString(KEY_PROVIDER_HEALTH_JSON, null), providerIds)
             prefs.edit().putString(KEY_PROVIDER_HEALTH_JSON, root.toString()).apply()
-            listeners.toList()
+            listeners[dataset]?.toList().orEmpty()
         }
         notifyListeners.forEach { it.onProviderHealthReset(providerIds) }
     }
 
-    fun remove(context: Context, providerId: String) {
-        val providerIds = setOf(providerId)
-        val notifyListeners = synchronized(this) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val root = parseRoot(prefs.getString(KEY_PROVIDER_HEALTH_JSON, null))
-            root.remove(providerId)
-            prefs.edit().putString(KEY_PROVIDER_HEALTH_JSON, root.toString()).apply()
-            listeners.toList()
-        }
-        notifyListeners.forEach { it.onProviderHealthReset(providerIds) }
+    fun remove(context: Context, providerId: String, dataset: RuleDataset = RuleDataset.NORMAL) {
+        reset(context, setOf(providerId), dataset)
     }
 
-    fun clearAll(context: Context) {
+    fun clearAll(context: Context, dataset: RuleDataset = RuleDataset.NORMAL) {
         val notifyListeners = synchronized(this) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            prefs.edit().remove(KEY_PROVIDER_HEALTH_JSON).apply()
-            listeners.toList()
+            prefs(context, dataset).edit().remove(KEY_PROVIDER_HEALTH_JSON).apply()
+            listeners[dataset]?.toList().orEmpty()
         }
         notifyListeners.forEach { it.onProviderHealthCleared() }
     }
 
     @Synchronized
-    fun registerListener(listener: ProviderHealthStoreListener) {
-        listeners.add(listener)
+    fun registerListener(
+        listener: ProviderHealthStoreListener,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ) {
+        listeners.getOrPut(dataset) { mutableSetOf() }.add(listener)
     }
 
     @Synchronized
-    fun unregisterListener(listener: ProviderHealthStoreListener) {
-        listeners.remove(listener)
+    fun unregisterListener(
+        listener: ProviderHealthStoreListener,
+        dataset: RuleDataset = RuleDataset.NORMAL
+    ) {
+        listeners[dataset]?.remove(listener)
     }
 
-    private fun parseRoot(json: String?): JSONObject {
-        return try {
-            if (json.isNullOrBlank()) JSONObject() else JSONObject(json)
-        } catch (_: Exception) {
-            JSONObject()
+    private fun write(prefs: SharedPreferences, root: JSONObject, commit: Boolean): Boolean {
+        val editor = prefs.edit().putString(KEY_PROVIDER_HEALTH_JSON, root.toString())
+        return if (commit) editor.commit() else {
+            editor.apply()
+            true
         }
+    }
+
+    private fun ProviderHealthSnapshot.toJson(): JSONObject = JSONObject().apply {
+        put("successes", successes)
+        put("failures", failures)
+        put("ewmaMs", ewmaMs)
+        put("jitterMs", jitterMs)
+        put("consecutiveFailures", consecutiveFailures)
+        put("cooldownUntil", cooldownUntil)
+        put("decayedSuccesses", decayedSuccesses)
+        put("decayedFailures", decayedFailures)
+        put("hedgeMisses", hedgeMisses)
+        put("decayedHedgeMisses", decayedHedgeMisses)
+        put("lastUpdatedAt", lastUpdatedAt)
     }
 
     private data class ProviderWeightShare(
@@ -197,11 +218,9 @@ object ProviderHealthStore {
         val floor: Int,
         val remainder: Double
     )
-
 }
 
 interface ProviderHealthStoreListener {
     fun onProviderHealthReset(providerIds: Set<String>)
     fun onProviderHealthCleared() {}
 }
-

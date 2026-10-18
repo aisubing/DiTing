@@ -78,6 +78,11 @@ class ConfigExporter(
                 put("hiddenProviderRefs", serializeProviderIds(homeVisibility.hiddenProviderIds))
                 put("visibleProviderRefs", serializeProviderIds(homeVisibility.visibleProviderIds))
             })
+            // Every provider-id binding the importer understands must be
+            // exported, otherwise an export/import round trip silently drops it.
+            // `raceProviderRefs` was parsed and applied on import but never
+            // written here, so 抢答模式 lost its node list on every transfer.
+            root.put("raceProviderRefs", serializeProviderIds(ResolutionSettingsStore.getRaceProviderIds(context, dataset)))
             root.put("smartPredictionProviderRefs", serializeProviderIds(ResolutionSettingsStore.getSmartPredictionProviderIds(context, dataset)))
             root.put("parallelRaceProviderRefs", serializeProviderIds(ResolutionSettingsStore.getParallelRaceProviderIds(context, dataset)))
             root.put("primaryBackupProviderRefs", JSONArray().apply {

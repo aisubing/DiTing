@@ -2,6 +2,7 @@ package com.haoze.diting.crash
 
 import android.content.Context
 import android.util.Log
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
@@ -27,55 +28,69 @@ class CrashHandler private constructor(
         }
 
         try {
-            CrashBreadcrumbs.record(
-                tag = "CRASH",
-                message = "Uncaught exception in [${thread.name}]: ${throwable.javaClass.name}: ${throwable.message}",
-                level = "FATAL"
-            )
-
-            // Fast path: capture only cheap diagnostics and persist them with a
-            // synchronous fsync. This must complete before the process dies, and
-            // is deliberately small so it still succeeds under OOM / a wedged
-            // runtime, where the full report below would itself fail.
-            val minimal = CrashCollector.collectMinimalReport(
-                thread = thread,
-                throwable = throwable,
-                topActivityName = currentActivityName,
-                isForeground = isAppForeground
-            )
-            val file = CrashLogManager.saveCrashReport(appContext, minimal)
-            Log.e(TAG, "DITING Crash detected! Minimal report saved to: ${file?.absolutePath}")
-
-            // Best-effort enrichment, run inline. It cannot be deferred to
-            // another thread: the default handler tears the process down as soon
-            // as this method returns, so a detached thread would be killed before
-            // finishing. The minimal report written above stays in place if this
-            // step fails, which keeps the "a report always lands" guarantee while
-            // restoring the full diagnostics.
-            val full = runCatching {
-                CrashCollector.collectReport(
-                    context = appContext,
-                    thread = thread,
-                    throwable = throwable,
-                    topActivityName = currentActivityName,
-                    isForeground = isAppForeground
-                )
-            }.getOrNull()
-            if (full != null) {
-                if (file != null) {
-                    CrashLogManager.replaceCrashReport(appContext, file, full)
-                    Log.i(TAG, "Enriched crash report at ${file.absolutePath}")
-                } else {
-                    CrashLogManager.saveCrashReport(appContext, full)
+            // Every step below must run even when an earlier one throws: the
+            // process is torn down as soon as this method returns, so a skipped
+            // step is lost forever. CrashCaptureSequence isolates each step and
+            // reports the failures instead of aborting the chain.
+            var file: File? = null
+            val captureSteps: List<Pair<String, () -> Unit>> = listOf(
+                "breadcrumb" to {
+                    CrashBreadcrumbs.record(
+                        tag = "CRASH",
+                        message = "Uncaught exception in [${thread.name}]: ${throwable.javaClass.name}: ${throwable.message}",
+                        level = "FATAL"
+                    )
+                },
+                // Fast path: capture only cheap diagnostics and persist them with
+                // a synchronous fsync. This must complete before the process
+                // dies, and is deliberately small so it still succeeds under OOM
+                // / a wedged runtime, where the full report below would itself
+                // fail.
+                "minimal-report" to {
+                    val minimal = CrashCollector.collectMinimalReport(
+                        thread = thread,
+                        throwable = throwable,
+                        topActivityName = currentActivityName,
+                        isForeground = isAppForeground
+                    )
+                    file = CrashLogManager.saveCrashReport(appContext, minimal)
+                    Log.e(TAG, "DITING Crash detected! Minimal report saved to: ${file?.absolutePath}")
+                },
+                // Best-effort enrichment, run inline. It cannot be deferred to
+                // another thread: the default handler tears the process down as
+                // soon as this method returns, so a detached thread would be
+                // killed before finishing. The minimal report written above stays
+                // in place if this step fails, which keeps the "a report always
+                // lands" guarantee while restoring the full diagnostics.
+                "full-report" to {
+                    val full = CrashCollector.collectReport(
+                        context = appContext,
+                        thread = thread,
+                        throwable = throwable,
+                        topActivityName = currentActivityName,
+                        isForeground = isAppForeground
+                    )
+                    val saved = file
+                    if (saved != null) {
+                        CrashLogManager.replaceCrashReport(appContext, saved, full)
+                        Log.i(TAG, "Enriched crash report at ${saved.absolutePath}")
+                    } else {
+                        file = CrashLogManager.saveCrashReport(appContext, full)
+                    }
+                },
+                // Crash bookkeeping (consecutive-crash count + threshold export)
+                // must also run inline, for the same reason. It runs after the
+                // enrichment so the auto-exported bundle carries the full report.
+                "crash-bookkeeping" to {
+                    CrashLogManager.onCrashOccurred(appContext)
                 }
-            } else {
-                Log.w(TAG, "Failed to collect the full crash report; keeping the minimal one")
-            }
-
-            // Crash bookkeeping (consecutive-crash count + threshold export) must
-            // also run inline, for the same reason. It runs after the enrichment
-            // so the auto-exported bundle carries the full report.
-            CrashLogManager.onCrashOccurred(appContext)
+            )
+            CrashCaptureSequence.run(
+                steps = captureSteps,
+                onStepFailed = { name, error ->
+                    Log.e(TAG, "Crash capture step '$name' failed", error)
+                }
+            )
         } catch (e: Throwable) {
             Log.e(TAG, "Fatal error while capturing crash report", e)
         } finally {

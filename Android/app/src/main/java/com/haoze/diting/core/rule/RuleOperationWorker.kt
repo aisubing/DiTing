@@ -346,7 +346,7 @@ class RuleOperationWorker(
             val kind = requestedSubscriptionKind()
             val uri = requiredUri()
             val badfilterKeys = openUriReader(uri).use { AdGuardRuleParser.extractBadfilterKeys(it) }
-            val total = openUriReader(uri).use { CategorizedRuleStreamImporter.countRules(it, badfilterKeys) }
+            val total = openUriReader(uri).use { CategorizedRuleStreamImporter.countRules(it, badfilterKeys, kind) }
             val msg = openUriReader(uri).use { reader ->
                 importCategorizedRules(reader, blockManager, allowManager, rewriteManager, type, kind, total, badfilterKeys)
             }.displayMessage("导入完成")

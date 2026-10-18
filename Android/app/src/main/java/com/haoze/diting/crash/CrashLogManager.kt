@@ -35,6 +35,18 @@ object CrashLogManager {
     private const val CONSECUTIVE_THRESHOLD = 3
     private const val CONSECUTIVE_EXPIRY_MS = 24 * 60 * 60 * 1000L // Window within which crashes count as consecutive
 
+    /**
+     * Whether the current crash streak should trigger an automatic backup.
+     *
+     * [hasExported] is the "already backed up in this streak" suppression flag:
+     * it is set both by a manual export and by a successful auto backup, and
+     * cleared again by [clearCrashLogs] so the next streak re-arms it. Without
+     * this check every crash past the threshold would write another full
+     * backup into Downloads.
+     */
+    internal fun shouldAutoExport(consecutiveCount: Int, hasExported: Boolean): Boolean =
+        consecutiveCount >= CONSECUTIVE_THRESHOLD && !hasExported
+
     fun getCrashDir(context: Context): File {
         val dir = File(context.filesDir, DIR_NAME)
         if (!dir.exists()) {
@@ -114,8 +126,8 @@ object CrashLogManager {
 
             Log.i(TAG, "Crash occurrence recorded: count=$newCount, hasManuallyExported=$hasExported")
 
-            // Threshold reached and the user has not manually exported crash logs yet
-            if (newCount >= CONSECUTIVE_THRESHOLD && !hasExported) {
+            // Threshold reached and no export has happened for this streak yet
+            if (shouldAutoExport(newCount, hasExported)) {
                 val content = generateExportContent(context)
                 if (content.isNotBlank()) {
                     val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -123,8 +135,14 @@ object CrashLogManager {
                     val uri = exportToDownloads(context, fileName, content)
                     if (uri != null) {
                         Log.i(TAG, "Auto-saved crash logs to system Download: $fileName")
+                        // Mark the streak as already backed up. Without this
+                        // every subsequent crash in the same streak re-exports
+                        // a fresh full backup, flooding Downloads. The flag is
+                        // cleared again by clearCrashLogs(), which re-arms the
+                        // auto backup for the next streak.
                         prefs.edit()
                             .putBoolean(KEY_PENDING_AUTO_EXPORT_NOTICE, true)
+                            .putBoolean(KEY_HAS_MANUALLY_EXPORTED, true)
                             .commit()
                     }
                 }

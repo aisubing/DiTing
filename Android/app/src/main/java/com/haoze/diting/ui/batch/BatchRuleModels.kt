@@ -50,6 +50,7 @@ sealed class BatchRuleItem {
         val pattern: String,
         val isAllow: Boolean = false,
         val appScope: String? = null,
+        val appInverted: Boolean = false,
         val important: Boolean = false,
         val isWildcard: Boolean = false,
         val denyallow: String? = null,

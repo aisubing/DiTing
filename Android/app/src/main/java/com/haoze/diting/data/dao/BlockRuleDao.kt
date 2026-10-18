@@ -198,7 +198,7 @@ interface BlockRuleDao {
             "r.appScope AS appScope, r.appInverted AS appInverted, r.isWildcard AS isWildcard, " +
             "r.denyallow AS denyallow, r.isRegex AS isRegex, r.dnsType AS dnsType FROM block_rule r " +
             "JOIN block_rule_source s ON s.ruleId = r.id " +
-            "WHERE r.enabled = 1 AND s.enabled = 1 AND s.source NOT LIKE 'sub_%' " +
+            "WHERE r.enabled = 1 AND s.enabled = 1 AND s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%' " +
             "GROUP BY r.id, r.pattern, r.important, r.appScope, r.appInverted, r.isWildcard, r.denyallow, r.isRegex, r.dnsType"
     )
     suspend fun enabledCustomRules(): List<EnabledRule>
@@ -359,31 +359,31 @@ interface BlockRuleDao {
 
     @Query(
         "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
-            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source NOT LIKE 'sub_%')) AS enabled, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%')) AS enabled, " +
             "r.groupName, r.important, r.appScope, r.appInverted, r.isWildcard, r.denyallow, r.isRegex, r.dnsType " +
             "FROM block_rule r " +
-            "WHERE EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.source NOT LIKE 'sub_%') " +
+            "WHERE EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%') " +
             "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
     )
     suspend fun userRulesPaged(limit: Int, offset: Int): List<BlockRuleEntity>
 
     @Query(
         "SELECT r.id, r.pattern, r.rawLine, r.addedAt, " +
-            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source NOT LIKE 'sub_%')) AS enabled, " +
+            "(r.enabled = 1 AND EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.enabled = 1 AND s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%')) AS enabled, " +
             "r.groupName, r.important, r.appScope, r.appInverted, r.isWildcard, r.denyallow, r.isRegex, r.dnsType " +
             "FROM block_rule r " +
-            "WHERE EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.source NOT LIKE 'sub_%') " +
+            "WHERE EXISTS (SELECT 1 FROM block_rule_source s WHERE s.ruleId = r.id AND s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%') " +
             "AND (r.pattern LIKE :query OR r.rawLine LIKE :query) " +
             "ORDER BY r.addedAt DESC LIMIT :limit OFFSET :offset"
     )
     suspend fun searchUserRulesPaged(query: String, limit: Int, offset: Int): List<BlockRuleEntity>
 
-    @Query("SELECT COUNT(DISTINCT r.id) FROM block_rule r JOIN block_rule_source s ON s.ruleId = r.id WHERE s.source NOT LIKE 'sub_%'")
+    @Query("SELECT COUNT(DISTINCT r.id) FROM block_rule r JOIN block_rule_source s ON s.ruleId = r.id WHERE s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%'")
     suspend fun userRulesCount(): Int
 
     @Query(
         "SELECT COUNT(DISTINCT r.id) FROM block_rule r JOIN block_rule_source s ON s.ruleId = r.id " +
-            "WHERE s.source NOT LIKE 'sub_%' AND (r.pattern LIKE :query OR r.rawLine LIKE :query)"
+            "WHERE s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%' AND (r.pattern LIKE :query OR r.rawLine LIKE :query)"
     )
     suspend fun searchUserRulesCount(query: String): Int
 
@@ -420,10 +420,10 @@ interface BlockRuleDao {
     @Query("SELECT ruleId, source, enabled FROM block_rule_source WHERE ruleId IN (:ruleIds)")
     suspend fun sourcesForRuleIds(ruleIds: List<Long>): List<BlockRuleSourceEntity>
 
-    @Query("SELECT COUNT(DISTINCT r.id) FROM block_rule r JOIN block_rule_source s ON s.ruleId = r.id WHERE s.source NOT LIKE 'sub_%' AND r.enabled = 1 AND s.enabled = 1")
+    @Query("SELECT COUNT(DISTINCT r.id) FROM block_rule r JOIN block_rule_source s ON s.ruleId = r.id WHERE s.source NOT LIKE 'sub_%' AND s.source NOT LIKE 'staging_sub_%' AND r.enabled = 1 AND s.enabled = 1")
     suspend fun enabledUserRulesCount(): Int
 
-    @Query("DELETE FROM block_rule_source WHERE source NOT LIKE 'sub_%'")
+    @Query("DELETE FROM block_rule_source WHERE source NOT LIKE 'sub_%' AND source NOT LIKE 'staging_sub_%'")
     suspend fun deleteUserSources()
 
     @Transaction

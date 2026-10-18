@@ -166,7 +166,8 @@ fun DnsMainScreen(
                         onToggleService = viewModel::toggleService,
                         onNavigateToServers = { navigateToPage(DnsNavTab.SERVERS.ordinal) },
                         onRequestIgnoreBatteryOptimization = onRequestIgnoreBatteryOptimization,
-                        contentBottomPadding = 108.dp
+                        contentBottomPadding = 108.dp,
+                        listenPort = uiState.config.localListenPort
                     )
                     DnsNavTab.SERVERS -> DnsServersScreen(
                         upstreams = uiState.upstreams,

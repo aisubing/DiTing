@@ -139,7 +139,7 @@ class AllowRuleCache(
     suspend fun reloadCustomRules(dao: AllowRuleDao) {
         val result = AllowRuleCacheLoader.loadCustomRules(dao)
         synchronized(this) {
-            val subSpecial = state.specialRules.filter { sub -> !result.specialRules.any { it.pattern == sub.pattern } }
+            val subSpecial = retainSubscriptionSpecialRules(state.specialRules, result.specialRules)
             state = state.copy(
                 customRules = result.customRules,
                 importantCustomRules = result.importantCustomRules,
@@ -255,3 +255,18 @@ class AllowRuleCache(
         )
     }
 }
+
+/**
+ * Special rules that survive a custom-rule reload: only the subscription ones,
+ * because the freshly loaded [reloaded] list already holds every user rule.
+ *
+ * Selecting by source (not by pattern) matters: the old pattern-based filter also
+ * dropped a subscription rule whose pattern happened to equal a user rule's, so
+ * adding one allow rule could silently disable an unrelated subscription rule
+ * until the next full reload. [ExportedSpecialAllowRule.source] now carries the
+ * origin, matching [BlockRuleCache]'s behaviour.
+ */
+internal fun retainSubscriptionSpecialRules(
+    current: List<ExportedSpecialAllowRule>,
+    @Suppress("UNUSED_PARAMETER") reloaded: List<ExportedSpecialAllowRule>
+): List<ExportedSpecialAllowRule> = current.filter { it.source.startsWith("sub_") }

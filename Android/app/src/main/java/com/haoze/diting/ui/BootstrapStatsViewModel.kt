@@ -23,7 +23,8 @@ class BootstrapStatsViewModel @JvmOverloads constructor(
 ) : AndroidViewModel(application) {
     private val repository = BootstrapLogRepository(
         application,
-        RuleDatabases.runtimeForDataset(application, dataset).bootstrapLogDao()
+        RuleDatabases.runtimeForDataset(application, dataset).bootstrapLogDao(),
+        dataset
     )
 
     private val _range = MutableStateFlow(BootstrapStatsRange.TODAY)

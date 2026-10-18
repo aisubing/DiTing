@@ -1,6 +1,7 @@
 package com.haoze.diting.core.diagnostic
 
 import android.content.Context
+import com.haoze.diting.data.RuleDataset
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -10,18 +11,24 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.random.Random
 
+/**
+ * Tracks Bootstrap DNS health per dataset. Each engine owns the samples of the
+ * dataset it was created for, so the ordinary tunnel and the Express engine no
+ * longer overwrite each other's successes, latencies and cooldowns.
+ */
 class BootstrapHealthEngine(
     private val context: Context,
-    private val scope: CoroutineScope
+    private val scope: CoroutineScope,
+    private val dataset: RuleDataset = RuleDataset.NORMAL
 ) : BootstrapHealthStoreListener {
-    private val healthByIp = BootstrapHealthStore.loadAll(context).toMutableMap()
+    private val healthByIp = BootstrapHealthStore.loadAll(context, dataset).toMutableMap()
     private var dirty = false
     private var closed = false
     private var scheduledFlushJob: Job? = null
 
     init {
-        activeEngine = this
-        BootstrapHealthStore.registerListener(this)
+        activeEngines.set(dataset, this)
+        BootstrapHealthStore.registerListener(this, dataset)
     }
 
     @Synchronized
@@ -120,7 +127,7 @@ class BootstrapHealthEngine(
     fun flush(commit: Boolean = false) {
         if (!dirty && !commit) return
         cancelScheduledFlush()
-        BootstrapHealthStore.saveAll(context, loadAll(), commit = commit)
+        persist(commit = commit, replace = false)
         dirty = false
     }
 
@@ -137,17 +144,17 @@ class BootstrapHealthEngine(
         synchronized(this) {
             cancelScheduledFlush()
         }
-        BootstrapHealthStore.unregisterListener(this)
-        if (activeEngine === this) {
-            activeEngine = null
-        }
+        BootstrapHealthStore.unregisterListener(this, dataset)
+        activeEngines.clearIfCurrent(dataset, this)
         flush(commit = true)
     }
 
     @Synchronized
     override fun onBootstrapHealthReset(ipIds: Set<String>) {
         ipIds.forEach { healthByIp.remove(it) }
-        flush(commit = true)
+        cancelScheduledFlush()
+        persist(commit = true, replace = true)
+        dirty = false
     }
 
     @Synchronized
@@ -155,6 +162,14 @@ class BootstrapHealthEngine(
         cancelScheduledFlush()
         healthByIp.clear()
         dirty = false
+    }
+
+    private fun persist(commit: Boolean, replace: Boolean) {
+        if (replace) {
+            BootstrapHealthStore.replaceAll(context, loadAll(), dataset, commit = commit)
+        } else {
+            BootstrapHealthStore.saveAll(context, loadAll(), dataset, commit = commit)
+        }
     }
 
     private fun markDirty() {
@@ -200,11 +215,14 @@ class BootstrapHealthEngine(
     )
 
     companion object {
-        @Volatile
-        private var activeEngine: BootstrapHealthEngine? = null
+        // One engine per dataset: the ordinary tunnel and the Express engine keep
+        // separate Bootstrap lists, so a single shared slot made flushActive()
+        // flush whichever engine was created last — the wrong dataset's samples,
+        // while the caller's own engine stayed unflushed.
+        private val activeEngines = ActiveHealthEngineRegistry<BootstrapHealthEngine>()
 
-        fun flushActive(commit: Boolean = true): Boolean {
-            val engine = activeEngine ?: return false
+        fun flushActive(commit: Boolean = true, dataset: RuleDataset = RuleDataset.NORMAL): Boolean {
+            val engine = activeEngines.get(dataset) ?: return false
             engine.flush(commit = commit)
             return true
         }

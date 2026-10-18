@@ -18,9 +18,10 @@ import com.haoze.diting.data.repository.BootstrapLogRepository
 import com.haoze.diting.data.repository.DnsCacheRepository
 import com.haoze.diting.data.repository.DnsLogRepository
 import com.haoze.diting.data.repository.RaceLogRepository
+import com.haoze.diting.ui.dashboard.dashboardDnsResultLabel
+import com.haoze.diting.ui.dashboard.dashboardDnsResultStatus
 import com.haoze.diting.ui.settings.SystemSettingsStore
 import com.haoze.diting.util.dayStartMillis
-import com.haoze.diting.core.log.LogResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -129,7 +130,7 @@ class ModernLogDashboardViewModel @JvmOverloads constructor(
     )
     private val dnsCacheRepository = DnsCacheRepository(runtimeSources.dnsCacheDao())
     private val raceLogRepository = RaceLogRepository(runtimeSources.raceLogDao())
-    private val bootstrapLogRepository = BootstrapLogRepository(application, runtimeSources.bootstrapLogDao())
+    private val bootstrapLogRepository = BootstrapLogRepository(application, runtimeSources.bootstrapLogDao(), dataset)
 
     private val _uiState = MutableStateFlow(ModernLogDashboardUiState())
     val uiState: StateFlow<ModernLogDashboardUiState> = _uiState.asStateFlow()
@@ -313,13 +314,8 @@ class ModernLogDashboardViewModel @JvmOverloads constructor(
                 source = source,
                 name = log.queryName,
                 meta = meta,
-                status = when (log.result) {
-                    LogResult.REWRITTEN.value -> "rewritten"
-                    LogResult.PASSED.value -> if (isConn) "bypassed" else "passed"
-                    LogResult.BLOCKED.value -> "blocked"
-                    else -> "error"
-                },
-                resultLabel = if (isConn) "旁路" else resultLabel(log.result)
+                status = dashboardDnsResultStatus(log.result, isConn),
+                resultLabel = dashboardDnsResultLabel(log.result, isConn)
             )
         } + httpLogs.map { log ->
             val status = normalizeHttpOutcome(log.outcome)
@@ -357,16 +353,6 @@ class ModernLogDashboardViewModel @JvmOverloads constructor(
                 originalTtlSeconds = entry.originalTtlSeconds,
                 lastHitAt = entry.lastHitAt ?: 0L
             )
-        }
-    }
-
-    private fun resultLabel(result: String): String {
-        return when (result) {
-            LogResult.PASSED.value -> "通过"
-            LogResult.REWRITTEN.value -> "覆写"
-            LogResult.BLOCKED.value -> "过滤"
-            LogResult.ERROR.value -> "失败"
-            else -> result
         }
     }
 

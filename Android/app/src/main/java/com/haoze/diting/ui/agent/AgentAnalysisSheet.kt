@@ -41,6 +41,8 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import com.haoze.diting.core.rule.AllowListManager
 import com.haoze.diting.core.rule.BlockListManager
 import com.haoze.diting.data.AppDatabase
+import com.haoze.diting.data.RuleDataset
+import com.haoze.diting.data.RuleDatabases
 import com.haoze.diting.data.entity.RuleScope
 import com.haoze.diting.ui.RuntimeDnsSettingsRefresher
 import com.haoze.diting.ui.components.SettingsCardMargin
@@ -61,7 +63,8 @@ fun AgentAnalysisSheet(
     target: AnalysisTarget?,
     onDismiss: () -> Unit,
     onNavigateToSettings: () -> Unit = {},
-    onRuleAdded: (() -> Unit)? = null
+    onRuleAdded: (() -> Unit)? = null,
+    dataset: RuleDataset = RuleDataset.NORMAL
 ) {
     if (target == null) return
 
@@ -78,7 +81,8 @@ fun AgentAnalysisSheet(
             target = target,
             onDismiss = onDismiss,
             onNavigateToSettings = onNavigateToSettings,
-            onRuleAdded = onRuleAdded
+            onRuleAdded = onRuleAdded,
+            dataset = dataset
         )
     }
 }
@@ -88,11 +92,22 @@ internal fun AgentAnalysisSheetContent(
     target: AnalysisTarget,
     onDismiss: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onRuleAdded: (() -> Unit)?
+    onRuleAdded: (() -> Unit)?,
+    dataset: RuleDataset = RuleDataset.NORMAL
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val database = remember(context) { AppDatabase.getInstance(context) }
+    // The sheet is reachable from the Express and DNS mode log pages too. It used
+    // to read AppDatabase (NORMAL) unconditionally and broadcast on NORMAL, so on
+    // those pages the AI analysis summarised another dataset's logs and the rules
+    // it "added" never reached the running engine.
+    val dataSources = remember(context, dataset) { RuleDatabases.forDataset(context, dataset) }
+    val runtimeSources = remember(context, dataset) { RuleDatabases.runtimeForDataset(context, dataset) }
+    // HTTP request logs only exist for NORMAL: the other datasets have no HTTP
+    // inspection plane, so their dashboard passes a null DAO for the same reason.
+    val httpRequestLogDao = remember(context, dataset) {
+        if (dataset == RuleDataset.NORMAL) AppDatabase.getInstance(context).httpRequestLogDao() else null
+    }
 
     var config by remember { mutableStateOf(AgentApiSettingsStore.getAgentApiConfig(context)) }
 
@@ -123,7 +138,7 @@ internal fun AgentAnalysisSheetContent(
                                 "SELECT queryName, result, message FROM dns_log WHERE queryName LIKE ? ORDER BY timestamp DESC LIMIT 5",
                                 arrayOf(pattern)
                             )
-                            database.dnsLogDao().queryList(query).map {
+                            runtimeSources.dnsLogDao().queryList(query).map {
                                 "DNS: ${it.queryName} -> ${it.result} (${it.message ?: "无"})"
                             }
                         }.getOrDefault(emptyList())
@@ -134,12 +149,14 @@ internal fun AgentAnalysisSheetContent(
                     is AnalysisTarget.RecentTraffic -> {
                         // Gather recent traffic summary
                         val summary = runCatching {
-                            val recentDns = database.dnsLogDao().queryList(
+                            val recentDns = runtimeSources.dnsLogDao().queryList(
                                 SimpleSQLiteQuery("SELECT * FROM dns_log ORDER BY timestamp DESC LIMIT 40")
                             )
-                            val recentHttp = database.httpRequestLogDao().queryList(
+                            // Only NORMAL has an HTTP inspection plane; the other
+                            // datasets simply have no rows to summarise.
+                            val recentHttp = httpRequestLogDao?.queryList(
                                 SimpleSQLiteQuery("SELECT * FROM http_request_log ORDER BY timestamp DESC LIMIT 30")
-                            )
+                            ).orEmpty()
 
                             val totalDns = recentDns.size
                             val blockedDns = recentDns.count { it.result.equals("BLOCKED", ignoreCase = true) }
@@ -309,10 +326,10 @@ internal fun AgentAnalysisSheetContent(
                     if (target is AnalysisTarget.Domain) {
                         val domain = target.domain
                         scope.launch(Dispatchers.IO) {
-                            val success = AllowListManager(database.allowRuleDao(), scope = RuleScope.DNS).addRule(domain)
+                            val success = AllowListManager(dataSources.allowRuleDao(), scope = RuleScope.DNS).addRule(domain)
                             withContext(Dispatchers.Main) {
                                 if (success) {
-                                    RuntimeDnsSettingsRefresher.syncRuleIfRunning(context, "allow", domain, RuleScope.DNS)
+                                    RuntimeDnsSettingsRefresher.syncRuleIfRunning(context, "allow", domain, RuleScope.DNS, dataset)
                                     onRuleAdded?.invoke()
                                     appliedActionText = "已成功加入白名单并热更新生效"
                                 } else {
@@ -326,10 +343,10 @@ internal fun AgentAnalysisSheetContent(
                     if (target is AnalysisTarget.Domain) {
                         val domain = target.domain
                         scope.launch(Dispatchers.IO) {
-                            val success = BlockListManager(database.blockRuleDao(), scope = RuleScope.DNS).addRule(domain)
+                            val success = BlockListManager(dataSources.blockRuleDao(), scope = RuleScope.DNS).addRule(domain)
                             withContext(Dispatchers.Main) {
                                 if (success) {
-                                    RuntimeDnsSettingsRefresher.syncRuleIfRunning(context, "block", domain, RuleScope.DNS)
+                                    RuntimeDnsSettingsRefresher.syncRuleIfRunning(context, "block", domain, RuleScope.DNS, dataset)
                                     onRuleAdded?.invoke()
                                     appliedActionText = "已成功加入屏蔽黑名单并热更新生效"
                                 } else {

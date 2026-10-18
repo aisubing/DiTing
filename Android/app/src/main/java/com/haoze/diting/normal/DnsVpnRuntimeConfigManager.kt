@@ -173,6 +173,23 @@ class DnsVpnRuntimeConfigManager(
         }
     }
 
+    /**
+     * Restarts the tunnel after the real certificate check disagreed with the
+     * cached flag the session was started with, so the HTTPS inspection state
+     * actually matches the device instead of silently staying wrong.
+     */
+    fun restartForCertificateMismatch() {
+        if (tunnelManager.vpnInterface == null) {
+            Log.d(TAG, "Skip certificate mismatch restart because VPN is not running")
+            return
+        }
+        scope.launch {
+            refreshMutex.withLock {
+                onRestartVpn()
+            }
+        }
+    }
+
     fun refreshAppExclusions() {
         if (tunnelManager.vpnInterface == null) {
             Log.d(TAG, "Skip application exclusion refresh because VPN is not running")

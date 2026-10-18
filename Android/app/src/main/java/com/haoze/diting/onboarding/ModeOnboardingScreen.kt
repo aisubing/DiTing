@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.haoze.diting.permission.AppPermission
+import com.haoze.diting.server.model.DnsListenPortValidator
 import com.haoze.diting.ui.components.SettingsCardMargin
 import com.haoze.diting.ui.localizedText
 import com.haoze.diting.ui.mode.AppWorkMode
@@ -66,10 +67,11 @@ fun ModeOnboardingScreen(
     onGrantPermission: (AppPermission) -> Unit,
     onComplete: (startService: Boolean) -> Unit,
     onSkip: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    dnsListenPort: Int = DnsListenPortValidator.DEFAULT_PORT
 ) {
     val context = LocalContext.current
-    val config = remember(mode) { ModeOnboardingRegistry.getConfig(mode) }
+    val config = remember(mode, dnsListenPort) { ModeOnboardingRegistry.getConfig(mode, dnsListenPort) }
     var currentStep by remember { mutableIntStateOf(0) }
     val totalSteps = 3
     val scrollState = rememberScrollState()
@@ -302,11 +304,13 @@ fun ModeOnboardingScreen(
                     1 -> OnboardingPermissionStep(
                         config = config,
                         permissionStates = permissionStates,
-                        onGrant = onGrantPermission
+                        onGrant = onGrantPermission,
+                        dnsListenPort = dnsListenPort
                     )
                     2 -> OnboardingGuideStep(
                         config = config,
-                        localIps = localIps
+                        localIps = localIps,
+                        dnsListenPort = dnsListenPort
                     )
                 }
             }

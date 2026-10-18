@@ -126,6 +126,7 @@ internal object AllowRuleCacheLoader {
                 subSpecialRules.add(
                     ExportedSpecialAllowRule(
                         pattern = entry.pattern,
+                        source = entry.source,
                         important = entry.important,
                         appScope = entry.appScope,
                         appInverted = entry.appInverted,
@@ -210,6 +211,7 @@ internal object AllowRuleCacheLoader {
                 customSpecialRules.add(
                     ExportedSpecialAllowRule(
                         pattern = entry.pattern,
+                        source = entry.source,
                         important = entry.important,
                         appScope = entry.appScope,
                         appInverted = entry.appInverted,

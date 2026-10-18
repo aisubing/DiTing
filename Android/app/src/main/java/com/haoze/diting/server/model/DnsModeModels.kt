@@ -1,6 +1,7 @@
 package com.haoze.diting.server.model
 
 import com.haoze.diting.core.cache.DnsCachePreset
+import com.haoze.diting.core.rule.DynamicBlockResponseConfig
 
 enum class DnsModeProtocol(val label: String, val defaultPort: Int) {
     DNS("DNS", 53),
@@ -199,7 +200,14 @@ data class DnsModeConfig(
     val cachePreset: DnsCachePreset = DnsCachePreset.BALANCED,
     val cacheTtlSeconds: Int = 300,
     val adBlockEnabled: Boolean = false,
-    val logQueries: Boolean = false
+    val logQueries: Boolean = false,
+    /**
+     * Dynamic block-response escalation. Persisted in the same
+     * `diting_dns_mode_prefs` file by [com.haoze.diting.server.backend.DnsRuleSettings],
+     * which is the single writer for the block-response settings; this field
+     * carries the value into the Go snapshot (see [DnsDynamicBlockJson]).
+     */
+    val dynamicBlockResponse: DynamicBlockResponseConfig = DynamicBlockResponseConfig()
 )
 
 data class DnsModeStats(

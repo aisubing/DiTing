@@ -4,7 +4,14 @@ import com.haoze.diting.data.entity.RewriteTargetType
 
 internal object AdblockRuleLineParser {
 
-    private val COSMETIC_DELIMITERS = listOf("#@#", "##", "#?#", "#$#")
+    /**
+     * Longest delimiter first so a four-character marker is never matched by a
+     * shorter one. `#$@#` is the exception form of the `#$#` style rule; it was
+     * missing entirely, which made every `example.com#$@#selector` line fall
+     * through to the trailing-comment truncation below and turn into a
+     * whole-domain block.
+     */
+    private val COSMETIC_DELIMITERS = listOf("#$@#", "#@#", "##", "#?#", "#$#")
 
     /**
      * Whether the line uses an element-hiding delimiter. A line starting with
@@ -15,13 +22,24 @@ internal object AdblockRuleLineParser {
         COSMETIC_DELIMITERS.any { line.contains(it) }
 
     fun parseAdblockOrDomainLine(line: String, originalLine: String, allow: Boolean): CategorizedLine {
-        // 1. Element hiding (cosmetic) rules: ##, #@#, #?#, #$#
+        // 1. Element hiding (cosmetic) rules: ##, #@#, #?#, #$#, #$@#
         val cosmetic = parseCosmeticLine(line, originalLine)
         if (cosmetic != null) {
             return cosmetic
         }
 
-        var value = line.substringBefore('#').trim()
+        // Only a `#` that begins a trailing comment may be dropped. A `#` glued
+        // to the pattern is a cosmetic marker this parser did not recognize (or
+        // a malformed rule); truncating there would silently widen it into a
+        // whole-domain block, so such lines are reported as unsupported instead.
+        val hashIndex = line.indexOf('#')
+        var value = if (hashIndex < 0) {
+            line.trim()
+        } else {
+            val before = line.substring(0, hashIndex)
+            if (before.isEmpty() || before.last().isWhitespace()) before.trim()
+            else return CategorizedLine(unsupportedCount = 1)
+        }
         if (value.isEmpty()) return CategorizedLine(invalidCount = 1)
         if (allow) value = value.removePrefix("@@")
 
@@ -238,8 +256,11 @@ internal object AdblockRuleLineParser {
     }
 
     private fun parseCosmeticLine(line: String, originalLine: String): CategorizedLine? {
-        val isException = line.contains("#@#")
+        // `#$@#` is the exception form of `#$#`, so it counts as an exception and
+        // must be probed before the shorter `#$#` / `##` markers.
+        val isException = line.contains("#@#") || line.contains("#$@#")
         val delimiter = when {
+            line.contains("#$@#") -> "#$@#"
             line.contains("#@#") -> "#@#"
             line.contains("##") -> "##"
             line.contains("#?#") -> "#?#"

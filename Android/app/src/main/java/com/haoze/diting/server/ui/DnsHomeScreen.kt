@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import com.haoze.diting.server.model.DnsListenPortValidator
 import com.haoze.diting.server.model.DnsModeStats
 import com.haoze.diting.server.model.DnsServiceStatus
 import com.haoze.diting.server.model.DnsUpstreamServer
@@ -41,7 +42,8 @@ fun DnsHomeScreen(
     onNavigateToServers: () -> Unit,
     onRequestIgnoreBatteryOptimization: () -> Unit = {},
     modifier: Modifier = Modifier,
-    contentBottomPadding: Dp = 108.dp
+    contentBottomPadding: Dp = 108.dp,
+    listenPort: Int = DnsListenPortValidator.DEFAULT_PORT
 ) {
     val context = LocalContext.current
     val isBusy = status == DnsServiceStatus.STARTING || status == DnsServiceStatus.STOPPING
@@ -124,12 +126,23 @@ fun DnsHomeScreen(
 
         item {
             val localIps = NetworkInfoProbe.probe(context)?.ipv4Addresses ?: emptyList()
-            val ipDisplay = if (localIps.isNotEmpty()) localIps.joinToString(", ") { "$it:1053" } else localizedText("未连接 Wi-Fi 或未分配 IP")
+            // The port is the user's configured listen port: hardcoding 1053 here
+            // pointed every LAN client at a closed port after a port change.
+            val ipDisplay = if (localIps.isNotEmpty()) {
+                DnsListenPortValidator.formatEndpoints(localIps, listenPort, separator = ", ")
+            } else {
+                localizedText("未连接 Wi-Fi 或未分配 IP")
+            }
             SettingsSurfaceGroup(
                 content = listOf {
                     SettingsItem(
                         title = localizedText("本机服务地址"),
-                        subtitle = localizedText("将局域网其他设备 DNS 指向此地址"),
+                        // A fallback port must be visible as such: otherwise the
+                        // user points LAN clients at a port the engine never bound.
+                        subtitle = localizedText(
+                            DnsListenPortValidator.unusablePortWarning(listenPort)
+                                ?: "将局域网其他设备 DNS 指向此地址"
+                        ),
                         leadingIcon = Icons.Outlined.Dns
                     ) {
                         Text(

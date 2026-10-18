@@ -10,7 +10,9 @@ import com.haoze.diting.data.entity.RewriteTargetType
 import com.haoze.diting.data.entity.RuleScope
 import com.haoze.diting.ui.settings.RuleSettingsAccess
 import com.haoze.diting.core.rule.RewriteRuleManager
+import com.haoze.diting.util.LatestRequestGate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -94,6 +96,16 @@ class RewriteListViewModel(
 
     private var activated = false
 
+    private var loadPageJob: Job? = null
+    private val loadPageGate = LatestRequestGate<LoadPageRequest>()
+    private var loadStatsJob: Job? = null
+
+    private data class LoadPageRequest(
+        val page: Int,
+        val query: String,
+        val filter: RewriteListFilter
+    )
+
     fun activate() {
         if (!activated) {
             activated = true
@@ -120,7 +132,8 @@ class RewriteListViewModel(
     }
 
     fun loadStats() {
-        viewModelScope.launch(Dispatchers.IO) {
+        loadStatsJob?.cancel()
+        loadStatsJob = viewModelScope.launch(Dispatchers.IO) {
             val domainRulesEnabled = settings.isMasterEnabled(getApplication())
             val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
 
@@ -152,9 +165,18 @@ class RewriteListViewModel(
     }
 
     fun loadPage(page: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val query = _searchQuery.value.trim()
-            val currentFilter = _filter.value
+        // Capture the request up front: the query/filter may change while this
+        // load is in flight, and a stale result must never overwrite a newer one.
+        val request = LoadPageRequest(
+            page = page,
+            query = _searchQuery.value.trim(),
+            filter = _filter.value
+        )
+        loadPageGate.begin(request)
+        loadPageJob?.cancel()
+        loadPageJob = viewModelScope.launch(Dispatchers.IO) {
+            val query = request.query
+            val currentFilter = request.filter
             val domainRulesEnabled = settings.isMasterEnabled(getApplication())
             val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
 
@@ -245,6 +267,9 @@ class RewriteListViewModel(
             }
 
             withContext(Dispatchers.Main) {
+                // Re-check on the main thread: a newer load may have been started
+                // while this one was finishing its DAO calls.
+                if (!loadPageGate.isLatest(request)) return@withContext
                 _items.value = items
                 _currentPage.value = safePage
                 _totalPages.value = pages

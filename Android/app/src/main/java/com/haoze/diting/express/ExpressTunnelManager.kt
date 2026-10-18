@@ -184,7 +184,10 @@ class ExpressTunnelManager {
                         (destAddr is Inet6Address && route.hasGateway()) ||
                         (destAddr is Inet6Address && route.destination.prefixLength == 0)
                 }
-                hasIpv6Route || hasGlobalIpv6
+                // 走到这里 hasGlobalIpv6 必为 true（:179 已提前取反返回），
+                // 原先的 `hasIpv6Route || hasGlobalIpv6` 恒真，使 hasIpv6Route
+                // 成为死代码：有 GUA 但无 IPv6 路由的设备会被误判为可用。
+                ExpressIpv6Usability.isIpv6Usable(hasGlobalIpv6, hasIpv6Route)
             }
         }.getOrDefault(false)
     }
@@ -288,12 +291,16 @@ class ExpressTunnelManager {
                 SystemSettingsStore.logRetentionDays(service, RuleDataset.EXPRESS)
             }
         )
-        bootstrapHealthEngine = BootstrapHealthEngine(service, scope)
+        // Both must read the EXPRESS settings set: with the NORMAL default the
+        // Express engine ignored the user's Express Bootstrap list entirely and
+        // recorded its health samples over the ordinary tunnel's.
+        bootstrapHealthEngine = BootstrapHealthEngine(service, scope, RuleDataset.EXPRESS)
         bootstrapSelector = BootstrapSelector(
             context = service,
             healthEngine = bootstrapHealthEngine,
             logger = bootstrapLogger,
-            protectDatagramSocket = { sock -> service.protect(sock) }
+            protectDatagramSocket = { sock -> service.protect(sock) },
+            dataset = RuleDataset.EXPRESS
         )
 
         // Load rule caches before the TUN reader starts (see the KDoc above).

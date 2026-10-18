@@ -1,6 +1,7 @@
 package com.haoze.diting.server.backend
 
 import android.util.Log
+import com.haoze.diting.server.model.DnsDynamicBlockJson
 import com.haoze.diting.server.model.DnsModeConfig
 import com.haoze.diting.server.model.DnsModeProtocol
 import com.haoze.diting.server.model.DnsUpstreamServer
@@ -70,6 +71,9 @@ class DnsServerEngine(
         val cacheChanged = newConfig.cacheEnabled != config.cacheEnabled ||
             newConfig.cachePreset != config.cachePreset ||
             newConfig.cacheTtlSeconds != config.cacheTtlSeconds
+        // Dynamic escalation reaches the engine only through the config snapshot,
+        // so a change here has to re-push it — exactly like cacheChanged.
+        val dynamicBlockChanged = newConfig.dynamicBlockResponse != config.dynamicBlockResponse
 
         config = newConfig
         upstream = newUpstream
@@ -81,11 +85,20 @@ class DnsServerEngine(
         }
 
         if (isRunning) {
-            if (upstreamChanged || cacheChanged) {
+            if (upstreamChanged || cacheChanged || dynamicBlockChanged) {
                 applyDnsConfig()
             }
             if (filteringChanged) {
                 engine.setFilterDNS(config.adBlockEnabled)
+                // Two independent gates now enforce the master switch on the
+                // standalone path, and both must be updated:
+                //  1. Go's filterDNS flag, which standalone `serveDNS` consults
+                //     before the policy engine (engine_standalone.go).
+                //  2. The rule snapshot's `filterEnabled`, which decides whether
+                //     the snapshot is active at all (policy_snapshot.go).
+                // Pushing only the flag used to leave the snapshot claiming
+                // filtering was on, so the switch appeared to do nothing.
+                syncRules()
             }
         }
         return isRunning
@@ -93,6 +106,9 @@ class DnsServerEngine(
 
     fun syncRules() {
         val filter = queryFilter ?: return
+        // The master switch lives on the filter so the snapshot and the Kotlin
+        // decision path read the same value; push it before building the JSON.
+        filter.masterSwitch.set(config.adBlockEnabled)
         runCatching {
             val snapshotJson = filter.buildRuleSnapshotJson()
             val err = engine.applyRuleSnapshot(snapshotJson)
@@ -108,6 +124,9 @@ class DnsServerEngine(
     private fun configureEngine() {
         applyDnsConfig()
         engine.setFilterDNS(config.adBlockEnabled)
+        // Keep the snapshot's filterEnabled in step with the master switch from
+        // the very first start: syncRules() below pushes the switch into the
+        // filter before building the snapshot.
 
         if (queryFilter != null) {
             syncRules()
@@ -166,6 +185,14 @@ class DnsServerEngine(
         val json = JSONObject().apply {
             put("mode", "single")
             put("blockResponse", queryFilter?.blockResponseMode?.name ?: "NXDOMAIN")
+            // Without this key the Go engine decoded DynamicResponse as its zero
+            // value (Enabled=false) and dynamicBlockTracker.responseFor returned
+            // the fallback on its first line, so the user's dynamic-block settings
+            // were stored and displayed but could never escalate anything.
+            put(
+                DnsDynamicBlockJson.KEY,
+                DnsDynamicBlockJson.toJson(config.dynamicBlockResponse)
+            )
             val cachePolicy = config.cachePreset.toPolicy(enabled = config.cacheEnabled)
             put("cache", JSONObject().apply {
                 put("enabled", cachePolicy.enabled)

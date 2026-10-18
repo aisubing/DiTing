@@ -27,11 +27,15 @@ object LogMaintenance {
 
     /**
      * Starts the periodic log retention pruning task in a background coroutine.
+     *
+     * [trafficRetentionDaysProvider] drives the independent app-traffic
+     * retention window; it must not reuse the DNS log retention setting.
      */
     fun start(
         scope: CoroutineScope,
         database: AppDatabase,
-        retentionDaysProvider: () -> Int
+        retentionDaysProvider: () -> Int,
+        trafficRetentionDaysProvider: () -> Int = { 0 }
     ): Job {
         return scope.launch(Dispatchers.IO) {
             delay(INITIAL_DELAY_MS)
@@ -39,18 +43,23 @@ object LogMaintenance {
                 runCatching {
                     pruneExpiredLogs(database, retentionDaysProvider())
                 }
+                runCatching {
+                    pruneExpiredTrafficStats(database, trafficRetentionDaysProvider())
+                }
                 delay(MAINTENANCE_INTERVAL_MS)
             }
         }
     }
 
     /**
-     * Prunes historical logs and app traffic data past the retention window.
+     * Prunes historical request logs past the log retention window.
+     *
+     * App traffic history has its own retention setting and is pruned by
+     * [pruneExpiredTrafficStats] instead.
      */
     suspend fun pruneExpiredLogs(database: AppDatabase, retentionDays: Int) {
         if (retentionDays <= 0) return
         val cutoff = System.currentTimeMillis() - retentionDays * DAY_MS
-        val cutoffDate = dayStringAt(cutoff)
         withContext(Dispatchers.IO) {
             pruneLogDaos(
                 dnsLogDao = database.dnsLogDao(),
@@ -59,9 +68,24 @@ object LogMaintenance {
                 httpRequestLogDao = database.httpRequestLogDao(),
                 cutoff = cutoff
             )
+        }
+    }
+
+    /**
+     * Prunes app traffic history using the dedicated traffic-stats retention
+     * window (SystemSettingsStore.getTrafficStatsRetentionDays).
+     */
+    suspend fun pruneExpiredTrafficStats(database: AppDatabase, retentionDays: Int) {
+        if (retentionDays <= 0) return
+        val cutoffDate = trafficCutoffDate(retentionDays, System.currentTimeMillis())
+        withContext(Dispatchers.IO) {
             runCatching { database.appTrafficDao().deleteOlderThan(cutoffDate) }
         }
     }
+
+    /** yyyy-MM-dd cutoff date for the traffic-stats retention window. */
+    internal fun trafficCutoffDate(retentionDays: Int, nowMillis: Long): String =
+        dayStringAt(nowMillis - retentionDays * DAY_MS)
 
     /**
      * Runs the retention sweep for any log data source, including Express

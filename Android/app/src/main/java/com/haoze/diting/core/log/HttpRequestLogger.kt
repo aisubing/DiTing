@@ -97,7 +97,11 @@ class HttpRequestLogger(
         scheduledFlush = null
         val batch = pending.toList()
         pending.clear()
-        dao.insertAll(batch)
+        // Never let a DB failure escape into the HTTPS logging hot path or the
+        // shutdown flush chain; keep the batch for the next retry.
+        runCatching { dao.insertAll(batch) }.onFailure {
+            pending.addAll(0, batch)
+        }
     }
 
     private companion object {

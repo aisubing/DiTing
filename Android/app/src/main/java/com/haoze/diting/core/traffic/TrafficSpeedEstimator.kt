@@ -43,6 +43,32 @@ internal class TrafficSpeedEstimator {
     }
 
     /**
+     * Feeds one aggregated traffic tick into the per-app EMA.
+     *
+     * Go tunnel mode reports all apps in a single JSON tick and runs no fixed
+     * Kotlin sampling loop, so this is the only place per-app speeds can be
+     * produced there; apps missing from [appDeltas] are decayed instead.
+     */
+    fun updateAppSpeedsForTick(appDeltas: List<Triple<String, Long, Long>>, elapsedSeconds: Double) {
+        if (appDeltas.isEmpty()) {
+            for (packageName in appSpeedEma.keys) {
+                decaySingleAppSpeed(packageName, elapsedSeconds)
+            }
+            return
+        }
+        val activePackages = HashSet<String>(appDeltas.size)
+        for ((packageName, txDelta, rxDelta) in appDeltas) {
+            updateSingleAppSpeedEma(packageName, txDelta, rxDelta, elapsedSeconds)
+            activePackages.add(packageName)
+        }
+        for (packageName in appSpeedEma.keys) {
+            if (packageName !in activePackages) {
+                decaySingleAppSpeed(packageName, elapsedSeconds)
+            }
+        }
+    }
+
+    /**
      * Lazy decay compensated by the actual elapsed time: converges to the same
      * result as a 1s cycle even under sampling backoff (3s/10s periods).
      */

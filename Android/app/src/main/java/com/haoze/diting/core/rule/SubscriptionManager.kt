@@ -256,7 +256,7 @@ class SubscriptionManager(
             }
 
             val total = contentLoader().buffered().use { reader ->
-                CategorizedRuleStreamImporter.countRules(reader, badfilterKeys)
+                CategorizedRuleStreamImporter.countRules(reader, badfilterKeys, normalizedKind)
             }
 
             val summary = contentLoader().buffered().use { reader ->

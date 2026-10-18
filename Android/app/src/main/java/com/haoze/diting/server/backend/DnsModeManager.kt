@@ -199,6 +199,22 @@ object DnsModeManager {
         refreshEngineIfRunning(context)
     }
 
+    /**
+     * Re-reads the persisted config into [config] and returns it.
+     *
+     * The block-response screen writes its settings straight to preferences
+     * (`DnsRuleSettings`), not through [updateConfig], so the in-memory copy taken
+     * at [initialize] stays stale for the lifetime of the process. The service's
+     * refresh path used that stale copy, which meant a dynamic-block change made
+     * while the server was running was never re-applied — the freshly persisted
+     * value only took effect after a full restart.
+     */
+    fun reloadConfig(context: Context): DnsModeConfig {
+        val loaded = DnsModePreferences.loadConfig(context)
+        _config.value = loaded
+        return loaded
+    }
+
     private fun refreshEngineIfRunning(context: Context) {
         if (!_status.value.isRunning) return
         try {

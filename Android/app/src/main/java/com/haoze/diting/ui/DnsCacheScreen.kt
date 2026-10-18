@@ -273,7 +273,10 @@ fun DnsCacheScreen(
         },
         onRuleAdded = {
             entries.refresh()
-        }
+        },
+        // This page is reachable for NORMAL, EXPRESS and DNS_MODE; the sheet must
+        // read the same dataset the cache list was loaded from.
+        dataset = dataset
     )
 }
 

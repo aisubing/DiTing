@@ -44,15 +44,17 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
         }
     }
 
-    private val bootstrapHealthEngine = BootstrapHealthEngine(application, viewModelScope)
+    private val bootstrapHealthEngine = BootstrapHealthEngine(application, viewModelScope, dataset)
     private val bootstrapLogger = BootstrapLogger(
         RuleDatabases.runtimeForDataset(application, dataset).bootstrapLogDao()
     )
     private val bootstrapSelector = BootstrapSelector(
         context = application,
         healthEngine = bootstrapHealthEngine,
-        logger = bootstrapLogger
+        logger = bootstrapLogger,
+        dataset = dataset
     )
+    private val providerHealthEngine = ProviderHealthEngine(application, viewModelScope, dataset)
 
     private val _providers = MutableStateFlow<List<DnsProvider>>(emptyList())
     val providers: StateFlow<List<DnsProvider>> = _providers.asStateFlow()
@@ -108,9 +110,9 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
     fun load() {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
-            ProviderHealthEngine.flushActive(commit = true)
+            ProviderHealthEngine.flushActive(commit = true, dataset = dataset)
             val all = DnsProvider.loadRuntimeProviders(context, dataset)
-            val health = ProviderHealthStore.loadAll(context)
+            val health = ProviderHealthStore.loadAll(context, dataset)
             val latencyIds = DnsProvider.loadLatencyTestProviderIds(context, dataset)
             val domain = ResolutionSettingsStore.getRaceTestDomain(context, dataset)
             val resolutionMode = ResolutionSettingsStore.getDnsResolutionMode(context, dataset)
@@ -294,9 +296,23 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
                         .thenByDescending { it.successCount }
                         .thenBy { it.providerName }
                 )
+            // Feed the measured samples into the provider health store: it is the
+            // only producer of these numbers, so without this the health screen
+            // and the smart-prediction weights stay empty and fall back to
+            // identical defaults for every provider.
+            testResults.forEach { result ->
+                providerHealthEngine.recordResult(
+                    providerId = result.providerId,
+                    success = result.success,
+                    elapsedMs = result.elapsedMs
+                )
+            }
+            providerHealthEngine.flush(commit = true)
             bootstrapLogger.flush()
+            val health = ProviderHealthStore.loadAll(context, dataset)
             withContext(Dispatchers.Main) {
                 _results.value = testResults
+                _healthByProvider.value = health
                 _isTesting.value = false
             }
         }
@@ -308,6 +324,7 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
 
     override fun onCleared() {
         bootstrapHealthEngine.close()
+        providerHealthEngine.close()
         runBlocking {
             bootstrapLogger.flush()
         }

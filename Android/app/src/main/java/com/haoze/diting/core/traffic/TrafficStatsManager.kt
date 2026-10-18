@@ -80,20 +80,37 @@ object TrafficStatsManager {
         appResolver.refreshAppList(context)
     }
 
+    /**
+     * Whether [start] should reset the session counters.
+     *
+     * A VPN config restart (`restartVpnLocked()` -> `startVpn()` -> `start()`)
+     * reaches here while the manager is still running; the session must then
+     * survive, otherwise the UI session statistics silently drop to zero even
+     * though the tunnel never stopped.
+     */
+    internal fun shouldResetSessionCounters(wasRunning: Boolean): Boolean = !wasRunning
+
     @Synchronized
     fun start(context: Context, isGoTunnelActive: Boolean) {
         val appContext = context.applicationContext
         applicationContext = appContext
         dbSyncer.resetTodayDate()
+        val wasRunning = isRunning
         isRunning = true
         isGoTunnel = isGoTunnelActive
-        sessionStartTime.set(System.currentTimeMillis())
-        sessionTxTotal.set(0L)
-        sessionRxTotal.set(0L)
         lastGoTickTimeMs.set(System.currentTimeMillis())
 
-        sessionAppBytes.clear()
-        speedEstimator.clear()
+        // A config-triggered restart (restartVpnLocked -> startVpn -> start)
+        // arrives without an intervening stop(). Zeroing the session there
+        // silently discards the user's session counters and start time, so the
+        // session is only reset on a genuine (re)start.
+        if (shouldResetSessionCounters(wasRunning)) {
+            sessionStartTime.set(System.currentTimeMillis())
+            sessionTxTotal.set(0L)
+            sessionRxTotal.set(0L)
+            sessionAppBytes.clear()
+            speedEstimator.clear()
+        }
 
         // The restartVpnLocked path can call start() again without a stop()
         // in between; clear the previous session's watchdog.
@@ -176,6 +193,7 @@ object TrafficStatsManager {
             var totalTxDelta = 0L
             var totalRxDelta = 0L
             val tickTime = System.currentTimeMillis()
+            val appDeltas = ArrayList<Triple<String, Long, Long>>(array.length())
 
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
@@ -186,6 +204,7 @@ object TrafficStatsManager {
                     val appInfo = applicationContext?.let { appResolver.getOrResolveAppInfo(it, uid) }
                     if (appInfo != null) {
                         recordAppTraffic(appInfo, tx, rx)
+                        appDeltas.add(Triple(appInfo.packageName, tx, rx))
                         totalTxDelta += tx
                         totalRxDelta += rx
                     }
@@ -198,6 +217,11 @@ object TrafficStatsManager {
             val lastTick = lastGoTickTimeMs.getAndSet(tickTime)
             val elapsedSeconds = if (lastTick > 0) max(0.2, (tickTime - lastTick) / 1000.0) else 1.0
             speedEstimator.updateSpeedEma(totalTxDelta, totalRxDelta, elapsedSeconds)
+            // Per-app EMA must also be fed here: the Kotlin sampler that does
+            // this in kernel mode is skipped while the Go tunnel is active, so
+            // without it every app's realtime speed stays 0 in Go mode and the
+            // REALTIME_SPEED sort silently never reorders anything.
+            speedEstimator.updateAppSpeedsForTick(appDeltas, elapsedSeconds)
             ensureGoDecayWatchdog()
             publishSnapshot()
         } catch (e: Exception) {

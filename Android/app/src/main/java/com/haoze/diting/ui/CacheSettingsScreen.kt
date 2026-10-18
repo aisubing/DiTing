@@ -39,16 +39,20 @@ fun CacheSettingsScreen(
     val context = LocalContext.current
     val scrollState = rememberScrollState()
     val isDnsMode = dataset == RuleDataset.DNS_MODE
-    var enabled by remember {
+    // Every read and write below must carry `dataset`: Express mode routes to
+    // this same screen with RuleDataset.EXPRESS, and its engine only ever reads
+    // the EXPRESS prefs, so an omitted dataset silently edited NORMAL's cache
+    // settings and left the Express one untouched.
+    var enabled by remember(dataset) {
         mutableStateOf(
             if (isDnsMode) DnsModeManager.config.value.cacheEnabled
-            else DnsCacheSettingsStore.isCacheEnabled(context)
+            else DnsCacheSettingsStore.isCacheEnabled(context, dataset)
         )
     }
-    var preset by remember {
+    var preset by remember(dataset) {
         mutableStateOf(
             if (isDnsMode) DnsModeManager.config.value.cachePreset
-            else DnsCacheSettingsStore.getDnsCachePreset(context)
+            else DnsCacheSettingsStore.getDnsCachePreset(context, dataset)
         )
     }
 
@@ -58,7 +62,7 @@ fun CacheSettingsScreen(
             val current = DnsModeManager.config.value
             DnsModeManager.updateConfig(context, current.copy(cacheEnabled = next, cachePreset = preset))
         } else {
-            DnsCacheSettingsStore.setDnsCachePolicy(context, preset.toPolicy(enabled = next))
+            DnsCacheSettingsStore.setDnsCachePolicy(context, preset.toPolicy(enabled = next), dataset)
             onRuntimeDnsSettingsChanged()
         }
     }
@@ -69,7 +73,7 @@ fun CacheSettingsScreen(
             val current = DnsModeManager.config.value
             DnsModeManager.updateConfig(context, current.copy(cacheEnabled = enabled, cachePreset = next))
         } else {
-            DnsCacheSettingsStore.setDnsCachePolicy(context, next.toPolicy(enabled = enabled))
+            DnsCacheSettingsStore.setDnsCachePolicy(context, next.toPolicy(enabled = enabled), dataset)
             onRuntimeDnsSettingsChanged()
         }
     }

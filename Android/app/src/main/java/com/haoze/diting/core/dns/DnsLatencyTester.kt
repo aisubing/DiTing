@@ -1,11 +1,11 @@
 package com.haoze.diting.core.dns
 
 import com.haoze.diting.core.diagnostic.BootstrapSelector
+import com.haoze.diting.util.LatencyWindow
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.ConnectionSpec
 import okhttp3.Dns
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -115,7 +115,17 @@ object DnsLatencyTester {
         query: ByteArray,
         bootstrapSelector: BootstrapSelector?
     ): Result {
-        val httpUrl = provider.url.toHttpUrl()
+        // A malformed or empty DoH URL makes toHttpUrl() throw. It must be
+        // reported as a failed measurement instead of escaping the tester.
+        val httpUrl = DohUrlParser.parseOrNull(provider.url)
+            ?: return Result(
+                providerId = provider.id,
+                providerName = provider.name,
+                protocol = provider.protocol,
+                elapsedMs = 0L,
+                success = false,
+                message = DohUrlParser.invalidUrlMessage(provider.url)
+            )
 
         val builder = OkHttpClient.Builder()
             .connectTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
@@ -145,15 +155,17 @@ object DnsLatencyTester {
             .header("Content-Type", DNS_MEDIA_TYPE.toString())
             .build()
 
-        val start = System.currentTimeMillis()
+        // Resolve the provider host before starting the clock: bootstrap or
+        // system resolution is setup cost, and charging it to the upstream made
+        // slow-to-resolve providers look like slow DNS servers.
+        val window = LatencyWindow()
         return try {
-            val response = if (bootstrapSelector == null) {
-                clientForBootstrap(null).newCall(request).await()
-            } else {
-                val addresses = bootstrapSelector.resolveHost(httpUrl.host)
-                clientForBootstrap(addresses.takeIf { it.isNotEmpty() }).newCall(request).await()
-            }
-            val elapsed = System.currentTimeMillis() - start
+            val bootstrapAddresses = bootstrapSelector?.resolveHost(httpUrl.host)
+            window.start(System.currentTimeMillis())
+            val response = clientForBootstrap(bootstrapAddresses?.takeIf { it.isNotEmpty() })
+                .newCall(request)
+                .await()
+            val elapsed = window.elapsed(System.currentTimeMillis())
             response.use { r ->
                 val body = r.body?.bytes()
                 val dnsSuccess = body != null && DnsMessageUtils.isSuccessResponse(body)
@@ -171,7 +183,7 @@ object DnsLatencyTester {
                 providerId = provider.id,
                 providerName = provider.name,
                 protocol = provider.protocol,
-                elapsedMs = System.currentTimeMillis() - start,
+                elapsedMs = window.elapsed(System.currentTimeMillis()),
                 success = false,
                 message = e.message
             )
@@ -183,15 +195,14 @@ object DnsLatencyTester {
         query: ByteArray,
         bootstrapSelector: BootstrapSelector?
     ): Result {
-        val start = System.currentTimeMillis()
+        // Host resolution is setup cost, not upstream latency: resolve first and
+        // only then start the clock, so the measurement covers the DoT round trip.
+        val window = LatencyWindow()
         return try {
-            val response = if (bootstrapSelector == null) {
-                queryDot(provider, query, bootstrapAddresses = null)
-            } else {
-                val addresses = bootstrapSelector.resolveHost(provider.host)
-                queryDot(provider, query, addresses.takeIf { it.isNotEmpty() })
-            }
-            val elapsed = System.currentTimeMillis() - start
+            val bootstrapAddresses = bootstrapSelector?.resolveHost(provider.host)
+            window.start(System.currentTimeMillis())
+            val response = queryDot(provider, query, bootstrapAddresses?.takeIf { it.isNotEmpty() })
+            val elapsed = window.elapsed(System.currentTimeMillis())
             Result(
                 providerId = provider.id,
                 providerName = provider.name,
@@ -205,7 +216,7 @@ object DnsLatencyTester {
                 providerId = provider.id,
                 providerName = provider.name,
                 protocol = provider.protocol,
-                elapsedMs = System.currentTimeMillis() - start,
+                elapsedMs = window.elapsed(System.currentTimeMillis()),
                 success = false,
                 message = e.message
             )
@@ -217,7 +228,9 @@ object DnsLatencyTester {
         query: ByteArray,
         bootstrapSelector: BootstrapSelector?
     ): Result {
-        val start = System.currentTimeMillis()
+        // Same rule as DoT/DoH: resolve the server address before timing so the
+        // measurement covers only the DNS query itself.
+        val window = LatencyWindow()
         return try {
             val addresses = if (DnsProvider.isIpLiteral(provider.host)) {
                 listOf(InetAddress.getByName(provider.host))
@@ -225,11 +238,14 @@ object DnsLatencyTester {
                 bootstrapSelector?.resolveHost(provider.host)?.takeIf { it.isNotEmpty() }
                     ?: InetAddress.getAllByName(provider.host).toList()
             }
+            window.start(System.currentTimeMillis())
             val response = PlainDnsTransport.query(addresses, provider.port, null, null, query)
-            Result(provider.id, provider.name, provider.protocol, System.currentTimeMillis() - start,
+            Result(provider.id, provider.name, provider.protocol,
+                window.elapsed(System.currentTimeMillis()),
                 DnsMessageUtils.isSuccessResponse(response))
         } catch (e: Exception) {
-            Result(provider.id, provider.name, provider.protocol, System.currentTimeMillis() - start,
+            Result(provider.id, provider.name, provider.protocol,
+                window.elapsed(System.currentTimeMillis()),
                 false, e.message)
         }
     }

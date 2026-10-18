@@ -21,6 +21,7 @@ import com.haoze.diting.core.cache.DnsCacheController
 import com.haoze.diting.core.cache.DnsCachePolicy
 import com.haoze.diting.core.cache.DnsResponseCache
 import com.haoze.diting.core.traffic.TrafficStatsManager
+import com.haoze.diting.ui.settings.SystemSettingsStore
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -116,13 +117,26 @@ class DnsVpnDatabaseComponents {
             }
         }
         BootstrapHealthStore.registerListener(bootstrapHealthListener)
-        LogMaintenance.start(scope, db) { activeLogRetentionDays() }
+        LogMaintenance.start(
+            scope = scope,
+            database = db,
+            retentionDaysProvider = { activeLogRetentionDays() },
+            // App traffic history has its own retention setting; reusing the
+            // DNS log retention days here would silently truncate it.
+            trafficRetentionDaysProvider = { SystemSettingsStore.getTrafficStatsRetentionDays(context) }
+        )
 
         // Fully load rules into the in-memory caches at startup and warm the DNS cache
         // Prune before the long-running periodic task (first tick after 30s)
         // so oversized log tables from a previous session are trimmed at start.
         scope.launch(Dispatchers.IO) {
             runCatching { LogMaintenance.pruneExpiredLogs(db, activeLogRetentionDays()) }
+            runCatching {
+                LogMaintenance.pruneExpiredTrafficStats(
+                    db,
+                    SystemSettingsStore.getTrafficStatsRetentionDays(context)
+                )
+            }
         }
 
         rulesInitializationJob = scope.launch {

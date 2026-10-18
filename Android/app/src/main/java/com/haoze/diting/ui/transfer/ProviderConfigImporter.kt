@@ -98,6 +98,14 @@ internal class ProviderConfigImporter(private val session: ImportSessionContext)
                 session.addUpdatedSetting(detail, "更新 $detail")
             }
         }
+        if (config.latencyTestProviderRefs.isNotEmpty()) {
+            val resolvedIds = config.latencyTestProviderRefs.mapNotNull(::resolveProviderRef).toSet()
+            if (resolvedIds.isNotEmpty()) {
+                ResolutionSettingsStore.setLatencyTestProviderIds(context, resolvedIds, session.dataset)
+                val detail = "延迟测试 DNS 节点 (${resolvedIds.size} 个)"
+                session.addUpdatedSetting(detail, "更新 $detail")
+            }
+        }
         config.presetDnsService?.let { service ->
             ResolutionSettingsStore.setPresetDnsService(context, service, session.dataset)
             val detail = "预置 DNS 服务 -> ${service.displayName}"

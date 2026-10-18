@@ -27,8 +27,8 @@ object SystemSettingsStore {
     private const val KEY_TRAFFIC_STATS_RETENTION_DAYS = "traffic_stats_retention_days"
     private const val KEY_TRAFFIC_STATS_HIDE_SYSTEM_APPS = "traffic_stats_hide_system_apps"
 
-    private const val DEFAULT_LOG_RETENTION_DAYS = 7
-    private const val DEFAULT_TRAFFIC_STATS_RETENTION_DAYS = 30
+    internal const val DEFAULT_LOG_RETENTION_DAYS = 7
+    internal const val DEFAULT_TRAFFIC_STATS_RETENTION_DAYS = 30
     private const val DEFAULT_HIDE_FROM_RECENTS_ENABLED = false
 
     fun getDnsLogMode(context: Context, dataset: RuleDataset = RuleDataset.NORMAL): DnsLogMode {

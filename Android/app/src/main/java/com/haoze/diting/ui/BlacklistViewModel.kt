@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.data.RuleDatabases
 import com.haoze.diting.data.entity.BlockRuleEntity
-import com.haoze.diting.data.entity.GoUrlRuleEntity
 import com.haoze.diting.data.entity.GoUrlRuleKind
 import com.haoze.diting.data.entity.RuleScope
 import com.haoze.diting.ui.settings.RuleSettingsAccess
@@ -24,6 +23,7 @@ import kotlinx.coroutines.withContext
 
 import com.haoze.diting.data.entity.CosmeticRuleEntity
 import com.haoze.diting.core.rule.CosmeticRuleManager
+import com.haoze.diting.core.rule.cosmeticRuleRejection
 
 class BlacklistViewModel(
     application: Application,
@@ -130,54 +130,26 @@ class BlacklistViewModel(
             val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
 
             // 1. URL block items
-            val allUrlEntities = when (currentFilter) {
-                BlacklistFilter.ALL, BlacklistFilter.USER_ADDED, BlacklistFilter.URL -> goUrlRuleDao.byKind(GoUrlRuleKind.BLOCK)
-                else -> emptyList()
-            }
-            val filteredUrls = allUrlEntities.filter {
-                query.isEmpty() || it.pattern.contains(query, ignoreCase = true) || it.rawLine.contains(query, ignoreCase = true)
-            }
-            val urlRuleIds = filteredUrls.map { it.id }
-            val urlSources = if (urlRuleIds.isNotEmpty()) goUrlRuleDao.sourcesForRuleIds(urlRuleIds) else emptyList()
-            val urlSourcesByRuleId = urlSources.groupBy { it.ruleId }
-            val urlSubscriptionNames = subscriptionDao.lookupSubscriptionNames(urlSources.map { it.ruleId to it.source })
-            val urlItems = filteredUrls.mapNotNull { entity ->
-                val sources = urlSourcesByRuleId[entity.id].orEmpty()
-                val isUser = sources.isEmpty() || sources.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
-                val isSub = sources.any { it.source.startsWith("sub_") }
-                if (currentFilter == BlacklistFilter.USER_ADDED && !isUser) return@mapNotNull null
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { urlSubscriptionNames[it.source] }
-                entity.toItem(isUserRule = isUser, isSubscription = isSub, subscriptionName = subName, masterEnabled = addressRulesOperational)
-            }
+            val urlItems = goUrlRuleDao.queryBlacklistUrlItems(
+                filter = currentFilter,
+                query = query,
+                subscriptionDao = subscriptionDao,
+                masterEnabled = addressRulesOperational
+            )
 
             // 2. Cosmetic block items
-            val allCosmetics = if (dataset == RuleDataset.NORMAL) {
-                when (currentFilter) {
-                    BlacklistFilter.ALL, BlacklistFilter.USER_ADDED, BlacklistFilter.SUBSCRIPTION, BlacklistFilter.COSMETIC -> cosmeticRuleDao.blockRules()
-                    else -> emptyList()
-                }
-            } else emptyList()
-            val filteredCosmetics = allCosmetics.filter {
-                query.isEmpty() || it.rawLine.contains(query, ignoreCase = true) || it.domain.contains(query, ignoreCase = true) || it.selector.contains(query, ignoreCase = true)
-            }
-            val cosmeticRuleIds = filteredCosmetics.map { it.id }
-            val cosmeticSources = if (cosmeticRuleIds.isNotEmpty()) cosmeticRuleDao.sourcesForRuleIds(cosmeticRuleIds) else emptyList()
-            val cosmeticSourcesByRuleId = cosmeticSources.groupBy { it.ruleId }
-            val cosmeticSubscriptionNames = subscriptionDao.lookupSubscriptionNames(cosmeticSources.map { it.ruleId to it.source })
-            val cosmeticItems = filteredCosmetics.mapNotNull { entity ->
-                val sources = cosmeticSourcesByRuleId[entity.id].orEmpty()
-                val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
-                val isSub = sources.any { it.source.startsWith("sub_") }
-                if (currentFilter == BlacklistFilter.USER_ADDED && !isUser) return@mapNotNull null
-                if (currentFilter == BlacklistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { cosmeticSubscriptionNames[it.source] }
-                entity.toItem(isUserRule = isUser, isSubscription = isSub, subscriptionName = subName, masterEnabled = addressRulesOperational)
-            }
+            val cosmeticItems = cosmeticRuleDao.queryBlacklistCosmeticItems(
+                filter = currentFilter,
+                query = query,
+                dataset = dataset,
+                subscriptionDao = subscriptionDao,
+                masterEnabled = addressRulesOperational
+            )
 
             val nonDomainItems = when (currentFilter) {
                 BlacklistFilter.URL -> urlItems
                 BlacklistFilter.COSMETIC -> cosmeticItems
-                BlacklistFilter.SUBSCRIPTION -> cosmeticItems
+                BlacklistFilter.SUBSCRIPTION -> cosmeticItems + urlItems
                 else -> cosmeticItems + urlItems
             }
             val nonDomainCount = nonDomainItems.size
@@ -328,8 +300,8 @@ class BlacklistViewModel(
             if (raw.contains("#@#")) {
                 return@withContext Result.failure(IllegalArgumentException("该规则为放行规则，请在白名单中添加"))
             }
-            if (dataset == RuleDataset.DNS_MODE) {
-                return@withContext Result.failure(IllegalArgumentException("元素隐藏规则仅普通模式支持"))
+            cosmeticRuleRejection(dataset)?.let {
+                return@withContext Result.failure(IllegalArgumentException(it))
             }
             val parsedCat = AdGuardRuleParser.parseCategorizedLine(raw)
             val cosmeticRule = parsedCat.cosmeticRules.firstOrNull()
@@ -420,6 +392,9 @@ class BlacklistViewModel(
         if (trimmed.isEmpty()) return@withContext Result.failure(IllegalArgumentException("规则内容不能为空"))
 
         if (item.type == BlacklistType.COSMETIC) {
+            cosmeticRuleRejection(dataset)?.let {
+                return@withContext Result.failure(IllegalArgumentException(it))
+            }
             val parsedCat = AdGuardRuleParser.parseCategorizedLine(trimmed)
             val cosmeticRule = parsedCat.cosmeticRules.firstOrNull()
                 ?: return@withContext Result.failure(IllegalArgumentException("元素隐藏规则格式无效"))
@@ -481,8 +456,10 @@ class BlacklistViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             blockRuleDao.deleteUserRules()
             goUrlRuleDao.deleteByKindAndSource(GoUrlRuleKind.BLOCK, GoUrlRuleManager.USER_SOURCE)
-            cosmeticRuleDao.deleteUserBlockRules()
-            CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
+            if (dataset == RuleDataset.NORMAL) {
+                cosmeticRuleDao.deleteUserBlockRules()
+                CosmeticRuleManager.getInstance(getApplication()).compileScopedCss()
+            }
             syncDnsAndPassthrough()
             syncUrlRules()
             refreshAll()
@@ -522,54 +499,6 @@ class BlacklistViewModel(
         appInverted = appInverted,
         isWildcard = isWildcard,
         important = important,
-        enabled = enabled,
-        masterEnabled = masterEnabled,
-        effectiveEnabled = enabled && masterEnabled,
-        addedAt = addedAt,
-        isUserRule = isUserRule,
-        isSubscription = isSubscription,
-        subscriptionName = subscriptionName
-    )
-
-    private fun GoUrlRuleEntity.toItem(
-        isUserRule: Boolean = true,
-        isSubscription: Boolean = false,
-        subscriptionName: String? = null,
-        masterEnabled: Boolean = true
-    ): BlacklistItem = BlacklistItem(
-        id = id,
-        pattern = pattern,
-        rawLine = rawLine,
-        type = BlacklistType.URL,
-        groupName = null,
-        appScope = null,
-        appInverted = false,
-        isWildcard = false,
-        important = false,
-        enabled = enabled,
-        masterEnabled = masterEnabled,
-        effectiveEnabled = enabled && masterEnabled,
-        addedAt = addedAt,
-        isUserRule = isUserRule,
-        isSubscription = isSubscription,
-        subscriptionName = subscriptionName
-    )
-
-    private fun CosmeticRuleEntity.toItem(
-        isUserRule: Boolean = true,
-        isSubscription: Boolean = false,
-        subscriptionName: String? = null,
-        masterEnabled: Boolean = true
-    ): BlacklistItem = BlacklistItem(
-        id = id,
-        pattern = rawLine.ifBlank { if (domain.isNotEmpty()) "$domain##$selector" else "##$selector" },
-        rawLine = rawLine,
-        type = BlacklistType.COSMETIC,
-        groupName = null,
-        appScope = domain.takeIf { it.isNotBlank() },
-        appInverted = false,
-        isWildcard = false,
-        important = false,
         enabled = enabled,
         masterEnabled = masterEnabled,
         effectiveEnabled = enabled && masterEnabled,

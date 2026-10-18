@@ -8,7 +8,6 @@ import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.data.RuleDatabases
 import com.haoze.diting.data.entity.AllowRuleEntity
 import com.haoze.diting.data.entity.CosmeticRuleEntity
-import com.haoze.diting.data.entity.GoUrlRuleEntity
 import com.haoze.diting.data.entity.GoUrlRuleKind
 import com.haoze.diting.data.entity.RuleScope
 import com.haoze.diting.ui.settings.RuleSettingsAccess
@@ -17,6 +16,7 @@ import com.haoze.diting.core.rule.AllowListManager
 import com.haoze.diting.core.rule.CosmeticRuleManager
 import com.haoze.diting.core.rule.DefaultWhitelistSeeder
 import com.haoze.diting.core.rule.GoUrlRuleManager
+import com.haoze.diting.core.rule.cosmeticRuleRejection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -153,112 +153,16 @@ class WhitelistViewModel(
             val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
 
             // URL and cosmetic rules have no paged DAO queries, so those lists
-            // are still assembled in memory. Domain rules are paged from the DB.
-            val allUrlEntities = when (currentFilter) {
-                WhitelistFilter.ALL, WhitelistFilter.URL -> goUrlRuleDao.byKind(GoUrlRuleKind.ALLOW)
-                WhitelistFilter.USER_ADDED -> {
-                    val urls = goUrlRuleDao.byKind(GoUrlRuleKind.ALLOW)
-                    val urlRuleIds = urls.map { it.id }
-                    val urlSources = if (urlRuleIds.isNotEmpty()) goUrlRuleDao.sourcesForRuleIds(urlRuleIds) else emptyList()
-                    val urlSourcesByRuleId = urlSources.groupBy { it.ruleId }
-                    urls.filter { entity ->
-                        val sources = urlSourcesByRuleId[entity.id].orEmpty()
-                        sources.isEmpty() || sources.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
-                    }
-                }
-                WhitelistFilter.SUBSCRIPTION -> {
-                    val urls = goUrlRuleDao.byKind(GoUrlRuleKind.ALLOW)
-                    val urlRuleIds = urls.map { it.id }
-                    val urlSources = if (urlRuleIds.isNotEmpty()) goUrlRuleDao.sourcesForRuleIds(urlRuleIds) else emptyList()
-                    val urlSourcesByRuleId = urlSources.groupBy { it.ruleId }
-                    urls.filter { entity ->
-                        val sources = urlSourcesByRuleId[entity.id].orEmpty()
-                        sources.any { it.source.startsWith("sub_") }
-                    }
-                }
-                else -> emptyList()
-            }
-
-            val urlRuleIds = allUrlEntities.map { it.id }
-            val urlSources = if (urlRuleIds.isNotEmpty()) goUrlRuleDao.sourcesForRuleIds(urlRuleIds) else emptyList()
-            val urlSourcesByRuleId = urlSources.groupBy { it.ruleId }
-
-            val allCosmeticEntities = if (dataset == RuleDataset.NORMAL) {
-                when (currentFilter) {
-                    WhitelistFilter.ALL, WhitelistFilter.COSMETIC -> cosmeticRuleDao.allowRules()
-                    WhitelistFilter.USER_ADDED -> {
-                        val cosmetics = cosmeticRuleDao.allowRules()
-                        val ids = cosmetics.map { it.id }
-                        val sources = if (ids.isNotEmpty()) cosmeticRuleDao.sourcesForRuleIds(ids) else emptyList()
-                        val sourcesByRuleId = sources.groupBy { it.ruleId }
-                        cosmetics.filter { entity ->
-                            val src = sourcesByRuleId[entity.id].orEmpty()
-                            src.isEmpty() || src.any { it.source == "useradd" || !it.source.startsWith("sub_") }
-                        }
-                    }
-                    WhitelistFilter.SUBSCRIPTION -> {
-                        val cosmetics = cosmeticRuleDao.allowRules()
-                        val ids = cosmetics.map { it.id }
-                        val sources = if (ids.isNotEmpty()) cosmeticRuleDao.sourcesForRuleIds(ids) else emptyList()
-                        val sourcesByRuleId = sources.groupBy { it.ruleId }
-                        cosmetics.filter { entity ->
-                            val src = sourcesByRuleId[entity.id].orEmpty()
-                            src.any { it.source.startsWith("sub_") }
-                        }
-                    }
-                    else -> emptyList()
-                }
-            } else emptyList()
-
-            val cosmeticRuleIds = allCosmeticEntities.map { it.id }
-            val cosmeticSources = if (cosmeticRuleIds.isNotEmpty()) cosmeticRuleDao.sourcesForRuleIds(cosmeticRuleIds) else emptyList()
-            val cosmeticSourcesByRuleId = cosmeticSources.groupBy { it.ruleId }
-
-            val urlSourceRows = urlSources.map { it.ruleId to it.source }
-            val cosmeticSourceRows = cosmeticSources.map { it.ruleId to it.source }
-            val subscriptionNames = subscriptionDao.lookupSubscriptionNames(urlSourceRows + cosmeticSourceRows)
-
-            val urlItems = allUrlEntities.mapNotNull { entity ->
-                val sources = urlSourcesByRuleId[entity.id].orEmpty()
-                val isSub = sources.any { it.source.startsWith("sub_") }
-                val isUser = sources.isEmpty() || sources.any { it.source == GoUrlRuleManager.USER_SOURCE || !it.source.startsWith("sub_") }
-                if (currentFilter == WhitelistFilter.USER_ADDED && !isUser) return@mapNotNull null
-                if (currentFilter == WhitelistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionNames[it.source] }
-                if (!matchesSearchQuery(query, entity.pattern, entity.rawLine, null, null, subName)) return@mapNotNull null
-                entity.toItem(
-                    isUserRule = isUser,
-                    isSubscription = isSub,
-                    subscriptionName = subName,
-                    masterEnabled = addressRulesOperational
-                )
-            }
-
-            val cosmeticItems = allCosmeticEntities.mapNotNull { entity ->
-                val sources = cosmeticSourcesByRuleId[entity.id].orEmpty()
-                val isSub = sources.any { it.source.startsWith("sub_") }
-                val isUser = sources.isEmpty() || sources.any { it.source == "useradd" || !it.source.startsWith("sub_") }
-                if (currentFilter == WhitelistFilter.USER_ADDED && !isUser) return@mapNotNull null
-                if (currentFilter == WhitelistFilter.SUBSCRIPTION && !isSub) return@mapNotNull null
-                val subName = sources.firstOrNull { it.source.startsWith("sub_") }?.let { subscriptionNames[it.source] }
-                if (!matchesSearchQuery(query, entity.rawLine, entity.domain, entity.selector, null, subName)) return@mapNotNull null
-                entity.toItem(
-                    isUserRule = isUser,
-                    isSubscription = isSub,
-                    subscriptionName = subName,
-                    masterEnabled = addressRulesOperational
-                )
-            }
-
-            // SUBSCRIPTION keeps both: unlike the blacklist (whose URL list is
-            // empty for that filter), allow-listed URL rules with a subscription
-            // source belong in this tab, and the in-memory baseline included them.
-            val nonDomainItems = when (currentFilter) {
-                WhitelistFilter.URL -> urlItems
-                WhitelistFilter.COSMETIC -> cosmeticItems
-                WhitelistFilter.SUBSCRIPTION -> cosmeticItems + urlItems
-                else -> cosmeticItems + urlItems
-            }
+            // are still assembled in memory (see WhitelistModels).
+            val nonDomainItems = buildWhitelistNonDomainItems(
+                filter = currentFilter,
+                query = query,
+                dataset = dataset,
+                goUrlRuleDao = goUrlRuleDao,
+                cosmeticRuleDao = cosmeticRuleDao,
+                subscriptionDao = subscriptionDao,
+                masterEnabled = addressRulesOperational
+            )
             val nonDomainCount = nonDomainItems.size
 
             val domainCount = when (currentFilter) {
@@ -405,8 +309,8 @@ class WhitelistViewModel(
 
         // Check if cosmetic exception rule
         if (raw.contains("#@#")) {
-            if (dataset == RuleDataset.DNS_MODE) {
-                return@withContext Result.failure(IllegalArgumentException("元素规则仅普通模式支持"))
+            cosmeticRuleRejection(dataset)?.let {
+                return@withContext Result.failure(IllegalArgumentException(it))
             }
             val parsedCat = AdGuardRuleParser.parseCategorizedLine(raw)
             val cosmeticRule = parsedCat.cosmeticRules.firstOrNull()
@@ -496,6 +400,9 @@ class WhitelistViewModel(
         if (trimmed.isEmpty()) return@withContext Result.failure(IllegalArgumentException("规则内容不能为空"))
 
         if (item.type == WhitelistType.COSMETIC) {
+            cosmeticRuleRejection(dataset)?.let {
+                return@withContext Result.failure(IllegalArgumentException(it))
+            }
             if (!trimmed.contains("#@#")) {
                 return@withContext Result.failure(IllegalArgumentException("元素放行规则格式无效 (需包含 #@#)"))
             }

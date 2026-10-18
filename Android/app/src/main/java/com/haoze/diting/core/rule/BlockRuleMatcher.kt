@@ -231,7 +231,7 @@ internal object BlockRuleMatcher {
             }
 
             val matched = if (rule.isRegex) {
-                runCatching { Regex(rule.pattern).containsMatchIn(domain) }.getOrDefault(false)
+                RuleRegex.containsMatch(rule.pattern, domain)
             } else if (rule.isWildcard || rule.pattern.contains('*')) {
                 AdGuardRuleParser.WildcardPattern(rule.pattern).matches(domain)
             } else {

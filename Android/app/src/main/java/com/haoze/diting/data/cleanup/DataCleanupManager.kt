@@ -32,6 +32,7 @@ import com.haoze.diting.core.diagnostic.ProviderHealthStore
 import com.haoze.diting.core.rule.RewriteRuleManager
 import com.haoze.diting.core.cache.DnsCacheController
 import com.haoze.diting.core.traffic.TrafficStatsManager
+import com.haoze.diting.update.AppUpdateDirectories
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -404,8 +405,8 @@ object DataCleanupManager {
      * 清理应用更新下载安装包及临时文件缓存目录。
      */
     fun clearDownloadAndTempCache(context: Context) {
-        // 1. 更新安装包
-        deleteDirectoryContents(File(context.filesDir, "updates"))
+        // 1. 更新安装包（必须与 AppUpdateManager 的真实下载目录一致）
+        deleteDirectoryContents(AppUpdateDirectories.downloadDirectory(context.filesDir))
         SystemSettingsStore.clearAppUpdateDownload(context)
 
         // 2. 内部与外部临时缓存

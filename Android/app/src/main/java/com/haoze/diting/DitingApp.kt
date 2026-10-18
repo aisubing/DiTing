@@ -9,6 +9,7 @@ import com.haoze.diting.crash.CrashCollector
 import com.haoze.diting.crash.CrashHandler
 import com.haoze.diting.crash.CrashLogManager
 import com.haoze.diting.ui.background.CustomBackgroundManager
+import com.haoze.diting.core.diagnostic.TunnelDiagnosticsResolver
 import com.haoze.diting.core.rule.RuleIndexLayout
 import com.haoze.diting.core.rule.SubscriptionAutoUpdateScheduler
 
@@ -45,6 +46,17 @@ class DitingApp : Application() {
         Thread({
             CrashLogManager.checkAndCollectNativeCrashes(this)
         }, "NativeCrashCollector").start()
+
+        // Wire the diagnostics resolver to the running tunnel service. Nothing
+        // assigned this hook before, so NetworkTools always reported
+        // "VPN 未运行" even while the tunnel was up. The lambda reads the active
+        // service on every call, so a not-yet-started (or stopped) tunnel still
+        // yields null and keeps the original message.
+        TunnelDiagnosticsResolver.tunnelResolver = { domain, preferIpv4 ->
+            runCatching {
+                com.haoze.diting.normal.DnsVpnService.resolveThroughTunnel(domain, preferIpv4)
+            }.getOrNull()
+        }
 
         // Reconcile periodic rule subscription auto-update schedule on app startup.
         Thread({

@@ -30,6 +30,8 @@ import com.haoze.diting.permission.AppListPermissionHelper
 import com.haoze.diting.permission.AppPermission
 import com.haoze.diting.permission.BatteryOptimizationHelper
 import com.haoze.diting.permission.ModePermissionStore
+import com.haoze.diting.server.backend.DnsModePreferences
+import com.haoze.diting.server.model.DnsListenPortValidator
 import com.haoze.diting.ui.AppThemeSurface
 import com.haoze.diting.ui.mode.AppWorkMode
 import com.haoze.diting.ui.mode.WorkModeStore
@@ -55,6 +57,13 @@ class ModeOnboardingActivity : AppLocalizedActivity() {
 
     private val permissionStates = mutableStateMapOf<AppPermission, Boolean>()
     private var localIps by mutableStateOf<List<String>>(emptyList())
+
+    /**
+     * The DNS mode listen port actually persisted for the user. The wizard used
+     * to hardcode 1053 in its LAN access instructions, so every device the user
+     * configured from it pointed at the wrong port after a port change.
+     */
+    private var dnsListenPort by mutableStateOf(DnsListenPortValidator.DEFAULT_PORT)
 
     private val vpnLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -92,8 +101,10 @@ class ModeOnboardingActivity : AppLocalizedActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             val ips = NetworkInfoProbe.probe(this@ModeOnboardingActivity)?.ipv4Addresses ?: emptyList()
+            val port = DnsModePreferences.loadConfig(this@ModeOnboardingActivity).localListenPort
             withContext(Dispatchers.Main) {
                 localIps = ips
+                dnsListenPort = port
             }
         }
 
@@ -125,7 +136,8 @@ class ModeOnboardingActivity : AppLocalizedActivity() {
                     onSkip = {
                         finishAndReturnToMain(startService = false)
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    dnsListenPort = dnsListenPort
                 )
             }
         }

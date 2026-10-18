@@ -42,24 +42,52 @@ class DnsVpnTunnelManager {
     var isIpv6Active: Boolean = false
         private set
 
+    /** Cached certificate state the current VPN session was built with. */
+    @Volatile
+    private var inspectionStateUsedForSession: Boolean = false
+
     /**
      * Checks whether the HTTPS MITM certificate is installed in the system
      * trusted credentials using the cached configuration state without blocking.
+     *
+     * The returned value is remembered as the decision this VPN session runs
+     * with, so [verifyHttpsInspectionCertificateAsync] can detect that the real
+     * check disagreed with it.
      */
     fun isHttpsInspectionCertificateInstalled(context: Context): Boolean {
-        return AppRulesSettingsStore.isHttpsInspectionReady(context)
+        val cached = AppRulesSettingsStore.isHttpsInspectionReady(context)
+        inspectionStateUsedForSession = cached
+        return cached
     }
 
     /**
      * Asynchronously verifies the HTTPS MITM certificate in AndroidCAStore
      * off the main thread and updates the settings store.
+     *
+     * When the real result differs from the cached flag this session was built
+     * with, [onCertificateStateMismatch] is invoked so the caller can restart
+     * the tunnel: otherwise the MITM state silently stays wrong for the whole
+     * session (inspection disabled although the CA is installed, or enabled
+     * against a missing CA).
      */
-    fun verifyHttpsInspectionCertificateAsync(context: Context, scope: CoroutineScope) {
+    fun verifyHttpsInspectionCertificateAsync(
+        context: Context,
+        scope: CoroutineScope,
+        onCertificateStateMismatch: (() -> Unit)? = null
+    ) {
         scope.launch(Dispatchers.IO) {
             val installed = runCatching { GoInspectionCaManager.isInstalled(context) }.getOrDefault(false)
+            val usedForSession = inspectionStateUsedForSession
             AppRulesSettingsStore.setHttpsInspectionReady(context, installed)
             if (!installed) {
                 AppRulesSettingsStore.setHttpInspectionEnabled(context, false)
+            }
+            if (shouldRestartForCertificateStateMismatch(usedForSession, installed)) {
+                Log.w(
+                    TAG,
+                    "HTTPS inspection certificate state changed (session=$usedForSession, actual=$installed); restarting tunnel"
+                )
+                runCatching { onCertificateStateMismatch?.invoke() }
             }
         }
     }
@@ -133,7 +161,7 @@ class DnsVpnTunnelManager {
                         (destAddr is Inet6Address && route.hasGateway()) ||
                         (destAddr is Inet6Address && route.destination.prefixLength == 0)
                 }
-                hasIpv6Route || hasGlobalIpv6
+                isIpv6Usable(hasGlobalIpv6, hasIpv6Route)
             }
         }.getOrDefault(false)
     }
@@ -309,6 +337,24 @@ class DnsVpnTunnelManager {
 
     companion object {
         private const val TAG = "DnsVpnTunnelManager"
+
+        /**
+         * IPv6 是否真正可用：仅有全球单播地址（GUA）不足以承载流量，
+         * 还必须存在 IPv6 路由（默认路由/带网关路由/前缀长度 0 的路由），
+         * 否则启用 IPv6 后流量无出口，导致解析与连通性异常。
+         */
+        internal fun isIpv6Usable(hasGlobalIpv6Address: Boolean, hasIpv6Route: Boolean): Boolean =
+            hasGlobalIpv6Address && hasIpv6Route
+
+        /**
+         * HTTPS 抓包隧道的启动决策与真实证书校验结果不一致时，必须重启隧道：
+         * 否则缓存位与真实状态不一致会让本会话的 MITM 静默失效（或反向误开）。
+         */
+        internal fun shouldRestartForCertificateStateMismatch(
+            stateUsedForSession: Boolean,
+            actualInstalled: Boolean
+        ): Boolean = stateUsedForSession != actualInstalled
+
         const val VPN_ADDRESS_V4 = "10.0.0.2"
         const val DNS_SERVER_V4 = "10.0.0.1"
         const val VPN_ADDRESS_V6 = "fd00:abcd::2"

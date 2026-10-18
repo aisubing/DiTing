@@ -19,6 +19,9 @@ object DefaultWhitelistSeeder {
 
     private const val PRESET_SCHEMA_VERSION = 2L
 
+    /** Result of deciding whether the preset asset is usable. */
+    internal enum class PresetSeedOutcome { WRITE, KEEP_EXISTING }
+
     /**
      * Ensures the preset default whitelist is initialized in the database.
      *
@@ -40,7 +43,14 @@ object DefaultWhitelistSeeder {
         } else {
             Log.i(TAG, "Initializing default preset whitelist...")
         }
-        seed(context, database, forceReset = true)
+        val seeded = seed(context, database, forceReset = true)
+        if (!shouldMarkInitialized(seeded)) {
+            // The asset produced nothing: leave the initialized/version markers
+            // alone so the next launch retries instead of permanently treating an
+            // empty preset whitelist as "already seeded".
+            Log.e(TAG, "Preset whitelist seeding produced no rules; will retry on next launch")
+            return@withContext
+        }
         AppRulesSettingsStore.setDefaultWhitelistInitialized(context, true)
         AppRulesSettingsStore.setDefaultWhitelistSeededVersion(context, targetSeedVersion)
         // The upgrade reset can happen while the VPN is running: keep the
@@ -60,32 +70,45 @@ object DefaultWhitelistSeeder {
 
     /**
      * Seeds or resets preset whitelist from assets/https_passthrough.txt.
+     *
+     * Returns the number of rows written. The asset is parsed *before* the
+     * existing preset rows are deleted: the parse swallows its own errors (a
+     * missing or unreadable asset yields an empty list), so deleting first meant
+     * a failed read wiped the whole preset whitelist and then inserted nothing.
+     * Because [ensureInitialized] marked the seed as done either way, that empty
+     * state was permanent — the passthrough hosts silently stopped being allowed.
      */
-    suspend fun seed(context: Context, database: AppDatabase, forceReset: Boolean = false) = withContext(Dispatchers.IO) {
-        val dao = database.allowRuleDao()
-        if (forceReset) {
-            dao.deleteBySource(SOURCE_PRESET)
-        }
+    suspend fun seed(context: Context, database: AppDatabase, forceReset: Boolean = false): Int =
+        withContext(Dispatchers.IO) {
+            val dao = database.allowRuleDao()
+            val entries = parseAssetWhitelist(context)
+            if (presetSeedOutcome(entries.size) == PresetSeedOutcome.KEEP_EXISTING) {
+                Log.w(TAG, "Preset whitelist asset is empty or unreadable; keeping existing preset rules")
+                return@withContext 0
+            }
+            if (forceReset) {
+                dao.deleteBySource(SOURCE_PRESET)
+            }
 
-        val entries = parseAssetWhitelist(context)
-        val now = System.currentTimeMillis()
-        val entities = entries.map { (domain, category) ->
-            AllowRuleEntity(
-                pattern = domain,
-                rawLine = domain,
-                addedAt = now,
-                enabled = true,
-                groupName = category,
-                appScope = null,
-                appInverted = false,
-                isWildcard = domain.contains('*'),
-                important = false
-            )
-        }
+            val now = System.currentTimeMillis()
+            val entities = entries.map { (domain, category) ->
+                AllowRuleEntity(
+                    pattern = domain,
+                    rawLine = domain,
+                    addedAt = now,
+                    enabled = true,
+                    groupName = category,
+                    appScope = null,
+                    appInverted = false,
+                    isWildcard = domain.contains('*'),
+                    important = false
+                )
+            }
 
-        dao.insertAllForSource(entities, SOURCE_PRESET, sourceEnabled = true)
-        Log.i(TAG, "Seeded ${entities.size} preset whitelist rules")
-    }
+            dao.insertAllForSource(entities, SOURCE_PRESET, sourceEnabled = true)
+            Log.i(TAG, "Seeded ${entities.size} preset whitelist rules")
+            entities.size
+        }
 
     @Volatile
     private var cachedAssetWhitelist: List<Pair<String, String>>? = null
@@ -135,6 +158,18 @@ object DefaultWhitelistSeeder {
     internal fun clearCache() {
         cachedAssetWhitelist = null
     }
+
+    /**
+     * What [seed] should do for an asset that parsed into [parsedCount] entries.
+     *
+     * The preset whitelist is the only thing keeping the passthrough hosts
+     * allowed, so an empty parse result must never be allowed to erase it.
+     */
+    internal fun presetSeedOutcome(parsedCount: Int): PresetSeedOutcome =
+        if (parsedCount <= 0) PresetSeedOutcome.KEEP_EXISTING else PresetSeedOutcome.WRITE
+
+    /** Whether [ensureInitialized] may record the seed as done. */
+    internal fun shouldMarkInitialized(writtenCount: Int): Boolean = writtenCount > 0
 
     internal fun setCachedWhitelistForTesting(list: List<Pair<String, String>>?) {
         cachedAssetWhitelist = list

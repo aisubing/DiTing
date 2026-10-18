@@ -66,6 +66,7 @@ class RuleListViewModel(
     private var ruleKind = ManagedRuleKind.BLOCK
     private var ruleScope = RuleScope.DNS
     private var searchJob: Job? = null
+    private var pageJob: Job? = null
 
     fun setRuleKind(kind: ManagedRuleKind, scope: RuleScope) {
         if (ruleKind == kind && ruleScope == scope) return
@@ -90,7 +91,12 @@ class RuleListViewModel(
     }
 
     fun loadPage(page: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
+        // Cancelling the previous page load makes the newest request win. Without
+        // it a slow earlier query could finish after a later one and overwrite the
+        // list with stale rows (same defect as the blacklist/whitelist/rewrite
+        // lists).
+        pageJob?.cancel()
+        pageJob = viewModelScope.launch(Dispatchers.IO) {
             val query = _searchQuery.value.trim()
             val offset = (page - 1) * pageSize
             val rules = loadRules(query, pageSize, offset)

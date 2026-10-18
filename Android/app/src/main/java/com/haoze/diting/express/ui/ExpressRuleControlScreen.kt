@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.haoze.diting.data.RuleDataset
 import com.haoze.diting.data.RuleDatabases
+import com.haoze.diting.express.ExpressDynamicBlockSupport
 import com.haoze.diting.ui.RuntimeDnsSettingsRefresher
 import com.haoze.diting.ui.components.SettingsGroupTitle
 import com.haoze.diting.ui.components.SettingsInfoText
@@ -130,11 +131,18 @@ fun ExpressRuleControlScreen(
                     items = listOf(
                         SettingsNavigationItemData(
                             title = localizedText("拦截响应"),
-                            subtitle = localizedText(if (dynamicConfig.enabled) {
-                                "动态策略：先 NODATA，高频请求后 NXDOMAIN"
-                            } else {
-                                localizedText("当前：${localizedText(settings.blockResponseMode(context).displayName)}")
-                            }),
+                            // Express has no dynamic-escalation path in its Kotlin
+                            // engine, so report the behaviour actually in force
+                            // instead of echoing the stored flag.
+                            subtitle = localizedText(
+                                ExpressDynamicBlockSupport.blockResponseSubtitle(
+                                    dataset = dataset,
+                                    config = dynamicConfig,
+                                    blockResponseModeDisplayName = localizedText(
+                                        settings.blockResponseMode(context).displayName
+                                    )
+                                )
+                            ),
                             onClick = onNavigateToBlockResponseSettings
                         )
                     )

@@ -56,7 +56,21 @@ internal class AppRuleConfigImporter(private val session: ImportSessionContext) 
             }
         }
 
-        if (AppRulesSettingsStore.isBlockedAppsEnabled(context) != config.blockedAppsEnabled) {
+        // The master switch is imported together with the list it governs, never
+        // on its own. Export only writes `blockedAppsEnabled` when the user ticked
+        // 「禁止联网名单」 (ConfigExporter), while the parser defaults a missing
+        // field to `false` and TransferConfigDto cannot distinguish "not exported"
+        // from "exported as false". Applying the default unconditionally therefore
+        // silently turned the switch off for every backup that omitted the list.
+        val importedBlockedPackages = config.blockedApps
+            .filter { it.isNotBlank() && !it.contains(" ") && it != context.packageName }
+            .toSet()
+        if (shouldApplyImportedBlockedAppsEnabled(
+                hasImportedList = importedBlockedPackages.isNotEmpty(),
+                currentEnabled = AppRulesSettingsStore.isBlockedAppsEnabled(context),
+                importedEnabled = config.blockedAppsEnabled
+            )
+        ) {
             AppRulesSettingsStore.setBlockedAppsEnabled(context, config.blockedAppsEnabled)
             session.blockedAppsUpdated = true
             val detail = "禁止联网应用开关 -> ${if (config.blockedAppsEnabled) "已启用" else "已禁用"}"
@@ -125,5 +139,24 @@ internal class AppRuleConfigImporter(private val session: ImportSessionContext) 
             session.addUpdatedSetting(detail, "设置 $detail")
             session.complete("HTTPS 抓包配置", "已应用 HTTPS 抓包配置")
         }
+    }
+
+    companion object {
+        /**
+         * Whether the imported 「禁止联网名单」 master switch should be applied.
+         *
+         * The switch only travels with its list. `TransferConfigDto.blockedAppsEnabled`
+         * is a non-null `Boolean` defaulting to `false`, so a backup exported
+         * without the list (the user did not tick it) is indistinguishable from
+         * one that explicitly exported `false`. Importing the default turned the
+         * switch off behind the user's back; requiring a non-empty list makes the
+         * import a no-op unless the list actually came along. An explicit `false`
+         * with a non-empty list is still honoured, because that is a real export.
+         */
+        internal fun shouldApplyImportedBlockedAppsEnabled(
+            hasImportedList: Boolean,
+            currentEnabled: Boolean,
+            importedEnabled: Boolean
+        ): Boolean = hasImportedList && currentEnabled != importedEnabled
     }
 }
