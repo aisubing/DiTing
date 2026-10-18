@@ -25,27 +25,26 @@ class VpnMonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         isServiceAlive = true
-        AppNotificationChannels.createAllChannels(this)
+        // 只建本服务要用的渠道，并且必须在造通知之前完成。
+        AppNotificationChannels.ensureMonitorChannel(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Android 12+ requires startForeground() promptly after startForegroundService().
-        // Stop requests or failing preconditions MUST still call startForeground() first
-        // before stopping to avoid ForegroundServiceDidNotStartInTimeException.
-        startForegroundCompat()
+        // Android 12+：startForegroundService() 之后必须尽快成功 startForeground()。
+        // 任何提前返回的分支都必须先把前台提升做完，否则一旦记录被拆除，AMS 会立刻
+        // 抛出 ForegroundServiceDidNotStartInTimeException 杀掉进程。
+        val promoted = startForegroundCompat()
 
-        if (intent?.action == ACTION_STOP_MONITOR) {
-            stopForegroundCompat()
-            stopSelf()
-            return START_NOT_STICKY
+        // 提升失败说明前台义务没兑现：此时绝不能 stopSelf()（会触发同一个崩溃），
+        // 保持服务存活并等下一轮同步重试。
+        if (!promoted) {
+            Log.e(TAG, "startForeground() failed; keeping service alive to avoid foreground crash")
+            return START_STICKY
         }
+        VpnMonitorManager.onServicePromoted()
 
-        // Validate the enable setting, notification permission, and VPN state
-        if (WorkModeStore.getAppWorkMode(this) == AppWorkMode.DNS ||
-            !NotificationSettingsStore.isPersistentNotificationEnabled(this) ||
-            !NotificationPermissionHelper.hasPermission(this) ||
-            VpnMonitorManager.isVpnRunning(this)
-        ) {
+        // 提升已完成，此后 stopSelf() / stopService() 都是安全的。
+        if (intent?.action == ACTION_STOP_MONITOR || shouldStopNow()) {
             stopForegroundCompat()
             stopSelf()
             return START_NOT_STICKY
@@ -56,15 +55,30 @@ class VpnMonitorService : Service() {
 
     override fun onDestroy() {
         isServiceAlive = false
+        VpnMonitorManager.onServiceDestroyed()
         stopForegroundCompat()
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun startForegroundCompat() {
+    /**
+     * 校验当前是否应当停止：显式停止请求，或设置/权限/VPN 状态不再允许常驻通知。
+     */
+    private fun shouldStopNow(): Boolean {
+        if (VpnMonitorManager.isStopRequested()) return true
+        return WorkModeStore.getAppWorkMode(this) == AppWorkMode.DNS ||
+            !NotificationSettingsStore.isPersistentNotificationEnabled(this) ||
+            !NotificationPermissionHelper.hasPermission(this) ||
+            VpnMonitorManager.isVpnRunning(this)
+    }
+
+    /**
+     * @return 是否成功进入前台状态。
+     */
+    private fun startForegroundCompat(): Boolean {
         val notification = buildStoppedNotification()
-        runCatching {
+        val firstAttempt = runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(
                     NOTIFICATION_ID_VPN_MONITOR,
@@ -74,14 +88,17 @@ class VpnMonitorService : Service() {
             } else {
                 startForeground(NOTIFICATION_ID_VPN_MONITOR, notification)
             }
-        }.onFailure { e ->
-            Log.w(TAG, "Failed to startForeground with specialUse type, retrying fallback", e)
-            runCatching {
-                startForeground(NOTIFICATION_ID_VPN_MONITOR, notification)
-            }.onFailure { e2 ->
-                Log.e(TAG, "Failed to enter foreground", e2)
-            }
         }
+        if (firstAttempt.isSuccess) return true
+
+        Log.w(TAG, "Failed to startForeground with specialUse type, retrying fallback", firstAttempt.exceptionOrNull())
+        val fallback = runCatching {
+            startForeground(NOTIFICATION_ID_VPN_MONITOR, notification)
+        }
+        if (fallback.isSuccess) return true
+
+        Log.e(TAG, "Failed to enter foreground", fallback.exceptionOrNull())
+        return false
     }
 
     private fun stopForegroundCompat() {

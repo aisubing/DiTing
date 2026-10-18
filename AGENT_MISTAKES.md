@@ -13,6 +13,11 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-18: 先入为主复述「fgRequired 被重新武装」的相反结论（归因/AOSP 取证）
+
+- **现象/根因**：排查 `ForegroundServiceDidNotStartInTimeException` 冷启动崩溃时，我一度把根因写成「`stop()` 里的 `startService(stopIntent)` 把 `fgRequired` **重新置为 true**」，并已据此写好代码注释。回读 AOSP `ActiveServices.startServiceInnerLocked` 第 1196 行 `r.fgRequired = fgRequired;` 才发现该值来自**调用方 API**（`startService` → false，`startForegroundService` → true），与 intent 是否带 action 无关 ⇒ 那次 `startService` 恰恰是**清除**义务，把它删掉会让义务一直挂着、反而更容易崩。真正致命的是同一 `stop()` 里的 `stopService()`：`stopServiceLocked` 置 `startRequested=false` 后经 `bringDownServiceIfNeededLocked`（`mPendingServices` 不含该记录，因为恢复进程已就绪走 `r.app != null` 分支直接 `sendServiceArgsLocked` 返回）到达 `bringDownServiceLocked`，此时 `r.fgRequired` 仍为 true ⇒ 立即 `SERVICE_FOREGROUND_CRASH_MSG`（无延迟）。
+- **教训**：(1) 「某调用把标志设为 X」必须回读到**赋值右值的来源**，不能凭调用名/action 推断；`x.f = y` 里 y 来自哪个重载参数才是判据。(2) 崩溃归因要能用日志时间轴反向验证：本例三次崩溃 uptime 均约 520ms（远小于 30s 超时），直接排除 timeout 路径、锁定 `bringDownServiceLocked` 的立即路径，这个数字比堆栈更有鉴别力。(3) 修复方向被证伪后要**先改注释再改代码**——留有相反结论的注释比没有注释更危险。
+
 ### 2026-10-18: 过早断言「受模型限制无法修」+ 把死字段当差距（判断/验证）
 - **现象/根因**：A-083 我判定「订阅删除侧无法修，因为 `SubscriptionEntity` 没有『是否持久化授权』标志」，于是写进文档「需先加字段」。实际 `ContentResolver.getPersistedUriPermissions()` 本身就是权威来源——只释放本 App 真正持有的授权即可，根本不需要改表。同轮我还差点把 `WhitelistStats.subscriptionTotal/Enabled` 复制到 `BlacklistStats` 去「补齐计数差距」，实测这两组字段在白名单侧也**从未被任何 UI 渲染**，复制过去只会多两处死字段。
 - **教训**：(1) 判「无法修」前先把平台 API 面查完——「模型缺字段」往往意味着「该换判据」而不是「该改模型」；以「需要加 DB 字段/迁移」为由放弃修复，必须附上「已排除的替代判据」。(2) 补「对称性差距」前先确认被对标的那一半是否真的被消费——计算出来但无人渲染的字段不是参照物，照抄只会放大死代码。(3) 未覆盖项要区分「确实做不到」与「当时没想到」，前者写进限制、后者必须回头补。

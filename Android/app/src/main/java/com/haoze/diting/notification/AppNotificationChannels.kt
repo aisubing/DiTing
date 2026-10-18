@@ -20,6 +20,31 @@ object AppNotificationChannels {
     const val CHANNEL_APP_UPDATE = "diting_app_update_channel"
 
     /**
+     * 仅创建 [VpnMonitorService] 自身要用的通知渠道。
+     *
+     * 服务必须在 `startForeground()` 之前让渠道存在，而全量创建五个渠道会做多次
+     * 本地化查询，把「已 startForegroundService、尚未 startForeground」的窗口拉长；
+     * 这里只建一个渠道，把关键路径压到最短。
+     */
+    fun ensureMonitorChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return
+        }
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val vpnMonitorChannel = NotificationChannel(
+            CHANNEL_VPN_MONITOR,
+            localizedText(context, "VPN 状态提醒"),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = localizedText(context, "在 VPN 未运行时提供快速连接入口")
+            setShowBadge(false)
+            enableLights(false)
+            enableVibration(false)
+        }
+        manager.createNotificationChannel(vpnMonitorChannel)
+    }
+
+    /**
      * Creates or updates all notification channels.
      */
     fun createAllChannels(context: Context) {
