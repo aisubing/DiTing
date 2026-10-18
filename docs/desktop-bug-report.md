@@ -11,97 +11,100 @@
 
 ## 汇总
 
+> **2026-10-18 全量复核**：对本文档全部条目（A-012…A-100 共 89 条确认缺陷 + O-101…O-152 观察项）逐条回读源码复核；基线 `3a048c5` 后 Android/Go 源码零改动，故无「已修复」项。汇总表状态列已更新为复核结论：**存在**（机制与触发面均核实）／**存在但需修正**（机制成立，正文引证/触发面/影响叙述有偏差，修正口径见分级文档）／**复核后确认不存在**（A-068/A-070/A-072/A-074 撤回：旧原生 trie/bloom + `Engine.Start` 拦截子系统经全仓 caller grep 确认零调用者死代码——生产规则面走 `applyRuleSnapshot`/PolicyEngine、DNS 面走 gVisor `startFull`/standalone，此四条的崩溃/漏拦/校验和影响叙述均挂在不可达路径上；A-067 例外保留——写序缺陷本身成立，仅降级并留待随该子系统清理）。观察项中 O-103/O-104/O-107/O-112/O-117/O-119/O-120/O-121/O-123…O-126/O-128/O-133/O-137/O-140/O-145/O-146/O-148/O-150/O-151 共 21 条经复核**构成缺陷**（均为低），已转正入级；其余观察项判不构成缺陷（不可达/后果不成立/取证缺口），定性维持。按复核后严重度分级的三份文档见：`desktop-bug-triage-high.md`（6 条）、`desktop-bug-triage-medium.md`（49 条）、`desktop-bug-triage-low.md`（30 条 A + 21 条 O 转正）。
+
+
 | 编号 | 严重度 | 模块 | 问题 | 状态 |
 | --- | --- | --- | --- | --- |
-| A-012 | 中 | VPN IPv6 探测 | AUTO 模式的网关/路由检查是死代码：只要接口有 GUA 地址就启用 IPv6，与函数文档「地址 AND 路由」相反（normal 与 Express 两份拷贝同犯） | 待处理 |
-| A-013 | 中 | 数据清理 | 「清理下载与临时缓存」删除 `filesDir/updates`，但更新安装包实际写入 `filesDir/app-update`，清理承诺落空且残留 APK 永久泄漏 | 待处理 |
-| A-014 | 中高 | 流量统计保留 | `app_traffic_daily` 只被「DNS 日志保留天数」（默认 7）清理，专属的「流量保留 30 天」设置无任何清理消费者；降低日志保留会静默销毁数周流量历史 | 待处理 |
-| A-015 | 中 | 流量实时速度 | Go 隧道模式（唯一生产路径）下每应用实时网速恒为 0：「按实时网速」排序与逐项 ↑/↓ 速度永不生效，而页面文案承诺展示 | 待处理 |
-| A-016 | 中 | 数据清理 | 「清除自定义背景缓存」删除 `appearance_settings` 偏好文件中的键，但背景设置实际存于 `dns_vpn_prefs`，清理后背景设置原样保留并继续生效 | 待处理 |
-| A-017 | 中 | Go 引擎生命周期 | `dnsCache` 清理协程无停止路径，且 CA 管理器每次调用新建一个 `Engine` 且从不 `Stop()`：每次证书校验/导出泄漏一个后台 ticker 协程与全套缓存内存 | 待处理 |
-| A-018 | 中高 | Go 引擎并发 | `SetBlockResponseType`/`SetDomainChecker` 等 setter 不加锁写 `Engine` 字段，服务中的查询协程同样不加锁读；`e.mu` 不构成 happens-before → 数据竞争（可撕裂接口值/读到旧响应类型） | 待处理 |
-| A-019 | 中 | Go DNS | UDP 上游响应从不检查 TC（截断）位、无 TCP 重试，截断响应被原样转发且写入缓存，客户端 TCP 重试命中同一份截断缓存，高记录数域名在 TTL 内持续返回残缺答案 | 待处理 |
-| A-020 | 高 | DNS 模式总开关 | 「启用域名过滤」在 DNS 模式完全失效：standalone 服务路径从不读取 `filterDNS`，且 `DnsQueryFilter` 的策略提供器硬编码恒真，关闭开关后 LAN 查询仍被拦截 | 待处理 |
-| A-021 | 高 | DNS 模式生命周期 | ACTION_STOP 与启动协程竞态：`engine.start()` 阻塞段无取消点，销毁后仍回填 `dnsServerEngine` 并置 RUNNING → 孤儿引擎继续占端口应答，UI 显示停止，再启动报「端口可能被占用」直至杀进程 | 待处理 |
-| A-022 | 中高 | DNS 模式端口 | `loadConfig` 每次读取都把 5353/5354 强制改写为 1053（非一次性迁移），验证器与 UI 却允许保存 5353；重启或切换开关后端静默漂移并持久化 1053 | 待处理 |
-| A-023 | 中 | DNS 模式动态拦截 | DNS 模式 `applyDnsConfig` 的 JSON 从未包含 `dynamicResponse` 键，Go 侧零值即禁用：动态拦截策略在该模式是死功能，UI 副标题却宣称生效 | 待处理 |
-| A-024 | 中 | DNS 模式启动窗口 | STARTING 窗口内的配置/上游修改被丢弃：引擎用启动瞬间的快照绑定，`refreshEngineIfRunning` 只认 RUNNING，完成后不再回读 | 待处理 |
-| A-025 | 高 | 配置导入 | 未勾选「禁止联网名单」导出的备份再导入，会把本地已开启的禁止联网总开关静默关闭（`optBoolean` 缺省 false + 不等即写） | 待处理 |
-| A-026 | 中高 | 配置导出 | 出站代理用户名/密码在加密存储的前提下被解密后明文写入导出 JSON，凭据随备份文件外泄 | 待处理 |
-| A-027 | 中 | 配置往返 | `latencyTestProviderRefs` 被导出、被解析进 DTO，但任何导入器都不应用它：测速节点选择迁移后静默丢失 | 待处理 |
-| A-028 | 中 | 批量添加 | 批量导入丢弃 `appInverted`（分类模型无字段、校验/提交硬编码 false），`~app=` 排除规则的 enforcement 方向被反转 | 待处理 |
-| A-029 | 中 | 批量添加 | 批量 URL 规则绕过 `GoUrlRuleManager.parse` 归一化直接存原文：含查询串/大小写主机的批量规则永不匹配或产生重复行 | 待处理 |
-| A-030 | 中 | 规则导入 | `CategorizedRuleStreamImporter` 的 `kind` 参数从未参与过滤，`typeSkipped` 无任何写入点：类型不符文件被六表全量摄入，「没有${kind}规则，请确认导入类型」分支永不可达 | 待处理 |
-| A-031 | 中 | 规则缓存 | `AllowRuleCache.reloadCustomRules` 仅按 pattern 去重订阅 special 规则（模型缺 `source`），与自定义同 pattern 的订阅修饰规则在每次白名单编辑后被逐出活动缓存，至下次全量 reload 才恢复 | 待处理 |
-| A-032 | 高 | AI 密钥存储 | API 24/25（Express 模式唯一可达设备）上 `KeyObfuscator` 调 `java.util.Base64`（API 26+，未开 desugaring）→ 保存/查看 AI 密钥必崩 `NoClassDefFoundError` | 待处理 |
-| A-033 | 中高 | QS 磁贴 | 磁贴启停 VPN/DNS 服务不走 `unlockAndRun`，安全锁屏下可直接启停服务与局域网 DNS 服务器（仅打开主界面路径做了锁检查） | 待处理 |
-| A-034 | 中 | 通知渠道 | 「规则导入与更新」存在两个同名 channel：注册表 `diting_rule_operations_channel` 只被死代码 `RuleUpdateNotifier` 引用，实际通知走 Worker 硬编码的 `rule_operations`；系统设置出现两条同名通道，静音可能落错通道 | 待处理 |
-| A-035 | 中 | 配置导入 | 通知栏自定义文案要求运行/停止两条**都**非空才写入：只填一条（UI 明示合法）导出后导入，已填的一条也静默丢失；且「清空文案」永远无法经导入传播 | 待处理 |
-| A-036 | 低 | 通知设置入口 | `openNotificationSettings` 用 API 26+ 的 `ACTION_APP_NOTIFICATION_SETTINGS` 且 `runCatching` 吞异常：Android 7.x（Express 模式 minSdk 24 可达）点「系统通知权限」毫无反应 | 待处理 |
-| A-037 | 低 | 应用内语言 | 磁贴标签/常驻监控通知/规则渠道名用未包装 context 的 `getString`（跟随系统语言），同屏其它文案走 `localizedText`（应用内语言）：中英混杂 | 待处理 |
-| A-038 | 高 | 订阅暂存隔离 | `staging_sub_*` 不匹配 `NOT LIKE 'sub_%'`：更新窗口内暂存规则被全链路当作「手动规则」显示/计数，「清空手动」误删在途暂存 → 订阅静默缺规则且计数虚报 | 待处理 |
-| A-039 | 高 | 订阅崩溃恢复 | `recoverInterruptedImports` 只清 block/allow/rewrite 三表（漏 goUrl/cosmetic），`deleteSubscription` 从不清 staging → 半导入订阅的 URL/元素隐藏规则永久生效且成孤儿 | 待处理 |
-| A-040 | 高 | Express 生命周期 | Express start↔stop 竞态：`stop()` 关 pfd 但不取消 start 协程，`FileInputStream` 重开已关 fd、`isRunning` 复活 true、读线程一次 EBADF 即死，`start()` 仍返回 true → UI 显示运行、DNS 全黑洞 | 待处理 |
-| A-041 | 高 | 网络诊断 | `TunnelDiagnosticsResolver.tunnelResolver` 自 `58ca123` 重构后从无赋值点：经隧道 DNS 查询/Ping/Traceroute 恒报「VPN 未运行」（`DnsVpnService.resolveThroughTunnel` 成孤儿函数） | 待处理 |
-| A-042 | 中高 | DNS 测速 | `DnsLatencyTester.testDoh` 的 `provider.url.toHttpUrl()` 在 try 外，DoH 校验仅前缀匹配：畸形但过校验的 URL 测速 → 未捕获 `IllegalArgumentException` → 进程崩溃 | 待处理 |
-| A-043 | 中高 | DNS 查询工具 | `isIpLiteral` 以「含冒号即 IP 字面量」放行 `8.8.8.8:53` 类输入，`InetAddress.getByName` 无保护调用 → `UnknownHostException` 未捕获崩溃；`1.2.3.4:80` 还会被当字面量误报解析成功 | 待处理 |
-| A-044 | 中 | DNS 缓存 | `DnsResponseCache.clear()` 与 `flushPendingWrites` 锁外写库交错：drain 后、apply 前执行 clearAll → 最多 200 行「已清空」缓存复活 | 待处理 |
-| A-045 | 中 | DNS 测速 | 测速计时窗口包含 bootstrap/系统域名解析（DoT/DoH/Plain 三路径同犯）：未预热主机名的上游被冤枉慢数百 ms~秒，竞速排序据此误导选优 | 待处理 |
-| A-046 | 中 | 日志写入 | `RaceLogger/HttpRequestLogger` 批量插入无 `runCatching`（对照 DnsLogger 有）：SQLITE_FULL 等 → 服务作用域未捕获崩溃，且停机 flush 链中断丢弃后续日志与流量统计 | 待处理 |
-| A-047 | 中高 | 应用更新 | 下载进度仅按 256KB 字节节流、无时间下限：快网每 5–50ms 一次 runOnUiThread+notify IPC，通知风暴/掉帧 | 待处理 |
-| A-048 | 中高 | Express 悬浮窗 | Express 的前后台状态写入被 `isRunning` 门控（NORMAL 侧无条件写）：服务停止期间所有前后台切换丢失 → 偏好陈旧 → 悬浮球该出不出/该隐藏却盖在自身 UI 上 | 待处理 |
-| A-049 | 中 | 日志仪表盘 | 仪表盘把防火墙拦截的连接行标「旁路」：`resultLabel = if (isConn) "旁路"` 忽略 `result==BLOCKED`，红色拦截状态配「旁路」文字；同屏另两处渲染器均正确分流 | 待处理 |
-| A-050 | 中 | 悬浮窗兼容 | `TYPE_APPLICATION_OVERLAY`（API 26+）无 SDK 分支硬编码，minSdk 24：Android 7.x（只能跑 Express）addView 必抛 → 悬浮日志永久不可用+反复失败 toast | 待处理 |
-| A-051 | 中 | 规则列表 | 黑/白/重写列表 `loadPage` 无任务取消：仅搜索防抖，筛选切换/翻页/ON_RESUME 并发加载可旧覆新，列表与计数显示上一筛选数据 | 待处理 |
-| A-052 | 中 | 黑名单筛选 | 黑名单「规则订阅」页签漏掉订阅携带的 URL 拦截规则（仅域名+元素隐藏），计数同缺；白名单同位置显式注释承认此不对称 | 待处理 |
-| A-053 | 中高 | 崩溃备份 | 连崩阈值用 `>=` 且自动导出成功后不置抑制标志：第 3 次起每崩一次向系统 Download 刷一份全量备份文件并重复弹提示 | 待处理 |
-| A-054 | 中 | 崩溃计数 | `collectMinimalReport` 无保护在先、`onCrashOccurred` 在后：StackOverflowError/OOM 深栈使计数步骤永不执行——恰是最需自动备份的崩溃循环计数恒 0 | 待处理 |
-| A-055 | 中 | 原生崩溃收集 | 批量收集的水位线在整循环结束后才 apply：中途进程死亡 → 下轮整批重采、报告重复且计数虚增 | 待处理 |
-| A-056 | 低 | 统计边界 | `dayStartMillis` 用当前 UTC 偏移折算固定 86400s 网格：DST 切换日「今日」窗口偏 1 小时，且与同文件 `dayStringAt` 真历法矛盾 | 待处理 |
-| A-057 | 低 | 流量页时钟 | 「已连接 HH:MM:SS」仅组合期取值，空闲时上游 StateFlow 不发射→无重组：时长冻结在最后流量时刻 | 待处理 |
-| A-058 | 低 | 崩溃导出 | 手动导出成功标记由可取消的 `rememberCoroutineScope` 在 IO 完成后执行：写完即切页 → 已导出但阈值仍武装 | 待处理 |
-| A-059 | 低 | 密钥混淆 | `KeyObfuscator` 把 UTF-16 code unit 截成单字节：非 ASCII 密钥 seal/open 往返静默损坏/返回空串（与 A-032 不同机制） | 待处理 |
-| A-060 | 低 | 更新清理 | 下载失败 catch 无条件清全局单槽位记录：新版本失败抹掉已下载旧版本记录 → 旧 APK 成孤儿并强制全量重下 | 待处理 |
-| A-061 | 低 | 本地化 | 「当前筛选下暂无 DNS 请求日志」（Express 空态文案）无字典条目，落入前缀替换模板 → 英文界面输出半中半英拼接串 | 待处理 |
-| A-062 | 高 | Go MITM 分帧 | 元素隐藏注入后响应删光 Content-Length/TE 且 `Uncompressed=true`：stdlib 不再补 `Connection: close`，HTTP/1.1 keep-alive 下 body 无任何定界 → 浏览器文档永不结束/挂死，代理双向互等 | 待处理 |
-| A-063 | 中 | Go 元素隐藏 | `buildCosmeticCss` 从不把 `rules.GlobalException` 并入 exceptions（只填按域 entry.Exception）：全局 `#@#` 例外静默失效，误隐藏无法豁免 | 待处理 |
-| A-064 | 低中 | Go MITM 注入器 | `InjectingReader` EOF/提前返回路径丢弃 `carry` 中残留的 ≤5 字节 `<head` 前缀：无 `<head>` 且恰以该前缀结尾的文档输出被截断 | 待处理 |
-| A-065 | 中 | Express 缓存统计 | Express `dns_cache` 每次 put 用 `OnConflictStrategy.REPLACE` 整行覆盖：hitCount/lastHitAt 在重缓存时归零，仪表盘 totalHitCount 系统性偏低（NORMAL 侧注释明确防此问题） | 待处理 |
-| A-066 | 低 | 数据清理计数 | 「清理全部域名规则」删 HOSTS 订阅的 v4/v6 覆写但保留订阅行且不复位 ruleCount：徽标数与实际规则持续不符；为此准备的 `resetAfterRuleCleanup` 全仓零调用 | 待处理 |
-| A-067 | 高 | Go DNS v6 应答 | `buildIPv6UDPPacket` 在校验和**之后**才写入 payload：所有合成 IPv6 UDP 应答（拦截/NXDOMAIN/重写/转发）校验和恒错，内核强校验下整包丢弃 | 待处理 |
-| A-068 | 高 | Go 规则热更新 | `SetTries` 锁内 `Close()` 旧 trie（munmap），读者锁外解引用同一 `*MmapTrie`：规则重载与 DNS 流量并发 → use-after-unmap SIGSEGV（不可 recover） | 待处理 |
-| A-069 | 中 | Go DNS 缓存 | `dnsCache.clear()` 用 `lruList.Init()` 而不 `Remove`：并发命中提升把 `elem.list` 仍指向本表的孤儿元素重新链回 → LRU 与 map 失同步 | 待处理 |
-| A-070 | 中 | Go 规则装载 | trie 与 bloom 各自「成功才 append」按下标配对：任一 bloom 加载失败即整体错位一格，预过滤假阴性令整个 trie 被跳过 → 静默漏拦 | 待处理 |
-| A-071 | 中 | Go MITM 证书缓存 | `CertManager.certCache` 为无上限 `sync.Map`、仅过期命中时删除，与文件头注释「LRU 512 entries」不符：长会话拦截多子域内存单调增长 | 待处理 |
-| A-072 | 低中 | Go MITM 流关闭 | gzip/deflate 注入路径替换 `resp.Body` 后原始 body 永不 Close/排空：同连接 keep-alive 下一轮 `ReadResponse` 因 chunk 终结符未消费而错位 | 待处理 |
-| A-073 | 低中 | Go 连接日志 | 包级全局 `connLogSeen sync.Map` 仅在 `StartFull` 清空：standalone/inspection 模式无回收点，去重键单调增长（内存缓涨+跨引擎实例压制新会话日志） | 待处理 |
-| A-074 | 低 | Go bloom 加载 | `LoadBloomFilter` 不校验 `bitCount/hashCount > 0`：`bitCount=0` 的畸形文件通过尺寸校验，首个 `MightContain` 触发 `%0` integer divide by zero panic | 待处理 |
-| A-075 | 中 | Express 规则添加 | Express 黑名单可添加元素隐藏规则（仅 DNS_MODE 被拦）：写入 `diting_express` 却提示成功；`CosmeticRuleManager` 硬编码只从 NORMAL 库编译 CSS，且 Express 列表又不显示 cosmetic 行 → 不可见、不生效、无法删除的幽灵规则 | 待处理 |
-| A-076 | 高 | VPN 路由覆盖 | 默认开启的「绕过局域网」IPv4 补集枚举漏掉 116–119/8 与 122–123/8（电信/联通/阿里云/腾讯云在用公网段）：这些直连 IP 流量完全绕过 TUN，域名规则/MITM/QUIC·DoT 阻断/禁止联网/流量统计对其全部失效 | 待处理 |
-| A-077 | 中 | HTTPS 检查证书 | 本会话是否 MITM 由**缓存位** `isHttpsInspectionReady` 决定，异步真校验失败后只写偏好、不重启隧道：根证书已被卸载仍继续 MITM → 目标 App TLS 握手失败/证书告警，与设置页显示矛盾至下次重连 | 待处理 |
-| A-078 | 中 | 会话统计归零 | 编辑排除/禁止联网/检查名单或数据清理触发 `restartVpnLocked` → `TrafficStatsManager.start()` 无条件清 sessionTx/Rx/时长：本地列表编辑使「本会话↑↓」与「已连接」静默归零并瞬断（对照 allowlist 走热更新不重启，口径不一致） | 待处理 |
-| A-079 | 高 | 缓存设置串档 | 极速模式「缓存设置」屏四处调用 `DnsCacheSettingsStore` 全部漏传 dataset（默认 NORMAL）：读写的其实是普通模式策略——极速缓存开关永不生效、改动却偷改普通模式防护（引擎端只认 diting_express_prefs） | 待处理 |
-| A-080 | 高 | AI 分析串库 | `AgentAnalysisSheet` 硬编码 `AppDatabase`+NORMAL 广播：极速模式 DNS 缓存页的 AI 流量分析读普通模式旧日志，「加白/黑名单并热更生效」提示为假（写进 NORMAL 库且 `isNormalRunning=false` 直接早退，极速引擎收不到同步） | 待处理 |
-| A-081 | 中 | 动态拦截极速侧 | 极速模式「动态拦截策略」可开可存，`express/` 全包无任何读取端（引擎只用静态 `blockResponseModeProvider`）：开关纯空转、副标题谎报生效（与 A-023 同文案不同库，本条为 EXPRESS 面） | 待处理 |
-| A-082 | 中 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 `onRuntimeDnsSettingsChanged`：运行中引擎继续按旧 volatile 快照 prune（缩短不省空间、加长照样删数据）直到下次其它刷新；同屏日志模式项却正确触发（对照即证据） | 待处理 |
-| A-083 | 中 | SAF 授权泄漏 | 全仓 5 处 `takePersistableUriPermission`、0 处 `releasePersistableUriPermission`：删除背景图/订阅本地文件/全面清理后，对应用户文件的持久读授权永不撤销（系统可见「可访问的文件」只增不减） | 待处理 |
-| A-084 | 中 | 服务器模式向导 | DNS 模式「使用向导」接入信息把监听端口**硬编码为 1053**（5 处），从不读 `config.localListenPort`：用户改端口（验证器允许 1024–65535、设置页实时显示真实端口）后，向导仍指示「将 DNS 改为 IP:1053」，照做即把所有局域网设备指向无监听端口 → 全员解析超时 | 待处理 |
-| A-085 | 中高 | Go 全隧道半关闭 | `countingConn` 内嵌 `net.Conn` **接口**致 `CloseWrite` 方法不被提升，`bidiCopyFlow` 的类型断言恒 false：应用侧（被包装的一边）永远收不到 FIN，EOF 定界协议（无 Content-Length 应答/SSE/FTP/邮件）双向僵死直到 App 超时，文件头「支持 half-close」承诺对已归因 UID 流量失效 | 待处理 |
-| A-086 | 中 | Go 全隧道出站 | `bufferedTun.drain` 首次 TUN 写错误即 `return` 永久退出且永不重启，而 `Write` 恒 `return len(p), nil` 向 gVisor 谎报成功：出站包进 2048 队列→满→静默丢弃，网络 handover 一次瞬断后整个隧道输出黑洞化，只能重启 VPN 会话恢复 | 待处理 |
-| A-087 | 中 | DoT 阻断开关 | `SetBlockEncryptedDns` 是死开关：`blockEncryptedDNS` 全仓只有 Store 无 Load，`engine_full_tunnel.go` UDP/TCP:853 处理**无条件**丢弃并记 `blocked_encrypted_dns`；Kotlin 默认 false 而 UI 提供「阻断加密 DNS (DoT)」开关——关闭后 Private DNS(strict) 应用照样全部解析失败，开关与日志归因双双失真 | 待处理 |
-| A-088 | 中高 | 极速 bootstrap | `BootstrapSelector` 两处 Store 调用漏传 dataset（`BootstrapSelector.kt:25-26`，签名默认 NORMAL）：极速模式运行时永远读 `dns_vpn_prefs` 的 bootstrap 配置，而极速设置页写 `diting_express_prefs`——极速里开关/自定义 IP 全部失效，且普通模式关 bootstrap 会让极速 DoT/DoH 退化（与 A-079 同族、不同文件） | 待处理 |
-| A-089 | 中 | 应用放行闸门 | `rememberAppAllowlistResponse` 只在 `serveDNS` 新鲜解析尾部调用（`engine_standalone.go:384`），缓存命中/stale 分支提前 return 不续期，stale 后台刷新也绕开该函数：白名单应用的 IP 授权按 rrTTL 过期而缓存应答可远久于此 → 「DNS 解析成功但 TCP/UDP 连接恒被 app_allowlist_blocked」直至缓存彻底过期 | 待处理 |
-| A-090 | 中 | Go DNS 配置原子性 | `ApplyDNSConfig` 先提交 `responseType`/`dynamicResponse`/`dynamicBlocks.reset()` 再校验 providers（`dns_config.go:133-150`）：provider 校验失败返回 error 时 Kotlin 视为整份拒绝，Go 却保留新拦截应答类型并清空动态计数——UI 与引擎行为漂移且无自愈点 | 待处理 |
-| A-091 | 中 | 服务商健康页 | `ProviderHealthEngine` 全仓零实例化（grep 构造点仅命中类声明）、`recordResult` 零调用者 → `activeEngine` 恒 null：健康页 `flushActive` 恒 false、`loadAll` 恒空，「智能预测权重」显示 `?: 1.0` 兜底的均匀编造值（与 A-041 同族：重构后接线缺失，但本条表面是 UI 谎报而非功能报错） | 待处理 |
-| A-092 | 中 | bootstrap 健康双源 | `BootstrapHealthEngine` 三处并存实例（VPN 服务/测速 VM/Express 隧道）各自持内存快照，`flush→saveAll` **全表 JSON 覆盖** `dns_vpn_prefs` 单键，进程级单槽 `activeEngine` 被最后构造者顶掉：测速页 15s 定时/退出 flush 会整体抹掉服务引擎期间新记的成绩与冷却（及反向），健康统计随机倒退、冷却 IP 状态丢失 | 待处理 |
-| A-093 | 中 | regex 规则大小写 | Kotlin `BlockRuleMatcher`/`AllowRuleMatcher` 用 `Regex(pattern).containsMatchIn(domain)` **不注入 (?i)**（查询域名已 lowercased，但模式大小写保留），Go `policy_engine.go:112` 恒前置 `(?i)`：同一订阅 `/Ads\..*/` 在 VPN（Go 判定）命中、在服务器/回调兜底（Kotlin 判定）不命中，两模式拉黑结果相反；`$match-case` 还被 Kotlin 当 web-only 修饰 ignore（大小写敏感无法表达） | 待处理 |
-| A-094 | 中 | `#$@#` 例外解析 | `COSMETIC_DELIMITERS` 缺 `#$@#`（AdGuard 例外型元素隐藏=带域名的 `#@#`）：`example.com#$@#.ad` 不识别定界符→`substringBefore('#')` 得 `example.com`→**生成为整域 block 规则**——导入含例外行的列表反而把该域整站拉黑 | 待处理 |
-| A-095 | 低 | regex 注释截断 | `AdblockRuleLineParser:24` 的无差别 `substringBefore('#')` 早于 regex 提取（`:33+`）：`/banner#1/` 被截成 `/banner`，`lastSlash==0` 不落 regex 分支、域名分支 `normalizeDomain("/banner")` 判 invalid——regex 体内的 `#` 合法（模式字符），规则整条静默丢失（Go `rule_compiler.go:193` 同收 `#` 且拒 `/` 开头行，两端一致地丢） | 待处理 |
-| A-096 | 低中 | 规则索引残留 | `MappedSubscriptionRuleIndex.compileAndLoad` 的 `finally` 只删本线程 temp；进程被杀后 `block.trie.<nano>.tmp` 永久堆积——`RuleIndexLayout.deleteAll` **全仓零调用者**（grep 实证），无任何清理路径；`renameTo` 失败时退化 `temp.copyTo(overwrite=true)` 非原子，读端（Go `openDTRI`/Kotlin `load`）可读到半写文件→该轮订阅索引失效 | 待处理 |
-| A-097 | 低 | AI 报告渲染 | `MarkdownInlineAnnotator.kt:26` 斜体分支 `(?<!_)_(?!_)…(?<!_)_(?!_)` 未排除**词内下划线**：`dns_vpn_prefs` 中的 `_vpn_` 被匹配，两个下划线定界符被吃掉并以斜体输出 `vpn`（本机 Python re 等价复算实证 8 例中 5 例词内误中：`_vpn_`/`_haoze_`/`_LOG_` 等）；AI 分析报告正文里的配置键名/包名全部被改写变形 | 待处理 |
-| A-098 | 中 | bootstrap 健康污染 | `BootstrapSelector.resolveHost` 把「日志落库异常」误判为「解析失败」：成功分支 `recordResult(true)→logger.log()→putCached` 全包在 try 内（`:46-63`），而 `BootstrapLogger.log` 每满 20 条在调用栈内同步 `dao.insertAll`（`BootstrapLogger.kt:69-89`，无 runCatching）→ DB 写抛被 `:65` 的宽 `catch(Exception)` 吞成解析失败，给同一 IP 再记一次 `recordResult(false)`、`removeCached` 撤掉刚写成功的缓存，并触发对下一候选的重复解析（健康统计双记 + 无谓回退 + 成功日志缺失、失败行 message 变 SQL 异常） | 待处理 |
-| A-099 | 中高 | 预置白名单种入 | `DefaultWhitelistSeeder.seed(forceReset=true)` **先删后解析**且失败仍置位：`deleteBySource(PRESET)`（`:67`）先执行，`parseAssetWhitelist` 吞 IO 异常返回**当时已积累列表**（`:102-131`）→ 整体失败=全删零补、中途失败=**截断前缀**种入；`:44-45` 照写 initialized+seededVersion → 同版本内门控早退**永不自愈**；截断表还会被 `:129-130` 写入进程级缓存并经 `GoTunnelRuleManager.kt:64-72` 同步下发 Go 直通快照，两引擎一起残缺且只有重启进程+改版本可修 | 待处理 |
-| A-100 | 低 | 预置白名单升级覆盖 | 版本升级触发的 `seed(forceReset=true)` 静默清除**用户仅对 preset 行做的全部改动**（禁用→重启用、编辑 pattern→出厂项复活且编辑消失、组名覆盖）：改动落库仍带 `SOURCE_PRESET`（`WhitelistViewModel.kt:537-553`），`deleteBySource`=`deleteSource`+`deleteOrphans`（`AllowRuleDao.kt:385-392`）按 source 归属物理删行；类 KDoc `:26-28`「user customizations are preserved」仅对 useradd/sub_ 多源行成立，与 preset 单源行行为不符 | 待处理 |
+| A-012 | 中 | VPN IPv6 探测 | AUTO 模式的网关/路由检查是死代码：只要接口有 GUA 地址就启用 IPv6，与函数文档「地址 AND 路由」相反（normal 与 Express 两份拷贝同犯） | 存在 |
+| A-013 | 中 | 数据清理 | 「清理下载与临时缓存」删除 `filesDir/updates`，但更新安装包实际写入 `filesDir/app-update`，清理承诺落空且残留 APK 永久泄漏 | 存在 |
+| A-014 | 中高 | 流量统计保留 | `app_traffic_daily` 只被「DNS 日志保留天数」（默认 7）清理，专属的「流量保留 30 天」设置无任何清理消费者；降低日志保留会静默销毁数周流量历史 | 存在 |
+| A-015 | 中 | 流量实时速度 | Go 隧道模式（唯一生产路径）下每应用实时网速恒为 0：「按实时网速」排序与逐项 ↑/↓ 速度永不生效，而页面文案承诺展示 | 存在 |
+| A-016 | 中 | 数据清理 | 「清除自定义背景缓存」删除 `appearance_settings` 偏好文件中的键，但背景设置实际存于 `dns_vpn_prefs`，清理后背景设置原样保留并继续生效 | 存在 |
+| A-017 | 中 | Go 引擎生命周期 | `dnsCache` 清理协程无停止路径，且 CA 管理器每次调用新建一个 `Engine` 且从不 `Stop()`：每次证书校验/导出泄漏一个后台 ticker 协程与全套缓存内存 | 存在 |
+| A-018 | 中高 | Go 引擎并发 | `SetBlockResponseType`/`SetDomainChecker` 等 setter 不加锁写 `Engine` 字段，服务中的查询协程同样不加锁读；`e.mu` 不构成 happens-before → 数据竞争（可撕裂接口值/读到旧响应类型） | 存在 |
+| A-019 | 中 | Go DNS | UDP 上游响应从不检查 TC（截断）位、无 TCP 重试，截断响应被原样转发且写入缓存，客户端 TCP 重试命中同一份截断缓存，高记录数域名在 TTL 内持续返回残缺答案 | 存在 |
+| A-020 | 高 | DNS 模式总开关 | 「启用域名过滤」在 DNS 模式完全失效：standalone 服务路径从不读取 `filterDNS`，且 `DnsQueryFilter` 的策略提供器硬编码恒真，关闭开关后 LAN 查询仍被拦截 | 存在 |
+| A-021 | 高 | DNS 模式生命周期 | ACTION_STOP 与启动协程竞态：`engine.start()` 阻塞段无取消点，销毁后仍回填 `dnsServerEngine` 并置 RUNNING → 孤儿引擎继续占端口应答，UI 显示停止，再启动报「端口可能被占用」直至杀进程 | 存在 |
+| A-022 | 中高 | DNS 模式端口 | `loadConfig` 每次读取都把 5353/5354 强制改写为 1053（非一次性迁移），验证器与 UI 却允许保存 5353；重启或切换开关后端静默漂移并持久化 1053 | 存在 |
+| A-023 | 中 | DNS 模式动态拦截 | DNS 模式 `applyDnsConfig` 的 JSON 从未包含 `dynamicResponse` 键，Go 侧零值即禁用：动态拦截策略在该模式是死功能，UI 副标题却宣称生效 | 存在 |
+| A-024 | 中 | DNS 模式启动窗口 | STARTING 窗口内的配置/上游修改被丢弃：引擎用启动瞬间的快照绑定，`refreshEngineIfRunning` 只认 RUNNING，完成后不再回读 | 存在 |
+| A-025 | 高 | 配置导入 | 未勾选「禁止联网名单」导出的备份再导入，会把本地已开启的禁止联网总开关静默关闭（`optBoolean` 缺省 false + 不等即写） | 存在 |
+| A-026 | 中高 | 配置导出 | 出站代理用户名/密码在加密存储的前提下被解密后明文写入导出 JSON，凭据随备份文件外泄 | 存在 |
+| A-027 | 中 | 配置往返 | `latencyTestProviderRefs` 被导出、被解析进 DTO，但任何导入器都不应用它：测速节点选择迁移后静默丢失 | 存在 |
+| A-028 | 中 | 批量添加 | 批量导入丢弃 `appInverted`（分类模型无字段、校验/提交硬编码 false），`~app=` 排除规则的 enforcement 方向被反转 | 存在 |
+| A-029 | 中 | 批量添加 | 批量 URL 规则绕过 `GoUrlRuleManager.parse` 归一化直接存原文：含查询串/大小写主机的批量规则永不匹配或产生重复行 | 存在 |
+| A-030 | 中 | 规则导入 | `CategorizedRuleStreamImporter` 的 `kind` 参数从未参与过滤，`typeSkipped` 无任何写入点：类型不符文件被六表全量摄入，「没有${kind}规则，请确认导入类型」分支永不可达 | 存在 |
+| A-031 | 中 | 规则缓存 | `AllowRuleCache.reloadCustomRules` 仅按 pattern 去重订阅 special 规则（模型缺 `source`），与自定义同 pattern 的订阅修饰规则在每次白名单编辑后被逐出活动缓存，至下次全量 reload 才恢复 | 存在 |
+| A-032 | 高 | AI 密钥存储 | API 24/25（Express 模式唯一可达设备）上 `KeyObfuscator` 调 `java.util.Base64`（API 26+，未开 desugaring）→ 保存/查看 AI 密钥必崩 `NoClassDefFoundError` | 存在 |
+| A-033 | 中高 | QS 磁贴 | 磁贴启停 VPN/DNS 服务不走 `unlockAndRun`，安全锁屏下可直接启停服务与局域网 DNS 服务器（仅打开主界面路径做了锁检查） | 存在 |
+| A-034 | 中 | 通知渠道 | 「规则导入与更新」存在两个同名 channel：注册表 `diting_rule_operations_channel` 只被死代码 `RuleUpdateNotifier` 引用，实际通知走 Worker 硬编码的 `rule_operations`；系统设置出现两条同名通道，静音可能落错通道 | 存在 |
+| A-035 | 中 | 配置导入 | 通知栏自定义文案要求运行/停止两条**都**非空才写入：只填一条（UI 明示合法）导出后导入，已填的一条也静默丢失；且「清空文案」永远无法经导入传播 | 存在 |
+| A-036 | 低 | 通知设置入口 | `openNotificationSettings` 用 API 26+ 的 `ACTION_APP_NOTIFICATION_SETTINGS` 且 `runCatching` 吞异常：Android 7.x（Express 模式 minSdk 24 可达）点「系统通知权限」毫无反应 | 存在 |
+| A-037 | 低 | 应用内语言 | 磁贴标签/常驻监控通知/规则渠道名用未包装 context 的 `getString`（跟随系统语言），同屏其它文案走 `localizedText`（应用内语言）：中英混杂 | 存在 |
+| A-038 | 高 | 订阅暂存隔离 | `staging_sub_*` 不匹配 `NOT LIKE 'sub_%'`：更新窗口内暂存规则被全链路当作「手动规则」显示/计数，「清空手动」误删在途暂存 → 订阅静默缺规则且计数虚报 | 存在 |
+| A-039 | 高 | 订阅崩溃恢复 | `recoverInterruptedImports` 只清 block/allow/rewrite 三表（漏 goUrl/cosmetic），`deleteSubscription` 从不清 staging → 半导入订阅的 URL/元素隐藏规则永久生效且成孤儿 | 存在 |
+| A-040 | 高 | Express 生命周期 | Express start↔stop 竞态：`stop()` 关 pfd 但不取消 start 协程，`FileInputStream` 重开已关 fd、`isRunning` 复活 true、读线程一次 EBADF 即死，`start()` 仍返回 true → UI 显示运行、DNS 全黑洞 | 存在 |
+| A-041 | 高 | 网络诊断 | `TunnelDiagnosticsResolver.tunnelResolver` 自 `58ca123` 重构后从无赋值点：经隧道 DNS 查询/Ping/Traceroute 恒报「VPN 未运行」（`DnsVpnService.resolveThroughTunnel` 成孤儿函数） | 存在 |
+| A-042 | 中高 | DNS 测速 | `DnsLatencyTester.testDoh` 的 `provider.url.toHttpUrl()` 在 try 外，DoH 校验仅前缀匹配：畸形但过校验的 URL 测速 → 未捕获 `IllegalArgumentException` → 进程崩溃 | 存在 |
+| A-043 | 中高 | DNS 查询工具 | `isIpLiteral` 以「含冒号即 IP 字面量」放行 `8.8.8.8:53` 类输入，`InetAddress.getByName` 无保护调用 → `UnknownHostException` 未捕获崩溃；`1.2.3.4:80` 还会被当字面量误报解析成功 | 存在 |
+| A-044 | 中 | DNS 缓存 | `DnsResponseCache.clear()` 与 `flushPendingWrites` 锁外写库交错：drain 后、apply 前执行 clearAll → 最多 200 行「已清空」缓存复活 | 存在 |
+| A-045 | 中 | DNS 测速 | 测速计时窗口包含 bootstrap/系统域名解析（DoT/DoH/Plain 三路径同犯）：未预热主机名的上游被冤枉慢数百 ms~秒，竞速排序据此误导选优 | 存在 |
+| A-046 | 中 | 日志写入 | `RaceLogger/HttpRequestLogger` 批量插入无 `runCatching`（对照 DnsLogger 有）：SQLITE_FULL 等 → 服务作用域未捕获崩溃，且停机 flush 链中断丢弃后续日志与流量统计 | 存在 |
+| A-047 | 中高 | 应用更新 | 下载进度仅按 256KB 字节节流、无时间下限：快网每 5–50ms 一次 runOnUiThread+notify IPC，通知风暴/掉帧 | 存在 |
+| A-048 | 中高 | Express 悬浮窗 | Express 的前后台状态写入被 `isRunning` 门控（NORMAL 侧无条件写）：服务停止期间所有前后台切换丢失 → 偏好陈旧 → 悬浮球该出不出/该隐藏却盖在自身 UI 上 | 存在 |
+| A-049 | 中 | 日志仪表盘 | 仪表盘把防火墙拦截的连接行标「旁路」：`resultLabel = if (isConn) "旁路"` 忽略 `result==BLOCKED`，红色拦截状态配「旁路」文字；同屏另两处渲染器均正确分流 | 存在 |
+| A-050 | 中 | 悬浮窗兼容 | `TYPE_APPLICATION_OVERLAY`（API 26+）无 SDK 分支硬编码，minSdk 24：Android 7.x（只能跑 Express）addView 必抛 → 悬浮日志永久不可用+反复失败 toast | 存在 |
+| A-051 | 中 | 规则列表 | 黑/白/重写列表 `loadPage` 无任务取消：仅搜索防抖，筛选切换/翻页/ON_RESUME 并发加载可旧覆新，列表与计数显示上一筛选数据 | 存在 |
+| A-052 | 中 | 黑名单筛选 | 黑名单「规则订阅」页签漏掉订阅携带的 URL 拦截规则（仅域名+元素隐藏），计数同缺；白名单同位置显式注释承认此不对称 | 存在 |
+| A-053 | 中高 | 崩溃备份 | 连崩阈值用 `>=` 且自动导出成功后不置抑制标志：第 3 次起每崩一次向系统 Download 刷一份全量备份文件并重复弹提示 | 存在 |
+| A-054 | 中 | 崩溃计数 | `collectMinimalReport` 无保护在先、`onCrashOccurred` 在后：StackOverflowError/OOM 深栈使计数步骤永不执行——恰是最需自动备份的崩溃循环计数恒 0 | 存在 |
+| A-055 | 中 | 原生崩溃收集 | 批量收集的水位线在整循环结束后才 apply：中途进程死亡 → 下轮整批重采、报告重复且计数虚增 | 存在 |
+| A-056 | 低 | 统计边界 | `dayStartMillis` 用当前 UTC 偏移折算固定 86400s 网格：DST 切换日「今日」窗口偏 1 小时，且与同文件 `dayStringAt` 真历法矛盾 | 存在 |
+| A-057 | 低 | 流量页时钟 | 「已连接 HH:MM:SS」仅组合期取值，空闲时上游 StateFlow 不发射→无重组：时长冻结在最后流量时刻 | 存在 |
+| A-058 | 低 | 崩溃导出 | 手动导出成功标记由可取消的 `rememberCoroutineScope` 在 IO 完成后执行：写完即切页 → 已导出但阈值仍武装 | 存在 |
+| A-059 | 低 | 密钥混淆 | `KeyObfuscator` 把 UTF-16 code unit 截成单字节：非 ASCII 密钥 seal/open 往返静默损坏/返回空串（与 A-032 不同机制） | 存在 |
+| A-060 | 低 | 更新清理 | 下载失败 catch 无条件清全局单槽位记录：新版本失败抹掉已下载旧版本记录 → 旧 APK 成孤儿并强制全量重下 | 存在 |
+| A-061 | 低 | 本地化 | 「当前筛选下暂无 DNS 请求日志」（Express 空态文案）无字典条目，落入前缀替换模板 → 英文界面输出半中半英拼接串 | 存在 |
+| A-062 | 高 | Go MITM 分帧 | 元素隐藏注入后响应删光 Content-Length/TE 且 `Uncompressed=true`：stdlib 不再补 `Connection: close`，HTTP/1.1 keep-alive 下 body 无任何定界 → 浏览器文档永不结束/挂死，代理双向互等 | 存在 |
+| A-063 | 中 | Go 元素隐藏 | `buildCosmeticCss` 从不把 `rules.GlobalException` 并入 exceptions（只填按域 entry.Exception）：全局 `#@#` 例外静默失效，误隐藏无法豁免 | 存在 |
+| A-064 | 低中 | Go MITM 注入器 | `InjectingReader` EOF/提前返回路径丢弃 `carry` 中残留的 ≤5 字节 `<head` 前缀：无 `<head>` 且恰以该前缀结尾的文档输出被截断 | 存在 |
+| A-065 | 中 | Express 缓存统计 | Express `dns_cache` 每次 put 用 `OnConflictStrategy.REPLACE` 整行覆盖：hitCount/lastHitAt 在重缓存时归零，仪表盘 totalHitCount 系统性偏低（NORMAL 侧注释明确防此问题） | 存在 |
+| A-066 | 低 | 数据清理计数 | 「清理全部域名规则」删 HOSTS 订阅的 v4/v6 覆写但保留订阅行且不复位 ruleCount：徽标数与实际规则持续不符；为此准备的 `resetAfterRuleCleanup` 全仓零调用 | 存在 |
+| A-067 | 高 | Go DNS v6 应答 | `buildIPv6UDPPacket` 在校验和**之后**才写入 payload：所有合成 IPv6 UDP 应答（拦截/NXDOMAIN/重写/转发）校验和恒错，内核强校验下整包丢弃 | 存在 |
+| A-068 | 高 | Go 规则热更新 | `SetTries` 锁内 `Close()` 旧 trie（munmap），读者锁外解引用同一 `*MmapTrie`：规则重载与 DNS 流量并发 → use-after-unmap SIGSEGV（不可 recover） | 复核后确认不存在 |
+| A-069 | 中 | Go DNS 缓存 | `dnsCache.clear()` 用 `lruList.Init()` 而不 `Remove`：并发命中提升把 `elem.list` 仍指向本表的孤儿元素重新链回 → LRU 与 map 失同步 | 存在 |
+| A-070 | 中 | Go 规则装载 | trie 与 bloom 各自「成功才 append」按下标配对：任一 bloom 加载失败即整体错位一格，预过滤假阴性令整个 trie 被跳过 → 静默漏拦 | 复核后确认不存在 |
+| A-071 | 中 | Go MITM 证书缓存 | `CertManager.certCache` 为无上限 `sync.Map`、仅过期命中时删除，与文件头注释「LRU 512 entries」不符：长会话拦截多子域内存单调增长 | 存在 |
+| A-072 | 低中 | Go MITM 流关闭 | gzip/deflate 注入路径替换 `resp.Body` 后原始 body 永不 Close/排空：同连接 keep-alive 下一轮 `ReadResponse` 因 chunk 终结符未消费而错位 | 复核后确认不存在 |
+| A-073 | 低中 | Go 连接日志 | 包级全局 `connLogSeen sync.Map` 仅在 `StartFull` 清空：standalone/inspection 模式无回收点，去重键单调增长（内存缓涨+跨引擎实例压制新会话日志） | 存在 |
+| A-074 | 低 | Go bloom 加载 | `LoadBloomFilter` 不校验 `bitCount/hashCount > 0`：`bitCount=0` 的畸形文件通过尺寸校验，首个 `MightContain` 触发 `%0` integer divide by zero panic | 复核后确认不存在 |
+| A-075 | 中 | Express 规则添加 | Express 黑名单可添加元素隐藏规则（仅 DNS_MODE 被拦）：写入 `diting_express` 却提示成功；`CosmeticRuleManager` 硬编码只从 NORMAL 库编译 CSS，且 Express 列表又不显示 cosmetic 行 → 不可见、不生效、无法删除的幽灵规则 | 存在 |
+| A-076 | 高 | VPN 路由覆盖 | 默认开启的「绕过局域网」IPv4 补集枚举漏掉 116–119/8 与 122–123/8（电信/联通/阿里云/腾讯云在用公网段）：这些直连 IP 流量完全绕过 TUN，域名规则/MITM/QUIC·DoT 阻断/禁止联网/流量统计对其全部失效 | 存在 |
+| A-077 | 中 | HTTPS 检查证书 | 本会话是否 MITM 由**缓存位** `isHttpsInspectionReady` 决定，异步真校验失败后只写偏好、不重启隧道：根证书已被卸载仍继续 MITM → 目标 App TLS 握手失败/证书告警，与设置页显示矛盾至下次重连 | 存在 |
+| A-078 | 中 | 会话统计归零 | 编辑排除/禁止联网/检查名单或数据清理触发 `restartVpnLocked` → `TrafficStatsManager.start()` 无条件清 sessionTx/Rx/时长：本地列表编辑使「本会话↑↓」与「已连接」静默归零并瞬断（对照 allowlist 走热更新不重启，口径不一致） | 存在 |
+| A-079 | 高 | 缓存设置串档 | 极速模式「缓存设置」屏四处调用 `DnsCacheSettingsStore` 全部漏传 dataset（默认 NORMAL）：读写的其实是普通模式策略——极速缓存开关永不生效、改动却偷改普通模式防护（引擎端只认 diting_express_prefs） | 存在 |
+| A-080 | 高 | AI 分析串库 | `AgentAnalysisSheet` 硬编码 `AppDatabase`+NORMAL 广播：极速模式 DNS 缓存页的 AI 流量分析读普通模式旧日志，「加白/黑名单并热更生效」提示为假（写进 NORMAL 库且 `isNormalRunning=false` 直接早退，极速引擎收不到同步） | 存在 |
+| A-081 | 中 | 动态拦截极速侧 | 极速模式「动态拦截策略」可开可存，`express/` 全包无任何读取端（引擎只用静态 `blockResponseModeProvider`）：开关纯空转、副标题谎报生效（与 A-023 同文案不同库，本条为 EXPRESS 面） | 存在 |
+| A-082 | 中 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 `onRuntimeDnsSettingsChanged`：运行中引擎继续按旧 volatile 快照 prune（缩短不省空间、加长照样删数据）直到下次其它刷新；同屏日志模式项却正确触发（对照即证据） | 存在 |
+| A-083 | 中 | SAF 授权泄漏 | 全仓 5 处 `takePersistableUriPermission`、0 处 `releasePersistableUriPermission`：删除背景图/订阅本地文件/全面清理后，对应用户文件的持久读授权永不撤销（系统可见「可访问的文件」只增不减） | 存在 |
+| A-084 | 中 | 服务器模式向导 | DNS 模式「使用向导」接入信息把监听端口**硬编码为 1053**（5 处），从不读 `config.localListenPort`：用户改端口（验证器允许 1024–65535、设置页实时显示真实端口）后，向导仍指示「将 DNS 改为 IP:1053」，照做即把所有局域网设备指向无监听端口 → 全员解析超时 | 存在 |
+| A-085 | 中高 | Go 全隧道半关闭 | `countingConn` 内嵌 `net.Conn` **接口**致 `CloseWrite` 方法不被提升，`bidiCopyFlow` 的类型断言恒 false：应用侧（被包装的一边）永远收不到 FIN，EOF 定界协议（无 Content-Length 应答/SSE/FTP/邮件）双向僵死直到 App 超时，文件头「支持 half-close」承诺对已归因 UID 流量失效 | 存在 |
+| A-086 | 中 | Go 全隧道出站 | `bufferedTun.drain` 首次 TUN 写错误即 `return` 永久退出且永不重启，而 `Write` 恒 `return len(p), nil` 向 gVisor 谎报成功：出站包进 2048 队列→满→静默丢弃，网络 handover 一次瞬断后整个隧道输出黑洞化，只能重启 VPN 会话恢复 | 存在 |
+| A-087 | 中 | DoT 阻断开关 | `SetBlockEncryptedDns` 是死开关：`blockEncryptedDNS` 全仓只有 Store 无 Load，`engine_full_tunnel.go` UDP/TCP:853 处理**无条件**丢弃并记 `blocked_encrypted_dns`；Kotlin 默认 false 而 UI 提供「阻断加密 DNS (DoT)」开关——关闭后 Private DNS(strict) 应用照样全部解析失败，开关与日志归因双双失真 | 存在 |
+| A-088 | 中高 | 极速 bootstrap | `BootstrapSelector` 两处 Store 调用漏传 dataset（`BootstrapSelector.kt:25-26`，签名默认 NORMAL）：极速模式运行时永远读 `dns_vpn_prefs` 的 bootstrap 配置，而极速设置页写 `diting_express_prefs`——极速里开关/自定义 IP 全部失效，且普通模式关 bootstrap 会让极速 DoT/DoH 退化（与 A-079 同族、不同文件） | 存在 |
+| A-089 | 中 | 应用放行闸门 | `rememberAppAllowlistResponse` 只在 `serveDNS` 新鲜解析尾部调用（`engine_standalone.go:384`），缓存命中/stale 分支提前 return 不续期，stale 后台刷新也绕开该函数：白名单应用的 IP 授权按 rrTTL 过期而缓存应答可远久于此 → 「DNS 解析成功但 TCP/UDP 连接恒被 app_allowlist_blocked」直至缓存彻底过期 | 存在 |
+| A-090 | 中 | Go DNS 配置原子性 | `ApplyDNSConfig` 先提交 `responseType`/`dynamicResponse`/`dynamicBlocks.reset()` 再校验 providers（`dns_config.go:133-150`）：provider 校验失败返回 error 时 Kotlin 视为整份拒绝，Go 却保留新拦截应答类型并清空动态计数——UI 与引擎行为漂移且无自愈点 | 存在 |
+| A-091 | 中 | 服务商健康页 | `ProviderHealthEngine` 全仓零实例化（grep 构造点仅命中类声明）、`recordResult` 零调用者 → `activeEngine` 恒 null：健康页 `flushActive` 恒 false、`loadAll` 恒空，「智能预测权重」显示 `?: 1.0` 兜底的均匀编造值（与 A-041 同族：重构后接线缺失，但本条表面是 UI 谎报而非功能报错） | 存在 |
+| A-092 | 中 | bootstrap 健康双源 | `BootstrapHealthEngine` 三处并存实例（VPN 服务/测速 VM/Express 隧道）各自持内存快照，`flush→saveAll` **全表 JSON 覆盖** `dns_vpn_prefs` 单键，进程级单槽 `activeEngine` 被最后构造者顶掉：测速页 15s 定时/退出 flush 会整体抹掉服务引擎期间新记的成绩与冷却（及反向），健康统计随机倒退、冷却 IP 状态丢失 | 存在 |
+| A-093 | 中 | regex 规则大小写 | Kotlin `BlockRuleMatcher`/`AllowRuleMatcher` 用 `Regex(pattern).containsMatchIn(domain)` **不注入 (?i)**（查询域名已 lowercased，但模式大小写保留），Go `policy_engine.go:112` 恒前置 `(?i)`：同一订阅 `/Ads\..*/` 在 VPN（Go 判定）命中、在服务器/回调兜底（Kotlin 判定）不命中，两模式拉黑结果相反；`$match-case` 还被 Kotlin 当 web-only 修饰 ignore（大小写敏感无法表达） | 存在 |
+| A-094 | 中 | `#$@#` 例外解析 | `COSMETIC_DELIMITERS` 缺 `#$@#`（AdGuard 例外型元素隐藏=带域名的 `#@#`）：`example.com#$@#.ad` 不识别定界符→`substringBefore('#')` 得 `example.com`→**生成为整域 block 规则**——导入含例外行的列表反而把该域整站拉黑 | 存在 |
+| A-095 | 低 | regex 注释截断 | `AdblockRuleLineParser:24` 的无差别 `substringBefore('#')` 早于 regex 提取（`:33+`）：`/banner#1/` 被截成 `/banner`，`lastSlash==0` 不落 regex 分支、域名分支 `normalizeDomain("/banner")` 判 invalid——regex 体内的 `#` 合法（模式字符），规则整条静默丢失（Go `rule_compiler.go:193` 同收 `#` 且拒 `/` 开头行，两端一致地丢） | 存在 |
+| A-096 | 低中 | 规则索引残留 | `MappedSubscriptionRuleIndex.compileAndLoad` 的 `finally` 只删本线程 temp；进程被杀后 `block.trie.<nano>.tmp` 永久堆积——`RuleIndexLayout.deleteAll` **全仓零调用者**（grep 实证），无任何清理路径；`renameTo` 失败时退化 `temp.copyTo(overwrite=true)` 非原子，读端（Go `openDTRI`/Kotlin `load`）可读到半写文件→该轮订阅索引失效 | 存在 |
+| A-097 | 低 | AI 报告渲染 | `MarkdownInlineAnnotator.kt:26` 斜体分支 `(?<!_)_(?!_)…(?<!_)_(?!_)` 未排除**词内下划线**：`dns_vpn_prefs` 中的 `_vpn_` 被匹配，两个下划线定界符被吃掉并以斜体输出 `vpn`（本机 Python re 等价复算实证 8 例中 5 例词内误中：`_vpn_`/`_haoze_`/`_LOG_` 等）；AI 分析报告正文里的配置键名/包名全部被改写变形 | 存在 |
+| A-098 | 中 | bootstrap 健康污染 | `BootstrapSelector.resolveHost` 把「日志落库异常」误判为「解析失败」：成功分支 `recordResult(true)→logger.log()→putCached` 全包在 try 内（`:46-63`），而 `BootstrapLogger.log` 每满 20 条在调用栈内同步 `dao.insertAll`（`BootstrapLogger.kt:69-89`，无 runCatching）→ DB 写抛被 `:65` 的宽 `catch(Exception)` 吞成解析失败，给同一 IP 再记一次 `recordResult(false)`、`removeCached` 撤掉刚写成功的缓存，并触发对下一候选的重复解析（健康统计双记 + 无谓回退 + 成功日志缺失、失败行 message 变 SQL 异常） | 存在 |
+| A-099 | 中高 | 预置白名单种入 | `DefaultWhitelistSeeder.seed(forceReset=true)` **先删后解析**且失败仍置位：`deleteBySource(PRESET)`（`:67`）先执行，`parseAssetWhitelist` 吞 IO 异常返回**当时已积累列表**（`:102-131`）→ 整体失败=全删零补、中途失败=**截断前缀**种入；`:44-45` 照写 initialized+seededVersion → 同版本内门控早退**永不自愈**；截断表还会被 `:129-130` 写入进程级缓存并经 `GoTunnelRuleManager.kt:64-72` 同步下发 Go 直通快照，两引擎一起残缺且只有重启进程+改版本可修 | 存在 |
+| A-100 | 低 | 预置白名单升级覆盖 | 版本升级触发的 `seed(forceReset=true)` 静默清除**用户仅对 preset 行做的全部改动**（禁用→重启用、编辑 pattern→出厂项复活且编辑消失、组名覆盖）：改动落库仍带 `SOURCE_PRESET`（`WhitelistViewModel.kt:537-553`），`deleteBySource`=`deleteSource`+`deleteOrphans`（`AllowRuleDao.kt:385-392`）按 source 归属物理删行；类 KDoc `:26-28`「user customizations are preserved」仅对 useradd/sub_ 多源行成立，与 preset 单源行行为不符 | 存在 |
 
 ---
 
