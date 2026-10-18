@@ -4,6 +4,8 @@
 // - Direct TUN Inbound: gVisor reads the TUN device directly to eliminate intermediate packet queue backpressure deadlocks.
 // - Non-Blocking Outbound: bufferedTun decouples writes into an outbound channel with a sync.Pool buffer pool (tunPacketPool),
 //   dropping on overflow to prioritize dispatch loop responsiveness.
+// - Self-Healing Outbound Writer: a TUN write error is treated as transient. The drain goroutine retries with backoff
+//   instead of exiting, so a network handover cannot blackhole the outbound direction for the rest of the session.
 // - Flow Routing Topology:
 //     apps -> TUN -> gVisor stack:
 //       • TCP: Routed to MITM handler or direct protected passthrough.
@@ -22,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/miekg/dns"
@@ -29,14 +32,33 @@ import (
 )
 
 type bufferedTun struct {
-	tun  *os.File
-	out  chan *[]byte
-	stop chan struct{}
+	tun    *os.File  // TUN device; Read side, and the default Write side
+	writer io.Writer // Write side; overridable in tests
+	out    chan *[]byte
+	stop   chan struct{}
+
+	stopOnce sync.Once
+
+	// healthy is false after a write exhausted its retry budget and true again
+	// once any write succeeds, so a persistently failing interface is probed
+	// with single attempts instead of paying the full backoff per packet.
+	healthy atomic.Bool
+
+	dropped       atomic.Int64
+	writeFailures atomic.Int64
 }
 
 const tunWriteQueueDepth = 2048
 
 const tunPooledMaxPacketBytes = 2 * defaultTunMTU
+
+// A network handover (Wi-Fi <-> cellular, interface flap) surfaces as ENETDOWN /
+// EINVAL / EBUSY on the TUN fd for a short window; the writer must ride it out.
+const (
+	tunWriteRetryAttempts = 40
+	tunWriteRetryBaseWait = 5 * time.Millisecond
+	tunWriteRetryMaxWait  = 100 * time.Millisecond
+)
 
 var tunPacketPool = sync.Pool{
 	New: func() any {
@@ -46,13 +68,28 @@ var tunPacketPool = sync.Pool{
 }
 
 func newBufferedTun(tun *os.File) *bufferedTun {
-	b := &bufferedTun{tun: tun, out: make(chan *[]byte, tunWriteQueueDepth), stop: make(chan struct{})}
+	return newBufferedTunWithWriter(tun, tun)
+}
+
+// newBufferedTunWithWriter lets tests inject a failing writer; production always
+// passes the TUN file for both directions.
+func newBufferedTunWithWriter(tun *os.File, writer io.Writer) *bufferedTun {
+	b := &bufferedTun{
+		tun:    tun,
+		writer: writer,
+		out:    make(chan *[]byte, tunWriteQueueDepth),
+		stop:   make(chan struct{}),
+	}
+	b.healthy.Store(true)
 	go b.drain()
 	return b
 }
 
 func (b *bufferedTun) Read(p []byte) (int, error) { return b.tun.Read(p) }
 
+// Write never reports an error: gVisor's iobased endpoint discards the returned
+// error and does not retry, so surfacing one would only lose the packet anyway.
+// Dropping on a full queue is the same policy, and TCP retransmits.
 func (b *bufferedTun) Write(p []byte) (int, error) {
 	bufp := tunPacketPool.Get().(*[]byte)
 	pkt := append((*bufp)[:0], p...)
@@ -60,22 +97,31 @@ func (b *bufferedTun) Write(p []byte) (int, error) {
 	select {
 	case b.out <- bufp:
 	default:
-
 		tunPacketPool.Put(bufp)
+		if n := b.dropped.Add(1); n <= 3 || n%1024 == 0 {
+			logf("StartFull: outbound queue full, dropped %d packet(s)", n)
+		}
 	}
 	return len(p), nil
 }
 
+// drain moves packets from the queue to the TUN device for the whole session.
+//
+// A write error used to end this goroutine permanently while Write kept
+// reporting success, so every later outbound packet was silently discarded and
+// only restarting the VPN session restored connectivity. Errors are now retried
+// with backoff, and a write that still fails is dropped while the writer stays
+// alive, so the tunnel recovers by itself as soon as the interface does.
 func (b *bufferedTun) drain() {
 	for {
 		select {
 		case bufp := <-b.out:
-			_, err := b.tun.Write(*bufp)
+			pkt := *bufp
+			alive := b.writeWithRetry(pkt)
 			if cap(*bufp) <= tunPooledMaxPacketBytes {
 				tunPacketPool.Put(bufp)
 			}
-			if err != nil {
-				logf("StartFull: TUN drain write error, stopping writer: %v", err)
+			if !alive {
 				return
 			}
 		case <-b.stop:
@@ -84,7 +130,48 @@ func (b *bufferedTun) drain() {
 	}
 }
 
-func (b *bufferedTun) halt() { close(b.stop) }
+// writeWithRetry writes one packet, returning false only when the writer was
+// halted. A dropped packet after the retry budget keeps the goroutine running.
+func (b *bufferedTun) writeWithRetry(pkt []byte) bool {
+	attempts := 1
+	if b.healthy.Load() {
+		attempts = tunWriteRetryAttempts
+	}
+	wait := tunWriteRetryBaseWait
+
+	for attempt := 1; ; attempt++ {
+		_, err := b.writer.Write(pkt)
+		if err == nil {
+			if !b.healthy.Swap(true) {
+				logf("StartFull: TUN writes recovered")
+			}
+			return true
+		}
+		if attempt >= attempts {
+			b.healthy.Store(false)
+			n := b.writeFailures.Add(1)
+			if n <= 5 || n%100 == 0 {
+				logf("StartFull: TUN write failed (%d dropped), keeping writer alive: %v", n, err)
+			}
+			return true
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-timer.C:
+		case <-b.stop:
+			timer.Stop()
+			return false
+		}
+		if wait < tunWriteRetryMaxWait {
+			wait *= 2
+			if wait > tunWriteRetryMaxWait {
+				wait = tunWriteRetryMaxWait
+			}
+		}
+	}
+}
+
+func (b *bufferedTun) halt() { b.stopOnce.Do(func() { close(b.stop) }) }
 
 var _ io.ReadWriter = (*bufferedTun)(nil)
 
