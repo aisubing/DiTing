@@ -38,11 +38,14 @@ func init() {
 }
 
 type Engine struct {
-	protocol               string
-	primaryDNS             string
-	fallbackDNS            string
-	dohURL                 string
-	responseType           ResponseType
+	protocol    string
+	primaryDNS  string
+	fallbackDNS string
+	dohURL      string
+	// responseType is an atomic because the gomobile setters run on the
+	// Kotlin/UI thread while the DNS handlers read it from stack goroutines.
+	// It used to be a plain field written without e.mu and read without e.mu.
+	responseType           atomic.Int32
 	dnsConfig              *dnsEngineConfig
 	dynamicResponse        dynamicBlockConfig
 	dynamicBlocks          dynamicBlockTracker
@@ -121,7 +124,6 @@ type Engine struct {
 func NewEngine() *Engine {
 	router := NewRouter()
 	e := &Engine{
-		responseType:   ResponseCustomIP,
 		router:         router,
 		dnsCache:       newDNSCache(dnsCacheConfig{Enabled: true}),
 		blockedUIDs:    make(map[int]struct{}),
@@ -130,7 +132,13 @@ func NewEngine() *Engine {
 		policyEngine:   newPolicyEngine(),
 		ipDomainCache:  newIPDomainCache(2048),
 	}
+	e.responseType.Store(int32(ResponseCustomIP))
 	e.filterDNS.Store(true)
+	// Fail closed: a data plane that never receives SetBlockEncryptedDns keeps
+	// blocking DoT, which is what every entry point did before the switch was
+	// wired up. The Android layer always pushes the user preference before
+	// starting traffic.
+	e.blockEncryptedDNS.Store(true)
 	e.interceptor = NewDnsInterceptor(e, router)
 	return e
 }

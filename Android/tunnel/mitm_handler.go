@@ -59,7 +59,7 @@ func newMitmTcpHandler(
 			clientConn = eng.trafficTracker.WrapClientConn(conn, uid)
 		}
 
-		if flow.serverPort == 853 {
+		if flow.serverPort == encryptedDNSPort && (eng == nil || eng.shouldBlockEncryptedDNS(flow.serverPort)) {
 			if eng != nil {
 				eng.logBlockedConnection(flow, ProtocolTCP, "blocked_encrypted_dns")
 			}

@@ -255,16 +255,22 @@ func buildRewriteIPResponse(queryInfo *DNSQueryInfo, ip net.IP) []byte {
 	return buildIPUDPPacket(queryInfo, packed)
 }
 
-func (e *Engine) handleFirewallBlock(queryInfo *DNSQueryInfo, appName string, startTime time.Time) {
-	var response []byte
-	switch e.responseType {
+// buildBlockedResponseFor synthesizes the block answer for one query using the
+// effective response mode, i.e. the configured mode after the dynamic block
+// escalation has been applied.
+func (e *Engine) buildBlockedResponseFor(queryInfo *DNSQueryInfo) []byte {
+	switch e.effectiveBlockResponseType(queryInfo.Domain) {
 	case ResponseNXDomain:
-		response = BuildNXDomainResponse(queryInfo)
+		return BuildNXDomainResponse(queryInfo)
 	case ResponseRefused:
-		response = BuildRefusedResponse(queryInfo)
+		return BuildRefusedResponse(queryInfo)
 	default:
-		response = BuildBlockedResponse(queryInfo)
+		return BuildBlockedResponse(queryInfo)
 	}
+}
+
+func (e *Engine) handleFirewallBlock(queryInfo *DNSQueryInfo, appName string, startTime time.Time) {
+	response := e.buildBlockedResponseFor(queryInfo)
 
 	e.writeToTUN(response)
 	e.totalQueries.Add(1)
@@ -276,15 +282,7 @@ func (e *Engine) handleFirewallBlock(queryInfo *DNSQueryInfo, appName string, st
 }
 
 func (e *Engine) handleBlockedDomain(queryInfo *DNSQueryInfo, blockedBy, appName string, startTime time.Time) {
-	var response []byte
-	switch e.responseType {
-	case ResponseNXDomain:
-		response = BuildNXDomainResponse(queryInfo)
-	case ResponseRefused:
-		response = BuildRefusedResponse(queryInfo)
-	default:
-		response = BuildBlockedResponse(queryInfo)
-	}
+	response := e.buildBlockedResponseFor(queryInfo)
 
 	e.writeToTUN(response)
 	e.totalQueries.Add(1)

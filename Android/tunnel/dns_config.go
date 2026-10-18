@@ -131,11 +131,8 @@ func (e *Engine) ApplyDNSConfig(configJSON string) error {
 	cfg.Mode = canonMode
 
 	e.mu.Lock()
-	e.responseType = ParseResponseType(strings.ToUpper(cfg.BlockResponse))
-	e.dynamicResponse = cfg.DynamicResponse
 	resolver := e.resolver
 	e.mu.Unlock()
-	e.dynamicBlocks.reset()
 
 	if len(cfg.Providers) == 0 {
 		return fmt.Errorf("DNS config has no providers")
@@ -158,9 +155,17 @@ func (e *Engine) ApplyDNSConfig(configJSON string) error {
 	if e.dnsCache != nil {
 		e.dnsCache.updatePolicy(cfg.Cache)
 	}
+
+	// Publish the new policy only after every validation step above has passed.
+	// The block response mode and the dynamic block config used to be applied
+	// before the provider checks, so a rejected snapshot still changed how
+	// blocks were answered while the caller saw an error.
+	e.storeBlockResponseType(ParseResponseType(strings.ToUpper(cfg.BlockResponse)))
 	e.mu.Lock()
+	e.dynamicResponse = cfg.DynamicResponse
 	e.dnsConfig = &cfg
 	e.mu.Unlock()
+	e.dynamicBlocks.reset()
 	return nil
 }
 

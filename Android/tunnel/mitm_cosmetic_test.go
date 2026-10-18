@@ -49,6 +49,37 @@ func TestCosmeticCssAppliesExceptionInsteadOfHide(t *testing.T) {
 	}
 }
 
+// A `#@#` rule with no domain scope reaches the engine as globalException.
+// It used to be counted (map sized) but never copied in, so a global hide could
+// never be un-hidden on any site.
+const cosmeticGlobalExceptionFixture = `{
+  "globalHide": [".generic-ad", ".promo"],
+  "globalException": [".generic-ad"],
+  "domains": {
+    "example.com": {"hide": [".banner-ad"], "exception": []}
+  }
+}`
+
+func TestCosmeticCssAppliesGlobalException(t *testing.T) {
+	css := buildCosmeticCss(cosmeticGlobalExceptionFixture, "unrelated.org")
+	if strings.Contains(css, ".generic-ad { display: none") {
+		t.Fatalf("globally excepted selector still hidden: %q", css)
+	}
+	if !strings.Contains(css, ".generic-ad { display: revert !important; }") {
+		t.Fatalf("global exception override missing: %q", css)
+	}
+	if !strings.Contains(css, ".promo { display: none !important; }") {
+		t.Fatalf("unrelated global hide must survive: %q", css)
+	}
+
+	// A host-scoped hide of the same selector must also lose to the global
+	// exception, because the exception is applied after the host walk.
+	scoped := buildCosmeticCss(cosmeticGlobalExceptionFixture, "example.com")
+	if strings.Contains(scoped, ".generic-ad { display: none") {
+		t.Fatalf("global exception did not override host hide: %q", scoped)
+	}
+}
+
 func TestCosmeticCssEmptyPayload(t *testing.T) {
 	if got := buildCosmeticCss("", "example.com"); !strings.Contains(got, "no cosmetic rules") {
 		t.Fatalf("unexpected stylesheet for empty payload: %q", got)

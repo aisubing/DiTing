@@ -144,6 +144,15 @@ func (e *Engine) serveDNS(w dns.ResponseWriter, r *dns.Msg, appOverride string, 
 		}
 	}
 
+	// "启用域名过滤" must gate the whole filtering pipeline, exactly like the
+	// full-tunnel path does in handleDNSQuery. Without this guard the standalone
+	// server kept evaluating the policy engine and the native tries while the
+	// user had filtering switched off.
+	if !e.filterDNS.Load() {
+		e.standaloneForward(w, r, appName, startTime, uid)
+		return
+	}
+
 	if e.policyEngine != nil && e.policyEngine.isActive() && e.policyEngine.hasRules() {
 		blocked, reason := e.policyEngine.evaluate(domain, appName, queryType)
 		if blocked {
@@ -244,12 +253,7 @@ func (e *Engine) standaloneBlock(w dns.ResponseWriter, r *dns.Msg, blockedBy, ap
 	m := new(dns.Msg)
 	m.SetReply(r)
 
-	e.mu.Lock()
-	responseType := e.responseType
-	dynamicConfig := e.dynamicResponse
-	e.mu.Unlock()
-	responseType = e.dynamicBlocks.responseFor(strings.TrimSuffix(strings.ToLower(r.Question[0].Name), "."), dynamicConfig, responseType)
-	switch responseType {
+	switch e.effectiveBlockResponseType(r.Question[0].Name) {
 	case ResponseNXDomain:
 		m.Rcode = dns.RcodeNameError
 	case ResponseRefused:
@@ -306,6 +310,10 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 			if !isNegative && len(ipList) > 0 {
 				e.rememberResolvedIPList(r.Question[0].Name, ipList)
 			}
+			// The cached wire bytes are the only DNS answer this flow will see,
+			// so the app-allowlist IP grant has to be derived from them here;
+			// the upstream path does it from respMsg below.
+			e.rememberAppAllowlistWire(uid, cachedResp)
 			elapsed := time.Since(startTime).Milliseconds()
 			e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, resolvedIPs, "", "", true)
 			return
@@ -325,6 +333,9 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 				if !staleCandidate.isNegative && len(staleCandidate.ipList) > 0 {
 					e.rememberResolvedIPList(r.Question[0].Name, staleCandidate.ipList)
 				}
+				// Same as the fresh-hit branch: the stale wire response is the
+				// only answer handed to the client, so grant from it as well.
+				e.rememberAppAllowlistWire(uid, staleResp)
 				elapsed := time.Since(startTime).Milliseconds()
 				e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, staleCandidate.resolvedIPs, "", "", true)
 

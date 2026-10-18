@@ -63,6 +63,11 @@ func buildCosmeticCss(payload, host string) string {
 		hide[selector] = struct{}{}
 	}
 	exceptions := make(map[string]struct{}, len(rules.GlobalException))
+	// `#@#` rules without a domain scope arrive as globalException. They must
+	// un-hide a selector for every host, otherwise a global hide wins forever.
+	for _, selector := range rules.GlobalException {
+		exceptions[selector] = struct{}{}
+	}
 
 	// Walk from the page host down to its parents, so a rule scoped to
 	// `example.com` also applies on `ads.example.com`.

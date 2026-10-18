@@ -108,6 +108,25 @@ type countingConn struct {
 	uid     int
 }
 
+// countingHalfCloseConn is a countingConn whose transport supports TCP
+// half-close, e.g. gVisor's gonet.TCPConn behind adapter.TCPConn.
+//
+// Embedding the net.Conn *interface* does not promote CloseWrite, so the relay
+// helpers (bidiCopyFlow, relayDirectPeeked) lost their type assertion and never
+// sent the FIN. TLS/HTTP clients that answer by shutting down their write side
+// then waited for a response that the upstream would not produce until it saw
+// that FIN. The capability is re-advertised only when the transport has it.
+type countingHalfCloseConn struct {
+	*countingConn
+}
+
+func (c *countingHalfCloseConn) CloseWrite() error {
+	if cw, ok := c.countingConn.Conn.(interface{ CloseWrite() error }); ok {
+		return cw.CloseWrite()
+	}
+	return nil
+}
+
 func (c *countingConn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
 	if n > 0 && c.tracker != nil {
@@ -128,11 +147,15 @@ func (t *TrafficTracker) WrapClientConn(conn net.Conn, uid int) net.Conn {
 	if t == nil || conn == nil || uid <= 0 {
 		return conn
 	}
-	return &countingConn{
+	wrapped := &countingConn{
 		Conn:    conn,
 		tracker: t,
 		uid:     uid,
 	}
+	if _, ok := conn.(interface{ CloseWrite() error }); ok {
+		return &countingHalfCloseConn{countingConn: wrapped}
+	}
+	return wrapped
 }
 
 type uidDeltaJson struct {

@@ -301,7 +301,7 @@ func newFullTunnelUdpHandler(engine *Engine, filter *MitmFilter, uidr UIDResolve
 			return
 		}
 
-		if flow.serverPort == 853 {
+		if engine.shouldBlockEncryptedDNS(flow.serverPort) {
 			engine.logBlockedConnection(flow, ProtocolUDP, "blocked_encrypted_dns")
 			return
 		}
@@ -354,7 +354,7 @@ func newFullPassthroughTcpHandler(engine *Engine, uidr UIDResolver, protectFn fu
 			return
 		}
 
-		if flow.serverPort == 853 {
+		if engine.shouldBlockEncryptedDNS(flow.serverPort) {
 			engine.logBlockedConnection(flow, ProtocolTCP, "blocked_encrypted_dns")
 			return
 		}
@@ -371,7 +371,22 @@ func (e *Engine) SetFilterHttp3(enabled bool) {
 
 func (e *Engine) SetBlockEncryptedDns(enabled bool) {
 	e.blockEncryptedDNS.Store(enabled)
+	logf("SetBlockEncryptedDns: encrypted DNS (DoT/853) blocking = %t", enabled)
 }
+
+// shouldBlockEncryptedDNS reports whether a flow to port 853 must be blocked.
+//
+// The three data-plane entry points (full-tunnel UDP, full-tunnel TCP
+// passthrough and MITM TCP) used to drop port 853 unconditionally, so the
+// "阻断加密 DNS (DoT)" switch only wrote an atomic that nothing read.
+func (e *Engine) shouldBlockEncryptedDNS(serverPort int) bool {
+	if e == nil || serverPort != encryptedDNSPort {
+		return false
+	}
+	return e.blockEncryptedDNS.Load()
+}
+
+const encryptedDNSPort = 853
 
 func (e *Engine) SetBlockedUIDs(uidsCsv string) {
 	next := make(map[int]struct{})

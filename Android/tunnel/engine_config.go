@@ -383,7 +383,47 @@ func (e *Engine) SetDNS(protocol, primary, fallback, dohURL string) {
 }
 
 func (e *Engine) SetBlockResponseType(responseType string) {
-	e.responseType = ParseResponseType(responseType)
+	e.storeBlockResponseType(ParseResponseType(responseType))
+}
+
+// storeBlockResponseType publishes the block response mode for the DNS
+// handlers. It is an atomic store rather than an e.mu-guarded write because the
+// readers on the packet path only ever need this single value.
+func (e *Engine) storeBlockResponseType(responseType ResponseType) {
+	e.responseType.Store(int32(responseType))
+}
+
+// blockResponseType reads the block response mode. A nil engine cannot have been
+// configured, so it keeps the constructor default instead of panicking.
+func (e *Engine) blockResponseType() ResponseType {
+	if e == nil {
+		return ResponseCustomIP
+	}
+	return ResponseType(e.responseType.Load())
+}
+
+// effectiveBlockResponseType resolves the block response mode for one query,
+// applying the dynamic block escalation on top of the configured mode.
+//
+// Both DNS entry points must agree on this: the standalone server always did,
+// but the full-tunnel path switched on the raw configured mode and so never
+// escalated a domain that had crossed the request threshold.
+func (e *Engine) effectiveBlockResponseType(domain string) ResponseType {
+	fallback := e.blockResponseType()
+	if e == nil {
+		return fallback
+	}
+	e.mu.Lock()
+	dynamicConfig := e.dynamicResponse
+	e.mu.Unlock()
+	if !dynamicConfig.Enabled {
+		return fallback
+	}
+	cleanDomain := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(domain)), ".")
+	if cleanDomain == "" {
+		return fallback
+	}
+	return e.dynamicBlocks.responseFor(cleanDomain, dynamicConfig, fallback)
 }
 
 func (e *Engine) notifyLog(domain string, blocked bool, queryType uint16, responseTimeMs int64, appName, resolvedIPs, blockedBy, errorMessage string, cached bool) {

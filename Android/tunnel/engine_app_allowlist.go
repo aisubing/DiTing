@@ -91,6 +91,43 @@ func (e *Engine) appAllowlistConnectionAllowed(uid int, ip net.IP) bool {
 	return !selected || (!expiry.IsZero() && time.Now().Before(expiry))
 }
 
+// hasAppAllowlistUIDs reports whether any UID is under strict allowlist mode.
+// Used to keep the cache-hit hot path free of an extra DNS unpack.
+func (e *Engine) hasAppAllowlistUIDs() bool {
+	if e == nil {
+		return false
+	}
+	e.appAllowlist.mu.RLock()
+	defer e.appAllowlist.mu.RUnlock()
+	return len(e.appAllowlist.domains) > 0
+}
+
+// rememberAppAllowlistWire grants app-allowlist IP authorization from an already
+// serialized DNS response, i.e. one served straight from the DNS cache.
+//
+// The upstream paths grant authorization by calling rememberAppAllowlistResponse
+// on the resolved *dns.Msg, but the cache-hit and stale-while-revalidate branches
+// return wire bytes and returned early without granting anything. A whitelisted
+// app therefore resolved successfully from cache and then had every following
+// connection refused by appAllowlistConnectionAllowed, which is why "解析成功、
+// 连接恒被拦" was permanent rather than transient: the cache kept answering.
+//
+// The grant covers exactly the answer that was handed to the client, so the
+// authorization lifetime never exceeds the TTL the client was told.
+func (e *Engine) rememberAppAllowlistWire(uid int, rawResponse []byte) {
+	if e == nil || len(rawResponse) < 12 {
+		return
+	}
+	if !e.hasAppAllowlistUIDs() {
+		return
+	}
+	var msg dns.Msg
+	if err := msg.Unpack(rawResponse); err != nil {
+		return
+	}
+	e.rememberAppAllowlistResponse(uid, &msg)
+}
+
 func (e *Engine) rememberAppAllowlistResponse(uid int, response *dns.Msg) {
 	if response == nil || len(response.Answer) == 0 {
 		return
