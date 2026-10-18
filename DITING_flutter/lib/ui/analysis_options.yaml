@@ -1,0 +1,16 @@
+# 本目录是 FlClash 0.9.1 设计系统的逐文件移植（见 NOTICE.md）。
+#
+# 为保持与上游源码逐行可比、便于日后同步，这里**不改写上游代码风格**，只在本
+# 子树关掉三条与之冲突的风格规则；flutter_lints 的其余规则（含全部 error /
+# warning 级诊断）在 lib/ui 下照常生效。`lib/app/` 等自写代码不受本文件影响，
+# 仍走根目录 analysis_options.yaml 的全量规则。
+include: ../../analysis_options.yaml
+
+linter:
+  rules:
+    # 上游的 AppGlyphs 字形常量沿用 CamelCase（`AppGlyphs.chevronDown`），
+    # 且拆分后以 `_g_xxx_` 顶层私有常量承载；改名会破坏与上游的对照关系。
+    constant_identifier_names: false
+    non_constant_identifier_names: false
+    # 上游组件普遍先声明字段再在构造函数里 `_x = x` 赋值。
+    prefer_initializing_formals: false

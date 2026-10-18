@@ -1,0 +1,341 @@
+// Portions derived from FlClash (https://github.com/chen08209/FlClash), Copyright (c) the FlClash authors, GPL-3.0-or-later.
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
+import 'package:diting/ui/context.dart';
+import 'package:diting/ui/shape.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
+import 'package:material_ui/material_ui.dart';
+
+part 'liquid_glass_capture.dart';
+part 'liquid_glass_capture_b.dart';
+part 'liquid_glass_capture_c.dart';
+part 'liquid_glass_b.dart';
+part 'liquid_glass_c.dart';
+part 'liquid_glass_d.dart';
+
+const _shaderAsset = 'shaders/liquid_glass.frag';
+const _glowIn = Duration(milliseconds: 120);
+const _glowOut = Duration(milliseconds: 360);
+const double _glowSpread = 3;
+const _profileTurns = 64;
+// kLine in shaders/liquid_glass.frag.
+const double _hairlineWidth = 0.67;
+// In corner radii from the corner of the bounds.
+const _shineAround = [
+  (along: 1.53, down: 0.0, lit: 0.68),
+  (along: 1.0, down: 0.0, lit: 0.48),
+  (along: 0.3, down: 0.3, lit: 0.38),
+  (along: 0.0, down: 1.0, lit: 0.17),
+  (along: 0.0, down: 1.5, lit: 0.07),
+  (along: 0.0, down: 2.0, lit: 0.03),
+];
+const _shineBands = [
+  (depth: 0.0, width: 1 / 3, lit: 1.0),
+  (depth: 1 / 3, width: 1 / 3, lit: 0.7),
+  (depth: 2 / 3, width: 1 / 3, lit: 0.47),
+  (depth: 1.0, width: 2 / 3, lit: 0.18),
+  (depth: 5 / 3, width: 2 / 3, lit: 0.12),
+  (depth: 7 / 3, width: 2 / 3, lit: 0.085),
+  (depth: 3.0, width: 2 / 3, lit: 0.065),
+  (depth: 11 / 3, width: 2 / 3, lit: 0.045),
+  (depth: 13 / 3, width: 2 / 3, lit: 0.035),
+];
+// The size of uShineEnds in shaders/liquid_glass.frag.
+const _shineSlots = 12;
+final _noShine = List<double>.unmodifiable(
+  List<double>.filled(2 * (_shineAround.length + 2) + 2 * _shineSlots, 0),
+);
+final _flatProfile = List<double>.unmodifiable(
+  List<double>.filled(_profileTurns, 0),
+);
+
+/// How much of iOS's glass the panes draw (.agents/architecture.md).
+enum LiquidGlassQuality { standard, ultra }
+
+/// Whether the navigation dock and the buttons of a page's bar are glass.
+class LiquidGlassScope extends InheritedWidget {
+  const LiquidGlassScope({
+    super.key,
+    required this.enabled,
+    this.quality = LiquidGlassQuality.ultra,
+    required super.child,
+  });
+
+  final bool enabled;
+  final LiquidGlassQuality quality;
+
+  static bool of(BuildContext context) => _of(context)?.enabled ?? false;
+
+  static LiquidGlassQuality qualityOf(BuildContext context) =>
+      _of(context)?.quality ?? LiquidGlassQuality.ultra;
+
+  static LiquidGlassScope? _of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LiquidGlassScope>();
+
+  @override
+  bool updateShouldNotify(LiquidGlassScope oldWidget) =>
+      enabled != oldWidget.enabled || quality != oldWidget.quality;
+}
+
+/// Lengths are dp. The shader shrinks [bevel] and [refraction] to fit a pane
+/// too small for them, so that a button bends in proportion to the dock.
+@immutable
+class LiquidGlass extends StatelessWidget {
+  const LiquidGlass({
+    super.key,
+    required this.style,
+    this.clipper,
+    this.shadows = const [],
+    this.pressed = false,
+    this.glow,
+    this.child,
+  });
+
+  final LiquidGlassStyle style;
+
+  /// Shapes the pane to its path in place of the pill. The glass bends
+  /// to the path by how far it reaches from the pane's center in each
+  /// direction, so it must meet every ray from the center once.
+  final CustomClipper<Path>? clipper;
+
+  final List<BoxShadow> shadows;
+
+  final bool pressed;
+
+  /// Lights the pane in place of the glow [pressed] lights at its center.
+  final LiquidGlassGlow? glow;
+
+  final Widget? child;
+
+  /// Builds the scenes of [capture] without panes, for a snapshot: offscreen
+  /// a pane has no backdrop to bend and comes out a flat tint.
+  static T withoutPanes<T>(T Function() capture) {
+    _LiquidGlassLayer._skipped++;
+    try {
+      return capture();
+    } finally {
+      _LiquidGlassLayer._skipped--;
+    }
+  }
+
+  /// Replaces a button's fill with glass.
+  static ButtonStyle buttonStyle(
+    LiquidGlassStyle Function(Set<WidgetState> states) styleOf,
+  ) {
+    return ButtonStyle(
+      backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+      backgroundBuilder: (context, states, child) => LiquidGlass(
+        style: styleOf(states),
+        pressed: states.contains(WidgetState.pressed),
+        child: child,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (glow case final glow?) {
+      return _LiquidGlassPane(
+        style: style,
+        clipper: clipper,
+        shadows: shadows,
+        press: 0,
+        fading: false,
+        glow: glow,
+        child: child,
+      );
+    }
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: pressed ? 1 : 0),
+      duration: context.motionDuration(pressed ? _glowIn : _glowOut),
+      curve: Curves.easeOut,
+      builder: (context, press, child) => _LiquidGlassPane(
+        style: style,
+        clipper: clipper,
+        shadows: shadows,
+        press: press,
+        fading: !pressed,
+        glow: null,
+        child: child,
+      ),
+      child: child,
+    );
+  }
+}
+
+sealed class LiquidGlassShape {
+  const LiquidGlassShape();
+}
+
+/// A rounded rectangle, no corner rounder than half the pane's short side.
+final class LiquidGlassCorners extends LiquidGlassShape {
+  const LiquidGlassCorners(this.radius);
+
+  LiquidGlassCorners.circular(double radius)
+    : radius = BorderRadius.circular(radius);
+
+  final BorderRadius radius;
+}
+
+/// A path laid out from the pane's top left, as [LiquidGlass.clipper] gives.
+final class LiquidGlassOutline extends LiquidGlassShape {
+  const LiquidGlassOutline(this.path);
+
+  final Path path;
+}
+
+/// A pane for a render object that shapes the glass itself, as a morph does.
+class LiquidGlassPane {
+  LiquidGlassPane(this.onReady);
+
+  final VoidCallback onReady;
+
+  final _layer = LayerHandle<_LiquidGlassLayer>();
+  Path? _profiled;
+  List<double> _profile = _flatProfile;
+
+  /// A pane moving within [hold] keeps one capture (.agents/architecture.md).
+  void paint(
+    PaintingContext context,
+    Rect rect, {
+    required LiquidGlassShape shape,
+    required LiquidGlassStyle style,
+    List<BoxShadow> shadows = const [],
+    LiquidGlassGlow glow = LiquidGlassGlow.none,
+    Rect? hold,
+    LiquidGlassRim? rim,
+  }) {
+    final pane = _layer.layer ??= _LiquidGlassLayer();
+    assert(rim == null || shape is LiquidGlassCorners);
+    switch (shape) {
+      case LiquidGlassCorners(:final radius):
+        final limit = Radius.circular(rect.shortestSide / 2);
+        final corners = BorderRadius.only(
+          topLeft: radius.topLeft.clamp(maximum: limit),
+          topRight: radius.topRight.clamp(maximum: limit),
+          bottomLeft: radius.bottomLeft.clamp(maximum: limit),
+          bottomRight: radius.bottomRight.clamp(maximum: limit),
+        );
+        _profiled = null;
+        if (hold == null) {
+          _paintShadows(context.canvas, rect, corners, shadows);
+        }
+        pane
+          ..corners = corners
+          ..outline = null
+          ..profile = _flatProfile;
+      case LiquidGlassOutline(:final path):
+        assert(shadows.isEmpty, 'An outlined pane casts none');
+        if (!identical(path, _profiled)) {
+          _profiled = path;
+          _profile = liquidGlassProfile(path, rect.size.center(Offset.zero));
+        }
+        pane
+          ..corners = BorderRadius.zero
+          ..outline = path.shift(rect.topLeft)
+          ..profile = _profile;
+    }
+    pane
+      ..program = _GlassProgram.request(onReady)
+      ..rect = rect
+      ..style = style
+      ..glow = glow
+      ..hold = hold
+      ..rim = rim;
+    context.addLayer(pane);
+    if (hold != null) {
+      _paintShadows(context.canvas, rect, pane.corners, shadows);
+    }
+  }
+
+  void clear() => _layer.layer = null;
+
+  void dispose() {
+    _GlassProgram.forget(onReady);
+    clear();
+  }
+
+  static void _paintShadows(
+    Canvas canvas,
+    Rect rect,
+    BorderRadius corners,
+    List<BoxShadow> shadows,
+  ) {
+    if (shadows.isEmpty) {
+      return;
+    }
+    final shape = AppShape.of(corners);
+    final reach = shadows.fold(
+      0.0,
+      (reach, shadow) => math.max(
+        reach,
+        shadow.offset.distance + shadow.spreadRadius + shadow.blurRadius * 2,
+      ),
+    );
+    canvas
+      ..save()
+      ..clipPath(
+        Path()
+          ..fillType = PathFillType.evenOdd
+          ..addRect(rect.inflate(reach))
+          ..addPath(shape.getOuterPath(rect), Offset.zero),
+      );
+    for (final shadow in shadows) {
+      canvas.drawRSuperellipse(
+        corners.toRSuperellipse(
+          rect.shift(shadow.offset).inflate(shadow.spreadRadius),
+        ),
+        shadow.toPaint(),
+      );
+    }
+    canvas.restore();
+  }
+}
+
+abstract final class _GlassProgram {
+  static ui.FragmentProgram? _program;
+  static Future<void>? _loading;
+
+  /// Final: a bundled shader that failed once fails again, and every attempt
+  /// loads synchronously on the UI isolate.
+  static var _failed = false;
+  static final _waiting = <VoidCallback>{};
+
+  static ui.FragmentProgram? request(VoidCallback onLoaded) {
+    if (_program != null ||
+        _failed ||
+        !ui.ImageFilter.isShaderFilterSupported) {
+      return _program;
+    }
+    _waiting.add(onLoaded);
+    _loading ??= _load().then(
+      (program) {
+        _program = program;
+        final waiting = _waiting.toList();
+        _waiting.clear();
+        for (final callback in waiting) {
+          callback();
+        }
+      },
+      onError: (Object error, StackTrace stack) {
+        _failed = true;
+        _waiting.clear();
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stack,
+            library: 'liquid glass',
+          ),
+        );
+      },
+    );
+    return null;
+  }
+
+  static void forget(VoidCallback onLoaded) => _waiting.remove(onLoaded);
+
+  static Future<ui.FragmentProgram> _load() =>
+      ui.FragmentProgram.fromAsset(_shaderAsset);
+}
