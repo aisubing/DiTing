@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
 import com.haoze.diting.R
+import com.haoze.diting.ui.localizedResource
 import com.haoze.diting.ui.localizedText
 
 /**
@@ -80,7 +81,7 @@ object AppNotificationChannels {
         // 3. Rule operation and import progress notification channel
         val ruleOperationsChannel = NotificationChannel(
             CHANNEL_RULE_OPERATIONS,
-            context.getString(R.string.rule_update_channel),
+            localizedResource(context, R.string.rule_update_channel),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = localizedText(context, "显示规则导入和更新进度")
@@ -100,7 +101,7 @@ object AppNotificationChannels {
         // 5. App download and update notification channel
         val appUpdateChannel = NotificationChannel(
             CHANNEL_APP_UPDATE,
-            context.getString(R.string.app_update_channel),
+            localizedResource(context, R.string.app_update_channel),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = localizedText(context, "显示应用安装包下载进度与安装提示")

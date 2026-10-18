@@ -9,6 +9,7 @@ import com.haoze.diting.core.rule.subscriptionIdOrNull
 import com.haoze.diting.data.entity.DnsLogEntity
 import com.haoze.diting.core.cache.DnsResponseCache
 import org.json.JSONArray
+import org.json.JSONObject
 
 /**
  * Handles decoding, rule attribution, and dispatching of DNS batch logs
@@ -38,7 +39,7 @@ internal class GoTunnelLogProcessor(
             val errorMessage = obj.optString("e")
             val cached = obj.optBoolean("c")
             val timestamp = obj.optLong("ts").takeIf { it > 0 } ?: System.currentTimeMillis()
-            val ttl = obj.optLong("ttl", 0L)
+            val ttl = upstreamTtlFrom(obj)
 
             val result = when {
                 errorMessage.isNotBlank() -> LogResult.ERROR
@@ -150,3 +151,14 @@ internal fun String.toHttpRequestOutcome(): HttpRequestOutcome = when (this) {
     "error" -> HttpRequestOutcome.ERROR
     else -> HttpRequestOutcome.ALLOWED
 }
+
+/**
+ * Reads the upstream TTL out of one batched log entry.
+ *
+ * A *missing* `ttl` key means the Go side had no TTL information at all, while a
+ * *present* 0 means the upstream answer expires immediately and must never be
+ * persisted. Collapsing the two into the old `optLong("ttl", 0L)` is what put
+ * real TTL=0 answers into the cache table with the policy maximum (O-107).
+ */
+internal fun upstreamTtlFrom(obj: JSONObject): Long =
+    if (obj.has("ttl")) obj.optLong("ttl", DnsResponseCache.TTL_UNKNOWN) else DnsResponseCache.TTL_UNKNOWN

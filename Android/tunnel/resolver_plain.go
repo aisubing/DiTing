@@ -104,7 +104,31 @@ func (r *Resolver) queryPlainContext(ctx context.Context, rawQuery []byte, serve
 		return nil, fmt.Errorf("plain read: %w", err)
 	}
 
-	return buf[:n], nil
+	response := buf[:n]
+
+	// RFC 1035 §4.2.1: a UDP answer with TC=1 is a *truncated* answer, the
+	// resolver must retry over TCP. Without this the truncated message was
+	// returned as final, cached, and replayed to every subsequent client —
+	// which needs the upstream to omit the EDNS0 OPT record in its reply, so
+	// the client sees a header-only answer with no address records.
+	if isTruncatedResponse(response) {
+		tcpResp, tcpErr := queryPlainTCPContext(ctx, outbound, rawQuery, targetServer)
+		if tcpErr == nil {
+			return tcpResp, nil
+		}
+		// Keep the truncated UDP answer only when TCP also failed; reporting a
+		// hard error here would turn a partially usable answer into SERVFAIL.
+		return response, nil
+	}
+
+	return response, nil
+}
+
+// isTruncatedResponse reports whether a raw DNS message has the TC flag set.
+// The header is 12 bytes with the flags at offset 2; TC is bit 1 of the high
+// flags byte (0x02).
+func isTruncatedResponse(raw []byte) bool {
+	return len(raw) >= 12 && raw[2]&0x02 != 0
 }
 
 func queryPlainTCPContext(ctx context.Context, outbound flowOutbound, rawQuery []byte, server string) ([]byte, error) {

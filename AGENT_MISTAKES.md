@@ -13,6 +13,16 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-18: 「问题不存在」初判三次被自己推翻；照抄他人建议的守卫会回归已修的项（归因/回归）
+
+- **现象/根因**：(1) A-096 初判「问题不存在」，理由是「`finally` 只删本线程 temp」——复核发现**表述反了**：`MappedSubscriptionRuleIndex`/`MappedSubscriptionRewriteIndex` 的 `finally` 是**无条件** `temp.delete()`，三条路径全覆盖，真正缺的只是「残留清扫」（`RuleIndexLayout.deleteAll` 零调用），故应判「成立但不改」而非「不存在」。(2) A-100 初判「问题不存在」，理由写成「`editRule:444` **保留** `SOURCE_PRESET` 恰恰反驳了升级会清除它」——**逻辑反了**：正因为编辑后仍写回 `SOURCE_PRESET`，升级时 `deleteBySource(SOURCE_PRESET)` 才会把用户改动一并删掉；「保留」是缺陷成因而不是反证。(3) O-107 初判把根因写成 `DnsCachePolicy:34-35`（该处 `<=0 return 0` 本就正确），真因是 `log_aggregator.go` 的 `json:"ttl,omitempty"` 把 TTL=0 的键整个删掉 + `recordResolved` 用 `<=0` 合并「真实 0」与「未知」；且我一度声称「Go 侧未上报 TTL」，`git show HEAD:Android/tunnel/engine_dns.go` 一看基线 :390-396 早就 `notifyLogWithTTL`，遂把自造的 `engine_standalone.go` 改动整体回退。(4) 反向案例：teammate 建议给 `Engine.Stop()` 加 `if !e.running { return }` 早退守卫来修 O-104——那会让空闲期的 `Stop()` 不再释放 `dnsCache`/`stackCertMgr`，**直接回归同一轮刚修的 A-017**；改用 `sessionGen` 代际判定后两件事同时成立。
+- **教训**：(1) 判「问题不存在」的举证方向必须写出来自查一遍：**「代码保留了 X」通常证明 X 会被后续流程消费，而不是证明 X 无害**；凡结论是「因此不会发生」，就要把「发生路径」显式走一遍再否掉。(2) 「无行为后果」≠「问题不存在」——A-096 属于「机制成立但修它不划算」，正确判定是「需修正/本轮不改」，与「证伪」是两种结论，不得混用档位。(3) 归因前先 `git show HEAD:<file>` 确认基线行为，别把「我以为它没做」当事实；据错判写出的代码改动要**整体回退**，不要留半成品。(4) 采纳他人修复建议前先算它对**其他已修项**的影响面——本轮 `Stop()` 早退守卫就是「修一个、坏一个」的典型；守卫条件要选能同时表达「是谁」的（代际/身份），而不是能被下一个会话重置为真的状态位（`running`）。
+
+### 2026-10-18: 修词法截断时改「搜索起点」反而制造回归；死分支用「单原子」近似（实现/可达性）
+
+- **现象/根因**：(1) A-095 的 `#` 注释截断：首版修复把 `indexOf('#')` 改成「从正则字面量闭合 `/` 之后开始搜索」，`/ads#banner/` 是修好了，但 `@@/ads#banner/ # keep this exception` 里真正的注释也被跳过 ⇒ `value` 变成整行含 `#` ⇒ 合法的 allow 规则被判 unsupported，**用修复换来了新回归**（正是既有行为「闭合 `/` 之后的空白+`#` 仍是注释」被打破）。改用「`#` 只有位于行首或紧跟空白才开注释；仅当 `#` 落在前导正则字面量**体内**时才跳过」后两种输入同时成立。(2) 之后我「优化」成单趟扫描双层实现，先用 606 组生成用例对比两版 `#` 索引，结果为 0 差异——说明第二版并非修复而是等价重写，于是回退到单函数版本，避免为不存在的缺陷增加复杂度。(3) O-133 死分支：按「条件只含单个 `text.` 谓词才可能被吞并」的朴素规则得 8 个死分支，按合取蕴含关系（`startsWith` 蕴含 `startsWith`/`equals`，`endsWith` 同理，`contains` 取子串）得 14 个，与 triage 文档的 13 个（且含错项 108/119、漏 49/72/83/84/106）三者互不相同。
+- **教训**：(1) 注释/引号这类**词法**缺陷的判据是「什么字符序列构成注释」，不是「从哪里开始找」——改起点等于重定义整个词法，必须先把「旧行为必须保持」的既有用例列出来做回归，再谈新用例。(2) 声称某实现有缺陷前，先构造差分用例证明两版**不等价**；先优化后验证的顺序会让我把等价重写当修复写进报告。(3) `when` 分支可达性不能用「单原子条件」近似：`&&` 连接时被吞并的充分必要条件是**逐原子蕴含**（且 `text` 参数必须同一），并先确认条件里没有 `||`、`in`、正则等非原子内容，否则得到的死分支清单删了就是真回归。
+
 ### 2026-10-18: 先入为主复述「fgRequired 被重新武装」的相反结论（归因/AOSP 取证）
 
 - **现象/根因**：排查 `ForegroundServiceDidNotStartInTimeException` 冷启动崩溃时，我一度把根因写成「`stop()` 里的 `startService(stopIntent)` 把 `fgRequired` **重新置为 true**」，并已据此写好代码注释。回读 AOSP `ActiveServices.startServiceInnerLocked` 第 1196 行 `r.fgRequired = fgRequired;` 才发现该值来自**调用方 API**（`startService` → false，`startForegroundService` → true），与 intent 是否带 action 无关 ⇒ 那次 `startService` 恰恰是**清除**义务，把它删掉会让义务一直挂着、反而更容易崩。真正致命的是同一 `stop()` 里的 `stopService()`：`stopServiceLocked` 置 `startRequested=false` 后经 `bringDownServiceIfNeededLocked`（`mPendingServices` 不含该记录，因为恢复进程已就绪走 `r.app != null` 分支直接 `sendServiceArgsLocked` 返回）到达 `bringDownServiceLocked`，此时 `r.fgRequired` 仍为 true ⇒ 立即 `SERVICE_FOREGROUND_CRASH_MSG`（无延迟）。

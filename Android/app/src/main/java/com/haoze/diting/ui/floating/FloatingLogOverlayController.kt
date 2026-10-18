@@ -297,7 +297,7 @@ class FloatingLogOverlayController(
         val params = windowParams ?: WindowManager.LayoutParams(
             dp(48),
             dp(56),
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            floatingLogOverlayWindowType(android.os.Build.VERSION.SDK_INT),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {

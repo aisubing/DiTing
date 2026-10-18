@@ -121,12 +121,19 @@ class DnsVpnRuntimeConfigManager(
                         activeBootstrapIps = newBootstrapIps
                         dynamicBlockResponseTracker.clear()
                         dbComponents.dnsCache.updatePolicy(newCachePolicy)
+                        // O-103: commit the resolution mode only if the engine actually
+                        // accepted it. If the Go sync threw, the engine's mode is unknown,
+                        // so the snapshot keeps the previous one.
+                        activeResolutionMode = RuntimeConfigCommitPolicy.committedResolutionMode(
+                            current = activeResolutionMode,
+                            requested = newResolutionMode,
+                            applied = goSyncError == null
+                        )
                         if (goSyncError != null) {
                             onNotificationRefresh()
                             Log.w(TAG, "Failed to refresh Go DNS upstream; keeping current snapshot", goSyncError)
                             return@fold
                         }
-                        activeResolutionMode = newResolutionMode
                         activeProviders = updatedProviders
                         onNotificationRefresh()
                         Log.i(
@@ -149,7 +156,11 @@ class DnsVpnRuntimeConfigManager(
                             Log.w(TAG, "Failed to sync Go DNS response policy", syncError)
                         }
                         activeDnsCachePolicy = newCachePolicy
-                        activeResolutionMode = newResolutionMode
+                        // O-103: no assignment to activeResolutionMode here. The Go engine
+                        // was re-synced with the *previous* providers above (which is what
+                        // derives the mode), so it is still running the previous mode;
+                        // committing the newly requested one made the notification and the
+                        // UI claim a mode the engine was not running.
                         activeBlockResponseMode = newBlockResponseMode
                         activeDynamicBlockResponseConfig = newDynamicBlockResponseConfig
                         activeBootstrapEnabled = newBootstrapEnabled

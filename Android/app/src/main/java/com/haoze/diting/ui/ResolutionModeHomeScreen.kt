@@ -72,7 +72,10 @@ fun ResolutionModeHomeScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var showModeDialog by remember { mutableStateOf(false) }
-    NavigationSettledEffect { viewModel.activate() }
+    // Reload on every resume, not once: the view model outlives this screen, so
+    // providers added or removed in provider management only show up here if the
+    // store is re-read when the user comes back.
+    OnResumed { viewModel.activate() }
     LaunchedEffect(message) { message?.let { context.showToast(it, Toast.LENGTH_SHORT); viewModel.clearMessage() } }
 
     if (showModeDialog) {

@@ -52,6 +52,7 @@ internal fun translateLogsAndStatsExact(text: String): String? = when (text) {
     "开启后首页日志按钮显示当前的日志分组页；关闭后显示新版日志仪表盘" -> "Show the current log groups from the home Logs button; when disabled, show the new log dashboard"
     "选择 DNS 请求日志的记录范围" -> "Choose what DNS request logs record"
     "当前筛选下暂无请求日志" -> "No request logs for the current filter"
+    "当前筛选下暂无 DNS 请求日志" -> "No DNS request logs for the current filter"
     "未授予悬浮窗权限，悬浮窗日志未开启" -> "Overlay permission was not granted; floating logs are disabled"
     "无法打开悬浮窗权限设置" -> "Unable to open overlay permission settings"
     "请求日志仪表盘" -> "Request log dashboard"

@@ -86,12 +86,15 @@ class AppUpdateManager(
                 val body = response.body ?: error("下载更新失败：响应内容为空")
                 val totalBytes = body.contentLength().takeIf { it > 0L } ?: -1L
                 var downloadedBytes = 0L
-                var lastReportedBytes = -1L
+                val throttle = AppUpdateProgressThrottle()
                 fun reportProgress(force: Boolean = false) {
-                    if (force || downloadedBytes - lastReportedBytes >= PROGRESS_UPDATE_BYTES) {
-                        onProgress(downloadedBytes, totalBytes)
-                        lastReportedBytes = downloadedBytes
+                    val nowMs = System.currentTimeMillis()
+                    if (force) {
+                        throttle.markReported(downloadedBytes, nowMs)
+                    } else if (!throttle.shouldReport(downloadedBytes, nowMs)) {
+                        return
                     }
+                    onProgress(downloadedBytes, totalBytes)
                 }
                 reportProgress(force = true)
                 body.byteStream().use { input ->
@@ -177,7 +180,6 @@ class AppUpdateManager(
         /** 更新安装包的下载目录名，数据清理等外部模块需与之保持一致。 */
         const val UPDATE_DIRECTORY = "app-update"
         private const val RELEASE_URL = "https://api.github.com/repos/haoze-evolluling/DITING/releases/latest"
-        private const val PROGRESS_UPDATE_BYTES = 256L * 1024L
     }
 }
 

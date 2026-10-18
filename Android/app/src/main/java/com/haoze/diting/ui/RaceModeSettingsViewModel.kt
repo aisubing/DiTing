@@ -16,6 +16,7 @@ import com.haoze.diting.core.diagnostic.ProviderHealthSnapshot
 import com.haoze.diting.core.diagnostic.ProviderHealthStore
 import com.haoze.diting.R
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -98,17 +99,31 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
     private val _initialLoading = MutableStateFlow(true)
     val initialLoading: StateFlow<Boolean> = _initialLoading.asStateFlow()
 
-    private var activated = false
+    /** In-flight reload; a newer activation cancels the older snapshot. */
+    private var loadJob: Job? = null
 
+    /**
+     * Called whenever a screen showing this data enters the RESUMED state.
+     *
+     * The view model is activity-scoped (every entry point calls `viewModel()`
+     * with no key, so navigating between the resolution-mode screens reuses the
+     * same instance), which means the provider list loaded on the first visit
+     * stayed cached forever. Coming back from provider management — where the
+     * provider list is edited — kept rendering that one-shot snapshot, so a
+     * newly added or removed provider only appeared after a process restart.
+     * Reloading on every activation keeps the screen in step with the stores;
+     * `initialLoading` is already false, so the screen re-renders in place
+     * instead of flashing a loading placeholder.
+     */
     fun activate() {
-        if (!activated) {
-            activated = true
-            load()
-        }
+        load()
     }
 
     fun load() {
-        viewModelScope.launch(Dispatchers.IO) {
+        // A new reload supersedes an in-flight one so out-of-order completions
+        // cannot overwrite fresher data with a stale snapshot.
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             ProviderHealthEngine.flushActive(commit = true, dataset = dataset)
             val all = DnsProvider.loadRuntimeProviders(context, dataset)
@@ -122,6 +137,10 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
             val smartIds = ResolutionSettingsStore.getSmartPredictionProviderIds(context, dataset).filterTo(mutableSetOf()) { id -> all.any { it.id == id } }
             val parallelIds = ResolutionSettingsStore.getParallelRaceProviderIds(context, dataset).filterTo(mutableSetOf()) { id -> all.any { it.id == id } }
             withContext(Dispatchers.Main) {
+                // Only a changed provider set makes the visible latency results
+                // stale; a plain re-entry must not wipe results the user is
+                // still reading.
+                val providersChanged = all != _providers.value
                 _providers.value = all
                 _healthByProvider.value = health
                 _latencyTestSelectedIds.value = latencyIds
@@ -132,7 +151,7 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
                 _parallelRaceIds.value = parallelIds
                 _singleProviderId.value = DnsProvider.loadSelected(context, dataset).id
                 _testDomain.value = domain
-                _results.value = emptyList()
+                if (providersChanged) _results.value = emptyList()
                 _initialLoading.value = false
             }
         }
@@ -154,15 +173,20 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
     fun setResolutionMode(mode: DnsResolutionMode): Boolean {
         if (_resolutionMode.value == mode) return false
         if (!isModeValid(mode)) {
-            _message.value = getApplication<Application>().getString(R.string.resolution_mode_requires_two_providers)
-            if (mode == DnsResolutionMode.PRIMARY_BACKUP) _message.value = getApplication<Application>().getString(R.string.primary_backup_requires_two_providers)
+            _message.value = localizedString(R.string.resolution_mode_requires_two_providers)
+            if (mode == DnsResolutionMode.PRIMARY_BACKUP) _message.value = localizedString(R.string.primary_backup_requires_two_providers)
             return false
         }
         val context = getApplication<Application>()
         ResolutionSettingsStore.setDnsResolutionMode(context, mode, dataset)
         _resolutionMode.value = mode
         RuntimeDnsSettingsRefresher.refreshIfRunning(context, "resolution_mode_changed", dataset = dataset)
-        _message.value = getApplication<Application>().getString(
+        // O-121: both the format string and its argument must come from the same
+        // language source. The format string used to be read from the unwrapped
+        // Application context (system locale) while the argument went through
+        // localizedText (app locale), so an app set to English on a Chinese device
+        // rendered a Chinese frame around an English mode name.
+        _message.value = localizedString(
             R.string.resolution_mode_changed,
             localizedText(getApplication<Application>(), mode.displayName)
         )
@@ -211,6 +235,19 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
 
     private fun toggle(ids: Set<String>, id: String): Set<String> = ids.toMutableSet().apply {
         if (!remove(id)) add(id)
+    }
+
+    /**
+     * O-121: reads a string resource through the *app* locale rather than the system
+     * locale. `getApplication().getString()` resolves against the Application
+     * resources, which only follow the system configuration, so on a device whose
+     * system language differs from the in-app language selection every bare
+     * `getString` rendered in the wrong language while the rest of the screen used
+     * [localizedText]. All user-visible ViewModel messages go through here.
+     */
+    private fun localizedString(resId: Int, vararg args: Any): String {
+        val localized = AppLanguageManager.wrap(getApplication<Application>())
+        return if (args.isEmpty()) localized.getString(resId) else localized.getString(resId, *args)
     }
 
     fun movePrimaryBackupProvider(id: String, direction: Int) {
@@ -271,7 +308,7 @@ class RaceModeSettingsViewModel @JvmOverloads constructor(
             ?: ResolutionSettingsStore.getRaceTestDomain(context, dataset)
         val selected = _providers.value.filter { it.id in _latencyTestSelectedIds.value }
         if (selected.isEmpty()) {
-            _message.value = getApplication<Application>().getString(R.string.select_latency_test_providers)
+            _message.value = localizedString(R.string.select_latency_test_providers)
             return
         }
 

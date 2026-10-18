@@ -20,6 +20,7 @@ import com.haoze.diting.data.entity.SubscriptionKind
 import com.haoze.diting.core.rule.RuntimeDnsSettingsRefresher
 import com.haoze.diting.ui.background.CustomBackgroundManager
 import com.haoze.diting.ui.settings.AppRulesSettingsStore
+import com.haoze.diting.ui.settings.AppearanceSettingsStore
 import com.haoze.diting.ui.settings.OutboundProxySettingsStore
 import com.haoze.diting.ui.settings.SystemSettingsStore
 import com.haoze.diting.core.rule.AllowListManager
@@ -205,6 +206,9 @@ object DataCleanupManager {
         cosmeticDao.clearAll()
         cosmeticDao.clearAllSources()
         subscriptionDao.deleteByKind(SubscriptionKind.DOMAIN)
+        // A-066: 订阅行的 ruleCount/lastUpdated/ETag 仍指向已被删掉的规则，
+        // 下一次自动更新会拿旧 ETag 请求并误判“未变更”而永不重新导入。
+        subscriptionDao.resetAfterRuleCleanup()
         subscriptionAutoUpdateDao?.deleteOrphans()
     }
 
@@ -428,13 +432,13 @@ object DataCleanupManager {
      * 清除自定义背景图片缓存与偏好配置，恢复默认背景。
      */
     fun clearCustomBackground(context: Context) {
+        // 背景偏好真实存储位置是 AppearanceSettingsStore 的 PREFS_NAME，逐项清理
+        // 才能同时清掉启用标记、当前 URI 与全部候选 URI 列表。
+        AppearanceSettingsStore.getCustomBackgroundUris(context).forEach { uri ->
+            AppearanceSettingsStore.removeCustomBackgroundUri(context, uri)
+        }
+        AppearanceSettingsStore.setCustomBackground(context, false, null)
         CustomBackgroundManager.clearActiveCache(context)
-        val prefs = context.getSharedPreferences("appearance_settings", Context.MODE_PRIVATE)
-        prefs.edit()
-            .remove("custom_background_enabled")
-            .remove("custom_background_uri")
-            .remove("custom_background_uris")
-            .apply()
         CustomBackgroundManager.onBackgroundSettingsChanged(context, false, null)
     }
 

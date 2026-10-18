@@ -1,7 +1,5 @@
 package com.haoze.diting.core.rule
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -26,7 +24,9 @@ import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.data.AppDatabase
 import com.haoze.diting.data.entity.SubscriptionKind
+import com.haoze.diting.notification.AppNotificationChannels
 import com.haoze.diting.ui.RuntimeDnsSettingsRefresher
+import com.haoze.diting.ui.localizedResource
 import com.haoze.diting.ui.localizedText
 import java.io.BufferedReader
 import java.io.IOException
@@ -490,15 +490,15 @@ class RuleOperationWorker(
     )
 
     private fun titleFor(type: RuleOperationType): String = when (type) {
-        RuleOperationType.ADD_SUBSCRIPTION, RuleOperationType.ADD_LOCAL_SUBSCRIPTION -> applicationContext.getString(R.string.operation_import_subscription)
-        RuleOperationType.EDIT_SUBSCRIPTION -> applicationContext.getString(R.string.operation_save_subscription)
-        RuleOperationType.UPDATE_SUBSCRIPTION -> applicationContext.getString(R.string.operation_update_subscription)
-        RuleOperationType.UPDATE_ALL_SUBSCRIPTIONS -> applicationContext.getString(R.string.operation_update_all_subscriptions)
-        RuleOperationType.IMPORT_RULES -> applicationContext.getString(R.string.operation_import_rules)
-        RuleOperationType.IMPORT_HOSTS_RULES -> applicationContext.getString(R.string.operation_import_hosts_rules)
-        RuleOperationType.IMPORT_ADDRESS_RULE_BACKUP -> applicationContext.getString(R.string.operation_restore_address_rules)
-        RuleOperationType.ADD_BLOCK_RULE -> applicationContext.getString(R.string.operation_add_block_rule)
-        RuleOperationType.ADD_ALLOW_RULE -> applicationContext.getString(R.string.operation_add_allow_rule)
+        RuleOperationType.ADD_SUBSCRIPTION, RuleOperationType.ADD_LOCAL_SUBSCRIPTION -> localizedResource(applicationContext, R.string.operation_import_subscription)
+        RuleOperationType.EDIT_SUBSCRIPTION -> localizedResource(applicationContext, R.string.operation_save_subscription)
+        RuleOperationType.UPDATE_SUBSCRIPTION -> localizedResource(applicationContext, R.string.operation_update_subscription)
+        RuleOperationType.UPDATE_ALL_SUBSCRIPTIONS -> localizedResource(applicationContext, R.string.operation_update_all_subscriptions)
+        RuleOperationType.IMPORT_RULES -> localizedResource(applicationContext, R.string.operation_import_rules)
+        RuleOperationType.IMPORT_HOSTS_RULES -> localizedResource(applicationContext, R.string.operation_import_hosts_rules)
+        RuleOperationType.IMPORT_ADDRESS_RULE_BACKUP -> localizedResource(applicationContext, R.string.operation_restore_address_rules)
+        RuleOperationType.ADD_BLOCK_RULE -> localizedResource(applicationContext, R.string.operation_add_block_rule)
+        RuleOperationType.ADD_ALLOW_RULE -> localizedResource(applicationContext, R.string.operation_add_allow_rule)
     }
 
     private fun createForegroundInfo(title: String, current: Int, total: Int): ForegroundInfo {
@@ -522,10 +522,10 @@ class RuleOperationWorker(
     }
 
     private fun buildNotification(title: String, current: Int, total: Int, ongoing: Boolean) =
-        NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+        NotificationCompat.Builder(applicationContext, AppNotificationChannels.CHANNEL_RULE_OPERATIONS)
             .setSmallIcon(R.drawable.dns_svgrepo_com)
             .setContentTitle(localizedText(applicationContext, title))
-            .setContentText(if (total > 0) "$current / $total" else applicationContext.getString(R.string.operation_preparing))
+            .setContentText(if (total > 0) "$current / $total" else localizedResource(applicationContext, R.string.operation_preparing))
             .setProgress(total.coerceAtLeast(0), current.coerceAtLeast(0), total <= 0)
             .setOngoing(ongoing)
             .setOnlyAlertOnce(true)
@@ -533,7 +533,7 @@ class RuleOperationWorker(
             .build()
 
     private fun showFinishedNotification(title: String, message: String) {
-        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(applicationContext, AppNotificationChannels.CHANNEL_RULE_OPERATIONS)
             .setSmallIcon(R.drawable.dns_svgrepo_com)
             .setContentTitle(localizedText(applicationContext, title))
             .setContentText(localizedText(applicationContext, message))
@@ -554,16 +554,14 @@ class RuleOperationWorker(
     )
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = applicationContext.getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, applicationContext.getString(R.string.rule_update_channel), NotificationManager.IMPORTANCE_LOW)
-            )
-        }
+        // Reuse the shared registry: the worker used to register the channel
+        // under its own hard-coded id ("rule_operations"), so the foreground
+        // notification and the one created by createAllChannels() ended up as
+        // two different channels with the same title.
+        AppNotificationChannels.createAllChannels(applicationContext)
     }
 
     private companion object {
-        const val CHANNEL_ID = "rule_operations"
         const val LOCAL_IMPORT_SOURCE = "local_import"
         const val LOCAL_HOSTS_SOURCE = "local_hosts"
         const val COMPLETION_ID_MASK = 0x40000000

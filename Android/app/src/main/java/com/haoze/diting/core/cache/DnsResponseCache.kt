@@ -38,6 +38,19 @@ class DnsResponseCache(
     private val inFlightMutex = Mutex()
     private val inFlight = HashMap<String, Deferred<ByteArray>>()
     private val pendingWriteMutex = Mutex()
+
+    /**
+     * Guards the actual database write of a pending flush.
+     *
+     * [clear] used to leave a window between the drain of [pendingWrites] and
+     * `dao.clearAll()`: a flush that had already drained its batch wrote it back
+     * *after* the delete, resurrecting up to [WRITE_BATCH_SIZE] rows the user had
+     * just removed. Holding this mutex across both the flush write and the
+     * delete, plus the [pendingWriteEpoch] check inside the flush, makes the
+     * write and the delete mutually exclusive and order-safe.
+     */
+    private val dbWriteMutex = Mutex()
+    private var pendingWriteEpoch = 0L
     private val pendingWrites = LinkedHashMap<String, DnsCacheEntity>()
     private val pendingHits = LinkedHashMap<String, DnsCacheHitDelta>()
     private var pendingWriteFlushJob: Job? = null
@@ -118,7 +131,10 @@ class DnsResponseCache(
     suspend fun clear() {
         clearMemory()
         clearPendingWrites()
-        dao.clearAll()
+        // Serialize the delete against an in-flight flush write: without this a
+        // flush that already drained its batch could re-insert every row right
+        // after the wipe.
+        dbWriteMutex.withLock { dao.clearAll() }
     }
 
     suspend fun recordCacheHit(
@@ -132,13 +148,24 @@ class DnsResponseCache(
         recordHit(key, now)
     }
 
+    /**
+     * Records a freshly resolved answer so the cache statistics reflect it.
+     *
+     * [upstreamTtl] must distinguish "the upstream did not report a TTL"
+     * ([TTL_UNKNOWN]) from "the upstream reported TTL 0, this answer must not be
+     * cached". Treating both as unknown made real `TTL=0` answers — which the
+     * engine re-resolves on every query — land in the persisted cache table with
+     * the policy maximum, producing statistics rows that never expire in practice
+     * (O-107). Passing [TTL_UNKNOWN] keeps the old behaviour for callers that
+     * genuinely have no TTL information.
+     */
     suspend fun recordResolved(
         queryName: String,
         queryType: Int,
         resolvedIPs: String,
         qclass: Int = 1,
         now: Long = System.currentTimeMillis(),
-        upstreamTtl: Long = 0L
+        upstreamTtl: Long = TTL_UNKNOWN
     ) {
         val currentPolicy = policy
         if (!currentPolicy.enabled || resolvedIPs.isBlank()) return
@@ -147,10 +174,16 @@ class DnsResponseCache(
         val ipList = resolvedIPs.split(',').map { it.trim() }.filter { it.isNotEmpty() }
         if (ipList.isEmpty()) return
 
-        val rawTtl = if (upstreamTtl > 0L) upstreamTtl else currentPolicy.maxTtlSeconds.coerceAtLeast(300L)
+        val rawTtl = when {
+            upstreamTtl > 0L -> upstreamTtl
+            // Unknown TTL: fall back to the policy ceiling, as before.
+            upstreamTtl == TTL_UNKNOWN -> currentPolicy.maxTtlSeconds.coerceAtLeast(300L)
+            // Upstream explicitly said this answer expires immediately. The
+            // engine re-queries it every time, so it must not be persisted.
+            else -> return
+        }
         val effectiveTtl = currentPolicy.effectiveTtlSeconds(rawTtl)
         if (effectiveTtl <= 0L) return
-
 
         val existingEntry = shardFor(key).get(key)
         val currentHitCount = existingEntry?.currentHitCount ?: 0
@@ -298,28 +331,35 @@ class DnsResponseCache(
     }
 
     suspend fun flushPendingWrites() {
-        val (writes, hits) = pendingWriteMutex.withLock {
+        val (writes, hits, epoch) = pendingWriteMutex.withLock {
             pendingWriteFlushJob = null
             val w = pendingWrites.values.toList().also { pendingWrites.clear() }
             val h = pendingHits.values.toList().also { pendingHits.clear() }
-            w to h
+            Triple(w, h, pendingWriteEpoch)
         }
         if (writes.isEmpty() && hits.isEmpty()) return
-        runCatching { dao.applyPendingWrites(writes, hits) }.onFailure {
-            pendingWriteMutex.withLock {
-                writes.forEach { entity -> pendingWrites.putIfAbsent(entity.key, entity) }
-                hits.forEach { hit ->
-                    val existing = pendingHits[hit.key]
-                    pendingHits[hit.key] = if (existing == null) {
-                        hit
-                    } else {
-                        DnsCacheHitDelta(hit.key, existing.delta + hit.delta, max(existing.lastHitAt, hit.lastHitAt))
+        // Hold the DB-write lock so a concurrent clear() cannot delete the table
+        // between this drain and the insert below. The epoch re-check covers the
+        // opposite order: if clear() ran while we were waiting for the lock, our
+        // batch belongs to a wiped cache and must be dropped instead of written.
+        dbWriteMutex.withLock {
+            if (pendingWriteMutex.withLock { pendingWriteEpoch } != epoch) return
+            runCatching { dao.applyPendingWrites(writes, hits) }.onFailure {
+                pendingWriteMutex.withLock {
+                    writes.forEach { entity -> pendingWrites.putIfAbsent(entity.key, entity) }
+                    hits.forEach { hit ->
+                        val existing = pendingHits[hit.key]
+                        pendingHits[hit.key] = if (existing == null) {
+                            hit
+                        } else {
+                            DnsCacheHitDelta(hit.key, existing.delta + hit.delta, max(existing.lastHitAt, hit.lastHitAt))
+                        }
                     }
-                }
-                if (pendingWriteFlushJob?.isActive != true) {
-                    pendingWriteFlushJob = scope.launch {
-                        delay(WRITE_FLUSH_DELAY_MS)
-                        flushPendingWrites()
+                    if (pendingWriteFlushJob?.isActive != true) {
+                        pendingWriteFlushJob = scope.launch {
+                            delay(WRITE_FLUSH_DELAY_MS)
+                            flushPendingWrites()
+                        }
                     }
                 }
             }
@@ -332,6 +372,9 @@ class DnsResponseCache(
             pendingWriteFlushJob = null
             pendingWrites.clear()
             pendingHits.clear()
+            // Invalidate batches that were already drained by a concurrent flush
+            // but have not reached the database yet.
+            pendingWriteEpoch++
         }
     }
 
@@ -453,6 +496,12 @@ class DnsResponseCache(
     }
 
     companion object {
+        /**
+         * Marker for "the caller has no TTL information at all", as opposed to a
+         * reported TTL of 0 (which means "do not cache this answer").
+         */
+        const val TTL_UNKNOWN = -1L
+
         private val EMPTY_RESPONSE = ByteArray(0)
         private val EMPTY_INT_ARRAY = IntArray(0)
         private const val DEFAULT_MAX_ENTRIES = 2048

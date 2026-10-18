@@ -84,7 +84,10 @@ internal fun SpeedTestSection(
         }
     }
 
-    NavigationSettledEffect {
+    // Reload on every resume, not once: the view model is activity-scoped and
+    // outlives this section, so the provider list must be re-read when the user
+    // returns from provider management.
+    OnResumed {
         viewModel.activate()
     }
 

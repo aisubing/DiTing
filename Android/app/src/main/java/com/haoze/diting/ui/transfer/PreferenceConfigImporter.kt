@@ -112,8 +112,13 @@ internal class PreferenceConfigImporter(private val session: ImportSessionContex
             sys.appLanguageMode?.let { AppLanguageManager.setMode(context, AppLanguageMode.fromStorageValue(it)) }
             sys.persistentNotificationEnabled?.let { NotificationSettingsStore.setPersistentNotificationEnabled(context, it) }
             sys.trafficSpeedEnabled?.let { NotificationSettingsStore.setTrafficSpeedEnabled(context, it) }
-            if (sys.customRunningNotificationText != null && sys.customStoppedNotificationText != null) {
-                NotificationSettingsStore.setCustomTexts(context, sys.customRunningNotificationText, sys.customStoppedNotificationText)
+            mergedCustomNotificationTexts(
+                importedRunning = sys.customRunningNotificationText,
+                importedStopped = sys.customStoppedNotificationText,
+                storedRunning = NotificationSettingsStore.getCustomRunningText(context),
+                storedStopped = NotificationSettingsStore.getCustomStoppedText(context)
+            )?.let { (running, stopped) ->
+                NotificationSettingsStore.setCustomTexts(context, running, stopped)
             }
             session.systemSettingsUpdated = true
             val detail = "系统与通用设置"
@@ -121,4 +126,24 @@ internal class PreferenceConfigImporter(private val session: ImportSessionContex
             session.complete("系统与通用设置", "已应用系统与通用设置")
         }
     }
+}
+
+/**
+ * Resolves the notification texts a backup should apply.
+ *
+ * A backup may carry only one of the two custom texts: the exporter writes an
+ * empty string for a field the user left blank, and the parser drops empty
+ * fields to `null`. Falling back to the locally stored value for the missing
+ * side keeps the imported half instead of discarding the pair, while a backup
+ * that carries neither (or predates the fields) must not touch anything at all
+ * — hence the `null` result.
+ */
+internal fun mergedCustomNotificationTexts(
+    importedRunning: String?,
+    importedStopped: String?,
+    storedRunning: String,
+    storedStopped: String
+): Pair<String, String>? {
+    if (importedRunning == null && importedStopped == null) return null
+    return (importedRunning ?: storedRunning) to (importedStopped ?: storedStopped)
 }

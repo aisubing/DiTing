@@ -25,9 +25,11 @@ type logItem struct {
 	ErrorMessage   string `json:"e"`
 	Cached         bool   `json:"c"`
 	Timestamp      int64  `json:"ts"`
-	TTL            int64  `json:"ttl,omitempty"`
+	// No omitempty: the Kotlin cache treats a missing key as "TTL unknown" and a
+	// present 0 as "upstream said do not cache". Omitting zero made every
+	// zero-TTL answer look unknown and get persisted with the policy maximum.
+	TTL int64 `json:"ttl"`
 }
-
 
 const (
 	logBufferSize    = 2048

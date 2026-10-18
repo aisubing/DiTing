@@ -25,6 +25,13 @@ object CrashLogManager {
     private const val DIR_NAME = "crash_logs"
     private const val MAX_CRASH_LOGS = 8
 
+    /**
+     * Name of the filesDir sub-directory used as the last-resort export target.
+     * It must stay in sync with the `crash_export_private` entry of
+     * `res/xml/file_paths.xml` (covered by CrashLogManagerStateTest).
+     */
+    internal const val PRIVATE_DOWNLOAD_DIR_NAME = "downloads"
+
     private const val PREFS_NAME = "diting_crash_state"
     private const val KEY_CONSECUTIVE_CRASH_COUNT = "consecutive_crash_count"
     private const val KEY_HAS_MANUALLY_EXPORTED = "has_manually_exported"
@@ -46,6 +53,44 @@ object CrashLogManager {
      */
     internal fun shouldAutoExport(consecutiveCount: Int, hasExported: Boolean): Boolean =
         consecutiveCount >= CONSECUTIVE_THRESHOLD && !hasExported
+
+    /**
+     * Serializes the consecutive-crash read-modify-write.
+     *
+     * The JVM crash handler and [checkAndCollectNativeCrashes] (which replays a
+     * whole batch of historical crashes) can record at the same time. Without
+     * this lock one of them reads the same starting count and an increment is
+     * lost, so the auto-backup threshold fires later than it should.
+     */
+    private val stateLock = Any()
+
+    /**
+     * Next value of the consecutive-crash counter.
+     *
+     * A crash further than [expiryMs] from the previous one starts a new streak
+     * (count 1); anything closer keeps counting. Extracted so the boundary can
+     * be asserted without crashing the JVM.
+     */
+    internal fun nextConsecutiveCount(
+        currentCount: Int,
+        lastCrashTime: Long,
+        now: Long,
+        expiryMs: Long = CONSECUTIVE_EXPIRY_MS
+    ): Int = if (now - lastCrashTime > expiryMs) 1 else currentCount + 1
+
+    /**
+     * Native-crash waterline to persist when the user clears the crash logs.
+     *
+     * The old implementation wrote the wall clock here. After the user moves the
+     * system clock backwards, every later native exit timestamp stays below that
+     * value, so [checkAndCollectNativeCrashes] filters everything out and native
+     * crashes stop being collected until the clock catches up. Deriving the
+     * waterline from the timestamps the system actually reports keeps the
+     * watermark on the same clock as the records it filters, and still hides the
+     * exits the user just deleted.
+     */
+    internal fun waterlineAfterClear(currentWaterline: Long, historicalTimestamps: List<Long>): Long =
+        maxOf(currentWaterline, historicalTimestamps.maxOrNull() ?: 0L)
 
     fun getCrashDir(context: Context): File {
         val dir = File(context.filesDir, DIR_NAME)
@@ -108,21 +153,21 @@ object CrashLogManager {
         runCatching {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val now = System.currentTimeMillis()
-            val lastCrashTime = prefs.getLong(KEY_LAST_CRASH_TIME, 0L)
-            val currentCount = prefs.getInt(KEY_CONSECUTIVE_CRASH_COUNT, 0)
-            val hasExported = prefs.getBoolean(KEY_HAS_MANUALLY_EXPORTED, false)
+            // Read, compute and write the streak inside one lock: the crash
+            // handler and checkAndCollectNativeCrashes can run concurrently.
+            val newCount = synchronized(stateLock) {
+                val lastCrashTime = prefs.getLong(KEY_LAST_CRASH_TIME, 0L)
+                val currentCount = prefs.getInt(KEY_CONSECUTIVE_CRASH_COUNT, 0)
+                val next = nextConsecutiveCount(currentCount, lastCrashTime, now)
 
-            val newCount = if (now - lastCrashTime > CONSECUTIVE_EXPIRY_MS) {
-                1
-            } else {
-                currentCount + 1
+                // Use commit() during a crash so the count is persisted synchronously
+                prefs.edit()
+                    .putInt(KEY_CONSECUTIVE_CRASH_COUNT, next)
+                    .putLong(KEY_LAST_CRASH_TIME, now)
+                    .commit()
+                next
             }
-
-            // Use commit() during a crash so the count is persisted synchronously
-            prefs.edit()
-                .putInt(KEY_CONSECUTIVE_CRASH_COUNT, newCount)
-                .putLong(KEY_LAST_CRASH_TIME, now)
-                .commit()
+            val hasExported = prefs.getBoolean(KEY_HAS_MANUALLY_EXPORTED, false)
 
             Log.i(TAG, "Crash occurrence recorded: count=$newCount, hasManuallyExported=$hasExported")
 
@@ -139,11 +184,15 @@ object CrashLogManager {
                         // every subsequent crash in the same streak re-exports
                         // a fresh full backup, flooding Downloads. The flag is
                         // cleared again by clearCrashLogs(), which re-arms the
-                        // auto backup for the next streak.
-                        prefs.edit()
-                            .putBoolean(KEY_PENDING_AUTO_EXPORT_NOTICE, true)
-                            .putBoolean(KEY_HAS_MANUALLY_EXPORTED, true)
-                            .commit()
+                        // auto backup for the next streak. It also runs under
+                        // the lock so a concurrent replay cannot trigger a
+                        // second backup from the same stale read.
+                        synchronized(stateLock) {
+                            prefs.edit()
+                                .putBoolean(KEY_PENDING_AUTO_EXPORT_NOTICE, true)
+                                .putBoolean(KEY_HAS_MANUALLY_EXPORTED, true)
+                                .commit()
+                        }
                     }
                 }
             }
@@ -221,7 +270,7 @@ object CrashLogManager {
     private fun exportToPrivateDownloads(context: Context, fileName: String, content: String): Uri? {
         return runCatching {
             val root = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                ?: File(context.filesDir, "downloads")
+                ?: File(context.filesDir, PRIVATE_DOWNLOAD_DIR_NAME)
             if (!root.exists()) root.mkdirs()
             val file = File(root, fileName)
             file.writeText(content, Charsets.UTF_8)
@@ -351,15 +400,19 @@ object CrashLogManager {
                 val file = saveCrashReport(context, report)
                 Log.i(TAG, "Recorded historical native crash (pid=${exitInfo.pid}, time=${exitInfo.timestamp}) to: ${file?.absolutePath}")
 
-                onCrashOccurred(context)
-
+                // Persist the waterline after every single record, not once after
+                // the whole batch: this runs on a replay of a crash burst, and if
+                // the process dies again mid-loop the old code re-collected the
+                // entire batch next launch, inflating the consecutive-crash count
+                // (and, past the threshold, exporting duplicate backups). It is
+                // written before the streak update so a death inside the streak
+                // update cannot double-count this exit either.
                 if (exitInfo.timestamp > maxTimestamp) {
                     maxTimestamp = exitInfo.timestamp
+                    prefs.edit().putLong(KEY_LAST_RECORDED_NATIVE_EXIT_TIME, maxTimestamp).apply()
                 }
-            }
 
-            if (maxTimestamp > lastRecordedTime) {
-                prefs.edit().putLong(KEY_LAST_RECORDED_NATIVE_EXIT_TIME, maxTimestamp).apply()
+                onCrashOccurred(context)
             }
         }.onFailure { e ->
             Log.w(TAG, "Failed to check historical process exit reasons for native crash", e)
@@ -368,14 +421,27 @@ object CrashLogManager {
 
     /**
      * Clears all saved crash logs.
+     *
+     * The native-crash waterline is *not* reset to the wall clock: doing that
+     * silently stops native crash collection whenever the user's clock is behind
+     * the watermark (manual clock changes, timezone/DST corrections, NTP
+     * rollback) because every reported exit timestamp then filters out. The
+     * waterline is instead derived from the timestamps the system is actually
+     * reporting right now, so the exits the user just deleted stay hidden while
+     * later ones are still collected.
      */
     fun clearCrashLogs(context: Context): Boolean {
         runCatching {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val waterline = waterlineAfterClear(
+                currentWaterline = prefs.getLong(KEY_LAST_RECORDED_NATIVE_EXIT_TIME, 0L),
+                historicalTimestamps = historicalExitTimestamps(context)
+            )
+            prefs.edit()
                 .putInt(KEY_CONSECUTIVE_CRASH_COUNT, 0)
                 .putBoolean(KEY_HAS_MANUALLY_EXPORTED, false)
                 .putBoolean(KEY_PENDING_AUTO_EXPORT_NOTICE, false)
-                .putLong(KEY_LAST_RECORDED_NATIVE_EXIT_TIME, System.currentTimeMillis())
+                .putLong(KEY_LAST_RECORDED_NATIVE_EXIT_TIME, waterline)
                 .apply()
         }
         return runCatching {
@@ -385,6 +451,16 @@ object CrashLogManager {
             }
             true
         }.getOrDefault(false)
+    }
+
+    /** Every exit-reason timestamp the system still reports for this package. */
+    private fun historicalExitTimestamps(context: Context): List<Long> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return emptyList()
+        return runCatching {
+            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+                ?: return emptyList()
+            am.getHistoricalProcessExitReasons(context.packageName, 0, 10).map { it.timestamp }
+        }.getOrDefault(emptyList())
     }
 
     private fun pruneOldLogs(dir: File) {

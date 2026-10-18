@@ -15,6 +15,8 @@ import androidx.core.content.ContextCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.server.backend.DnsModeManager
+import com.haoze.diting.server.model.DnsServiceStatus
+import com.haoze.diting.ui.localizedResource
 import com.haoze.diting.ui.localizedText
 import com.haoze.diting.ui.mode.AppWorkMode
 import com.haoze.diting.ui.mode.WorkModeStore
@@ -77,7 +79,12 @@ class DitingTileService : TileService() {
             // The service is only RUNNING after it loaded its rules, so polling
             // status here would immediately repaint the tile as inactive; the
             // service pushes the real state via requestTileUpdate once ready.
-            updateTileState(running = true)
+            // A synchronous start failure is the exception: it is already
+            // reported as ERROR before this call returns, and painting ACTIVE
+            // would leave the tile claiming an idle VPN is on.
+            val failed = DnsModeManager.status.value == DnsServiceStatus.ERROR
+            if (failed) Log.e(TAG, "Failed to start DNS service from tile")
+            updateTileState(running = !failed)
         }
     }
 
@@ -175,7 +182,7 @@ class DitingTileService : TileService() {
     private fun updateTileState(running: Boolean = isCurrentModeServiceRunning()) {
         val tile = qsTile ?: return
         tile.state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-        tile.label = getString(R.string.quick_settings_tile_label)
+        tile.label = localizedResource(this, R.string.quick_settings_tile_label)
         val stateText = localizedText(this, if (running) "已开启" else "已关闭")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             tile.subtitle = stateText

@@ -92,6 +92,11 @@ func (e *Engine) SetRewriteRules(content string) {
 			}
 			if entry := parseRewriteEntry(value); entry != nil {
 				entries[domain] = entry
+			} else {
+				// A value that is neither a string nor an array of strings used to
+				// be dropped without a trace, so a malformed payload looked like a
+				// successful load that simply rewrote nothing.
+				logf("SetRewriteRules: ignoring rewrite target for %q: value is neither a string nor an array of strings", domain)
 			}
 		}
 	}
@@ -451,4 +456,3 @@ func (e *Engine) notifyLogWithTTL(domain string, blocked bool, queryType uint16,
 		e.logCallback.OnDNSQuery(domain, blocked, int(queryType), responseTimeMs, appName, resolvedIPs, blockedBy, errorMessage, cached)
 	}
 }
-

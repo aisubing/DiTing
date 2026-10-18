@@ -12,6 +12,7 @@ import androidx.work.ForegroundInfo
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.notification.AppNotificationChannels
+import com.haoze.diting.ui.localizedResource
 import com.haoze.diting.ui.localizedText
 
 internal class RuleUpdateNotifier(
@@ -26,7 +27,7 @@ internal class RuleUpdateNotifier(
 
     fun foregroundInfo(
         title: String,
-        detail: String = context.getString(R.string.operation_preparing),
+        detail: String = localizedResource(context, R.string.operation_preparing),
         current: Int = 0,
         total: Int = 0
     ) = ForegroundInfo(

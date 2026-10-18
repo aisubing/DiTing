@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.haoze.diting.data.ExpressRulesDatabase
 import com.haoze.diting.core.dns.DnsProvider
+import com.haoze.diting.ui.settings.SystemSettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -148,6 +149,11 @@ object ExpressVpnController {
     }
 
     fun updateFloatingLogAppState(context: Context, foreground: Boolean) {
+        // The flag is consumed by the overlay to decide whether it may show logs
+        // while the app is backgrounded. It has to be persisted even when the
+        // service is down: otherwise a later start reads a stale "foreground"
+        // value and keeps showing the panel over other apps.
+        SystemSettingsStore.setMainActivityForeground(context, foreground)
         if (isRunning(context)) {
             runCatching { context.startService(ExpressVpnIntents.floatingLogAppStateIntent(context, foreground)) }
         }

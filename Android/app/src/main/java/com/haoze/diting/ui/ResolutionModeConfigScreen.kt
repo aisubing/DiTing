@@ -64,7 +64,10 @@ fun ResolutionModeConfigScreen(
     var protocol by remember { mutableStateOf(DnsProtocol.DNS) }
     val listState = rememberLazyListState()
     var listViewportBounds by remember { mutableStateOf<Rect?>(null) }
-    NavigationSettledEffect { viewModel.activate() }
+    // Reload on every resume, not once: the view model outlives this screen, so
+    // providers added or removed in provider management only show up here if the
+    // store is re-read when the user comes back.
+    OnResumed { viewModel.activate() }
     val selected = when (mode) {
         DnsResolutionMode.SMART_PREDICTION -> smartIds
         DnsResolutionMode.PARALLEL_RACE -> parallelIds

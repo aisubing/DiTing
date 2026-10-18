@@ -501,4 +501,3 @@ func (e *Engine) rememberResolvedIPList(domain string, ipList []string) {
 		}
 	}
 }
-

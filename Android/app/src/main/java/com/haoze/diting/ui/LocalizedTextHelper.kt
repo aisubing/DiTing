@@ -33,3 +33,27 @@ fun localizedText(context: Context, text: String): String {
         text
     }
 }
+
+/**
+ * Resolves a string resource in the app's selected UI language rather than in
+ * the system language.
+ *
+ * Raw `context.getString()` follows the system locale, so a string that is not
+ * routed through [localizedText] (notification channel titles, service
+ * notifications, tile labels) kept showing the system language while the rest of
+ * the UI followed the app language setting. The `values-en` resource is used as
+ * the translation source here, exactly like a wrapped screen would.
+ */
+fun localizedResource(context: Context, resId: Int): String =
+    AppLanguageManager.wrap(context).getString(resId)
+
+/**
+ * Format-argument variant of [localizedResource] for the strings that interpolate
+ * a value (download progress, version numbers).
+ *
+ * The format string and its arguments must come from the *same* language source:
+ * reading the format string from the system locale while the arguments were
+ * localized separately produced half-translated notifications.
+ */
+fun localizedResource(context: Context, resId: Int, vararg formatArgs: Any): String =
+    AppLanguageManager.wrap(context).getString(resId, *formatArgs)

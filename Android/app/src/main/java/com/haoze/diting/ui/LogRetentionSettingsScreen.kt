@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Troubleshoot
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.rememberCoroutineScope
+import com.haoze.diting.crash.CrashExportCompletion
 import com.haoze.diting.crash.CrashLogManager
 import com.haoze.diting.core.WorkModeLifecycleRegistry
 import com.haoze.diting.ui.components.AppConfirmDialog
@@ -76,22 +77,44 @@ fun LogRetentionSettingsScreen(
     ) { uri ->
         if (uri != null) {
             scope.launch {
-                val result = runCatching {
-                    withContext(Dispatchers.IO) {
-                        val content = CrashLogManager.generateExportContent(context)
-                        if (content.isEmpty()) error("当前无崩溃日志内容")
-                        context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
-                            ?: error("无法打开导出文件")
+                // The write and the "exported" bookkeeping run non-cancellably:
+                // this scope dies with the composition, and a cancellation right
+                // after the file write used to lose markManuallyExported(), which
+                // re-armed the automatic crash-log backup for a streak the user
+                // had already exported by hand (A-058).
+                CrashExportCompletion.commit {
+                    val result = runCatching {
+                        withContext(Dispatchers.IO) {
+                            val content = CrashLogManager.generateExportContent(context)
+                            if (content.isEmpty()) error("当前无崩溃日志内容")
+                            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(content) }
+                                ?: error("无法打开导出文件")
+                        }
                     }
-                }
-                if (result.isSuccess) {
-                    CrashLogManager.markManuallyExported(context)
-                    context.showToast("崩溃日志已导出", Toast.LENGTH_SHORT)
-                } else {
-                    context.showToast("导出失败：${result.exceptionOrNull()?.message ?: ""}", Toast.LENGTH_SHORT)
+                    if (result.isSuccess) {
+                        CrashLogManager.markManuallyExported(context)
+                        crashLogCount = CrashLogManager.getCrashLogCount(context)
+                        context.showToast("崩溃日志已导出", Toast.LENGTH_SHORT)
+                    } else {
+                        context.showToast("导出失败：${result.exceptionOrNull()?.message ?: ""}", Toast.LENGTH_SHORT)
+                    }
                 }
             }
         }
+    }
+
+    // The crash log directory is written outside Compose (native crash collection
+    // runs during app start), so the count sampled at composition time went stale:
+    // a native crash recorded after the screen was built left the export/clear
+    // buttons disabled until the screen was left and re-entered (O-126).
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                crashLogCount = CrashLogManager.getCrashLogCount(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     DisposableEffect(lifecycleOwner, waitingForOverlayPermission) {

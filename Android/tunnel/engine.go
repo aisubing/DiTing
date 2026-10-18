@@ -85,6 +85,14 @@ type Engine struct {
 	running    bool
 	tunFile *os.File
 
+	// sessionGen is bumped by every Start*/Stop transition under mu.
+	// StartFull releases mu to do its expensive setup (dup, stack allocation,
+	// buffered writer) and re-acquires it to publish. A sessionGen captured while
+	// holding mu is the only way that late publish can tell "I am still the
+	// current session" from "a Stop happened while I was setting up", which the
+	// old running-only check could not distinguish. See claimFullTunnelSession.
+	sessionGen uint64
+
 	router      *Router
 	interceptor *DnsInterceptor
 
@@ -217,7 +225,30 @@ func (e *Engine) ReleaseTun() {
 func (e *Engine) Stop() {
 	e.mu.Lock()
 
+	// O-104: invalidate any StartFull that is between its unlock and its publish.
+	// Stop deliberately does NOT early-return on !e.running: it also releases the
+	// DNS-cache cleaner and the MITM certificate cache, both of which exist from
+	// NewEngine() and must be freed even when no tunnel ever started (A-017).
+	// Everything below is already idempotent, so a second Stop is harmless:
+	// each field is nil-ed on the way out, logAggregator/trafficTracker guard with
+	// running.Swap, packetPipe/bufferedTun use sync.Once, and the mmap tries/blooms
+	// nil their own handles inside Close.
+	e.sessionGen++
 	e.running = false
+
+	// Release the DNS cache cleaner goroutine and the MITM certificate cache.
+	// Nothing used to stop the cache's 30-second ticker, so every Engine that was
+	// dropped without an explicit close leaked one goroutine for the process
+	// lifetime — repeatedly in practice, because the CA helper mints a throwaway
+	// Engine per certificate call.
+	if e.dnsCache != nil {
+		e.dnsCache.close()
+	}
+	if e.stackCertMgr != nil {
+		e.stackCertMgr.Release()
+	}
+	e.stackCertMgr = nil
+	e.stackMitmFilter = nil
 
 	if e.interceptor != nil {
 		e.interceptor.Stop()

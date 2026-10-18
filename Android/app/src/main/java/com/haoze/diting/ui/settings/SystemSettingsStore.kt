@@ -2,6 +2,7 @@ package com.haoze.diting.ui.settings
 
 import android.content.Context
 import com.haoze.diting.data.RuleDataset
+import com.haoze.diting.permission.ModePermissionStore
 import com.haoze.diting.ui.DnsLogMode
 import com.haoze.diting.ui.Ipv6Mode
 
@@ -199,6 +200,12 @@ object SystemSettingsStore {
             .remove(KEY_SETTINGS_GUIDE_ACKNOWLEDGED_IDS)
             .remove(KEY_INITIAL_AGREEMENT_ACCEPTED)
             .apply()
+        // O-146: the "don't remind me again" flags for keep-alive recommendations
+        // live in ModePermissionStore, whose keys carry no mode and had no reset
+        // path at all (clearDismissedRecommendations had zero callers anywhere).
+        // Restoring the guides without clearing them left the user with a
+        // permanently silenced recommendation and no way back.
+        ModePermissionStore.clearDismissedRecommendations(context)
     }
 
     fun isInitialAgreementAccepted(context: Context): Boolean =

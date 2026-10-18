@@ -1,7 +1,6 @@
 package com.haoze.diting.ui.traffic
 
 import com.haoze.diting.util.formatBytes
-import com.haoze.diting.util.formatDurationClock
 import com.haoze.diting.util.formatSpeed
 
 import androidx.compose.foundation.clickable
@@ -142,7 +141,7 @@ internal fun TrafficGaugeCard(uiState: AppTrafficStatsUiState) {
                         color = colors.onSurfaceVariant
                     )
                     if (uiState.selectedTimeRange == TrafficTimeRange.SESSION && uiState.sessionStartTimeMs > 0L) {
-                        val sessionDuration = formatDurationClock(System.currentTimeMillis() - uiState.sessionStartTimeMs)
+                        val sessionDuration = sessionClockText(uiState.sessionStartTimeMs, rememberTickingNowMs())
                         Text(
                             text = localizedText("已连接: ") + sessionDuration,
                             style = MaterialTheme.typography.labelSmall,

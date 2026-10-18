@@ -108,13 +108,22 @@ func (c *dnsCache) close() {
 func (c *dnsCache) clear() {
 	for _, shard := range c.shards {
 		shard.mu.Lock()
+		// Unlink every element explicitly instead of calling lruList.Init().
+		// Init() only resets the list root, leaving each Element's `list`
+		// back-pointer aimed at this shard's live list. A concurrent hit that
+		// captured the element before this lock then promotes it and
+		// list.MoveToFront happily splices the orphan back in, desynchronising
+		// the LRU from the map. list.Remove() clears e.list, which makes such a
+		// stale MoveToFront a no-op.
+		for shard.lruList.Len() > 0 {
+			shard.lruList.Remove(shard.lruList.Back())
+		}
 		for _, e := range shard.entries {
 			if e != nil {
 				e.elem = nil
 			}
 		}
 		shard.entries = make(map[string]*cacheEntry, shard.maxEntries)
-		shard.lruList.Init()
 		shard.mu.Unlock()
 	}
 }
@@ -241,6 +250,11 @@ func (c *dnsCache) put(rawQuery, rawResponse []byte) bool {
 
 func (c *dnsCache) putMsg(rawQuery, rawResponse []byte, respMsg *dns.Msg) bool {
 	if respMsg == nil || len(rawResponse) < 12 {
+		return false
+	}
+	// A truncated answer carries no complete records; caching it would replay
+	// the TC=1 header to later clients even after the upstream recovered.
+	if respMsg.Truncated {
 		return false
 	}
 	cfg := c.getConfig()

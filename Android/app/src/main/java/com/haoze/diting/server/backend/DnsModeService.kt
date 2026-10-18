@@ -123,8 +123,6 @@ class DnsModeService : Service() {
         val startToken = startGuard.beginStart()
         startJob = serviceScope.launch {
             acquireLocks()
-            val config = DnsModeManager.config.value
-            val upstream = DnsModeManager.getActiveUpstream()
             val filter = queryFilter ?: DnsQueryFilter(this@DnsModeService).also { queryFilter = it }
 
             if (!loadRules(filter)) {
@@ -136,6 +134,15 @@ class DnsModeService : Service() {
 
             // A stop can land while the rules load; do not bind the port at all.
             if (!startGuard.canPublishRunning(startToken)) return@launch
+
+            // Read the config only now, after the (slow) rule load. While the
+            // server is STARTING the manager refuses to deliver config refreshes
+            // (it only refreshes RUNNING servers), so a change committed during
+            // this window was never replayed and the engine bound the port and
+            // upstream captured at launch. Reading here makes the engine start
+            // with whatever is committed at bind time instead.
+            val config = DnsModeManager.config.value
+            val upstream = DnsModeManager.getActiveUpstream()
 
             dnsServerEngine?.stop()
             val engine = DnsServerEngine(
@@ -169,6 +176,24 @@ class DnsModeService : Service() {
                 DnsModeManager.onServiceStarted()
                 QuickSettingsTileUpdater.requestTileUpdate(this@DnsModeService)
                 Log.i(TAG, "DnsModeService successfully started DNS server on port ${config.localListenPort}")
+                // The manager only forwards config refreshes to a RUNNING server,
+                // so a change committed while this service was still STARTING was
+                // never delivered. Re-read the persisted settings and apply them
+                // here instead of leaving the engine on stale settings until the
+                // next unrelated edit. Rules are already loaded above, so only
+                // the config/upstream part of a refresh is needed.
+                val committedConfig = DnsModeManager.reloadConfig(this@DnsModeService)
+                val committedUpstream = DnsModeManager.getActiveUpstream()
+                if (committedConfig != config || committedUpstream != upstream) {
+                    Log.i(TAG, "Config changed while starting; applying it to the running engine")
+                    if (!engine.updateConfig(committedConfig, committedUpstream)) {
+                        Log.e(TAG, "DNS engine stopped while applying the startup config")
+                        DnsModeManager.onServiceError("DNS 服务更新失败，监听端口可能被占用")
+                        stopSelf()
+                    } else {
+                        engine.syncRules()
+                    }
+                }
             } else {
                 Log.e(TAG, "DnsModeService failed to start DNS server on port ${config.localListenPort}")
                 DnsModeManager.onServiceError("DNS 服务启动失败，监听端口可能被占用")

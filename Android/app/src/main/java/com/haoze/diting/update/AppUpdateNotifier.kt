@@ -9,6 +9,7 @@ import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.notification.AppNotificationChannels
 import com.haoze.diting.notification.NotificationPermissionHelper
+import com.haoze.diting.ui.localizedResource
 
 class AppUpdateNotifier(private val context: Context) {
     private val notificationManager = NotificationManagerCompat.from(context)
@@ -23,13 +24,13 @@ class AppUpdateNotifier(private val context: Context) {
         val detail = if (totalBytes > 0L) {
             "$percentage%  ${formatAppUpdateBytes(downloadedBytes)} / ${formatAppUpdateBytes(totalBytes)}"
         } else {
-            context.getString(R.string.app_update_downloaded, formatAppUpdateBytes(downloadedBytes))
+            localizedResource(context, R.string.app_update_downloaded, formatAppUpdateBytes(downloadedBytes))
         }
         notificationManager.notify(
             NOTIFICATION_ID,
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.dns_svgrepo_com)
-                .setContentTitle(context.getString(R.string.app_update_downloading, update.version))
+                .setContentTitle(localizedResource(context, R.string.app_update_downloading, update.version))
                 .setContentText(detail)
                 .setProgress(100, percentage, totalBytes <= 0L)
                 .setOngoing(true)
@@ -45,8 +46,8 @@ class AppUpdateNotifier(private val context: Context) {
             NOTIFICATION_ID,
             NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.dns_svgrepo_com)
-                .setContentTitle(context.getString(R.string.app_update_download_complete, update.version))
-                .setContentText(context.getString(R.string.app_update_install))
+                .setContentTitle(localizedResource(context, R.string.app_update_download_complete, update.version))
+                .setContentText(localizedResource(context, R.string.app_update_install))
                 .setProgress(0, 0, false)
                 .setAutoCancel(true)
                 .setContentIntent(mainPendingIntent())

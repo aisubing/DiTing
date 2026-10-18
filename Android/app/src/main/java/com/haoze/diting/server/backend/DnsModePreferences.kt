@@ -2,6 +2,8 @@ package com.haoze.diting.server.backend
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.haoze.diting.server.model.DnsListenPortMigration
+import com.haoze.diting.server.model.DnsListenPortValidator
 import com.haoze.diting.server.model.DnsModeConfig
 import com.haoze.diting.server.model.DnsModeProtocol
 import com.haoze.diting.server.model.DnsModeStats
@@ -21,6 +23,7 @@ object DnsModePreferences {
     private const val KEY_AD_BLOCK_ENABLED = "ad_block_enabled"
     private const val KEY_LOG_QUERIES = "log_queries"
     private const val KEY_LOG_QUERIES_MIGRATED = "log_queries_default_off"
+    private const val KEY_LOCAL_PORT_MIGRATED = "local_listen_port_migrated"
     private const val KEY_SERVICE_ACTIVE = "service_active"
     private const val KEY_CUSTOM_UPSTREAMS = "custom_upstreams"
 
@@ -38,8 +41,20 @@ object DnsModePreferences {
 
     fun loadConfig(context: Context): DnsModeConfig {
         val prefs = getPrefs(context)
-        val rawPort = prefs.getInt(KEY_LOCAL_PORT, 1053)
-        val port = if (rawPort == 5353 || rawPort == 5354) 1053 else rawPort
+        // 5353/5354 used to be the hardcoded default and collide with mDNS, so a
+        // port stored from that era is reset to today's default exactly once.
+        // Doing it as a persisted one-shot migration instead of rewriting the
+        // value on every read means a port the user deliberately picks later is
+        // neither ignored by the engine nor reverted again on the next load.
+        if (!prefs.getBoolean(KEY_LOCAL_PORT_MIGRATED, false)) {
+            val migratedPort = DnsListenPortMigration.migratedPort(
+                prefs.getInt(KEY_LOCAL_PORT, DnsListenPortValidator.DEFAULT_PORT)
+            )
+            val editor = prefs.edit().putBoolean(KEY_LOCAL_PORT_MIGRATED, true)
+            if (migratedPort != null) editor.putInt(KEY_LOCAL_PORT, migratedPort)
+            editor.apply()
+        }
+        val port = prefs.getInt(KEY_LOCAL_PORT, DnsListenPortValidator.DEFAULT_PORT)
         // logQueries was never user-editable and used to default to true, so any
         // stored true came from the old default rather than a choice: flip it to
         // the new privacy-preserving default once.

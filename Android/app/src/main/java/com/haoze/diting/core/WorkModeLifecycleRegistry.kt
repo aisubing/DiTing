@@ -41,8 +41,10 @@ object WorkModeLifecycleRegistry {
 
     @Volatile
     var updateNormalFloatingLogAppState: (Context, Boolean) -> Unit = { ctx, fg ->
-        val sp = ctx.getSharedPreferences("system_settings", Context.MODE_PRIVATE)
-        sp.edit().putBoolean("main_activity_foreground", fg).apply()
+        // Normal mode keeps this state in `dns_vpn_prefs` via SystemSettingsStore
+        // (written by DnsVpnService, which replaces this default lambda once it is
+        // loaded). Writing the same key into `system_settings` here created a
+        // second, never-read copy: no reader anywhere uses that file.
         if (VpnStateRegistry.isNormalRunning(ctx)) {
             val intent = Intent().setClassName(ctx.packageName, "${ctx.packageName}.normal.DnsVpnService")
                 .setAction("com.haoze.diting.FLOATING_LOG_APP_STATE")

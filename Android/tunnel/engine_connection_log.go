@@ -13,7 +13,59 @@ package tunnel
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 )
+
+// connLogSeenMaxEntries bounds the per-session connection-log deduplication set.
+// The set was only ever cleared wholesale by StartFull, so a long-running VPN
+// session that talked to many destinations grew it monotonically.
+const connLogSeenMaxEntries = 8192
+
+// connLogSeenDedup holds the dedupe keys for the current session together with
+// the bound above. Entries are dropped on an overflow reset rather than evicted
+// individually: the keys are cheap to rebuild and a stale key only costs one
+// duplicate log line.
+type connLogSeenDedup struct {
+	mu      sync.Mutex
+	seen    map[string]struct{}
+	cleared atomic.Int64
+}
+
+var connLogSeen connLogSeenDedup
+
+// markSeen stores key and reports whether it was already present. When the set
+// reaches [connLogSeenMaxEntries] it is emptied first, which trades exactness for
+// a bounded footprint.
+func (d *connLogSeenDedup) markSeen(key string) (dup bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.seen == nil {
+		d.seen = make(map[string]struct{}, connLogSeenMaxEntries)
+	}
+	if _, ok := d.seen[key]; ok {
+		return true
+	}
+	if len(d.seen) >= connLogSeenMaxEntries {
+		d.seen = make(map[string]struct{}, connLogSeenMaxEntries)
+		d.cleared.Add(1)
+	}
+	d.seen[key] = struct{}{}
+	return false
+}
+
+// reset empties the set; called when a full-tunnel session starts.
+func (d *connLogSeenDedup) reset() {
+	d.mu.Lock()
+	d.seen = make(map[string]struct{}, connLogSeenMaxEntries)
+	d.mu.Unlock()
+}
+
+// size reports the current entry count (test/telemetry helper).
+func (d *connLogSeenDedup) size() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return len(d.seen)
+}
 
 func (e *Engine) appNameForFlow(flow flowID, protocol int) string {
 	uidr := e.uidResolver
@@ -27,8 +79,6 @@ func (e *Engine) appNameForFlow(flow flowID, protocol int) string {
 	}
 	return r.PackageForUid(uid)
 }
-
-var connLogSeen sync.Map
 
 func (e *Engine) logConnection(flow flowID, protocol int) {
 	hasBatch := e.logAggregator != nil && e.logAggregator.hasCallback()
@@ -53,7 +103,7 @@ func (e *Engine) logConnection(flow flowID, protocol int) {
 	}
 	dest := flow.serverIP.String()
 	key := fmt.Sprintf("%s|%s|%d|%d", app, dest, flow.serverPort, protocol)
-	if _, dup := connLogSeen.LoadOrStore(key, struct{}{}); dup {
+	if connLogSeen.markSeen(key) {
 		return
 	}
 	proto := "TCP"
@@ -96,7 +146,7 @@ func (e *Engine) logBlockedConnection(flow flowID, protocol int, reason string) 
 		proto = "UDP"
 	}
 	key := fmt.Sprintf("blk|%s|%s|%d|%d|%s", app, dest, flow.serverPort, protocol, reason)
-	if _, dup := connLogSeen.LoadOrStore(key, struct{}{}); dup {
+	if connLogSeen.markSeen(key) {
 		return
 	}
 	e.notifyLog(

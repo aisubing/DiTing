@@ -194,6 +194,7 @@ class SettingsRouteActivity : AppLocalizedActivity() {
 
     override fun onStop() {
         com.haoze.diting.express.ExpressModeLauncher.updateFloatingLogAppState(this, false)
+        appUpdateHost.cancelActiveDownload() // same as MainActivity: leaving abandons a manual download
         super.onStop()
     }
 
@@ -283,9 +284,8 @@ class SettingsRouteActivity : AppLocalizedActivity() {
         setResult(RESULT_OK, resultData)
     }
 
-    private fun applyRecentsPrivacy(hideFromRecents: Boolean) {
+    private fun applyRecentsPrivacy(hideFromRecents: Boolean) =
         RecentsPrivacyController.apply(this, hideFromRecents)
-    }
 
     private fun joinQqGroup() {
         try {

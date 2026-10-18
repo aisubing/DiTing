@@ -146,7 +146,7 @@ class ExpressRoomDnsCacheTest {
         val question = ExpressDnsMessageUtils.extractQuestion(query)!!
 
         val expiredEntity = DnsCacheEntity(
-            key = "expired.com#1#1",
+            key = "expired.com#1#1#0#0",
             queryName = "expired.com",
             queryType = 1,
             queryClass = 1,
@@ -163,7 +163,7 @@ class ExpressRoomDnsCacheTest {
 
         val cachedResponse = cache.get(question, query)
         assertNull(cachedResponse)
-        assertNull(fakeDao.get("expired.com#1#1"))
+        assertNull(fakeDao.get("expired.com#1#1#0#0"))
     }
 
     @Test
@@ -177,7 +177,7 @@ class ExpressRoomDnsCacheTest {
         val answer = ExpressDnsMessageUtils.buildZeroAddressResponse(query)
 
         cache.put(question, answer)
-        val entity = fakeDao.get("with-ttl.com#1#1")
+        val entity = fakeDao.get("with-ttl.com#1#1#0#0")
         assertNotNull(entity)
         assertTrue("ttlOffsets should be populated", entity!!.ttlOffsets.isNotBlank())
     }
@@ -241,5 +241,87 @@ class ExpressRoomDnsCacheTest {
         }
         jobs.awaitAll()
         assertEquals(20, fakeDao.storage.size)
+    }
+
+    @Test
+    fun testDnssecOkAndCheckingDisabledProduceDistinctKeys() = runBlocking {
+        val fakeDao = FakeDnsCacheDao()
+        val policy = DnsCachePolicy(enabled = true, minTtlSeconds = 60, maxTtlSeconds = 600)
+        val cache = ExpressRoomDnsCache(fakeDao) { policy }
+
+        val plainQuery = ExpressDnsMessageUtils.buildQuery("split.com", ExpressDnsMessageUtils.TYPE_A)
+        val plainQuestion = ExpressDnsMessageUtils.extractQuestion(plainQuery)!!
+        val doQuestion = plainQuestion.copy(dnssecOk = true)
+        val cdQuestion = plainQuestion.copy(checkingDisabled = true)
+
+        cache.put(plainQuestion, ExpressDnsMessageUtils.buildZeroAddressResponse(plainQuery))
+
+        // A DO=1 or CD=1 client asks a different question and must not be served
+        // the plain answer from the cache.
+        assertNull(cache.get(doQuestion, plainQuery))
+        assertNull(cache.get(cdQuestion, plainQuery))
+        assertEquals(1, fakeDao.storage.size)
+
+        cache.put(doQuestion, ExpressDnsMessageUtils.buildZeroAddressResponse(plainQuery))
+        assertEquals(2, fakeDao.storage.size)
+        assertNotNull(cache.get(doQuestion, plainQuery))
+        assertNotNull(cache.get(plainQuestion, plainQuery))
+    }
+
+    /**
+     * A-065: `put()` used `dao.insert(...)` with `OnConflictStrategy.REPLACE`
+     * (ExpressRoomDnsCache.kt:126 in the report). SQLite implements REPLACE as
+     * DELETE + INSERT, so refreshing the response of a key that was already there
+     * dropped the accumulated `hitCount` to 0 and `lastHitAt` to null. The cache
+     * screen orders entries by hit count, so a hot domain fell back to the bottom
+     * of the list every time its TTL expired and the answer was re-resolved.
+     */
+    @Test
+    fun testPutPreservesHitCountersOfExistingEntry() = runBlocking {
+        val fakeDao = FakeDnsCacheDao()
+        val policy = DnsCachePolicy(enabled = true, minTtlSeconds = 60, maxTtlSeconds = 600)
+        val cache = ExpressRoomDnsCache(fakeDao) { policy }
+
+        val query = ExpressDnsMessageUtils.buildQuery("hot.com", ExpressDnsMessageUtils.TYPE_A)
+        val question = ExpressDnsMessageUtils.extractQuestion(query)!!
+        val answer = ExpressDnsMessageUtils.buildZeroAddressResponse(query)
+
+        cache.put(question, answer)
+        val key = "hot.com#1#1#0#0"
+
+        // Two cache hits served from the DAO layer (memory cache dropped first).
+        cache.clearMemory()
+        assertNotNull(cache.get(question, query))
+        cache.clearMemory()
+        assertNotNull(cache.get(question, query))
+        assertEquals(2, fakeDao.storage.getValue(key).hitCount)
+        val lastHitAtBefore = fakeDao.storage.getValue(key).lastHitAt
+        assertNotNull(lastHitAtBefore)
+
+        // Re-resolve the same question while it is still cached.
+        cache.put(question, answer)
+
+        val refreshed = fakeDao.storage.getValue(key)
+        assertEquals("hitCount must survive a response refresh", 2, refreshed.hitCount)
+        assertEquals("lastHitAt must survive a response refresh", lastHitAtBefore, refreshed.lastHitAt)
+        assertEquals(1, fakeDao.storage.size)
+    }
+
+    /** A-065: the update path must still create a row for a brand-new key. */
+    @Test
+    fun testPutInsertsNewEntryWhenKeyAbsent() = runBlocking {
+        val fakeDao = FakeDnsCacheDao()
+        val policy = DnsCachePolicy(enabled = true)
+        val cache = ExpressRoomDnsCache(fakeDao) { policy }
+
+        val query = ExpressDnsMessageUtils.buildQuery("brand-new.com", ExpressDnsMessageUtils.TYPE_A)
+        val question = ExpressDnsMessageUtils.extractQuestion(query)!!
+
+        cache.put(question, ExpressDnsMessageUtils.buildZeroAddressResponse(query))
+
+        val entity = fakeDao.get("brand-new.com#1#1#0#0")
+        assertNotNull(entity)
+        assertEquals(0, entity!!.hitCount)
+        assertNull(entity.lastHitAt)
     }
 }

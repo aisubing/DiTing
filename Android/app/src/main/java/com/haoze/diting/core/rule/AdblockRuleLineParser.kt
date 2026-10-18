@@ -21,6 +21,26 @@ internal object AdblockRuleLineParser {
     fun isCosmeticRuleLine(line: String): Boolean =
         COSMETIC_DELIMITERS.any { line.contains(it) }
 
+    /**
+     * Index at which a trailing `#` comment may start.
+     *
+     * A `#` inside a leading regex literal (`/foo#bar/`) is part of the pattern,
+     * not a comment, so the scan starts just past the literal's closing `/`. A
+     * comment that follows the literal (`/foo#bar/ # note`) is still found, since
+     * it starts after that point. Zero is returned for every line that does not
+     * start with a regex delimiter, so the plain search from the beginning is
+     * preserved.
+     */
+    private fun commentSearchStart(line: String, allow: Boolean): Int {
+        val offset = if (allow && line.startsWith("@@")) 2 else 0
+        if (line.length <= offset + 1 || line[offset] != '/') return 0
+        // A regex literal ends at the first whitespace of the line.
+        var tokenEnd = offset + 1
+        while (tokenEnd < line.length && !line[tokenEnd].isWhitespace()) tokenEnd++
+        val closing = line.lastIndexOf('/', tokenEnd - 1)
+        return if (closing <= offset) 0 else closing + 1
+    }
+
     fun parseAdblockOrDomainLine(line: String, originalLine: String, allow: Boolean): CategorizedLine {
         // 1. Element hiding (cosmetic) rules: ##, #@#, #?#, #$#, #$@#
         val cosmetic = parseCosmeticLine(line, originalLine)
@@ -32,7 +52,9 @@ internal object AdblockRuleLineParser {
         // to the pattern is a cosmetic marker this parser did not recognize (or
         // a malformed rule); truncating there would silently widen it into a
         // whole-domain block, so such lines are reported as unsupported instead.
-        val hashIndex = line.indexOf('#')
+        // A regex rule may legitimately carry `#` inside its pattern
+        // (`/foo#bar/`); the scan starts past the literal so such a rule is kept.
+        val hashIndex = line.indexOf('#', commentSearchStart(line, allow))
         var value = if (hashIndex < 0) {
             line.trim()
         } else {
@@ -100,6 +122,13 @@ internal object AdblockRuleLineParser {
                 val lower = token.lowercase()
                 when {
                     lower == "important" -> important = true
+                    // `~denyallow=` has no invertible meaning (the modifier is already
+                    // an exclusion list), so the modifier is dropped while the rule
+                    // itself is kept — the same rule the desktop parser applies.
+                    // Reading it as a plain denyallow used to turn those domains into
+                    // exceptions of an otherwise active block rule, so the rule blocked
+                    // nothing the author intended it to block.
+                    lower.startsWith("~denyallow=") -> Unit
                     lower.startsWith("app=") || lower.startsWith("~app=") -> {
                         val isNegativePrefix = lower.startsWith("~app=")
                         val appValue = if (isNegativePrefix) token.substring(5).trim() else token.substring(4).trim()
@@ -112,9 +141,8 @@ internal object AdblockRuleLineParser {
                         appInverted = hasInverted
                         appScope = cleanPkgs.joinToString("|")
                     }
-                    lower.startsWith("denyallow=") || lower.startsWith("~denyallow=") -> {
-                        val isNegative = lower.startsWith("~denyallow=")
-                        val rawSpec = if (isNegative) token.substring(11).trim() else token.substring(10).trim()
+                    lower.startsWith("denyallow=") -> {
+                        val rawSpec = token.substring(10).trim()
                         if (rawSpec.isEmpty()) return CategorizedLine(invalidCount = 1)
                         val rawDomains = rawSpec.split('|').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
                         if (rawDomains.isEmpty()) return CategorizedLine(invalidCount = 1)

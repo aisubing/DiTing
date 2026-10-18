@@ -43,6 +43,16 @@ class RuleSettingsAccess(private val dataset: RuleDataset) {
         RuleDataset.EXPRESS, RuleDataset.DNS_MODE -> false
     }
 
+    /**
+     * Whether CNAME rewrites can take effect. They are not URL rules: normal
+     * mode applies them inside the HTTPS inspection flow, so they need the same
+     * prerequisites, while DNS mode pushes every enabled CNAME redirect to the
+     * engine and applies it at the DNS stage, before the filtering master switch
+     * is consulted. Express never programs rewrites at all.
+     */
+    fun isCnameRewriteOperational(context: Context): Boolean =
+        cnameRewriteOperational(dataset) { AppRulesSettingsStore.isAddressRulesFullyOperational(context) }
+
     /** The DNS dataset has no preset whitelist, so everything is user-editable. */
     fun isAllowEditDefaultWhitelist(context: Context): Boolean = when (dataset) {
         RuleDataset.NORMAL, RuleDataset.EXPRESS -> AppRulesSettingsStore.isAllowEditDefaultWhitelist(context, dataset)
@@ -89,3 +99,17 @@ class RuleSettingsAccess(private val dataset: RuleDataset) {
         RuleDataset.DNS_MODE -> DnsRuleSettings.saveAutoUpdate(context, enabled, intervalHours)
     }
 }
+
+/**
+ * Dataset decision table for [RuleSettingsAccess.isCnameRewriteOperational],
+ * kept free of Android types so the rule can be unit-tested on the JVM.
+ *
+ * @param normalOperational whether normal mode's HTTPS inspection prerequisites
+ *   are met; only consulted for [RuleDataset.NORMAL].
+ */
+internal fun cnameRewriteOperational(dataset: RuleDataset, normalOperational: () -> Boolean): Boolean =
+    when (dataset) {
+        RuleDataset.NORMAL -> normalOperational()
+        RuleDataset.DNS_MODE -> true
+        RuleDataset.EXPRESS -> false
+    }

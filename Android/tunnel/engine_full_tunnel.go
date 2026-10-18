@@ -17,7 +17,6 @@ package tunnel
 
 import (
 	"context"
-	"encoding/binary"
 	"io"
 	"net"
 	"os"
@@ -27,7 +26,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/miekg/dns"
 	"github.com/xjasonlyu/tun2socks/v2/core/adapter"
 )
 
@@ -186,7 +184,7 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	e.totalQueries.Store(0)
 	e.blockedQueries.Store(0)
 
-	connLogSeen.Range(func(k, _ any) bool { connLogSeen.Delete(k); return true })
+	connLogSeen.reset()
 
 	var protectFn func(fd int) bool
 	if protector != nil {
@@ -217,13 +215,25 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	uidr := e.uidResolver
 	done := make(chan struct{})
 	e.fullTunnelDone = done
+	// Pin the session this call belongs to. Everything published after the unlock
+	// below is conditional on the generation still matching, so a Stop() (or a
+	// Stop()+StartFull() pair) that lands during the expensive setup cannot be
+	// clobbered by this stale call. Comparing `done` alone would not catch a
+	// second StartFull reusing the same channel identity across sessions.
+	gen := e.sessionGen
 	e.mu.Unlock()
+
+	// stillCurrent reports whether this call is still the session that owns the
+	// engine. Callers hold mu.
+	stillCurrent := func() bool { return e.running && e.sessionGen == gen }
 
 	fail := func(format string, args ...interface{}) {
 		logf(format, args...)
 		e.mu.Lock()
-		e.running = false
-		e.fullTunnelDone = nil
+		if stillCurrent() {
+			e.running = false
+			e.fullTunnelDone = nil
+		}
 		e.mu.Unlock()
 	}
 
@@ -254,7 +264,20 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 
 	btun := newBufferedTun(tunFile)
 
+	// Claim the TUN/stack slots only if this session is still the current one.
+	// Stop() may have run while the stack was being built: it would have cleared
+	// the slots it saw (still nil) and closed the done channel, so an
+	// unconditional store here would install a live stack that nothing owns —
+	// the classic StartFull-late-vs-Stop interleaving that leaked a running TUN
+	// stack until process death.
 	e.mu.Lock()
+	if !stillCurrent() {
+		e.mu.Unlock()
+		btun.halt()
+		tunFile.Close()
+		logf("StartFull: aborted, session was stopped during startup")
+		return
+	}
 	e.tunFile = tunFile
 	e.tcpStack = stack
 	e.mu.Unlock()
@@ -263,8 +286,12 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 		btun.halt()
 		tunFile.Close()
 		e.mu.Lock()
-		e.tcpStack = nil
-		e.tunFile = nil
+		if e.tcpStack == stack {
+			e.tcpStack = nil
+		}
+		if e.tunFile == tunFile {
+			e.tunFile = nil
+		}
 		e.mu.Unlock()
 		fail("StartFull: stack start failed: %v", err)
 		return
@@ -283,6 +310,18 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	}
 	e.trafficTracker.Stop()
 	btun.halt()
+	// A Stop() that ran before the stack was installed could not reach it (the
+	// slot was still nil at the time), so make sure the stack is actually torn
+	// down by whoever gets here.
+	stack.Stop()
+	e.mu.Lock()
+	if e.tcpStack == stack {
+		e.tcpStack = nil
+	}
+	if e.tunFile == tunFile {
+		e.tunFile = nil
+	}
+	e.mu.Unlock()
 	logf("StartFull: stopped")
 }
 
@@ -410,132 +449,3 @@ func (e *Engine) isUIDBlocked(uid int) bool {
 	e.blockedUIDsMu.RUnlock()
 	return blocked
 }
-
-const dnsUDPIdleTimeout = 15 * time.Second
-
-func handleDNSOverUDP(conn adapter.UDPConn, engine *Engine, uid int) {
-	defer conn.Close()
-
-	appName := engine.appNameForFlow(udpFlowID(conn), ProtocolUDP)
-	buf := make([]byte, 4096)
-	for {
-		_ = conn.SetReadDeadline(time.Now().Add(dnsUDPIdleTimeout))
-		n, err := conn.Read(buf)
-		if err != nil {
-			return
-		}
-		if engine.trafficTracker != nil && n > 0 {
-			engine.trafficTracker.RecordTx(uid, int64(n))
-		}
-		req := new(dns.Msg)
-		if err := req.Unpack(buf[:n]); err != nil {
-			continue
-		}
-		engine.serveDNS(&udpDNSResponseWriter{conn: conn, engine: engine, uid: uid}, req, appName, uid)
-	}
-}
-
-type udpDNSResponseWriter struct {
-	conn   adapter.UDPConn
-	engine *Engine
-	uid    int
-}
-
-func (w *udpDNSResponseWriter) LocalAddr() net.Addr  { return w.conn.LocalAddr() }
-func (w *udpDNSResponseWriter) RemoteAddr() net.Addr { return w.conn.RemoteAddr() }
-
-func (w *udpDNSResponseWriter) WriteMsg(m *dns.Msg) error {
-	packed, err := m.Pack()
-	if err != nil {
-		return err
-	}
-	if w.engine != nil && w.engine.trafficTracker != nil && len(packed) > 0 {
-		w.engine.trafficTracker.RecordRx(w.uid, int64(len(packed)))
-	}
-	_, err = w.conn.Write(packed)
-	return err
-}
-
-func (w *udpDNSResponseWriter) Write(b []byte) (int, error) {
-	if w.engine != nil && w.engine.trafficTracker != nil && len(b) > 0 {
-		w.engine.trafficTracker.RecordRx(w.uid, int64(len(b)))
-	}
-	return w.conn.Write(b)
-}
-
-func (w *udpDNSResponseWriter) Close() error        { return nil }
-func (w *udpDNSResponseWriter) TsigStatus() error   { return nil }
-func (w *udpDNSResponseWriter) TsigTimersOnly(bool) {}
-func (w *udpDNSResponseWriter) Hijack()             {}
-
-const dnsTCPIdleTimeout = 15 * time.Second
-
-func handleDNSOverTCP(conn adapter.TCPConn, engine *Engine, uid int) {
-	defer conn.Close()
-	appName := engine.appNameForFlow(tcpFlowID(conn), ProtocolTCP)
-	lenBuf := make([]byte, 2)
-	for {
-		_ = conn.SetReadDeadline(time.Now().Add(dnsTCPIdleTimeout))
-		if _, err := io.ReadFull(conn, lenBuf); err != nil {
-			return
-		}
-		msgLen := binary.BigEndian.Uint16(lenBuf)
-		if msgLen == 0 {
-			continue
-		}
-		buf := make([]byte, msgLen)
-		if _, err := io.ReadFull(conn, buf); err != nil {
-			return
-		}
-		if engine.trafficTracker != nil {
-			engine.trafficTracker.RecordTx(uid, int64(2+int(msgLen)))
-		}
-		req := new(dns.Msg)
-		if err := req.Unpack(buf); err != nil {
-			continue
-		}
-		engine.serveDNS(&tcpDNSResponseWriter{conn: conn, engine: engine, uid: uid}, req, appName, uid)
-	}
-}
-
-type tcpDNSResponseWriter struct {
-	conn   adapter.TCPConn
-	engine *Engine
-	uid    int
-}
-
-func (w *tcpDNSResponseWriter) LocalAddr() net.Addr  { return w.conn.LocalAddr() }
-func (w *tcpDNSResponseWriter) RemoteAddr() net.Addr { return w.conn.RemoteAddr() }
-
-func (w *tcpDNSResponseWriter) WriteMsg(m *dns.Msg) error {
-	packed, err := m.Pack()
-	if err != nil {
-		return err
-	}
-	return w.writeBytes(packed)
-}
-
-func (w *tcpDNSResponseWriter) Write(b []byte) (int, error) {
-	err := w.writeBytes(b)
-	if err != nil {
-		return 0, err
-	}
-	return len(b), nil
-}
-
-func (w *tcpDNSResponseWriter) writeBytes(b []byte) error {
-	lenBuf := make([]byte, 2)
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(b)))
-	total := append(lenBuf, b...)
-	if w.engine != nil && w.engine.trafficTracker != nil && len(total) > 0 {
-		w.engine.trafficTracker.RecordRx(w.uid, int64(len(total)))
-	}
-	_ = w.conn.SetWriteDeadline(time.Now().Add(dnsTCPIdleTimeout))
-	_, err := w.conn.Write(total)
-	return err
-}
-
-func (w *tcpDNSResponseWriter) Close() error        { return nil }
-func (w *tcpDNSResponseWriter) TsigStatus() error   { return nil }
-func (w *tcpDNSResponseWriter) TsigTimersOnly(bool) {}
-func (w *tcpDNSResponseWriter) Hijack()             {}

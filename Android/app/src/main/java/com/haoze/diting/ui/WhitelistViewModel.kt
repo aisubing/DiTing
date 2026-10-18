@@ -441,7 +441,10 @@ class WhitelistViewModel(
                 ?: return@withContext Result.failure(IllegalArgumentException("域名格式无效"))
 
             allowRuleDao.deleteById(item.id)
-            val source = if (item.isPreset) DefaultWhitelistSeeder.SOURCE_PRESET else DefaultWhitelistSeeder.SOURCE_USER
+            // A-100: 用户编辑过的 preset 行改存为 useradd 源。原先编辑后仍回写
+            // SOURCE_PRESET，而版本升级时 DefaultWhitelistSeeder.seed(forceReset=true)
+            // 会 deleteBySource(SOURCE_PRESET) 把该行连同用户改动一起静默清除。
+            // 「编辑」这个动作本身就是用户化，故不再回写 preset 源。
             val entity = AllowRuleEntity(
                 pattern = parsed.pattern,
                 rawLine = trimmed,
@@ -453,7 +456,7 @@ class WhitelistViewModel(
                 isWildcard = parsed.isWildcard,
                 important = newImportant
             )
-            allowRuleDao.insertForSource(entity, source, sourceEnabled = item.enabled)
+            allowRuleDao.insertForSource(entity, DefaultWhitelistSeeder.SOURCE_USER, sourceEnabled = item.enabled)
             if (item.pattern != entity.pattern) {
                 allowListManager.syncCachedPattern(item.pattern)
             }

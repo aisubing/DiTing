@@ -52,6 +52,23 @@ class ExpressRoomDnsCache(
         memoryCache.clear()
     }
 
+    /**
+     * Cache identity of a question.
+     *
+     * Mirrors [com.haoze.diting.core.cache.DnsCacheKey] instead of a bare
+     * name#type#class: the DO and CD request bits change the answer a resolver
+     * returns (DNSSEC records, disabled validation), so a key without them
+     * replays a DO+ answer to a plain client (leaking RRSIG/DS records it never
+     * asked for) and misses on every flip. Built here rather than reusing the
+     * core type because Express carries its own question model.
+     */
+    private fun cacheKey(question: ExpressDnsMessageUtils.DnsQuestion): String {
+        val normalizedName = question.name.lowercase().trimEnd('.')
+        val dnssecOk = if (question.dnssecOk) 1 else 0
+        val checkingDisabled = if (question.checkingDisabled) 1 else 0
+        return "$normalizedName#${question.type}#${question.qclass}#$dnssecOk#$checkingDisabled"
+    }
+
     override suspend fun get(
         question: ExpressDnsMessageUtils.DnsQuestion,
         requestQuery: ByteArray
@@ -59,7 +76,7 @@ class ExpressRoomDnsCache(
         val policy = cachePolicyProvider()
         if (!policy.enabled) return null
         val normalizedName = question.name.lowercase().trimEnd('.')
-        val key = "$normalizedName#${question.type}#${question.qclass}"
+        val key = cacheKey(question)
         val now = System.currentTimeMillis()
 
         val mem = memoryCache.get(key)
@@ -96,7 +113,7 @@ class ExpressRoomDnsCache(
         val policy = cachePolicyProvider()
         if (!policy.enabled) return
         val normalizedName = question.name.lowercase().trimEnd('.')
-        val key = "$normalizedName#${question.type}#${question.qclass}"
+        val key = cacheKey(question)
         val minTtl = ExpressPacketCodec.extractMinDnsTtl(response) ?: 300L
         val effectiveTtl = policy.effectiveTtlSeconds(minTtl)
         if (effectiveTtl <= 0L) return
@@ -109,20 +126,40 @@ class ExpressRoomDnsCache(
         val metadata = ExpressDnsMessageUtils.extractResponseTtlMetadata(response)
         val ttlOffsetsStr = metadata?.ttlOffsets?.joinToString(",") ?: ""
 
-        val entity = DnsCacheEntity(
+        // A-065: a plain REPLACE insert deletes + re-inserts the row, so every
+        // refresh of a still-cached answer reset hitCount to 0 and lastHitAt to
+        // null — the "hot entries" ordering on the cache screen was wiped on each
+        // re-resolve. Update the payload columns first (they deliberately leave
+        // the counters alone) and only insert when the key is brand new.
+        val updated = dao.updateMetadata(
             key = key,
             queryName = normalizedName,
             queryType = question.type,
             queryClass = question.qclass,
             createdAt = now,
             expiresAt = expiresAt,
-            lastHitAt = null,
-            hitCount = 0,
             originalTtlSeconds = minTtl,
             ttlOffsets = ttlOffsetsStr,
             response = responseCopy,
             responseSize = responseCopy.size
         )
-        dao.insert(entity)
+        if (updated == 0) {
+            dao.insertIfAbsent(
+                DnsCacheEntity(
+                    key = key,
+                    queryName = normalizedName,
+                    queryType = question.type,
+                    queryClass = question.qclass,
+                    createdAt = now,
+                    expiresAt = expiresAt,
+                    lastHitAt = null,
+                    hitCount = 0,
+                    originalTtlSeconds = minTtl,
+                    ttlOffsets = ttlOffsetsStr,
+                    response = responseCopy,
+                    responseSize = responseCopy.size
+                )
+            )
+        }
     }
 }

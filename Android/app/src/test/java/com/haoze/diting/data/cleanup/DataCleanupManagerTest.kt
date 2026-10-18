@@ -62,6 +62,19 @@ class DataCleanupManagerTest {
         assertTrue(calls.contains("CosmeticRuleDao.clearAll()"))
         assertTrue(calls.contains("CosmeticRuleDao.clearAllSources()"))
         assertTrue(calls.contains("SubscriptionDao.deleteByKind(${SubscriptionKind.DOMAIN})"))
+        // A-066: deleting the HOSTS-side subscription overrides also invalidates
+        // every subscription's rule count / HTTP validators. The reset existed on
+        // the DAO but had zero callers, so the subscriptions page kept showing
+        // stale counts and ETag-conditional updates silently skipped the refresh.
+        assertTrue(
+            "A-066: rule counters must be reset after the domain rules are deleted",
+            calls.contains("SubscriptionDao.resetAfterRuleCleanup()")
+        )
+        assertTrue(
+            "the reset must happen after the overrides are gone",
+            calls.indexOf("SubscriptionDao.deleteByKind(${SubscriptionKind.DOMAIN})") <
+                calls.indexOf("SubscriptionDao.resetAfterRuleCleanup()")
+        )
         assertTrue(calls.contains("SubscriptionAutoUpdateDao.deleteOrphans()"))
     }
 

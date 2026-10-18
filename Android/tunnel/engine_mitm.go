@@ -43,9 +43,15 @@ func (e *Engine) StartStackMitm(certDir string) string {
 
 func (e *Engine) StopStackMitm() {
 	e.mu.Lock()
+	certMgr := e.stackCertMgr
 	e.stackCertMgr = nil
 	e.stackMitmFilter = nil
 	e.mu.Unlock()
+	// Drop the minted leaf certificates with the session: they are keyed by host
+	// and would otherwise outlive the engine that minted them.
+	if certMgr != nil {
+		certMgr.Release()
+	}
 }
 
 func (e *Engine) SetUseTcpStack(enabled bool) {

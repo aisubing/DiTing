@@ -13,6 +13,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
+import com.haoze.diting.ui.localizedResource
 import com.haoze.diting.ui.mode.AppWorkMode
 import com.haoze.diting.ui.mode.WorkModeStore
 
@@ -133,15 +134,15 @@ class VpnMonitorService : Service() {
         val contentText = if (customText.isNotBlank()) {
             customText
         } else {
-            getString(R.string.vpn_disconnected)
+            localizedResource(this, R.string.vpn_disconnected)
         }
 
         return NotificationCompat.Builder(this, AppNotificationChannels.CHANNEL_VPN_MONITOR)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(getString(R.string.app_name))
+            .setContentTitle(localizedResource(this, R.string.app_name))
             .setContentText(contentText)
             .setContentIntent(openAppPendingIntent)
-            .addAction(R.drawable.ic_play_arrow, getString(R.string.vpn_start), openAppPendingIntent)
+            .addAction(R.drawable.ic_play_arrow, localizedResource(this, R.string.vpn_start), openAppPendingIntent)
             .setOngoing(true)
             .setShowWhen(false)
             .setOnlyAlertOnce(true)

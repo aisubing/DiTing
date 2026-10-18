@@ -135,7 +135,7 @@ class RewriteListViewModel(
         loadStatsJob?.cancel()
         loadStatsJob = viewModelScope.launch(Dispatchers.IO) {
             val domainRulesEnabled = settings.isMasterEnabled(getApplication())
-            val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
+            val cnameOperational = settings.isCnameRewriteOperational(getApplication())
 
             val ipv4Total = rewriteRuleDao.countByTargetType(RewriteTargetType.IPV4)
             val ipv6Total = rewriteRuleDao.countByTargetType(RewriteTargetType.IPV6)
@@ -143,7 +143,7 @@ class RewriteListViewModel(
 
             val ipv4Enabled = if (domainRulesEnabled) rewriteRuleDao.enabledCountByTargetType(RewriteTargetType.IPV4) else 0
             val ipv6Enabled = if (domainRulesEnabled) rewriteRuleDao.enabledCountByTargetType(RewriteTargetType.IPV6) else 0
-            val cnameEnabled = if (addressRulesOperational) rewriteRuleDao.enabledCountByTargetType(RewriteTargetType.CNAME) else 0
+            val cnameEnabled = if (cnameOperational) rewriteRuleDao.enabledCountByTargetType(RewriteTargetType.CNAME) else 0
 
             val totalActive = ipv4Enabled + ipv6Enabled + cnameEnabled
             val totalRules = rewriteRuleDao.count()
@@ -178,7 +178,7 @@ class RewriteListViewModel(
             val query = request.query
             val currentFilter = request.filter
             val domainRulesEnabled = settings.isMasterEnabled(getApplication())
-            val addressRulesOperational = settings.isAddressRulesOperational(getApplication())
+            val cnameOperational = settings.isCnameRewriteOperational(getApplication())
 
             val total = when (currentFilter) {
                 RewriteListFilter.ALL -> {
@@ -248,7 +248,7 @@ class RewriteListViewModel(
                 val isSub = subSource != null
                 val subName = subSource?.let { subscriptions[it.source]?.name }
                 val isDomainType = entity.targetType == RewriteTargetType.IPV4 || entity.targetType == RewriteTargetType.IPV6
-                val masterEnabled = if (isDomainType) domainRulesEnabled else addressRulesOperational
+                val masterEnabled = if (isDomainType) domainRulesEnabled else cnameOperational
 
                 RewriteListItem(
                     id = entity.id,

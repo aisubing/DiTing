@@ -109,7 +109,25 @@ func (r *injectingReader) Read(p []byte) (int, error) {
 	}
 
 	n, err := r.upstream.Read(p)
-	if n == 0 || r.injected {
+	if n == 0 {
+		// The upstream is exhausted. Any bytes parked in carry are the tail of a
+		// partial `<head` prefix that never completed, so they belong to the
+		// document body and must still be handed to the client; dropping them
+		// truncated the page right at the marker. Flush them before propagating
+		// the terminal error.
+		if len(r.carry) > 0 && err != nil {
+			data := r.carry
+			r.carry = nil
+			nn := copy(p, data)
+			if nn < len(data) {
+				r.pending = data[nn:]
+				return nn, nil
+			}
+			return nn, err
+		}
+		return n, err
+	}
+	if r.injected {
 		return n, err
 	}
 

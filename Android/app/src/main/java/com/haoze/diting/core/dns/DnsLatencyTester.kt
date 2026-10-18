@@ -16,7 +16,7 @@ import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.math.roundToLong
 
 /**
@@ -127,15 +127,10 @@ object DnsLatencyTester {
                 message = DohUrlParser.invalidUrlMessage(provider.url)
             )
 
-        val builder = OkHttpClient.Builder()
-            .connectTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
-            .readTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
-            .callTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
-            .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
-
         fun clientForBootstrap(bootstrapAddresses: List<InetAddress>?): OkHttpClient {
-            val addresses = bootstrapAddresses?.takeIf { it.isNotEmpty() } ?: return builder.build()
-            return builder
+            val addresses = bootstrapAddresses?.takeIf { it.isNotEmpty() } ?: return BASE_CLIENT
+            return BASE_CLIENT
+                .newBuilder()
                 .dns(object : Dns {
                 override fun lookup(hostname: String): List<InetAddress> {
                     return if (hostname.equals(httpUrl.host, ignoreCase = true)) {
@@ -260,7 +255,8 @@ object DnsLatencyTester {
         )
     }
 
-    private suspend fun Call.await(): Response = suspendCoroutine { continuation ->
+    private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { cancel() }
         enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 continuation.resumeWithException(e)
@@ -273,4 +269,19 @@ object DnsLatencyTester {
     }
 
     private const val DEFAULT_ATTEMPTS = 3
+
+    /**
+     * Shared HTTP client for DoH probes. Building one per call leaked a thread
+     * pool and a connection pool per measured provider, and a full speed-test
+     * round created dozens of them. It is immutable, so the per-host bootstrap
+     * DNS override is applied on a derived client instead.
+     */
+    private val BASE_CLIENT: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .readTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .callTimeout(DNS_UPSTREAM_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS)
+            .connectionSpecs(listOf(ConnectionSpec.MODERN_TLS))
+            .build()
+    }
 }

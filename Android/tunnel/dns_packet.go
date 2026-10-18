@@ -319,10 +319,14 @@ func buildIPv6UDPPacket(srcIP, dstIP net.IP, srcPort, dstPort uint16, payload []
 	binary.BigEndian.PutUint16(packet[udpOffset+2:udpOffset+4], dstPort)
 	binary.BigEndian.PutUint16(packet[udpOffset+4:udpOffset+6], uint16(udpLen))
 
+	// The payload must be in place *before* the checksum is computed: the
+	// IPv6 UDP checksum covers the whole datagram plus the pseudo-header, so
+	// summing a packet whose body is still zero yields a checksum that never
+	// validates.
+	copy(packet[udpOffset+udpHeaderSize:], payload)
+
 	csum := calculateUDPIPv6Checksum(srcIP.To16(), dstIP.To16(), packet, udpOffset, udpLen)
 	binary.BigEndian.PutUint16(packet[udpOffset+6:udpOffset+8], csum)
-
-	copy(packet[udpOffset+udpHeaderSize:], payload)
 
 	return packet
 }

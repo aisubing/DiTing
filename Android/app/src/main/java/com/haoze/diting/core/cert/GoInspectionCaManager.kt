@@ -16,11 +16,15 @@ object GoInspectionCaManager {
     fun certificateDirectory(context: Context): File = File(context.filesDir, "go-mitm").apply { mkdirs() }
 
     fun certificatePem(context: Context): String {
+        // A throwaway Engine is fine for reading the CA, but it must be torn down:
+        // Engine() allocates a DNS cache whose background cleaner goroutine only
+        // stops via stop(), so leaking the instance leaked a goroutine per call.
         val engine = Engine()
         return try {
             engine.startStackMitm(certificateDirectory(context).absolutePath)
         } finally {
             engine.stopStackMitm()
+            runCatching { engine.stop() }
         }
     }
 

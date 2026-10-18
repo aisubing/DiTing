@@ -1,13 +1,15 @@
 // mitm_cert_manager.go implements the dynamic certificate authority (CertManager) for on-the-fly leaf certificate generation.
 //
 // Certificate Minting & Caching:
-// - Root CA: Generates or loads RSA/ECDSA root CA credentials ("PWHS Local CA") stored on persistent storage.
+// - Root CA: Generates or loads an ECDSA root CA ("DITING HTTPS Inspection Root CA") on persistent storage.
 // - Dynamic Leaf Minting: Signs domain leaf certificates on demand using SAN extensions matching intercepted hostnames.
-// - LRU Cache: Maintains an in-memory certificate cache (512 entries) with 24-hour validity to minimize signing latency.
+// - LRU Cache: Maintains an in-memory certificate cache bounded to [certCacheMaxEntries] entries with 24-hour
+//   validity to minimize signing latency.
 
 package tunnel
 
 import (
+	"container/list"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -38,7 +40,7 @@ type CertManager struct {
 	caPEM    []byte
 	caKeyPEM []byte
 
-	certCache sync.Map
+	certCache certCacheStore
 
 	flightCache sync.Map
 }
@@ -48,12 +50,117 @@ type cachedCert struct {
 	expiresAt time.Time
 }
 
+// certCacheMaxEntries caps the minted leaf certificate cache. The file header
+// has always claimed an "LRU cache (512 entries)", but the implementation was a
+// plain sync.Map that only ever deleted on an expired hit, so a long-lived
+// session browsing many hosts grew it without bound.
+const certCacheMaxEntries = 512
+
+// certCacheStore is a size-bounded LRU for minted leaf certificates.
+type certCacheStore struct {
+	mu       sync.Mutex
+	entries  map[string]*list.Element
+	order    *list.List // front = most recently used
+	maxItems int
+}
+
+type certCacheItem struct {
+	host  string
+	entry *cachedCert
+}
+
+func (c *certCacheStore) load(host string) (*cachedCert, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	elem, ok := c.entries[host]
+	if !ok {
+		return nil, false
+	}
+	c.order.MoveToFront(elem)
+	return elem.Value.(*certCacheItem).entry, true
+}
+
+func (c *certCacheStore) store(host string, entry *cachedCert) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.entries == nil {
+		c.entries = make(map[string]*list.Element, c.maxItems)
+		c.order = list.New()
+	}
+	if elem, ok := c.entries[host]; ok {
+		elem.Value.(*certCacheItem).entry = entry
+		c.order.MoveToFront(elem)
+		return
+	}
+	c.entries[host] = c.order.PushFront(&certCacheItem{host: host, entry: entry})
+	for c.order.Len() > c.maxItems {
+		back := c.order.Back()
+		if back == nil {
+			break
+		}
+		c.order.Remove(back)
+		delete(c.entries, back.Value.(*certCacheItem).host)
+	}
+}
+
+func (c *certCacheStore) delete(host string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if elem, ok := c.entries[host]; ok {
+		c.order.Remove(elem)
+		delete(c.entries, host)
+	}
+}
+
+// purgeExpired drops every entry whose certificate is past (or within a minute
+// of) its validity so a cache filled by a previous session cannot keep serving
+// re-minted certificates from dead hosts.
+func (c *certCacheStore) purgeExpired(now time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for host, elem := range c.entries {
+		entry := elem.Value.(*certCacheItem).entry
+		if entry == nil || entry.cert == nil || !now.Before(entry.expiresAt.Add(-5*time.Minute)) {
+			c.order.Remove(elem)
+			delete(c.entries, host)
+		}
+	}
+}
+
+func (c *certCacheStore) reset(maxItems int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.entries = make(map[string]*list.Element, maxItems)
+	c.order = list.New()
+	c.maxItems = maxItems
+}
+
+// len reports the number of cached certificates.
+func (c *certCacheStore) len() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.order == nil {
+		return 0
+	}
+	return c.order.Len()
+}
+
 func NewCertManager(certDir string) (*CertManager, error) {
 	cm := &CertManager{}
+	cm.certCache.reset(certCacheMaxEntries)
 	if err := cm.initCA(certDir); err != nil {
 		return nil, err
 	}
 	return cm, nil
+}
+
+// Release drops every minted leaf certificate. Engine.StopStackMitm calls it so
+// a torn-down MITM session does not keep an engine-lifetime cache alive.
+func (cm *CertManager) Release() {
+	if cm == nil {
+		return
+	}
+	cm.certCache.reset(certCacheMaxEntries)
 }
 
 func (cm *CertManager) GetCACertPEM() string {
@@ -78,13 +185,11 @@ func (cm *CertManager) GetDynamicTLSConfigForHost(defaultHost string) *tls.Confi
 
 func (cm *CertManager) getCertificateWithDedup(host string) (*tls.Certificate, error) {
 
-	if cached, ok := cm.certCache.Load(host); ok {
-		entry := cached.(*cachedCert)
-
-		if time.Now().Before(entry.expiresAt.Add(-5 * time.Minute)) {
-			return entry.cert, nil
+	if cached, ok := cm.certCache.load(host); ok {
+		if time.Now().Before(cached.expiresAt.Add(-5 * time.Minute)) {
+			return cached.cert, nil
 		}
-		cm.certCache.Delete(host)
+		cm.certCache.delete(host)
 	}
 
 	wg := &sync.WaitGroup{}
@@ -92,10 +197,13 @@ func (cm *CertManager) getCertificateWithDedup(host string) (*tls.Certificate, e
 	actual, loaded := cm.flightCache.LoadOrStore(host, wg)
 
 	if loaded {
+		// Another goroutine is already minting this host: wait, then read the
+		// cache it just populated. flightCache is deleted in the winner's defer,
+		// so a miss here means generation failed there.
 		actual.(*sync.WaitGroup).Wait()
 
-		if cached, ok := cm.certCache.Load(host); ok {
-			return cached.(*cachedCert).cert, nil
+		if cached, ok := cm.certCache.load(host); ok {
+			return cached.cert, nil
 		}
 
 		return nil, fmt.Errorf("concurrent certificate generation failed for %s", host)
@@ -106,6 +214,9 @@ func (cm *CertManager) getCertificateWithDedup(host string) (*tls.Certificate, e
 		wg.Done()
 	}()
 
+	// A previous session's entries are dead weight; keeping them only delays the
+	// bound from taking effect after the cache grew large.
+	cm.certCache.purgeExpired(time.Now())
 	return cm.getCertForHost(host)
 }
 
@@ -266,12 +377,11 @@ func (cm *CertManager) generateCA() error {
 }
 
 func (cm *CertManager) getCertForHost(host string) (*tls.Certificate, error) {
-	if cached, ok := cm.certCache.Load(host); ok {
-		entry := cached.(*cachedCert)
-		if time.Now().Before(entry.expiresAt.Add(-5 * time.Minute)) {
-			return entry.cert, nil
+	if cached, ok := cm.certCache.load(host); ok {
+		if time.Now().Before(cached.expiresAt.Add(-5 * time.Minute)) {
+			return cached.cert, nil
 		}
-		cm.certCache.Delete(host)
+		cm.certCache.delete(host)
 	}
 
 	cm.mu.RLock()
@@ -323,7 +433,7 @@ func (cm *CertManager) getCertForHost(host string) (*tls.Certificate, error) {
 		PrivateKey:  leafKey,
 	}
 
-	cm.certCache.Store(host, &cachedCert{
+	cm.certCache.store(host, &cachedCert{
 		cert:      tlsCert,
 		expiresAt: leafTemplate.NotAfter,
 	})

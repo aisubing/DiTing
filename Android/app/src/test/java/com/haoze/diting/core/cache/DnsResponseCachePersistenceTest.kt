@@ -4,12 +4,16 @@ import androidx.sqlite.db.SupportSQLiteQuery
 import com.haoze.diting.data.dao.DnsCacheDao
 import com.haoze.diting.data.dao.DnsCacheHitDelta
 import com.haoze.diting.data.entity.DnsCacheEntity
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -22,6 +26,9 @@ class DnsResponseCachePersistenceTest {
     private class FakeDnsCacheDao : DnsCacheDao {
         val storage = LinkedHashMap<String, DnsCacheEntity>()
         var hitCount = 0
+
+        /** Suspension hook used to interleave a `clear()` with an in-flight write. */
+        var beforeApplyPendingWrites: suspend () -> Unit = {}
 
         override suspend fun get(key: String): DnsCacheEntity? = storage[key]
 
@@ -66,6 +73,29 @@ class DnsResponseCachePersistenceTest {
                 responseSize = responseSize
             )
             return 1
+        }
+
+        override suspend fun applyPendingWrites(
+            entities: List<DnsCacheEntity>,
+            hits: List<DnsCacheHitDelta>
+        ) {
+            beforeApplyPendingWrites()
+            for (e in entities) {
+                val updated = updateMetadata(
+                    key = e.key,
+                    queryName = e.queryName,
+                    queryType = e.queryType,
+                    queryClass = e.queryClass,
+                    createdAt = e.createdAt,
+                    expiresAt = e.expiresAt,
+                    originalTtlSeconds = e.originalTtlSeconds,
+                    ttlOffsets = e.ttlOffsets,
+                    response = e.response,
+                    responseSize = e.responseSize
+                )
+                if (updated == 0) insertIfAbsent(e)
+            }
+            for (h in hits) addHits(h.key, h.delta, h.lastHitAt)
         }
 
         override suspend fun addHits(key: String, delta: Int, lastHitAt: Long): Int {
@@ -176,5 +206,80 @@ class DnsResponseCachePersistenceTest {
         cache.flushPendingWrites()
 
         assertNull(dao.storage[DnsCacheKey.create(name = "missing.com", type = 1).storageKey])
+    }
+
+    /**
+     * A-044: a flush that has already drained the pending batch must not write it
+     * back after `clear()` wiped the table — that resurrected up to
+     * WRITE_BATCH_SIZE rows the user had just deleted.
+     *
+     * The fake DAO suspends *inside* `applyPendingWrites` while `clear()` runs,
+     * which is exactly the interleaving of the bug: drain → clearAll → (stale)
+     * insert. With the fix the two DB operations are serialized, so the wipe
+     * always wins.
+     */
+    @Test
+    fun clearDuringFlushDoesNotResurrectRows() = runBlocking {
+        val dao = FakeDnsCacheDao()
+        val cache = newCache(dao)
+        val writeStarted = CompletableDeferred<Unit>()
+        val releaseWrite = CompletableDeferred<Unit>()
+        dao.beforeApplyPendingWrites = {
+            writeStarted.complete(Unit)
+            releaseWrite.await()
+        }
+
+        cache.recordResolved("a.com", 1, "1.2.3.4", upstreamTtl = 300)
+        val writer = launch { cache.flushPendingWrites() }
+        writeStarted.await()
+
+        val clearJob = launch { cache.clear() }
+        // Let clear() park on the DB-write lock behind the suspended writer.
+        repeat(8) { yield() }
+        releaseWrite.complete(Unit)
+        writer.join()
+        clearJob.join()
+
+        assertEquals("the flushed batch belongs to a wiped cache", 0, dao.storage.size)
+    }
+
+    @Test
+    fun clearBeforeFlushDropsTheWholeBatch() = runBlocking {
+        val dao = FakeDnsCacheDao()
+        val cache = newCache(dao)
+
+        cache.recordResolved("a.com", 1, "1.2.3.4", upstreamTtl = 300)
+        cache.recordResolved("b.com", 1, "5.6.7.8", upstreamTtl = 300)
+        cache.clear()
+        cache.flushPendingWrites()
+
+        assertEquals(0, dao.storage.size)
+    }
+
+    @Test
+    fun explicitZeroTtlIsNeverCached() = runBlocking {
+        val dao = FakeDnsCacheDao()
+        val cache = newCache(dao)
+
+        // A real TTL=0 answer (the engine re-queries it every time) must not be
+        // persisted; the old fallback treated it as "unknown" and stored it with
+        // the policy maximum, creating statistics rows that never expired (O-107).
+        cache.recordResolved("zero.com", 1, "1.2.3.4", upstreamTtl = 0)
+        cache.flushPendingWrites()
+
+        assertNull(dao.storage[DnsCacheKey.create(name = "zero.com", type = 1).storageKey])
+    }
+
+    @Test
+    fun unknownTtlStillFallsBackToPolicyMaximum() = runBlocking {
+        val dao = FakeDnsCacheDao()
+        val cache = newCache(dao)
+
+        cache.recordResolved("unknown.com", 1, "1.2.3.4", upstreamTtl = DnsResponseCache.TTL_UNKNOWN)
+        cache.flushPendingWrites()
+
+        val row = dao.storage[DnsCacheKey.create(name = "unknown.com", type = 1).storageKey]
+        assertNotNull("a caller without TTL information is still recorded", row)
+        assertTrue(row!!.expiresAt > System.currentTimeMillis())
     }
 }
