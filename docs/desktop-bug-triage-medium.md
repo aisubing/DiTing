@@ -48,7 +48,7 @@
 | A-080 | AI 分析串库 | AgentAnalysisSheet 硬编码 AppDatabase+NORMAL 广播：极速 DNS 缓存页 AI 分析读错库 | 存在 | 高 | 硬编码点在 `:95` 非 `:92-104`；机制无误；降级为中 | 已修 |
 | A-081 | 动态拦截极速侧 | 极速模式动态拦截可开可存，express/ 引擎零读取：功能纯空转 | 存在但需修正 | 中 | 「零读取」应改「引擎零消费、UI 仅读来渲染谎报文案」（ExpressRuleControlScreen:128 确读取）；DNS 模式那半边归 A-023 | 已修 |
 | A-082 | 保留天数热更新 | 普通模式改「日志保留天数」不触发 onRuntimeDnsSettingsChanged：引擎按旧快照 prune | 存在 | 中 | 对照同屏日志模式项正确触发即证据；引擎快照 `activeLogRetentionDays` 在 `:50`、刷新点 `:96` | 已修 |
-| A-083 | SAF 授权泄漏 | 全仓 5 处 takePersistableUriPermission、0 处 release：删图/删订阅后授权永久残留 | 存在 | 中 | take 5、release 0 独立计数一致；**订阅删除侧无法修**——`SubscriptionEntity` 无「是否持久化授权」标志，无条件 release 会误撤默认应用提供的文件 | 已修（订阅侧受模型限制） |
+| A-083 | SAF 授权泄漏 | 全仓 5 处 takePersistableUriPermission、0 处 release：删图/删订阅后授权永久残留 | 存在 | 中 | take 5、release 0 独立计数一致；订阅删除侧原以为无法修（`SubscriptionEntity` 无「是否持久化授权」标志），实际可用 `ContentResolver.getPersistedUriPermissions()` 作权威判据，已补齐 | 已修（5 处全覆盖） |
 | A-084 | 服务器模式向导 | DNS 模式使用向导接入信息硬编码端口 1053（5 处），从不读 localListenPort | 存在 | 中 | **实测 6 处**（文档记 5 处，漏 `ModeOnboardingSteps.kt:140`）；触发需用户改过端口 | 已修 |
 | A-085 | Go 全隧道半关闭 | countingConn 内嵌 net.Conn 接口致 CloseWrite 不提升：全隧道 TCP 半关闭永久失效 | 存在 | 中高 | 类型系统事实本会话 Go 复算确认；legacy 直连路径不经包装、应排除 | 已修 |
 | A-087 | DoT 阻断开关 | SetBlockEncryptedDns 是死开关：blockEncryptedDNS 仅 1 Store 0 Load，853 恒硬拦 | 存在但需修正 | 中 | 第三消费点应为 `mitm_handler.go` 非 `engine_mitm.go`；1 Store/0 Load 全 Go 树实证 | 已修 |
@@ -128,7 +128,7 @@
 - **A-079 / A-080 / A-084 / A-088（Express 侧）**：4 处 Store 调用补 `dataset`；`AgentAnalysisSheet` 按数据集解析规则库/日志库；端口动态化（6 处硬编码 1053 全部改为读 `localListenPort`，不可绑定端口不再静默回退）；`ExpressTunnelManager` 两处传 `RuleDataset.EXPRESS`。回归：`DnsModePortAndFilterSwitchTest`、`AppRuleConfigImporterBlockedAppsSwitchTest`。
 - **A-081**：新增 `express/ExpressDynamicBlockSupport.kt`（`isEscalationApplied`/`isMisleadingFor`/`blockResponseSubtitle`/`datasetLabel`），`isEscalationApplied` 收为 `dataset != EXPRESS`（DNS 模式经 A-023 后真正生效，不该再谎报不生效）。回归：`ExpressDynamicBlockSupportTest`（7 例）。
 - **A-082**：新增 `ui/LogRetentionSettingsActions.kt` 把「改状态 → 落盘 → 通知引擎」顺序固化，保留天数单选改调它。回归：`LogRetentionSettingsActionsTest`（3 例）。
-- **A-083**：新增 `util/PersistableUriPermissions.kt`（`take`/`release`/`releaseString`，均 `runCatching`）与 `util/SafGrantDecisions.kt`（纯函数决策）；三处 UI 改为调用 helper——`.txt` 校验失败与重选替换两条路径释放、删壁纸时释放、两处导入在 WorkManager 任务结束后释放。回归：`SafGrantDecisionsTest`（9 例）。
+- **A-083**：新增 `util/PersistableUriPermissions.kt`（`take`/`release`/`releaseString`/`releaseIfPersisted`，均 `runCatching`）与 `util/SafGrantDecisions.kt`（纯函数决策）；全部 5 处 `take` 收敛到该 helper。释放点：`.txt` 校验失败与重选替换两条路径、删壁纸、两处导入在 WorkManager 任务结束后，以及**删除本地订阅时**——后者用 `ContentResolver.getPersistedUriPermissions()` 与 `SafGrantDecisions.mayRelease()` 判断「本 App 是否真的持有该授权」，只释放自己 take 过的，避免误撤默认文档提供方给出的授权。回归：`SafGrantDecisionsTest`（11 例）。
 - **A-091**：`RaceModeSettingsViewModel.runLatencyTest()` 实例化 `ProviderHealthEngine` 并对每个测速结果 `recordResult`，随后 `flush` + 重新 `loadAll` 刷新 UI，`onCleared()` 中 `close()`；`recordResult` 算术抽为 `core/diagnostic/HealthSnapshotMath.kt`。回归：`HealthSnapshotMathTest`（11 例）。
 - **A-092**：两个 Health Store 全部方法加尾部 `dataset` 并按 `dataset.prefsName()` 取 prefs；`saveAll` 由「整键覆盖」改 merge（`HealthStoreJson.merge`），reset 路径新增 `replaceAll` 避免被 merge 复活已删 id；静态单槽 `activeEngine` 改为按 dataset 分槽的 `ActiveHealthEngineRegistry`（`clearIfCurrent` 按**身份**比较）。回归：`HealthStoreJsonTest`（10 例）、`HealthEngineRegistryTest`（8 例）。
 - **A-093**：新增 `core/rule/RuleRegex.kt`，`compile(pattern)` 逐字镜像 Go 的 `HasPrefix("(?i)")` 守卫，`containsMatch` 用非锚定 `containsMatchIn`；两个 matcher 改调它。回归：`RuleRegexTest`（6 例）。
@@ -144,8 +144,8 @@
 
 ### 本轮未覆盖 / 已知限制（如实记录）
 
-1. **A-083 订阅删除侧未修**：`SubscriptionEntity` 只有 `url` 与 `sourceType`，无「是否持久化授权」标志，无法区分「本 App take 过的授权」与「默认应用提供、从未持久化的文件」；无条件 release 会误撤后者。需先加字段。
-2. **A-052 统计卡未补订阅计数**：`BlacklistStats` 仍无 `subscriptionTotal`/`subscriptionEnabled`（`WhitelistStats` 有），补齐需改 `ui/components/` 统计卡 UI。
+1. ~~**A-083 订阅删除侧未修**~~ ——**已补齐**：原判断「`SubscriptionEntity` 无授权标志故无法安全释放」只考虑了下策（新增 DB 字段）。实际 `ContentResolver.getPersistedUriPermissions()` 本身就是权威来源，`SafGrantDecisions.mayRelease()` 据此只释放本 App 真正持有的授权，无需改表结构。
+2. **A-052「计数同缺」未按原方案补**：原文档说 `BlacklistStats` 缺 `subscriptionTotal`/`subscriptionEnabled`（`WhitelistStats` 有）。实测这两组字段在白名单侧虽然被 `loadStats()` 计算，但**从未被任何 UI 渲染**（全仓 `subscriptionTotal` 只出现在 `WhitelistModels` 的声明与 `WhitelistViewModel` 的赋值处，`WhitelistComponents`/`BlacklistScreen` 的统计卡都不读）。因此把它们复制到 `BlacklistStats` 只会增加两处无用户可见效果的死字段，故未照做；A-052 的实际缺陷（订阅来源的 URL 规则不进列表）已修复。若日后要展示订阅计数，应两页一并接入统计卡。
 3. **A-091 `hedgeMisses` 仍恒 0**：该字段无任何写 API，本修复只让权重由实测样本驱动，未新增 hedgeMisses 生产者。
 4. **A-087 运行时热切换**：已核实「VPN 重连会重建引擎并重读偏好」（`DnsVpnTunnelManager.kt:303` → `GoInspectionTunnel.configureEngine()` → `setBlockEncryptedDns`），故开关变更经既有的 `refreshAppExclusions` → 重连路径即生效，Go 侧 fail-closed 默认覆盖不推偏好的两个入口。
 5. **`tunnel.aar` 需重建**：Go 侧改动要进 App 必须用 gomobile 重新生成 `Android/app/libs/tunnel.aar`（配方见 `docs/development/aar-build-notes.md`）。**本次未重建**，故 App 内实际运行的仍是旧 AAR。

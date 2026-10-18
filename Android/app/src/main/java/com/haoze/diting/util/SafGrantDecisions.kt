@@ -47,4 +47,24 @@ object SafGrantDecisions {
         val value = uri?.trim().orEmpty()
         return if (value.isEmpty()) emptyList() else listOf(value)
     }
+
+    /**
+     * Whether the grant for [uri] may be released, given the grants this app
+     * actually holds ([persisted], as URI strings from
+     * `ContentResolver.getPersistedUriPermissions()`).
+     *
+     * Removing a local subscription deletes a row whose `url` is a file URI, but
+     * a row alone does not prove the app ever persisted a grant for it: the
+     * default documents provider can hand back a URI backed by a grant the user
+     * issued to the provider, and some picker configurations return plain
+     * `ACTION_GET_CONTENT` results that cannot be persisted at all. Releasing
+     * those would revoke something the app never owned. `SubscriptionEntity`
+     * carries no "did we persist this" flag, so the live grant list is the only
+     * authoritative source.
+     */
+    fun mayRelease(uri: String?, persisted: Collection<String>): Boolean {
+        val value = uri?.trim().orEmpty()
+        if (value.isEmpty()) return false
+        return persisted.any { it.trim() == value }
+    }
 }

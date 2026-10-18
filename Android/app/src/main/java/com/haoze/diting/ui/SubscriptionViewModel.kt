@@ -4,7 +4,6 @@ import com.haoze.diting.core.rule.RewriteRuleManager
 import com.haoze.diting.core.rule.RuleIndexLayout
 import com.haoze.diting.core.VpnStateRegistry
 import android.app.Application
-import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -172,12 +171,7 @@ class SubscriptionViewModel(
         groupId: Long? = null,
         newGroupName: String? = null
     ) {
-        runCatching {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-        }
+        com.haoze.diting.util.PersistableUriPermissions.take(getApplication(), uri)
         viewModelScope.launch(Dispatchers.IO) {
             val resolvedGroupId = resolveGroupId(groupId, newGroupName).getOrElse {
                 withContext(Dispatchers.Main) {
@@ -421,6 +415,17 @@ class SubscriptionViewModel(
                     val subscription = dataSources.subscriptionDao().byId(id)
                     subscriptionManager().deleteSubscription(id)
                     val isRewrite = com.haoze.diting.data.entity.SubscriptionKind.isHosts(subscription?.kind)
+                    // A local subscription keeps its file URI in `url`; once the
+                    // row is gone nothing will ever read that file again. Release
+                    // only if this app actually holds the grant — a URI handed
+                    // over by the default documents provider without a persistable
+                    // grant must not be revoked.
+                    if (subscription != null &&
+                        com.haoze.diting.data.entity.SubscriptionSourceType.LOCAL == subscription.sourceType
+                    ) {
+                        com.haoze.diting.util.PersistableUriPermissions
+                            .releaseIfPersisted(getApplication(), subscription.url)
+                    }
                     refreshSubscriptionRuleIndexes(
                         isRewrite,
                         RuleScope.DNS

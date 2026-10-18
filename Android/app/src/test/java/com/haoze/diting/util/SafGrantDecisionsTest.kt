@@ -1,6 +1,7 @@
 package com.haoze.diting.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -81,5 +82,26 @@ class SafGrantDecisionsTest {
             SafGrantDecisions.releasesOnPick(null, new, accepted = true)
         )
         cases.forEach { assertTrue(it.size <= 1) }
+    }
+
+    @Test
+    fun mayReleaseOnlyWhatThisAppPersisted() {
+        // Deleting a local subscription deletes a row whose `url` is a file URI.
+        // The row proves nothing about who owns the grant, so the live grant list
+        // decides. Releasing a URI we never persisted would revoke a grant the
+        // user issued to the documents provider.
+        assertTrue(SafGrantDecisions.mayRelease(new, listOf(old, new)))
+        assertFalse(SafGrantDecisions.mayRelease(new, listOf(old)))
+        assertFalse(SafGrantDecisions.mayRelease(new, emptyList()))
+    }
+
+    @Test
+    fun mayReleaseIgnoresBlankAndUntrimmedInput() {
+        assertFalse("blank uri must never be released", SafGrantDecisions.mayRelease(null, listOf(old)))
+        assertFalse(SafGrantDecisions.mayRelease("", listOf(old)))
+        assertFalse(SafGrantDecisions.mayRelease("   ", listOf(old)))
+        // Stored URIs round-trip through Room; surrounding whitespace must not
+        // turn a real grant into a miss.
+        assertTrue(SafGrantDecisions.mayRelease("  $new  ", listOf(new)))
     }
 }

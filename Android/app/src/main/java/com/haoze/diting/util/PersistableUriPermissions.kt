@@ -53,4 +53,35 @@ object PersistableUriPermissions {
         val uri = runCatching { Uri.parse(value) }.getOrNull() ?: return
         release(context, uri)
     }
+
+    /**
+     * Releases the persisted read grant for [uriString] **only when this app
+     * actually holds one**.
+     *
+     * Needed where the URI is merely stored in a row and could equally have been
+     * handed over without a persistable grant — a local subscription keeps its
+     * file URI in `SubscriptionEntity.url`, and the default documents provider
+     * can surface a URI the app never called `take` on. Releasing
+     * unconditionally there would revoke a grant the user granted to the
+     * provider, not to us. [ContentResolver.getPersistedUriPermissions] is the
+     * only way to tell those two cases apart, since the entity itself carries no
+     * "did we persist this" flag.
+     *
+     * Returns true when a grant was found (and release was attempted).
+     */
+    fun releaseIfPersisted(context: Context, uriString: String?): Boolean {
+        val value = uriString?.trim().orEmpty()
+        if (value.isEmpty()) return false
+        val uri = runCatching { Uri.parse(value) }.getOrNull() ?: return false
+        if (!SafGrantDecisions.mayRelease(value, persistedUriStrings(context))) return false
+        release(context, uri)
+        return true
+    }
+
+    /** The URI strings this app currently holds a persisted read grant for. */
+    private fun persistedUriStrings(context: Context): List<String> = runCatching {
+        context.contentResolver.persistedUriPermissions
+            .filter { it.isReadPermission }
+            .map { it.uri.toString() }
+    }.getOrDefault(emptyList())
 }
