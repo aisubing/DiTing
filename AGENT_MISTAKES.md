@@ -1,155 +1,81 @@
 # AGENT_MISTAKES.md
 
-> 记录原则：每条须含「现象 → 根因 → 可复用教训」，只保留能改变后续决策的信息；同源条目已合并，已被证伪的做法以「反例」并入，不单独成篇。
+> 记录原则：每条含「现象 → 根因 → 教训」，只保留能改变后续决策的信息；同源条目合并，已证伪做法以「反例」并入；按时间倒序（最新在前），全文 ≤1000 行。
 
-### 2026-10-18: 解析器正例测试放行错误判据 + 二进制产物早于源码定稿重建（验证/流程类）
-- **现象**：(1) A-043 的 `isIpLiteral` 初稿写 `if (address.contains("::")) return true`，happy path 全绿，但该分支会把 `2001:db8::1::2`（双压缩）判成合法 IPv6——是我自己补的畸形输入用例才把它抓出来，且首版代码里还有 `it.lowercaseChar().all{...}` 这类对 `String` 调 `Char` 方法的编译错（`lowercaseChar` 用于 `Char`，`String` 只有 `lowercase()`）。(2) A-076 的补集回归测试首次失败，期望值写 `224.0.0.0/4`，实际 `224.0.0.0/3`——错的是我的期望（把组播 224/4 与保留 240/4 当两段），代码是对的。(3) A-086 测试首次失败：注入 `tunWriteRetryAttempts + 5` 次失败后等"恢复"，但每包重试预算本身要跑满 40 次退避（最坏 ~2.4s），剩余 5 次失败再各跑一轮，远超测试超时——测试假设与重试语义不符。(4) 先按 `gomobile bind` 重建了 AAR，之后才发现 `gofmt -l` 指出 `engine_full_tunnel.go` 结构体字段对齐未格式化，改完不得不重建第二次。
-- **根因**：解析器类改动以正例驱动（「能识别的形态」），负例（畸形/近邻输入）靠事后补；期望值仍从记忆/直觉推导；重试语义的**时间成本**没先算清就写断言；二进制产物在源码尚未定稿（未过 gofmt/vet）时就开始重建。
-- **教训**：
-  1. **写解析器/校验器先列负例再写实现**：正例只能证明"不误拒"，只有 `2001:db8::1::2`、`[::1]:53`、`256.1.1.1`、`8.8.8.8:53` 这类"看起来像但不合法"的输入才能证明判据收紧到位；每条被文档点名的错误输入都必须进测试。
-  2. **断言失败先分辨期望错还是代码错**：本轮三处失败里两处是我的期望/假设错（A-076 补集、A-086 退避时间），先自算/自读实现再改断言，禁止为了让测试变绿去改被测代码。
-  3. **注入 N 次失败时要按重试预算折算时间**：`N > attempts` 意味着每包至少 `attempts` 次退避；同时这暴露了真实设计问题——接口长时间不可用时若每包都付满退避，drain 协程会被单包阻塞数秒，故必须有"降级态单次尝试即丢"这条分支（已补测试锁定）。
-  4. **二进制产物（AAR/jar）只在源码最终定稿后重建**：顺序固定为 改源码 → `gofmt -l`/`go vet`/`go test` 全清 → 重建 AAR → 再跑一遍 Kotlin 编译与单测；`gomobile bind -work` 会打印工作目录，可用它把生成的 Java 与已提交的 `tunnel-sources.jar` 逐文件对比，确认导出 API 未变时无需重生成 sources jar。
-  5. **改本地化/文案前先查文件行数**：`RulesAndSubscriptionLocalization.kt` 在 HEAD 已 587 行（超 550 上限的存量违规），我新增一条翻译后才发现，只能回退改文案（复用既有条目、把"不含账号密码"写进既有 subtitle 串），避免让超限文件继续增长。
+## 通用铁律（跨条目去重）
 
-### 2026-10-18: 复核轮把 legacy 子系统当在用路径致 4 条高危翻案 + 交付集合需脚本自证（验证不充分/流程类）
-- **现象**：(1) A-067/A-068/A-070/A-074 原报告标「高」（校验和恒错、use-after-unmap SIGSEGV、bloom 错位漏拦、%0 panic），复核发现四条引证全落在 `Engine.Start`/`SetTries`/原生 trie+bloom 旧拦截子系统——`SetTries`/`SetImportantTries`/`Engine.Start` 全仓 caller grep（含 gomobile 绑定/Kotlin/test）仅命中定义行，生产规则面实走 `applyRuleSnapshot`/PolicyEngine、DNS 面走 gVisor `startFull`/standalone，崩溃/漏拦叙述均挂不可达路径，四条判「复核后确认不存在」（A-067 例外：写序缺陷真实，仅降级留 Low）。(2) O-119 原悬置「Go 是否应用 CNAME 未从 .aar 定版」，实际 Go 源码与 `engine_rewrite_test.go:11` 都在仓内、可直接定版为「应用」，列外部取证缺口是误判。(3) O-148 文档「Go 超线 1 个」实为 2（漏 `Desktop/internal/core/safebrowsing.go` 569）、O-121「3 处」实为 4。(4) 13 条一批的子代理只完成 A-038 即交回标「待定」，22 条一批反而全量完成。(5) 三份分级文档首次脚本校验抓出 A-059 被同时抄进 Low 与 Medium（去重后 89 才对）。
-- **根因**：把「缺陷代码在仓库中存在」直接当「该代码在生产被执行」，未对 legacy/old 子系统做导出绑定+调用点两端可达性核；「待取证」列前没先查仓内是否已有测试/源码可自证；复核批大小凭感觉；多文档分类交付只靠人工数。
-- **教训**：
-  1. **严重度核「路径是否在用」而非「代码是否存在」**：扫描轮给的「高/中」若引证落在名字带 legacy/old 或某函数的第二条平行实现路径，先做双向 caller grep（Go 导出方法→gomobile 绑定→Kotlin 调用点，Kotlin 侧含接口注入/构造默认值）确认可达再定级；同函数被多入口共用与路径整体无生产者都靠 caller grep 分，判据一致（与 A-089/A-067 的 Engine.Start 死路径同型，本轮是第 N 次撞同一子系统）。
-  2. **列「需外部取证/待定版」前先搜仓内一手证据**：本项目 Go 源码在库且带 `_test.go`，O-119 的「.aar 定版」是伪缺口；AOSP 一手版本表（O-138 SQLite）取不到才叫真缺口，别把已在仓的证据当外部依赖。
-  3. **复核子代理批按 6–12 条切并在 prompt 写「必须全部完成再输出」**：交回含「未及复核/待定」时立即按缺口拆小批重派，绝不把其部分完成当全量采信（本轮 A-038…A-050 批即如此补拆）。
-  4. **多文档分类交付后用 Python set 差集自证完整互斥**（本轮脚本抓出跨文档重复行）；清单类事实自己按全口径数并**明确声明含/不含哪些扩展名**——文档口径 `.kt/.go` 会整类漏 `.vue/.ts`/前端与测试。
-  5. 计数直接决定定级：A-076「约 1 亿 IP」按 6×2²⁴ 自算吻合、A-084「5 处」自数一致——延续「计数类本会话自验」，新增维度是**规模数量级也要自己算**，不只条目数。
+1. **期望源**：协议/布局以规范公布的样例向量为准；测试失败先分辨「期望错」还是「代码错」，禁止改被测代码让测试变绿；位段类先手写逐位表（含跨字节拆分）再对照代码。
+2. **可达性**：严重度 = 缺陷机制 × 可达面。定级前双向 grep caller（Go 导出方法 → gomobile 绑定 → Kotlin 调用点，含接口注入/默认构造），并查设备/模式门；legacy/old 或平行实现必须证明「在生产被执行」。
+3. **代理结论零权重**：子代理的「已确认/高危」逐条回读源码到调用链两端；组合主张拆条验；计数、规模自己数，「实测 N」须来自本会话工具输出。
+4. **交付自证**：多文档分类用脚本 set 差集证明互斥；清单声明口径与扩展名；误报/撤回留痕，编号不复用。
+5. **产物时序**：AAR/jar/exe 只在源码定稿后重建：改源码 → `gofmt`/`go vet`/`go test` → 构建 → 目标平台编译/单测/启动验证；不以外观、退出码 0 或单文件可读作为完成标准。
+6. **仓内优先**：列「需外部取证」前先搜源码、测试、仓库注释——作者注释是比记忆更硬的期望源。
+7. **文件与提交**：改前查行数（≤550，存量超限不继续增长）；临时文件用完即删，提交前 `git status` 只含预期改动。
 
-### 2026-10-18: Edit 锚点凭记忆书写两次落空 + 「先入库后核引证」返工（工具/流程类）
-- **现象**：(1) 向报告追加 A-098 正文时，old_string 用了记忆中 A-097 结尾的「备注」句——该句实际不存在（A-097 是我本轮刚写的，结尾是复现/验证行），Edit 报 not found。(2) A-089 正文初稿把 `engine_dns.go:189/211/332` 列为可达证据，写完才核实 `Engine.Start` 零生产调用者（Kotlin 只用 startFull/startStandalone/startStackMitm），只能再补一轮 Edit 收窄引证。(3) A-095 初版按子代理原文收录「$$ 转义+sinkhole」复合主张，提交前复核 `dnsrewriteIsBlock` 不置 `dnsrewriteTargetType` 才发现 sinkhole 主张不成立，行与正文均回炉。
-- **根因**：把「刚写过的内容」当作可信记忆直接当锚点/引证使用；长文档多轮追加后不重新 grep 定位；子代理引证未经第二遍 caller 核验就落进正文。
-- **教训**：
-  1. **Edit 锚点必须先 grep 现值再复制**，跨多轮的追加尤其如此——文件在会话里被自己改过多次，记忆中的「上一节结尾」常常是别的节。
-  2. **可达性引证在落笔前完成，不是提交后补**：给每条 Go/Kotlin 引证当场 grep caller 集合；本轮 A-089 的教训是「同函数被多入口共用」（serveDNS 同时是 standalone 与 full-tunnel 入口）与「路径整体无生产者」是两种相反情形，判据都是 caller grep，不能凭函数名（engine_dns=VPN 路径）猜。
-  3. 子代理报告的**组合主张拆开逐条验**：$$ 与 regex-# 同属「预处理截断」族，但 sinkhole-badfilter 一支依赖对错误变量置位假设，整族接受即把已证伪成员带入库。
-  4. **子代理给的计数/规模类事实一律自己数**：A-100 严重度理由最初引用「preset 仅 33 行」，实数 asset `https_passthrough.txt` 非注释非空行 =5 条，据此把触发面描述从「33 行」改「5 条」并留痕更正。计数直接决定定级（低 vs 中），比代码位置更易数错也更该自验；同一文件里的「实测 N 条」必须来自本会话的工具输出，不能来自报告。
+## 事件记录（时间倒序）
 
-### 2026-10-18: 子代理「高危触发面」未经调用者/写入者收窄即采信（验证不充分类）
-- **现象**：Room 数据层子代理报 D-01「`AppTrafficDao` 用 SQLite UPSERT → minSdk 24 全设备流量历史静默丢失」自评【高】，又称 Express「任意采样即触发」。回读：唯一写入链 `TrafficDatabaseSyncer.flushPendingDeltas` 只被 `TrafficStatsManager` 调用，而后者 `start()` 唯一入口是 `normal/DnsVpnService.kt:321`——**NORMAL 专属**，Express 全仓零引用 `TrafficDatabaseSyncer`；NORMAL 又被 UI 硬拦在 API 29+（`WorkModeComponents.kt:128-136`）。受害面从「24–29 全设备」收窄为「API 29/30」，且仓库自身 `DnsCacheDao.kt:46` 注释主张下限是 API 30 而非 24——子代理把「文件存在于 minSdk 24 工程」直接当成「24 全设备可触发」。同代理 D-03「DNS_MODE 跨库读 vpn_log 归属错」也被三条独立事实证伪（`dns_log` 仅 2 个写入者、DNS_MODE 从不写；统计页 dataset 不可达 DNS_MODE；Express 写读同库）。
-- **根因**：子代理从「缺陷代码存在」跳到「全量设备/场景触发」，中间缺**可达性收窄**这一步；其给出的严重度建立在未经核实的调用者集合与设备门假设上。我对协议位表已警惕，却险些同样接受其未经核实的**触发面**。
-- **教训**：
-  1. **严重度 = 缺陷机制 × 可达面**，两个都得单独核：可达面靠 `grep 调用者/写入者` 追到唯一入口（本例 `TrafficDatabaseSyncer`/`dnsLogDao()` 的全部 caller），并查设备/模式门（`isSupportedOnCurrentDevice` + UI 拦截 + `runtimeForDataset` 分支）是否把触发收窄。
-  2. **优先用仓库自身注释当反证**：`DnsCacheDao` 已写明 UPSERT 需「API 30」并据此实现回退——同一工程里的作者认知是比记忆更硬的期望源，子代理漏读即结论方向错。
-  3. 一手版本表（AOSP external/sqlite VERSION）取不到时，宁可降级为「记录已修正的收窄触发面 + 标注待定版事实缺口」交真机 logcat 定版，也不按子代理原severity入库。误报/撤回均留痕（见 O-138 修正说明、O-139 证伪条目）。
+### 2026-10-18: 解析器负例缺失 + 二进制产物早于源码定稿（验证/流程）
+- **现象/根因**：`isIpLiteral` 正例全绿，却把 `2001:db8::1::2`（双压缩）判成合法 IPv6；A-076 补集、A-086 退避测试首次失败，错的是期望而非代码（`224.0.0.0/4` 应为 `/3`；40 次退避最坏约 2.4s，超出测试超时）；AAR 在 `gofmt` 未过时重建，返工两次。
+- **教训**：解析器/校验器先列负例（`[::1]:53`、`256.1.1.1`、`8.8.8.8:53` 等「像但不合法」输入），文档点名的错误输入必须进测试；注入 N 次失败须按重试预算折算时间，长退避要有「降级态单次尝试即丢」分支；`gomobile bind -work` 可把生成 Java 与 `tunnel-sources.jar` 对比，导出 API 未变则无需重生成。
 
-### 2026-10-18: 位段/线格式断言须显式列出规范位表再判定（验证不充分类）
-- **现象**：DNS 审计子代理以「MEDIUM、带安全色彩」上报 `writeResponseHeader/buildQuery` 违反 RFC 1035 标志位（称 `query[2]=0x01` 写进了 Z 位、响应 `byte3|=0x80` 是无条件伪造 AD）。我第一反应同样按记忆中的位序准备接受；逐位显式展开规范（byte2: QR 0x80/opcode/AA 0x04/TC 0x02/**RD 0x01**；byte3: **RA 0x80**/Z/AD 0x20/**CD 0x10**/RCODE）后确认代码全部正确，判定为**误报予以否决**——子代理用的是一张错误的位表。
-- **根因**：flags 跨两个字节、且 RD 在第二字节末位（0x0100 拆成 byte2 0x01），凭「RD=0x0100 所以 byte2 高位段」的模糊记忆极易推错；双方（子代理与我的初判）都拿记忆当期望源。
-- **教训**：
-  1. **对位段/字节布局的判定，先把规范的逐位表手写在结论前**（含跨字节拆分），再逐行对照代码；记忆一致 ≠ 规范一致。
-  2. 子代理给出「严重度+安全色彩」渲染的协议结论时，核验的对象是它的**位表本身**，不是它对代码的引用（代码引用它是对的，错的是布局常识）。
-  3. 同轮旁证：Express IPv6 死代码、订阅 kind 失效应是两条独立子代理撞车——**入库前先对汇总表去重**（分别命中 A-012/A-030），多代理并行扫描时同一模块结论互相重叠是常态。
+### 2026-10-18: legacy 子系统被当在用路径 + 交付集合未自证（验证/流程）
+- **现象/根因**：A-067/068/070/074 四条「高危」引证全落在 `Engine.Start`/`SetTries`/原生 trie+bloom 旧拦截路径，caller grep（含 gomobile/Kotlin/test）仅命中定义行，复核后三条判不存在（A-067 写序缺陷真实，降 Low）；O-119 的「.aar 定版」实为仓内源码与 `engine_rewrite_test.go` 可自证的伪缺口；O-148/O-121 计数各少 1；13 条子代理批只完成 1 条；三份分级文档重复收录 A-059。
+- **教训**：复核批按 6–12 条切，prompt 写明「必须全部完成再输出」，交回含「待定」立即拆小批重派；计数与规模自算（A-076「约 1 亿 IP」按 6×2²⁴ 吻合），不引用报告数字。
 
-### 2026-10-17: 依据子代理「已确认」结论与半截字节码误记高危崩溃项（验证不充分类）
-- **现象**：Room 数据层子代理报「`isException` 迁移的 `DEFAULT 0` 与实体 schema 漂移 → 升级即 `IllegalStateException`」，自评「certain / HIGH」。我据此加读 `TableInfoKt.equalsCommon` 的反汇编，看到确有 `defaultValueEqualsCommon` 调用点，遂记为确认缺陷 A-011 并提交。回读完整控制流后发现 ENTITY↔DATABASE 方向的默认值比较被 `aload_2; ifnull <跳过>` 守卫：仅当**实体侧默认值非空**才比较，本例实体无 `@ColumnInfo(defaultValue)` 即跳过，迁移校验通过，结论翻转为误报，撤回降级为卫生观察。
-- **根因**：
-  1. 反汇编里「存在一条比较指令」≠「该比较被执行」；只看比较体、不追进它的分支守卫（`ifnull`/`if_icmpne` 跳到哪），把「可能比较」读成「必然比较」。
-  2. 子代理自评置信度被当成证据；其报告自带的反证（同型 `enabled DEFAULT 1` 漂移自 schema v2 起每次发布共存却零崩溃报告）我没加权，本可先据此质疑「真会崩早该有反馈」。
-- **教训**：
-  1. **判定「会不会执行」必须走完整控制流**：看到某段断言/比较/校验代码存在时，先定位进入它的所有 `if`/循环守卫与其跳转目标，确认在**本例具体取值**下确能到达，再谈结果；条件断言类（Room 校验、权限检查、超时）尤其如此。
-  2. **崩溃类高危项优先找「为何现场没炸」的反证**：若该路径据称在既有发布中长期存在却无人报崩溃，默认怀疑判定本身，而非假设「一直潜伏未触发」。
-  3. **子代理「confirmed/certain」标签零权重**：严重度 ≥ 中高的结论，逐条回读源码到调用链两端（本项目还须核到 Room/Go 框架侧真实语义，不能凭记忆），与本次字节码核对同级对待——记忆中的框架行为是最易出错的期望源。
-  4. 误报入库也要留痕：保留「曾拟记录 → 复核撤回 → 编号不复用」说明（撤回清单与翻案理由现见于 `docs/desktop-bug-triage-low.md` 头部；源报告 `desktop-bug-report.md` 已于 2026-10-18 删除，重建不参考旧版），防止后续轮次把同一被证伪结论再翻出来。
+### 2026-10-18: Edit 锚点凭记忆 + 先入库后核引证（工具/流程）
+- **现象/根因**：`old_string` 用记忆中的上节结尾，两次 not found；A-089 写完才核出 `Engine.Start` 零生产调用者（Kotlin 只用 `startFull`/`startStandalone`/`startStackMitm`）；A-095 收录了含已证伪分支的「`$$` 转义 + sinkhole」组合主张（`dnsrewriteIsBlock` 并不置 `dnsrewriteTargetType`）。
+- **教训**：Edit 前先 grep 现值再复制锚点，长文档多轮追加尤其如此；可达性引证在落笔前完成——`serveDNS` 同被 standalone 与 full-tunnel 使用（多入口共用）与「路径整体无生产者」是相反情形，判据都是 caller grep，不能凭函数名猜；子代理组合主张拆条验。
 
-### 2026-10-17: Windows 有 Go 但 WSL 无 Go 导致 deb 打包失败（构建环境类）
-- **现象**：`build_deb.bat` / `build_manager.py -t deb` 通过 WSL 存在性预检后，`build_linux.sh` 报「未找到 Go 工具链」，`.deb` 未生成；Windows 侧 `go version` 正常。
-- **根因**：deb 流程把编译与打包都交给 WSL，但预检只查 `wsl` 不查 WSL 内 Go；Windows 的 `C:\Program Files\Go\bin` 虽在 WSL PATH 中，Linux 不会自动解析 `go.exe`，`command -v go` 仍失败。
-- **教训**：
-  1. **宿主与 WSL 的工具链分别取证**：跨子系统构建不能以宿主 `go`/`node` 可用推断 WSL 可用，预检须在实际执行环境内跑 `command -v`。
-  2. **交叉编译优先放宿主**：`GOOS=linux GOARCH=... CGO_ENABLED=0 go build` 可在 Windows 完成，WSL 只承担 `dpkg-deb` 组装；`build_linux.sh --prebuilt` 复用产物。
-  3. 产物验证落到包内 ELF 与运行输出（`dpkg-deb -x` 后执行 `--version`），不能只看 `.deb` 文件存在。
+### 2026-10-18: 子代理「高危触发面」未经收窄即采信（验证不充分）
+- **现象/根因**：D-01 从「minSdk 24 工程存在 UPSERT」跳到「24–29 全设备流量历史丢失」，实际唯一写入链 `TrafficDatabaseSyncer.flushPendingDeltas` 仅经 NORMAL 模式、UI 硬拦 API 29+，受害面收窄到 API 29/30；仓库 `DnsCacheDao.kt` 注释已写明 UPSERT 需 API 30；D-03 被三条独立事实证伪。
+- **教训**：优先用仓库自身注释当反证；一手版本表（AOSP SQLite）取不到时，降级为「记录收窄后的触发面 + 标注待定版事实」，交真机 logcat 定版，不按子代理原 severity 入库。
 
-### 2026-10-17: 行对象直接作 Vue key 中断桌面端构建（构建/前端类型类）
-- **现象**：`Desktop/build.bat` / `build_manager.py -t exe` 在 Wails 前端编译阶段失败：`ClientGroupsCard.vue(213,14)`、`ScheduleEditor.vue(57,40)` 均报 `TS2322: Type '...' is not assignable to type 'PropertyKey | undefined'`，整个桌面端打包中止。
-- **根因**：`a9a2c0d` 为修复「下标 key 删除中间行后 DOM 原位复用、焦点串行」把 `:key="index"` 改成 `:key="row"`；Vue 的 `:key` 类型为 `PropertyKey`，对象在 `vue-tsc` 严格检查下非法。该提交只做了局部验证，未跑完整桌面端构建，因此回归直到本次打包才暴露。
-- **教训**：
-  1. 需要「按对象身份稳定」的列表 key 时，用 `WeakMap<object, string>` 生成稳定字符串（`frontend/src/utils/rowKey.ts` 的 `createRowKey`），不要直接把对象塞进 `:key`，也不要退回下标 key。
-  2. 改 `.vue` 模板后必须跑 `npm run build`（含 `vue-tsc --noEmit`）；只跑 `vite build`、热重载或浏览器观看会漏掉模板类型错误。
-  3. 涉及构建/模板的「修复」提交合入前，至少跑一次目标平台完整流水线（`python maintenance/core/build_manager.py -t exe`），不要以单文件可读或 dev 模式正常作为完成标准。
-  4. 构建工具会因 CRLF 规范化让 `go.mod` 出现「哈希相同但 status 显示 M」的假变更；`git update-index --really-refresh` 可消除，禁止把此类噪音提交。
+### 2026-10-18: 位段/线格式断言未先列规范位表（验证不充分）
+- **现象/根因**：子代理称 `query[2]=0x01` 写进 Z 位、`byte3|=0x80` 无条件伪造 AD；逐位展开（byte2：QR 0x80/AA 0x04/TC 0x02/RD 0x01；byte3：RA 0x80/AD 0x20/CD 0x10/RCODE）后确认代码正确，属误报。
+- **教训**：核验对象是子代理的位表本身，不是它对代码的引用；多代理并行扫描先对汇总表去重（Express IPv6 死代码、订阅 kind 失效应分别命中 A-012/A-030）。
 
-### 2026-10-17: 维护工具箱双击闪退（环境/启动类）
-- **现象**：双击 `maintenance/run_maintenance.bat` 窗口一闪而过；终端复现为 `ModuleNotFoundError: No module named 'webview'`。
-- **根因**：仓库缺少依赖清单，启动脚本直接执行 `python app.py`；Python 3.15 环境仅有 pip，缺 `pywebview`/`dnspython`/`Pillow` 时 traceback 随窗口立即关闭。
-- **教训**：
-  1. GUI 启动脚本先探测依赖，缺失时按 `requirements.txt` 自动安装；非零退出必须 `pause` 保留窗口。
-  2. 运行依赖清单随代码入库，README 同步给出 `python -m pip install -r ...`，不要依赖口头环境说明。
-  3. 双击脚本类故障先在终端直接复现，拿到真实 traceback 再谈修复，避免被「闪退」表象误导。
+### 2026-10-17: 半截字节码误记高危崩溃 + 子代理「已确认」（验证不充分）
+- **现象/根因**：Room `isException` 迁移 `DEFAULT 0` 被判「升级即 `IllegalStateException`」，但 `defaultValueEqualsCommon` 的比较被 `aload_2; ifnull` 守卫——实体无默认值时跳过，迁移校验通过；同型 `enabled DEFAULT 1` 漂移长期共存却零崩溃报告，本可先作反证。
+- **教训**：判「会不会执行」必须走完整控制流，定位进入断言/比较/校验的所有 `if`/循环守卫及跳转目标，确认本例取值可达；崩溃类高危优先找「为何现场没炸」的反证。
 
-### 2026-10-17: 版本号统一范围遗漏与伪变更（发布工具类）
-- **现象**：桌面端已到 1.3.10，Android 仍为 1.2.12；`package-lock.json`、`wails_tools.nsh` 曾靠另起 chore 提交手工补；工具箱对同一版本重跑仍报「已更新」。
-- **根因**：`get_file_targets()` 硬编码 6 个桌面文件，未覆盖 Android Gradle、前端锁文件与生成的 NSIS 模板；`re.subn` 返回 `n>0` 即视为变更，未比较新旧内容。
-- **教训**：
-  1. 版本工具的目标清单按全仓版本声明点维护（Go/Wails/NSIS/package+lock/Android/脚本/README 示例），新增平台时同步扩充并跑全量 dry-run。
-  2. 是否修改必须比较新旧内容，不能只看正则命中数，否则 sync 不幂等并可能产生空提交。
-  3. Android `versionCode` 由 `major*10000+minor*100+patch` 推导并取 `max(旧值, 新值)`，兼顾单调递增与重复执行。
-  4. 锁文件只改根节点与 `packages[""]`，用 JSON 解析回写避免改依赖版本；回写前先验证 round-trip 与 npm 原始格式逐字节一致。
+### 2026-10-17: Windows 有 Go 但 WSL 无 Go 致 deb 打包失败（构建环境）
+- **现象/根因**：预检只查 `wsl` 不查 WSL 内 Go；`go.exe` 在 WSL PATH 中也不被 `command -v go` 解析。
+- **教训**：跨子系统构建在实际执行环境内跑 `command -v`；交叉编译放宿主（`GOOS=linux CGO_ENABLED=0 go build`），WSL 只做 `dpkg-deb` 组装；验证到包内 ELF 执行 `--version`，不只看 `.deb` 存在。
 
-### 2026-10-17: 批量修复中的跨模块契约陷阱（实现类）
-- **现象**：按缺陷报告（`docs/desktop-bug-report.md`，2026-10-18 已删除、重建不参考旧版）修复 60+ 项，编译与单测全绿仍漏三类：持 `p.mu` 调 `ReloadEncrypted` 后 `wg.Wait()` 等在途查询、查询经 getter 再取 `p.mu`，单次保存卡死解析数秒；流水线按值捕获 `groupResolver`，热替换不生效却回「已生效」；`os.WriteFile(_, 0o600)`/`os.Chmod` 在 Windows 只切只读位不设 ACL，路径大小写、systemd 相对 `ExecStart`、XDG `Exec` 转义亦然。
-- **根因**：锁归属、状态所有权、路径解析等跨模块契约未在类型系统表达，单模块单测照不到。
-- **教训**：
-  1. **锁内只做快照，锁外做重活**：持锁调用 `wg.Wait`、网络写、`time.Sleep`、回调注入点前，先确认不会回到同一把锁。
-  2. **长生命周期对象不得按值捕获会被热替换的字段**，改注入 getter 或 atomic 指针，并同步所有构造点与测试桩。
-  3. **权限/路径/编码断言在目标平台实机验证**：Windows 用 `icacls`，systemd/XDG 读生成文件，无法 CI 覆盖的差异用 `//go:build` 分包 + no-op 桩；改完跑一次 `GOOS=linux go build ./...`。
-  4. **拆分逼近 550 行的文件**须确认同包、import 无遗漏，并重跑构建与测试，不能只看行数。
+### 2026-10-17: 行对象直接作 Vue key 中断桌面构建（构建/前端）
+- **现象/根因**：`:key="row"` 违反 `PropertyKey` 类型，`vue-tsc` 报 TS2322，桌面端打包中止；该修复只做局部验证，未跑完整桌面端构建。
+- **教训**：需按对象身份稳定的 key 用 `WeakMap<object, string>`（`createRowKey`），不要塞对象或退回下标；改 `.vue` 模板必须跑 `npm run build`（含 `vue-tsc --noEmit`）；构建/模板类修复合入前至少跑一次目标平台完整流水线；`git update-index --really-refresh` 消除 CRLF 假变更，禁止提交噪音。
 
-### 2026-10-17: 桌面端冷启动依赖环（构建引导类）
-- **现象**：全新机器无 `node_modules`/Go 缓存/`frontend/dist` 时，`go build ./...` 与 `wails generate module` 报 `pattern all:dist: no matching files found`；绑定生成失败又让 `vue-tsc` 缺 `wailsjs` 类型。
-- **根因**：`frontend/embed.go` 的 `//go:embed all:dist` 要求目录至少一个文件，而 `generate module` 先编译 Go 包，形成「产物 → 绑定 → 前端构建 → 产物」的环。
-- **教训**：
-  1. 冷启动顺序固定为 `go mod download` → `npm install` → 放占位 `frontend/dist/index.html` → `wails generate module` → `npm run build` → `wails build`；占位文件随后被覆盖。
-  2. 环境完好时 `wails build` 会自动完成绑定/安装/前端编译；手工分步仅用于定位失败环节。
-  3. 依赖验证必须落到真实产物（如 `build/bin/diting-gui.exe` 起窗、`[WebView2] Environment created successfully`），不能只看退出码 0。
-  4. `package-lock.json` 与 `package.json` 版本不一致会在首次 `npm install` 产生无关 diff，应单独提交或还原。
+### 2026-10-17: 维护工具箱双击闪退（环境/启动）
+- **现象/根因**：缺 `requirements.txt` 与依赖探测，`ModuleNotFoundError: webview` 随窗口立即关闭。
+- **教训**：GUI 启动脚本先探测依赖，缺失按清单自动安装；非零退出 `pause` 保留窗口；双击故障先在终端复现拿真实 traceback；运行依赖清单随代码入库，README 同步安装命令。
 
-### 2026-10-17: 验证方法论：期望源、计数与代理结论（验证不充分类，原三则合并）
-- **现象**：BUG-44 被误判误报——第 8 轮把对 RFC 6052 的同一误读写进代码预期与断言，第 10 轮用规范 Table 1/2 样例向量对账，六例全中；BUG-66 grep 计 14 处未剔除前置 `MaxBytesReader` 的 1 处（实为 13）；BUG-35 因 `CacheConfig.Enabled` 未置 true 在闸门早退，复现假阴性；子代理称 `DaysRemaining` 无消费者，实际前端 `CertificateCard` 在显示；另有 DNS64 手算期望全错、常量表达式验溢出编译失败、压缩后把在途代理当成已完成。
-- **根因**：期望值从记忆/手算推导，与实现同源；grep 命中 ≠ 缺陷点；复现未证明走到被测路径；压缩摘要爱把「进行中」写成「已完成」；Go 字段常经 JSON 扩散到前端。
-- **教训**：
-  1. **协议布局以规范公布的样例向量为唯一期望源**；首轮全红先怀疑期望。复核旧「实证」先审期望再审代码——「代码 ≠ 期望」不等于「期望 = 规范」。
-  2. **计数类缺陷逐点带上下文核**（前后各 3 行），提交后抽查 2–3 点回读原文。
-  3. **复现失败先怀疑 harness**：为被测函数每条早退分支加断言（如 `PutForGroup` 须返回 true），确认走进去再谈复现。
-  4. **代理报告未到手 = 零信息**；代理结论（含纠偏）逐条回读源码；「无消费者」须 Go 与前端 camelCase 两查。
-  5. **跨平台文件语义先实机取证**（`icacls`、并发临时测试把「逻辑空窗」变命中率数字）；同鉴权族实现不一致（`RemoteAddr` vs `XFF`）先疑孤立一侧遗漏；`t.TempDir` 清理报「being used by another process」可作占用旁证。
-  6. **溢出验证走运行期**（`strconv.ParseInt`/变量乘法），不用编译期常量；临时 `zz_tmp_*` 用完即删，提交前 `git status` 只含预期改动。
+### 2026-10-17: 版本号统一范围遗漏与伪变更（发布工具）
+- **现象/根因**：`get_file_targets()` 硬编码 6 个桌面文件，漏 Android Gradle、前端锁文件与 NSIS 模板；`re.subn` 返回 `n>0` 即视为变更，重跑不幂等。
+- **教训**：目标清单按全仓版本声明点维护并跑全量 dry-run；是否修改比较新旧内容；Android `versionCode` 取 `max(旧值, major*10000+minor*100+patch)`；锁文件只改根节点与 `packages[""]`，JSON 解析回写并验证 round-trip。
 
-### 2026-10-16: 页面级 max-w 导致单列卡片宽度不足（布局类）
-- **现象**：6 个页面（DNS64/重写/加密 DNS/安全隐私/应用拦截/自定义规则）卡片宽 1080px 或 756px，其余 1337px，左右留白且与标题栏不齐。
-- **根因**：面板根容器遗留 `max-w-7xl`（1280px）/`max-w-4xl`（896px），与「单列卡片延伸到内容区边缘」规范冲突，页面本身不报错。
-- **教训**：
-  1. **页面根容器不设 `max-w-*`**，宽度交给 `main` 的 padding；基准为总览/状态总览（双列满宽）、系统/外观主题（单列满宽）。
-  2. **`pb-12` 由 `views/*.vue` 统一负责**，面板内重复写会叠加；各页尾部留白 13–14px 一致即正确。
-  3. **布局缺陷必须用 `getBoundingClientRect()` 量宽与 x/w**，不能看截图（「都居中好看但宽度不一致」）。
-  4. Web 模式 `ui_capturer.py` 只截到登录页；可用 CDP 注入伪 `window.go.main.App` 并设 `diting_ipc_host/port` 指向回环后台截真实界面，仅限本地核对，不入库。
-  5. 未充分验证：仅 1600×1000 单视口，未覆盖 1280/1920 与 768–1024 折叠侧栏。
+### 2026-10-17: 批量修复中的跨模块契约陷阱（实现）
+- **现象/根因**：编译与单测全绿仍漏三类：持 `p.mu` 调 `ReloadEncrypted` 后 `wg.Wait()` 等在途查询，单次保存卡死数秒；流水线按值捕获 `groupResolver`，热替换不生效；`os.WriteFile(_, 0o600)`/`os.Chmod` 在 Windows 只切只读位不设 ACL，路径大小写、systemd 相对 `ExecStart`、XDG 转义亦然。
+- **教训**：锁内只做快照，锁外做重活（持锁不调 `wg.Wait`/网络/`time.Sleep`/回调）；长生命周期对象不按值捕获可热替换字段，改 getter 或 atomic 指针并同步所有构造点与测试桩；权限/路径/编码在目标平台实机验证（`icacls`、读生成文件），无法 CI 的差异用 `//go:build` 分包 + no-op 桩；拆分逼近 550 行文件须确认同包、import 无遗漏并重跑构建测试。
 
-### 2026-10-16: 呼吸灯无限动画拖垮 WebView2 GPU（性能类）
-- **现象**：GUI 空闲时 WebView2 GPU 进程持续 17%–28%（1080p/60Hz）。
-- **根因**：`.seal-pulse` 对 `opacity` 逐帧插值的 `infinite` 动画使合成器每帧重绘整个窗口；开销只与出帧频率相关，与动画元素数量/大小无关。
-- **证据链**：`Get-Counter '\GPU Engine(*)\Utilization Percentage'` 按 pid 归因，最小化归零；A/B 基线 27.8% → 关全部无限动画 1.7% → 仅关 `seal-pulse` 3.2%；保留动画但关键帧数值恒定仅 1.95%，证明开销来自属性逐帧变化。
-- **教训**：
-  1. **无效手段勿再试**：`will-change`/`translateZ(0)`/`contain:strict`/改 `transform`/改 `background-color`（27.7/25.6/23.4/24.7/24.0%），以及延长周期（18s 仍 23.6%）。
-  2. **唯一有效杠杆是降低出帧数**：`steps()` 后 1.4%–4.0%（约 -95%）；`steps(2)`≈1.5%、`steps(4)`≈3.3%、`steps(8)`≈7.1%，按视觉重要性分级。
-  3. 对所有 `infinite` 动画（含 Tailwind `animate-spin`/`animate-pulse`、`md-circular-progress indeterminate`）保持怀疑。
-  4. 纯 CSS 逐帧平滑动画无法兼顾平滑与低占用，这是合成模型固有取舍。
-  5. 未充分验证：仅 60Hz/1080p 单环境，未覆盖高刷/多显示器，修复后观感未经人眼确认。
+### 2026-10-17: 桌面端冷启动依赖环（构建引导）
+- **现象/根因**：`frontend/embed.go` 的 `//go:embed all:dist` 要求目录非空，而 `wails generate module` 先编译 Go 包，形成「产物 → 绑定 → 前端构建 → 产物」环。
+- **教训**：冷启动固定顺序 `go mod download` → `npm install` → 占位 `frontend/dist/index.html` → `wails generate module` → `npm run build` → `wails build`；环境完好时让 `wails build` 自动完成，手工分步仅用于定位；验证落到真实产物起窗（`[WebView2] Environment created successfully`），不看退出码 0。
 
-### 2026-10-16: 托盘 SetWindowSubclass 静默失败与时序补丁链（Win32 类）
-- **现象**：托盘连续三轮修复仍不稳定；用 `SetWindowSubclass` 重构后点击完全无响应，但 `Init`、`Shell_NotifyIcon` 均返回成功。
-- **根因**：`SetWindowSubclass` 在本进程 Wails 窗口上恒返 FALSE（`ret=0`、`GetLastError=0`），返回值被丢弃，子类过程从未安装（`aspect_ratio.go` 同因此长期未生效）；历史补丁用时间防抖、前台句柄比对、异步派发等时序启发式规避消息语义问题，必然吞点击、失效或丢前台令牌。
-- **教训**：
-  1. **绝不丢弃 Win32 返回值**，尤其无错误码的布尔接口；改用 `SetWindowLongPtr(GWLP_WNDPROC)` + `CallWindowProcW` 链式转发，失败时回收已注册托盘图标。
-  2. **幂等动作替代时间去重**：单击/键盘/双击/气泡统一为「显示并置顶」，重复派发无害。
-  3. **语义过滤替代时间防抖**：版本 4 仅依 `isV4` 忽略 `WM_RBUTTONUP`；**可见性判定替代前台句柄比对**（`IsWindowVisible() && !IsIconic()` 免疫任务栏抢焦点）。
-  4. **窗口显隐在窗口线程内同步调用**（`WindowShow` 同线程经 `Invoke` 自带 `SetForegroundWindow`+`SetFocus`）；仅服务启停等阻塞操作异步。
-  5. **`EnumWindows` 按类名 `wailsWindow` 匹配并接受隐藏窗口**，`-minimized` 启动时窗口本就不可见。
-  6. `gofmt -w <目录>` 会剥离无关文件 BOM 产生大量 diff，应逐文件格式化；`OnDomReady` 每次导航（含热重载）都触发，初始化必须幂等。
-- **历史反例（勿重蹈）**：250ms 菜单防抖 + `isShowingMenu` 重入拦截（吞掉菜单关闭后的点击）；`keybd_event(VK_MENU)` 破焦点；`WM_ACTIVATE` 维护失活时间戳；`IsWindowActive` 仅比对前台句柄；兜底模式把 `wParam` 当 X 坐标（实为图标 ID 1，且未处理副屏负坐标）；菜单回调在窗口过程内同步阻塞。
+### 2026-10-17: 验证方法论：期望源、计数与代理结论（验证不充分）
+- **现象/根因**：BUG-44 把对 RFC 6052 的同一误读写进代码与断言，后用规范 Table 1/2 六例对账全中；BUG-66 grep 计 14 处未剔除前置 `MaxBytesReader` 的 1 处（实 13）；BUG-35 因 `CacheConfig.Enabled` 未置 true 在闸门早退，复现假阴性；子代理称 `DaysRemaining` 无消费者，实际前端 `CertificateCard` 在用；另有 DNS64 手算期望全错、常量表达式验溢出编译失败、压缩摘要把在途代理写成已完成。
+- **教训**：复核旧「实证」先审期望再审代码；计数逐点带上下文（前后 3 行）并抽查 2–3 点；复现失败先怀疑 harness，为每条早退分支加断言；代理报告未到手=零信息，「无消费者」须 Go 与前端 camelCase 两查；同鉴权族实现不一致先疑孤立一侧遗漏；跨平台文件语义先实机取证（`icacls`、并发临时测试、`t.TempDir` 占用旁证）；溢出验证走运行期（`strconv.ParseInt`/变量乘法），临时 `zz_tmp_*` 用完即删。
+
+### 2026-10-16: 页面级 max-w 致单列卡片宽度不足（布局）
+- **现象/根因**：6 个页面根容器遗留 `max-w-7xl`（1280px）/`max-w-4xl`（896px），与「单列卡片延伸到内容区边缘」冲突，页面本身不报错。
+- **教训**：页面根容器不设 `max-w-*`，宽度交给 `main` 的 padding；`pb-12` 由 `views/*.vue` 统一负责，面板内重复写会叠加；布局缺陷用 `getBoundingClientRect()` 量宽与 x/w，不看截图；Web 模式 `ui_capturer.py` 只截登录页，可用 CDP 注入伪 `window.go.main.App` 并设 `diting_ipc_host/port` 截真实界面（仅本地核对，不入库）；未覆盖 1280/1920 与 768–1024 折叠侧栏。
+
+### 2026-10-16: 呼吸灯无限动画拖垮 WebView2 GPU（性能）
+- **现象/根因**：`.seal-pulse` 对 `opacity` 逐帧插值的 `infinite` 动画使合成器每帧重绘整个窗口，GUI 空闲时 GPU 17%–28%；开销只与出帧频率相关，与动画元素数量/大小无关。
+- **证据**：`Get-Counter '\GPU Engine(*)\Utilization Percentage'` 按 pid 归因，最小化归零；A/B 基线 27.8% → 关全部无限动画 1.7% → 仅关 `seal-pulse` 3.2%；保留动画但关键帧数值恒定仅 1.95%。
+- **教训**：`will-change`/`translateZ(0)`/`contain:strict`/改 `transform`/改 `background-color`/延长周期均无效；唯一有效杠杆是降低出帧数：`steps()` 后 1.4%–4.0%（`steps(2)`≈1.5%、`steps(4)`≈3.3%、`steps(8)`≈7.1%）；对 `infinite` 动画（含 Tailwind `animate-spin`/`animate-pulse`、`md-circular-progress indeterminate`）保持怀疑；未覆盖高刷/多显示器，观感未经人眼确认。
+
+### 2026-10-16: 托盘 SetWindowSubclass 静默失败与时序补丁链（Win32）
+- **现象/根因**：`SetWindowSubclass` 在本进程 Wails 窗口恒返 FALSE（`ret=0`、`GetLastError=0`），返回值被丢弃，子类过程从未安装；历史补丁用时间防抖、前台句柄比对、异步派发等时序启发式规避消息语义，必然吞点击、失效或丢前台令牌。
+- **教训**：绝不丢弃 Win32 返回值，改用 `SetWindowLongPtr(GWLP_WNDPROC)` + `CallWindowProcW` 链式转发，失败时回收已注册托盘图标；幂等动作替代时间去重（单击/键盘/双击/气泡统一为「显示并置顶」）；语义过滤替代时间防抖（`isV4` 忽略 `WM_RBUTTONUP`），可见性判定替代前台句柄（`IsWindowVisible() && !IsIconic()`）；窗口显隐在窗口线程内同步调用，仅服务启停等阻塞操作异步；`EnumWindows` 按类名 `wailsWindow` 匹配并接受隐藏窗口；`gofmt -w <目录>` 会剥离无关文件 BOM 产生大量 diff，应逐文件格式化；`OnDomReady` 每次导航都触发，初始化必须幂等。
+- **反例**：250ms 菜单防抖 + `isShowingMenu` 重入拦截；`keybd_event(VK_MENU)` 破焦点；`WM_ACTIVATE` 维护失活时间戳；`IsWindowActive` 仅比对前台句柄；兜底模式把 `wParam` 当 X 坐标（实为图标 ID 1，且未处理副屏负坐标）；菜单回调在窗口过程内同步阻塞。
