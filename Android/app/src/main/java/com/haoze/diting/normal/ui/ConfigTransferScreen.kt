@@ -204,7 +204,7 @@ fun ConfigTransferScreen(
                     { SettingsCheckboxItem(localizedText("自定义 DNS 服务商"), providers, { providers = it }, subtitle = localizedText("DoH、DoT 服务商与解析配置"), enabled = !isBusy) },
                     { SettingsCheckboxItem(localizedText("自定义 Bootstrap IP"), bootstrapIps, { bootstrapIps = it }, subtitle = localizedText("引导 DNS 节点与启用状态"), enabled = !isBusy) },
                     { SettingsCheckboxItem(localizedText("DNS 缓存策略"), dnsCache, { dnsCache = it }, subtitle = localizedText("DNS 缓存开关、预设与 TTL 控制"), enabled = !isBusy) },
-                    { SettingsCheckboxItem(localizedText("出站代理配置"), outboundProxy, { outboundProxy = it }, subtitle = localizedText("SOCKS5 / HTTP 代理与代理应用"), enabled = !isBusy) }
+                    { SettingsCheckboxItem(localizedText("出站代理配置"), outboundProxy, { outboundProxy = it }, subtitle = localizedText("SOCKS5 / HTTP 代理与代理应用，不含账号密码"), enabled = !isBusy) }
                 )
             )
 

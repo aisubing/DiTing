@@ -283,7 +283,7 @@ internal fun translateRulesAndSubscriptionExact(text: String): String? = when (t
     "DNS 缓存策略" -> "DNS Cache Policy"
     "DNS 缓存开关、预设与 TTL 控制" -> "DNS cache switch, presets, and TTL controls"
     "出站代理配置" -> "Outbound Proxy Configuration"
-    "SOCKS5 / HTTP 代理与代理应用" -> "SOCKS5 / HTTP proxy and proxy routing apps"
+    "SOCKS5 / HTTP 代理与代理应用，不含账号密码" -> "SOCKS5 / HTTP proxy and proxy routing apps, without credentials"
     "订阅源链接、镜像加速与自动更新" -> "Subscription sources, mirror acceleration, and auto-update"
     "自定义屏蔽域名规则" -> "Custom domain block rules"
     "手动添加的域名屏蔽规则及状态" -> "Manually added domain block rules and states"

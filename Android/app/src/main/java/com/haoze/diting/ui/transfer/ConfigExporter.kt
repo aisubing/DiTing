@@ -134,8 +134,11 @@ class ConfigExporter(
                 put("protocol", proxyConfig.protocol.storageValue)
                 put("host", proxyConfig.host)
                 put("port", proxyConfig.port)
-                put("username", proxyConfig.username)
-                put("password", proxyConfig.password)
+                // The username and password are stored encrypted in the Android
+                // KeyStore; writing the decrypted values into a plain JSON file
+                // leaked proxy credentials with every backup. They are omitted
+                // and the import side keeps whatever the device already has.
+                put("credentialsOmitted", true)
                 put("proxyAppPackage", proxyConfig.proxyAppPackage)
             })
         }

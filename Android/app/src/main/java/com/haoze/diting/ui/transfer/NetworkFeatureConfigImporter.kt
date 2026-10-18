@@ -84,6 +84,10 @@ internal class NetworkFeatureConfigImporter(private val session: ImportSessionCo
 
         if (config.outboundProxy != null && session.dataset != com.haoze.diting.data.RuleDataset.EXPRESS) {
             val proxy = config.outboundProxy
+            // Credentials are KeyStore secrets that are no longer exported (V10).
+            // An import therefore carries no username/password and must keep the
+            // ones already stored on this device instead of blanking them.
+            val existing = OutboundProxySettingsStore.getOutboundProxyConfig(context)
             OutboundProxySettingsStore.setOutboundProxyConfig(
                 context,
                 OutboundProxyConfig(
@@ -91,8 +95,8 @@ internal class NetworkFeatureConfigImporter(private val session: ImportSessionCo
                     protocol = OutboundProxyProtocol.fromStorageValue(proxy.protocol),
                     host = proxy.host,
                     port = proxy.port,
-                    username = proxy.username,
-                    password = proxy.password,
+                    username = proxy.username.ifEmpty { existing.username },
+                    password = proxy.password.ifEmpty { existing.password },
                     proxyAppPackage = proxy.proxyAppPackage
                 )
             )

@@ -14,7 +14,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object ConfigTransferParser {
-    const val FORMAT_VERSION = 9
+    // V10: outbound proxy username/password are no longer exported (KeyStore
+    // secrets). V9 files remain importable, and an import without credentials
+    // keeps the credentials already stored on the device.
+    const val FORMAT_VERSION = 10
     const val MIN_SUPPORTED_FORMAT_VERSION = 1
 
     fun parseAndValidate(content: String): TransferConfig {
@@ -107,6 +110,10 @@ object ConfigTransferParser {
         }
 
         val outboundProxy = root.optJSONObject("outboundProxy")?.let { obj ->
+            // V10 stopped exporting the proxy username/password (they are KeyStore
+            // secrets). Files from older versions may still carry them, so the
+            // fields stay accepted here; the importer only overwrites stored
+            // credentials when a value is actually present.
             ImportedOutboundProxy(
                 enabled = obj.optBoolean("enabled", false),
                 protocol = obj.optString("protocol", "SOCKS5"),
