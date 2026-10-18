@@ -14,6 +14,10 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: Flutter 测试宿主层级错 + 异步本地化 + 构建产物受网络所限
+- **现象/根因**：(1) 把 `MeasureScope/ViewScope/UiLocalizations` 装在 `MaterialApp.builder` 里，组件能画，但 `CommonPopupBox`/`showFloatingDialog`/`showSheet` 报 `Navigator operation requested with a context that does not include a Navigator`——`builder` 位于 Navigator **之上**，必须放到 `home:` 或路由内。(2) `LocalizationsDelegate.load` 是异步的，`pumpWidget` 后首帧渲染为空，直接 `expect(find.text(...))` 必然红；补一次 `pump()` 即可。(3) `lib/ui` 的 `UiLocalizations.of` 是 `assert` 而非默认值，缺 delegate 时在 build 期崩溃。(4) `flutter build apk` 失败真因是 `services.gradle.org`/`repo1.maven.org`/`plugins.gradle.org` 全不可达（仅腾讯镜像 200），本地缓存的 gradle-9.4.1-bin 与 flutter 插件所需的 `kotlin-dsl 6.5.2` 都不全；把 wrapper 指向镜像属改工程配置，未获授权不得自行改。
+- **教训**：测试宿主按「Navigator 之下」建一次、全项目复用（`test/support/app_host.dart`）；凡断言文本先想「首帧是否已异步就绪」；构建失败先 `curl` 逐个探域名，把「环境不可达」与「代码坏」分开写进交付说明，不拿退出码当结论。
+
 ### 2026-10-18: 三次「问题不存在」初判被自己推翻（A-096/A-100/O-107）
 - **现象/根因**：A-096 称「`finally` 只删本线程 temp」，实为两个 `Mapped*Index` **无条件** `temp.delete()`，缺的只是残留清扫（`RuleIndexLayout.deleteAll` 零调用）⇒ 应判「成立但不改」；A-100 拿「`editRule:444` 保留 `SOURCE_PRESET`」当反证——正因保留，升级时 `deleteBySource(SOURCE_PRESET)` 才删掉用户改动；O-107 真因不是 `DnsCachePolicy:34-35`（`<=0 return 0` 正确），而是 `log_aggregator.go` 的 `json:"ttl,omitempty"` 删掉 TTL=0 的键 + `recordResolved` 用 `<=0` 合并「真实 0」与「未知」（基线早有 `notifyLogWithTTL`）。
 - **教训**：结论若是「因此不会发生」，先把发生路径写出来走一遍（铁律 4）。

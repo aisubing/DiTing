@@ -46,6 +46,12 @@
 - **Go 引擎依赖**（`Android/tunnel/go.mod`）：miekg/dns、quic-go（DoH/DoQ）、xjasonlyu/tun2socks/v2、gvisor.dev/gvisor（用户态 TCP/IP 栈，MITM 用）、sagernet/gomobile + golang.org/x/mobile（绑定）、golang.org/x/net|sys；Go 1.23.5。**许可证注意：应用本体 GPL-3.0（README 声明），tun2socks、quic-go 等各有自己的 copyleft/许可条款——Flutter 重构若保留 Go 层，分发合规需逐依赖复核，不能假设「换语言就绕开」。**
 - **命名陷阱（Flutter 侧建议重命名）**：包/类语义与直觉相反——`normal` = 全隧道 Go 模式、`server/model.DnsMode*` 的 "Dns" = 服务器模式、`ui/LogRouteActivity` 承载日志路由。映射表见 14 章。
 
+## 实施进度（Flutter 侧）
+
+本章系列是**规格**。对应的实现工作区是仓库根目录的 [`DITING_flutter/`](../../README.md)，
+其现状、已冻结的组件 API、下一步要写的应用层与页面清单，见
+[`docs/ui-framework/20-handoff.md`](../ui-framework/20-handoff.md)。
+
 ## 文档维护约定
 
 - 每章 YAML 的 `最后校验` 日期表示该章全部断言在该日之前逐条回读过源码；修订时同步更新。
