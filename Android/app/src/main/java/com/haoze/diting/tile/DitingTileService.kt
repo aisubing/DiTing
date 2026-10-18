@@ -40,6 +40,19 @@ class DitingTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+        // TileService may be bound while the device is locked (Quick Settings is
+        // reachable from the lock screen). Every action below either starts a
+        // foreground service, opens an activity, or launches the system VPN
+        // consent dialog, all of which the platform rejects or hides while
+        // locked, so gate the whole interaction behind unlockAndRun().
+        if (isLocked) {
+            unlockAndRun { performTileAction() }
+        } else {
+            performTileAction()
+        }
+    }
+
+    private fun performTileAction() {
         // Not running: check whether the initial agreement has been accepted
         if (!SystemSettingsStore.isInitialAgreementAccepted(this)) {
             openMainActivity(requestVpn = true)
