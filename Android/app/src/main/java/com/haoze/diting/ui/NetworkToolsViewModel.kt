@@ -243,7 +243,17 @@ class NetworkToolsViewModel(application: Application) : AndroidViewModel(applica
                         }
                         return@launch
                     }
-                    listOf(InetAddress.getByName(customServer))
+                    // Keep the lookup failure inside the coroutine: an unguarded
+                    // InetAddress.getByName throw here kills the process because the
+                    // launch has no exception handler.
+                    val address = runCatching { InetAddress.getByName(customServer) }.getOrNull()
+                    if (address == null) {
+                        withContext(Dispatchers.Main) {
+                            _message.value = "无法解析自定义 DNS 服务器地址，请检查输入"
+                        }
+                        return@launch
+                    }
+                    listOf(address)
                 }
             }
 

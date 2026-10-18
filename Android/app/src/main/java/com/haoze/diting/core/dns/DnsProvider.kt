@@ -343,12 +343,18 @@ data class DnsProvider(
 
         fun isValidDotHost(host: String): Boolean {
             val trimmed = host.trim()
-            return trimmed.isNotBlank() && !isIpLiteral(trimmed) && trimmed.contains(".")
+            return trimmed.isNotBlank() && !isIpLiteral(trimmed) &&
+                trimmed.contains(".") && !trimmed.contains(":")
         }
 
         fun isValidDnsHost(host: String): Boolean {
             val trimmed = host.trim()
-            return trimmed.isNotBlank() && (isIpLiteral(trimmed) || trimmed.contains("."))
+            if (trimmed.isBlank()) return false
+            if (isIpLiteral(trimmed)) return true
+            // A colon that is not part of an IPv6 literal means "host:port" or a
+            // URL; InetAddress cannot parse either, so reject them here instead
+            // of letting them fail later at resolution time.
+            return trimmed.contains(".") && !trimmed.contains(":")
         }
 
         fun isValidDotPort(port: Int): Boolean {
@@ -370,14 +376,69 @@ data class DnsProvider(
             )
         }
 
+        private val IPV4_LITERAL = Regex("""^(\d{1,3}\.){3}\d{1,3}$""")
+
+        /**
+         * True only when [value] is an IP address literal that [java.net.InetAddress]
+         * can parse locally without any name resolution.
+         *
+         * A bare "contains a colon" test is not enough: it also matches
+         * "8.8.8.8:53" / "example.com:853" style host:port input, which is not a
+         * literal and makes every later `InetAddress.getByName` call attempt a DNS
+         * lookup (or throw). IPv6 literals are therefore recognised structurally:
+         * compressed form ("::"), eight hextet groups, or the IPv4-embedded tail.
+         */
         fun isIpLiteral(value: String): Boolean {
-            val trimmed = value.trim()
-            val ipv4 = Regex("""^(\d{1,3}\.){3}\d{1,3}$""")
-            if (ipv4.matches(trimmed)) {
+            var trimmed = value.trim()
+            if (trimmed.isEmpty()) return false
+            if (trimmed.startsWith("[") || trimmed.endsWith("]")) {
+                // Bracketed form is only a literal when both brackets enclose an
+                // IPv6 address; "[::1]:53" is host:port, not a literal.
+                if (trimmed.length < 3 || !trimmed.startsWith("[") || !trimmed.endsWith("]")) return false
+                trimmed = trimmed.substring(1, trimmed.length - 1)
+                return trimmed.contains(":") && isIpv6Literal(trimmed)
+            }
+            if (IPV4_LITERAL.matches(trimmed)) {
                 return trimmed.split(".").all { part -> part.toIntOrNull() in 0..255 }
             }
-            if (trimmed.contains(":")) return true
-            return false
+            if (!trimmed.contains(":")) return false
+            return isIpv6Literal(trimmed)
+        }
+
+        private fun isIpv6Literal(value: String): Boolean {
+            val address = value.substringBefore('%')
+            if (!address.contains(":")) return false
+            val compression = address.indexOf("::")
+            if (compression >= 0 && address.indexOf("::", compression + 2) >= 0) return false
+
+            val groups: List<String>
+            if (compression >= 0) {
+                val left = address.substring(0, compression)
+                val right = address.substring(compression + 2)
+                val leftGroups = if (left.isEmpty()) emptyList() else left.split(":")
+                val rightGroups = if (right.isEmpty()) emptyList() else right.split(":")
+                if (leftGroups.any { it.isEmpty() } || rightGroups.any { it.isEmpty() }) return false
+                groups = leftGroups + rightGroups
+            } else {
+                groups = address.split(":")
+            }
+
+            var hextets = 0
+            groups.forEachIndexed { index, group ->
+                val isLast = index == groups.lastIndex
+                if (isLast && group.contains(".")) {
+                    // IPv4-embedded tail, e.g. "::ffff:1.2.3.4", counts as two hextets.
+                    if (!IPV4_LITERAL.matches(group)) return false
+                    if (group.split(".").any { it.toIntOrNull() !in 0..255 }) return false
+                    hextets += 2
+                    return@forEachIndexed
+                }
+                if (group.isEmpty() || group.length > 4) return false
+                if (!group.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) return false
+                hextets++
+            }
+
+            return if (compression >= 0) hextets < 8 else hextets == 8
         }
 
         const val GOOGLE_DOH_PROVIDER_ID = "preset_google_doh"
