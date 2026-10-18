@@ -71,6 +71,17 @@ func wrapResponseForInjection(resp *http.Response, host string) {
 	resp.Header.Del("Content-Security-Policy-Report-Only")
 	resp.TransferEncoding = nil
 	resp.Uncompressed = true
+	// The body length is only known after injection, so the response cannot carry
+	// a Content-Length, and buffering it just to compute one would defeat the
+	// streaming design on large pages. That leaves connection-close delimiting as
+	// the only option: net/http's Response.Write only adds "Connection: close"
+	// automatically when ContentLength == -1 && !Uncompressed, and we deliberately
+	// keep Uncompressed = true, so Close must be set here explicitly. Without it
+	// the response goes out with no Content-Length, no Transfer-Encoding and no
+	// Connection header, and an HTTP/1.1 keep-alive client waits for a body
+	// boundary that never arrives (the relay only closes the socket on
+	// resp.Close), so the page never finishes loading.
+	resp.Close = true
 }
 
 func isLoopbackOrInternal(hostname string) bool {
