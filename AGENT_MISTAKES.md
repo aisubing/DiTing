@@ -14,6 +14,10 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: 设计系统 API 三处「按直觉写就报错」（primaryAction 类型 / 具名构造的类型参数 / 同屏重复文案）
+- **现象/根因**：(1) `CommonScaffold.primaryAction`/`confirmationAction` 收的是 `IconButtonData`（顶栏图标按钮），不是 `Widget`；传 `FilledButton` 直接 `argument_type_not_assignable`。需要可见文案的主按钮（如「导入 N 条」）得放进 `body`，顶栏只能放图标 + `tooltip`。(2) `ListItem.options` 是泛型类的**具名构造**，类型实参写在类名上——`ListItem<RuleKind>.options(...)`；写成 `ListItem.options<RuleKind>(...)` 报 `wrong_number_of_type_arguments_constructor`，报错文案不会提示该改位置。(3) 计数头写「空时显示『没有匹配的规则』」，同时 `NullStatus.label` 也是同一句 → 同屏两份完全相同文案，既是视觉重复也让 `findsOneWidget` 失败。
+- **教训**：写组件前先 `Select-String` 读构造签名，别按「应该是 Widget」推断；泛型类的具名构造类型参数一律前移到类名；空状态文案与计数头文案必须分工（一个报数字、一个说原因），否则同屏重复且不可断言。
+
 ### 2026-10-19: Flutter 页面自测四坑（同名文本 finder / 测试宿主缺 scope / sheet 首屏溢出 / 并发编译失败归因）
 - **现象/根因**：(1) `SegmentedControl` 视图标签「缓存」与 `TonalChip(LogAction.cached.label)`（也是「缓存」）同屏 → `find.text('缓存')` 命中 12 个，`tap()` 抛 "Found 12 widgets"；标签文案必须与同一屏内的枚举文案去重（改为「缓存表」），不能靠 `.first` 掩盖。(2) `test/support/app_host.dart` 的 `AppHost` 只装 `MeasureScope`/`ViewScope`，页面内的 `showSheet` 浮层还要 `SheetOverhangScope` → 浮层里 `CommonScaffold` 立刻 `assert(scope != null)` 失败；测「能弹出并能渲染」的用例必须 pump 真正的 `DitingApp(initialLocation: route)`，`AppHost` 只适合测单个无浮层的 widget。(3) 临时测试文件放仓根时 `import 'support/app_host.dart'` 解析失败，必须放进 `test/`。(4) `tester.pageBack()` 找 `CupertinoNavigationBarBackButton`，本工程 sheet 的关闭按钮是 `GlyphIcon`，一律用 `Navigator.of(element).maybePop()`；`scrollUntilVisible` 在 finder 命中多个可滚动区时抛 `Bad state: Too many elements`，限高后直接断言可见项更快。(5) 面板里 6 行服务商列表把「发起查询」挤出首屏 → 次要选项改横向 chip 行。(6) `flutter test` 报 `lib/pages/server/server_page.dart: Error: The method '_showUpstreamSheet' isn't defined`——那是并行代理正在改的别人的文件，**编译期失败先看报错文件是否自己的**，等 30–60s 重试即可，不要动手改。
 - **教训**：同屏文案唯一性是可测性前提（也是可用性前提）；「能弹出」类用例要用真实 App 路由壳；行数统计用 `(Get-Content $f).Count`（`Measure-Object -Line` 跳过空行，见 2026-10-18 条）；并发工作区里编译错误先归因到文件归属，再决定等或改。
