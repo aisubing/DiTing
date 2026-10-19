@@ -196,8 +196,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               child: _ErrorBanner(message: '${issue.field}：${issue.message}'),
             ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16)
-                .copyWith(top: issue == null ? 8 : 12),
+            // 横向 16 交给 `generateSection`，外层再加会让组头缩进 32。
+            padding: EdgeInsets.only(top: issue == null ? 8 : 12),
             child: generateSection(
               title: '基本信息',
               items: [
@@ -226,8 +226,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16)
-                .copyWith(top: 24),
+            // 横向 16 交给 `generateSection`，外层再加会让组头缩进 32。
+            padding: const EdgeInsets.only(top: 24),
             child: generateSection(
               title: '更新',
               items: [
@@ -258,8 +258,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16)
-                .copyWith(top: 24),
+            // 横向 16 交给 `generateSection`，外层再加会让组头缩进 32。
+            padding: const EdgeInsets.only(top: 24),
             child: generateSection(
               title: '覆写项',
               items: [

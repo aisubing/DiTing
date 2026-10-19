@@ -42,35 +42,39 @@ class ProfilePreviewPage extends ConsumerWidget {
           },
         ),
       ],
-      body: Column(
-        children: [
-          _PreviewHeader(profile: profile, lineCount: lines.length),
-          const Divider(height: 1),
-          Expanded(
-            child: Scrollbar(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  top: 12,
-                  bottom: NavigationDock.insetOf(context) + 12,
-                ),
-                scrollDirection: Axis.vertical,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _LineNumberGutter(lineCount: lines.length),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.only(right: 16),
-                        child: _YamlBody(lines: lines),
+      // 顶栏浮在正文之上，页首摘要与行号槽都要显式让出顶栏高度，否则第一行代码
+      // 会画到状态栏底下。
+      body: AppBarClearance(
+        child: Column(
+          children: [
+            _PreviewHeader(profile: profile, lineCount: lines.length),
+            const Divider(height: 1),
+            Expanded(
+              child: Scrollbar(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    top: 12,
+                    bottom: NavigationDock.insetOf(context) + 12,
+                  ),
+                  scrollDirection: Axis.vertical,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _LineNumberGutter(lineCount: lines.length),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.only(right: 16),
+                          child: _YamlBody(lines: lines),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

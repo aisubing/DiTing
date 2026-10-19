@@ -98,7 +98,7 @@ class CustomProfilePage extends ConsumerWidget {
               child: _IssueBanner(count: issueCount),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.only(top: 16),
             child: generateSection(
               title: '配置内容',
               items: [
@@ -146,7 +146,7 @@ class CustomProfilePage extends ConsumerWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+            padding: const EdgeInsets.only(top: 24),
             child: generateSection(
               title: '动作',
               items: [

@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# 真机 UI 取证产物（截图与几何 dump），不入库
+tool/uiprobe/

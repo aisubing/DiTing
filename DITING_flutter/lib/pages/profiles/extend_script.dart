@@ -28,36 +28,33 @@ class _ScriptContent extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: generateSection(
-            items: [
-              for (final script in mockScripts)
-                DecorationListItem(
-                  isSelected: selected == script.id,
-                  leading: GlyphIcon(
-                    script.enabled ? AppGlyphs.code : AppGlyphs.block,
-                    color: script.enabled
-                        ? colorScheme.primary
-                        : colorScheme.onSurfaceVariant,
-                  ),
-                  title: Text(script.name),
-                  subtitle: Text(
-                    '${script.lineCount} 行 · ${script.updatedAt}'
-                    '${script.enabled ? '' : ' · 已停用'}',
-                    style: context.listCaptionStyle,
-                  ),
-                  trailing: selected == script.id
-                      ? const SelectionCheck()
-                      : null,
-                  onPressed: script.enabled
-                      ? () => ref
-                            .read(scriptSelectionProvider.notifier)
-                            .select(profileId, script.id)
-                      : null,
+        generateSection(
+          items: [
+            for (final script in mockScripts)
+              DecorationListItem(
+                isSelected: selected == script.id,
+                leading: GlyphIcon(
+                  script.enabled ? AppGlyphs.code : AppGlyphs.block,
+                  color: script.enabled
+                      ? colorScheme.primary
+                      : colorScheme.onSurfaceVariant,
                 ),
-            ],
-          ),
+                title: Text(script.name),
+                subtitle: Text(
+                  '${script.lineCount} 行 · ${script.updatedAt}'
+                  '${script.enabled ? '' : ' · 已停用'}',
+                  style: context.listCaptionStyle,
+                ),
+                trailing: selected == script.id
+                    ? const SelectionCheck()
+                    : null,
+                onPressed: script.enabled
+                    ? () => ref
+                          .read(scriptSelectionProvider.notifier)
+                          .select(profileId, script.id)
+                    : null,
+              ),
+          ],
         ),
         const SizedBox(height: 16),
         MoreActionButton(

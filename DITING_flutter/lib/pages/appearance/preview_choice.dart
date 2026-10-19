@@ -50,8 +50,10 @@ class PreviewChoiceGroup<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InfoHeader(info: info),
+        // 横向留白交给 `generateSection`/`ListFooter` 自己给（它们各自带 16），
+        // 外层再加一次会让组头比别组缩进 32。
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.only(top: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 8,

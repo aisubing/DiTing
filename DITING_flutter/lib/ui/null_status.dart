@@ -113,12 +113,20 @@ class _NullStatusSwitcherState extends State<NullStatusSwitcher> {
       reverseDuration: context.motionDuration(_exitDuration),
       switchInCurve: Easing.emphasizedDecelerate,
       switchOutCurve: Curves.easeIn,
-      layoutBuilder: (currentChild, previousChildren) => Align(
-        alignment: Alignment.center,
-        child: Stack(
+      layoutBuilder: (currentChild, previousChildren) => LayoutBuilder(
+        builder: (context, constraints) => Align(
           alignment: Alignment.center,
-          fit: StackFit.expand,
-          children: <Widget>[...previousChildren, ?currentChild],
+          child: Stack(
+            alignment: Alignment.center,
+            // 只有父级给了确定高度时才铺满：放进 `ListView` 这类无界高度的
+            // 滚动视图里，`StackFit.expand` 会要求无限高，直接
+            // 「BoxConstraints forces an infinite height」，整棵空状态子树
+            // 布局失败——页面上就是顶栏下面一片空白（/config/dns 等四页）。
+            fit: constraints.hasBoundedHeight
+                ? StackFit.expand
+                : StackFit.loose,
+            children: <Widget>[...previousChildren, ?currentChild],
+          ),
         ),
       ),
       transitionBuilder: (child, animation) => FadeTransition(
@@ -231,9 +239,8 @@ class _NullStatusState extends State<NullStatus> {
                 _EnterItem(
                   delay: _staggerStep * (description != null ? 3 : 2),
                   child: Theme(
-                    data: Theme.of(
-                      context,
-                    ).copyWith(visualDensity: VisualDensity.standard),
+                    data: Theme.of(context)
+                        .copyWith(visualDensity: VisualDensity.standard),
                     child: action,
                   ),
                 ),

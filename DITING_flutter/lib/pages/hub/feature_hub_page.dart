@@ -25,6 +25,8 @@ class FeatureHubPage extends StatelessWidget {
       ],
       body: CustomScrollView(
         slivers: [
+          // 顶栏浮在正文之上，正文自己让出栏高。
+          SliverToBoxAdapter(child: SizedBox(height: context.appBarInset)),
           for (final category in mockFeatureCategories)
             SliverToBoxAdapter(child: _CategorySection(category: category)),
           SliverToBoxAdapter(

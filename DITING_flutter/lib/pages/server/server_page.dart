@@ -87,29 +87,37 @@ class ServerPage extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           const ListHeader(title: '服务状态'),
-          CommonCard(
-            padding: EdgeInsets.zero,
-            child: StatStrip(
-              stats: [
-                StatItem(label: '总查询', value: '${stats.queries}'),
-                StatItem(
-                  label: '缓存命中',
-                  value: '${(stats.cacheHitRate * 100).round()}',
-                  unit: '%',
-                  color: context.colorScheme.primary,
-                ),
-                StatItem(
-                  label: '已拦截',
-                  value: '${stats.blocked}',
-                  color: context.colorScheme.error,
-                ),
-                StatItem(
-                  label: '平均时延',
-                  value: running ? '${stats.averageLatencyMs}' : '--',
-                  unit: running ? 'ms' : null,
-                ),
-                StatItem(label: '运行时长', value: running ? stats.uptimeLabel : '--'),
-              ],
+          // 这张卡直接放在 `PageBody` 里（不像别处由 `generateSection` 包一层），
+          // 横向留白得自己给，否则统计条两端贴住屏幕边沿。
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: CommonCard(
+              padding: EdgeInsets.zero,
+              child: StatStrip(
+                stats: [
+                  StatItem(label: '总查询', value: '${stats.queries}'),
+                  StatItem(
+                    label: '缓存命中',
+                    value: '${(stats.cacheHitRate * 100).round()}',
+                    unit: '%',
+                    color: context.colorScheme.primary,
+                  ),
+                  StatItem(
+                    label: '已拦截',
+                    value: '${stats.blocked}',
+                    color: context.colorScheme.error,
+                  ),
+                  StatItem(
+                    label: '平均时延',
+                    value: running ? '${stats.averageLatencyMs}' : '--',
+                    unit: running ? 'ms' : null,
+                  ),
+                  StatItem(
+                    label: '运行时长',
+                    value: running ? stats.uptimeLabel : '--',
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 6),

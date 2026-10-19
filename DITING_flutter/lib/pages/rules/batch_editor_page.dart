@@ -102,12 +102,18 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     return CommonScaffold(
       title: '批量添加规则',
       resizeToAvoidBottomInset: true,
+      // 顶栏浮在正文之上（`extendBodyBehindAppBar`），正文自己让出「状态栏 +
+      // 工具栏」的高度，否则「导入到」组头会画到状态栏底下。
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: EdgeInsets.fromLTRB(16, 8 + context.appBarInset, 16, 16),
         children: [
           // 目标表放在文本框之上：先决定「导去哪」，再贴内容，顺序与用户
           // 的思考顺序一致；放下面会出现贴完才想起来选错表的情况。
+          //
+          // `padding: EdgeInsets.zero`：这一页的 `ListView` 已经自带 16 横向
+          // 内边距，`generateSection` 默认再加一次会让卡片缩进 32。
           generateSection(
+            padding: EdgeInsets.zero,
             title: '导入到',
             items: [
               ListItem<RuleKind>.options(
@@ -123,9 +129,15 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
           const SizedBox(height: 12),
           // 文本框高度固定 360：既能让用户看见一屏内容，又不至于把按钮顶出
           // 屏幕。maxLines 撑满配合 scrollController 让长文本内部滚动。
+          //
+          // `borderRadius` 必须显式给：`FilledInputTheme` 的默认值是
+          // `AppRadius.full`（1000），那是为「单行胶囊高度」设计的——框一高，
+          // 圆角就按短边收敛成真圆，360 高的文本框在真机上画成一个巨大的圆，
+          // 提示文字挤在上缘、下面整片是空壳。多行块一律用卡片级圆角。
           SizedBox(
             height: 360,
             child: FilledInputTheme(
+              borderRadius: AppRadius.lg,
               child: TextField(
                 controller: _controller,
                 expands: true,
@@ -138,7 +150,8 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                   fontSize: 14,
                 ),
                 decoration: const InputDecoration(
-                  hintText: '每行一条规则，例如：\n||ads.example.com^\n'
+                  hintText:
+                      '每行一条规则，例如：\n||ads.example.com^\n'
                       '||tracker.example.net^\n\n'
                       '空行会被忽略，重复规则自动跳过。',
                 ),

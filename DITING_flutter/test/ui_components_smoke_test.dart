@@ -94,6 +94,29 @@ void main() {
     expect(find.text('暂无内容'), findsOneWidget);
   });
 
+  testWidgets('NullStatusSwitcher 在 ListView 里仍渲染空状态', (tester) async {
+    // 回归：`layoutBuilder` 一度写死 `StackFit.expand`，无界高度下整棵空状态
+    // 子树布局失败，真机上表现为顶栏以下一整片空白（/config/dns 等四页）。
+    await tester.pumpWidget(
+      host(
+        Scaffold(
+          body: ListView(
+            children: const [
+              NullStatusSwitcher(
+                isEmpty: true,
+                nullStatus: NullStatus(label: '还没有覆写任何键'),
+                child: SizedBox(height: 20),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.text('还没有覆写任何键'), findsOneWidget);
+  });
+
   testWidgets('CommonCircleLoading 旋转', (tester) async {
     await tester.pumpWidget(host(const Center(child: CommonCircleLoading())));
     await tester.pump(const Duration(milliseconds: 100));

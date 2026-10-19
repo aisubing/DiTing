@@ -149,6 +149,8 @@ class _AgentPageState extends State<AgentPage> {
       ],
       body: Column(
         children: [
+          // 顶栏浮在正文之上，消息列表要从栏底开始排。
+          SizedBox(height: context.appBarInset),
           Expanded(
             child: _messages.isEmpty
                 ? const NullStatus(

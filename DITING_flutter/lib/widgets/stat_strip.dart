@@ -150,10 +150,12 @@ class KeyValueRow extends StatelessWidget {
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: AppTextStyle.subheadline.of(context).copyWith(
-                color: colorScheme.onSurface,
-                fontFamily: monospace ? 'JetBrainsMono' : null,
-              ),
+              style: AppTextStyle.subheadline
+                  .of(context)
+                  .copyWith(
+                    color: colorScheme.onSurface,
+                    fontFamily: monospace ? 'JetBrainsMono' : null,
+                  ),
             ),
           ),
         ],
@@ -163,6 +165,9 @@ class KeyValueRow extends StatelessWidget {
 }
 
 /// 一行小标题 + 内容的分组容器，页面正文里反复出现。
+///
+/// 横向留白只加在 [child]（卡片）上，不加在整列上：`ListHeader`/`ListFooter`
+/// 自带 16 的横向内边距，外层再套一次会让这一组的标题比别组缩进 32。
 class SectionBlock extends StatelessWidget {
   const SectionBlock({
     super.key,
@@ -180,13 +185,19 @@ class SectionBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding,
+      padding: EdgeInsets.only(top: padding.top, bottom: padding.bottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,
         children: [
           if (title case final title?) ListHeader(title: title),
-          child,
+          Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: padding.left,
+              end: padding.right,
+            ),
+            child: child,
+          ),
           if (footer case final footer?) ListFooter(text: footer),
         ],
       ),
@@ -206,7 +217,13 @@ class DockSpacer extends StatelessWidget {
   }
 }
 
-/// 可滚动的页面正文，统一带底部浮条留白与滚动条。
+/// 可滚动的页面正文，统一带顶栏浮位、底部浮条留白与滚动条。
+///
+/// 顶部留白必须显式取 `context.appBarInset`：`CommonScaffold` 走
+/// `extendBodyBehindAppBar`，正文从屏幕 y=0 起排，不预留就会整片画到顶栏
+/// 底下（标题压行、首个分组头藏进状态栏）。占位统一走 `AppBarClearance`，
+/// 它同时把 `MediaQuery.padding.top` 清零并关掉 `FloatingBarScope`，避免
+/// 正文里再算一次同样的留白。
 class PageBody extends StatelessWidget {
   const PageBody({
     super.key,
@@ -221,12 +238,11 @@ class PageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: padding,
-      children: [
-        ...children,
-        if (dockSpacer) const DockSpacer(),
-      ],
+    return AppBarClearance(
+      child: ListView(
+        padding: padding,
+        children: [...children, if (dockSpacer) const DockSpacer()],
+      ),
     );
   }
 }

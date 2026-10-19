@@ -48,45 +48,50 @@ class ProxyGroupSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final canFold = headerStyle == ProxyGroupHeaderStyle.list;
-    return CommonCard(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        spacing: 8,
-        children: [
-          _Header(
-            group: group,
-            isTesting: isTesting,
-            canFold: canFold,
-            unfolded: unfolded,
-            onTest: onTest,
-            onToggleFold: onToggleFold,
-            iconStyle: settings.iconStyle,
-          ),
-          if (unfolded) ...[
-            if (group.hiddenCount > 0)
-              Text(
-                '已隐藏 ${group.hiddenCount} 个超时节点',
-                style: AppTextStyle.caption2
-                    .of(context)
-                    .copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-            _NodeGrid(
+    // 卡片直接放在 `PageBody`（无内边距）里，横向留白必须由自己给，
+    // 否则整块贴住屏幕左右边沿。
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: CommonCard(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            _Header(
               group: group,
-              settings: settings,
               isTesting: isTesting,
-              onSelect: onSelect,
-              onNodeMenu: onNodeMenu,
+              canFold: canFold,
+              unfolded: unfolded,
+              onTest: onTest,
+              onToggleFold: onToggleFold,
+              iconStyle: settings.iconStyle,
             ),
-          ] else if (group.selectedName != null)
-            Text(
-              '当前：${group.selectedName}',
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
+            if (unfolded) ...[
+              if (group.hiddenCount > 0)
+                Text(
+                  '已隐藏 ${group.hiddenCount} 个超时节点',
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+              _NodeGrid(
+                group: group,
+                settings: settings,
+                isTesting: isTesting,
+                onSelect: onSelect,
+                onNodeMenu: onNodeMenu,
               ),
-            ),
-        ],
+            ] else if (group.selectedName != null)
+              Text(
+                '当前：${group.selectedName}',
+                style: AppTextStyle.footnote.of(context).copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

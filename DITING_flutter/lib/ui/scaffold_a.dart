@@ -231,9 +231,15 @@ class CommonScaffoldState extends State<CommonScaffold> {
             });
           }
           final hasKeywords = keywords.isNotEmpty;
-          final barInset = MediaQuery.paddingOf(context).top;
+          // 状态栏高度只能从 `View` 上取：外层 shell 的 Scaffold 已经把
+          // `MediaQuery.padding/viewPadding` 消费成 0，用它算占位会算出 0，
+          // 正文于是整片画进顶栏底下。正文侧读到的 `padding.top` 恰好等于
+          // 「状态栏 + 工具栏」，所以这里必须凑出同一个数。
+          final view = View.of(context);
+          final barInset = view.viewPadding.top / view.devicePixelRatio;
+          // 浮在正文之上的顶栏总占位 = 状态栏 + 工具栏。
           final overlap = barFloats
-              ? barInset
+              ? barInset + pageToolbarHeight
               : isCompact
               ? sheetAppBarHeight
               : 0.0;

@@ -55,8 +55,10 @@ class _NamedUrlPageState extends State<NamedUrlPage> {
       body: PageBody(
         dockSpacer: false,
         children: [
+          // `NamedUrlForm` 内部自己按 16 排每块内容，外层再套一次横向 16 会让
+          // 表单卡片比下方「已添加 N 条」这组缩进一倍（真机量到 32 vs 16）。
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.only(top: 8),
             child: NamedUrlForm(
               initial: (label: '', url: '', ageSecretKey: ''),
               title: '名称',

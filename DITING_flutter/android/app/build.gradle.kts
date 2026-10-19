@@ -48,10 +48,14 @@ val hasReleaseSigning: Boolean = releaseKeystoreFile != null &&
     !releaseStorePassword.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank()
 
-// `-PsignDebugWithRelease` 让 debug 构建也用 release 密钥签名，
-// 便于「编译快 + 可覆盖安装正式版」的联调（与原 Android 工程行为一致）。
+// `-PsignDebugWithRelease` 让 debug 构建也用 release 密钥签名。
+// 默认开启：debug 包要能覆盖安装已发布的正式版（同签名），否则装上就报
+// INSTALL_FAILED_UPDATE_INCOMPATIBLE，真机联调只能先卸正式版、丢数据。
+// 裸仓库（无密钥）时 hasReleaseSigning 为 false，自然回退 debug 密钥。
 val signDebugWithRelease: Boolean =
-    project.findProperty("signDebugWithRelease") in listOf("true", "1", "")
+    project.findProperty("signDebugWithRelease")?.toString()?.let {
+      it.isBlank() || it == "true" || it == "1"
+    } ?: true
 
 android {
     namespace = "com.haoze.diting"

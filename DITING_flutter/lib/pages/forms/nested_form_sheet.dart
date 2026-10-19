@@ -104,7 +104,9 @@ class _NestedFormSheetState extends State<NestedFormSheet> {
         iconActions: widget.iconActions,
         confirmationAction: widget.confirmationAction,
         primaryAction: widget.primaryAction,
-        body: widget.child,
+        // 顶栏是浮在正文之上的（`extendBodyBehindAppBar`），这里的 body 是一整块
+        // 不滚动的 Column，所以要显式让出顶栏高度，否则工具栏和正文会叠在一起。
+        body: AppBarClearance(child: widget.child),
       ),
     );
   }

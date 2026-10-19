@@ -51,7 +51,7 @@ class DemoPage extends StatelessWidget {
         ),
       ],
       body: ListView(
-        padding: EdgeInsets.zero,
+        padding: EdgeInsets.only(top: context.appBarInset),
         children: [
           const _DemoIntro(),
           for (final section in _demoSections) ...[

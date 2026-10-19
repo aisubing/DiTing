@@ -14,6 +14,40 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: 全站卡片贴边：改共享件一次修 46 页，同时把 4 页推成双重缩进
+
+- **现象/根因**：
+  1. **`generateSection` 一处都不给横向留白**，全站 157 个分组 / 88 个文件的卡片直接贴住屏幕左右边沿（真机像素量到 `leftGap=0.0dp`），而同页的 `ListHeader`/`ListFooter` 自带 16 → 同一屏两种边距混用。修法是把 16 加在共享件的「卡片列」上（`ListHeader`/`ListFooter` 已有自己的 16，加在外层会让组头缩进 32）。改完 46 页一次归正，但**另外 4 页变成 x=32**：它们外层已经套了 `Padding(horizontal: 16)`。
+  2. **想靠静态分析枚举「哪些调用点外层已给 16」，连错三版**。`generateSection` 的祖先在语法树里要看括号嵌套，但 `ListView(children: […])` 的 `children:` 是**顶层实参**，里面任何后代写的 `EdgeInsets.fromLTRB(16…)` 都被算成「这个 ListView 自己的」——于是把 `PageBody`/`ListView` 下所有调用点全报成双重缩进（73 页有发现）。改成「只看非 child 实参」仍然错，因为 `Padding` 的 `child:` 也常带内层边距。**最后是靠真机量每页卡片外壳的 x 分布**（`[...new Set(shells.map(b=>Math.round(b.x)))]`）一次定死 4 个真实站点。
+  3. **卡片矩形要分「外壳」与「内行」**：`ListItem` 与包它的 `CommonCard` 矩形完全重合（双计），`_ListTile` 是卡内 16 内边距（落在 x=32），WebDAV 表单是「卡里套卡」。不做包含关系剔除，会把每张正常卡都报成「缩进过大」。
+  4. **`ListHeader` 的矩形是通栏的（x=0），文字才在 16**——拿它的 x 当「正文列」参照，等于要求所有卡片贴边，方向完全反了。参照列应直接取设计常量。
+- **教训**：① **仓库级布局不变量（「所有卡片左边距 16」）不要靠静态枚举调用点**，157 个点里嵌套关系肉眼和正则都数不准；改完共享件后跑一遍真机量 x 分布，一轮就能列出全部违规页。② 改共享件的默认值属于「一次改全站」，必须同一轮内做完回归，不能留给下一轮。③ 判据的参照物要选**设计常量**而不是**某个 widget 的矩形**——后者的坐标系口径（通栏容器 vs 文字列）随时会骗人。④ 本轮又用 Python 脚本改 `custom_profile_page.dart`（第 3 次同类事故，前两次是 `sed -i` 与 PowerShell `-replace`）：虽然用了字面串替换、`occurrences=1` 事后核对无误，但规则是「改代码一律用编辑工具」，脚本改代码的风险不在这次有没有出事。
+
+### 2026-10-19: 「顶栏下空档」判据分不清「居中设计」与「布局塌陷」
+
+- **现象/根因**：体检按「栏底 → 第一个内容块的距离 > 60dp」报空档，于是首页大圆钮、扫码取景框、引导步骤、`档案不存在` 空状态各报 143–360dp。它们其实都是**故意居中**：内容上下留白对称，是设计选择。三个叠加的成因：
+  1. **JS 侧的内容块名单与 Dart 侧 `_structureTypes` 不同步**——Dart 已登记 `Button`/`CustomPaint`/`GlyphIcon`，JS 的正则漏了，于是这些块「注册了但不算内容」，首页/扫码/关于页各报一次假空档。两处名单靠注释约束，注释挡不住。
+  2. **可用区底边取了屏幕底**：引导页「下一步」是钉在屏底的按钮，在滚动视口之外，用它算「下方余量」≈0，居中因此判不出来。必须用内容文本自带的视口底边 `vb`。
+  3. **空隙计算把「大块的内部空间」当成块间空隙**：360 高输入框里的提示文字（`EditableText` 高 18）与框下方那张卡之间被量成 262dp 留白。要先按包含关系剔掉被大框套住的小条目。
+- **教训**：① 判「留白异常」必须能区分「上下对称的居中」与「上方空、下方挤」——加一条 `gapAbove/gapBelow` 比值判据，并在报告里把两个数都打出来，便于人眼复核；② 双端各存一份 widget 名单的结构，改一处必须同轮改另一处，或干脆让 JS 只按 Dart 输出的名单过滤；③ 凡是「距离屏幕底」的量都要先问「这块内容属于哪个视口」；④ 报告里带上判定所用的原始数字（首块 y、栏底、内容区底、下方余量），否则假阳性无法在离线复检里被识破。
+
+### 2026-10-19: `FilledInputTheme` 默认胶囊圆角，套到高框上画成一个巨大的圆
+
+- **现象/根因**：`/rules/batch` 的规则输入框（`SizedBox(height: 360)` + `expands`）在真机上渲染成一个占满半屏的**圆**：提示文字挤在上缘，下面整片是空壳。根因是 `FilledInputTheme` 的 `borderRadius` 默认值 `AppRadius.full`（=1000），它是为「单行胶囊高度」设计的——圆角半径超过短边一半时按短边收敛，框一高就变成圆。`analyze`、路由冒烟、溢出检查三类静态/半静态手段全绿，只有截图看得见。
+  - **只有这一处中招**：仓内另外三个多行输入（`icon_sets_form` minLines 6、`override_quick_edit` 12、`scripts_editor` 14）各自在 `decoration` 里显式写了 `border: OutlineInputBorder()`，`InputDecoration.applyDefaults` 让字段自己的 `border` 覆盖主题的同名属性，所以拿到的是 4dp 圆角而不是胶囊。我一度把这三处写进「同样中招」的清单，那是**只看 `minLines≥5` 就外推**、没读 `decoration` 的未验证结论，已删。
+- **教训**：① 「默认值只在某个尺寸下成立」的组件参数，用在别的尺寸上就是缺陷；给这类默认值写注释时要把**成立前提**写进去（现在写的是「单行胶囊高度」）。② 判断主题类缺陷的影响面，要看字段是否**自己覆盖了该属性**（`decoration.border` 非空即覆盖），不能按「尺寸像不像」归类。③ 写进本文档的每一条影响面清单都要有引证（读到的那行代码），否则比不写更坏——它会被后续轮次当事实复述。
+
+### 2026-10-19: 真机 UI 体检的三类假阳性 + `StackFit.expand` 让空状态整棵子树消失
+
+- **现象/根因**：
+  1. **`NullStatusSwitcher` 的 `AnimatedSwitcher.layoutBuilder` 写死 `Stack(fit: StackFit.expand)`，放进 `ListView` 就变成「空白页」**。`/config/dns`、`/config/ntp`、`/config/sniffer`、`/config/tun` 四页顶栏以下全空，肉眼看是「异常留白」，真机上量到的是 `BoxConstraints forces an infinite height.` → `RenderBox was not laid out: RenderStack` → `sliver_multi_box_adaptor.dart:629 'child.hasSize'` 断言失败：空状态子树根本没参与布局，所以探针里连一个 `RichText` 都找不到。修法：`LayoutBuilder` 读父级约束，`hasBoundedHeight` 才 `expand`、否则 `loose`；四页从 2 行文本恢复到 19–20 行。
+  2. **`Row(crossAxisAlignment: CrossAxisAlignment.stretch)` 直接放在 `ListView` 的 `Column` 里，整片卡片不上屏**。`/profiles` 的档案卡片网格只有 8 行文本、卡片一张没有，报 `BoxConstraints forces an infinite height` → `RenderFlex` → `sliver_multi_box_adaptor.dart:629`。**这条错误此前被诊断通道的关键词过滤器藏了三轮**（只筛 `overflowed`/`viewport`/`too large`），所以前两次数检都报 `OK`。修法沿用仓内既有约定（`connection_stats_card.dart` 就是这么写的）：外面套 `IntrinsicHeight` 先把行高定下来，卡片仍然等高；改完 8 行 → 32 行文本。
+  3. **「正文侵入系统导航条区」25 条全是假阳性**。列表停在中间时最后一行必然被视口底边裁掉，被裁掉的像素没上屏，却按屏幕坐标算成「画进手势条」。判据改成「文本矩形落在它所属滚动视口底边之内」后才成立。
+  4. **「顶栏下空档」按第一行文本量**，而卡片外壳、图片、输入框都不在登记名单里，于是首页、`/server`、`/scan` 各报 190/558dp 空档；把矩形叠加回截图核对，内容其实紧贴顶栏。改为量「第一个画上屏幕的块（文本或容器）」，并把 `Card`/`Tile`/`Image`/`Chart`/`EditableText`/`NullStatus` 登记进结构名单。
+  5. **`go()` 换页面栈不会关掉上一页留下的浮层**（`PopupRoute`），于是 `/rules/batch`、`/config/override` 报出上一格浮层的「内容画进顶栏区」。跳路由前先 `popUntil((route) => route is! PopupRoute)`。
+  6. **截图与矩形可能取自不同帧**（回弹动画未停），两边对不上时无法判断谁错。改成探针连打两次、比较同名文本位移 > 2dp 就重截图，保证 PNG 与 JSON 出自同一静止画面。
+- **教训**：① 诊断通道的 `FlutterError.onError` 过滤要宽（`RenderBox`/`infinite`/断言失败都留痕），只筛 `overflowed` 会把「同样让内容消失」的错误全丢掉——本轮两条真缺陷（`/config/dns` 空白、`/profiles` 卡片消失）都是放开过滤后才现形的；② 判「留白」必须能区分「背景是空的」与「子树没布局」，后者只能靠错误流，光看文本数量会漏；③ 缩略图上肉眼判断 y 坐标不可靠，怀疑数字时把矩形叠加回截图自证，别凭印象推翻测量；④ 体检判据一律按「像素是否真的上屏」写——视口裁剪、浮层遮挡、动画中间帧都算没上屏；⑤ 给设计系统补的回归测试要做**反向验证**：把修复临时改回去、用例必须变红（`NullStatusSwitcher` 那条在去掉 `hasBoundedHeight` 判定后报 10 个异常），否则它可能只是恒真断言；⑥ 改代码一律用编辑工具，本轮 `sed -i` 又把脚本改出 `SyntaxError`（与 PowerShell `-replace` 同类的批量文本替换事故，第二次发生）。
+
 ### 2026-10-19: `.bat` 里写中文会截断解析器；`set /p` 空 stdin 无限循环；直接 `gradlew` 编 Flutter 是空壳
 
 - **现象/根因**：

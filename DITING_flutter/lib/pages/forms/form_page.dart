@@ -65,7 +65,9 @@ class FormPage extends StatelessWidget {
             spacing: 4,
             children: [
               if (title.isNotEmpty) ListHeader(title: title),
-              generateSection(items: children),
+              // 横向留白由外层 [padding] 统一给（组头、组脚和它对齐），
+              // `generateSection` 再给一次会让卡片比标题缩进一倍。
+              generateSection(padding: EdgeInsets.zero, items: children),
               if (footer case final footer?) ListFooter(text: footer),
             ],
           ),

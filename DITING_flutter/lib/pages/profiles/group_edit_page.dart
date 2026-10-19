@@ -201,8 +201,8 @@ class _GroupEditPageState extends ConsumerState<GroupEditPage> {
       body: PageBody(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16)
-                .copyWith(top: 8),
+            // 横向 16 交给 `generateSection`，外层再加会让组头缩进 32。
+            padding: const EdgeInsets.only(top: 8),
             child: generateSection(
               title: '基本信息',
               items: [
@@ -235,8 +235,8 @@ class _GroupEditPageState extends ConsumerState<GroupEditPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16)
-                .copyWith(top: 24),
+            // 横向 16 交给 `generateSection`，外层再加会让组头缩进 32。
+            padding: const EdgeInsets.only(top: 24),
             child: generateSection(
               title: '成员',
               items: [
@@ -274,8 +274,7 @@ class _GroupEditPageState extends ConsumerState<GroupEditPage> {
           ),
           if (_kind.needsProbe || _kind.needsStrategy)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16)
-                  .copyWith(top: 24),
+              padding: const EdgeInsets.only(top: 24),
               child: generateSection(
                 title: '策略参数',
                 items: [
@@ -318,8 +317,7 @@ class _GroupEditPageState extends ConsumerState<GroupEditPage> {
             ),
           if (providers.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16)
-                  .copyWith(top: 24),
+              padding: const EdgeInsets.only(top: 24),
               child: generateSection(
                 title: '引用提供者',
                 items: [
@@ -344,8 +342,8 @@ class _GroupEditPageState extends ConsumerState<GroupEditPage> {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16)
-                .copyWith(top: 24),
+            // 横向 16 交给 `generateSection`，外层再加会让组头缩进 32。
+            padding: const EdgeInsets.only(top: 24),
             child: generateSection(
               title: '显示',
               items: [

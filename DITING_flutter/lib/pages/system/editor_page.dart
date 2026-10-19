@@ -334,20 +334,30 @@ class _LineGutter extends StatelessWidget {
                   0,
                   lineCount,
                 );
-                final visible = (constraints.maxHeight / _lineHeight).ceil() + 2;
+                final visible =
+                    (constraints.maxHeight / _lineHeight).ceil() + 2;
                 final last = (first + visible).clamp(0, lineCount);
                 return Transform.translate(
                   offset: Offset(0, first * _lineHeight - offset),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      for (var i = first + 1; i <= last; i++)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Text('$i', style: style),
-                        ),
-                    ],
+                  // 上下各多备一行做补边，交给 `OverflowBox` 放开高度限制：
+                  // 否则这一行补边会把 Column 撑得比视口高，真机上直接报
+                  // `RenderFlex overflowed by 63 pixels`，而多出来的行本来就被
+                  // 外层 `ClipRect` 裁掉。
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    minHeight: 0,
+                    maxHeight: double.infinity,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = first + 1; i <= last; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Text('$i', style: style),
+                          ),
+                      ],
+                    ),
                   ),
                 );
               },

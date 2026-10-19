@@ -245,40 +245,55 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                             row < (state.profiles.length / columns).ceil();
                             row++
                           )
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              spacing: 12,
-                              children: [
-                                for (var column = 0; column < columns; column++)
-                                  Expanded(
-                                    child: switch (row * columns + column) {
-                                      final index
-                                          when index < state.profiles.length =>
-                                        _ProfileCard(
-                                          profile: state.profiles[index],
-                                          isCurrent:
-                                              state.profiles[index].id ==
-                                              state.currentId,
-                                          isSelected: state.selection.contains(
-                                            state.profiles[index].id,
+                            IntrinsicHeight(
+                              child: Row(
+                                // `CrossAxisAlignment.stretch` 要的是「这一行的高度」，
+                                // 而正文在 `ListView` 里高度无界，直接 stretch 会
+                                // 「BoxConstraints forces an infinite height」，整片
+                                // 档案卡片都不上屏。用 `IntrinsicHeight` 先把行高
+                                // 定下来，卡片之间仍然等高。
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                spacing: 12,
+                                children: [
+                                  for (
+                                    var column = 0;
+                                    column < columns;
+                                    column++
+                                  )
+                                    Expanded(
+                                      child: switch (row * columns + column) {
+                                        final index
+                                            when index <
+                                                state.profiles.length =>
+                                          _ProfileCard(
+                                            profile: state.profiles[index],
+                                            isCurrent:
+                                                state.profiles[index].id ==
+                                                state.currentId,
+                                            isSelected: state.selection
+                                                .contains(
+                                                  state.profiles[index].id,
+                                                ),
+                                            isUpdating: state.updatingIds
+                                                .contains(
+                                                  state.profiles[index].id,
+                                                ),
+                                            onTap: () => _handleTap(
+                                              state.profiles[index],
+                                            ),
+                                            onLongPress: () =>
+                                                notifier.toggleSelection(
+                                                  state.profiles[index].id,
+                                                ),
+                                            menuItems: () => _menuItems(
+                                              state.profiles[index],
+                                            ),
                                           ),
-                                          isUpdating: state.updatingIds
-                                              .contains(
-                                                state.profiles[index].id,
-                                              ),
-                                          onTap: () =>
-                                              _handleTap(state.profiles[index]),
-                                          onLongPress: () =>
-                                              notifier.toggleSelection(
-                                                state.profiles[index].id,
-                                              ),
-                                          menuItems: () =>
-                                              _menuItems(state.profiles[index]),
-                                        ),
-                                      _ => const SizedBox.shrink(),
-                                    },
-                                  ),
-                              ],
+                                        _ => const SizedBox.shrink(),
+                                      },
+                                    ),
+                                ],
+                              ),
                             ),
                         ],
                       ),

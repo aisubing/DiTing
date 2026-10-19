@@ -71,49 +71,53 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
           },
         ),
       ],
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _StepIndicator(steps: _steps, current: _index),
-          Expanded(
-            child: PageView(
-              controller: _controller,
-              onPageChanged: (index) => setState(() => _index = index),
-              children: [
-                _ChooseModeStep(mode: mode),
-                const _PermissionStep(),
-                _FinishStep(mode: mode),
-              ],
+      // 顶栏浮在正文之上（`extendBodyBehindAppBar`），正文从 y=0 起排。这一页
+      // 的 body 是裸 `Column` 而不是 `PageBody`，不预留栏高就会把三段进度条画进
+      // 状态栏、把首步的大圆钮画到顶栏底下（真机上量到内容起点 y=30 < 栏底 96）。
+      body: AppBarClearance(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _StepIndicator(steps: _steps, current: _index),
+            Expanded(
+              child: PageView(
+                controller: _controller,
+                onPageChanged: (index) => setState(() => _index = index),
+                children: [
+                  _ChooseModeStep(mode: mode),
+                  const _PermissionStep(),
+                  _FinishStep(mode: mode),
+                ],
+              ),
             ),
-          ),
-          SafeArea(
-            top: false,
-            minimum: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: Row(
-              spacing: 10,
-              children: [
-                if (_index > 0)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: Row(
+                spacing: 10,
+                children: [
+                  if (_index > 0)
+                    Expanded(
+                      child: TonalButton(
+                        size: TonalButtonSize.bar,
+                        glyph: AppGlyphs.chevronBack,
+                        label: '上一步',
+                        onPressed: () => _goTo(_index - 1),
+                      ),
+                    ),
                   Expanded(
+                    flex: 2,
                     child: TonalButton(
                       size: TonalButtonSize.bar,
-                      glyph: AppGlyphs.chevronBack,
-                      label: '上一步',
-                      onPressed: () => _goTo(_index - 1),
+                      glyph: last ? AppGlyphs.check : AppGlyphs.chevronForward,
+                      label: last ? '开始使用' : '下一步',
+                      onPressed: last ? _finish : () => _goTo(_index + 1),
                     ),
                   ),
-                Expanded(
-                  flex: 2,
-                  child: TonalButton(
-                    size: TonalButtonSize.bar,
-                    glyph: last ? AppGlyphs.check : AppGlyphs.chevronForward,
-                    label: last ? '开始使用' : '下一步',
-                    onPressed: last ? _finish : () => _goTo(_index + 1),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -282,6 +286,11 @@ class _FinishStep extends StatelessWidget {
 }
 
 /// 三步共用外壳：大图标 + 标题 + 说明 + 内容列表（可滚动）。
+///
+/// 内容整体在可视区里垂直居中：底部按钮是钉在屏底的，若内容贴着顶栏排，
+/// 三步里最矮的那一步会在内容和按钮之间留下约 400dp 的死白（真机上量到
+/// 406dp）。`SliverFillRemaining(hasScrollBody: false)` 给「至少一屏」的高度
+/// 让 `Column` 有居中余地，内容超过一屏时又照常滚动。
 class _StepScaffold extends StatelessWidget {
   const _StepScaffold({
     required this.glyph,
@@ -298,37 +307,48 @@ class _StepScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      children: [
-        Center(
-          child: Container(
-            width: 88,
-            height: 88,
-            alignment: Alignment.center,
-            decoration: ShapeDecoration(
-              shape: AppShape.full,
-              color: colorScheme.primary.withValues(alpha: 0.12),
+    return CustomScrollView(
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 88,
+                    height: 88,
+                    alignment: Alignment.center,
+                    decoration: ShapeDecoration(
+                      shape: AppShape.full,
+                      color: colorScheme.primary.withValues(alpha: 0.12),
+                    ),
+                    child: GlyphIcon(glyph, size: 40, color: colorScheme.primary),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyle.pageTitle.of(context, emphasized: true),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyle.footnote.of(context).copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ...children,
+              ],
             ),
-            child: GlyphIcon(glyph, size: 40, color: colorScheme.primary),
           ),
         ),
-        const SizedBox(height: 16),
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: AppTextStyle.pageTitle.of(context, emphasized: true),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          description,
-          textAlign: TextAlign.center,
-          style: AppTextStyle.footnote.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 18),
-        ...children,
       ],
     );
   }

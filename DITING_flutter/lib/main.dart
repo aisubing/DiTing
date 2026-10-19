@@ -1,4 +1,5 @@
 import 'package:diting/app/app.dart';
+import 'package:diting/app/debug_probe.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -6,5 +7,6 @@ import 'package:material_ui/material_ui.dart';
 /// 以免与真实的全局容器互相污染。
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  installDebugProbe();
   runApp(const ProviderScope(child: DitingApp()));
 }
