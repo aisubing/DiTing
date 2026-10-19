@@ -274,7 +274,9 @@ for f in $(find lib test -name '*.dart'); do n=$(wc -l < "$f"); [ "$n" -gt 550 ]
 python -I tool/unreferenced.py
 ```
 
-`unreferenced.py` 只应输出 `lib/ui/ui.dart`（barrel）以及将来可能的 `lib/main.dart`。
+实测（2026-10-19）：`total 190 unreferenced 1` —— 只剩 `lib/main.dart`（入口文件，没有任何
+文件 import 它，属预期）。`lib/ui/ui.dart`（barrel）已被应用层全部 import，不再出现在清单里；
+若它重新出现，说明有文件绕过 barrel 直接 import 了 `lib/ui/` 内部件，应收回。
 
 ## 6. Android 构建为什么现在跑不通（环境问题，非工程问题）
 
