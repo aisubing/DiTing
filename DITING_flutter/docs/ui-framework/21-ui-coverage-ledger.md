@@ -31,15 +31,15 @@
 | `lib/views/` | 74 | 约 26,900 | `lib/pages/` 覆盖 |
 | `lib/pages/` | 5 | 2,878 | 覆盖（含编辑器 / 扫码 / 错误页） |
 | `lib/features/` | 28 | 约 8,000 | `lib/pages/forms/` + 各域表单浮层 |
-| **UI 合计** | — | **约 42,800** | **`lib/pages/` 186 文件 / 39,778 行** |
+| **UI 合计** | — | **约 42,800** | **`lib/pages/` 187 文件 / 40,004 行** |
 
 **第二轮交付量（基线 → 现状）**
 
 | 指标 | 第二轮前 | 第二轮后 | 倍数 |
 |---|---|---|---|
-| `lib/` 总行数 | 约 41,836 | **79,504**（369 文件） | 1.90× |
-| `lib/pages/` 行数 | 10,514（43 文件） | **39,778**（186 文件） | **3.78×** |
-| 路由数 | 18 | **73**（16 基线路由 + 57 领域路由） | 3.9× |
+| `lib/` 总行数 | 约 41,836 | **79,728**（370 文件） | 1.90× |
+| `lib/pages/` 行数 | 10,514（43 文件） | **40,004**（187 文件） | **3.80×** |
+| 路由数 | 18 | **74**（16 基线路由 + 58 领域路由） | 3.9× |
 | 单文件最大行数 | — | 532（`pages/system/editor_page.dart`） | 全部 ≤550 |
 
 结论：**设计系统层 100% 移植；页面层从约 25% 提升到覆盖上游全部可见页面**。剩余
@@ -100,7 +100,7 @@
 | 密度适配 `DashboardDensity` | `dashboard/layout.dart`、`dashboard/style.dart` | 已迁移 `dashboard_density.dart` / `dashboard_style.dart` |
 | `CoreStatusButton` 内核状态按钮 | `widgets/core_status_button.dart` | 已迁移（并入 `current_outbound_card.dart`） |
 | 连接明细表 `ConnectionsTableCard` | `widgets/connections_table.dart` | 见 §6.2（独立连接页承载） |
-| 配置详情浮层 `ProfileDetailSheet` | `widgets/profile_detail.dart` | 见 §7.1（配置档案页承载） |
+| 配置详情浮层 `ProfileDetailSheet` | `widgets/profile_detail.dart` | 已迁移 `profile_detail_page.dart`（`/dashboard/profile`，仪表盘配置档案卡直进） |
 | 卡片基元（`DashboardCard` / `DashboardChip` / `DashboardConnectedButton` / `DashboardIconButton` 等） | `widgets/card.dart:1-898` | 已迁移 `dashboard_card.dart` |
 
 ## 5. 代理（Proxies）
@@ -355,7 +355,7 @@
 **已完成（Lead 主控）**
 - 台账 + 并行开发约定（本文件 + [`22-parallel-work-contract.md`](22-parallel-work-contract.md)）。
 - 路由按领域拆分：`lib/routes/{dashboard,proxies,observability,profiles,config,system}_routes.dart`
-  + `routes.dart` 汇总，`lib/router.dart` 只做拼接。57 条领域路由落地。
+  + `routes.dart` 汇总，`lib/router.dart` 只做拼接。58 条领域路由落地。
 - **仪表盘全量重建**：10 张卡片 + 卡片基元（`dashboard_card.dart`）+
   密度/取色/文字角色（`dashboard_density.dart` / `dashboard_style.dart`）+
   编辑模式（移除徽标、拖拽换位、添加卡片浮层、空态）+ 卡片入场动画。

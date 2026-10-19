@@ -9,6 +9,7 @@
 /// 不是渲染一屏内容。所以它们只有 `redirect`，没有 `builder`。
 library;
 
+import 'package:diting/pages/home/dashboard/profile_detail_page.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,12 +43,9 @@ List<RouteBase> dashboardRoutes() => [
   GoRoute(
     path: DashboardPaths.profileDetail,
     parentNavigatorKey: rootNavigatorKey,
-    redirect: (context, state) {
-      // 详情浮层由首页自己弹出：这里只负责「回到首页」，由首页根据
-      // `?profile=1` 之类的查询参数决定要不要开浮层——目前首页不会自动开，
-      // 所以这条路由等价于「回首页」，保留它是为了将来深链。
-      return DashboardPaths.dashboard;
-    },
+    builder: (context, state) => ProfileDetailPage(
+      profileId: state.uri.queryParameters['id'],
+    ),
   ),
 ];
 

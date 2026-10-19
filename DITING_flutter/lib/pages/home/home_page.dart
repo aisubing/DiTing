@@ -174,7 +174,10 @@ class _HomePageState extends ConsumerState<HomePage> {
               onOpenGroup: (groupName) => context.push(
                 ProxiesPaths.proxies,
               ),
-              onOpenProfiles: () => context.push(ProfilesPaths.profiles),
+              // 上游这里点卡片直接开当前配置的详情浮层
+              // （`widgets/profiles.dart:53` 的 `showProfileDetailSheet`），
+              // 卡片上的「切换」才进配置档案列表。本仓改用路由承载详情页。
+              onOpenProfiles: () => context.push(DashboardPaths.profileDetail),
             ),
             if (!editing) ...[
               const SizedBox(height: 16),

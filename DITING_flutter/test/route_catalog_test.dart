@@ -97,6 +97,7 @@ void main() {
 /// 「新页面只在其中一个测试里被覆盖」静默发生。
 final Map<String, String> topLevelRoutes = {
   '首页': DashboardPaths.dashboard,
+  '配置详情': DashboardPaths.profileDetail,
   '代理': ProxiesPaths.proxies,
   '代理提供者': ProxiesPaths.providers,
   '连接': ObservabilityPaths.connections,
