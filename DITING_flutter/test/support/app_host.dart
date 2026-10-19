@@ -20,9 +20,17 @@ ThemeData demoTheme(Brightness brightness) {
 ///
 /// `lib/ui` resolves `MeasureScope`, `ViewScope` and `UiLocalizations` with
 /// `assert(scope != null)`, so a bare `MaterialApp(home: …)` throws before it
-/// paints. The host must sit *below* the `Navigator` (that is, in `home:` or
-/// under a route), never in `MaterialApp.builder`, or overlays such as
-/// `CommonPopupBox`, `showFloatingDialog` and `showSheet` cannot push.
+/// paints.
+///
+/// The scopes MUST go in `builder`, not in `home:`. `builder`'s `child` is the
+/// `Navigator` itself, so the scopes end up *above* it and every route and
+/// overlay can see them. Mounting them in `home:` only covers the first route:
+/// a `showSheet` / `showFloatingDialog` listener is pushed onto the root
+/// `Navigator` *as a sibling of `home:`*, so anything inside the overlay that
+/// reads `ViewScope` (e.g. `ViewScope.isMobileOf`) hits
+/// `Failed assertion: 'scope != null'`. This was verified with a probe — the
+/// app layer does the same thing in `lib/app/bootstrap.dart`, and the two must
+/// stay in sync.
 class AppHost extends StatefulWidget {
   const AppHost({
     super.key,
@@ -53,16 +61,15 @@ class _AppHostState extends State<AppHost> {
         StubUiLocalizations.delegate,
         DefaultMaterialLocalizations.delegate,
       ],
-      home: Builder(
-        builder: (context) => MeasureScope(
-          measure: Measure.of(context, 1),
-          child: ViewScope(
-            size: widget.size,
-            isMobile: widget.isMobile,
-            child: widget.child,
-          ),
+      builder: (context, child) => MeasureScope(
+        measure: Measure.of(context, 1),
+        child: ViewScope(
+          size: widget.size,
+          isMobile: widget.isMobile,
+          child: child ?? const SizedBox.shrink(),
         ),
       ),
+      home: widget.child,
     );
   }
 }
