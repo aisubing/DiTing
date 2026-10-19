@@ -14,6 +14,16 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: 「并行流停滞 2 小时零页面」+ `searchState.query` 让整页隐身 + widget 测试断言选错标尺
+
+- **现象/根因**：
+  1. **子代理停滞的空转识别太晚**。proxies-ui 交付数据层 276 行 + 状态层 516 行后停滞约 2 小时，期间零页面产出，最后是我主动 `interrupt_agent` 才止损。当时它已交的两份产物**零消费方**——`dart analyze lib` 全绿只证明可解析，运行时行为一次都没被执行过。教训：**并行流的完成判据是「有消费方且测试跑过」**，不是「文件存在且 analyze 绿」；超过一轮没有新文件就该主动查它卡在哪，而不是等它自己报。
+  2. **`AppBarSearchState` 传非空 `query:` 会把整页藏掉**。`CommonScaffold` 用 `searchState.query != null` 判「当前是否在搜索模式」（`scaffold_a.dart:13` 的 `_isSearch`），而非「搜索词的初值」。我在代理页把 provider 里的当前搜索词回灌给顶栏，结果一进页面就展开搜索框、标题和所有分组全部不渲染。**analyze 绿、路由可达测试也绿**（页面确实 build 了，只是 build 出的是一根搜索框）。抓法：`find.text('代理')` 为 0 而 `find.byType(CommonScaffold).widget.title == '代理'`——「组件属性对、屏幕上没有」这个组合只在「组件被另一分支替换掉」时出现。
+  3. **widget 测试断言选错标尺，把设计意图当成 bug**。我在代理页断言「第二个组的组名不存在」，实际顶部 chip 条本来就列出所有组名（那是切换入口）；又断言「过滤后选中节点不存在」，实际组头始终显示该组的当前选中节点（那是组的属性，不随搜索变化）。两次都是**先猜再测**，而不是先看清哪些文字由哪个 widget 承载。正确做法：断言用一个**只可能由目标控件承载**的字符串（这里是非选中节点名），而不是顺手抓一个在场字符串。
+  4. **顶栏 `iconActions` 会被静默折进「更多」菜单**。`_maxBarButtons`/`_maxGroupedActions` = 2，页面自己占一个动作后，加进去的 `iconActions` 就不在栏上了。测试里 `find.byTooltip('测速全部')` 找不到是**设计行为**，不是缺陷；应该改测组内入口，或从「更多」菜单点。同理 `Tooltip` 在无头测试里不一定建出可命中节点，`find.bySemanticsLabel` 比 `find.byTooltip` 稳。
+  5. **`pumpAndSettle` 会吞掉「短暂中间态」**。测速是 `Future.delayed(900ms)`，`pumpAndSettle` 推帧直到静止，一次就把 900ms 走完，「测速中」那一帧永远观察不到。要观察中间态必须 `pump()` + `pump(短时长)`，把 `pumpAndSettle` 留给最终态。
+- **教训**：① 子代理交付判据加「有消费方 + 交互测试」，停滞一轮即主动查；② `AppBarSearchState.query` 是「模式开关」不是「初值」，代码里写注释挡住复发；③ 先读承载 widget 再写断言，别拿在场字符串当标尺；④ 折叠/裁剪类容器（顶栏、`Wrap`、`ListView`）里的 `findsNothing` 先确认是「没渲染」还是「折进去了」；⑤ 中间态观察用定步 `pump`，终态用 `pumpAndSettle`；⑥ 探测脚本（`test/probe*_test.dart`）用完立刻删——遗留文件会让全量 `flutter test` 变红。
+
 ### 2026-10-19: 三类「analyze 全绿、运行时才炸」的缺陷 + GoRouter 未匹配路由静默放行
 
 - **现象/根因**：
