@@ -14,6 +14,15 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: `.bat` 里写中文会截断解析器；`set /p` 空 stdin 无限循环；直接 `gradlew` 编 Flutter 是空壳
+
+- **现象/根因**：
+  1. **UTF-8 中文写进 `.bat` 会把脚本解析成乱码命令**。我给 `build_apk.bat` 加了中文提示与注释，运行时刷出一屏 `'xx' is not recognized as an internal or external command`，`if`/`goto` 行被从中间截断。根因是 `cmd.exe` 按 **OEM 代码页**（本机 936/GBK）解析批处理文件，UTF-8 的汉字字节被当成 GBK 解码，多字节序列吞掉了后面的 ASCII 引号与换行。**把 `chcp 65001` 写在文件里救不了**——脚本本身在 `chcp` 执行前就已被解析。原 `Android/build_apk.bat` 全英文，所以一直没暴露。教训：`.bat` 保持**纯 ASCII**，中文说明放 `.md`（这里落在 `android/SIGNING.md`）；改完用「统计 >127 字节数 == 0」自检。
+  2. **`set /p` 在 stdin 非控制台时立即返回空值 → 无限循环**。脚本里「无设备时请输 IP，空输入则重试」的分支，在有终端时正常，但被 `type file | script.bat`、CI 或重定向运行时，`set /p` 永远拿到空串，于是 `goto` 无条件重试，**每轮还刷一屏提示**，把输出文件撑到 62 MB。这是**继承自原脚本**的缺陷，不是迁移引入的。修法：加重试计数（3 次后走 `ERR_NO_INPUT`），并在错误信息里直接给出 `adb install -r <apk>` 让用户手动装。
+  3. **Flutter 工程不能用 `gradlew assembleDebug` 代替 `flutter build apk`**。原生工程的脚本可以直接调 Gradle；Flutter 工程直调 Gradle 只编 Android 壳，Dart 代码不会被编进 APK（缺 `flutter assemble` 产出的快照），装上去是空壳。迁移脚本时必须把入口从 `gradlew` 换成 `flutter build apk`，并把 `-PsignDebugWithRelease` 这类 Gradle 参数**原样透传**（`flutter build apk --debug -PsignDebugWithRelease=true` 是有效的）。
+  4. **验收签名不能只看「构建成功」**。`flutter build apk --release` 在密钥缺失时会**静默回退 debug 签名**（这是我的回退设计），构建照样成功、退出码 0。必须比指纹：`keytool -list -v -keystore <jks>` 的 SHA256 与 `apksigner verify --print-certs <apk>` 的 SHA-256 一致；并确认 DN 不是 `CN=Android Debug`。
+- **教训**：① `.bat` 纯 ASCII，中文进 `.md`；② 所有 `set /p` 重试分支都要设上限，否则无终端场景必炸；③ Flutter 的构建入口只能是 `flutter build`，迁移脚本先改入口再谈其它；④ 签名验收靠证书指纹比对，不靠退出码；⑤ 密钥文件先查 `git check-ignore` + `git ls-files` 双确认，再提交。
+
 ### 2026-10-19: 「并行流停滞 2 小时零页面」+ `searchState.query` 让整页隐身 + widget 测试断言选错标尺
 
 - **现象/根因**：
