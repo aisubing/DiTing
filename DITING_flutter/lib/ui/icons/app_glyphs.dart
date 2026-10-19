@@ -1,4 +1,4 @@
-// Portions derived from FlClash (https://github.com/chen08209/FlClash), Copyright (c) the FlClash authors, GPL-3.0-or-later.
+// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 

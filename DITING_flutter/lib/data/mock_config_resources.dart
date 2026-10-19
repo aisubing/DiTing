@@ -247,8 +247,8 @@ class MockIconSet {
 
 const mockIconSets = <MockIconSet>[
   MockIconSet(
-    name: 'FlClash 官方图标',
-    url: 'https://icons.example.com/flclash.json',
+    name: 'DITING 官方图标',
+    url: 'https://icons.example.com/DITING.json',
     icons: [
       'clash',
       'direct',

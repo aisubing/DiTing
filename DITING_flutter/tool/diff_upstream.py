@@ -1,6 +1,6 @@
 import os
 
-UP = "LearningObjects/FlClash-0.9.1/lib/ui"
+UP = "LearningObjects/DITING-1.4.3/lib/ui"
 MINE = "DITING_flutter/lib/ui"
 LETTERS = set(chr(c) for c in range(97, 123))
 

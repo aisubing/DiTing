@@ -2,12 +2,12 @@
 所属: 谛听 Flutter UI 框架
 状态: 第二轮 UI 全覆盖台账（持续更新）
 最后校验: 2026-10-19
-口径: 上游 = LearningObjects/FlClash-0.9.1/lib（GPL-3.0，只读参照）；本仓 = DITING_flutter/lib
+口径: 上游 = LearningObjects/DITING-1.4.3/lib（GPL-3.0，只读参照）；本仓 = DITING_flutter/lib
 ---
 
 # 21 · 第二轮 UI 全覆盖台账
 
-> 本文件是第二轮「对照 FlClash 原版逐项核对 UI」的唯一清单。**每一项都必须能被
+> 本文件是第二轮「对照 DITING 原版逐项核对 UI」的唯一清单。**每一项都必须能被
 > 指到上游源码位置**；本仓侧只允许三态：`已迁移` / `部分` / `缺失`。
 > 任何新增页面都要在 §10 登记，否则视为未完成。
 
@@ -20,7 +20,7 @@
 2. **不算**：纯业务逻辑（网络、数据库、VPN、内核）、桌面专属（`sidebar.dart`、
    `table_layout.dart`、窗口管理、托盘、快捷键录制）、以及上游已证零调用点的死路由。
 3. **本阶段只做 UI**：交互只需演示反馈（本地 state / 延时模拟），不接真实业务。
-4. **不修改上游**：`LearningObjects/FlClash-0.9.1/` 只读，禁止写入。
+4. **不修改上游**：`LearningObjects/DITING-1.4.3/` 只读，禁止写入。
 5. **每个代码文件 ≤550 行**（AGENTS.md）；超了拆 `library` + `part`。
 
 ## 1. 上游规模实测与第二轮交付量

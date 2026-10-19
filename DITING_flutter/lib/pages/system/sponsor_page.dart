@@ -136,7 +136,7 @@ class SponsorPage extends StatelessWidget {
                   ),
                 ),
             ],
-            footer: '界面组件层移植自 FlClash 0.9.1（GPL-3.0-or-later），'
+            footer: '界面组件层移植自 DITING 1.4.3（GPL-3.0-or-later），'
                 '排版参考了 Apple 的人机界面指南。',
           ),
           const SizedBox(height: 24),

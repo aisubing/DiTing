@@ -1,4 +1,4 @@
-// Portions derived from FlClash (https://github.com/chen08209/FlClash), Copyright (c) the FlClash authors, GPL-3.0-or-later.
+// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'package:emoji_regex/emoji_regex.dart';
 import 'package:diting/ui/measure.dart';
 import 'package:diting/ui/text_style.dart';

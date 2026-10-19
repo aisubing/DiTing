@@ -1,7 +1,7 @@
 import 'dart:io';
 
 const hdr =
-    '// Portions derived from FlClash (https://github.com/chen08209/FlClash), Copyright (c) the FlClash authors, GPL-3.0-or-later.';
+    '// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.';
 
 // Re-splits a library root file into part files by explicit 1-based top-level
 // chunk ranges (everything not covered stays in the root). Doc comments

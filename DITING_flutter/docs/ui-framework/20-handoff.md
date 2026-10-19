@@ -7,13 +7,13 @@
 
 # 20 · 交接：已完成什么、下一步怎么写
 
-> 本文是给「接下来的会话」看的。它不重复 FlClash 的设计细节（那些在上游源码与
+> 本文是给「接下来的会话」看的。它不重复 DITING 的设计细节（那些在上游源码与
 > `docs/refactor/12-ui-components*.md` 里），只写**本仓库当下的真实状态**、
 > **已经冻结的约定**、**尚未写的那部分应该怎么接**。
 
 ## 1. 一句话状态
 
-`lib/ui/` 是 FlClash 0.9.1 设计系统的完整移植；应用层（`lib/app/` + `lib/router.dart` +
+`lib/ui/` 是 DITING 1.4.3 设计系统的完整移植；应用层（`lib/app/` + `lib/router.dart` +
 `lib/shell/`）、演示状态（`lib/state/`）、演示数据（`lib/data/`）与 **73 条路由**
 （16 基线 + 57 领域）全部写完。第二轮按领域补齐了上游全部可见页面：
 仪表盘 10 张卡片 + 编辑模式、代理域、观测域、配置档案域、内核配置域（16 页）、
@@ -35,7 +35,7 @@
 |---|---|
 | 文件数 | 127 个 `.dart`（`lib/ui/` 113 根文件 + `icons/` 12 + `support/` 2） |
 | 总行数 | 28,261 |
-| 上游对照 | FlClash `lib/ui/` 82 个根文件 / 25,948 行 → 移植后按 ≤550 行拆成 113 个 |
+| 上游对照 | DITING `lib/ui/` 82 个根文件 / 25,948 行 → 移植后按 ≤550 行拆成 113 个 |
 | 编译 | `flutter analyze lib test` → **No issues found** |
 | 最大文件 | `navigation_dock_c.dart` 549 行（全部 ≤550） |
 | 未引用文件 | 0（`ui.dart` barrel 除外，它按设计就是入口） |
@@ -72,14 +72,14 @@
 
 | 文件 | 说明 |
 |---|---|
-| `NOTICE.md` | FlClash 来源、逐文件移植范围、未移植清单（4 个桌面文件）、第三方包许可 |
+| `NOTICE.md` | DITING 来源、逐文件移植范围、未移植清单（4 个桌面文件）、第三方包许可 |
 | `LICENSE` | GPL-3.0 全文（上游副本） |
 | `lib/ui/analysis_options.yaml` | 只在 `lib/ui` 关闭 3 条与上游风格冲突的 lint；`lib/app` 仍全量生效 |
 | `tool/glyphsplit.dart` | 把 `app_glyphs.dart` 拆成根 + 5 个 part（保留公共 API 的转发成员） |
 | `tool/partsplit.dart` | 按行区间把库根文件拆成 part |
 | `tool/extsplit2.dart` | 把 State 类的方法段抽成同库 `extension` |
 | `tool/unreferenced.py` | 列出没有任何 import/export/part 指向的 Dart 文件 |
-| `tool/diff_upstream.py` | 与 FlClash 上游做文件级/行数级对账 |
+| `tool/diff_upstream.py` | 与 DITING 上游做文件级/行数级对账 |
 
 ### 2.2 应用层 `lib/app/` + 入口
 

@@ -41,13 +41,13 @@ class AboutPage extends StatelessWidget {
                 ),
                 _Paragraph(
                   title: '视觉体系来源',
-                  body: '界面组件层（lib/ui）整层移植自 FlClash 0.9.1：'
+                  body: '界面组件层（lib/ui）整层移植自 DITING 1.4.3：'
                       '形状、表面色阶、排版、图标、动效时序都沿用同一套设计系统，'
                       '以保证迁移前后观感一致。页面内容与状态管理是谛听自己的。',
                 ),
                 _Paragraph(
                   title: '许可',
-                  body: '本项目以 GPL-3.0 发布——因为 lib/ui 来自 GPL-3.0 的 FlClash，'
+                  body: '本项目以 GPL-3.0 发布——因为 lib/ui 来自 GPL-3.0 的 DITING，'
                       '衍生作品必须沿用同一许可。第三方字体与着色器的来源见 NOTICE.md。',
                 ),
               ],
@@ -66,7 +66,7 @@ class AboutPage extends StatelessWidget {
               ),
               ListItem(
                 title: const Text('第三方组件'),
-                subtitle: const Text('FlClash 设计系统 · JetBrains Mono · Twemoji'),
+                subtitle: const Text('DITING 设计系统 · JetBrains Mono · Twemoji'),
                 leading: const GlyphIcon(AppGlyphs.puzzle),
                 trailing: const GlyphIcon(AppGlyphs.openExternal),
                 onTap: () => _toast(context, '来源清单见仓库根目录 NOTICE.md'),

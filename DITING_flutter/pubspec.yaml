@@ -1,5 +1,5 @@
 name: diting
-description: "谛听 DITING — Flutter UI 框架（视觉体系移植自 FlClash，纯演示无业务逻辑）。"
+description: "谛听 DITING — Flutter UI 框架（视觉体系移植自 DITING，纯演示无业务逻辑）。"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # —— 与 FlClash 0.9.1 pubspec.lock 对齐的锁定版本，保证移植组件 API 不漂移 ——
+  # —— 与 DITING 1.4.3 pubspec.lock 对齐的锁定版本，保证移植组件 API 不漂移 ——
   material_ui: 1.5.0                     # Flutter 官方拆出的 Material3 库（superellipse/Easing）
   material_color_utilities: 0.13.0       # HCT / DynamicColor 取色
   material_new_shapes: 1.0.0             # RoundedPolygon 空状态插画

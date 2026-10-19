@@ -1,13 +1,13 @@
 # NOTICE · 第三方来源与许可
 
 本项目（谛听 DITING 的 Flutter UI 框架）**不是**从零设计的外观。`lib/ui/` 整层、两套字体、
-玻璃着色器以及主题组装方式均移植自 FlClash 0.9.1；`lib/app/` 及页面内容才是 DITING 自己的。
+玻璃着色器以及主题组装方式均移植自 DITING 1.4.3；`lib/app/` 及页面内容才是 DITING 自己的。
 
-## 1. FlClash
+## 1. DITING
 
-- 上游仓库：<https://github.com/chen08209/FlClash>
-- 移植基线：v0.9.1（`LearningObjects/FlClash-0.9.1/`，`pubspec.yaml` 版本 `0.9.1+2026101702`）
-- 版权：Copyright (c) the FlClash authors
+- 上游仓库：<https://github.com/chen08209/DITING>
+- 移植基线：v0.9.1（`LearningObjects/DITING-1.4.3/`，`pubspec.yaml` 版本 `1.4.3+2026101702`）
+- 版权：Copyright (c) the DITING authors
 - 许可证：**GPL-3.0-or-later**（全文见本目录 `LICENSE`）
 - 本项目许可证：同为 GPL-3.0，兼容。
 
@@ -16,8 +16,8 @@
 `lib/ui/` 下每个 `.dart` 文件首行均带有：
 
 ```
-// Portions derived from FlClash (https://github.com/chen08209/FlClash),
-// Copyright (c) the FlClash authors, GPL-3.0-or-later.
+// Portions derived from DITING (https://github.com/chen08209/DITING),
+// Copyright (c) the DITING authors, GPL-3.0-or-later.
 ```
 
 | 上游路径 | 本项目路径 | 说明 |
@@ -43,14 +43,14 @@
 
 ### 1.3 上游 `lib/` 中**未**移植的部分
 
-FlClash 的 `lib/views/`、`lib/pages/`、`lib/widgets/`、`lib/features/`、`lib/providers/`、
+DITING 的 `lib/views/`、`lib/pages/`、`lib/widgets/`、`lib/features/`、`lib/providers/`、
 `lib/models/`、`lib/manager/`（`theme_manager.dart` 除外）、`lib/common/`（两个 support 文件除外）
 **全部未移植**。本项目的演示页面与状态层是独立编写的（`lib/app/`、`lib/state/`、`lib/data/`），
 仅参照上游的组件组合方式。
 
 ## 2. 第三方 Dart 包
 
-`pubspec.yaml` 中的以下依赖与 FlClash 0.9.1 的 `pubspec.lock` 锁定同版本，以保证移植组件的
+`pubspec.yaml` 中的以下依赖与 DITING 1.4.3 的 `pubspec.lock` 锁定同版本，以保证移植组件的
 API 不漂移：
 
 | 包 | 版本 | 用途 | 许可 |

@@ -159,7 +159,7 @@ const mockDisclaimerTerms = <MockDisclaimerTerm>[
   ),
   MockDisclaimerTerm(
     title: '四、第三方组件',
-    content: '本软件的界面组件层移植自 FlClash（GPL-3.0-or-later），'
+    content: '本软件的界面组件层移植自 DITING（GPL-3.0-or-later），'
         '并使用了 JetBrains Mono、Twemoji 等第三方资源。各组件的许可条款见仓库 '
         'NOTICE.md，使用本软件即表示同时接受这些条款。',
   ),
@@ -276,7 +276,7 @@ const mockChangelog = <MockChangelogEntry>[
     date: '2026-09-30',
     items: [
       '首个公开版本：三种工作模式、规则订阅、观测仪表盘',
-      '完整移植 FlClash 0.9.1 设计系统',
+      '完整移植 DITING 1.4.3 设计系统',
     ],
   ),
 ];
@@ -321,7 +321,7 @@ const mockSponsorTiers = <MockSponsorTier>[
 const mockContributors = <String>[
   'June2',
   'Arue',
-  'FlClash 上游作者',
+  'DITING 上游作者',
   '所有提交过 issue 的人',
 ];
 

@@ -1,18 +1,18 @@
 # 谛听 DITING · Flutter UI 框架
 
-FlClash 视觉体系的纯 UI 移植，用于 DITING 的 Flutter 重构。**本阶段不含任何业务逻辑**：
+DITING 视觉体系的纯 UI 移植，用于 DITING 的 Flutter 重构。**本阶段不含任何业务逻辑**：
 没有网络、没有数据库、没有 VPN 服务，所有页面与交互都由本地 mock 状态驱动。
 
 - 平台：Android（`android/` 为 `flutter create` 产物，包名 `com.haoze.diting`）
 - 工具链：Flutter 3.47.7 / Dart 3.13.5
 - 状态与路由：`flutter_riverpod` 3.4.3 + `go_router` 16.3.0
-- 许可：GPL-3.0 —— 因为 `lib/ui/` 移植自 GPL-3.0 的 FlClash，详见 [NOTICE.md](NOTICE.md)
+- 许可：GPL-3.0 —— 因为 `lib/ui/` 移植自 GPL-3.0 的 DITING，详见 [NOTICE.md](NOTICE.md)
 
 ## 当前进度
 
 | 层 | 内容 | 状态 |
 |---|---|---|
-| 设计系统 `lib/ui/` | FlClash 0.9.1 `lib/ui/` 全量移植（127 文件 / 约 28k 行） | ✅ 完成，`flutter analyze` 零问题 |
+| 设计系统 `lib/ui/` | DITING 1.4.3 `lib/ui/` 全量移植（127 文件 / 约 28k 行） | ✅ 完成，`flutter analyze` 零问题 |
 | 应用层 `lib/app/` | 主题管理（种子→纯黑→shape/surface/type）、`MaterialApp.router` 引导、scopes、路由 | ✅ 完成 |
 | 演示状态 `lib/state/` | 外观（主题/色板/透明度/底栏/触感）+ 工作模式（电源/服务商/解析）两组 Notifier | ✅ 完成 |
 | 演示数据 `lib/data/` | 服务商 / 规则 / 订阅 / 日志 / 缓存 / 竞速 / 流量 / 应用 / 功能卡，按域拆 3 个 part | ✅ 完成 |
@@ -53,7 +53,7 @@ lib/state/     Riverpod 演示状态
 lib/data/      演示数据（3 个 part）
 lib/pages/     演示页面，按域分目录
 lib/widgets/   跨页面共享小组件（StatStrip / KeyValueRow / SectionBlock / PageBody / DockSpacer / glyphByName）
-lib/ui/        移植的 FlClash 设计系统（GPL 头保留，勿改风格）
+lib/ui/        移植的 DITING 设计系统（GPL 头保留，勿改风格）
 tool/          一次性拆分 / 核对脚本（不参与构建）
 test/          组件烟测、整机烟测与测试宿主
 docs/refactor/ DITING Android 功能图谱（只读规格）

@@ -43,7 +43,7 @@ class LiquidNavHaptics(
 
     /**
      * Triggered when sliding across adjacent tab item boundaries during a drag gesture.
-     * Matches FlClash's gear-stepping selection click sensation.
+     * Matches DITING's gear-stepping selection click sensation.
      */
     fun onDragSlideTick() {
         if (!enabled) return

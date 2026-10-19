@@ -1,5 +1,5 @@
 import 'dart:io';
-const hdr = '// Portions derived from FlClash (https://github.com/chen08209/FlClash), Copyright (c) the FlClash authors, GPL-3.0-or-later.';
+const hdr = '// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.';
 void main(List<String> args) {
   final file = args[0];
   final cls = args[1];

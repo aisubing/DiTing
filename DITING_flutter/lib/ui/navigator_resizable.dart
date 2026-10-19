@@ -1,4 +1,4 @@
-// Portions derived from FlClash (https://github.com/chen08209/FlClash), Copyright (c) the FlClash authors, GPL-3.0-or-later.
+// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 /*
 Adapted from navigator_resizable 3.1.0,
 https://github.com/fujidaiti/navigator_resizable

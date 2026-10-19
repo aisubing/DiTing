@@ -1,4 +1,4 @@
-// 移动端布局常量。上游对应 `FlClash lib/common/layout.dart` 与
+// 移动端布局常量。上游对应 `DITING lib/common/layout.dart` 与
 // `lib/common/constant.dart`；本仓库只保留演示页面真正用得到的部分。
 //
 // `maxMobileWidth` 决定 `ViewScope.isMobile`：≤600 时浮条 + 底部面板，
