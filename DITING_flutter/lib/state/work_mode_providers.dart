@@ -83,7 +83,12 @@ class SelectedProviderNotifier extends Notifier<String> {
   @override
   String build() => mockProviders.first.id;
 
-  void select(String id) => state = id;
+  /// 忽略未知 id——服务商列表是编译期常量，UI 不该能把状态写成空悬引用。
+  void select(String id) {
+    if (mockProviders.any((provider) => provider.id == id)) {
+      state = id;
+    }
+  }
 }
 
 final selectedProviderProvider =
@@ -91,17 +96,19 @@ final selectedProviderProvider =
       SelectedProviderNotifier.new,
     );
 
-/// 多路模式下的服务商集合。
+/// 多路模式下的服务商集合。竞速至少要 2 家，否则「取最先返回」没有意义。
 class RaceProvidersNotifier extends Notifier<Set<String>> {
+  static const minCount = 2;
+
   @override
   Set<String> build() => {mockProviders.first.id, mockProviders[1].id};
 
+  /// 返回 false 表示被下限挡住（调用方据此提示用户）。
   bool toggle(String id) {
     final next = {...state};
     if (!next.remove(id)) {
       next.add(id);
-    }
-    if (next.isEmpty) {
+    } else if (next.length < minCount) {
       return false;
     }
     state = next;

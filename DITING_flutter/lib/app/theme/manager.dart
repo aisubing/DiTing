@@ -19,6 +19,20 @@ class AppThemeSpec {
   final bool pureBlack;
   final ColorStyle style;
 
+  /// Only used by the settings previews; the app itself always builds both
+  /// specs from an [AppThemePair].
+  AppThemeSpec copyWith({
+    Color? seedColor,
+    Brightness? brightness,
+    bool? pureBlack,
+    ColorStyle? style,
+  }) => AppThemeSpec(
+    seedColor: seedColor ?? this.seedColor,
+    brightness: brightness ?? this.brightness,
+    pureBlack: pureBlack ?? this.pureBlack,
+    style: style ?? this.style,
+  );
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -89,7 +103,14 @@ ThemeData buildAppTheme(
 /// uncached rebuild on every unrelated state change would flash the whole
 /// screen. Upstream keeps the same cache for the same reason.
 class AppThemeCache {
+  /// Bounded so that a long drag across the palette picker can't grow the map
+  /// without limit; 16 covers 9 palettes × 2 brightness with room to spare.
+  static const maxEntries = 16;
+
   final Map<AppThemeSpec, ThemeData> _themes = {};
+
+  /// Number of cached themes; tests assert the bound.
+  int get length => _themes.length;
 
   ThemeData of(
     AppThemeSpec spec, {
@@ -99,6 +120,12 @@ class AppThemeCache {
     final cached = _themes[spec];
     if (cached != null) {
       return cached;
+    }
+    // Insertion order is the eviction order: the oldest entry goes first.
+    // Re-inserting the hottest spec would need a LinkedHashMap re-insert, and
+    // the working set here is tiny, so plain FIFO is enough.
+    if (_themes.length >= maxEntries) {
+      _themes.remove(_themes.keys.first);
     }
     return _themes[spec] = buildAppTheme(
       spec,
