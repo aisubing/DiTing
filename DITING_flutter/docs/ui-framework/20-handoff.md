@@ -1,8 +1,8 @@
 ---
 所属: 谛听 Flutter UI 框架
-状态: 第一阶段（设计系统移植）完成，应用层未开始
-最后校验: 2026-10-18
-口径: 所有行数/文件数/命令输出均来自 2026-10-18 本会话真实工具输出
+状态: 第二阶段（应用层 + 演示页面）完成，可 flutter run
+最后校验: 2026-10-19
+口径: 所有行数/文件数/命令输出均来自 2026-10-19 本会话真实工具输出
 ---
 
 # 20 · 交接：已完成什么、下一步怎么写
@@ -13,9 +13,12 @@
 
 ## 1. 一句话状态
 
-`lib/ui/` 是 FlClash 0.9.1 设计系统的完整移植，`flutter analyze` 零问题、8 个烟测全绿、
-所有文件 ≤550 行；**但工程还没有入口 `lib/main.dart`**，`flutter run` 目前不能启动。
-下一步是写应用层（主题管理器 + 引导 + 路由 + 演示页面）。
+`lib/ui/` 是 FlClash 0.9.1 设计系统的完整移植；应用层（`lib/app/` + `lib/router.dart` +
+`lib/shell/`）、演示状态（`lib/state/`）、演示数据（`lib/data/`）与 18 条演示页面全部写完，
+`lib/main.dart` 已恢复。`flutter analyze lib test` 零问题、**52 个用例全绿**（含全路由构建、
+3 档尺寸 × 1.4 倍字号的布局回归）、所有文件 ≤550 行。
+**`flutter run` 现在可以启动**；本机只配了 Android 平台目录，构建仍受 §6 网络限制，
+要跑桌面/Web 需先 `flutter create . --platforms windows,web`。
 
 ## 2. 已完成清单（可直接依赖）
 
@@ -71,23 +74,111 @@
 | `tool/unreferenced.py` | 列出没有任何 import/export/part 指向的 Dart 文件 |
 | `tool/diff_upstream.py` | 与 FlClash 上游做文件级/行数级对账 |
 
+### 2.2 应用层 `lib/app/` + 入口
+
+| 文件 | 行数 | 职责 |
+|---|---|---|
+| `lib/main.dart` | 12 | 唯一 `runApp`：`ProviderScope(child: DitingApp())` |
+| `lib/app/app.dart` | 78 | `MaterialApp.router`：主题、路由、l10n、`ThemeCrossFade`、`AppScopes` |
+| `lib/app/theme/manager.dart` | 159 | `AppThemeSpec` / `buildAppTheme` / `AppThemeCache` / `AppThemePair` |
+| `lib/app/theme/colors.dart` | 56 | `defaultPrimaryColor` + `AppPalette`（9 色板）+ `AppThemeMode` |
+| `lib/app/theme/layout.dart` | 22 | `maxMobileWidth` / `maxLaptopWidth` / `clampTextScale` / `maxDockDestinations` |
+| `lib/app/l10n/ui_strings.dart` | 96 | `UiLocalizations` 的中文实现（14 条） |
+| `lib/app/bootstrap.dart` | 90 | `AppScopes`（builder 装 scopes + 字号钳制）、`AppSystemUi` |
+| `lib/router.dart` | 168 | `Routes` 常量 + `_branchOrder` + `createRouter()` |
+
+### 2.3 壳层 / 状态 / 数据 / 页面
+
+| 目录 | 内容 |
+|---|---|
+| `lib/shell/` | `AppShell`：六 tab `indexedStack` + `NavigationDock`（>5 项或非移动端降级 `NavigationBar`） |
+| `lib/state/` | `appearance_providers`（主题/色板/纯黑/字号/透明度/句子/底栏/触感/解析模式）、`work_mode_providers`（工作模式/电源/服务商/竞速/端口/服务状态/引导）、`rules_providers`、`subscription_providers`、`app_selection_providers` |
+| `lib/data/` | `mock_data.dart` 拆 3 个 part：`mock_providers`（服务商/规则）、`mock_content`（订阅/日志/缓存/竞速/统计）、`mock_apps`（流量/应用/功能卡/采样） |
+| `lib/widgets/` | `stat_strip.dart`（`StatStrip` / `KeyValueRow` / `SectionBlock` / `PageBody` / `DockSpacer`）、`glyph_lookup.dart`（名字→Glyph，122 项） |
+| `lib/pages/` | 18 条路由，见 §4.1 |
+
+### 2.4 测试
+
+| 文件 | 用例 | 守什么 |
+|---|---|---|
+| `test/ui_components_smoke_test.dart` | 8 | 移植层组件不回归 |
+| `test/app_shell_test.dart` | 5 | 首页渲染、电源四态、tab 保活、浮层可弹、全路由可构建 |
+| `test/app_layer_test.dart` | 28 | 主题装配顺序/缓存上界/色板/断点/provider 不变量 |
+| `test/scope_placement_test.dart` | 2 | **scopes 必须在 `Navigator` 之上**（正例 + 反例） |
+| `test/enum_display_test.dart` | 5 | 展示文案不得漏出枚举源码标识符 |
+| `test/layout_regression_test.dart` | 4 | 18 路由 × 3 档尺寸 + 小屏 1.4 倍字号无溢出 |
+| `test/support/` | — | `app_host.dart`、`demoTheme`、`UiLocalizations` stub |
+
 ## 3. 必须知道的约束与坑
 
-### 3.1 `lib/ui` 的三个运行时前置条件
+### 3.1 `lib/ui` 的运行时前置条件（宿主必须装在 `Navigator` 之上）
 
 移植层大量 `assert(scope != null)`，**缺一个就直接崩**：
 
 1. `MeasureScope(measure: Measure.of(context, scale))` —— `CommonCard`、`ListHeader`、`AppTextStyle` 的测量都用它；
 2. `ViewScope(size:, isMobile:)` —— 决定 `showSheet` 走底部面板还是侧栏；
 3. `UiLocalizations`（`Localizations` delegate）—— 搜索框、更多菜单、返回、取消等文案；
-4. 还有 `MaterialLocalizations`（`MaterialApp` 自带）。
+4. 还有 `MaterialLocalizations`（`MaterialApp` 自带，见 §3.2）。
 
-**宿主必须挂在 `Navigator` 之下**（即 `MaterialApp.home:` 里，而不是 `MaterialApp.builder:`
-里）。挂在 builder 里看起来能跑，但 `CommonPopupBox` / `showFloatingDialog` / `showSheet`
-会报 `Navigator operation requested with a context that does not include a Navigator`。
-`test/support/app_host.dart` 已经按正确层级写好，应用层照抄即可。
+**正确装法：`MaterialApp.builder`。** 它的 `child` 就是 `Navigator` 本身，scopes 包在外面，
+于是所有路由**和浮层**都读得到。
 
-### 3.2 拆分规则（新增文件也要守）
+> ⚠️ **本文旧版把这条写反了**，原话是「宿主必须挂在 `Navigator` 之下，即 `home:` 里，
+> 挂 builder 会报 `Navigator operation requested with a context that does not include a
+> Navigator`」。该结论先后被推翻两次，最终由 `test/scope_placement_test.dart` 的两条
+> 用例钉死：
+>
+> - 装 `builder`：路由与浮层都能读到 scope ✅
+> - 装 `home:`：`showSheet` / `showFloatingDialog` 的监听器挂在根 `Navigator` 上，是与
+>   `home:` **平级的兄弟路由**，覆盖不到 → 浮层内一读 `ViewScope` 就
+>   `Failed assertion: 'scope != null': No ViewScope found above Builder(dirty)` ❌
+>
+> 两次误判的共同原因是**探针不够狠**：第一次拿根本不会 assert 的 `CommonCard` 当浮层
+> 内容，两种装法都「通过」，于是把假阴性当成了证据写进文档。要复现必须用会真正读
+> scope 的代码（如 `ViewScope.isMobileOf`）。
+>
+> `test/support/app_host.dart` 与 `lib/app/bootstrap.dart` 现在装法一致，**改一处必须
+> 同步另一处**，否则「单组件测试」和「整机测试」会给出不同结论。
+
+### 3.2 `locale: zh_CN` 必须配 `GlobalMaterialLocalizations`
+
+`DefaultMaterialLocalizations` 只有 en_US。直接 `locale: Locale('zh','CN')` 会先警告
+locale 不受支持，然后在 `AppBar` build 时抛 `No MaterialLocalizations found`。
+正确写法（`lib/app/app.dart`）：
+
+```dart
+localizationsDelegates: const [
+  AppUiLocalizations.delegate,
+  ...GlobalMaterialLocalizations.delegates, // 同时含 Cupertino / Widgets
+],
+```
+
+`GlobalMaterialLocalizations` 来自 `material_ui`（复用 intl 的生成物），**不需要**额外
+加 `flutter_localizations` 依赖。
+
+### 3.3 主题必须走 `AppThemeCache`，且组装顺序不能变
+
+`ThemeData` 每次重建都不相等，`ThemeCrossFade` 正是靠这一点淡入上一帧。不缓存的话
+改任何一个无关状态（比如勾一个开关）都会让整屏闪一下。`AppThemeCache` 用 FIFO 上界
+（16 项）防止拖调色板时无限增长。
+
+组装顺序：`seededColorScheme` → `.toPureBlack(bool)` → 深色时加 `ElevatedColorScheme`
+扩展 → `.withAppShapes` → `.withAppSurfaces` → `.withAppTypography`。
+顺序错了纯黑会被后面的 surface 重新算回带色偏的深色（`test/app_layer_test.dart` 有用例守）。
+
+### 3.4 底栏下标 ≠ branch 下标
+
+用户可配置底栏项（2–5 项），而 `StatefulShellRoute` 的 branch 顺序是固定的。
+`lib/router.dart` 的 `_branchOrder` 与 `createRouter()` 的 branch 声明顺序一一对应，
+`AppShell` 负责两者映射。**重排 branch 会打乱所有 `goBranch` 调用**。
+
+### 3.5 枚举上屏必须取 `.label`
+
+裸枚举插值会渲染成 `ProviderProtocol.doh` 这种源码字形，analyze 和路由冒烟都拦不住。
+`test/enum_display_test.dart` 对全部会产出用户可见文案的枚举做源码标识符扫描
+（历史上 `providerEndpointOf` 就踩过，已修）。
+
+### 3.6 拆分规则（新增文件也要守）
 
 AGENTS.md 硬性要求 ≤550 行。已用的三种拆分法都在 `tool/` 里：
 
@@ -98,95 +189,68 @@ AGENTS.md 硬性要求 ≤550 行。已用的三种拆分法都在 `tool/` 里�
   但**类内 `static` 成员必须先提到库级私有**，否则报
   `unqualified_reference_to_static_member_of_extended_type`。
 
-### 3.3 `models.dart` 是手写的，不是 freezed
+### 3.7 `models.dart` 是手写的，不是 freezed
 
 上游 `IconButtonData` / `AppBarState` / `AppBarSearchState` 由 freezed 生成。本仓库
 `lib/ui/models.dart` 手写了等价类，`copyWith` **用 `_keep` 哨兵复刻 freezed 语义**：
 省略参数 = 保留旧值，显式传 `null` = 置空。`scaffold.dart:259` 的
 `copyWith(query: null)` 依赖后者，**不要改成 `??` 写法**。
 
-### 3.4 玻璃（Liquid Glass）保留但默认关闭
+### 3.8 玻璃（Liquid Glass）保留但默认关闭
 
 `lib/ui/liquid_glass*.dart`（2,494 行）与 `shaders/liquid_glass.frag` 都完整移植，
 `pubspec.yaml` 已声明 `shaders:`。`LiquidGlassScope.of(context)` 默认 false，各组件自动走
 非玻璃回退。要做玻璃效果时打开 scope 即可，不需要恢复代码。
 
-## 4. 还没写的部分
+## 4. 应用层剩余可做的事
 
-### 4.1 应用层骨架（按此顺序写）
+`lib/ui/`、`lib/app/`、`lib/router.dart`、`lib/shell/`、`lib/state/`、`lib/data/` 与
+18 条页面都已写完。下面都是**增量**，不是「还没开始」：
 
-```
-lib/main.dart                 runApp(ProviderScope(child: DitingApp()))
-lib/app/app.dart              MaterialApp：theme/darkTheme = watchAppTheme，builder = ThemeCrossFade
-lib/app/theme/manager.dart    watchAppTheme(brightness) —— 复刻上游组装链
-lib/app/theme/colors.dart     defaultPrimaryColor(0xFF007AFF) + 8 个 Apple 系统色
-lib/app/l10n/ui_strings.dart  UiLocalizations 的中文实现（从 test/support 的 stub 提升）
-lib/app/bootstrap.dart        MeasureScope + ViewScope + MediaQuery(textScaler 0.8–1.4) + SystemUiOverlayStyle
-lib/state/demo_providers.dart Riverpod：工作模式、开关状态、主题模式、种子色、文本缩放、选中项
-lib/data/mock_data.dart       域名/规则/订阅/日志/流量/应用列表
-lib/router.dart               go_router 路由树
-```
+1. **补平台目录**：本机只有 `android/`，且 §6 的网络限制让它构建不了；要 `flutter run`
+   到桌面或浏览器，先 `flutter create . --platforms windows,web`。
+   `lib/app/theme/layout.dart` 的 `maxLaptopWidth` 与 `AppShell._Dock` 的非移动端分支
+   已经写好，但没有平台目录就只在测试里跑到过。
+2. **持久化**：`lib/state/` 全是纯内存状态。接真实存储时替换各 `Notifier.build()` 的
+   默认值即可，页面无需改动。
+3. **`NullStatusSwitcher` 未上屏**：它需要 loading/empty 状态机，放进静态画廊会引入
+   定时器（画廊已经为此把 `repeat()` 动画套了 `TickerMode`）。需要时再补。
+4. **视觉走查**：所有验证都是 widget 级断言，**没有真机截图**。`_PaletteDot` 打勾的
+   对比色、AI 气泡宽度上限（78%）、首页电源按钮的光晕层次值得 `flutter run` 时过一眼。
+5. **`lib/ui` 里仍未被页面用到的组件**：跑 `python -I tool/unreferenced.py` 看最新清单，
+   需要的话往 `lib/pages/demo/` 补一区——画廊已覆盖 122 个 `AppGlyphs` 与绝大多数容器，
+   是最省事的落点。
 
-`watchAppTheme` 的**组装顺序不能变**（上游 `lib/manager/theme_manager.dart`）：
+### 4.1 页面清单（已实现，供对照）
 
-```dart
-ThemeData(
-  useMaterial3: true,
-  pageTransitionsTheme: …commonSharedXPageTransitions（lib/ui/navigator.dart）,
-  actionIconTheme: …back/close 用 GlyphIcon,
-  colorScheme: seededColorScheme(seedColor:, brightness:, style:)
-      .toPureBlack(pureBlack),
-  fontFamily: …,
-  fontFamilyFallback: appFontFamilyFallback（lib/ui/font.dart）,
-  extensions: [if (dark) ElevatedColorScheme(plainDark ?? scheme.elevated)],
-).withAppShapes.withAppSurfaces.withAppTypography
-```
-
-注意：**`ThemeData` 每次重建都不相等**，`ThemeCrossFade` 正是靠这一点淡入上一帧。
-上游用 `_appThemes` 缓存 `(inputs, theme)` 避免无意义重建，本仓库应照抄该缓存，
-否则改一个无关状态就会闪一下。
-
-移动端尺寸常量（上游 `lib/common/layout.dart` + `constant.dart`，需要重新声明）：
-
-| 常量 | 值 | 用途 |
+| 路由 | 页面 | 实现要点 |
 |---|---|---|
-| `maxMobileWidth` | 600 | `width <= 600` → mobile（浮条 + PageView 布局） |
-| `maxLaptopWidth` | 840 | 其后为 desktop；Android 用不到，但 `isMobile` 判定要一致 |
-| `maxTextScale` | 1.4 | 文本缩放上限 |
-| `minTextScale` | 0.8 | 文本缩放下限 |
+| `/` | 首页（三模式共用壳） | 电源四态 + 光晕、模式 chip、服务商卡、解析模式、快捷入口、四层透明度 |
+| `/hub` | 功能中心 | 5 分类 19 卡，2 列网格，按下 0.90 缩放 |
+| `/rules/:kind` | 规则列表（黑/白/覆写共模板） | StatStrip + 防抖搜索 + 来源 chips + 分组列表 + 行内 Switch/More；白名单有只读保护，覆写显示 `pattern → target` |
+| `/rules/batch` | 批量编辑器 | 大文本框 + 解析计数（有效/重复/拒收）+ `#@#` 拒收文案 |
+| `/subscriptions` | 订阅 | 汇总条 + 分组 chips + 卡片（含错误态/更新进度）+ 添加面板 |
+| `/apps` | 应用选择 | 防抖搜索 + 按分类分组 + 整行圆形勾选 + 全选/反选只作用当前可见集 |
+| `/logs` | 日志仪表盘 | 三视图（请求/缓存表/竞速排行）+ 搜索 + 处置筛选 + 详情面板 + 清空确认 |
+| `/traffic` | 流量 | 实时/今日/本周 + `LineChart` + 应用排行（自绘占比条） |
+| `/tools` | 网络工具 | 测速/Ping/DNS/路由四个 `showSheet` 面板，各有运行态与结果区 |
+| `/settings` | 设置 | 外观/首页/底栏/解析/关于五组；拆库根 + 5 个 part |
+| `/agent` | AI 助手 | 聊天气泡 + 快捷提问 + 800ms 模拟回复 + 空态 |
+| `/about` | 关于 | 图标/名称/版本 + 说明卡 + 许可/组件/链接行 |
+| `/server` | 服务器模式 | 复用 `HomePowerButton` + 五态文案 + 上游抽屉 + 局域网多 IP×端口 + 5 项统计 |
+| `/mode/select` | 工作模式选择 | 三卡 + `AnimatedSize` 特性清单 |
+| `/mode/onboarding` | 三步引导 | `PageView` + 指示器 + 完成回首页 |
+| `/demo` | 组件画廊 | 14 文件（库根 + 13 part），覆盖排版/颜色/形状/图标/按钮/标签/输入/列表/卡片/浮层/反馈 |
 
-### 4.2 演示页面清单
+### 4.2 路由与导航约定（已落地）
 
-参照 `docs/refactor/` 的功能图谱，按「代表性全覆盖」取舍。每页都用
-`CommonScaffold` + `NullStatus` + `CommonCard`/`ListItem` 三件套，数据全部来自
-`lib/data/mock_data.dart`。
-
-| 路由 | 页面 | 必做要点 | 规格出处 |
-|---|---|---|---|
-| `/` | 首页（三模式共用一个壳） | 电源开关状态机、模式 chip、服务商选择卡、首页句子、底栏 | 03 §3 |
-| `/hub` | 功能中心 | 7 分类 / 28 卡，2 列网格，按下 0.90 缩放 | 03 §3.4 |
-| `/rules/:kind` | 规则列表（黑/白/覆写共模板） | 统计卡 + 搜索 + 过滤 chips + 批量编辑入口 | 04 |
-| `/rules/batch` | 批量编辑器 | 行号槽 + 等宽字体 + 结果三带对话框 | 04 |
-| `/subscriptions` | 订阅 | 分组 chips + 进度卡 + 行内操作菜单 + 添加表单 | 04 |
-| `/apps` | 应用选择 | 搜索 + 三态全选 + `ListItem` 复选列表 | 04 |
-| `/logs` | 日志仪表盘 | 概览卡 → 请求日志 / DNS 缓存 / 竞速排行 | 05 |
-| `/traffic` | 流量 | 环形仪表 + 实时速率 + 应用排行 + 详情弹窗 | 05 |
-| `/settings` | 设置树 | `DecorationListItem` 缝合卡、深色三选一、9 色板、五条透明度滑杆、底栏自定义（实时预览） | 06 |
-| `/tools` | 网络工具 | 4 页 PageView（测速/Ping/DNS/路由）+ 分段控件 + 统计带 | 06 |
-| `/agent` | AI Agent | 状态卡 + 脱敏 key + 温度滑杆 + 分析结果 sheet（手写 Markdown 渲染） | 06 |
-| `/about` | 关于 | Hero logo + 版本 + 检查更新 + 链接行 | 06 |
-| `/server` | 服务器模式 | 5 态状态卡 + 上游列表 + 局域网接入 + 服务统计 | 03 §3.3 / 11 |
-| `/mode/select` | 工作模式选择 | 三卡 + 1000ms emphasized 全屏 morph | 03 §4.6 |
-| `/mode/onboarding` | 三步引导 | 3 段进度条 + 水平滑入 + 权限二态按钮 | 03 §4.7 |
-| `/demo` | 组件画廊 | 所有按钮/输入/chip/加载/空态/弹层逐一演示 | —— |
-
-### 4.3 路由与导航约定
-
-- `go_router` 的 `ShellRoute` 承载底栏：`NavigationDock`（浮条，62dp，`insetOf(context)` 给
-  列表底部留白）或降级为 `NavigationBar`；
-- 每个 tab 用 `KeepScope` 保活（上游 `lib/ui/keep_scope.dart`），切 tab 不重建；
-- 二级页面用普通 push，`pageTransitionsTheme` 已统一为 `commonSharedXPageTransitions`；
-- 模式切换页与引导页**不要**放进 ShellRoute（它们要全屏，没有底栏）。
+- 六个 tab 走 `StatefulShellRoute.indexedStack`：**branch 自带 `Navigator`，切 tab 不销毁**，
+  所以不要额外套 `KeepScope`；
+- 底栏用 `NavigationDock`（浮条），宽度非移动端或超过 5 项时降级为 `NavigationBar`；
+- 列表底部留白用 `DockSpacer`（= `NavigationDock.insetOf(context) + extra`），
+  `CommonScaffold` 里 `extendBody: true`；
+- 二级页面用 `context.push`，`pageTransitionsTheme` 统一 `commonSharedXPageTransitions`；
+- 模式选择页与引导页**不在** shell 里（全屏、无底栏），用 `parentNavigatorKey: rootNavigatorKey`。
 
 ## 5. 验证口径
 
@@ -249,7 +313,9 @@ flutter build apk --debug
 - `tool/` 下脚本属于「一次性工具」，保留但需在提交说明里标注不参与构建；
 - AGENTS.md 要求新踩的坑写进 `AGENT_MISTAKES.md`（时间倒序、去重、≤1000 行）。
 
-## 8. 本次收尾实际改动
+## 8. 各阶段实际改动
+
+### 8.1 第一阶段：设计系统移植收尾（2026-10-18）
 
 | 改动 | 原因 |
 |---|---|
@@ -258,7 +324,24 @@ flutter build apk --debug
 | `pubspec.yaml` 增加 `shaders:` | 玻璃着色器要用就必须声明，否则运行时加载失败 |
 | 新增 `NOTICE.md`、重写 `README.md` | GPL 合规 + 给后来者一个真实入口 |
 | 删除空文件 `tool/lift.py` | 误建、零内容 |
-| 删除临时探针 `lib/main.dart`、`test/zz_*` | 验证完即清理，不留在仓库里 |
+| 删除临时探针 `test/zz_*` | 验证完即清理，不留在仓库里 |
 
-> 注意：`lib/main.dart` 被删除后工程**无法 `flutter run`**。这是已知的、有意的状态：
-> 应用层还没写，留一个假入口只会掩盖问题。写 §4.1 的第一个文件时补回。
+> 当时 `lib/main.dart` 被**有意删除**（应用层还没写，留假入口只会掩盖问题），
+> 所以 `flutter run` 起不来。这条已在第二阶段补回。
+
+### 8.2 第二阶段：应用层 + 演示页面（2026-10-19）
+
+| 改动 | 原因 |
+|---|---|
+| 恢复 `lib/main.dart`，新增 `lib/app/`（8 文件） | 没有入口就无法 `flutter run`；主题/引导/文案/路由需要一处落地 |
+| 新增 `lib/router.dart` + `lib/shell/` | 六 tab 底栏；branch 顺序与底栏可配置项解耦 |
+| 新增 `lib/state/`（5 个 provider 文件） | 外观与工作模式两组状态；纯内存，不落盘 |
+| 新增 `lib/data/`（库根 + 3 part） | 演示数据按域拆分，单文件守住 550 行 |
+| 新增 `lib/widgets/`（2 文件） | 跨页面复用的统计条/键值行/分区/页体/浮条留白 + 图标名查找 |
+| 新增 `lib/pages/`（18 条路由，43 文件） | 代表性全覆盖；`demo/` 与 `settings/` 用「库根 + part」守行数 |
+| 新增 4 个测试文件（+44 用例） | 把本阶段踩过的坑固化成回归：scopes 层级、枚举上屏、多尺寸溢出 |
+| 修正 `AGENT_MISTAKES.md` 两条旧结论 | 「scopes 装 `home:`」被推翻两次，最终用正例+反例钉死 |
+| 修正 `test/support/app_host.dart` 装法 | 与 `lib/app/bootstrap.dart` 对齐，否则单组件测试会给出假阴性 |
+
+**当前状态**：`flutter analyze lib test` 零问题，`flutter test` 52 个用例全绿，
+`lib/` 共 190 个 `.dart` / 41,842 行，最大文件 549 行（`lib/ui/navigation_dock_c.dart`）。

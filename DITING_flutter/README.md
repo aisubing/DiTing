@@ -13,25 +13,34 @@ FlClash 视觉体系的纯 UI 移植，用于 DITING 的 Flutter 重构。**本�
 | 层 | 内容 | 状态 |
 |---|---|---|
 | 设计系统 `lib/ui/` | FlClash 0.9.1 `lib/ui/` 全量移植（127 文件 / 约 28k 行） | ✅ 完成，`flutter analyze` 零问题 |
-| 组件烟测 `test/` | 8 个组件冒烟用例，覆盖脚手架 / 列表 / 浮条 / 空态 / 加载 / 弹层 | ✅ 通过 |
 | 应用层 `lib/app/` | 主题管理（种子→纯黑→shape/surface/type）、`MaterialApp.router` 引导、scopes、路由 | ✅ 完成 |
 | 演示状态 `lib/state/` | 外观（主题/色板/透明度/底栏/触感）+ 工作模式（电源/服务商/解析）两组 Notifier | ✅ 完成 |
 | 演示数据 `lib/data/` | 服务商 / 规则 / 订阅 / 日志 / 缓存 / 竞速 / 流量 / 应用 / 功能卡，按域拆 3 个 part | ✅ 完成 |
 | 壳层 `lib/shell/` | 六 tab 底栏（`StatefulShellRoute.indexedStack` + `NavigationDock`） | ✅ 完成 |
-| 演示页面 `lib/pages/` | 首页×3 模式 / 功能中心 / 规则×3 / 批量编辑 / 订阅 / 日志 / 流量 / 工具 / 应用 / 设置 / 模式 / 引导 / 服务器 / AI / 关于 / 画廊 | 🚧 进行中 |
-| 整机测试 `test/app_shell_test.dart` | 首页渲染 / 电源四态 / tab 保活 / 浮层在 scopes 之上 / 全路由可构建 | ✅ 通过 |
+| 演示页面 `lib/pages/` | 18 条路由：首页（三模式共用壳）/ 功能中心 / 规则×3 / 批量编辑 / 订阅 / 日志 / 流量 / 工具 / 应用 / 设置 / 模式×2 / 服务器 / AI / 关于 / 组件画廊 | ✅ 完成 |
+| 测试 `test/` | **52 个用例**：组件烟测 8 + 整机 5 + 应用层 28 + scopes 层级 2 + 枚举上屏 5 + 多尺寸布局 4 | ✅ 通过 |
 
 > **下一步工作请读 [docs/ui-framework/20-handoff.md](docs/ui-framework/20-handoff.md)** ——
-> 其中逐条列出已冻结的 API、引导代码约定、页面清单和验证口径。
+> 其中逐条列出已冻结的 API、引导代码约定、页面清单、剩余可做的事和验证口径。
 
 ## 命令
 
 ```bash
 flutter pub get
-flutter analyze lib test
-flutter test
-flutter run            # 需要设备；本机可用 windows / chrome
+flutter analyze lib test      # 期望 No issues found
+flutter test                  # 期望 52 个用例全绿
+flutter run                   # 需先有平台目录，见下
 ```
+
+**关于 `flutter run`**：`lib/main.dart` 已恢复，`DitingApp` 可直接启动。但本机工程只配了
+`android/` 平台目录，而 Android 构建受网络限制（见文末），桌面/浏览器需要先补平台目录：
+
+```bash
+flutter create . --platforms windows,web   # 补平台目录（会新增 windows/ web/）
+flutter run -d windows                     # 或 -d chrome
+```
+
+源码级验证口径始终是 `flutter analyze` + `flutter test`，不依赖平台目录。
 
 ## 目录
 
@@ -70,3 +79,4 @@ docs/ui-framework/  本框架的现状与后续指南
 `flutter build apk` 在本机暂时无法完成：Gradle 需要从 `services.gradle.org` 下载发行版，
 而本机只有 `mirrors.cloud.tencent.com` 可达（详见交接文档 §6）。这是**环境**问题，
 不是工程问题；源码层面的验证口径是 `flutter analyze` + `flutter test`。
+
