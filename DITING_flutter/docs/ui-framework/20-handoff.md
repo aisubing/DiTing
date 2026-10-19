@@ -14,9 +14,16 @@
 ## 1. 一句话状态
 
 `lib/ui/` 是 FlClash 0.9.1 设计系统的完整移植；应用层（`lib/app/` + `lib/router.dart` +
-`lib/shell/`）、演示状态（`lib/state/`）、演示数据（`lib/data/`）与 18 条演示页面全部写完，
-`lib/main.dart` 已恢复。`flutter analyze lib test` 零问题、**52 个用例全绿**（含全路由构建、
-3 档尺寸 × 1.4 倍字号的布局回归）、所有文件 ≤550 行。
+`lib/shell/`）、演示状态（`lib/state/`）、演示数据（`lib/data/`）与 **73 条路由**
+（16 基线 + 57 领域）全部写完。第二轮按领域补齐了上游全部可见页面：
+仪表盘 10 张卡片 + 编辑模式、代理域、观测域、配置档案域、内核配置域（16 页）、
+系统/外观/表单域（19 页 + 5 个表单演示页）。
+
+实测（2026-10-19 第二轮收官）：`dart analyze lib test` → **No issues found**；
+`flutter test` → **62 个用例全绿**（含全路由构建、功能中心卡片可达性、
+3 档尺寸 × 1.4 倍字号的布局回归）；`lib/` **369 文件 / 79,504 行**，
+`lib/pages/` **186 文件 / 39,778 行**（第二轮前 43 文件 / 10,514 行，**3.78×**）；
+所有文件 ≤550 行（最大 `pages/system/editor_page.dart` 532 行）。
 **`flutter run` 现在可以启动**；`flutter build apk --debug` 也已实测出包（157 MB，见 §6），
 要跑桌面/Web 需先 `flutter create . --platforms windows,web`。
 
@@ -274,9 +281,23 @@ for f in $(find lib test -name '*.dart'); do n=$(wc -l < "$f"); [ "$n" -gt 550 ]
 python -I tool/unreferenced.py
 ```
 
-实测（2026-10-19）：`total 190 unreferenced 1` —— 只剩 `lib/main.dart`（入口文件，没有任何
-文件 import 它，属预期）。`lib/ui/ui.dart`（barrel）已被应用层全部 import，不再出现在清单里；
-若它重新出现，说明有文件绕过 barrel 直接 import 了 `lib/ui/` 内部件，应收回。
+实测（2026-10-19 第二轮）：`dart analyze lib test` → **No issues found**；`flutter test`
+→ **62 个用例全绿**。覆盖面如下：
+
+| 测试文件 | 覆盖的东西 |
+|---|---|
+| `test/app_shell_test.dart` | 整机冒烟：首页渲染、电源按钮加载态、底栏 tab 保活、浮层能读 scope、全部路由能构建 |
+| `test/route_catalog_test.dart` | 功能中心每张卡片的 route 必须真实注册；每条路由构建后**不得落到 `UnknownRoutePage`**；兜底页自身行为 |
+| `test/layout_regression_test.dart` | 全部路由 × 320/412/834 三档宽度，再加 320 宽 × 1.4 倍字号，逐条查溢出 |
+| `test/scope_placement_test.dart` | scopes 必须装在 `MaterialApp.builder`（含故意复刻错误装法的反例） |
+| `test/ui_components_smoke_test.dart` | 设计系统主要组件渲染与浮层开关 |
+| `test/proxies_interaction_test.dart` | 代理域真实交互：节点选中迁移、单组测速的「测速中 → 结算」、tab↔list 切换、搜索过滤、提供者全量更新 |
+| `test/app_layer_test.dart` / `enum_display_test.dart` | 应用层装配、枚举 `label` 不泄漏源码字形 |
+
+**测试期必须关掉永动动画**：`test/support/test_hooks.dart` 的
+`installGlobalTestHooks()` 会把 `debugDisableDashboardLiveUpdates` 置真。任何挂载
+`DitingApp`（含首页）的新测试文件都要在自己的 `main()` 顶部调一次，否则
+`pumpAndSettle` 会因为首页速率曲线与配置卡波浪进度条而**永远超时**。
 
 ## 6. Android 构建（旧结论已证伪，现可正常出包）
 

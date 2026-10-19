@@ -4,26 +4,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'route_catalog_test.dart' show idRoutes, topLevelRoutes;
+import 'support/test_hooks.dart';
+
 /// 全路由 × 多尺寸的布局回归。
 ///
-/// `app_shell_test.dart` 只保证「路由能构建」，那是 411×891 一档下的结果。
+/// `route_catalog_test.dart` 只保证「路由能构建」，那是单一尺寸下的结果。
 /// 真实溢出多半只在小屏或超大字号下出现，所以这里在 3 档宽度上各跑一遍，
 /// 并在最窄档再叠一次 1.4 倍字号（`clampTextScale` 的上界）。
 ///
 /// 溢出在 widget 测试里会以 `FlutterError` 形式冒泡到 `takeException()`，
 /// 不需要额外断言 `RenderFlex`。
+///
+/// 路由表从 `route_catalog_test.dart` 引入而不是各写一份：两份清单必然漂移，
+/// 而漂移的表现是「新页面只在一个测试里被覆盖」，不会报错，只会留个洞。
 void main() {
-  /// 覆盖所有路由；`/rules/*` 三种 kind 都要单独点，因为它们分支不同。
-  const routes = <String>[
-    Routes.home,
+  installGlobalTestHooks();
+
+  /// 覆盖所有路由；底栏六页之外还有规则三态、订阅、应用等旧路由。
+  final routes = <String>[
     Routes.hub,
     Routes.logs,
     Routes.traffic,
     Routes.tools,
     Routes.settings,
-    '/rules/block',
-    '/rules/allow',
-    '/rules/rewrite',
     Routes.batchEditor,
     Routes.subscriptions,
     Routes.apps,
@@ -33,6 +37,11 @@ void main() {
     Routes.demo,
     Routes.modeSelect,
     Routes.modeOnboarding,
+    '/rules/block',
+    '/rules/allow',
+    '/rules/rewrite',
+    ...topLevelRoutes.values,
+    ...idRoutes.values,
   ];
 
   /// (标签, 逻辑尺寸)。320 是 iPhone SE 一代宽度，412 是主流 Android，

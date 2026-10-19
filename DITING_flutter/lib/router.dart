@@ -12,8 +12,10 @@ import 'package:diting/pages/rules/rules_page.dart';
 import 'package:diting/pages/server/server_page.dart';
 import 'package:diting/pages/settings/settings_page.dart';
 import 'package:diting/pages/subscriptions/subscriptions_page.dart';
+import 'package:diting/pages/system/unknown_route_page.dart';
 import 'package:diting/pages/tools/tools_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
+import 'package:diting/routes/routes.dart';
 import 'package:diting/shell/app_shell.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
@@ -179,6 +181,22 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ModeOnboardingPage(),
       ),
+      // —— 第二轮按领域拆分的路由，各自在 `lib/routes/<domain>_routes.dart` 里
+      // 定义；这里只负责拼接。新增领域 = 新增一个 `...<domain>Routes()`。
+      ...dashboardRoutes(),
+      ...proxiesRoutes(),
+      ...observabilityRoutes(),
+      ...profilesRoutes(),
+      ...configRoutes(),
+      ...systemRoutes(),
     ],
+    // 兜底页：没有它，未匹配的路由会被 `GoRouter` 静默当成「无页面」——
+    // 真机上是一片空白，测试里因为没有抛异常反而会**通过**，这条路由就永远
+    // 不会被发现是漏注册的。挂上 `UnknownRoutePage` 后：
+    // - 用户看到「页面不存在 + 返回」，不是空白；
+    // - `route_catalog_test.dart` 靠 `find.byType(UnknownRoutePage)` 把漏注册
+    //   变成硬失败。
+    errorBuilder: (context, state) =>
+        UnknownRoutePage(location: state.uri.toString()),
   );
 }

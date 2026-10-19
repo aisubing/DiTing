@@ -1,5 +1,6 @@
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +21,8 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final destinations = ref.watch(bottomBarProvider);
     final haptic = ref.watch(hapticProvider);
+    final style = ref.watch(bottomBarStyleProvider);
+    final transition = ref.watch(tabTransitionProvider);
     final selected = _selectedIndex(destinations, navigationShell.currentIndex);
 
     void onSelected(int index) {
@@ -37,13 +40,18 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       // 内容自己负责底部留白（`DockSpacer`），浮条浮在它上面。
       extendBody: true,
-      body: navigationShell,
+      body: _TabTransitionHost(
+        transition: transition,
+        branchIndex: navigationShell.currentIndex,
+        child: navigationShell,
+      ),
       bottomNavigationBar: destinations.isEmpty
           ? null
           : _Dock(
               destinations: destinations,
               selectedIndex: selected,
               onSelected: onSelected,
+              style: style,
             ),
     );
   }
@@ -87,11 +95,13 @@ class _Dock extends StatelessWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onSelected,
+    required this.style,
   });
 
   final List<BottomBarDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+  final BottomBarStyle style;
 
   @override
   Widget build(BuildContext context) {
@@ -103,9 +113,12 @@ class _Dock extends StatelessWidget {
           label: destination.label,
         ),
     ];
+    // 用户可以在外观页把底栏切成普通形态；普通形态本来就是给「项多、浮条挤
+    // 不下」准备的，因此它优先于浮条判定。
+    final wantFallback = style == BottomBarStyle.docked;
     // 浮条最多 5 项；超过后（用户配了 6 项）退回 Material 底栏，避免挤成
     // 每项 40dp 的不可点目标。
-    if (!isMobile || items.length > maxDockDestinations) {
+    if (wantFallback || !isMobile || items.length > maxDockDestinations) {
       return _FallbackBar(
         destinations: destinations,
         selectedIndex: selectedIndex,
@@ -121,6 +134,58 @@ class _Dock extends StatelessWidget {
         selectedIndex: selectedIndex,
         onSelected: onSelected,
       ),
+    );
+  }
+}
+
+/// tab 切换动画。
+///
+/// `StatefulShellRoute.indexedStack` 本身不给切 tab 加动画（它只切换 `IndexedStack`
+/// 的 index），所以动画只能在壳这一层做：用 [branchIndex] 作 key，切 tab 时换
+/// 一棵新子树，让入场动画重播。
+///
+/// 注意这**不是**真的交叉淡入——旧 tab 会立刻消失。做成交叉淡入要给每个 branch
+/// 各留一棵树（`AnimatedSwitcher` 的 child 必须带 key，成本是同时挂两份子树），
+/// 而六个 tab 各自持有长列表，同时挂两份会让切 tab 从一帧变成两帧的抖动。
+/// 上游移动端也只在「淡入」档做新页入场，因此这里对齐。
+class _TabTransitionHost extends StatelessWidget {
+  const _TabTransitionHost({
+    required this.transition,
+    required this.branchIndex,
+    required this.child,
+  });
+
+  final TabTransition transition;
+  final int branchIndex;
+  final Widget child;
+
+  static const _duration = Duration(milliseconds: 220);
+
+  @override
+  Widget build(BuildContext context) {
+    // 关掉动画时不要套任何包装：多一层 `KeyedSubtree` 也会让子树在切 tab 时
+    // 重建，与「无动画」的语义不符。
+    if (transition == TabTransition.none) {
+      return child;
+    }
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(branchIndex),
+      tween: Tween(begin: 0, end: 1),
+      duration: _duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, amount, child) => switch (transition) {
+        TabTransition.fade => Opacity(opacity: amount, child: child),
+        TabTransition.slide => FractionalTranslation(
+          translation: Offset(0.04 * (1 - amount), 0),
+          child: Opacity(opacity: amount, child: child),
+        ),
+        TabTransition.scale => Transform.scale(
+          scale: 0.96 + 0.04 * amount,
+          child: Opacity(opacity: amount, child: child),
+        ),
+        TabTransition.none => child!,
+      },
+      child: child,
     );
   }
 }

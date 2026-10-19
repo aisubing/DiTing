@@ -3,6 +3,7 @@ import 'package:diting/app/l10n/ui_strings.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/manager.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,9 +66,20 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       locale: const Locale('zh', 'CN'),
       builder: (context, child) {
         // `child` 是 Navigator（含当前路由与浮层路由）；scopes 必须在它之上。
+        //
+        // `LiquidGlassScope` 也挂在这一层：`lib/ui` 的浮条与卡片用它决定要不要
+        // 走模糊路径，挂在 Navigator 之下会让浮层里的玻璃效果失效。
+        final glass = ref.watch(liquidGlassModeProvider);
         return ThemeCrossFade(
           child: AppSystemUi(
-            child: AppScopes(textScale: textScale, child: child ?? const SizedBox.shrink()),
+            child: AppScopes(
+              textScale: textScale,
+              child: LiquidGlassScope(
+                enabled: glass.enabled,
+                quality: glass.quality,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
           ),
         );
       },

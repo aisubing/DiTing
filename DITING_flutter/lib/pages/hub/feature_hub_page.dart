@@ -65,6 +65,12 @@ class _CardGrid extends StatelessWidget {
   final List<MockFeatureCard> cards;
 
   static const _gap = 10.0;
+
+  /// 卡片基础高度（1.0 字号下）。
+  ///
+  /// 必须随字号放大：卡片里是「图标 + 标题 + 副标题」三行固定内容，1.4 倍字号
+  /// 时三行文字比 92dp 高约 6dp，固定高度会直接溢出。用 `textScaler` 线性放大
+  /// 与 `clampTextScale` 的上界（1.4）对齐即可，不做更细的拟合。
   static const _cardHeight = 92.0;
 
   @override
@@ -107,6 +113,14 @@ class _FeatureCard extends StatefulWidget {
 class _FeatureCardState extends State<_FeatureCard> {
   bool _pressed = false;
 
+  /// 字号放大时同步放宽卡片高度。
+  ///
+  /// `MediaQuery.textScalerOf` 已经过全局 `clampTextScale` 夹取，所以这里直接
+  /// 用它，不额外 `clamp`——否则两处上界不一致，1.4 倍时又会差几像素。
+  static double _heightScale(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(_CardGrid._cardHeight) /
+      _CardGrid._cardHeight;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
@@ -125,7 +139,7 @@ class _FeatureCardState extends State<_FeatureCard> {
           duration: const Duration(milliseconds: 140),
           curve: Curves.easeOut,
           child: Container(
-            height: _CardGrid._cardHeight,
+            height: _CardGrid._cardHeight * _heightScale(context),
             padding: const EdgeInsets.all(12),
             decoration: ShapeDecoration(
               shape: AppShape.md,

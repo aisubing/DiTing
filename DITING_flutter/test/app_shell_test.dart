@@ -1,10 +1,14 @@
 import 'package:diting/app/app.dart';
+import 'package:diting/data/mock_data.dart';
+import 'package:diting/pages/hub/feature_hub_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'support/test_hooks.dart';
 
 /// 整机冒烟：把真实 `DitingApp`（含路由、主题、scopes）挂起来。
 ///
@@ -13,6 +17,8 @@ import 'package:material_ui/material_ui.dart';
 /// 2. 底栏 tab 切换不重建 branch（`indexedStack` 保活）；
 /// 3. 每个路由都能 build 且不 assert。
 void main() {
+  installGlobalTestHooks();
+
   Future<void> pumpApp(WidgetTester tester, {String? initialLocation}) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -47,7 +53,15 @@ void main() {
     await pumpApp(tester);
     await tester.tap(find.text('功能中心'));
     await tester.pumpAndSettle();
-    expect(find.text('规则与订阅'), findsOneWidget);
+    // 断言分类标题而不是卡片文案：卡片标题会与底栏项重名（「代理」既是底栏
+    // tab 也是卡片），`findsOneWidget` 必然失败。分类标题只在功能中心出现。
+    expect(
+      find.descendant(
+        of: find.byType(FeatureHubPage),
+        matching: find.text(mockFeatureCategories.first.title),
+      ),
+      findsWidgets,
+    );
     await tester.tap(find.text('首页'));
     await tester.pumpAndSettle();
     expect(find.text('谛听 · 普通'), findsOneWidget);

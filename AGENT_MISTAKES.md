@@ -14,6 +14,25 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: 三类「analyze 全绿、运行时才炸」的缺陷 + GoRouter 未匹配路由静默放行
+
+- **现象/根因**：
+  1. **手写泰勒级数近似 `sin` 在大参数下发散**。为「不想为一行数学引入 `dart:math`」写了 7 阶泰勒展开，输入到 `2π×t×3.7`（t 到 60 量级）时误差爆炸，速率算成 `6,582,849`，`ui/line_chart.dart` 的 `slopesOf` 里 `.clamp(-3v, 3v)` 因此拿到 `lower > upper` → `ArgumentError: Invalid argument(s): 6582849.66`。**analyze 完全看不见**，只有在 widget 测试里真正 `paint()` 才炸。同一 commit 里我在两处各写了一份 `_sin`（数据层 + 卡片 `CustomPainter`），所以两处都要改。
+  2. **无限动画让 `pumpAndSettle` 永远超时**。首页速率曲线用 1 秒 `Future.delayed` 自循环 + `profiles_card` 波浪进度条 `AnimationController..repeat()`。`pumpAndSettle` 的前提是「没有待处理帧」，两者不可兼得——表现是 `pumpAndSettle timed out`，栈里只有 `LineChart`，**看上去像路由/scope 问题，实际是动画**。`CommonCircleLoading`（`ui/loading.dart`）与 `ui/skeleton.dart` 也是永久 `repeat()`，只是它们只在加载态出现才没炸。
+  3. **`GoRouter` 对未匹配路径不抛异常**。它渲染 `errorBuilder`，我没设 `errorBuilder` 时是一片空白；更糟的是「每条路由都能 build 且不 throw」这类用例**对漏注册的路由静默放行**——本轮 `/proxies` 就是这么一路绿到最后一轮全量扫描才被抓到的。给路由器加 `errorBuilder: UnknownRoutePage` 后，测试改成同时断言 `find.byType(UnknownRoutePage) == findsNothing`，漏注册立刻变硬失败。
+  4. **固定像素高度的卡片在 1.4 倍字号下溢出**（`feature_hub_page` 92dp 卡片溢出 6dp）。横向同理：`Row` 里放三组「标签+数值」时 320 宽下溢出 36/130dp。
+- **教训**：
+  - (a) **永不手写三角函数/超越函数的近似**——`dart:math` 就在标准库里，「省一个 import」换来的是 analyze 查不出、只在 paint/test 阶段炸的数值缺陷。凡是「数学近似」都要问一句「参数域上界是多少，近似在那里还成立吗」。
+  - (b) **演示用的永动动画必须有全局关闭开关**。本仓约定：`debugDisableDashboardLiveUpdates`（`lib/state/dashboard_providers.dart`），测试统一走 `test/support/test_hooks.dart` 的 `installGlobalTestHooks()`。新加任何 `repeat()` / 自循环定时器前先想「`pumpAndSettle` 还能过吗」。
+  - (c) **「没抛异常」不等于「路由存在」**：任何「每个路由都能构建」的测试，都必须同时排除兜底页，否则用例只证明「GoRouter 能把请求导向某处」。
+  - (d) **固定尺寸容器 + 可放大文字 = 潜在溢出**：高度用 `textScaler` 线性放大，横向多列一律 `Expanded` + `ellipsis`，不要指望 `Text` 自己收缩。
+  - (e) 长测跑完看到一堆 `pumpAndSettle timed out`，先 `grep -r "\.repeat("` 与「自循环 `Future.delayed`」，比逐页找布局问题快得多。
+
+### 2026-10-19: 并行流里跑 `dart format` 误伤同伴文件；`-replace` 改测试文件把结构改坏
+
+- **现象/根因**：(1) config-ui 在收尾时对 `lib/state`/`lib/` 整体跑了 `dart format`，把 `appearance/rules/subscription/work_mode_providers.dart` 一并改写（纯格式差异），只能 `git checkout --` 逐个还原。并行开发的写域隔离在**工具层没有被强制**——`dart format`、`dart fix`、代码生成器都按目录工作，不受「我只负责这几个文件」的约束。(2) 我用 PowerShell `-replace` 给三个测试文件的 `void main() {` 插入一行调用，替换串里含 `$` 与换行，反向引用被解释，直接把 `app_shell_test.dart` / `layout_regression_test.dart` 改成语法错误（`missing_function_body`、`duplicate_definition`），只能从 git 恢复重做。
+- **教训**：(a) 并行阶段禁止任何**目录级**格式化/批量改写命令，只对自己负责的文件列表显式逐个跑。(b) **改代码用 edit/write 工具，不要用 PowerShell 正则替换**——`-replace` 会把 `$1`、`$&` 当反向引用，多行替换里 `\r\n` 还会错位；只有「确定不含 `$` 与正则元字符的单行字面替换」才勉强可用，而这条判断本身不值得做。(c) 已提交的文件被改坏时别试图修补，直接 `git checkout --` 回基线再重做一遍，比修语法错误快。
+
 ### 2026-10-19: 把「网络不可达、Android 构建跑不通」当成事实引用了三轮（实际全 200）
 - **现象/根因**：`README.md` 与 `20-handoff.md §6` 都写着「`services.gradle.org`/`repo1.maven.org`/`plugins.gradle.org` 全不可达，仅腾讯镜像 200，因此 `flutter build apk` 无法完成」，并在三轮交付里被当作既定事实复述。**实测全部 200**，`gradle-9.3.1-all.zip`（224 MB）、NDK 28.2（约 2.1 GB）、SDK Platform 36、AGP 9.1.0/Kotlin 2.4.0 依赖全部下载成功，`flutter build apk --debug` 产出 157 MB APK。同时还有第二个假象叠加：命令写成 `flutter build apk --debug 2>&1 | Select-Object -Last 40`，`Select-Object -Last` **缓冲全部输出直到进程结束**，中间十分钟一个字节都不显示，主观上完全等于「卡死」，于是又反过来「印证」了网络不可达的结论。
 - **教训**：(a) 判「网络不可达」必须用 `curl`/`Invoke-WebRequest` 打**真实构件 URL**，不能打域名根路径——根路径 404/400 是正常的（`dl.google.com`、`storage.googleapis.com` 都如此），把 404 当「不可达」会直接得出反向结论。(b) 文档里的环境类结论**有保质期**，引用前必须重测；「上轮记录的失败」不等于「本轮仍然失败」。(c) 长任务跟进度一律写日志文件 + `Get-Content -Tail`（或 `Start-Process -RedirectStandardOutput`），**禁止用 `Select-Object -Last`/`Tee-Object` 之类会缓冲的过滤器**——它们会让「慢」看起来像「死」。(d) 首次 Flutter Android 构建要下约 3 GB（Gradle + NDK + SDK + 依赖），必须区分「一次性环境准备」与「真的卡死」，判据是看 Gradle 守护进程 CPU 是否在动 + `build/app/intermediates/` 是否在长。

@@ -12,6 +12,7 @@ import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/router.dart';
+import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -23,6 +24,7 @@ import 'package:material_ui/material_ui.dart';
 part 'settings_about_section.dart';
 part 'settings_appearance_section.dart';
 part 'settings_bottom_bar_section.dart';
+part 'settings_feature_section.dart';
 part 'settings_home_section.dart';
 part 'settings_resolution_section.dart';
 
@@ -53,6 +55,9 @@ class SettingsPage extends StatelessWidget {
       body: const PageBody(
         children: [
           _AppearanceSection(),
+          _FeatureEntrySection(),
+          _ObserveAndConfigSection(),
+          _SystemSection(),
           _HomeSection(),
           _BottomBarSection(),
           _ResolutionSection(),
