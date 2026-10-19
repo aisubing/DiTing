@@ -17,7 +17,7 @@
 `lib/shell/`）、演示状态（`lib/state/`）、演示数据（`lib/data/`）与 18 条演示页面全部写完，
 `lib/main.dart` 已恢复。`flutter analyze lib test` 零问题、**52 个用例全绿**（含全路由构建、
 3 档尺寸 × 1.4 倍字号的布局回归）、所有文件 ≤550 行。
-**`flutter run` 现在可以启动**；本机只配了 Android 平台目录，构建仍受 §6 网络限制，
+**`flutter run` 现在可以启动**；`flutter build apk --debug` 也已实测出包（157 MB，见 §6），
 要跑桌面/Web 需先 `flutter create . --platforms windows,web`。
 
 ## 2. 已完成清单（可直接依赖）
@@ -207,7 +207,7 @@ AGENTS.md 硬性要求 ≤550 行。已用的三种拆分法都在 `tool/` 里�
 `lib/ui/`、`lib/app/`、`lib/router.dart`、`lib/shell/`、`lib/state/`、`lib/data/` 与
 18 条页面都已写完。下面都是**增量**，不是「还没开始」：
 
-1. **补平台目录**：本机只有 `android/`，且 §6 的网络限制让它构建不了；要 `flutter run`
+1. **补平台目录**：本机只有 `android/`（Android 已能出包，见 §6）；要 `flutter run`
    到桌面或浏览器，先 `flutter create . --platforms windows,web`。
    `lib/app/theme/layout.dart` 的 `maxLaptopWidth` 与 `AppShell._Dock` 的非移动端分支
    已经写好，但没有平台目录就只在测试里跑到过。
@@ -278,35 +278,64 @@ python -I tool/unreferenced.py
 文件 import 它，属预期）。`lib/ui/ui.dart`（barrel）已被应用层全部 import，不再出现在清单里；
 若它重新出现，说明有文件绕过 barrel 直接 import 了 `lib/ui/` 内部件，应收回。
 
-## 6. Android 构建为什么现在跑不通（环境问题，非工程问题）
+## 6. Android 构建（旧结论已证伪，现可正常出包）
 
-实测（2026-10-18）：
+### 6.1 现状：能构建
 
-| 目标 | 结果 |
-|---|---|
-| `services.gradle.org` | **不可达**（curl 超时） |
-| `repo1.maven.org` / `plugins.gradle.org` | **不可达** |
-| `mirrors.cloud.tencent.com` | 200 |
+实测（2026-10-19）：
 
-`flutter create` 生成的 `android/gradle/wrapper/gradle-wrapper.properties` 指向
-`services.gradle.org/distributions/gradle-9.3.1-all.zip`，本机缓存里没有该版本；
-本地已有 `~/.gradle/wrapper/dists/gradle-9.4.1-bin`（原 Android 工程用的腾讯镜像版本），
-但 Flutter 的 gradle 插件又需要 `org.gradle.kotlin.kotlin-dsl:6.5.2`，离线缓存里也没有。
-
-**结论**：`flutter build apk` 需要能访问 Google Maven + Gradle Plugin Portal 的网络。
-恢复网络后按下面顺序验证（源码定稿后再做，见 AGENT_MISTAKES 铁律 6）：
-
-```bash
-yes | flutter doctor --android-licenses
+```
+flutter build apk --debug
+→ build/app/outputs/flutter-apk/app-debug.apk   157 MB   12:47:17
 ```
 
-```bash
+首次构建耗时集中在**一次性环境准备**（合计约 3 GB）：
+
+| 下载项 | 实测大小 | 落地位置 |
+|---|---|---|
+| Gradle 9.3.1 发行版 | 224 MB | `~/.gradle/wrapper/dists/gradle-9.3.1-all/` |
+| NDK 28.2.13676358 (r28c) | ~2.1 GB | `~/AppData/Local/Android/Sdk/ndk/28.2.13676358/` |
+| SDK Platform 36 | ~100 MB | `~/AppData/Local/Android/Sdk/platforms/android-36/` |
+| Gradle 依赖（AGP 9.1.0 / Kotlin 2.4.0 等） | 数百 MB | `~/.gradle/caches/` |
+
+之后是增量编译，几十秒级。
+
+### 6.2 旧结论为什么错了（反例，勿再引用）
+
+本文旧版 §6 写着「`services.gradle.org` / `repo1.maven.org` / `plugins.gradle.org`
+全不可达，仅腾讯镜像 200，因此 `flutter build apk` 无法完成」。**该结论是错的**，
+2026-10-19 复测：
+
+| 目标 | 实测 |
+|---|---|
+| `services.gradle.org/distributions/` | **200**（1.3s） |
+| `repo1.maven.org/maven2/` | **200**（0.7s） |
+| `plugins.gradle.org/m2/` | **200**（1.2s） |
+| `services.gradle.org/.../gradle-9.3.1-all.zip` | **200**（224 MB 下载成功） |
+| `dl.google.com/.../gradle-8.9.1.pom` | **200** |
+| `mirrors.cloud.tencent.com/gradle/` | 200 |
+
+推断当时失败的真实原因有两个，都与「网络封锁」无关：
+
+1. **首次构建本来就要下 3 GB**，没等够就当成卡死了；
+2. **看进度的命令写错了**：`flutter build apk ... | Select-Object -Last N` 会缓冲全部
+   输出直到进程结束，中间十分钟一个字节都不显示，主观上完全像卡住。
+
+**教训**：判「网络不可达」必须用 `curl`/`Invoke-WebRequest` 打**真实构件 URL**（不是
+域名根路径——根路径 404/400 是正常的，`dl.google.com` 与 `storage.googleapis.com` 就是），
+并且要区分「慢」与「断」。构建类长任务一律写日志文件 + `Get-Content -Tail` 跟进度，
+不要用会缓冲的管道过滤器。
+
+### 6.3 命令
+
+```powershell
+# 首次：约 3 GB 下载，耐心等；用日志文件跟进度
+flutter build apk --debug *> build.log
+Get-Content build.log -Tail 20
+
+# 之后：增量
 flutter build apk --debug
 ```
-
-本次已尝试并如实记录：许可证已在本会话接受（`All SDK package licenses accepted`），
-但构建仍卡在依赖下载。可选做法（需要用户决定）：把 wrapper 与 `settings.gradle.kts`
-的仓库指向腾讯镜像 —— 这会改变工程配置，因此**没有**擅自修改。
 
 ## 7. 提交约定
 
@@ -347,3 +376,4 @@ flutter build apk --debug
 
 **当前状态**：`flutter analyze lib test` 零问题，`flutter test` 52 个用例全绿，
 `lib/` 共 190 个 `.dart` / 41,842 行，最大文件 549 行（`lib/ui/navigation_dock_c.dart`）。
+

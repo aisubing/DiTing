@@ -29,11 +29,11 @@ FlClash 视觉体系的纯 UI 移植，用于 DITING 的 Flutter 重构。**本�
 flutter pub get
 flutter analyze lib test      # 期望 No issues found
 flutter test                  # 期望 52 个用例全绿
-flutter run                   # 需先有平台目录，见下
+flutter build apk --debug     # 已验证可出包（见文末）
 ```
 
-**关于 `flutter run`**：`lib/main.dart` 已恢复，`DitingApp` 可直接启动。但本机工程只配了
-`android/` 平台目录，而 Android 构建受网络限制（见文末），桌面/浏览器需要先补平台目录：
+**关于 `flutter run`**：`lib/main.dart` 已恢复，`DitingApp` 可直接启动。本机工程只配了
+`android/` 平台目录（Android 能构建、能出包）；想在桌面或浏览器跑，先补平台目录：
 
 ```bash
 flutter create . --platforms windows,web   # 补平台目录（会新增 windows/ web/）
@@ -76,7 +76,25 @@ docs/ui-framework/  本框架的现状与后续指南
 
 ## Android 构建
 
-`flutter build apk` 在本机暂时无法完成：Gradle 需要从 `services.gradle.org` 下载发行版，
-而本机只有 `mirrors.cloud.tencent.com` 可达（详见交接文档 §6）。这是**环境**问题，
-不是工程问题；源码层面的验证口径是 `flutter analyze` + `flutter test`。
+`flutter build apk --debug` **可以正常完成**，实测产出：
+
+```
+build/app/outputs/flutter-apk/app-debug.apk    157 MB
+```
+
+> ⚠️ 本文旧版写着「本机暂时无法完成，因为只有 `mirrors.cloud.tencent.com` 可达」。
+> **该结论已证伪**：2026-10-19 复测 `services.gradle.org` / `repo1.maven.org` /
+> `plugins.gradle.org` 全部 200，Gradle 9.3.1（224 MB）、NDK 28.2（约 2.1 GB）、
+> SDK Platform 36 与全部 Gradle 依赖均下载成功。详见交接文档 §6。
+
+首次构建慢是**一次性环境准备**，不是卡死：Gradle 发行版 + NDK + SDK 平台 + Gradle 依赖
+合计约 3 GB。之后是增量编译，几十秒级。
+
+**看进度别用 `| Select-Object -Last N`** —— 它会缓冲全部输出，命令结束前一个字都不显示，
+看起来像卡住。正确做法：
+
+```powershell
+flutter build apk --debug *> build.log   # 或 Start-Process -RedirectStandardOutput
+Get-Content build.log -Tail 20           # 另开一个窗口跟
+```
 

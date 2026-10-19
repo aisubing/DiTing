@@ -14,6 +14,9 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: 把「网络不可达、Android 构建跑不通」当成事实引用了三轮（实际全 200）
+- **现象/根因**：`README.md` 与 `20-handoff.md §6` 都写着「`services.gradle.org`/`repo1.maven.org`/`plugins.gradle.org` 全不可达，仅腾讯镜像 200，因此 `flutter build apk` 无法完成」，并在三轮交付里被当作既定事实复述。**实测全部 200**，`gradle-9.3.1-all.zip`（224 MB）、NDK 28.2（约 2.1 GB）、SDK Platform 36、AGP 9.1.0/Kotlin 2.4.0 依赖全部下载成功，`flutter build apk --debug` 产出 157 MB APK。同时还有第二个假象叠加：命令写成 `flutter build apk --debug 2>&1 | Select-Object -Last 40`，`Select-Object -Last` **缓冲全部输出直到进程结束**，中间十分钟一个字节都不显示，主观上完全等于「卡死」，于是又反过来「印证」了网络不可达的结论。
+- **教训**：(a) 判「网络不可达」必须用 `curl`/`Invoke-WebRequest` 打**真实构件 URL**，不能打域名根路径——根路径 404/400 是正常的（`dl.google.com`、`storage.googleapis.com` 都如此），把 404 当「不可达」会直接得出反向结论。(b) 文档里的环境类结论**有保质期**，引用前必须重测；「上轮记录的失败」不等于「本轮仍然失败」。(c) 长任务跟进度一律写日志文件 + `Get-Content -Tail`（或 `Start-Process -RedirectStandardOutput`），**禁止用 `Select-Object -Last`/`Tee-Object` 之类会缓冲的过滤器**——它们会让「慢」看起来像「死」。(d) 首次 Flutter Android 构建要下约 3 GB（Gradle + NDK + SDK + 依赖），必须区分「一次性环境准备」与「真的卡死」，判据是看 Gradle 守护进程 CPU 是否在动 + `build/app/intermediates/` 是否在长。
 ### 2026-10-19: 枚举上屏变源码字形（`ProviderProtocol.doh`）+ 分组标题与滑杆标签同名
 - **现象/根因**：(1) 设置页「解析服务商」副标题由 `providerEndpointOf(id)` 生成，实现里拼的是 `'${provider.protocol} · ${provider.address}'`——`ProviderProtocol` 没覆写 `toString`，于是 UI 上真的显示 `ProviderProtocol.doh · https://…`。**这个缺陷在 analyze 与「路由能构建」两类检查里都是绿的**，只有把页面文字 dump 出来才看得见。同仓 `home_page.dart:311` 早就写对了（`provider.protocol.label`），是我照着「同一工具函数」复用才带进来。(2) `HomeLayer.poem` 的标签就是「首页句子」，而我给设置分组也起名「首页句子」→ 同屏两个 17pt 标题，一个在 `ListHeader` 里（13pt）、一个在滑杆卡里，肉眼看不出谁是分组。
 - **教训**：凡是把枚举/对象插值进 `Text`，先确认它的 `toString` 被覆写过或显式取 `.label`——编译器、analyze、路由冒烟**三类检查都拦不住**这类问题；复用「现成的工具函数」前读它的实现，别只看名字；自测时把整页 `Text` dump 一遍（`for (final e in find.byType(Text).evaluate())`）比只断言几个关键文案更能抓到这种字面错误；同一屏内的标题文案必须唯一，分组名要给控件标签让位。
@@ -106,3 +109,4 @@
 - **现象/根因**：`SetWindowSubclass` 在本进程 Wails 窗口恒返 FALSE（`ret=0`、`GetLastError=0`），返回值被丢弃，子类过程从未安装；历史补丁用时间防抖、前台句柄比对、异步派发等时序启发式规避消息语义，必然吞点击、失效或丢前台令牌。
 - **教训**：绝不丢弃 Win32 返回值，改用 `SetWindowLongPtr(GWLP_WNDPROC)` + `CallWindowProcW` 链式转发，失败时回收已注册托盘图标；幂等动作替代时间去重（单击/键盘/双击/气泡统一为「显示并置顶」）；语义过滤替代时间防抖（`isV4` 忽略 `WM_RBUTTONUP`）；可见性判定替代前台句柄（`IsWindowVisible() && !IsIconic()`）；窗口显隐在窗口线程内同步调用，仅服务启停等阻塞操作异步；`EnumWindows` 按类名 `wailsWindow` 匹配并接受隐藏窗口；`gofmt -w <目录>` 会剥离无关文件 BOM，应逐文件格式化；`OnDomReady` 每次导航都触发，初始化必须幂等。
 - **反例**：250ms 菜单防抖 + `isShowingMenu` 重入拦截；`keybd_event(VK_MENU)` 破焦点；`WM_ACTIVATE` 维护失活时间戳；`IsWindowActive` 仅比对前台句柄；兜底模式把 `wParam` 当 X 坐标（实为图标 ID 1，且未处理副屏负坐标）；菜单回调在窗口过程内同步阻塞。
+
