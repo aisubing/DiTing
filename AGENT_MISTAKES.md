@@ -14,6 +14,14 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-19: 枚举上屏变源码字形（`ProviderProtocol.doh`）+ 分组标题与滑杆标签同名
+- **现象/根因**：(1) 设置页「解析服务商」副标题由 `providerEndpointOf(id)` 生成，实现里拼的是 `'${provider.protocol} · ${provider.address}'`——`ProviderProtocol` 没覆写 `toString`，于是 UI 上真的显示 `ProviderProtocol.doh · https://…`。**这个缺陷在 analyze 与「路由能构建」两类检查里都是绿的**，只有把页面文字 dump 出来才看得见。同仓 `home_page.dart:311` 早就写对了（`provider.protocol.label`），是我照着「同一工具函数」复用才带进来。(2) `HomeLayer.poem` 的标签就是「首页句子」，而我给设置分组也起名「首页句子」→ 同屏两个 17pt 标题，一个在 `ListHeader` 里（13pt）、一个在滑杆卡里，肉眼看不出谁是分组。
+- **教训**：凡是把枚举/对象插值进 `Text`，先确认它的 `toString` 被覆写过或显式取 `.label`——编译器、analyze、路由冒烟**三类检查都拦不住**这类问题；复用「现成的工具函数」前读它的实现，别只看名字；自测时把整页 `Text` dump 一遍（`for (final e in find.byType(Text).evaluate())`）比只断言几个关键文案更能抓到这种字面错误；同一屏内的标题文案必须唯一，分组名要给控件标签让位。
+
+### 2026-10-19: 长设置页自测：`scrollUntilVisible` 三重失效 + 浮条遮挡导致 tap 落空
+- **现象/根因**：给 `lib/pages/settings` 写交互自测时连续踩三坑：(1) `scrollUntilVisible(find.text(x), 300)` 在页面里有多个 `Scrollable` 时抛 `Bad state: Too many elements`；(2) 传入 `scrollable:` 后仍失败，因为**底栏项一改动 shell 会重建**，缓存的 `ScrollPosition` 失效，`jumpTo` 静默失效后循环到上限即 `fail('滚不到')`；(3) 目标行滚到视口边缘时 `tap()` 报 `derived an Offset … that would not hit test`，命中点落在固定的 `NavigationDock` 上（浮条盖住底部约 100dp），而 `tester.ensureVisible` 认为「已在视口内」不会再挪。
+- **教训**：长页自测统一用「每次循环**重新取** `ScrollableState.position` → `jumpTo(pixels ± step)` → `pumpAndSettle`」的粗扫，别缓存 position；命中后再按 `tester.getRect(row).center.dy - 视口中线` 微调一次，把行挪到中部避开浮条；`find.text` 会同时命中页面行与底栏标签（`BottomBarDestination.label` 与设置行同名），断言前先用 `find.descendant(of: find.byType(ListView), …)` 排除浮条；自测脚本放 `tool/` 下（不进 `test/`）跑完即删，避免污染交付的测试集。
+
 ### 2026-10-19: 设计系统 API 三处「按直觉写就报错」（primaryAction 类型 / 具名构造的类型参数 / 同屏重复文案）
 - **现象/根因**：(1) `CommonScaffold.primaryAction`/`confirmationAction` 收的是 `IconButtonData`（顶栏图标按钮），不是 `Widget`；传 `FilledButton` 直接 `argument_type_not_assignable`。需要可见文案的主按钮（如「导入 N 条」）得放进 `body`，顶栏只能放图标 + `tooltip`。(2) `ListItem.options` 是泛型类的**具名构造**，类型实参写在类名上——`ListItem<RuleKind>.options(...)`；写成 `ListItem.options<RuleKind>(...)` 报 `wrong_number_of_type_arguments_constructor`，报错文案不会提示该改位置。(3) 计数头写「空时显示『没有匹配的规则』」，同时 `NullStatus.label` 也是同一句 → 同屏两份完全相同文案，既是视觉重复也让 `findsOneWidget` 失败。
 - **教训**：写组件前先 `Select-String` 读构造签名，别按「应该是 Widget」推断；泛型类的具名构造类型参数一律前移到类名；空状态文案与计数头文案必须分工（一个报数字、一个说原因），否则同屏重复且不可断言。
