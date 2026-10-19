@@ -1,0 +1,17 @@
+import 'package:diting/ui/ui.dart';
+import 'package:material_ui/material_ui.dart';
+
+/// 占位：待实现。
+class ToolsPage extends StatelessWidget {
+  const ToolsPage({super.key});
+
+  
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonScaffold(
+      title: '网络工具',
+      body: const NullStatus(label: '待实现', description: '该页尚未编写'),
+    );
+  }
+}
