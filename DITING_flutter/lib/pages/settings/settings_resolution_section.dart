@@ -15,7 +15,7 @@ class _ResolutionSection extends ConsumerWidget {
     final raceIds = ref.watch(raceProvidersProvider);
     final single = mode.isSingle;
     final summary = single
-        ? _endpointOf(selectedId)
+        ? providerEndpointOf(selectedId)
         : raceProviderSummary(raceIds);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -57,18 +57,6 @@ class _ResolutionSection extends ConsumerWidget {
   }
 }
 
-/// 单服务商模式的端点文案。
-///
-/// 不复用 `providerEndpointOf`：那个实现拼的是 `provider.protocol` 本身，
-/// 枚举没有覆写 `toString`，上屏会变成 `ProviderProtocol.doh` 这种源码字形。
-/// 这里取 `.label`（`DoH` / `DoT` / `DNS`）。
-String _endpointOf(String id) {
-  final provider = mockProviders.firstWhere(
-    (candidate) => candidate.id == id,
-    orElse: () => mockProviders.first,
-  );
-  return '${provider.protocol.label} · ${provider.address}';
-}
 
 /// 缓存 TTL 选项。
 ///
@@ -173,3 +161,4 @@ class _ProviderPickerPage extends ConsumerWidget {
     }
   }
 }
+

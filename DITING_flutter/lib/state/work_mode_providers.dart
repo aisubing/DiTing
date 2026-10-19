@@ -233,13 +233,18 @@ String raceProviderSummary(Set<String> ids) {
 }
 
 /// 单服务商模式下服务商的端点文案。
+///
+/// 必须拼 `.label`——枚举的 `toString()` 给的是 `ProviderProtocol.doh`，直接插值
+/// 会把源码标识符漏到界面上。多个调用方都踩过这一点，所以这里是唯一出口，
+/// 页面不要再自己拼。
 String providerEndpointOf(String id) {
   final provider = mockProviders.firstWhere(
     (candidate) => candidate.id == id,
     orElse: () => mockProviders.first,
   );
-  return '${provider.protocol} · ${provider.address}';
+  return '${provider.protocol.label} · ${provider.address}';
 }
 
 /// 让 `appearance_providers.dart` 的解析模式参与首页分支的便捷读取。
 ResolutionMode resolutionModeOf(Ref ref) => ref.read(resolutionModeProvider);
+
