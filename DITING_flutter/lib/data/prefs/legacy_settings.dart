@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 
 part 'legacy_settings_dns.dart';
+part 'legacy_settings_hub.dart';
 
 class LegacySettings {
   LegacySettings(this._store, {String? dnsContainer})
@@ -229,6 +230,59 @@ class LegacySettings {
     },
   );
 
+  /// `app_allowlist_rules_json`: package -> allowed domains, the per-app rules
+  /// behind `Engine.setAppAllowlist`. Stored as a JSON **object** (not a string
+  /// set), so it needs its own decoder; a malformed blob must yield an empty map
+  /// rather than throwing, otherwise one corrupt write bricks every tunnel start.
+  ///
+  /// Blank packages and this app's own id are dropped, exactly like
+  /// `AppRulesSettingsStore.getAppAllowlistRuleMap`.
+  Map<String, Set<String>> get appAllowlistRules {
+    final raw = _string(uiContainer, 'app_allowlist_rules_json');
+    if (raw == null || raw.trim().isEmpty) return const {};
+    Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return const {};
+    }
+    if (decoded is! Map) return const {};
+    final result = <String, Set<String>>{};
+    decoded.forEach((key, value) {
+      if (key is! String || key.trim().isEmpty) return;
+      if (value is! List) return;
+      final domains = {
+        for (final item in value)
+          if (item is String && item.trim().isNotEmpty) item.trim(),
+      };
+      if (domains.isNotEmpty) result[key] = domains;
+    });
+    return result;
+  }
+
+  void setAppAllowlistRules(Map<String, Set<String>> rules) {
+    final cleaned = <String, List<String>>{};
+    rules.forEach((packageName, domains) {
+      if (packageName.trim().isEmpty) return;
+      final values = [
+        for (final domain in domains)
+          if (domain.trim().isNotEmpty) domain.trim(),
+      ];
+      if (values.isNotEmpty) cleaned[packageName] = values;
+    });
+    _store.putString(
+      uiContainer,
+      'app_allowlist_rules_json',
+      jsonEncode(cleaned),
+    );
+  }
+
+  bool get appAllowlistEnabled =>
+      _bool(uiContainer, 'app_allowlist_enabled', false);
+
+  void setAppAllowlistEnabled(bool value) =>
+      _store.putBool(uiContainer, 'app_allowlist_enabled', value);
+
   /// `blocked_app_packages` + `blocked_apps_enabled`; the app itself is always
   /// stripped, exactly like `AppRulesSettingsStore.getBlockedAppPackages`.
   Set<String> get blockedAppPackages =>
@@ -251,6 +305,31 @@ class LegacySettings {
 
   bool get httpInspectionEnabled =>
       _bool(uiContainer, 'http_inspection_enabled', false);
+
+  /// `https_inspection_ready` + `https_inspection_ca_backend`. 1.4.3's
+  /// `isHttpsInspectionReady` requires BOTH: the boolean alone can survive a
+  /// CA reset, so the backend marker is what proves the current engine wrote
+  /// the certificate the trust store now holds.
+  bool get httpsInspectionReady =>
+      _bool(uiContainer, 'https_inspection_ready', false) &&
+      _string(uiContainer, 'https_inspection_ca_backend') == 'go-v1';
+
+  void setHttpsInspectionReady(bool ready) {
+    _store.putBool(uiContainer, 'https_inspection_ready', ready);
+    _store.putString(
+      uiContainer,
+      'https_inspection_ca_backend',
+      ready ? 'go-v1' : '',
+    );
+  }
+
+  /// `isHttpsInspectionOperational`: ready AND enabled AND at least one app
+  /// selected. MITM with an empty app list inspects nothing, so treating it as
+  /// "operational" would let the engine start a CA-less interception path.
+  bool get httpsInspectionOperational =>
+      httpsInspectionReady &&
+      httpInspectionEnabled &&
+      httpInspectionPackages.isNotEmpty;
 
   void setHttpInspectionApps({
     required Set<String> packages,

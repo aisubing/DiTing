@@ -20,6 +20,9 @@ class VpnStartRequest {
     this.bypassLan = true,
     this.ipv6Mode = 'auto',
     this.excludedPackages = const [],
+    this.blockedPackages = const [],
+    this.inspectionPackages = const [],
+    this.inspectionEnabled = false,
   });
 
   final String dnsConfig;
@@ -28,7 +31,25 @@ class VpnStartRequest {
   final String outboundProxy;
   final bool bypassLan;
   final String ipv6Mode;
+
+  /// `excluded_app_packages`: handed to `Builder.addDisallowedApplication`, so
+  /// these apps bypass the TUN entirely and resolve with the system DNS.
   final List<String> excludedPackages;
+
+  /// `blocked_app_packages`: resolved to UIDs natively and passed to
+  /// `Engine.setBlockedUIDs`. 1.4.3 sends UIDs, not package names, because the
+  /// engine sees UIDs on the packet path.
+  final List<String> blockedPackages;
+
+  /// `http_inspection_app_packages`: resolved to UIDs and passed to
+  /// `Engine.setMitmAllowedUIDs`. Only these apps are intercepted; everything
+  /// else is forwarded untouched.
+  final List<String> inspectionPackages;
+
+  /// `http_inspection_enabled` AND `https_inspection_ready`. Both must hold
+  /// before MITM starts: without the CA installed in the user trust store,
+  /// intercepting would break every HTTPS request in the selected apps.
+  final bool inspectionEnabled;
 }
 
 class VpnStartResult {
@@ -137,6 +158,9 @@ class MethodChannelVpnController implements VpnController {
       'bypassLan': request.bypassLan,
       'ipv6Mode': request.ipv6Mode,
       'excludedPackages': request.excludedPackages,
+      'blockedPackages': request.blockedPackages,
+      'inspectionPackages': request.inspectionPackages,
+      'inspectionEnabled': request.inspectionEnabled,
     });
     return VpnStartResult.fromMap(result);
   }

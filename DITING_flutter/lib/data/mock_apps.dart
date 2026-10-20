@@ -62,33 +62,12 @@ const mockAppTraffic = <MockAppTraffic>[
   ),
 ];
 
-/// 已安装应用（应用选择页）。
-class MockInstalledApp {
-  const MockInstalledApp({
-    required this.name,
-    required this.packageName,
-    required this.category,
-  });
-
-  final String name;
-  final String packageName;
-  final String category;
-}
-
-const mockInstalledApps = <MockInstalledApp>[
-  MockInstalledApp(name: '浏览器', packageName: 'com.example.browser', category: '工具'),
-  MockInstalledApp(name: '视频', packageName: 'com.example.video', category: '娱乐'),
-  MockInstalledApp(name: '即时通讯', packageName: 'com.example.im', category: '社交'),
-  MockInstalledApp(name: '应用商店', packageName: 'com.example.store', category: '工具'),
-  MockInstalledApp(name: '邮件', packageName: 'com.example.mail', category: '办公'),
-  MockInstalledApp(name: '音乐', packageName: 'com.example.music', category: '娱乐'),
-  MockInstalledApp(name: '地图', packageName: 'com.example.maps', category: '出行'),
-  MockInstalledApp(name: '相机', packageName: 'com.example.camera', category: '系统'),
-  MockInstalledApp(name: '记事本', packageName: 'com.example.notes', category: '办公'),
-  MockInstalledApp(name: '天气', packageName: 'com.example.weather', category: '生活'),
-  MockInstalledApp(name: '阅读', packageName: 'com.example.reader', category: '阅读'),
-  MockInstalledApp(name: '游戏中心', packageName: 'com.example.games', category: '游戏'),
-];
+/// 已安装应用清单不再有 mock 版本。
+///
+/// `MockInstalledApp` / `mockInstalledApps` 曾给「应用选择页」提供 12 条
+/// `com.example.*` 常量，还带着一个真实数据里不存在的 `category` 字段；接上
+/// `com.haoze.diting/apps` 通道后它已无人引用，留着只会被下一个页面误用，
+/// 因此整段删除。真实数据源见 `lib/state/installed_apps_providers.dart`。
 
 /// 流量环形图 / 实时速率的采样序列（KB/s）。
 const mockTrafficSamples = <double>[

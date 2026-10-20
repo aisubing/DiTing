@@ -2,7 +2,7 @@
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/block_response_settings.dart';
 import 'package:diting/router.dart';
-import 'package:diting/state/hub_settings_providers.dart';
+import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,9 +31,12 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
     final blockMode = BlockResponseMode.fromStorage(
       settings.blockResponseModeRaw,
     );
-    final inspection = ref.watch(httpInspectionProvider);
+    // CA 就绪状态已从演示 provider 换成真实通道：`caReadyProvider` 读的是
+    // `CaCertificateService.inspect()`（available && installed），否则这张卡会
+    // 永远显示「需先安装并验证 CA 根证书」，哪怕用户已经装好。
+    final caReady = ref.watch(caReadyProvider);
     final inspectionApps = settings.httpInspectionPackages;
-    final urlSubtitle = !inspection.caReady
+    final urlSubtitle = !caReady
         ? '未就绪 · 需先安装并验证 CA 根证书'
         : !settings.httpInspectionEnabled
         ? '未就绪 · 需在 HTTPS 流量检查中开启'
@@ -81,7 +84,7 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
                 trailing: Text(
                   settings.httpInspectionEnabled &&
                           settings.addressRulesEnabled &&
-                          inspection.caReady
+                          caReady
                       ? '运行中'
                       : '未就绪',
                   style: AppTextStyle.footnote

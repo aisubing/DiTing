@@ -9,7 +9,10 @@ import 'dart:convert';
 
 import 'package:diting/data/mock_data.dart';
 
-Map<String, Object?> buildRuleSnapshot(Map<RuleKind, List<MockRule>> rules) {
+Map<String, Object?> buildRuleSnapshot(
+  Map<RuleKind, List<MockRule>> rules, {
+  Map<String, Set<String>> appAllowlist = const {},
+}) {
   final normalBlock = <String>{};
   final importantBlock = <String>{};
   final allow = <String>{};
@@ -33,7 +36,11 @@ Map<String, Object?> buildRuleSnapshot(Map<RuleKind, List<MockRule>> rules) {
     'globalAllow': allow.toList(),
     'globalBlock': normalBlock.toList(),
     'globalImportant': importantBlock.toList(),
-    'appRules': <String, Object?>{},
+    // Shape mirrors `DomainPolicyEngine.buildRuleSnapshotJson`: every package
+    // maps to an object with `allow` / `block` / `important` arrays. A bare
+    // array here would be silently discarded by the Go parser instead of
+    // applying the allowlist.
+    'appRules': _encodeAppRules(appAllowlist),
     'invertedBlock': <Object?>[],
     'invertedAllow': <Object?>[],
     'specialBlock': <Object?>[],
@@ -42,8 +49,34 @@ Map<String, Object?> buildRuleSnapshot(Map<RuleKind, List<MockRule>> rules) {
   };
 }
 
-String encodeRuleSnapshot(Map<RuleKind, List<MockRule>> rules) =>
-    jsonEncode(buildRuleSnapshot(rules));
+/// Per-app allowlists, keyed by **package name**.
+///
+/// 1.4.3's `GoTunnelRuleManager.syncAppAllowlist` keys this object by UID
+/// because it feeds `Engine.setAppAllowlist` directly. The snapshot route takes
+/// package names instead (the engine resolves them through `AppUidResolver`,
+/// which the tunnel service registers), so no UID lookup is needed here.
+Map<String, Object?> _encodeAppRules(Map<String, Set<String>> appAllowlist) {
+  final result = <String, Object?>{};
+  appAllowlist.forEach((packageName, domains) {
+    if (packageName.trim().isEmpty || domains.isEmpty) return;
+    result[packageName] = {
+      'allow': [
+        for (final domain in domains)
+          if (domain.trim().isNotEmpty) domain.trim(),
+      ],
+      'block': <String>[],
+      'important': <String>[],
+    };
+  });
+  return result;
+}
+
+String encodeRuleSnapshot(
+  Map<RuleKind, List<MockRule>> rules, {
+  Map<String, Set<String>> appAllowlist = const {},
+}) => jsonEncode(
+  buildRuleSnapshot(rules, appAllowlist: appAllowlist),
+);
 
 /// `Engine.setRewriteRules` takes a flat domain -> target map. CNAME targets
 /// and IP literals share the same shape, so no type detection is needed.

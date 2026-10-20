@@ -11,7 +11,7 @@ class _AppRow extends StatelessWidget {
     required this.onToggle,
   });
 
-  final MockInstalledApp app;
+  final InstalledApp app;
   final bool selected;
   final VoidCallback onToggle;
 
@@ -24,7 +24,7 @@ class _AppRow extends StatelessWidget {
         size: 20,
         color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
       ),
-      title: Text(app.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: Text(app.label, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         app.packageName,
         maxLines: 1,
@@ -33,10 +33,12 @@ class _AppRow extends StatelessWidget {
             .of(context)
             .copyWith(fontFamily: 'JetBrainsMono'),
       ),
-      trailing: CommonCheckBox(
-        value: selected,
-        isCircle: true,
-        onChanged: (_) => onToggle(),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (app.isSystem) const MetaChip(label: '系统'),
+          CommonCheckBox(value: selected, isCircle: true, onChanged: (_) => onToggle()),
+        ],
       ),
       onTap: onToggle,
     );
@@ -45,20 +47,28 @@ class _AppRow extends StatelessWidget {
 
 /// 已选应用摘要：横向 chip 行 + 一键清除。
 ///
-/// 为什么不只在统计带里显示数字：用户需要确认「我到底选了哪几个」，尤其在做
-/// 反向操作（先全选再取消几个）时，数字无法承担这个核对。
+/// 为什么不只在统计带里显示数字：用户需要确认「我到底排除了哪几个」，尤其在
+/// 做反向操作（先全选再取消几个）时，数字无法承担这个核对。
+///
+/// 名字从已安装列表里查；已卸载但仍留在 prefs 里的包名原样显示包名本身——它们
+/// 是真实数据，不能因为查不到标签就悄悄藏起来。
 class _SelectedSummary extends StatelessWidget {
-  const _SelectedSummary({required this.selected, required this.onClear});
+  const _SelectedSummary({
+    required this.selected,
+    required this.labels,
+    required this.onClear,
+  });
 
   final Set<String> selected;
+  final Map<String, String> labels;
   final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final names = [
-      for (final app in mockInstalledApps)
-        if (selected.contains(app.packageName)) app.name,
+      for (final packageName in selected.toList()..sort())
+        labels[packageName] ?? packageName,
     ];
     return CommonCard(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -69,10 +79,7 @@ class _SelectedSummary extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  '已选 ${selected.length} 个应用',
-                  style: context.listTitleStyle,
-                ),
+                child: Text('已排除 ${selected.length} 个应用', style: context.listTitleStyle),
               ),
               TextButton(
                 onPressed: onClear,

@@ -1,127 +1,184 @@
 // ignore_for_file: sort_child_properties_last
-import 'package:diting/data/mock_system.dart';
+import 'dart:async';
+
+import 'package:diting/data/native/apps_bridge.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/pages/hub/app_rules_store.dart';
+import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
-import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 应用独立规则（上游 `AppRuleManagementScreen` + `SingleAppRulePanel`）。
 ///
-/// 列表页：总开关、搜索、已配置应用；点进某个应用后在同一路由内切换到
-/// 详情面板（上游也是 `BackHandler` 返回列表，而不是新路由）。
-class AppRulesPage extends StatefulWidget {
+/// 列表页：总开关、搜索、已配置应用；点进某个应用后在同一路由内切换到详情面板
+/// （上游也是 `BackHandler` 返回列表，而不是新路由）。
+///
+/// 数据源与持久化见 `app_rules_store.dart` 的文件头：网络层放行域名已接
+/// `app_allowlist_rules_json`；DNS 专属黑白名单与「默认拦截全部外联」仍在 Room 的
+/// `appScope` 列上，`RuleRepository` 尚无按应用读写的接口，因此面板里如实说明
+/// 「未接库」，而不是留一个点了没反应的开关。
+class AppRulesPage extends ConsumerStatefulWidget {
   const AppRulesPage({super.key});
 
   @override
-  State<AppRulesPage> createState() => _AppRulesPageState();
+  ConsumerState<AppRulesPage> createState() => _AppRulesPageState();
 }
 
-class _AppRuleEntry {
-  _AppRuleEntry({this.enabled = true, this.important = false});
+class _AppRulesPageState extends ConsumerState<AppRulesPage> {
+  static const _searchDebounce = Duration(milliseconds: 250);
 
-  bool enabled;
-  bool important;
-}
-
-class _AppRulesPageState extends State<AppRulesPage> {
   final _search = TextEditingController();
-  bool _master = true;
-  String? _selected;
+  Timer? _debounce;
+
+  /// 防抖后的关键词；输入框不受防抖影响，否则打字会掉字。
   String _query = '';
-  final Map<String, Set<String>> _allowDomains = {
-    'com.example.browser': {'api.example.com', 'static.example.com'},
-  };
-  final Map<String, bool> _fullBlock = {'com.example.video': true};
-  final Map<String, Map<String, _AppRuleEntry>> _blockRules = {
-    'com.example.browser': {
-      '||ads.example.com^': _AppRuleEntry(),
-      '||tracker.example.net^': _AppRuleEntry(enabled: false),
-    },
-    'com.example.video': {'||ad.video.example^': _AppRuleEntry()},
-  };
-  final Map<String, Map<String, _AppRuleEntry>> _allowRules = {
-    'com.example.browser': {'||cdn.example.com^': _AppRuleEntry()},
-  };
 
-  MockPackage? _packageOf(String packageName) =>
-      mockPackages.where((item) => item.packageName == packageName).firstOrNull;
+  String? _selected;
 
-  int _ruleCount(String packageName) =>
-      (_blockRules[packageName]?.length ?? 0) +
-      (_allowRules[packageName]?.length ?? 0);
+  /// 跨 prefs 版本的草稿：只在首次 build 时按落盘值构建，之后由本页维护。
+  AppRulesDraft? _draft;
 
-  int _domainCount(String packageName) =>
-      _allowDomains[packageName]?.length ?? 0;
-
-  List<MockPackage> get _visible {
-    final query = _query.trim().toLowerCase();
-    final items = [
-      for (final app in mockPackages)
-        if (query.isEmpty ||
-            app.name.toLowerCase().contains(query) ||
-            app.packageName.toLowerCase().contains(query))
-          app,
-    ];
-    items.sort((a, b) {
-      final aConfigured = _ruleCount(a.packageName) > 0 ||
-          _domainCount(a.packageName) > 0;
-      final bConfigured = _ruleCount(b.packageName) > 0 ||
-          _domainCount(b.packageName) > 0;
-      if (aConfigured != bConfigured) {
-        return aConfigured ? -1 : 1;
-      }
-      return a.name.compareTo(b.name);
-    });
-    return items;
-  }
+  /// 上次见到的落盘值指纹；用来识别「别人写了同一份键」。
+  String? _lastKey;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final selectedPackage = _selected == null ? null : _packageOf(_selected!);
-    return PopScope(
-      canPop: selectedPackage == null,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && selectedPackage != null) {
-          setState(() => _selected = null);
-        }
-      },
-      child: selectedPackage == null
-          ? _buildList(context)
-          : _buildDetail(context, selectedPackage),
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(_searchDebounce, () {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _query = value.trim().toLowerCase());
+    });
+  }
+
+  /// 取草稿；prefs 被别处改过时以落盘值为准重建。
+  ///
+  /// `/apps`（排除应用）在勾选「排除」时会把这台应用从 `app_allowlist_rules_json`
+  /// 里删掉。本页若继续用旧草稿，用户会看到一条已经不存在的放行规则，点保存还会
+  /// 把它写回去——正是 1.4.3 里互斥清洗要防的那种「自我复活」。
+  AppRulesDraft _draftOf(LegacySettings settings) {
+    final key = appRulesKey(settings.appAllowlistEnabled, settings.appAllowlistRules);
+    if (_draft == null || (key != _lastKey && key != _draft!.baselineKey)) {
+      _draft = AppRulesDraft.load(settings);
+      _lastKey = key;
+    }
+    return _draft!;
+  }
+
+  void _save() {
+    final draft = _draft;
+    if (draft == null) {
+      return;
+    }
+    saveAppRules(ref, draft);
+    setState(() {
+      draft.commit();
+      _lastKey = draft.baselineKey;
+    });
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text('已保存，启动 DNS VPN 后生效'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
-  Widget _buildList(BuildContext context) {
-    final configured = mockPackages
-        .where(
-          (app) => _ruleCount(app.packageName) > 0 || _domainCount(app.packageName) > 0,
-        )
-        .length;
-    final totalRules = _blockRules.values.fold<int>(
-      0,
-      (sum, map) => sum + map.length,
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(legacySettingsProvider);
+    final draft = _draftOf(settings);
+    final snapshot = ref.watch(installedAppsProvider);
+    final apps = snapshot.value?.apps ?? const <InstalledApp>[];
+    // 选中的应用在列表刷新后消失（被卸载）时退回列表，避免卡在空面板。这里
+    // 只改本地字段而不 `setState`：`build` 里禁止再排一帧，而下一帧读到的
+    // 列表就是这一份。
+    final app = _selected == null
+        ? null
+        : apps.where((item) => item.packageName == _selected).firstOrNull;
+    final showing = app != null ? _selected : null;
+    return PopScope(
+      canPop: showing == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && showing != null) {
+          setState(() => _selected = null);
+        }
+      },
+      child: app == null
+          ? _buildList(context, draft, snapshot, settings)
+          : _buildDetail(context, draft, app),
     );
-    final totalDomains = _allowDomains.values.fold<int>(
-      0,
-      (sum, set) => sum + set.length,
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    AppRulesDraft draft,
+    AsyncValue<InstalledAppsSnapshot> snapshot,
+    LegacySettings settings,
+  ) {
+    final apps = snapshot.value?.apps ?? const <InstalledApp>[];
+    final filter = AppListFilter.fromStorageValue(settings.appAllowlistFilterRaw);
+    final sort = AppListSort.fromStorageValue(settings.appAllowlistSortRaw);
+    final visible = appRulesVisibleApps(
+      apps: apps,
+      query: _query,
+      filter: filter,
+      sort: sort,
+      draft: draft,
     );
-    final visible = _visible;
-    final hasAllowlist =
-        _allowDomains.values.any((domains) => domains.isNotEmpty) ||
-        _allowRules.values.any((rules) => rules.isNotEmpty);
+    final hasAllowlist = draft.configuredApps > 0;
     return CommonScaffold(
       title: '应用独立规则',
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.broom,
           tooltip: '清空全部放行规则',
-          onPressed: hasAllowlist ? _clearAllAllowlist : null,
+          onPressed: hasAllowlist ? () => _clearAll(draft) : null,
+        ),
+      ],
+      menuItems: [
+        CommonPopupMenuItem(
+          label: '过滤',
+          glyph: AppGlyphs.filter,
+          subItems: [
+            for (final option in AppListFilter.values)
+              CommonPopupMenuItem(
+                label: option.label,
+                checked: option == filter,
+                onPressed: () {
+                  settings.setAppAllowlistFilterRaw(option.storageValue);
+                  ref.read(legacySettingsRevisionProvider.notifier).bump();
+                },
+              ),
+          ],
+        ),
+        CommonPopupMenuItem(
+          label: '排序',
+          glyph: AppGlyphs.sort,
+          subItems: [
+            for (final option in AppListSort.values)
+              CommonPopupMenuItem(
+                label: option.label,
+                checked: option == sort,
+                onPressed: () {
+                  settings.setAppAllowlistSortRaw(option.storageValue);
+                  ref.read(legacySettingsRevisionProvider.notifier).bump();
+                },
+              ),
+          ],
+        ),
+        CommonPopupMenuItem(
+          label: '保存',
+          glyph: AppGlyphs.checkCircle,
+          onPressed: draft.dirty ? _save : null,
         ),
       ],
       body: PageBody(
@@ -133,69 +190,91 @@ class _AppRulesPageState extends State<AppRulesPage> {
                 leading: const GlyphIcon(AppGlyphs.verified),
                 title: const Text('启用单应用域名放行'),
                 subtitle: Text(
-                  configured == 0
+                  draft.configuredApps == 0
                       ? '暂未配置任何应用独立规则'
-                      : '已配置 $configured 个应用 · 放行 $totalDomains 个域名 · DNS 规则 $totalRules 条',
+                      : '已配置 ${draft.configuredApps} 个应用 · '
+                            '放行 ${draft.totalDomains} 个域名',
                 ),
-                value: _master,
-                onChanged: (value) => setState(() => _master = value),
+                value: draft.master,
+                onChanged: (value) => setState(() => draft.master = value),
               ),
             ],
-            footer: '为指定应用深度定制网络与解析控制。支持网络层白名单隔离、'
-                'DNS 专属黑白名单及「默认拦截全部外联」向导模式。',
+            footer: '为指定应用深度定制网络与解析控制。以下是软件网络层的白名单隔离'
+                '（只放行列出的域名）；DNS 专属黑白名单与「默认拦截全部外联」'
+                '需要按应用读写规则库，本轮尚未接通，配置入口暂为只读说明。',
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: SearchField(
               controller: _search,
-              onChanged: (value) => setState(() => _query = value),
+              onChanged: _onSearchChanged,
             ),
           ),
-          generateSection(
-            title: '应用（${visible.length}）',
-            items: [
-              for (final app in visible)
-                ListItem(
-                  leading: GlyphIcon(
-                    glyphByName(app.glyphName),
-                    size: 20,
-                    color: _ruleCount(app.packageName) > 0 ||
-                            _domainCount(app.packageName) > 0
-                        ? context.colorScheme.primary
-                        : null,
-                  ),
-                  title: Text(app.name),
-                  subtitle: Text(
-                    '${app.packageName} · '
-                    '${_ruleCount(app.packageName)} 条规则 · '
-                    '${_domainCount(app.packageName)} 个放行域名',
-                  ),
-                  trailing: _fullBlock[app.packageName] == true
-                      ? const MetaChip(label: '全阻断')
-                      : null,
-                  onTap: () => setState(() => _selected = app.packageName),
+          if (snapshot.isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CommonCircleLoading()),
+            )
+          else if (snapshot.value?.error != null)
+            SizedBox(
+              height: 280,
+              child: NullStatus(
+                label: '读不到应用列表',
+                description: snapshot.value!.error,
+                illustration: NullStatusIllustration.apps,
+                action: TextButton(
+                  onPressed: () =>
+                      ref.read(installedAppsRevisionProvider.notifier).bump(),
+                  child: const Text('重试'),
                 ),
-            ],
-            footer: visible.isEmpty ? '未找到匹配应用' : null,
+              ),
+            )
+          else
+            generateSection(
+              title: '应用（${visible.length}）',
+              items: [
+                for (final item in visible)
+                  AppRuleAppRow(
+                    app: item,
+                    domainCount: draft.domainsOf(item.packageName).length,
+                    onTap: () => setState(() => _selected = item.packageName),
+                  ),
+              ],
+              footer: visible.isEmpty
+                  ? (apps.isEmpty ? '设备上没有可配置的应用' : '未找到匹配应用')
+                  : null,
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: TonalButton(
+              label: '保存',
+              onPressed: draft.dirty ? _save : null,
+            ),
           ),
-          const SizedBox(height: 24),
+          ListFooter(
+            text: apps.isEmpty
+                ? '未读取到任何已安装应用，无法配置应用独立规则。'
+                : '保存后写入 app_allowlist_enabled 与 app_allowlist_rules_json，'
+                      '启动 DNS VPN 时下发给引擎。',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDetail(BuildContext context, MockPackage app) {
-    final domains = _allowDomains[app.packageName] ?? <String>{};
-    final blockRules = _blockRules[app.packageName] ?? <String, _AppRuleEntry>{};
-    final allowRules = _allowRules[app.packageName] ?? <String, _AppRuleEntry>{};
-    final fullBlock = _fullBlock[app.packageName] ?? false;
+  Widget _buildDetail(
+    BuildContext context,
+    AppRulesDraft draft,
+    InstalledApp app,
+  ) {
+    final domains = draft.domainsOf(app.packageName);
     return CommonScaffold(
-      title: app.name,
+      title: app.label,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加规则',
-          onPressed: () => _addRule(app.packageName),
+          tooltip: '添加放行域名',
+          onPressed: () => _addDomain(draft, app.packageName),
         ),
       ],
       body: PageBody(
@@ -212,109 +291,57 @@ class _AppRulesPageState extends State<AppRulesPage> {
             ],
           ),
           generateSection(
-            title: '外联与隔离模式',
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.wifiOff),
-                title: const Text('默认拦截全部外联'),
-                subtitle: const Text('开启后阻断该应用的所有网络连接，仅放行白名单'),
-                value: fullBlock,
-                onChanged: (value) async {
-                  if (value) {
-                    final confirmed = await showFloatingDialog<bool>(
-                      context: context,
-                      child: CommonDialog(
-                        title: '开启全阻断模式？',
-                        destructive: true,
-                        child: const Text(
-                          '开启后该应用的所有外联都会被阻断，仅放行下方白名单域名。'
-                          '请确保已添加必要的放行域名，否则应用可能无法联网。',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(false),
-                            child: const Text('取消'),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('仍然开启'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed != true || !mounted) {
-                      return;
-                    }
-                  }
-                  setState(() => _fullBlock[app.packageName] = value);
-                },
-              ),
-            ],
-          ),
-          generateSection(
             title: '专属放行域名（网络层） (${domains.length})',
             actions: [
               IconButtonData(
                 glyph: AppGlyphs.add,
                 tooltip: '添加放行域名',
-                onPressed: () => _addDomain(app.packageName),
+                onPressed: () => _addDomain(draft, app.packageName),
               ),
             ],
             items: [
               if (domains.isEmpty)
                 const ListItem(
                   title: Text('未配置网络放行域名'),
-                  subtitle: Text('全阻断模式下建议至少添加一个必要域名'),
+                  subtitle: Text('网络层白名单为空时，该应用不受额外限制'),
                   leading: GlyphIcon(AppGlyphs.info),
                 ),
               for (final domain in domains.toList()..sort())
-                ListItem(
-                  leading: const GlyphIcon(AppGlyphs.verified, size: 20),
-                  title: Text(domain),
-                  subtitle: const Text('包含子域名'),
-                  trailing: IconButton(
-                    tooltip: '删除',
-                    onPressed: () => setState(
-                      () => _allowDomains[app.packageName]?.remove(domain),
-                    ),
-                    icon: const GlyphIcon(AppGlyphs.delete, size: 20),
+                AppAllowDomainRow(
+                  domain: domain,
+                  onDelete: () => setState(
+                    () => draft.removeDomain(app.packageName, domain),
                   ),
                 ),
+            ],
+            footer: domains.isEmpty ? null : '这些域名会写入 app_allowlist_rules_json，'
+                '由引擎在下一次启动隧道时下发给 setAppAllowlist。',
+          ),
+          generateSection(
+            title: 'DNS 专属黑/白名单',
+            items: const [
+              ListItem(
+                title: Text('尚未接通'),
+                subtitle: Text(
+                  '1.4.3 把它存在规则库的 appScope 列，当前规则仓储没有按应用读写的接口，'
+                  '本轮不改数据层，因此这里只作说明。',
+                ),
+                leading: GlyphIcon(AppGlyphs.info),
+              ),
             ],
           ),
           generateSection(
-            title: 'DNS 专属黑名单 (${blockRules.length})',
-            items: [
-              for (final entry in blockRules.entries)
-                _RuleRow(
-                  pattern: entry.key,
-                  entry: entry.value,
-                  onToggle: () => setState(
-                    () => entry.value.enabled = !entry.value.enabled,
-                  ),
-                  onDelete: () => setState(
-                    () => _blockRules[app.packageName]?.remove(entry.key),
-                  ),
+            title: '外联与隔离模式',
+            items: const [
+              ListItem(
+                title: Text('默认拦截全部外联'),
+                subtitle: Text(
+                  '1.4.3 通过注入 *\$app=<包名> 的拦截规则实现，同样依赖 appScope，'
+                  '尚未接通。',
                 ),
+                leading: GlyphIcon(AppGlyphs.wifiOff),
+              ),
             ],
-            footer: blockRules.isEmpty ? '暂无专属黑名单规则' : null,
-          ),
-          generateSection(
-            title: 'DNS 专属白名单 (${allowRules.length})',
-            items: [
-              for (final entry in allowRules.entries)
-                _RuleRow(
-                  pattern: entry.key,
-                  entry: entry.value,
-                  onToggle: () => setState(
-                    () => entry.value.enabled = !entry.value.enabled,
-                  ),
-                  onDelete: () => setState(
-                    () => _allowRules[app.packageName]?.remove(entry.key),
-                  ),
-                ),
-            ],
-            footer: allowRules.isEmpty ? '暂无专属白名单规则' : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -322,15 +349,13 @@ class _AppRulesPageState extends State<AppRulesPage> {
     );
   }
 
-  Future<void> _clearAllAllowlist() async {
+  Future<void> _clearAll(AppRulesDraft draft) async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
         title: '清空全部放行规则？',
         destructive: true,
-        child: const Text(
-          '将删除所有应用的专属放行域名与 DNS 白名单规则，黑名单与全阻断设置不受影响。',
-        ),
+        child: const Text('将删除所有应用的专属放行域名。保存后生效，黑名单与全阻断设置不受影响。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -346,157 +371,14 @@ class _AppRulesPageState extends State<AppRulesPage> {
     if (confirmed != true || !mounted) {
       return;
     }
-    setState(() {
-      _allowDomains.clear();
-      _allowRules.clear();
-    });
+    setState(draft.clearAll);
   }
 
-  Future<void> _addDomain(String packageName) async {
-    final controller = TextEditingController();
-    final domain = await showFloatingDialog<String>(
-      context: context,
-      child: CommonDialog(
-        title: '添加放行域名',
-        hasFields: true,
-        child: TextField(
-          controller: controller,
-          autocorrect: false,
-          decoration: const InputDecoration(
-            labelText: '域名',
-            hintText: 'api.example.com',
-            helperText: '包含子域名；不需要写通配符',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isEmpty) {
-                return;
-              }
-              Navigator.of(context).pop(value);
-            },
-            child: const Text('添加'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
+  Future<void> _addDomain(AppRulesDraft draft, String packageName) async {
+    final domain = await showAppAllowDomainDialog(context);
     if (domain == null || !mounted) {
       return;
     }
-    setState(() {
-      _allowDomains.putIfAbsent(packageName, () => {}).add(domain);
-    });
-  }
-
-  Future<void> _addRule(String packageName) async {
-    final controller = TextEditingController();
-    var allow = false;
-    var important = false;
-    final result = await showFloatingDialog<({String pattern, bool allow})>(
-      context: context,
-      child: StatefulBuilder(
-        builder: (context, setDialogState) => CommonDialog(
-          title: '添加 DNS 规则',
-          hasFields: true,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 10,
-            children: [
-              SegmentedControl<bool>(
-                segments: const [(false, '黑名单'), (true, '白名单')],
-                value: allow,
-                onChanged: (value) => setDialogState(() => allow = value),
-              ),
-              TextField(
-                controller: controller,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: '规则内容',
-                  hintText: '||ads.example.com^',
-                ),
-              ),
-              ListItem.toggle(
-                title: const Text('标记为重要规则'),
-                value: important,
-                padding: EdgeInsets.zero,
-                onChanged: (value) => setDialogState(() => important = value),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () {
-                final value = controller.text.trim();
-                if (value.isEmpty) {
-                  return;
-                }
-                Navigator.of(context).pop((pattern: value, allow: allow));
-              },
-              child: const Text('保存'),
-            ),
-          ],
-        ),
-      ),
-    );
-    controller.dispose();
-    if (result == null || !mounted) {
-      return;
-    }
-    setState(() {
-      final map = result.allow
-          ? _allowRules.putIfAbsent(packageName, () => {})
-          : _blockRules.putIfAbsent(packageName, () => {});
-      map[result.pattern] = _AppRuleEntry(important: important);
-    });
-  }
-}
-
-class _RuleRow extends StatelessWidget {
-  const _RuleRow({
-    required this.pattern,
-    required this.entry,
-    required this.onToggle,
-    required this.onDelete,
-  });
-
-  final String pattern;
-  final _AppRuleEntry entry;
-  final VoidCallback onToggle;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem(
-      leading: GlyphIcon(
-        entry.enabled ? AppGlyphs.checkCircle : AppGlyphs.removeCircle,
-        size: 20,
-      ),
-      title: Text(pattern),
-      subtitle: Text(entry.important ? '重要规则 · 优先匹配' : '普通规则'),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CommonCheckBox(value: entry.enabled, onChanged: (_) => onToggle()),
-          IconButton(
-            tooltip: '删除',
-            onPressed: onDelete,
-            icon: const GlyphIcon(AppGlyphs.delete, size: 20),
-          ),
-        ],
-      ),
-      onTap: onToggle,
-    );
+    setState(() => draft.addDomain(packageName, domain));
   }
 }

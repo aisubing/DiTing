@@ -10,6 +10,7 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/outbound_proxy_providers.dart';
 import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -243,18 +244,43 @@ class PowerNotifier extends Notifier<PowerState> {
     final rules = await _rulesFor(express);
     if (_disposed) return;
 
+    // Per-app allowlists are a normal-mode feature (the express route has no
+    // firewall stage). Read before the await below so a settings edit during
+    // startup cannot produce a snapshot that disagrees with the mode.
+    final appAllowlist = express
+        ? const <String, Set<String>>{}
+        : baseSettings.appAllowlistRules;
+
     final config = buildDnsConfig(settings);
     final controller = express
         ? ref.read(expressVpnControllerProvider)
         : ref.read(vpnControllerProvider);
+    final proxy = await ref.read(outboundProxyStoreProvider).read();
+    if (_disposed) return;
     final result = await controller.start(
       VpnStartRequest(
         dnsConfig: config.encode(settings),
-        ruleSnapshot: encodeRuleSnapshot(rules),
+        ruleSnapshot: encodeRuleSnapshot(rules, appAllowlist: appAllowlist),
         rewriteRules: encodeRewriteRules(rules),
+        // Off unless the user enabled it AND every field validates: the Go
+        // side parses this JSON before the tunnel starts, and a half-filled
+        // config would fail the whole start rather than fall back to direct.
+        outboundProxy: proxy.enabled && proxy.validationError() == null
+            ? proxy.toEngineJson()
+            : '',
         bypassLan: express ? false : settings.bypassLanEnabled,
         ipv6Mode: settings.ipv6ModeRaw,
         excludedPackages: settings.excludedPackages.toList(),
+        // Express mode is a narrow DNS-only route: it has no firewall or MITM
+        // stage, so app-level inputs would be accepted and silently ignored.
+        blockedPackages: express ? const [] : settings.blockedAppPackages.toList(),
+        inspectionPackages: express
+            ? const []
+            : settings.httpInspectionPackages.toList(),
+        // 1.4.3 requires the CA to be installed before MITM may start; the
+        // transport re-checks this, but failing early keeps the UI honest.
+        inspectionEnabled:
+            !express && settings.httpsInspectionOperational,
       ),
     );
     if (_disposed) return;

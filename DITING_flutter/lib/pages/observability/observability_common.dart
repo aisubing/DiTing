@@ -258,3 +258,47 @@ NullStatus obsEmpty({
   illustration: illustration,
   action: action,
 );
+
+/// 读取失败态：说明 + 重试。
+///
+/// 旧库只读且可能被原服务占用（WAL 未合并），失败是**可恢复**的，所以给重试
+/// 按钮而不是把整页变成错误页——列表页的「一片红」比一条说明加一个按钮更让
+/// 人以为数据丢了。
+class ObsFailure extends StatelessWidget {
+  const ObsFailure({
+    super.key,
+    required this.label,
+    required this.description,
+    required this.onRetry,
+  });
+
+  final String label;
+  final String description;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 10,
+          children: [
+            GlyphIcon(AppGlyphs.error, size: 30, color: colorScheme.error),
+            Text(label, style: context.listTitleStyle),
+            Text(
+              description,
+              textAlign: TextAlign.center,
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant),
+            ),
+            FilledButton(onPressed: onRetry, child: const Text('重试')),
+          ],
+        ),
+      ),
+    );
+  }
+}
