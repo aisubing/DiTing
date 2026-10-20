@@ -1,4 +1,3 @@
-import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';

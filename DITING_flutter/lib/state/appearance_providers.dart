@@ -7,7 +7,6 @@ library;
 
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
-import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/ui/icons/icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

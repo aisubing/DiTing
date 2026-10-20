@@ -10,6 +10,8 @@ import 'dart:convert';
 
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 
+part 'legacy_settings_dns.dart';
+
 class LegacySettings {
   LegacySettings(this._store, {String? dnsContainer})
     : dnsContainer = dnsContainer ?? uiContainer;
@@ -196,87 +198,17 @@ class LegacySettings {
 
   // ------------------------------------------------------------- dns upstream
 
-  bool get vpnRunning => _bool(uiContainer, 'vpn_running', false);
-
-  void setVpnRunning(bool value) =>
-      _store.putBool(uiContainer, 'vpn_running', value);
-
-  bool get expressVpnRunning =>
-      _bool(expressRunningContainer, 'express_vpn_running', false);
-
-  void setExpressVpnRunning(bool value) =>
-      _store.putBool(expressRunningContainer, 'express_vpn_running', value);
-
-  String get selectedProviderId =>
-      _string(dnsContainer, 'selected_provider_id') ?? 'preset_alidns_dns';
-
-  String? get userProvidersJson =>
-      _string(dnsContainer, 'user_providers_json');
-
-  List<String> get smartPredictionProviderIds =>
-      _idList('smart_prediction_provider_ids');
-
-  List<String> get parallelRaceProviderIds =>
-      _idList('parallel_race_provider_ids');
-
-  List<String> get primaryBackupProviderIds =>
-      _idList('primary_backup_provider_ids');
-
-  String get blockResponseModeRaw =>
-      _string(dnsContainer, 'block_response_mode') ?? 'nxdomain';
-
-  bool get cacheEnabled =>
-      _bool(dnsContainer, 'dns_cache_enabled_v2', true);
-
-  String get cacheModeRaw =>
-      _string(dnsContainer, 'dns_cache_mode_v2') ?? 'limit_max_ttl';
-
-  int get cacheMaxTtlSeconds =>
-      _int(dnsContainer, 'dns_cache_max_ttl_seconds_v2', 3600);
-
-  int get cacheFixedTtlSeconds =>
-      _int(dnsContainer, 'dns_cache_fixed_ttl_seconds_v2', 3600);
-
-  bool get cacheMinTtlEnabled =>
-      _bool(dnsContainer, 'dns_cache_min_ttl_enabled_v2', false);
-
-  int get cacheMinTtlSeconds =>
-      _int(dnsContainer, 'dns_cache_min_ttl_seconds_v2', 60);
-
-  bool get cacheStaleFallbackEnabled =>
-      _bool(dnsContainer, 'dns_cache_stale_fallback_enabled_v2', false);
-
-  int get cacheStaleFallbackSeconds =>
-      _int(dnsContainer, 'dns_cache_stale_fallback_seconds_v2', 300);
-
-  bool get bootstrapEnabled =>
-      _bool(dnsContainer, 'bootstrap_enabled', true);
-
-  List<String> get bootstrapPresetIds => _idList(
-    'bootstrap_preset_ids',
-    fallback: const ['preset_volcengine', 'preset_dnspod', 'preset_alidns'],
-  );
-
-  String? get bootstrapCustomJson =>
-      _string(dnsContainer, 'bootstrap_custom_json');
-
   /// Raw value for keys that only the Go config builder consumes.
   Object? rawValue(String key) => _store.read(dnsContainer, key);
 
-  /// A view over the express-mode dataset. UI keys stay global; DNS keys move
-  /// to `diting_express_prefs`, exactly like `RuleDataset.EXPRESS`.
-  LegacySettings forExpress() =>
-      LegacySettings(_store, dnsContainer: expressContainer);
-
   // ------------------------------------------------------------ tunnel system
-
   bool get bypassLanEnabled =>
       _bool(uiContainer, 'bypass_lan_enabled', true);
 
   String get ipv6ModeRaw => _string(dnsContainer, 'ipv6_mode') ?? 'auto';
 
   Set<String> get excludedPackages {
-    final value = _store.read(dnsContainer, 'excluded_app_packages');
+    final value = _store.read(uiContainer, 'excluded_app_packages');
     if (value is List) {
       return {
         for (final item in value)
@@ -284,6 +216,55 @@ class LegacySettings {
       };
     }
     return const {};
+  }
+
+  /// Stored as a SharedPreferences string set (`putStringSet`), which the
+  /// bridge serialises as a string array.
+  void setExcludedPackages(Set<String> packages) => _store.putStringSet(
+    uiContainer,
+    'excluded_app_packages',
+    {
+      for (final item in packages)
+        if (item.trim().isNotEmpty) item,
+    },
+  );
+
+  /// `blocked_app_packages` + `blocked_apps_enabled`; the app itself is always
+  /// stripped, exactly like `AppRulesSettingsStore.getBlockedAppPackages`.
+  Set<String> get blockedAppPackages =>
+      _stringSet('blocked_app_packages', container: uiContainer) ?? const {};
+  bool get blockedAppsEnabled =>
+      _bool(uiContainer, 'blocked_apps_enabled', false);
+
+  void setBlockedApps({required Set<String> packages, required bool enabled}) {
+    _store.putStringSet(uiContainer, 'blocked_app_packages', {
+      for (final item in packages)
+        if (item.trim().isNotEmpty) item,
+    });
+    _store.putBool(uiContainer, 'blocked_apps_enabled', enabled);
+  }
+
+  /// `http_inspection_app_packages` + `http_inspection_enabled`.
+  Set<String> get httpInspectionPackages =>
+      _stringSet('http_inspection_app_packages', container: uiContainer) ??
+      const {};
+
+  bool get httpInspectionEnabled =>
+      _bool(uiContainer, 'http_inspection_enabled', false);
+
+  void setHttpInspectionApps({
+    required Set<String> packages,
+    required bool enabled,
+  }) {
+    _store.putStringSet(
+      uiContainer,
+      'http_inspection_app_packages',
+      {
+        for (final item in packages)
+          if (item.trim().isNotEmpty) item,
+      },
+    );
+    _store.putBool(uiContainer, 'http_inspection_enabled', enabled);
   }
 
   // ----------------------------------------------------------- server mode
@@ -403,6 +384,35 @@ class LegacySettings {
     final value = _store.read(container, key);
     return value is num ? value.toDouble() : fallback;
   }
+
+  /// Reads a JSON array string; also accepts the list form the bridge returns
+  /// for `putStringSet` values.
+  Set<String>? _stringSet(String key, {String? container}) {
+    final value = _store.read(container ?? dnsContainer, key);
+    if (value is List) {
+      return {
+        for (final item in value)
+          if (item is String && item.isNotEmpty) item,
+      };
+    }
+    if (value is! String) return null;
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is! List) return null;
+      return {
+        for (final item in decoded)
+          if (item is String && item.isNotEmpty) item,
+      };
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Sorted JSON array, matching `writeStringSet`'s output byte for byte.
+  static String _encodeSet(Set<String> values) =>
+      jsonEncode(values.toList()..sort());
+
+  static int _clampSeconds(int seconds) => seconds.clamp(30, 86400);
 
   static double _clampedOpacity(double value) => value.clamp(0.1, 1.0);
 

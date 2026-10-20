@@ -208,17 +208,17 @@ class _PingPanelState extends State<_PingPanel>
 }
 
 /// DNS 查询面板：服务商 + 记录类型 + 查询结果。
-class _DnsLookupPanel extends StatefulWidget {
+class _DnsLookupPanel extends ConsumerStatefulWidget {
   const _DnsLookupPanel();
 
   @override
-  State<_DnsLookupPanel> createState() => _DnsLookupPanelState();
+  ConsumerState<_DnsLookupPanel> createState() => _DnsLookupPanelState();
 }
 
-class _DnsLookupPanelState extends State<_DnsLookupPanel>
+class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel>
     with _ToolRunState<_DnsLookupPanel> {
   final _domain = TextEditingController(text: 'api.example.com');
-  var _providerId = mockProviders.first.id;
+  String? _providerId;
   var _recordType = 'A';
   var _answer = '';
 
@@ -232,8 +232,13 @@ class _DnsLookupPanelState extends State<_DnsLookupPanel>
 
   @override
   Widget build(BuildContext context) {
-    final provider = mockProviders.firstWhere(
-      (candidate) => candidate.id == _providerId,
+    final providers = ref.watch(dnsProviderCatalogProvider);
+    final providerId =
+        _providerId ??
+        (providers.isEmpty ? '' : providers.first.id);
+    final provider = providers.firstWhere(
+      (candidate) => candidate.id == providerId,
+      orElse: () => providers.first,
     );
     return CommonScaffold(
       title: 'DNS 查询',
@@ -261,7 +266,7 @@ class _DnsLookupPanelState extends State<_DnsLookupPanel>
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: _ProviderChips(
-              value: _providerId,
+              value: providerId,
               onChanged: (id) => setState(() => _providerId = id),
             ),
           ),
@@ -305,8 +310,8 @@ class _DnsLookupPanelState extends State<_DnsLookupPanel>
                       value: provider.name,
                     ),
                     KeyValueRow(
-                      label: '耗时',
-                      value: '${provider.latencyMs} ms',
+                      label: '上次延迟',
+                      value: providerLatencyLabel(provider),
                       monospace: true,
                     ),
                   ],

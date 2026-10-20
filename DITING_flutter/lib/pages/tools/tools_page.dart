@@ -9,8 +9,10 @@
 library;
 
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 part 'tools_panels.dart';
@@ -31,12 +33,13 @@ class _ToolEntry {
 }
 
 /// 网络工具页。
-class ToolsPage extends StatelessWidget {
+class ToolsPage extends ConsumerWidget {
   const ToolsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
+    final providers = ref.watch(dnsProviderCatalogProvider);
     final entries = <_ToolEntry>[
       _ToolEntry(
         title: '网络测速',
@@ -81,7 +84,7 @@ class ToolsPage extends StatelessWidget {
                   ),
                   StatItem(
                     label: '服务商',
-                    value: '${mockProviders.length}',
+                    value: '${providers.length}',
                     unit: '个',
                   ),
                   StatItem(label: '运行时长', value: mockServiceStats.uptimeLabel),
@@ -132,23 +135,24 @@ class ToolsPage extends StatelessWidget {
 ///
 /// 用横向 chip 而不是六行列表：面板是底部弹层，六行列表会把「发起查询」按钮
 /// 挤出首屏，用户得先滚一下才能触发——而换服务商是次要操作。
-class _ProviderChips extends StatelessWidget {
+class _ProviderChips extends ConsumerWidget {
   const _ProviderChips({required this.value, required this.onChanged});
 
   final String value;
   final ValueChanged<String> onChanged;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
+    final providers = ref.watch(dnsProviderCatalogProvider);
     return SizedBox(
       height: 32,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: mockProviders.length,
+        itemCount: providers.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          final provider = mockProviders[index];
+          final provider = providers[index];
           final selected = provider.id == value;
           return TonalChip(
             label: provider.name,

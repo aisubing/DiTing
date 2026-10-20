@@ -1,4 +1,6 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/vpn/block_response_settings.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -19,23 +21,25 @@ class RuleControlPage extends ConsumerStatefulWidget {
 }
 
 class _RuleControlPageState extends ConsumerState<RuleControlPage> {
-  bool _domainRules = true;
   final bool _autoUpdate = true;
   final int _intervalHours = 6;
 
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(legacySettingsProvider);
+    final domainRules = settings.domainRulesEnabled;
+    final blockMode = BlockResponseMode.fromStorage(
+      settings.blockResponseModeRaw,
+    );
     final inspection = ref.watch(httpInspectionProvider);
-    final inspectionApps =
-        ref.watch(hubAppSelectionsProvider)[HubAppPool.httpInspection] ??
-        const <String>{};
+    final inspectionApps = settings.httpInspectionPackages;
     final urlSubtitle = !inspection.caReady
         ? '未就绪 · 需先安装并验证 CA 根证书'
-        : !inspection.enabled
+        : !settings.httpInspectionEnabled
         ? '未就绪 · 需在 HTTPS 流量检查中开启'
         : inspectionApps.isEmpty
         ? '未就绪 · 需在 HTTPS 流量检查中选择目标应用'
-        : !_domainRules
+        : !domainRules
         ? '已暂停 · 未启用解密 URL 过滤与重定向'
         : '运行中 · 解密流量匹配 URL 屏蔽、放行及重定向';
     return CommonScaffold(
@@ -60,19 +64,26 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
                 leading: const GlyphIcon(AppGlyphs.rules),
                 title: const Text('启用域名规则'),
                 subtitle: Text(
-                  _domainRules
+                  domainRules
                       ? '开启 DNS 阶段域名屏蔽、白名单放行及 IPv4/IPv6 覆写'
                       : '已禁用 DNS 域名过滤，查询将直接放行',
                 ),
-                value: _domainRules,
-                onChanged: (value) => setState(() => _domainRules = value),
+                value: domainRules,
+                onChanged: (value) {
+                  settings.setDomainRulesEnabled(value);
+                  ref.read(legacySettingsRevisionProvider.notifier).bump();
+                },
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.target),
                 title: const Text('URL 规则与内容过滤'),
                 subtitle: Text(urlSubtitle),
                 trailing: Text(
-                  inspection.urlRules && inspection.enabled ? '运行中' : '未就绪',
+                  settings.httpInspectionEnabled &&
+                          settings.addressRulesEnabled &&
+                          inspection.caReady
+                      ? '运行中'
+                      : '未就绪',
                   style: AppTextStyle.footnote
                       .of(context)
                       .copyWith(color: context.colorScheme.onSurfaceVariant),
@@ -87,7 +98,11 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.block),
                 title: const Text('拦截响应'),
-                subtitle: const Text('动态策略：先 NODATA，高频请求后 NXDOMAIN'),
+                subtitle: Text(
+                  settings.dynamicBlockEnabled
+                      ? '动态策略：先 NODATA，高频请求后 ${blockMode.label}'
+                      : blockMode.label,
+                ),
                 onTap: () => context.push('/hub/rules/block-response'),
               ),
             ],
@@ -136,36 +151,20 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
   }
 }
 
-/// 拦截响应模式。
-enum BlockResponseMode {
-  nxdomain('返回 NXDOMAIN', '返回域名不存在，并提供 5 分钟负缓存以减少重复查询'),
-  nodata('返回 NODATA', '返回域名存在但没有该记录，并提供 5 分钟负缓存'),
-  refused('返回 REFUSED', '返回服务器拒绝该查询，不提供缓存记录'),
-  zeroAddress('返回 0.0.0.0 / ::', 'A 返回 0.0.0.0，AAAA 返回 ::，其他类型返回空结果');
-
-  const BlockResponseMode(this.label, this.description);
-
-  final String label;
-  final String description;
-}
-
 /// 拦截响应设置（上游 `BlockResponseSettingsScreen`）。
-class BlockResponsePage extends StatefulWidget {
+///
+/// Fixed mode and the dynamic policy are persisted in `dns_vpn_prefs`
+/// (`block_response_mode` + four `dynamic_block_*` keys). `buildDnsConfig`
+/// publishes them on the next tunnel start, so the page must not hold them in
+/// local state; the clamps below are the upstream ones.
+class BlockResponsePage extends ConsumerWidget {
   const BlockResponsePage({super.key});
 
   @override
-  State<BlockResponsePage> createState() => _BlockResponsePageState();
-}
-
-class _BlockResponsePageState extends State<BlockResponsePage> {
-  BlockResponseMode _mode = BlockResponseMode.nxdomain;
-  bool _dynamic = true;
-  int _threshold = 5;
-  int _window = 60;
-  int _duration = 600;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(legacySettingsProvider);
+    final mode = BlockResponseMode.fromStorage(settings.blockResponseModeRaw);
+    final policy = DynamicBlockPolicy.read(settings);
     return CommonScaffold(
       title: '拦截响应',
       body: PageBody(
@@ -173,16 +172,19 @@ class _BlockResponsePageState extends State<BlockResponsePage> {
           generateSection(
             title: '固定响应',
             items: [
-              for (final mode in BlockResponseMode.values)
+              for (final option in BlockResponseMode.values)
                 ListItem(
                   leading: GlyphIcon(
-                    mode == _mode ? AppGlyphs.checkCircle : AppGlyphs.block,
+                    option == mode ? AppGlyphs.checkCircle : AppGlyphs.block,
                     size: 20,
                   ),
-                  title: Text(mode.label),
-                  subtitle: Text(mode.description),
-                  trailing: mode == _mode ? const SelectionCheck() : null,
-                  onTap: () => setState(() => _mode = mode),
+                  title: Text(option.label),
+                  subtitle: Text(option.description),
+                  trailing: option == mode ? const SelectionCheck() : null,
+                  onTap: () {
+                    settings.setBlockResponseModeRaw(option.storageValue);
+                    ref.read(legacySettingsRevisionProvider.notifier).bump();
+                  },
                 ),
             ],
             footer:
@@ -196,14 +198,22 @@ class _BlockResponsePageState extends State<BlockResponsePage> {
                 leading: const GlyphIcon(AppGlyphs.motion),
                 title: const Text('启用动态策略'),
                 subtitle: const Text('同一域名的所有记录类型合并计数'),
-                value: _dynamic,
-                onChanged: (value) => setState(() => _dynamic = value),
+                value: policy.enabled,
+                onChanged: (value) {
+                  policy.copyWith(enabled: value).write(settings);
+                  ref.read(legacySettingsRevisionProvider.notifier).bump();
+                },
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.sliders),
                 title: const Text('动态参数'),
-                subtitle: Text('$_threshold 次 / $_window 秒 / 保持 $_duration 秒'),
-                onTap: _dynamic ? _editParameters : null,
+                subtitle: Text(
+                  '${policy.requestThreshold} 次 / ${policy.windowSeconds} 秒 / '
+                  '保持 ${policy.nxDomainDurationSeconds} 秒',
+                ),
+                onTap: policy.enabled
+                    ? () => _editParameters(context, ref, policy)
+                    : null,
               ),
             ],
             footer:
@@ -216,37 +226,27 @@ class _BlockResponsePageState extends State<BlockResponsePage> {
     );
   }
 
-  Future<void> _editParameters() async {
-    final result =
-        await showFloatingDialog<({int threshold, int window, int duration})>(
-          context: context,
-          child: _DynamicParameterDialog(
-            threshold: _threshold,
-            window: _window,
-            duration: _duration,
-          ),
-        );
-    if (result == null || !mounted) {
+  Future<void> _editParameters(
+    BuildContext context,
+    WidgetRef ref,
+    DynamicBlockPolicy policy,
+  ) async {
+    final result = await showFloatingDialog<DynamicBlockPolicy>(
+      context: context,
+      child: _DynamicParameterDialog(policy: policy),
+    );
+    if (result == null) {
       return;
     }
-    setState(() {
-      _threshold = result.threshold;
-      _window = result.window;
-      _duration = result.duration;
-    });
+    result.write(ref.read(legacySettingsProvider));
+    ref.read(legacySettingsRevisionProvider.notifier).bump();
   }
 }
 
 class _DynamicParameterDialog extends StatefulWidget {
-  const _DynamicParameterDialog({
-    required this.threshold,
-    required this.window,
-    required this.duration,
-  });
+  const _DynamicParameterDialog({required this.policy});
 
-  final int threshold;
-  final int window;
-  final int duration;
+  final DynamicBlockPolicy policy;
 
   @override
   State<_DynamicParameterDialog> createState() =>
@@ -254,9 +254,15 @@ class _DynamicParameterDialog extends StatefulWidget {
 }
 
 class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
-  late final _threshold = TextEditingController(text: '${widget.threshold}');
-  late final _window = TextEditingController(text: '${widget.window}');
-  late final _duration = TextEditingController(text: '${widget.duration}');
+  late final _threshold = TextEditingController(
+    text: '${widget.policy.requestThreshold}',
+  );
+  late final _window = TextEditingController(
+    text: '${widget.policy.windowSeconds}',
+  );
+  late final _duration = TextEditingController(
+    text: '${widget.policy.nxDomainDurationSeconds}',
+  );
   String? _error;
 
   @override
@@ -272,19 +278,26 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
     final window = int.tryParse(_window.text);
     final duration = int.tryParse(_duration.text);
     String? error;
-    if (threshold == null || threshold < 2 || threshold > 50) {
-      error = '请求次数需在 2–50 之间';
-    } else if (window == null || window < 5 || window > 600) {
-      error = '统计窗口需在 5–600 秒之间';
-    } else if (duration == null || duration < 60 || duration > 86400) {
-      error = '保持时长需在 60–86400 秒之间';
+    // Upstream clamps: 2–100 requests, 10–300 s window, 60–3600 s hold.
+    if (threshold == null || threshold < 2 || threshold > 100) {
+      error = '请求次数需在 2–100 之间';
+    } else if (window == null || window < 10 || window > 300) {
+      error = '统计窗口需在 10–300 秒之间';
+    } else if (duration == null || duration < 60 || duration > 3600) {
+      error = '保持时长需在 60–3600 秒之间';
     }
     if (error != null) {
       setState(() => _error = error);
       return;
     }
-    Navigator.of(context)
-        .pop((threshold: threshold!, window: window!, duration: duration!));
+    Navigator.of(context).pop(
+      DynamicBlockPolicy(
+        enabled: true,
+        requestThreshold: threshold!,
+        windowSeconds: window!,
+        nxDomainDurationSeconds: duration!,
+      ),
+    );
   }
 
   @override
@@ -302,7 +315,7 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: '请求次数',
-              helperText: '2–50 次；第 N+1 次开始升级',
+              helperText: '2–100 次；第 N+1 次开始升级',
             ),
           ),
           TextField(
@@ -310,7 +323,7 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: '统计窗口（秒）',
-              helperText: '5–600 秒',
+              helperText: '10–300 秒',
             ),
           ),
           TextField(
@@ -318,7 +331,7 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'NXDOMAIN 保持时长（秒）',
-              helperText: '60–86400 秒；首次升级起固定计时',
+              helperText: '60–3600 秒；首次升级起固定计时',
             ),
           ),
           if (_error != null)

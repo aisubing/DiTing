@@ -3,7 +3,6 @@ import 'package:diting/app/debug_probe.dart';
 import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
-import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';

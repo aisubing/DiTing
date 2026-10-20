@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
-import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';

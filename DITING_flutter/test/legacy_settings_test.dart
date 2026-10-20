@@ -1,6 +1,5 @@
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
-import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/server_status_providers.dart';

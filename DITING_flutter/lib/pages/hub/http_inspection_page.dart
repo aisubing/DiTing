@@ -1,4 +1,5 @@
 import 'package:diting/data/mock_system.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -14,12 +15,14 @@ class HttpInspectionPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(httpInspectionProvider);
-    final apps =
-        ref.watch(hubAppSelectionsProvider)[HubAppPool.httpInspection] ??
-        const <String>{};
-    final notifier = ref.read(httpInspectionProvider.notifier);
+    final settings = ref.watch(legacySettingsProvider);
+    final apps = settings.httpInspectionPackages;
     final canUse = state.caReady;
-    final protocolEnabled = state.caReady && state.enabled;
+    final enabled = canUse && settings.httpInspectionEnabled;
+    final protocolEnabled = enabled;
+    final urlRules = protocolEnabled && settings.addressRulesEnabled;
+    final http3 = protocolEnabled && settings.http3InspectionEnabled;
+    final encryptedDns = protocolEnabled && settings.encryptedDnsBlockingEnabled;
     return CommonScaffold(
       title: 'HTTPS 流量检查',
       body: PageBody(
@@ -37,11 +40,17 @@ class HttpInspectionPage extends ConsumerWidget {
                       ? '未选择目标应用，仅保留 DNS 过滤'
                       : '已选 ${apps.length} 个应用，其余直接转发',
                 ),
-                value: state.enabled && canUse,
+                value: enabled,
                 onChanged: canUse
-                    ? (value) => notifier.update(
-                        (current) => current.copyWith(enabled: value),
-                      )
+                    ? (value) {
+                        settings.setHttpInspectionApps(
+                          packages: apps,
+                          enabled: value,
+                        );
+                        ref
+                            .read(legacySettingsRevisionProvider.notifier)
+                            .bump();
+                      }
                     : null,
               ),
               ListItem(
@@ -75,17 +84,24 @@ class HttpInspectionPage extends ConsumerWidget {
                 subtitle: Text(
                   !state.caReady
                       ? '需先安装并验证 CA 根证书'
-                      : !state.enabled
+                      : !enabled
                       ? '需先启用 HTTPS 检查'
-                      : !state.urlRules
+                      : !urlRules
                       ? '已暂停 · 解密请求直接放行，不应用 URL 规则及 CNAME 重定向'
                       : '开启解密流量下的 URL 屏蔽、放行及 CNAME 重定向',
                 ),
-                value: state.urlRules && protocolEnabled,
+                value: urlRules,
                 onChanged: protocolEnabled
-                    ? (value) => notifier.update(
-                        (current) => current.copyWith(urlRules: value),
-                      )
+                    ? (value) {
+                        settings.setHttpInspectionToggles(
+                          http3: settings.http3InspectionEnabled,
+                          encryptedDns: settings.encryptedDnsBlockingEnabled,
+                          addressRules: value,
+                        );
+                        ref
+                            .read(legacySettingsRevisionProvider.notifier)
+                            .bump();
+                      }
                     : null,
               ),
             ],
@@ -101,11 +117,18 @@ class HttpInspectionPage extends ConsumerWidget {
                       ? '需先启用 HTTPS 检查'
                       : '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭',
                 ),
-                value: state.http3,
+                value: http3,
                 onChanged: protocolEnabled
-                    ? (value) => notifier.update(
-                        (current) => current.copyWith(http3: value),
-                      )
+                    ? (value) {
+                        settings.setHttpInspectionToggles(
+                          http3: value,
+                          encryptedDns: settings.encryptedDnsBlockingEnabled,
+                          addressRules: settings.addressRulesEnabled,
+                        );
+                        ref
+                            .read(legacySettingsRevisionProvider.notifier)
+                            .bump();
+                      }
                     : null,
               ),
               ListItem.toggle(
@@ -114,11 +137,18 @@ class HttpInspectionPage extends ConsumerWidget {
                 subtitle: Text(
                   !protocolEnabled ? '需先启用 HTTPS 检查' : '阻断 TCP 853 端口，防止绕过域名规则',
                 ),
-                value: state.encryptedDns,
+                value: encryptedDns,
                 onChanged: protocolEnabled
-                    ? (value) => notifier.update(
-                        (current) => current.copyWith(encryptedDns: value),
-                      )
+                    ? (value) {
+                        settings.setHttpInspectionToggles(
+                          http3: settings.http3InspectionEnabled,
+                          encryptedDns: value,
+                          addressRules: settings.addressRulesEnabled,
+                        );
+                        ref
+                            .read(legacySettingsRevisionProvider.notifier)
+                            .bump();
+                      }
                     : null,
               ),
               ListItem(
@@ -156,12 +186,28 @@ class _HttpInspectionAppsPageState
     super.dispose();
   }
 
+  /// Every change is persisted immediately: the selection is small, and the
+  /// parent screen reads it back through the same prefs key.
+  void _write(Set<String> packages) {
+    final settings = ref.read(legacySettingsProvider);
+    settings.setHttpInspectionApps(
+      packages: packages,
+      enabled: settings.httpInspectionEnabled || packages.isNotEmpty,
+    );
+    if (packages.isNotEmpty) {
+      // A checked app must not stay excluded/blocked; upstream clears both.
+      settings.setExcludedPackages(settings.excludedPackages.difference(packages));
+      settings.setBlockedApps(
+        packages: settings.blockedAppPackages.difference(packages),
+        enabled: settings.blockedAppsEnabled,
+      );
+    }
+    ref.read(legacySettingsRevisionProvider.notifier).bump();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selected =
-        ref.watch(hubAppSelectionsProvider)[HubAppPool.httpInspection] ??
-        const <String>{};
-    final notifier = ref.read(hubAppSelectionsProvider.notifier);
+    final selected = ref.watch(legacySettingsProvider).httpInspectionPackages;
     final query = _query.trim().toLowerCase();
     final visible = [
       for (final app in mockPackages)
@@ -176,7 +222,7 @@ class _HttpInspectionAppsPageState
         IconButtonData(
           glyph: AppGlyphs.selectAll,
           tooltip: '全选当前结果',
-          onPressed: () => notifier.write(HubAppPool.httpInspection, {
+          onPressed: () => _write({
             ...selected,
             for (final app in visible) app.packageName,
           }),
@@ -184,8 +230,7 @@ class _HttpInspectionAppsPageState
         IconButtonData(
           glyph: AppGlyphs.deselect,
           tooltip: '取消当前结果',
-          onPressed: () => notifier.write(
-            HubAppPool.httpInspection,
+          onPressed: () => _write(
             selected.difference({for (final app in visible) app.packageName}),
           ),
         ),
@@ -229,15 +274,9 @@ class _HttpInspectionAppsPageState
                   trailing: CommonCheckBox(
                     value: selected.contains(app.packageName),
                     isCircle: true,
-                    onChanged: (_) => notifier.toggle(
-                      HubAppPool.httpInspection,
-                      app.packageName,
-                    ),
+                    onChanged: (_) => _toggle(selected, app.packageName),
                   ),
-                  onTap: () => notifier.toggle(
-                    HubAppPool.httpInspection,
-                    app.packageName,
-                  ),
+                  onTap: () => _toggle(selected, app.packageName),
                 ),
             ],
             footer: visible.isEmpty ? '未找到匹配应用' : null,
@@ -246,5 +285,13 @@ class _HttpInspectionAppsPageState
         ],
       ),
     );
+  }
+
+  void _toggle(Set<String> selected, String packageName) {
+    final next = {...selected};
+    if (!next.remove(packageName)) {
+      next.add(packageName);
+    }
+    _write(next);
   }
 }

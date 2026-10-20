@@ -1,48 +1,10 @@
-/// 功能中心内几组需要跨页保留的演示状态。
+/// 功能中心内几组需要跨页保留的状态。
 ///
-/// 这些页面都是「设置页 → 子选择页 → 返回」的结构；如果全部用页面局部状态，
-/// 从目标应用页返回后父页会重置。上游把值存在 SharedPreferences，本阶段按
-/// 项目约定只做内存态，但生命周期提升到 Riverpod，保持同样的返回体验。
+/// 应用集合已落盘到旧版 SharedPreferences（见 `LegacySettings`），这里只保留
+/// 尚无原生实现的演示配置；生命周期提升到 Riverpod，保证页面间返回不重置。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-/// 需要独立选择应用集合的子页。
-enum HubAppPool {
-  httpInspection('选择检查应用'),
-  outboundProxy('选择代理应用');
-
-  const HubAppPool(this.title);
-
-  final String title;
-}
-
-class HubAppSelectionsNotifier extends Notifier<Map<HubAppPool, Set<String>>> {
-  @override
-  Map<HubAppPool, Set<String>> build() => {
-    HubAppPool.httpInspection: {'com.example.browser'},
-    HubAppPool.outboundProxy: {'com.example.video'},
-  };
-
-  Set<String> read(HubAppPool pool) => state[pool] ?? const {};
-
-  void write(HubAppPool pool, Set<String> packages) {
-    state = {...state, pool: {...packages}};
-  }
-
-  void toggle(HubAppPool pool, String packageName) {
-    final next = {...read(pool)};
-    if (!next.remove(packageName)) {
-      next.add(packageName);
-    }
-    write(pool, next);
-  }
-}
-
-final hubAppSelectionsProvider =
-    NotifierProvider<HubAppSelectionsNotifier, Map<HubAppPool, Set<String>>>(
-      HubAppSelectionsNotifier.new,
-    );
 
 /// HTTPS 流量检查的演示配置。
 class HttpInspectionState {

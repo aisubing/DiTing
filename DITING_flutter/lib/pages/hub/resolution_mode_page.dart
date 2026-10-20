@@ -1,5 +1,6 @@
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -34,7 +35,8 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
     final selectedId = ref.watch(selectedProviderProvider);
     final raceIds = ref.watch(raceProvidersProvider);
     final colorScheme = context.colorScheme;
-    final singleProvider = mockProviders
+    final catalog = ref.watch(dnsProviderCatalogProvider);
+    final singleProvider = catalog
         .where((provider) => provider.id == selectedId)
         .firstOrNull;
     return CommonScaffold(
@@ -197,8 +199,9 @@ class _ResolutionModeConfigPageState
   void initState() {
     super.initState();
     final race = ref.read(raceProvidersProvider);
+    final catalog = ref.read(dnsProviderCatalogProvider);
     _order = [
-      for (final provider in mockProviders)
+      for (final provider in catalog)
         if (race.contains(provider.id)) provider.id,
     ];
   }
@@ -241,13 +244,17 @@ class _ResolutionModeConfigPageState
       final item = _order.removeAt(index);
       _order.insert(target, item);
     });
+    // Primary→backup order is persisted (the engine tries providers in list
+    // order), so a drag must write back, not just re-sort the local view.
+    ref.read(raceProvidersProvider.notifier).reorder(_order);
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedId = ref.watch(selectedProviderProvider);
     final raceIds = ref.watch(raceProvidersProvider);
-    final providers = mockProviders
+    final catalog = ref.watch(dnsProviderCatalogProvider);
+    final providers = catalog
         .where((provider) => provider.protocol == _protocol)
         .toList(growable: false);
     final selectedCount = _single ? 1 : raceIds.length;
@@ -256,7 +263,7 @@ class _ResolutionModeConfigPageState
         : selectedCount >= RaceProvidersNotifier.minCount;
     final ordered = [
       for (final id in _order)
-        ...mockProviders.where(
+        ...catalog.where(
           (provider) => provider.id == id && provider.protocol == _protocol,
         ),
     ];

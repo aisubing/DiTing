@@ -1,128 +1,44 @@
 // ignore_for_file: sort_child_properties_last
+import 'dart:convert';
+
+import 'package:diting/data/db/bootstrap_log_repository.dart';
+import 'package:diting/data/db/legacy_database.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/vpn/dns_config_builder.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:sqflite/sqflite.dart';
 
 /// 引导解析设置（上游 `BootstrapSettingsScreen`）。
 ///
-/// 全局开关 + 内置节点 + 自定义节点；节点行显示 IP、权重、样本与健康状态。
-/// 演示数据固定，新增/删除只改当前页面状态。
-class BootstrapSettingsPage extends StatefulWidget {
+/// 开关与节点直接读写 `dns_vpn_prefs` 的 `bootstrap_enabled` /
+/// `bootstrap_preset_ids` / `bootstrap_custom_json`；引擎通过 `buildDnsConfig`
+/// 消费同一组键。节点行的样本与延迟来自旧版 `bootstrap_log` 的 24 小时聚合，
+/// 没有记录时如实显示「暂无样本」，不再伪造数字。
+class BootstrapSettingsPage extends ConsumerWidget {
   const BootstrapSettingsPage({super.key});
 
   @override
-  State<BootstrapSettingsPage> createState() => _BootstrapSettingsPageState();
-}
-
-class _BootstrapEntry {
-  _BootstrapEntry({
-    required this.id,
-    required this.name,
-    required this.ip,
-    required this.preset,
-    this.samples = 0,
-    this.successRate = 0,
-    this.latencyMs,
-    this.consecutiveFailures = 0,
-  });
-
-  final String id;
-  final String name;
-  final String ip;
-  final bool preset;
-  bool enabled = true;
-  int samples;
-  double successRate;
-  int? latencyMs;
-  int consecutiveFailures;
-
-  String get subtitle {
-    final status = switch (consecutiveFailures) {
-      0 when samples == 0 => '暂无样本',
-      0 => '成功 ${(successRate * 100).round()}%',
-      final count => '连续失败 $count',
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(legacySettingsProvider);
+    final enabled = settings.bootstrapEnabled;
+    final selected = settings.bootstrapPresetIds.toSet();
+    final custom = _readCustom(settings.bootstrapCustomJson);
+    final stats = ref.watch(bootstrapStatsProvider);
+    final statById = {
+      for (final row in stats.value ?? const <BootstrapIpStat>[])
+        if (row.id.isNotEmpty) row.id: row,
     };
-    final latency = latencyMs == null ? '' : ' · 延迟 ${latencyMs}ms';
-    return '$ip · 权重 ${preset ? '1.00' : '0.85'}$latency · 样本 $samples · $status';
-  }
-}
-
-class _BootstrapSettingsPageState extends State<BootstrapSettingsPage> {
-  bool _enabled = true;
-  final List<_BootstrapEntry> _entries = [
-    _BootstrapEntry(
-      id: 'ali',
-      name: '阿里公共 DNS',
-      ip: '223.5.5.5',
-      preset: true,
-      samples: 128,
-      successRate: 0.992,
-      latencyMs: 9,
-    ),
-    _BootstrapEntry(
-      id: 'tencent',
-      name: '腾讯 DNSPod',
-      ip: '119.29.29.29',
-      preset: true,
-      samples: 126,
-      successRate: 0.984,
-      latencyMs: 14,
-    ),
-    _BootstrapEntry(
-      id: 'cloudflare',
-      name: 'Cloudflare',
-      ip: '1.1.1.1',
-      preset: true,
-      samples: 92,
-      successRate: 0.913,
-      latencyMs: 68,
-    ),
-    _BootstrapEntry(
-      id: 'local',
-      name: '本地递归',
-      ip: '192.168.1.1',
-      preset: false,
-      samples: 41,
-      successRate: 0.756,
-      latencyMs: 6,
-      consecutiveFailures: 1,
-    ),
-  ];
-
-  List<_BootstrapEntry> get _presets =>
-      _entries.where((entry) => entry.preset).toList();
-  List<_BootstrapEntry> get _customs =>
-      _entries.where((entry) => !entry.preset).toList();
-
-  Future<void> _add() async {
-    final draft = await showFloatingDialog<({String name, String ip})>(
-      context: context,
-      child: const _BootstrapEditor(),
-    );
-    if (draft == null || !mounted) {
-      return;
-    }
-    setState(() {
-      _entries.add(
-        _BootstrapEntry(
-          id: 'custom_${DateTime.now().microsecondsSinceEpoch}',
-          name: draft.name.isEmpty ? draft.ip : draft.name,
-          ip: draft.ip,
-          preset: false,
-        ),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return CommonScaffold(
       title: '引导解析设置',
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
           tooltip: '新增 Bootstrap IP',
-          onPressed: _add,
+          onPressed: () => _add(context, ref, custom),
         ),
       ],
       body: PageBody(
@@ -136,8 +52,11 @@ class _BootstrapSettingsPageState extends State<BootstrapSettingsPage> {
                 subtitle: const Text(
                   '使用独立递归 DNS 解析加密服务商域名，支持智能权重优选与自动回退',
                 ),
-                value: _enabled,
-                onChanged: (value) => setState(() => _enabled = value),
+                value: enabled,
+                onChanged: (value) {
+                  settings.setBootstrapEnabled(value);
+                  ref.read(legacySettingsRevisionProvider.notifier).bump();
+                },
               ),
             ],
             footer: '开启后将通过加权算法动态优选 Bootstrap IP；'
@@ -146,26 +65,48 @@ class _BootstrapSettingsPageState extends State<BootstrapSettingsPage> {
           generateSection(
             title: '内置 Bootstrap IP',
             items: [
-              for (final entry in _presets)
+              for (final entry in defaultBootstrapEntries)
                 _BootstrapRow(
                   entry: entry,
-                  enabled: _enabled,
-                  onChanged: (value) => setState(() => entry.enabled = value),
+                  selected: selected.contains(entry.id),
+                  enabled: enabled,
+                  stat: statById[entry.id],
+                  onChanged: (value) {
+                    final next = {...selected};
+                    value ? next.add(entry.id) : next.remove(entry.id);
+                    settings.setBootstrapPresetIds(next);
+                    ref.read(legacySettingsRevisionProvider.notifier).bump();
+                  },
                 ),
             ],
           ),
           generateSection(
             title: '自定义 Bootstrap IP',
             items: [
-              for (final entry in _customs)
+              for (final entry in custom)
                 _BootstrapRow(
                   entry: entry,
-                  enabled: _enabled,
-                  onChanged: (value) => setState(() => entry.enabled = value),
-                  onDelete: () => setState(() => _entries.remove(entry)),
+                  selected: entry.enabled,
+                  enabled: enabled,
+                  stat: statById[entry.id],
+                  onChanged: (value) => _writeCustom(ref, [
+                    for (final item in custom)
+                      item.id == entry.id
+                          ? BootstrapEntry(
+                              item.id,
+                              item.name,
+                              item.ip,
+                              enabled: value,
+                            )
+                          : item,
+                  ]),
+                  onDelete: () => _writeCustom(ref, [
+                    for (final item in custom)
+                      if (item.id != entry.id) item,
+                  ]),
                 ),
             ],
-            footer: _customs.isEmpty
+            footer: custom.isEmpty
                 ? '暂无自定义 Bootstrap IP。点击右上角「新增」添加。'
                 : null,
           ),
@@ -174,35 +115,143 @@ class _BootstrapSettingsPageState extends State<BootstrapSettingsPage> {
       ),
     );
   }
+
+  Future<void> _add(
+    BuildContext context,
+    WidgetRef ref,
+    List<BootstrapEntry> custom,
+  ) async {
+    final draft = await showFloatingDialog<({String name, String ip})>(
+      context: context,
+      child: const _BootstrapEditor(),
+    );
+    if (draft == null) {
+      return;
+    }
+    _writeCustom(ref, [
+      ...custom,
+      BootstrapEntry(
+        'custom_${DateTime.now().microsecondsSinceEpoch}',
+        draft.name.isEmpty ? draft.ip : draft.name,
+        draft.ip,
+      ),
+    ]);
+  }
+
+  void _writeCustom(WidgetRef ref, List<BootstrapEntry> entries) {
+    ref.read(legacySettingsProvider).setBootstrapCustomJson(
+      jsonEncode([
+        for (final entry in entries)
+          {
+            'id': entry.id,
+            'name': entry.name,
+            'ip': entry.ip,
+            'enabled': entry.enabled,
+          },
+      ]),
+    );
+    ref.read(legacySettingsRevisionProvider.notifier).bump();
+  }
+
+  /// `bootstrap_custom_json` is a JSON array of `{id,name,ip,enabled}`; entries
+  /// without an IP are dropped like `BootstrapDnsSettingsStore` does.
+  static List<BootstrapEntry> _readCustom(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      return const [];
+    }
+    if (decoded is! List) return const [];
+    final result = <BootstrapEntry>[];
+    for (final item in decoded) {
+      if (item is! Map) continue;
+      final ip = (item['ip'] as String?)?.trim() ?? '';
+      if (ip.isEmpty) continue;
+      final id = (item['id'] as String?)?.trim();
+      final name = (item['name'] as String?)?.trim();
+      result.add(
+        BootstrapEntry(
+          id == null || id.isEmpty ? 'custom_$ip' : id,
+          name == null || name.isEmpty ? ip : name,
+          ip,
+          enabled: item['enabled'] != false,
+        ),
+      );
+    }
+    return result;
+  }
+}
+
+/// 24-hour aggregate of the legacy `bootstrap_log`; empty on a fresh install or
+/// when bootstrap probing never ran.
+final bootstrapStatsProvider =
+    FutureProvider<List<BootstrapIpStat>>((ref) async {
+      final mode = ref.watch(workModeProvider);
+      final db = await LegacyDatabase.open(
+        mode == AppWorkMode.express
+            ? LegacyDatabase.expressFile
+            : LegacyDatabase.mainFile,
+      );
+      if (db == null) return const [];
+      return _readStats(db);
+    });
+
+Future<List<BootstrapIpStat>> _readStats(Database db) async {
+  try {
+    return await BootstrapLogRepository(db).recentStats();
+  } on DatabaseException {
+    // Older installs may predate the table; an empty list is the honest answer.
+    return const [];
+  }
 }
 
 class _BootstrapRow extends StatelessWidget {
   const _BootstrapRow({
     required this.entry,
+    required this.selected,
     required this.enabled,
     required this.onChanged,
+    this.stat,
     this.onDelete,
   });
 
-  final _BootstrapEntry entry;
+  final BootstrapEntry entry;
+  final bool selected;
   final bool enabled;
+  final BootstrapIpStat? stat;
   final ValueChanged<bool> onChanged;
   final VoidCallback? onDelete;
 
+  String get _subtitle {
+    final row = stat;
+    if (row == null || row.attempts == 0) {
+      return '${entry.ip} · 暂无样本';
+    }
+    final success = (row.successes * 100 / row.attempts).round();
+    final latency = row.averageElapsedMs == null
+        ? ''
+        : ' · 平均 ${row.averageElapsedMs!.round()}ms';
+    return '${entry.ip}$latency · 样本 ${row.attempts} · 成功 $success%'
+        '${row.failures > 0 ? ' · 失败 ${row.failures}' : ''}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final failing = (stat?.failures ?? 0) > 0;
     return ListItem(
       leading: GlyphIcon(
-        entry.consecutiveFailures > 0 ? AppGlyphs.warning : AppGlyphs.status,
+        failing ? AppGlyphs.warning : AppGlyphs.status,
         size: 20,
       ),
       title: Text(entry.name),
-      subtitle: Text(entry.subtitle),
+      subtitle: Text(_subtitle),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           CommonCheckBox(
-            value: entry.enabled,
+            value: selected,
             onChanged: enabled ? (value) => onChanged(value ?? true) : null,
           ),
           if (onDelete != null)
@@ -213,7 +262,7 @@ class _BootstrapRow extends StatelessWidget {
             ),
         ],
       ),
-      onTap: enabled ? () => onChanged(!entry.enabled) : null,
+      onTap: enabled ? () => onChanged(!selected) : null,
     );
   }
 }

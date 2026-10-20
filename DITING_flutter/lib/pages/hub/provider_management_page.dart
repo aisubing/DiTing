@@ -1,5 +1,6 @@
 // ignore_for_file: sort_child_properties_last
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -20,27 +21,18 @@ class ProviderManagementPage extends ConsumerStatefulWidget {
 
 class _ProviderManagementPageState
     extends ConsumerState<ProviderManagementPage> {
-  late final List<MockProvider> _custom = [
-    for (final provider in mockProviders)
-      if (!provider.isPreset) provider,
-  ];
-  late String _selectedId = ref.read(selectedProviderProvider);
   ProviderProtocol _protocol = ProviderProtocol.doh;
 
-  List<MockProvider> get _all => [
-    for (final provider in mockProviders)
-      if (provider.isPreset) provider,
-    ..._custom,
-  ];
+  List<MockProvider> get _all => ref.watch(dnsProviderCatalogProvider);
 
-  MockProvider? get _selected =>
-      _all.where((provider) => provider.id == _selectedId).firstOrNull;
+  MockProvider? get _selected {
+    final selectedId = ref.watch(selectedProviderProvider);
+    return _all.where((provider) => provider.id == selectedId).firstOrNull;
+  }
 
   void _select(MockProvider provider) {
-    setState(() => _selectedId = provider.id);
-    if (mockProviders.any((item) => item.id == provider.id)) {
-      ref.read(selectedProviderProvider.notifier).select(provider.id);
-    }
+    ref.read(selectedProviderProvider.notifier).select(provider.id);
+    setState(() {});
   }
 
   Future<void> _add() async {
@@ -51,18 +43,15 @@ class _ProviderManagementPageState
     if (draft == null || !mounted) {
       return;
     }
-    final provider = MockProvider(
-      id: 'custom_${DateTime.now().microsecondsSinceEpoch}',
+    final notifier = ref.read(dnsProviderCatalogProvider.notifier);
+    notifier.addCustom(
       name: draft.name,
       protocol: draft.protocol,
       address: draft.address,
-      latencyMs: 0,
     );
-    setState(() {
-      _custom.add(provider);
-      _protocol = provider.protocol;
-      _selectedId = provider.id;
-    });
+    final created = ref.read(dnsProviderCatalogProvider).last;
+    ref.read(selectedProviderProvider.notifier).select(created.id);
+    setState(() => _protocol = draft.protocol);
   }
 
   Future<void> _edit(MockProvider provider) async {
@@ -73,20 +62,15 @@ class _ProviderManagementPageState
     if (draft == null || !mounted) {
       return;
     }
-    final index = _custom.indexWhere((item) => item.id == provider.id);
-    if (index < 0) {
-      return;
-    }
-    setState(() {
-      _custom[index] = MockProvider(
-        id: provider.id,
-        name: draft.name,
-        protocol: draft.protocol,
-        address: draft.address,
-        latencyMs: provider.latencyMs,
-      );
-      _protocol = draft.protocol;
-    });
+    ref
+        .read(dnsProviderCatalogProvider.notifier)
+        .updateCustom(
+          id: provider.id,
+          name: draft.name,
+          protocol: draft.protocol,
+          address: draft.address,
+        );
+    setState(() => _protocol = draft.protocol);
   }
 
   Future<void> _delete(MockProvider provider) async {
@@ -111,12 +95,8 @@ class _ProviderManagementPageState
     if (confirmed != true || !mounted) {
       return;
     }
-    setState(() {
-      _custom.removeWhere((item) => item.id == provider.id);
-      if (_selectedId == provider.id) {
-        _selectedId = mockProviders.first.id;
-      }
-    });
+    ref.read(dnsProviderCatalogProvider.notifier).deleteCustom(provider.id);
+    setState(() {});
   }
 
   @override
@@ -128,6 +108,7 @@ class _ProviderManagementPageState
     final presets = list.where((provider) => provider.isPreset).toList();
     final customs = list.where((provider) => !provider.isPreset).toList();
     final selected = _selected;
+    final selectedId = ref.watch(selectedProviderProvider);
     return CommonScaffold(
       title: '服务商管理',
       iconActions: [
@@ -188,7 +169,7 @@ class _ProviderManagementPageState
                 for (final provider in presets)
                   _ProviderRow(
                     provider: provider,
-                    selected: provider.id == _selectedId,
+                    selected: provider.id == selectedId,
                     onTap: () => _select(provider),
                   ),
               ],
@@ -200,7 +181,7 @@ class _ProviderManagementPageState
                 for (final provider in customs)
                   _ProviderRow(
                     provider: provider,
-                    selected: provider.id == _selectedId,
+                    selected: provider.id == selectedId,
                     onTap: () => _select(provider),
                     onEdit: () => _edit(provider),
                     onDelete: () => _delete(provider),

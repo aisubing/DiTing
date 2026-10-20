@@ -21,9 +21,12 @@ void main() {
     );
   }
 
+  // 1.4.3 的预设服务商以 `preset_*` id 存在，展示层必须走同一份目录。
+  final catalog = defaultProviderCatalog();
+
   group('providerEndpointOf', () {
     test('拼的是协议 label 而不是枚举名', () {
-      for (final provider in mockProviders) {
+      for (final provider in catalog) {
         final text = providerEndpointOf(provider.id);
         expectNoRawEnumLiteral(text, '端点文案(${provider.id})');
         expect(
@@ -36,18 +39,15 @@ void main() {
     });
 
     test('未知 id 回退到第一个服务商而不是抛异常', () {
-      expect(providerEndpointOf('nope'), providerEndpointOf(mockProviders.first.id));
+      expect(providerEndpointOf('nope'), providerEndpointOf(catalog.first.id));
     });
   });
 
   group('raceProviderSummary', () {
     test('单选/多选都只出 label', () {
-      expectNoRawEnumLiteral(raceProviderSummary({mockProviders.first.id}), '竞速单条');
+      expectNoRawEnumLiteral(raceProviderSummary({catalog.first.id}), '竞速单条');
       expectNoRawEnumLiteral(
-        raceProviderSummary({
-          mockProviders.first.id,
-          mockProviders[1].id,
-        }),
+        raceProviderSummary({catalog.first.id, catalog[1].id}),
         '竞速多条',
       );
     });

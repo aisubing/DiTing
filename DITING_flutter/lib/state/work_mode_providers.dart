@@ -10,8 +10,11 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+export 'package:diting/state/provider_catalog_providers.dart';
 
 /// 三种工作模式（上游 `ui/mode/AppWorkMode.kt`）。
 ///
@@ -347,51 +350,6 @@ final powerProvider = NotifierProvider<PowerNotifier, PowerState>(
   PowerNotifier.new,
 );
 
-/// 当前选中的解析服务商。
-class SelectedProviderNotifier extends Notifier<String> {
-  @override
-  String build() => mockProviders.first.id;
-
-  /// 忽略未知 id——服务商列表是编译期常量，UI 不该能把状态写成空悬引用。
-  void select(String id) {
-    if (mockProviders.any((provider) => provider.id == id)) {
-      state = id;
-    }
-  }
-}
-
-final selectedProviderProvider =
-    NotifierProvider<SelectedProviderNotifier, String>(
-      SelectedProviderNotifier.new,
-    );
-
-/// 多路模式下的服务商集合。竞速至少要 2 家，否则「取最先返回」没有意义。
-class RaceProvidersNotifier extends Notifier<Set<String>> {
-  static const minCount = 2;
-
-  @override
-  Set<String> build() => {mockProviders.first.id, mockProviders[1].id};
-
-  /// 返回 false 表示被下限挡住（调用方据此提示用户）。
-  bool toggle(String id) {
-    final next = {...state};
-    if (!next.remove(id)) {
-      next.add(id);
-    } else if (next.length < minCount) {
-      return false;
-    }
-    state = next;
-    return true;
-  }
-
-  void reset() => state = {mockProviders.first.id, mockProviders[1].id};
-}
-
-final raceProvidersProvider =
-    NotifierProvider<RaceProvidersNotifier, Set<String>>(
-      RaceProvidersNotifier.new,
-    );
-
 /// 服务统计（服务器模式 / 日志页共用）。
 class ServiceStatsNotifier extends Notifier<ServiceStats> {
   static const zero = ServiceStats(
@@ -487,32 +445,18 @@ final onboardingProvider = NotifierProvider<OnboardingNotifier, bool>(
 );
 
 /// 首页 `resolutionMode` 对应的服务商摘要文案（上游 `raceProviderSummary`）。
-String raceProviderSummary(Set<String> ids) {
-  final names = [
-    for (final provider in mockProviders)
-      if (ids.contains(provider.id)) provider.name,
-  ];
-  if (names.isEmpty) {
-    return '未选择服务商';
-  }
-  if (names.length == 1) {
-    return names.first;
-  }
-  return '已选 ${names.length} 个：${names.join('、')}';
-}
+///
+/// 只在没有 Riverpod 容器时使用（例如测试里直接调工具函数）；页面必须从
+/// `visibleProvidersProvider` 取目录，否则自定义服务商的名字会缺。
+String raceProviderSummary(Set<String> ids) =>
+    summaryOfProviders(ids, defaultProviderCatalog());
 
 /// 单服务商模式下服务商的端点文案。
 ///
 /// 必须拼 `.label`——枚举的 `toString()` 给的是 `ProviderProtocol.doh`，直接插值
 /// 会把源码标识符漏到界面上。多个调用方都踩过这一点，所以这里是唯一出口，
 /// 页面不要再自己拼。
-String providerEndpointOf(String id) {
-  final provider = mockProviders.firstWhere(
-    (candidate) => candidate.id == id,
-    orElse: () => mockProviders.first,
-  );
-  return '${provider.protocol.label} · ${provider.address}';
-}
+String providerEndpointOf(String id) => endpointOfProvider(id, defaultProviderCatalog());
 
 /// 让 `appearance_providers.dart` 的解析模式参与首页分支的便捷读取。
 ResolutionMode resolutionModeOf(Ref ref) => ref.read(resolutionModeProvider);

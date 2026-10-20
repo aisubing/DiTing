@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
-import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,11 +23,12 @@ void main() {
         'dns_vpn_prefs': {
           'selected_provider_id': 'preset_google_dns',
           'theme_color_style': 'moss',
+          // 应用级规则在 1.4.3 里不进数据集容器。
+          'excluded_app_packages': ['com.example.skip'],
         },
         'diting_express_prefs': {
           'selected_provider_id': 'preset_dnspod_dns',
           'ipv6_mode': 'disabled',
-          'excluded_app_packages': ['com.example.skip'],
         },
         'express_vpn_prefs': {'express_vpn_running': true},
       });

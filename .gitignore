@@ -84,3 +84,6 @@ desktop.ini
 *.bak
 LearningObjects/
 screenshots/
+# adb 真机验收时抓的截图，只作本地证据，不进仓库
+.adb-shots/
+.tmp_ui/

@@ -11,6 +11,8 @@ library;
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/vpn/cache_presets.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';

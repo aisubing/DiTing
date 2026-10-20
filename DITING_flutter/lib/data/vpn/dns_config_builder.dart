@@ -9,6 +9,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 
 enum DnsProtocol {
@@ -50,6 +51,32 @@ class DnsProviderEntry {
   String get hostPort =>
       host.contains(':') && !host.startsWith('[') ? '[$host]:$port' : '$host:$port';
 
+  /// Endpoint exactly as 1.4.3 renders it (`[DoH] https://…` / `[DNS] 1.1.1.1:53`).
+  String get endpointLabel => switch (protocol) {
+    DnsProtocol.doh => '[${protocol.storageValue}] $url',
+    _ => '[${protocol.storageValue}] $hostPort',
+  };
+
+  /// `host:port` the management UI edits; DoH providers keep an empty one.
+  String get address =>
+      protocol == DnsProtocol.doh ? url : hostPort;
+
+  MockProvider toMock({int latencyMs = 0, bool isPreset = false}) => MockProvider(
+    id: id,
+    name: name,
+    protocol: switch (protocol) {
+      DnsProtocol.dns => ProviderProtocol.dns,
+      DnsProtocol.doh => ProviderProtocol.doh,
+      DnsProtocol.dot => ProviderProtocol.dot,
+    },
+    address: switch (protocol) {
+      DnsProtocol.doh => url,
+      _ => hostPort,
+    },
+    latencyMs: latencyMs,
+    isPreset: isPreset,
+  );
+
   Map<String, Object?> toJson() => {
     'id': id,
     'protocol': protocol.goValue,
@@ -59,11 +86,15 @@ class DnsProviderEntry {
 }
 
 class BootstrapEntry {
-  const BootstrapEntry(this.id, this.name, this.ip);
+  const BootstrapEntry(this.id, this.name, this.ip, {this.enabled = true});
 
   final String id;
   final String name;
   final String ip;
+
+  /// Only consulted for custom entries stored in `bootstrap_custom_json`;
+  /// presets are filtered by `bootstrap_preset_ids` before they get here.
+  final bool enabled;
 
   Map<String, Object?> toJson() => {'id': id, 'name': name, 'ip': ip};
 }

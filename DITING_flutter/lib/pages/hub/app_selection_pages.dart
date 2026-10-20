@@ -1,71 +1,111 @@
 import 'package:diting/data/mock_system.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/ui/ui.dart';
-import 'package:diting/widgets/stat_strip.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 禁止联网应用（上游 `BlockedAppsScreen`）。
-class BlockedAppsPage extends StatelessWidget {
+///
+/// 写 `dns_vpn_prefs` 的 `blocked_app_packages` + `blocked_apps_enabled`；普通
+/// 模式启动时会把它换算成 UID 交给 Go 引擎。与「排除应用」「HTTPS 检查应用」
+/// 互斥：一处勾选会从另外两处移除，和上游保存时的清洗一致。
+class BlockedAppsPage extends ConsumerWidget {
   const BlockedAppsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _AppSelectionScaffold(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(legacySettingsProvider);
+    return _AppSelectionScaffold(
       title: '禁止联网应用',
       info: '通过本机 VPN 按 UID 阻止所选应用的全部网络连接。共享同一 UID 的应用会一并受影响。',
       enableToggleTitle: '启用禁止联网',
       enableToggleEmptyHint: '尚未选择应用；开启后不会阻断流量',
       selectionTitle: '禁止联网的应用',
       icon: AppGlyphs.wifiOff,
-      initial: {'com.example.video', 'com.example.games'},
+      selected: settings.blockedAppPackages,
+      enabled: settings.blockedAppsEnabled,
+      onSave: (packages, enabled) {
+        settings.setBlockedApps(packages: packages, enabled: enabled);
+        settings.setExcludedPackages(settings.excludedPackages.difference(packages));
+        settings.setHttpInspectionApps(
+          packages: settings.httpInspectionPackages.difference(packages),
+          enabled: settings.httpInspectionEnabled && settings.httpInspectionPackages.difference(packages).isNotEmpty,
+        );
+        ref.read(legacySettingsRevisionProvider.notifier).bump();
+      },
     );
   }
 }
 
 /// 排除应用（上游 `ExcludedAppsScreen`）。
-class ExcludedAppsPage extends StatelessWidget {
+///
+/// 写 `excluded_app_packages`；排除后应用使用系统 DNS，不参与本应用的过滤、
+/// 缓存、日志和统计。
+class ExcludedAppsPage extends ConsumerWidget {
   const ExcludedAppsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _AppSelectionScaffold(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(legacySettingsProvider);
+    return _AppSelectionScaffold(
       title: '排除应用',
       info: '排除后，应用将使用系统 DNS，不参与本应用的过滤、缓存、日志和统计。',
       selectionTitle: '排除的应用',
       icon: AppGlyphs.appsList,
-      initial: {'com.android.updater'},
+      selected: settings.excludedPackages,
+      enabled: true,
+      showToggle: false,
+      onSave: (packages, _) {
+        settings.setExcludedPackages(packages);
+        settings.setBlockedApps(
+          packages: settings.blockedAppPackages.difference(packages),
+          enabled: settings.blockedAppsEnabled,
+        );
+        ref.read(legacySettingsRevisionProvider.notifier).bump();
+      },
     );
   }
 }
 
-class _AppSelectionScaffold extends StatefulWidget {
+class _AppSelectionScaffold extends ConsumerStatefulWidget {
   const _AppSelectionScaffold({
     required this.title,
     required this.info,
     required this.selectionTitle,
     required this.icon,
-    required this.initial,
+    required this.selected,
+    required this.enabled,
+    required this.onSave,
     this.enableToggleTitle,
     this.enableToggleEmptyHint,
+    this.showToggle = true,
   });
 
   final String title;
   final String info;
   final String selectionTitle;
   final Glyph icon;
-  final Set<String> initial;
+
+  /// Persisted set the page starts from; edits live locally until "保存".
+  final Set<String> selected;
+  final bool enabled;
+  final bool showToggle;
   final String? enableToggleTitle;
   final String? enableToggleEmptyHint;
+  final void Function(Set<String> packages, bool enabled) onSave;
 
   @override
-  State<_AppSelectionScaffold> createState() => _AppSelectionScaffoldState();
+  ConsumerState<_AppSelectionScaffold> createState() =>
+      _AppSelectionScaffoldState();
 }
 
-class _AppSelectionScaffoldState extends State<_AppSelectionScaffold> {
-  late final Set<String> _initial = {...widget.initial};
-  late final Set<String> _selected = {...widget.initial};
-  late final TextEditingController _search = TextEditingController();
-  bool _enabled = true;
+class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
+  late final Set<String> _initial = {...widget.selected};
+  late final Set<String> _selected = {...widget.selected};
+  final TextEditingController _search = TextEditingController();
+  late bool _enabled = widget.enabled;
   String _query = '';
 
   @override
@@ -86,6 +126,7 @@ class _AppSelectionScaffoldState extends State<_AppSelectionScaffold> {
   }
 
   void _save() {
+    widget.onSave({..._selected}, _enabled);
     _initial
       ..clear()
       ..addAll(_selected);
@@ -100,12 +141,12 @@ class _AppSelectionScaffoldState extends State<_AppSelectionScaffold> {
   @override
   Widget build(BuildContext context) {
     final visible = _visible;
-    final dirty = _enabled != true || !_sameSet(_selected, _initial);
+    final dirty = _enabled != widget.enabled || !_sameSet(_selected, _initial);
     return CommonScaffold(
       title: widget.title,
       body: PageBody(
         children: [
-          if (widget.enableToggleTitle != null)
+          if (widget.showToggle && widget.enableToggleTitle != null)
             generateSection(
               title: '开关',
               items: [

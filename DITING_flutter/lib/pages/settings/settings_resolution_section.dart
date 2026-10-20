@@ -14,9 +14,10 @@ class _ResolutionSection extends ConsumerWidget {
     final selectedId = ref.watch(selectedProviderProvider);
     final raceIds = ref.watch(raceProvidersProvider);
     final single = mode.isSingle;
+    final catalog = ref.watch(dnsProviderCatalogProvider);
     final summary = single
-        ? providerEndpointOf(selectedId)
-        : raceProviderSummary(raceIds);
+        ? endpointOfProvider(selectedId, catalog)
+        : summaryOfProviders(raceIds, catalog);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 4,
@@ -42,14 +43,12 @@ class _ResolutionSection extends ConsumerWidget {
               leading: const GlyphIcon(AppGlyphs.dns),
               widget: const _ProviderPickerPage(),
             ),
-            ListItem.toggle(
+            ListItem(
               title: const Text('DNS 缓存'),
-              subtitle: const Text('命中缓存的查询不再向上游发起'),
+              subtitle: Text(cacheSummaryOf(ref.read(legacySettingsProvider))),
               leading: const GlyphIcon(AppGlyphs.memory),
-              value: true,
-              onChanged: null,
+              onTap: () => context.push('/hub/cache'),
             ),
-            const _CacheTtlRow(),
           ],
         ),
       ],
@@ -57,43 +56,6 @@ class _ResolutionSection extends ConsumerWidget {
   }
 }
 
-
-/// 缓存 TTL 选项。
-///
-/// 这一项没有对应的 provider：`lib/state` 里只演示外观与工作模式两组状态，
-/// 缓存策略属于内核参数，本阶段不落盘。所以就地持有——但要把「为什么是本地
-/// 状态」写清楚，避免后来者以为漏接了 provider。
-class _CacheTtlRow extends StatefulWidget {
-  const _CacheTtlRow();
-
-  @override
-  State<_CacheTtlRow> createState() => _CacheTtlRowState();
-}
-
-class _CacheTtlRowState extends State<_CacheTtlRow> {
-  static const _options = <int>[300, 900, 1800, 3600, 21600, 86400];
-  int _ttl = 3600;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem<int>.options(
-      title: const Text('缓存最长 TTL'),
-      subtitle: const Text('超过该时长的记录不写入缓存'),
-      leading: const GlyphIcon(AppGlyphs.clock),
-      options: _options,
-      value: _ttl,
-      textBuilder: _ttlLabel,
-      onChanged: (value) => setState(() => _ttl = value),
-    );
-  }
-
-  static String _ttlLabel(int seconds) {
-    if (seconds < 3600) {
-      return '${seconds ~/ 60} 分钟';
-    }
-    return '${seconds ~/ 3600} 小时';
-  }
-}
 
 /// 服务商选择页：按当前解析模式切换单选 / 多选。
 ///
@@ -118,12 +80,12 @@ class _ProviderPickerPage extends ConsumerWidget {
                 ? '单选模式下所有查询都发往这一家。'
                 : '竞速时同时问多家、取最先返回的结果，至少保留 2 家才有意义。',
             items: [
-              for (final provider in mockProviders)
+              for (final provider in ref.watch(dnsProviderCatalogProvider))
                 ListItem(
                   title: Text(provider.name),
                   subtitle: Text(
                     '${provider.protocol.label} · ${provider.address}'
-                    ' · ${provider.latencyMs}ms',
+                    ' · ${providerLatencyLabel(provider)}',
                   ),
                   leading: const GlyphIcon(AppGlyphs.proxies),
                   trailing: single
