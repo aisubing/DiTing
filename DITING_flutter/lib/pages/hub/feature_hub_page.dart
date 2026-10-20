@@ -1,6 +1,5 @@
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/feature_hub_providers.dart';
-import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,12 +16,9 @@ class FeatureHubPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final express = ref.watch(workModeProvider) == AppWorkMode.express;
-    final hidden = ref.watch(hiddenFeatureKeysProvider);
-    final categories = visibleFeatureCategories(
-      express: express,
-      hiddenKeys: hidden,
-    );
+    // 卡片可见性跟随落盘的隐藏集合（`dns_vpn_prefs` / `hidden_features_set`）。
+    // 过滤放在 provider 里，隐藏功能页改开关后这一页会立刻跟着变。
+    final categories = ref.watch(visibleFeatureCategoriesProvider);
     return CommonScaffold(
       title: '功能中心',
       body: CustomScrollView(

@@ -10,6 +10,9 @@ import 'package:material_ui/material_ui.dart';
 /// 隐藏功能：按上游 `HiddenFeaturesScreen` 的分组与开关布局迁移。
 ///
 /// 卡片只在功能中心隐藏，不影响任何功能运行；隐藏功能管理卡本身固定常驻。
+/// 开关状态落盘到 `dns_vpn_prefs` / `hidden_features_set`（StringSet），键名逐条
+/// 照抄 `HiddenFeaturesStore.HiddenFeature.key`，升级用户此前的隐藏选择会被直接
+/// 读到。
 class HiddenFeaturesPage extends ConsumerWidget {
   const HiddenFeaturesPage({super.key});
 
@@ -37,7 +40,8 @@ class HiddenFeaturesPage extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Text(
                 '自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，'
-                '默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。',
+                '默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。'
+                '设置会保存到本机，重启后仍然有效。',
                 style: context.listSubtitleStyle,
               ),
             ),

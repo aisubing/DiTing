@@ -127,6 +127,29 @@ void main() {
     expect(find.text('0'), findsWidgets);
   });
 
+  testWidgets('订阅页读真实表：无旧库时是空状态而不是 mock 订阅', (tester) async {
+    await pumpApp(tester, initialLocation: Routes.subscriptions);
+    // 测试宿主没有 1.4.3 数据库文件，`LegacyDatabase.open` 返回 null，页面必须
+    // 渲染空状态。这里同时反证 mock 播种已删除：旧文案「AdGuard 基础」不该出现。
+    expect(find.text('AdGuard 基础'), findsNothing);
+    expect(find.text('EasyList China'), findsNothing);
+    expect(find.text('还没有订阅'), findsOneWidget);
+    // 边界说明必须始终可见：本轮只下载正文与统计行数，不入规则表。
+    expect(find.textContaining('规则解析与入库将在后续版本接入'), findsWidgets);
+  });
+
+  testWidgets('网络工具页不再显示 mock 统计数字', (tester) async {
+    await pumpApp(tester, initialLocation: Routes.tools);
+    // `mockServiceStats.averageLatencyMs`(14ms) / `uptimeLabel`(3小时42分) 已移除，
+    // 顶部信息条改读 networkInfo()；无原生通道时三格都是破折号。
+    expect(find.text('3小时42分'), findsNothing);
+    expect(find.text('当前解析'), findsNothing);
+    expect(find.text('活动接口'), findsOneWidget);
+    expect(find.text('本机地址'), findsOneWidget);
+    // 「网络测速」面板已删除（无真实后端）。
+    expect(find.text('网络测速'), findsNothing);
+  });
+
   testWidgets('每个路由都能构建', (tester) async {
     for (final route in _routes) {
       await pumpApp(tester, initialLocation: route);

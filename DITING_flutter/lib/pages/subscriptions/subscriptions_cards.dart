@@ -2,8 +2,12 @@ part of 'subscriptions_page.dart';
 
 /// 订阅卡片。
 ///
-/// 用 `CommonCard` + `ListItem` 而不是自绘卡片：卡片本体的圆角、按下态、
-/// 明暗两套填充都由设计系统管，页面只负责往里放内容，换主题时不会漏掉一块。
+/// 用 `CommonCard` + `ListItem` 而不是自绘卡片：卡片本体的圆角、按下态、明暗两
+/// 套填充都由设计系统管，页面只负责往里放内容，换主题时不会漏掉一块。
+///
+/// 三态视觉（`SubscriptionImportState`）：`ready` 正常、`importing` 顶部不确定
+/// 进度条、`failed` 卡片 `isError` + 错误色文案。三态之外的状态一律按 `ready`
+/// 处理（`fromStorage` 的回落），不会出现「未知状态渲染成失败」这种误报。
 class _SubscriptionCard extends StatelessWidget {
   const _SubscriptionCard({
     required this.entry,
@@ -17,7 +21,7 @@ class _SubscriptionCard extends StatelessWidget {
 
   final SubscriptionEntry entry;
 
-  /// 这一条正在更新。
+  /// 这一条正在更新（真实下载在进行）。
   final bool isUpdating;
 
   /// 有任意更新在跑：此时禁用所有更新入口，避免并发打同一份数据。
@@ -30,7 +34,7 @@ class _SubscriptionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final hasError = entry.error != null;
+    final hasError = entry.isFailed;
     return CommonCard(
       isError: hasError,
       // 停用的订阅整卡压暗：只在开关上体现会让「规则没生效」看起来像 bug。
@@ -41,9 +45,7 @@ class _SubscriptionCard extends StatelessWidget {
           children: [
             ListItem(
               leading: GlyphIcon(
-                entry.importType == SubscriptionImportType.local
-                    ? AppGlyphs.importFile
-                    : AppGlyphs.cloudSync,
+                entry.isRemote ? AppGlyphs.cloudSync : AppGlyphs.importFile,
                 size: 20,
                 color: hasError ? colorScheme.error : colorScheme.primary,
               ),
@@ -54,7 +56,8 @@ class _SubscriptionCard extends StatelessWidget {
                 style: context.listTitleStyle,
               ),
               subtitle: Text(
-                '${entry.group} · ${entry.importType.label}',
+                '${entry.groupKey} · ${entry.kind.displayName}'
+                ' · ${entry.sourceType.label}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.listSubtitleStyle,
@@ -75,10 +78,10 @@ class _SubscriptionCard extends StatelessWidget {
                         CommonPopupMenuItem(
                           label: '立即更新',
                           glyph: AppGlyphs.refresh,
-                          onPressed: busy ? null : onUpdate,
+                          onPressed: busy || !entry.isRemote ? null : onUpdate,
                         ),
                         CommonPopupMenuItem(
-                          label: '编辑订阅',
+                          label: '重命名',
                           glyph: AppGlyphs.edit,
                           onPressed: onEdit,
                         ),
@@ -100,24 +103,28 @@ class _SubscriptionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 8,
                 children: [
-                  Row(
+                  Wrap(
                     spacing: 8,
+                    runSpacing: 6,
                     children: [
-                      MetaChip(label: '${_formatCount(entry.ruleCount)} 条规则'),
-                      MetaChip(label: entry.updatedAt),
-                      if (entry.importType == SubscriptionImportType.remote)
-                        Flexible(
-                          child: Text(
-                            entry.url,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.listCaptionStyle.copyWith(
-                              fontFamily: 'JetBrainsMono',
-                            ),
-                          ),
+                      MetaChip(label: _lineCountLabel(entry)),
+                      MetaChip(label: _updatedLabel(entry)),
+                      if (entry.consecutiveFailureCount > 0)
+                        MetaChip(
+                          label: '连续失败 ${entry.consecutiveFailureCount} 次',
                         ),
+                      if (!entry.isRemote) const MetaChip(label: '本地文件不可下载'),
                     ],
                   ),
+                  if (entry.isRemote)
+                    Text(
+                      entry.url,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.listCaptionStyle.copyWith(
+                        fontFamily: 'JetBrainsMono',
+                      ),
+                    ),
                   if (hasError)
                     Row(
                       spacing: 6,
@@ -129,7 +136,7 @@ class _SubscriptionCard extends StatelessWidget {
                         ),
                         Expanded(
                           child: Text(
-                            entry.error!,
+                            entry.importError ?? '上次更新失败',
                             style: context.listCaptionStyle.copyWith(
                               color: colorScheme.error,
                             ),
@@ -137,12 +144,17 @@ class _SubscriptionCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                  if (isUpdating)
-                    // 单条更新用不确定进度条：演示数据没有真实进度可报，
-                    // 报一个假百分比反而会让人以为能看到什么时候结束。
+                  if (entry.isImporting || isUpdating)
                     LinearProgressIndicator(
                       minHeight: 3,
                       borderRadius: AppRadius.full,
+                    ),
+                  if (entry.isRemote)
+                    // 边界必须写在卡片上，不能只写在页脚：用户看的是这一行。
+                    Text(
+                      '已下载 ${_formatCount(entry.ruleCount)} 行；'
+                      '规则解析与入库将在后续版本接入，拦截行为暂不受影响。',
+                      style: context.listCaptionStyle,
                     ),
                 ],
               ),
@@ -152,17 +164,26 @@ class _SubscriptionCard extends StatelessWidget {
       ),
     );
   }
+
+  /// 行数标签刻意用「行」而不是「条规则」：本轮统计是词法行数。
+  static String _lineCountLabel(SubscriptionEntry entry) =>
+      '${_formatCount(entry.ruleCount)} 行';
+
+  static String _updatedLabel(SubscriptionEntry entry) {
+    if (entry.lastUpdated <= 0) {
+      return '从未成功更新';
+    }
+    return _formatTimestamp(entry.lastUpdated);
+  }
 }
 
-/// 千分位。规则条数是这里唯一的大数字，`48213` 读起来比 `48,213` 慢得多。
-String _formatCount(int value) {
-  final text = value.toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < text.length; i++) {
-    if (i > 0 && (text.length - i) % 3 == 0) {
-      buffer.write(',');
-    }
-    buffer.write(text[i]);
-  }
-  return buffer.toString();
+/// epoch ms → `MM-dd HH:mm`。
+///
+/// 只保留到分钟：订阅更新是小时级动作，秒数没有信息量，还会让同一分钟内两次
+/// 更新的卡片看起来「没变」。
+String _formatTimestamp(int epochMs) {
+  final time = DateTime.fromMillisecondsSinceEpoch(epochMs);
+  String two(int value) => value.toString().padLeft(2, '0');
+  return '${two(time.month)}-${two(time.day)} '
+      '${two(time.hour)}:${two(time.minute)}';
 }

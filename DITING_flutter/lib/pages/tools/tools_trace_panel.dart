@@ -1,0 +1,191 @@
+part of 'tools_page.dart';
+
+/// 路由追踪面板：逐跳列表。
+///
+/// 数据源是 `DiagnosticsRunner.traceRoute`（原生 `NetworkTraceRouteTool`）。
+/// 逐跳结果一次性返回（旧版的渐进回调跨 Flutter 重建边界不可复现），一次
+/// traceroute 在手机上只需几秒，因此按结果整体渲染。
+class _TraceroutePanel extends ConsumerStatefulWidget {
+  const _TraceroutePanel();
+
+  @override
+  ConsumerState<_TraceroutePanel> createState() => _TraceroutePanelState();
+}
+
+class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
+  final _target = TextEditingController(text: '');
+  var _maxHops = 15;
+  var _running = false;
+  TraceResult? _result;
+  String? _hostError;
+
+  @override
+  void dispose() {
+    _target.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    if (_running) {
+      return;
+    }
+    final resolved = resolveProbeHost(_target.text);
+    if (resolved.error != null) {
+      setState(() => _hostError = resolved.error);
+      return;
+    }
+    setState(() {
+      _hostError = null;
+      _running = true;
+      _result = null;
+    });
+    final result = await ref
+        .read(diagnosticsRunnerProvider)
+        .traceRoute(resolved.host, maxHops: _maxHops);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _running = false;
+      _result = result;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final flags = ref.watch(networkToolFlagsProvider);
+    final colorScheme = context.colorScheme;
+    final result = _result;
+    return CommonScaffold(
+      title: '路由追踪',
+      body: PageBody(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: _ToolField(
+              controller: _target,
+              hintText: '域名或 IP（可粘贴完整链接）',
+              glyph: AppGlyphs.target,
+              enabled: !_running,
+              onSubmitted: (_) => _run(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: SegmentedControl<int>(
+              segments: const [(10, '10 跳'), (15, '15 跳'), (30, '30 跳')],
+              value: _maxHops,
+              onChanged: (hops) {
+                if (!_running) {
+                  setState(() => _maxHops = hops.clamp(1, 30));
+                }
+              },
+            ),
+          ),
+          generateSection(
+            title: '追踪选项',
+            items: [
+              _ViaTunnelRow(
+                storageKey: tracerouteViaTunnelKey,
+                title: '走隧道追踪',
+                subtitle: '开启后由隧道解析目标地址；逐跳探测仍走物理网络',
+                value: flags.tracerouteViaTunnel,
+                enabled: !_running,
+              ),
+            ],
+          ),
+          _RunButton(
+            glyph: AppGlyphs.split,
+            label: '开始追踪',
+            runningLabel: '正在追踪…',
+            running: _running,
+            onPressed: _run,
+          ),
+          if (_hostError case final error?)
+            _ToolNotice(text: error, isError: true, glyph: AppGlyphs.error),
+          if (result != null) ...[
+            if (!result.success && !result.cancelled)
+              _ToolNotice(
+                text: result.message ?? '追踪失败：未收到任何回应',
+                isError: true,
+                glyph: AppGlyphs.error,
+              ),
+            if (result.cancelled)
+              const _ToolNotice(
+                text: '追踪已取消。',
+                glyph: AppGlyphs.info,
+              ),
+            _ToolSection(
+              rows: [
+                KeyValueRow(
+                  label: '目标',
+                  value: result.target,
+                  monospace: true,
+                ),
+                KeyValueRow(
+                  label: '解析地址',
+                  value: result.resolvedAddress ?? '—',
+                  monospace: true,
+                ),
+                KeyValueRow(
+                  label: '跳数',
+                  value: '${result.hops.length} / 最多 $_maxHops',
+                  monospace: true,
+                ),
+              ],
+            ),
+            if (result.hops.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: CommonCard(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final hop in result.hops)
+                        ListItem(
+                          leading: SizedBox(
+                            width: 24,
+                            child: Text(
+                              '${hop.hop}',
+                              textAlign: TextAlign.center,
+                              style: AppTextStyle.caption1.of(context).copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            hop.address ?? '* * *',
+                            style: AppTextStyle.subheadline.of(context).copyWith(
+                              fontFamily: 'JetBrainsMono',
+                              color: hop.responded
+                                  ? (hop.reachedTarget
+                                        ? colorScheme.success
+                                        : colorScheme.onSurface)
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          trailing: Text(
+                            hop.responded ? _msText(hop.elapsedMs) : '无响应',
+                            style: AppTextStyle.caption1.of(context).copyWith(
+                              color: hop.responded
+                                  ? colorScheme.onSurfaceVariant
+                                  : colorScheme.warning,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+          const ListFooter(
+            text: '星号表示该跳在超时时间内没有回包——不代表链路断了，很多路由器'
+                '不响应探测包。绿色一行表示已到达目标。',
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}

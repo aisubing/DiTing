@@ -2,8 +2,12 @@ part of 'subscriptions_page.dart';
 
 /// 添加订阅面板。
 ///
-/// 用 `showSheet` + `CommonScaffold` 而不是对话框：表单有三个字段，对话框在
-/// 键盘弹起后会被压到只剩一行，而 sheet 自带滚动与「取消 / 保存」工具栏。
+/// 用 `showSheet` + `CommonScaffold` 而不是对话框：表单有四个字段，对话框在键盘
+/// 弹起后会被压到只剩一行，而 sheet 自带滚动与「取消 / 保存」工具栏。
+///
+/// 保存分两步：先落库（`importState = importing`，与上游 `addSubscription` 一致），
+/// 再立刻发起一次真实下载把状态推进到 `ready` / `failed`。第二步失败不回滚记录，
+/// 与旧版一致——用户能看到这条订阅和它的错误原因，可以手动重试。
 class _AddSubscriptionSheet extends ConsumerStatefulWidget {
   const _AddSubscriptionSheet();
 
@@ -16,8 +20,9 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _url = TextEditingController();
-  var _group = mockSubscriptionGroups.first;
-  var _importType = SubscriptionImportType.remote;
+  var _kind = SubscriptionKind.domain;
+  int? _groupId;
+  var _submitting = false;
 
   @override
   void dispose() {
@@ -26,41 +31,54 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     super.dispose();
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() != true) {
+  Future<void> _submit() async {
+    if (_formKey.currentState?.validate() != true || _submitting) {
       return;
     }
-    final added = ref
-        .read(subscriptionsProvider.notifier)
+    setState(() => _submitting = true);
+    final result = await ref
+        .read(subscriptionActionsProvider)
         .add(
           name: _name.text,
           url: _url.text,
-          group: _group,
-          importType: _importType,
+          kind: _kind,
+          groupId: _groupId,
         );
-    if (!added) {
-      // 地址重复不关面板：用户刚粘的地址要留在框里改，关掉等于让他重粘一遍。
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(
-          content: Text('该订阅地址已存在'),
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(milliseconds: 1600),
-        ),
-      );
+    if (!mounted) {
       return;
     }
-    Navigator.of(context).pop();
+    switch (result) {
+      case AddSubscriptionFailure(:final message):
+        setState(() => _submitting = false);
+        // 地址重复不关面板：用户刚粘的地址要留在框里改，关掉等于让他重粘一遍。
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(milliseconds: 2600),
+          ),
+        );
+      case AddSubscriptionOk(:final id):
+        // 先发起一次下载，再关面板：关掉之后订阅页已经在转圈，用户看得到反应。
+        final updated = ref.read(subscriptionUpdateProvider.notifier);
+        Navigator.of(context).pop();
+        await updated.updateOne(id);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final groups = ref.watch(subscriptionGroupsProvider);
+    final groups = ref.watch(subscriptionGroupsProvider).value ?? const [];
+    final selected = groups.any((group) => group.id == _groupId)
+        ? _groupId
+        : null;
     return CommonScaffold(
       title: '添加订阅',
+      isLoading: _submitting,
       confirmationAction: IconButtonData(
         glyph: AppGlyphs.check,
         tooltip: '保存订阅',
-        onPressed: _submit,
+        onPressed: _submitting ? null : _submit,
       ),
       body: Form(
         key: _formKey,
@@ -76,59 +94,56 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                   child: TextFormField(
                     controller: _name,
                     autofocus: true,
-                    decoration: const InputDecoration(hintText: '如：AdGuard 基础'),
-                    validator: (value) =>
-                        (value ?? '').trim().isEmpty ? '名称不能为空' : null,
+                    decoration: const InputDecoration(
+                      hintText: '留空则取链接末段',
+                    ),
                   ),
                 ),
                 _FieldRow(
-                  label: _importType == SubscriptionImportType.remote
-                      ? '订阅地址'
-                      : '文件路径',
+                  label: '订阅地址',
                   child: TextFormField(
                     controller: _url,
                     keyboardType: TextInputType.url,
+                    autocorrect: false,
                     style: const TextStyle(fontFamily: 'JetBrainsMono'),
-                    decoration: InputDecoration(
-                      hintText: _importType == SubscriptionImportType.remote
-                          ? 'https://example.com/rules.txt'
-                          : '/storage/rules.txt',
+                    decoration: const InputDecoration(
+                      hintText: 'https://example.com/rules.txt',
                     ),
-                    validator: (value) {
-                      final text = (value ?? '').trim();
-                      if (text.isEmpty) {
-                        return '地址不能为空';
-                      }
-                      if (_importType == SubscriptionImportType.remote &&
-                          !text.startsWith('http')) {
-                        return '订阅地址需以 http 开头';
-                      }
-                      return null;
-                    },
+                    validator: (value) => validateSubscriptionUrl(value ?? ''),
                   ),
                 ),
               ],
             ),
             generateSection(
-              title: '导入方式',
+              title: '规则类型',
               items: [
-                ListItem<SubscriptionImportType>.options(
-                  title: const Text('来源类型'),
-                  options: SubscriptionImportType.values,
-                  value: _importType,
-                  textBuilder: (type) => type.label,
-                  onChanged: (type) => setState(() => _importType = type),
+                ListItem<SubscriptionKind>.options(
+                  title: const Text('收录类型'),
+                  options: SubscriptionKind.values,
+                  value: _kind,
+                  textBuilder: (kind) => kind.displayName,
+                  onChanged: (kind) => setState(() => _kind = kind),
                 ),
-                ListItem<String>.options(
+                ListItem<int?>.options(
                   title: const Text('所属分组'),
-                  options: groups,
-                  value: groups.contains(_group) ? _group : groups.first,
-                  textBuilder: (group) => group,
-                  onChanged: (group) => setState(() => _group = group),
+                  options: [null, for (final group in groups) group.id],
+                  value: selected,
+                  textBuilder: (id) => id == null
+                      ? SubscriptionEntry.ungroupedLabel
+                      : groups
+                            .firstWhere(
+                              (group) => group.id == id,
+                              orElse: () => groups.first,
+                            )
+                            .name,
+                  onChanged: (id) => setState(() => _groupId = id),
                 ),
               ],
             ),
-            const ListFooter(text: '远程订阅会按更新周期自动拉取，本地文件只在导入时读取一次。'),
+            ListFooter(
+              text: '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定）。'
+                  '保存后会立即下载一次正文并统计行数；规则解析与入库将在后续版本接入。',
+            ),
             SizedBox(height: NavigationDock.insetOf(context)),
           ],
         ),
@@ -155,10 +170,7 @@ class _FieldRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         spacing: 12,
         children: [
-          SizedBox(
-            width: 76,
-            child: Text(label, style: context.listTitleStyle),
-          ),
+          SizedBox(width: 76, child: Text(label, style: context.listTitleStyle)),
           Expanded(child: child),
         ],
       ),
