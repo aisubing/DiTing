@@ -1,0 +1,73 @@
+import 'package:diting/data/mock_data.dart';
+import 'package:diting/state/feature_hub_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
+import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_ui/material_ui.dart';
+
+/// 隐藏功能：按上游 `HiddenFeaturesScreen` 的分组与开关布局迁移。
+///
+/// 卡片只在功能中心隐藏，不影响任何功能运行；隐藏功能管理卡本身固定常驻。
+class HiddenFeaturesPage extends ConsumerWidget {
+  const HiddenFeaturesPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final express = ref.watch(workModeProvider) == AppWorkMode.express;
+    final hidden = ref.watch(hiddenFeatureKeysProvider);
+    final groups = hiddenFeaturesByCategory(express: express);
+    return CommonScaffold(
+      title: '隐藏功能',
+      iconActions: [
+        IconButtonData(
+          glyph: AppGlyphs.reset,
+          tooltip: '恢复全部显示',
+          onPressed: hidden.isEmpty
+              ? null
+              : () => ref.read(hiddenFeatureKeysProvider.notifier).resetAll(),
+        ),
+      ],
+      body: PageBody(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: CommonCard(
+              child: Text(
+                '自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，'
+                '默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。',
+                style: context.listSubtitleStyle,
+              ),
+            ),
+          ),
+          for (final entry in groups.entries)
+            generateSection(
+              title: entry.key,
+              items: [
+                for (final feature in entry.value)
+                  ListItem(
+                    leading: GlyphIcon(glyphByName(feature.glyphName), size: 20),
+                    title: Text(feature.title),
+                    subtitle: Text(feature.description),
+                    trailing: CommonCheckBox(
+                      value: !hidden.contains(feature.key),
+                      onChanged: (visible) => ref
+                          .read(hiddenFeatureKeysProvider.notifier)
+                          .setVisible(feature.key, visible ?? true),
+                    ),
+                    onTap: () => ref
+                        .read(hiddenFeatureKeysProvider.notifier)
+                        .toggle(feature.key),
+                  ),
+              ],
+            ),
+          const ListFooter(
+            text: '「隐藏功能」卡片固定常驻，确保随时可以在这里恢复。',
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}

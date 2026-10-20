@@ -184,6 +184,7 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
       // —— 第二轮按领域拆分的路由，各自在 `lib/routes/<domain>_routes.dart` 里
       // 定义；这里只负责拼接。新增领域 = 新增一个 `...<domain>Routes()`。
       ...dashboardRoutes(),
+      ...hubRoutes(),
       ...proxiesRoutes(),
       ...observabilityRoutes(),
       ...profilesRoutes(),

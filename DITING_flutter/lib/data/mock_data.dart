@@ -12,3 +12,4 @@ library;
 part 'mock_providers.dart';
 part 'mock_content.dart';
 part 'mock_apps.dart';
+part 'mock_feature_hub.dart';

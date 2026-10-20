@@ -15,6 +15,11 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：功能中心迁移时 `PageBody` 不在 `lib/ui`；Git Bash 会改写以 `/` 开头的参数
+
+- `PageBody` 由 `lib/widgets/stat_strip.dart` 导出，不在 `lib/ui`。新增页面时先按符号查导出位置，再批量补 import；analyze 的「未定义」往往只是 import 猜错，不要因此改写共享组件。
+- Git Bash 会把脚本参数里的 `/hub` 转成 `C:/Program Files/Git/hub`，路由探针要加 `MSYS_NO_PATHCONV=1`；探针 `go` 只截到首页时，改用 `adb shell input tap`（坐标按实测 dpr 换算）再截图验证。
+
 ### 2026-10-20：半透明顶栏要求「栏位留白放进滚动容器」；`EdgeInsets.horizontal` 是左右之和
 
 - `EdgeInsets.horizontal` 是 left+right 的**和**（对称 20 时是 40），按「取一半」的意图除以 2 得到的是整条单边距。要单边就用 `.left/.right`；更不要用「先减半再叠一层内边距」的做法——图与文字各留 10/20 会在卡片两侧留下一条 10dp 的白边，肉眼就是「缩进错了」。出血图要么真贴边（左右 0，文字块自己让出 20），要么与正文同为 20，中间值最像 bug。验收时量同一屏多张卡片的标题 x 与图形 x，别只看卡片外框。

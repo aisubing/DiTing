@@ -1,33 +1,35 @@
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/state/feature_hub_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 功能中心：5 类 19 卡，2 列网格，按下缩放到 0.90。
+/// 功能中心：按上游 `FeatureHubScreen.kt` 的 7 类 28 卡、2 列网格迁移。
 ///
-/// 上游 `FeatureHubScreen.kt` 的卡片是 84dp 高、按下缩放 0.90（spring
-/// NoBouncy）。这里用 `GestureDetector` + `AnimatedScale` 复刻同一手感，
-/// 因为设计系统里没有现成的「按下缩放」容器。
-class FeatureHubPage extends StatelessWidget {
+/// 只迁布局与模块：分类标题、卡片顺序、隐藏开关、日志卡长按都沿用旧版；
+/// 视觉仍走本仓设计系统（`CommonScaffold` / `ListHeader` / 卡片表面与字号）。
+/// 极速模式不另做一份 UI，按上游 18 项门控白名单过滤同一数据源。
+class FeatureHubPage extends ConsumerWidget {
   const FeatureHubPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final express = ref.watch(workModeProvider) == AppWorkMode.express;
+    final hidden = ref.watch(hiddenFeatureKeysProvider);
+    final categories = visibleFeatureCategories(
+      express: express,
+      hiddenKeys: hidden,
+    );
     return CommonScaffold(
       title: '功能中心',
-      iconActions: [
-        IconButtonData(
-          glyph: AppGlyphs.settings,
-          tooltip: '设置',
-          onPressed: () => context.push('/settings'),
-        ),
-      ],
       body: CustomScrollView(
         slivers: [
           // 顶栏浮在正文之上，正文自己让出栏高。
           SliverToBoxAdapter(child: SizedBox(height: context.appBarInset)),
-          for (final category in mockFeatureCategories)
+          for (final category in categories)
             SliverToBoxAdapter(child: _CategorySection(category: category)),
           SliverToBoxAdapter(
             child: SizedBox(height: NavigationDock.insetOf(context)),
@@ -103,16 +105,16 @@ class _CardGrid extends StatelessWidget {
   }
 }
 
-class _FeatureCard extends StatefulWidget {
+class _FeatureCard extends ConsumerStatefulWidget {
   const _FeatureCard({required this.card});
 
   final MockFeatureCard card;
 
   @override
-  State<_FeatureCard> createState() => _FeatureCardState();
+  ConsumerState<_FeatureCard> createState() => _FeatureCardState();
 }
 
-class _FeatureCardState extends State<_FeatureCard> {
+class _FeatureCardState extends ConsumerState<_FeatureCard> {
   bool _pressed = false;
 
   /// 字号放大时同步放宽卡片高度。
@@ -123,19 +125,34 @@ class _FeatureCardState extends State<_FeatureCard> {
       MediaQuery.textScalerOf(context).scale(_CardGrid._cardHeight) /
       _CardGrid._cardHeight;
 
+  void _open() => context.push(widget.card.route);
+
+  void _longPress() {
+    final route = widget.card.longPressRoute;
+    if (route == null) {
+      return;
+    }
+    ref.read(logLongPressHintProvider.notifier).acknowledge();
+    context.push(route);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
+    final card = widget.card;
+    final showLongPressHint =
+        card.longPressRoute != null && ref.watch(logLongPressHintProvider);
     return Semantics(
       button: true,
-      label: '${widget.card.title}，${widget.card.subtitle}',
+      label: '${card.title}，${card.description}',
       child: GestureDetector(
         onTapDown: (_) => setState(() => _pressed = true),
         onTapCancel: () => setState(() => _pressed = false),
         onTapUp: (_) {
           setState(() => _pressed = false);
-          context.push(widget.card.route);
+          _open();
         },
+        onLongPress: card.longPressRoute == null ? null : _longPress,
         child: AnimatedScale(
           scale: _pressed ? 0.90 : 1,
           duration: const Duration(milliseconds: 140),
@@ -153,13 +170,25 @@ class _FeatureCardState extends State<_FeatureCard> {
               mainAxisSize: MainAxisSize.min,
               spacing: 4,
               children: [
-                GlyphIcon(
-                  glyphByName(widget.card.glyphName),
-                  size: 20,
-                  color: colorScheme.primary,
+                Row(
+                  children: [
+                    GlyphIcon(
+                      glyphByName(card.glyphName),
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+                    const Spacer(),
+                    if (showLongPressHint)
+                      Text(
+                        '可长按',
+                        style: AppTextStyle.caption2
+                            .of(context)
+                            .copyWith(color: colorScheme.onSurfaceVariant),
+                      ),
+                  ],
                 ),
                 Text(
-                  widget.card.title,
+                  card.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.subheadline
@@ -167,7 +196,7 @@ class _FeatureCardState extends State<_FeatureCard> {
                       .copyWith(color: colorScheme.onSurface),
                 ),
                 Text(
-                  widget.card.subtitle,
+                  card.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.caption2
