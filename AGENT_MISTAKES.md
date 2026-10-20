@@ -15,6 +15,13 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：`CommonCard` 默认没有内边距；绕过 `PageBody` 的滚动页会把正文顶进半透明栏
+
+- `CommonCard` 的 `padding` 默认是 `EdgeInsets.zero`。列表卡片看起来有留白，是因为 `ListItem` 自带 16dp；自绘 `CommonCard(child: Text/Row)` 不传 `padding` 时正文会贴住圆角边缘。新增自定义卡先按 `EdgeInsets.all(16)` 起步，再在真机上量内容 x 是否与列表正文同为 32dp。
+- 二级页必须走 `PageBody`（它负责 `appBarInset`、`MediaQuery.removePadding` 与浮层 scope）。裸 `ListView` 会让首屏正文滚到半透明顶栏下面，探针会报「内容画进顶栏区」。
+- 探针只登记长度 <200 的 `RichText`，长段落会被跳过；相邻标题与卡片因此会被报成数百 dp 的假留白。看到「大段正文中间的留白」先核对截图，别改布局。
+- `tail` 的 `layoutShift` 只能证明两次探针之间没动，不能证明滚到了底；长页要人工 swipe 后截图复核。Git Bash 下同一条命令里的后续 `node` 调用不会继承前一条的 `MSYS_NO_PATHCONV`，每个路由参数都要单独加。
+
 ### 2026-10-20：功能中心迁移时 `PageBody` 不在 `lib/ui`；Git Bash 会改写以 `/` 开头的参数
 
 - `PageBody` 由 `lib/widgets/stat_strip.dart` 导出，不在 `lib/ui`。新增页面时先按符号查导出位置，再批量补 import；analyze 的「未定义」往往只是 import 猜错，不要因此改写共享组件。
