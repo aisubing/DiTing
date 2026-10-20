@@ -4,6 +4,7 @@ import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/pages/home/widgets/home_provider_card.dart';
 import 'package:diting/pages/home/widgets/home_quick_entries.dart';
 import 'package:diting/pages/home/widgets/home_resolution_card.dart';
+import 'package:diting/pages/server/server_page.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
@@ -54,6 +55,8 @@ class _HomePageState extends ConsumerState<HomePage>
       // The notification action can stop the tunnel while the app is in the
       // background; re-read the native status instead of trusting local state.
       ref.read(powerProvider.notifier).syncStatus();
+      // 服务器模式同样可能在后台被停止（通知栏或系统回收）。
+      ref.read(serverStatusProvider.notifier).syncStatus();
     }
   }
 
@@ -81,6 +84,11 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(workModeProvider);
+    // 服务器模式的首页就是服务器概览（上游 DnsHomeScreen）：普通仪表盘的
+    // 电源开关驱动的是 VPN，放在这里只会把「启动失败」露给用户。
+    if (mode == AppWorkMode.server) {
+      return const ServerPage();
+    }
     final power = ref.watch(powerProvider);
     final sentence = ref.watch(homeSentenceProvider);
     final opacity = ref.watch(homeOpacityProvider);

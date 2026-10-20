@@ -271,6 +271,58 @@ class LegacySettings {
   void setServerPort(int port) =>
       _store.putInt(serverContainer, 'local_listen_port', _clampedPort(port));
 
+  String get serverSelectedUpstreamId =>
+      _stringIn(serverContainer, 'selected_upstream_id') ?? 'preset_alidns_dns';
+
+  void setServerSelectedUpstreamId(String id) =>
+      _store.putString(serverContainer, 'selected_upstream_id', id);
+
+  String? get serverCustomUpstreamsJson =>
+      _stringIn(serverContainer, 'custom_upstreams');
+
+  bool get serverCacheEnabled =>
+      _boolIn(serverContainer, 'cache_enabled', true);
+
+  void setServerCacheEnabled(bool value) =>
+      _store.putBool(serverContainer, 'cache_enabled', value);
+
+  /// Preset values stayed `conservative` / `balanced` / `high_hit_rate`.
+  String get serverCachePresetRaw =>
+      _stringIn(serverContainer, 'cache_preset') ?? 'balanced';
+
+  bool get serverAdBlockEnabled =>
+      _boolIn(serverContainer, 'ad_block_enabled', false);
+
+  void setServerAdBlockEnabled(bool value) =>
+      _store.putBool(serverContainer, 'ad_block_enabled', value);
+
+  bool get serverLogQueries =>
+      _boolIn(serverContainer, 'log_queries', false);
+
+  bool get serverServiceActive =>
+      _boolIn(serverContainer, 'service_active', false);
+
+  void setServerServiceActive(bool value) =>
+      _store.putBool(serverContainer, 'service_active', value);
+
+  String get serverBlockResponseModeRaw =>
+      _stringIn(serverContainer, 'block_response_mode') ?? 'nxdomain';
+
+  bool get serverDynamicBlockEnabled =>
+      _boolIn(serverContainer, 'block_response_dynamic_enabled', false);
+
+  int get serverDynamicBlockThreshold =>
+      _intIn(serverContainer, 'block_response_dynamic_threshold', 5);
+
+  int get serverDynamicBlockWindowSeconds =>
+      _intIn(serverContainer, 'block_response_dynamic_window_seconds', 60);
+
+  int get serverDynamicBlockNxDomainDurationSeconds => _intIn(
+    serverContainer,
+    'block_response_dynamic_nxdomain_duration_seconds',
+    300,
+  );
+
   void setServerLogQueries(bool value) =>
       _store.putBool(serverContainer, 'log_queries', value);
 
@@ -279,6 +331,18 @@ class LegacySettings {
   String? _string(String container, String key) {
     final value = _store.read(container, key);
     return value is String ? value : null;
+  }
+
+  String? _stringIn(String container, String key) => _string(container, key);
+
+  bool _boolIn(String container, String key, bool fallback) {
+    final value = _store.read(container, key);
+    return value is bool ? value : fallback;
+  }
+
+  int _intIn(String container, String key, int fallback) {
+    final value = _store.read(container, key);
+    return value is int ? value : fallback;
   }
 
   bool _bool(String container, String key, bool fallback) {

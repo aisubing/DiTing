@@ -15,6 +15,15 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：服务器模式首页必须换成服务器概览；standalone 验收要压到协议层
+
+- 工作模式只改标题、正文仍是普通仪表盘时，首页电源按钮驱动的是 `powerProvider`（VPN），`start()` 会在模式检查处失败，界面只剩「启动失败」而看不到任何服务日志。服务器模式的首页应直接渲染服务器概览页，并保留「切换工作模式」入口，否则用户进了这个模式就出不去。
+- 服务器模式的启停证据链：`dumpsys activity services` 有 `isForeground=true` 的 `DitingDnsServerService` → `ss -lun` 有 1053 → `diting_dns_mode_prefs/service_active` 与状态一致；停止后三者都要消失，ServiceRecord 同样有数秒延迟。
+- `adb forward` 只转发 TCP；UDP 要验就在设备上用 `nc -u -q 1`，把查询/响应文件 push/pull 回来解析。TCP 查询要自己加 2 字节长度前缀，两条路径都验过才能说 DNS 服务可用。
+- 广告拦截要同时验「拦截命中」和「正常域名不受影响」：本次用临时 `ads.example.com` 得到 rcode 3，`www.baidu.com` 仍 rcode 0。测试规则放 `diting_dns_rules` 的 `block_rule` + `block_rule_source(useradd)`，完事必须删库/删规则，别把测试域名留给用户。
+- `adb shell sqlite3 "... select count(*) ..."` 的括号会被远端 shell 当语法；SQL 用远端双引号包住、本地单引号包住整条命令，路径转换再用 `MSYS_NO_PATHCONV=1`。
+- Flutter 截图是 900×2000、设备是 1080×2400，坐标按 ×1.2 换算后再 `input tap`；滚动后行位置会变，点开关前先重新截图定位。
+
 ### 2026-10-20：arm64-only AAR 在 x86_64 模拟器装得上、跑不起来
 
 - `abiList` 含 `arm64-v8a` 不代表模拟器能执行 arm64：APK 会装上 `lib/arm64-v8a/libgojni.so`，但进程是 x86_64，`System.loadLibrary` 报 `dlopen failed: library "libgojni.so" not found`。判「引擎不可用」前先 `unzip -l apk | grep lib/`，确认 ABI 与进程一致。

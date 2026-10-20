@@ -1,6 +1,8 @@
-import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/prefs/legacy_settings.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/server_upstream_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -29,15 +31,16 @@ class ServerPage extends ConsumerWidget {
     final status = ref.watch(serverStatusProvider);
     final port = ref.watch(serverPortProvider);
     final stats = ref.watch(serviceStatsProvider);
-    final upstreamId = ref.watch(selectedProviderProvider);
-    final upstream = mockProviders.firstWhere(
-      (provider) => provider.id == upstreamId,
-      orElse: () => mockProviders.first,
-    );
+    final upstream = ref.watch(serverSelectedUpstreamProvider);
     final running = status == ServerStatus.running;
     return CommonScaffold(
       title: '谛听 · 服务器',
       iconActions: [
+        IconButtonData(
+          glyph: AppGlyphs.swap,
+          tooltip: '切换工作模式',
+          onPressed: () => context.push(Routes.modeSelect),
+        ),
         IconButtonData(
           glyph: AppGlyphs.sliders,
           tooltip: '修改监听端口',
@@ -54,10 +57,10 @@ class ServerPage extends ConsumerWidget {
             items: [
               ListItem(
                 title: Text(upstream.name),
-                subtitle: Text('${upstream.protocol.label} · ${upstream.address}'),
+                subtitle: Text(upstream.endpointLabel),
                 leading: const GlyphIcon(AppGlyphs.dns),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward),
-                onTap: () => _pickUpstream(context, ref, upstreamId),
+                onTap: () => _pickUpstream(context, ref, upstream.id),
               ),
             ],
           ),
@@ -126,7 +129,7 @@ class ServerPage extends ConsumerWidget {
             items: [
               ListItem(
                 title: const Text('本地监听端口'),
-                subtitle: const Text('范围 1024–65535，默认 5353'),
+                subtitle: const Text('范围 1024–65535，默认 1053'),
                 leading: const GlyphIcon(AppGlyphs.speed),
                 trailing: Text(
                   '$port',
@@ -136,13 +139,30 @@ class ServerPage extends ConsumerWidget {
                 ),
                 onTap: () => _editPort(context, ref, port),
               ),
-              const _CacheToggleRow(),
+              _ServerToggleRow(
+                title: 'DNS 缓存',
+                onSubtitle: '命中缓存的查询不再向上游发起',
+                offSubtitle: '已关闭 · 每次解析都请求上游',
+                glyph: AppGlyphs.memory,
+                valueOf: (settings) => settings.serverCacheEnabled,
+                onChanged: (settings, value) =>
+                    settings.setServerCacheEnabled(value),
+              ),
+              _ServerToggleRow(
+                title: '广告拦截',
+                onSubtitle: '按服务器模式的独立规则库拦截域名',
+                offSubtitle: '已关闭 · 仅解析与缓存，不做规则拦截',
+                glyph: AppGlyphs.rules,
+                valueOf: (settings) => settings.serverAdBlockEnabled,
+                onChanged: (settings, value) =>
+                    settings.setServerAdBlockEnabled(value),
+              ),
               ListItem(
                 title: const Text('规则控制'),
-                subtitle: const Text('黑白名单与 Hosts 覆写，与普通模式共用规则库'),
+                subtitle: const Text('使用服务器模式独立规则库，编辑入口稍后接入'),
                 leading: const GlyphIcon(AppGlyphs.rules),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward),
-                onTap: () => context.push(Routes.rulesOf('block')),
+                onTap: () => _toast(context, '服务器模式规则编辑页尚未接入'),
               ),
               ListItem(
                 title: const Text('重置运行统计'),
@@ -239,28 +259,35 @@ class _StatusText extends StatelessWidget {
   }
 }
 
-/// 缓存开关。
-///
-/// 缓存策略在演示层没有 provider（内核参数），但开关状态必须能看能改，
-/// 否则「缓存命中率」那张统计卡就无从解释，所以就地持有。
-class _CacheToggleRow extends StatefulWidget {
-  const _CacheToggleRow();
+/// 服务器模式的两个主开关直接写 `diting_dns_mode_prefs`；它们只在下次启动
+/// 时被引擎读取，界面不假装已经生效。
+class _ServerToggleRow extends ConsumerWidget {
+  const _ServerToggleRow({
+    required this.title,
+    required this.onSubtitle,
+    required this.offSubtitle,
+    required this.glyph,
+    required this.valueOf,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String onSubtitle;
+  final String offSubtitle;
+  final Glyph glyph;
+  final bool Function(LegacySettings settings) valueOf;
+  final void Function(LegacySettings settings, bool value) onChanged;
 
   @override
-  State<_CacheToggleRow> createState() => _CacheToggleRowState();
-}
-
-class _CacheToggleRowState extends State<_CacheToggleRow> {
-  bool _enabled = true;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(legacySettingsProvider);
+    final enabled = valueOf(settings);
     return ListItem.toggle(
-      title: const Text('DNS 缓存'),
-      subtitle: Text(_enabled ? '命中缓存的查询不再向上游发起' : '已关闭 · 每次解析都请求上游'),
-      leading: const GlyphIcon(AppGlyphs.memory),
-      value: _enabled,
-      onChanged: (value) => setState(() => _enabled = value),
+      title: Text(title),
+      subtitle: Text(enabled ? onSubtitle : offSubtitle),
+      leading: GlyphIcon(glyph),
+      value: enabled,
+      onChanged: (value) => onChanged(settings, value),
     );
   }
 }
@@ -285,21 +312,18 @@ Future<void> _pickUpstream(
           generateSection(
             footer: '服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。',
             items: [
-              for (final provider in mockProviders)
+              for (final upstream in ref.read(serverUpstreamListProvider))
                 ListItem(
-                  title: Text(provider.name),
-                  subtitle: Text(
-                    '${provider.protocol.label} · ${provider.address}'
-                    ' · ${provider.latencyMs}ms',
-                  ),
+                  title: Text(upstream.name),
+                  subtitle: Text(upstream.endpointLabel),
                   leading: const GlyphIcon(AppGlyphs.proxies),
-                  trailing: provider.id == currentId
+                  trailing: upstream.id == currentId
                       ? const SelectionCheck()
                       : const SizedBox(width: SelectionCheck.size),
                   onTap: () {
                     ref
-                        .read(selectedProviderProvider.notifier)
-                        .select(provider.id);
+                        .read(serverSelectedUpstreamProvider.notifier)
+                        .select(upstream.id);
                     sheetContext.safeNestedPop();
                   },
                 ),

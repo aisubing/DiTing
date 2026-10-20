@@ -12,6 +12,7 @@ class MainActivity : FlutterActivity() {
         LegacyPrefsBridge(applicationContext)
             .register(flutterEngine.dartExecutor.binaryMessenger)
         vpnBridge = VpnBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        DnsServerBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
