@@ -5,7 +5,13 @@
 /// 每次进入都要重建，页面内 state 做不到跨页留存。
 library;
 
+import 'dart:async';
+
+import 'package:diting/data/db/preset_whitelist.dart';
+import 'package:diting/data/db/rule_providers.dart';
+import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 白名单预设规则的只读判定。
@@ -29,31 +35,48 @@ bool isRuleProtected(
 class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   var _sequence = 0;
 
+  RuleRepository? get _repo => ref.read(ruleRepositoryProvider);
+
   @override
-  Map<RuleKind, List<MockRule>> build() => {
-    // 复制一份：mockRulesOf 返回的是 mock 层的同一个 list 实例，直接持有会让
-    // 任何一次就地修改污染全局 mock 数据，热重载后状态回不到初始值。
-    for (final kind in RuleKind.values) kind: [...mockRulesOf(kind)],
-  };
+  Map<RuleKind, List<MockRule>> build() {
+    final initial = ref.watch(initialRulesProvider);
+    return {
+      for (final kind in RuleKind.values) kind: [...?initial[kind]],
+    };
+  }
 
   List<MockRule> rulesOf(RuleKind kind) => state[kind] ?? const [];
 
   /// 切换启停。只读行由调用方拦截，这里不再二次判断，避免同一规则写两遍。
   void toggle(RuleKind kind, String id, bool enabled) {
     _replace(kind, id, (rule) => _copy(rule, enabled: enabled));
+    final repo = _repo;
+    final dbId = int.tryParse(id);
+    if (repo != null && dbId != null) {
+      unawaited(repo.setEnabled(kind, dbId, enabled));
+    }
   }
 
   /// 新增一条用户规则；pattern 与已有规则重复时返回 false。
   ///
   /// 去重放在这里而不是对话框里：批量导入走的是同一个入口，两处各写一遍校验
   /// 会出现「单个添加能拦、批量导入放过去」的漏洞。
-  bool add(RuleKind kind, String pattern, {String? target}) {
+  Future<bool> add(RuleKind kind, String pattern, {String? target}) async {
     final trimmed = pattern.trim();
     if (trimmed.isEmpty) {
       return false;
     }
     if (rulesOf(kind).any((rule) => rule.pattern == trimmed)) {
       return false;
+    }
+    final repo = _repo;
+    if (repo != null) {
+      final created = await repo.add(kind, trimmed, target: target);
+      state = {
+        ...state,
+        kind: [created, ...rulesOf(kind)],
+      };
+      return true;
     }
     state = {
       ...state,
@@ -74,15 +97,28 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   /// 编辑规则内容。白名单预设行被编辑时把来源改写为用户自定义：上游
   /// `WhitelistViewModel` 同样这么做，否则升级时按来源清空预设会把用户改动
   /// 一起丢掉。
-  void edit(
+  Future<void> edit(
     RuleKind kind,
     String id,
     String pattern, {
     String? target,
-  }) {
+  }) async {
     final trimmed = pattern.trim();
     if (trimmed.isEmpty) {
       return;
+    }
+    final matches = rulesOf(kind).where((rule) => rule.id == id);
+    final current = matches.isEmpty ? null : matches.first;
+    final repo = _repo;
+    final dbId = int.tryParse(id);
+    if (repo != null && dbId != null) {
+      await repo.update(
+        kind,
+        dbId,
+        trimmed,
+        target: target,
+        promotePreset: current?.source == RuleSource.preset,
+      );
     }
     _replace(
       kind,
@@ -103,7 +139,12 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     );
   }
 
-  void remove(RuleKind kind, String id) {
+  Future<void> remove(RuleKind kind, String id) async {
+    final repo = _repo;
+    final dbId = int.tryParse(id);
+    if (repo != null && dbId != null) {
+      await repo.delete(kind, dbId);
+    }
     state = {
       ...state,
       kind: [
@@ -114,10 +155,11 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   }
 
   /// 清空自定义规则，返回被清掉的条数（供确认框与提示复用）。
-  int clearCustom(RuleKind kind) {
-    final custom = rulesOf(kind)
-        .where((rule) => rule.source == RuleSource.user)
-        .length;
+  Future<int> clearCustom(RuleKind kind) async {
+    final repo = _repo;
+    final removed = repo == null
+        ? rulesOf(kind).where((rule) => rule.source == RuleSource.user).length
+        : await repo.clearUser(kind);
     state = {
       ...state,
       kind: [
@@ -125,11 +167,22 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
           if (rule.source != RuleSource.user) rule,
       ],
     };
-    return custom;
+    return removed;
   }
 
   /// 重置默认白名单：把预设行恢复成初始内容，用户行与订阅行不动。
-  int resetPreset(RuleKind kind) {
+  Future<int> resetPreset(RuleKind kind) async {
+    final repo = _repo;
+    if (repo != null && kind == RuleKind.allow) {
+      final content = await rootBundle.loadString('assets/https_passthrough.txt');
+      final entries = parsePresetWhitelist(content);
+      if (entries.isEmpty) {
+        return 0;
+      }
+      final count = await repo.resetPresetWhitelist(entries);
+      state = {...state, kind: await repo.loadKind(kind)};
+      return count;
+    }
     final initial = {
       for (final rule in mockRulesOf(kind))
         if (rule.source == RuleSource.preset) rule.id: rule,
@@ -146,23 +199,32 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   }
 
   /// 批量导入：逐行去重后追加，返回实际写入的条数。
-  int importRules(RuleKind kind, List<String> patterns, {String? target}) {
+  Future<int> importRules(
+    RuleKind kind,
+    List<String> patterns, {
+    String? target,
+  }) async {
     final existing = {for (final rule in rulesOf(kind)) rule.pattern};
+    final repo = _repo;
     final added = <MockRule>[];
     for (final pattern in patterns) {
       final trimmed = pattern.trim();
       if (trimmed.isEmpty || !existing.add(trimmed)) {
         continue;
       }
-      added.add(
-        MockRule(
-          id: '${kind.name}-user-${_sequence++}',
-          pattern: trimmed,
-          kind: kind,
-          source: RuleSource.user,
-          target: target,
-        ),
-      );
+      if (repo != null) {
+        added.add(await repo.add(kind, trimmed, target: target));
+      } else {
+        added.add(
+          MockRule(
+            id: '${kind.name}-user-${_sequence++}',
+            pattern: trimmed,
+            kind: kind,
+            source: RuleSource.user,
+            target: target,
+          ),
+        );
+      }
     }
     if (added.isEmpty) {
       return 0;

@@ -200,3 +200,17 @@ Future<LegacyPrefsStore> loadLegacyPrefsStore({
   }
   return MethodChannelLegacyPrefsStore(snapshot, channel: channel);
 }
+
+/// Installed versionCode, needed by the version-gated preset whitelist seed.
+Future<int?> readAppVersionCode({
+  MethodChannel channel = legacyPrefsChannel,
+}) async {
+  try {
+    return await channel.invokeMethod<int>('versionCode');
+  } on MissingPluginException {
+    return null;
+  } on PlatformException catch (error) {
+    debugPrint('versionCode read failed: $error');
+    return null;
+  }
+}

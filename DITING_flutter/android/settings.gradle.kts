@@ -11,9 +11,18 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
         google()
         mavenCentral()
         gradlePluginPortal()
+    }
+}
+
+// Flutter plugins (e.g. sqflite_android) declare their own `buildscript`
+// repositories, so the mirror has to be injected before those blocks run.
+gradle.beforeProject {
+    buildscript.repositories {
+        maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
     }
 }
 

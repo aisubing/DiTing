@@ -132,7 +132,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     if (result == null || !mounted) {
       return;
     }
-    ref
+    await ref
         .read(rulesProvider.notifier)
         .add(kind, result.pattern, target: result.target);
   }
@@ -151,7 +151,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     if (result == null || !mounted) {
       return;
     }
-    ref
+    await ref
         .read(rulesProvider.notifier)
         .edit(kind, rule.id, result.pattern, target: result.target);
   }
@@ -173,7 +173,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     if (!confirmed || !mounted) {
       return;
     }
-    ref.read(rulesProvider.notifier).remove(kind, rule.id);
+    await ref.read(rulesProvider.notifier).remove(kind, rule.id);
   }
 
   Future<void> _clearCustom() async {
@@ -187,7 +187,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     if (!confirmed || !mounted) {
       return;
     }
-    ref.read(rulesProvider.notifier).clearCustom(kind);
+    await ref.read(rulesProvider.notifier).clearCustom(kind);
   }
 
   Future<void> _resetPreset() async {
@@ -201,7 +201,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     if (!confirmed || !mounted) {
       return;
     }
-    ref.read(rulesProvider.notifier).resetPreset(kind);
+    await ref.read(rulesProvider.notifier).resetPreset(kind);
   }
 
   /// 只读行被点时的提示。用确认框而不是提示条：提示条会随页面滚动消失，而

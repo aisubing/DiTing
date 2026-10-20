@@ -52,7 +52,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     if (parsed.accepted.isEmpty) {
       return;
     }
-    final count = ref
+    final count = await ref
         .read(rulesProvider.notifier)
         .importRules(_kind, parsed.accepted);
     _controller.clear();

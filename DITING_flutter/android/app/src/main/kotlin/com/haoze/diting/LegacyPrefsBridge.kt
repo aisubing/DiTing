@@ -42,6 +42,10 @@ class LegacyPrefsBridge(private val context: Context) :
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
+        if (call.method == "versionCode") {
+            result.success(versionCode())
+            return
+        }
         val container = call.argument<String>("container")
         if (container == null || container !in CONTAINERS) {
             result.error("invalid_container", "Unknown SharedPreferences container", container)
@@ -61,6 +65,17 @@ class LegacyPrefsBridge(private val context: Context) :
                 }
             }
             else -> result.notImplemented()
+        }
+    }
+
+    /** Used for the version-gated preset whitelist seed, same as 1.4.3. */
+    private fun versionCode(): Long {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            info.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
         }
     }
 

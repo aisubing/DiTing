@@ -15,6 +15,13 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：Room 库只能原文件打开；Maven 镜像要覆盖插件自带的 `buildscript`
+
+- 兼容旧库不能 `openDatabase(..., version:)`：带上 version 会改写 Room 的 `user_version`/触发迁移。做法是 `databaseExists` → 直接 `openDatabase(path)`，打开后核对 `user_version` 仍为 3，`-wal` 仍在。文件名固定 `diting_database` / `diting_express` / `diting_dns_rules`。
+- 预设白名单受 `default_whitelist_initialized` 与 `default_whitelist_seeded_version = versionCode*1000+2` 双重门控；升级版本会删 `source='preset'` 的孤儿再重种。`groupName` 取自资产里的分类注释（如「Google / Android 平台核心」），漏写会与旧库肉眼可辨地不一致。
+- 本地 `repo.maven.apache.org` 返回 403（`curl` 实测，镜像 200）。只改 `settings.gradle.kts` 的 `pluginManagement` 不够：Flutter 插件（sqflite_android）的 `build.gradle` 自带 `buildscript { repositories { google(); mavenCentral() } }`，必须在 settings 里用 `gradle.beforeProject { buildscript.repositories { maven(...) } }` 抢先注入镜像，否则插件工程配置阶段就失败。
+- 库层验收要「UI 操作 + 直接回读 SQLite(+WAL)」双证：只看界面无法证明写入了旧表，只看主库文件会漏掉尚在 WAL 里的行；同时核对 `*_source` 的 `useradd/preset` 标签与级联删除。
+
 ### 2026-10-20：旧版数据衔接不能用 `shared_preferences`；截图坐标要取 uiautomator bounds
 
 - 插件的 Android 实现把键写进 `FlutterSharedPreferences` 并加 `flutter.` 前缀，旧版的 `dns_vpn_prefs` 等 11 个容器一个都读不到。同 applicationId 下必须用原生 `getSharedPreferences(<旧容器名>)` 建桥，键名/落盘值逐字保留（`gold→indigo`、`server→dns`、底栏 id、1053 端口）。

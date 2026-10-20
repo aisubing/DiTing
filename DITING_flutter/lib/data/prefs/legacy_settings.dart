@@ -93,6 +93,22 @@ class LegacySettings {
   void setHapticEnabled(bool value) =>
       _store.putBool(uiContainer, 'bottom_bar_haptic_enabled', value);
 
+  bool get defaultWhitelistInitialized =>
+      _bool(uiContainer, 'default_whitelist_initialized', false);
+
+  int get defaultWhitelistSeededVersion =>
+      _int(uiContainer, 'default_whitelist_seeded_version', 0);
+
+  /// `versionCode * 1000 + presetSchemaVersion(2)`, exactly as 1.4.3 computed it.
+  void markDefaultWhitelistSeeded(int versionCode) {
+    _store.putBool(uiContainer, 'default_whitelist_initialized', true);
+    _store.putLong(
+      uiContainer,
+      'default_whitelist_seeded_version',
+      versionCode * 1000 + 2,
+    );
+  }
+
   /// Parses `bottom_bar_destinations` with the legacy rules: unknown ids are
   /// dropped, duplicates collapse, fewer than two entries restores defaults,
   /// and the list is cut at four.
