@@ -2,6 +2,7 @@
 library;
 
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,15 +12,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// `normal` 指「全隧道 Go 模式」、`server` 指「纯 DNS 局域网服务」、
 /// `express` 指「纯 Kotlin 窄路由」。这里沿用同一命名，避免与规格对不上。
 enum AppWorkMode {
-  normal('普通模式', '推荐', '全量域名解析、黑白名单、HTTPS 检查、网络管控'),
-  server('服务器模式', '轻量', '纯 DNS 代理与解析加速、低功耗'),
-  express('极速模式', '极速', '纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）');
+  normal(
+    '普通模式',
+    '推荐',
+    '全量域名解析、黑白名单、HTTPS 检查、网络管控',
+    'normal',
+  ),
+  server('服务器模式', '轻量', '纯 DNS 代理与解析加速、低功耗', 'dns'),
+  express(
+    '极速模式',
+    '极速',
+    '纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）',
+    'express',
+  );
 
-  const AppWorkMode(this.title, this.badge, this.summary);
+  const AppWorkMode(this.title, this.badge, this.summary, this.storageValue);
 
   final String title;
   final String badge;
   final String summary;
+
+  /// 旧版 `app_work_mode` 的落盘值：服务器模式仍写作 `dns`。
+  final String storageValue;
+
+  static AppWorkMode fromStorageValue(String? value) => values.firstWhere(
+    (mode) => mode.storageValue == value,
+    orElse: () => normal,
+  );
 }
 
 /// 电源状态机：停止 / 启动中 / 运行 / 停止中（上游 `PowerToggleButton` 三态，
@@ -44,9 +63,13 @@ enum PowerState {
 /// （切换模式会停止另一个模式的服务），拆开会漏掉这种约束。
 class WorkModeNotifier extends Notifier<AppWorkMode> {
   @override
-  AppWorkMode build() => AppWorkMode.normal;
+  AppWorkMode build() =>
+      AppWorkMode.fromStorageValue(ref.read(legacySettingsProvider).workModeRaw);
 
-  void select(AppWorkMode mode) => state = mode;
+  void select(AppWorkMode mode) {
+    state = mode;
+    ref.read(legacySettingsProvider).setWorkModeRaw(mode.storageValue);
+  }
 }
 
 final workModeProvider = NotifierProvider<WorkModeNotifier, AppWorkMode>(
@@ -126,9 +149,13 @@ final raceProvidersProvider =
 /// 服务器模式的监听端口。
 class ServerPortNotifier extends Notifier<int> {
   @override
-  int build() => 5353;
+  int build() => ref.read(legacySettingsProvider).serverPort;
 
-  void set(int port) => state = port.clamp(1024, 65535);
+  void set(int port) {
+    final clamped = port.clamp(1024, 65535);
+    state = clamped;
+    ref.read(legacySettingsProvider).setServerPort(clamped);
+  }
 }
 
 final serverPortProvider = NotifierProvider<ServerPortNotifier, int>(
@@ -191,11 +218,17 @@ final serviceStatsProvider =
 /// 首页是否已经选过工作模式（引导完成标记）。
 class WorkModeSelectedNotifier extends Notifier<bool> {
   @override
-  bool build() => false;
+  bool build() => ref.read(legacySettingsProvider).workModeSelected;
 
-  void markSelected() => state = true;
+  void markSelected() {
+    state = true;
+    ref.read(legacySettingsProvider).setWorkModeSelected(true);
+  }
 
-  void reset() => state = false;
+  void reset() {
+    state = false;
+    ref.read(legacySettingsProvider).clearWorkModeSelection();
+  }
 }
 
 final workModeSelectedProvider =

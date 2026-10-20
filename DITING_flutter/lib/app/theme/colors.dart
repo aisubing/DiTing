@@ -10,23 +10,31 @@ const defaultPrimaryColor = Color(0xFF007AFF);
 /// 其余八项是 Apple 系统色。上游枚举名与 storageValue 有一处历史错位
 /// （`GOLD` 的 storageValue 是 `indigo`），演示层直接按语义命名为 [gold]。
 enum AppPalette {
-  system('跟随系统', null),
-  purple('鸢尾紫', Color(0xFFAF52DE)),
-  blue('睡莲蓝', Color(0xFF007AFF)),
-  cyan('池水青', Color(0xFF32ADE6)),
-  green('柳叶绿', Color(0xFF34C759)),
-  orange('暮光赭', Color(0xFFFF9500)),
-  red('罂粟红', Color(0xFFFF3B30)),
-  pink('暮霞粉', Color(0xFFFF2D55)),
-  gold('麦穗金', Color(0xFFD4A017));
+  system('跟随系统', 'system', null),
+  purple('鸢尾紫', 'purple', Color(0xFFAF52DE)),
+  blue('睡莲蓝', 'blue', Color(0xFF007AFF)),
+  cyan('池水青', 'cyan', Color(0xFF32ADE6)),
+  green('柳叶绿', 'green', Color(0xFF34C759)),
+  orange('暮光赭', 'orange', Color(0xFFFF9500)),
+  red('罂粟红', 'red', Color(0xFFFF3B30)),
+  pink('暮霞粉', 'pink', Color(0xFFFF2D55)),
+  gold('麦穗金', 'indigo', Color(0xFFD4A017));
 
-  const AppPalette(this.label, this.seed);
+  const AppPalette(this.label, this.storageValue, this.seed);
 
   /// 设置页显示名。
   final String label;
 
+  /// 旧版 `theme_color_style` 的落盘值。`gold` 的历史值是 `indigo`，不可改。
+  final String storageValue;
+
   /// 种子色；`null` 表示跟随系统。
   final Color? seed;
+
+  static AppPalette fromStorageValue(String? value) => values.firstWhere(
+    (palette) => palette.storageValue == value,
+    orElse: () => system,
+  );
 
   /// 实际用于 `seededColorScheme` 的种子色。
   Color get effectiveSeed => seed ?? defaultPrimaryColor;
@@ -46,11 +54,19 @@ enum AppPalette {
 
 /// 日夜模式三选一（上游 `app_theme_mode`）。
 enum AppThemeMode {
-  system('跟随系统'),
-  light('浅色模式'),
-  dark('深色模式');
+  system('跟随系统', 'system'),
+  light('浅色模式', 'light'),
+  dark('深色模式', 'dark');
 
-  const AppThemeMode(this.label);
+  const AppThemeMode(this.label, this.storageValue);
 
   final String label;
+
+  /// 旧版 `app_theme_mode` 的落盘值。
+  final String storageValue;
+
+  static AppThemeMode fromStorageValue(String? value) => values.firstWhere(
+    (mode) => mode.storageValue == value,
+    orElse: () => system,
+  );
 }

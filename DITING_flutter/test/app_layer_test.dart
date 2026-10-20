@@ -182,7 +182,9 @@ void main() {
 
     test('切换色板后 effectiveSeed 跟着变', () {
       final c = container();
-      expect(c.read(paletteProvider), AppPalette.blue);
+      // 1.4.3 未设置 `theme_color_style` 时回退 SYSTEM（旧枚举的默认值），
+      // Flutter 侧没有 Monet，SYSTEM 退化为默认蓝。
+      expect(c.read(paletteProvider), AppPalette.system);
       c.read(paletteProvider.notifier).select(AppPalette.purple);
       expect(c.read(paletteProvider).effectiveSeed, AppPalette.purple.effectiveSeed);
     });

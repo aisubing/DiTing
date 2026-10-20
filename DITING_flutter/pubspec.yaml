@@ -1,7 +1,9 @@
 name: diting
-description: "谛听 DITING — Flutter UI 框架（视觉体系移植自 DITING，纯演示无业务逻辑）。"
+description: "谛听 DITING — Android 客户端（Flutter 重写，兼容 1.4.3 数据）。"
 publish_to: 'none'
-version: 1.0.0+1
+# 旧版最新为 1.4.3 / versionCode 10403；本版按 major*10000+minor*100+patch 递增，
+# 保证 upgrade 安装时不会被系统判为降级。
+version: 1.4.4+10404
 
 environment:
   sdk: ^3.13.5

@@ -1,21 +1,29 @@
 /// 演示用状态：外观（主题 / 色板 / 字号 / 透明度 / 首页句子 / 底栏）。
 ///
-/// 全部是纯内存状态，不落盘——本阶段是 UI 演示，没有业务持久化。
-/// 每个 Notifier 只改自己的一小块，页面通过 `ref.watch` 精确订阅，
-/// 避免改一个滑杆就重建整棵树。
+/// 主题、色板、首页透明度/句子、底栏与触感直接读写旧版 `dns_vpn_prefs`
+/// 的同名键，保证 1.4.3 用户升级后设置原样保留；其余（纯黑、字号）是
+/// Flutter 版新增项，暂不落盘。
 library;
 
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
+import 'package:diting/data/prefs/legacy_settings.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/ui/icons/icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
 /// 日夜模式。
 class ThemeModeNotifier extends Notifier<AppThemeMode> {
   @override
-  AppThemeMode build() => AppThemeMode.system;
+  AppThemeMode build() =>
+      AppThemeMode.fromStorageValue(_settings(ref).themeModeRaw);
 
-  void select(AppThemeMode mode) => state = mode;
+  void select(AppThemeMode mode) {
+    state = mode;
+    _settings(ref).setThemeModeRaw(mode.storageValue);
+  }
 }
 
 final themeModeProvider =
@@ -24,9 +32,13 @@ final themeModeProvider =
 /// 主题色九选一。
 class PaletteNotifier extends Notifier<AppPalette> {
   @override
-  AppPalette build() => AppPalette.blue;
+  AppPalette build() =>
+      AppPalette.fromStorageValue(_settings(ref).paletteRaw);
 
-  void select(AppPalette palette) => state = palette;
+  void select(AppPalette palette) {
+    state = palette;
+    _settings(ref).setPaletteRaw(palette.storageValue);
+  }
 }
 
 final paletteProvider =
@@ -56,14 +68,17 @@ final textScaleProvider =
 
 /// 首页四类元素的透明度（`home_*_opacity`，0.1–1.0）。
 enum HomeLayer {
-  powerButton('电源按钮'),
-  providerSelector('服务商选择'),
-  modeButton('模式按钮'),
-  poem('首页句子');
+  powerButton('电源按钮', 'home_power_button_opacity'),
+  providerSelector('服务商选择', 'home_provider_selector_opacity'),
+  modeButton('模式按钮', 'home_mode_button_opacity'),
+  poem('首页句子', 'home_poem_opacity');
 
-  const HomeLayer(this.label);
+  const HomeLayer(this.label, this.storageKey);
 
   final String label;
+
+  /// 旧版 `AppearanceSettingsStore` 的键名。
+  final String storageKey;
 }
 
 class HomeOpacityNotifier extends Notifier<Map<HomeLayer, double>> {
@@ -75,13 +90,27 @@ class HomeOpacityNotifier extends Notifier<Map<HomeLayer, double>> {
   };
 
   @override
-  Map<HomeLayer, double> build() => _defaults;
-
-  void set(HomeLayer layer, double value) {
-    state = {...state, layer: value.clamp(0.1, 1.0)};
+  Map<HomeLayer, double> build() {
+    final settings = _settings(ref);
+    return {
+      for (final layer in HomeLayer.values)
+        layer: settings.homeOpacity(layer.storageKey),
+    };
   }
 
-  void resetAll() => state = _defaults;
+  void set(HomeLayer layer, double value) {
+    final clamped = value.clamp(0.1, 1.0);
+    state = {...state, layer: clamped};
+    _settings(ref).setHomeOpacity(layer.storageKey, clamped);
+  }
+
+  void resetAll() {
+    state = _defaults;
+    final settings = _settings(ref);
+    for (final layer in HomeLayer.values) {
+      settings.setHomeOpacity(layer.storageKey, 1);
+    }
+  }
 }
 
 final homeOpacityProvider =
@@ -92,19 +121,29 @@ final homeOpacityProvider =
 /// 首页句子：运行 / 停止两态各一条，留空即不显示。
 class HomeSentenceNotifier extends Notifier<({String running, String stopped})> {
   @override
-  ({String running, String stopped}) build() => (
-    running: '谛听万象，明察清浊',
-    stopped: '收耳静眠，归于无声',
-  );
+  ({String running, String stopped}) build() => _settings(ref).homeSentences;
 
   void set({String? running, String? stopped}) {
     state = (
       running: running ?? state.running,
       stopped: stopped ?? state.stopped,
     );
+    _settings(ref).setHomeSentences(
+      running: state.running,
+      stopped: state.stopped,
+    );
   }
 
-  void reset() => state = build();
+  void reset() {
+    state = (
+      running: LegacySettings.defaultRunningSentence,
+      stopped: LegacySettings.defaultStoppedSentence,
+    );
+    _settings(ref).setHomeSentences(
+      running: state.running,
+      stopped: state.stopped,
+    );
+  }
 }
 
 final homeSentenceProvider =
@@ -114,17 +153,30 @@ final homeSentenceProvider =
 
 /// 底栏可选项。上游 6 选 2–4；这里允许 2–[maxDockDestinations]。
 enum BottomBarDestination {
-  home('首页', AppGlyphs.dashboard),
-  featureHub('功能中心', AppGlyphs.puzzle),
-  logDashboard('日志仪表盘', AppGlyphs.logs),
-  appTraffic('应用流量', AppGlyphs.dataUsage),
-  networkTools('网络工具', AppGlyphs.tools),
-  settings('设置', AppGlyphs.settings);
+  home('首页', 'home', AppGlyphs.dashboard),
+  featureHub('功能中心', 'feature_hub', AppGlyphs.puzzle),
+  logDashboard('日志仪表盘', 'log_dashboard', AppGlyphs.logs),
+  appTraffic('应用流量', 'app_traffic_stats', AppGlyphs.dataUsage),
+  networkTools('网络工具', 'network_tools', AppGlyphs.tools),
+  settings('设置', 'settings', AppGlyphs.settings);
 
-  const BottomBarDestination(this.label, this.glyph);
+  const BottomBarDestination(this.label, this.storageValue, this.glyph);
 
   final String label;
+
+  /// 旧版 `bottom_bar_destinations` 数组里的 id。
+  final String storageValue;
+
   final Glyph glyph;
+
+  static BottomBarDestination? fromStorageValue(String value) {
+    for (final destination in values) {
+      if (destination.storageValue == value) {
+        return destination;
+      }
+    }
+    return null;
+  }
 }
 
 class BottomBarNotifier extends Notifier<List<BottomBarDestination>> {
@@ -135,7 +187,19 @@ class BottomBarNotifier extends Notifier<List<BottomBarDestination>> {
   ];
 
   @override
-  List<BottomBarDestination> build() => _defaults;
+  List<BottomBarDestination> build() {
+    final restored = [
+      for (final id in _settings(ref).bottomBarIds)
+        ?BottomBarDestination.fromStorageValue(id),
+    ];
+    return restored.length < 2 ? _defaults : restored;
+  }
+
+  void _save(List<BottomBarDestination> destinations) {
+    _settings(ref).setBottomBarIds(
+      [for (final destination in destinations) destination.storageValue],
+    );
+  }
 
   /// 至少留 2 项，最多 [maxDockDestinations] 项；越界的操作被忽略。
   bool toggle(BottomBarDestination destination) {
@@ -145,16 +209,21 @@ class BottomBarNotifier extends Notifier<List<BottomBarDestination>> {
         return false;
       }
       state = [...current]..remove(destination);
+      _save(state);
       return true;
     }
     if (current.length >= maxDockDestinations) {
       return false;
     }
     state = [...current, destination];
+    _save(state);
     return true;
   }
 
-  void reset() => state = _defaults;
+  void reset() {
+    state = _defaults;
+    _save(_defaults);
+  }
 }
 
 final bottomBarProvider =
@@ -165,9 +234,12 @@ final bottomBarProvider =
 /// 底栏触感反馈开关。
 class HapticNotifier extends Notifier<bool> {
   @override
-  bool build() => true;
+  bool build() => _settings(ref).hapticEnabled;
 
-  void toggle(bool value) => state = value;
+  void toggle(bool value) {
+    state = value;
+    _settings(ref).setHapticEnabled(value);
+  }
 }
 
 final hapticProvider = NotifierProvider<HapticNotifier, bool>(
@@ -176,23 +248,35 @@ final hapticProvider = NotifierProvider<HapticNotifier, bool>(
 
 /// 解析模式：单服务商 / 多路竞速（上游 `ResolutionSettingsStore`）。
 enum ResolutionMode {
-  single('单服务商'),
-  smart('智能选择'),
-  parallel('并行竞速'),
-  primaryBackup('主备切换');
+  single('单服务商', 'single'),
+  smart('智能选择', 'smart_prediction'),
+  parallel('并行竞速', 'parallel_race'),
+  primaryBackup('主备切换', 'primary_backup');
 
-  const ResolutionMode(this.label);
+  const ResolutionMode(this.label, this.storageValue);
 
   final String label;
 
+  /// 旧版 `dns_resolution_mode` 的落盘值；枚举名与落盘值并不同名。
+  final String storageValue;
+
   bool get isSingle => this == single;
+
+  static ResolutionMode fromStorageValue(String? value) => values.firstWhere(
+    (mode) => mode.storageValue == value,
+    orElse: () => single,
+  );
 }
 
 class ResolutionModeNotifier extends Notifier<ResolutionMode> {
   @override
-  ResolutionMode build() => ResolutionMode.single;
+  ResolutionMode build() =>
+      ResolutionMode.fromStorageValue(_settings(ref).resolutionModeRaw);
 
-  void select(ResolutionMode mode) => state = mode;
+  void select(ResolutionMode mode) {
+    state = mode;
+    _settings(ref).setResolutionModeRaw(mode.storageValue);
+  }
 }
 
 final resolutionModeProvider =

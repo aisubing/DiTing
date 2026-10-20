@@ -15,6 +15,13 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：旧版数据衔接不能用 `shared_preferences`；截图坐标要取 uiautomator bounds
+
+- 插件的 Android 实现把键写进 `FlutterSharedPreferences` 并加 `flutter.` 前缀，旧版的 `dns_vpn_prefs` 等 11 个容器一个都读不到。同 applicationId 下必须用原生 `getSharedPreferences(<旧容器名>)` 建桥，键名/落盘值逐字保留（`gold→indigo`、`server→dns`、底栏 id、1053 端口）。
+- 能否覆盖安装由 versionCode 决定，只改 versionName 会被判降级；按 `major*10000+minor*100+patch` 从 10403 升到 10404，并用 `apksigner verify --print-certs` 对 SHA-256 确认同签名。
+- 会话里显示的截图会被等比缩放，按目测比例换算 `input tap` 会落进相邻行（本次把「浅色模式」点成「跟随系统」，落盘值 `system` 正好暴露了误点）。点击前用 `uiautomator dump` 读 bounds 取中心；Compose 的文案在 `content-desc`，`text` 常为空。
+- 验证「旧值被读取」不能只看截图，要回读落盘文件；再在同一屏写入两个不同值（light→dark）并各回读一次，才能同时证明读、写两端都通。
+
 ### 2026-10-20：嵌套 `Scaffold` 把浮条高度灌进 `padding.bottom`，页面视口停在浮条上沿
 
 - 浮条壳的 `Scaffold(extendBody: true)` 会把底栏高度写进正文的 `MediaQuery.padding.bottom`；内层页面的 `SafeArea` 又把它变成底部 `Padding`，滚动视口于是止于浮条上沿。浮条背后只剩页面背景，肉眼就是「悬浮底栏后面有一块矩形背景」。
