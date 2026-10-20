@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.RaceLogWriter
 import tunnel.BatchLogCallback
@@ -28,6 +29,7 @@ import tunnel.SocketProtector
 class ExpressVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
     private var engine: Engine? = null
+    private var dataPlane: EngineDataPlane? = null
 
     @Volatile
     private var worker: Thread? = null
@@ -157,6 +159,16 @@ class ExpressVpnService : VpnService() {
             })
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
+
+            // Narrow-route mode only gets the UID resolvers. `dns_log` exists in
+            // `diting_express` and the Go DNS path reads its `a` field from
+            // these two callbacks, so package attribution works here — but
+            // traffic and HTTP logs do not: the TUN owns only DNS routes (no
+            // byte counting on user traffic) and there is no MITM stage.
+            // Neither table exists in `diting_express` anyway.
+            val plane = EngineDataPlane(this, logMode)
+            dataPlane = plane
+            plane.attachResolvers(goEngine)
         } catch (t: Throwable) {
             Log.e(TAG, "Unable to configure Go engine", t)
             releaseResources()
@@ -191,11 +203,20 @@ class ExpressVpnService : VpnService() {
             .onFailure { Log.w(TAG, "engine.stop failed", it) }
         runCatching { current?.stopStackMitm() }
         runCatching { current?.releaseTun() }
+        closeDataPlane()
         releaseResources()
         isRunning = false
         setPersistedRunning(this, false)
         stopForegroundCompat()
         stopSelf()
+    }
+
+    /// Releases the resolver callbacks. No writers are ever attached in this
+    /// mode, so this only drops the UID cache.
+    private fun closeDataPlane() {
+        val plane = dataPlane
+        dataPlane = null
+        runCatching { plane?.close() }
     }
 
     private fun releaseResources() {
@@ -208,6 +229,7 @@ class ExpressVpnService : VpnService() {
         lastError = message
         isRunning = false
         activeEngine = null
+        closeDataPlane()
         setPersistedRunning(this, false)
         releaseResources()
         stopForegroundCompat()
@@ -221,7 +243,7 @@ class ExpressVpnService : VpnService() {
     }
 
     override fun onDestroy() {
-        if (engine != null || isRunning) {
+        if (engine != null || isRunning || dataPlane != null) {
             stopping = true
             val current = engine
             engine = null
@@ -229,6 +251,7 @@ class ExpressVpnService : VpnService() {
             runCatching { current?.stop() }
             runCatching { current?.stopStackMitm() }
             runCatching { current?.releaseTun() }
+            closeDataPlane()
             releaseResources()
             isRunning = false
             setPersistedRunning(this, false)
@@ -331,6 +354,9 @@ class ExpressVpnService : VpnService() {
 
         @Volatile
         private var activeEngine: Engine? = null
+
+        /** Read-only handle for the diagnostics channel; never expose a setter. */
+        internal fun engineForDiagnostics(): Engine? = activeEngine
 
         @Volatile
         var lastError: String? = null

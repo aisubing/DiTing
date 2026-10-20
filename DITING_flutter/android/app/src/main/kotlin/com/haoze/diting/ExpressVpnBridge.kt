@@ -54,6 +54,11 @@ class ExpressVpnBridge(
             proxyJson = call.argument<String>("outboundProxy").orEmpty(),
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = call.argument<List<String>>("excludedPackages").orEmpty(),
+            // `blockedPackages` / `inspectionPackages` / `inspectionEnabled` are
+            // deliberately not forwarded: the narrow TUN has neither the firewall
+            // stage (`setBlockedUIDs` is only read by the full-tunnel handlers in
+            // engine_full_tunnel.go) nor a MITM stage. Forwarding them would look
+            // like the setting took effect while nothing consumes it.
         )
         return try {
             ContextCompat.startForegroundService(activity, intent)

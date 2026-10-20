@@ -15,6 +15,18 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：原生数据面「注册了回调」≠「表有数据」；UPSERT 语法与 SQLite 版本
+
+- 引擎回调是**逐项开关**，不是「注册了一套」。`tunnel.Engine` 上 `setBatchLogCallback`/`setRaceLogCallback`/`setTrafficCallback`/`setHttpLogCallback` 各自独立；只注册前两个的后果是 `app_traffic_daily` 与 `http_request_log` 恒空，且 `dns_log.packageName` 恒 NULL——因为 `engine_dns.go` 的 `a` 字段来自 `setUIDResolver`+`setAppUidResolver` 这一对，缺任一个都走不进归因分支。判「某表没数据」先 grep 该表的**生产者回调**是否被注册，别只 grep 表名。
+- `UIDResolver.resolveUID` 的参数方向是反的：Go 的 `resolveFlowUID` 把 `id.appIP` 传在第一位（Kotlin 侧名字叫 `localIP`），`id.serverIP` 传在 `remoteIP`。`ConnectivityManager.getConnectionOwnerUid(local=app, remote=server)` 要的是 **app 在前**。照名字直觉对调会让每次查询都返回 `INVALID_UID`，包名静默全空——这类「参数名撒不了谎但会误导」的接口，以 Go 侧的调用点为准而不是以 Java 形参名为准。
+- `ON CONFLICT ... DO UPDATE` 需要 SQLite 3.24（Android 11 / API 30）。本 app `minSdk = 24`，在 API 24–29 上这不是「约束冲突」而是**语法错误**：Room DAO 里的写法能跑是因为旧版 minSdk 更高，照抄到 Flutter 侧会每 15 秒失败一次。改成 `UPDATE`（`rowcount == 0` 再 `INSERT`），并用差分脚本证明两种写法在 insert/累加/空名保留/跨日 rollover 四类输入上逐列一致——铁律 4 要求「等价重写」必须给差分证据，不能只靠推理。
+- `app_name` 的 `CASE WHEN excluded.app_name != '' THEN ... ELSE <旧值> END` 不能简化成无条件覆盖：`PackageManager` 取不到 label 时返回空串，覆盖会把界面上已有的应用名擦成空白。同理，`packageName` 解析失败的行**跳过而不是造 `uid:10123` 假包名**——流量页按包名分组，假包名会渲染成一个不存在的应用。
+- 批量写入器自己的 `closed` 标志只能挡**入口**（回调、提交），不能挡**写盘方法**。`close()` 的语义是「先把尾巴刷掉再关执行器」，一旦写盘方法也判 `closed`，`close()` 自己设完标志再调它就等于把尾巴整段丢掉——这个自伤写了两次才发现。
+- 时区相关的日键要在**采样时**取，不能在**落盘时**取：批量缓冲会把零点前后的 delta 混进同一批，用写盘时刻的日期会把前一天的字节记到第二天。按 `date` 分桶（`LinkedHashMap<String, ...>`）而不是只存一个 pending map。
+- 只给 `diting_express` 建了 writer 的表要**显式判存在**（`sqlite_master` 查询）。`ExpressRulesDatabase` 明确排除了 `app_traffic_daily` 与 `http_request_log`；极速模式注册这两个回调属于「永远写不进去」的死链路，正确做法是只注册 `setUIDResolver`/`setAppUidResolver`（`dns_log` 两库都有）。
+- 三个服务的 `activeEngine` 都是 companion 私有。给诊断通道开口子时**只加 `internal fun engineForDiagnostics(): Engine?`**，不要提供 setter、也不要顺手合并那 4 处 `activeEngine = null`——它们是停机时刻意置空的，合并会让 `status()` 在停止后继续返回上一条隧道的计数。
+- 不跑 Gradle 也能做真编译自检：`kotlin-compiler-embeddable` + `android.jar` + AAR 里的 `classes.jar` + `flutter_embedding_debug.jar` 直接 `K2JVMCompiler`。编译期还需要把 `kotlinx-coroutines-core-jvm` 放进**编译器自身**的 classpath（否则 `NoClassDefFoundError: kotlinx/coroutines/CoroutineScope`，看起来像代码错）。`R`/`MainActivity` 这类生成物用最小 stub 顶掉即可。这条链路能在 Lead 串行构建之前就抓到符号不存在、import 漏写、签名不匹配。
+
 ### 2026-10-20：仪表盘四个数字必须同窗口同口径；`ERROR` 不是「放行」
 
 - 顶部四格（今日查询/缓存命中/已拦截/平均延迟）里只要有一格换了数据源，另外三格就当场失真：本轮把前三格改成「`dns_log` 当日聚合」后，平均延迟仍是「最近 200 行均值」，跨零点或日志量大时两列互相矛盾。凡是四条并排的统计条，先把窗口写进注释，再逐条对来源。

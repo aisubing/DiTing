@@ -60,6 +60,14 @@ class VpnBridge(
             bypassLan = call.argument<Boolean>("bypassLan") ?: true,
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = excluded,
+            // Both lists are package names on the Dart side; the service turns
+            // them into UIDs because Engine.setBlockedUIDs /
+            // setMitmAllowedUIDs match the UID the packet path sees.
+            blockedPackages = call.argument<List<String>>("blockedPackages").orEmpty(),
+            inspectionPackages = call.argument<List<String>>("inspectionPackages").orEmpty(),
+            // Already folded by Dart from https_inspection_ready &&
+            // http_inspection_enabled && packages.isNotEmpty().
+            inspectionEnabled = call.argument<Boolean>("inspectionEnabled") ?: false,
         )
         return try {
             ContextCompat.startForegroundService(activity, intent)

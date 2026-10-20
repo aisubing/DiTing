@@ -15,12 +15,15 @@ import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
+import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.RaceLogWriter
 import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.RaceLogCallback
 import tunnel.SocketProtector
+import java.io.File
 
 /// Full-tunnel VpnService backed by the unchanged 1.4.3 Go engine.
 ///
@@ -31,6 +34,7 @@ import tunnel.SocketProtector
 class DitingVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
     private var engine: Engine? = null
+    private var dataPlane: EngineDataPlane? = null
 
     @Volatile
     private var worker: Thread? = null
@@ -63,6 +67,9 @@ class DitingVpnService : VpnService() {
             bypassLan = intent.getBooleanExtra(EXTRA_BYPASS_LAN, true),
             ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
             excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
+            blockedPackages = intent.getStringArrayListExtra(EXTRA_BLOCKED_PACKAGES).orEmpty().toSet(),
+            inspectionPackages = intent.getStringArrayListExtra(EXTRA_INSPECTION_PACKAGES).orEmpty().toSet(),
+            inspectionEnabled = intent.getBooleanExtra(EXTRA_INSPECTION_ENABLED, false),
         )
         return START_NOT_STICKY
     }
@@ -76,6 +83,9 @@ class DitingVpnService : VpnService() {
         bypassLan: Boolean,
         ipv6Mode: String,
         excludedPackages: Set<String>,
+        blockedPackages: Set<String>,
+        inspectionPackages: Set<String>,
+        inspectionEnabled: Boolean,
     ) {
         if (engine != null) {
             Log.i(TAG, "tunnel already running; ignoring duplicate start")
@@ -162,6 +172,52 @@ class DitingVpnService : VpnService() {
             })
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
+
+            // Data plane: UID attribution for dns_log.packageName plus the two
+            // log tables that had no producer at all. Everything is registered
+            // before startFull, because the Go call blocks for the tunnel's
+            // lifetime and the first DNS query can arrive immediately.
+            //
+            // The field is assigned before the attach calls so a throw below
+            // still reaches closeDataPlane() from the catch block: the writers
+            // own executor threads and a 15s timer, which must not outlive a
+            // failed start.
+            val plane = EngineDataPlane(this, logMode)
+            dataPlane = plane
+            plane.attachResolvers(goEngine)
+            plane.attachTraffic(goEngine)
+            plane.attachHttp(goEngine)
+
+            // Per-app firewall: the engine matches UIDs, not package names.
+            val blockedUidCsv = PackageUids.csv(this, blockedPackages)
+            if (blockedUidCsv.isNotEmpty()) {
+                goEngine.setBlockedUIDs(blockedUidCsv)
+            }
+
+            // HTTPS inspection. Order matters: startStackMitm materialises the
+            // root CA and installs the filter that setMitmAllowedUIDs writes
+            // into; called in the other order the UID list is silently dropped
+            // (engine_mitm.go logs "stack MITM is not active" and returns).
+            if (inspectionEnabled) {
+                val mitmDir = File(filesDir, MITM_DIR).apply { mkdirs() }
+                val caPem = runCatching { goEngine.startStackMitm(mitmDir.absolutePath) }
+                    .getOrDefault("")
+                if (caPem.isBlank()) {
+                    // No CA means no filter, so startFull builds a plain
+                    // passthrough stack. Leaving the UID list unset matches that.
+                    Log.w(TAG, "startStackMitm produced no CA; HTTPS inspection stays off")
+                } else {
+                    goEngine.setMitmAllowedUIDs(PackageUids.csv(this, inspectionPackages))
+                }
+            } else {
+                // Explicit "inspect nobody". This Engine is fresh, so the list is
+                // already empty; the call is defence in depth for any future
+                // engine reuse. Side effect worth knowing: with no MITM filter
+                // the Go setter logs "MITM: SetAllowedUIDs called but stack MITM
+                // is not active" on GoLog — expected on every inspection-off
+                // start, not a fault.
+                goEngine.setMitmAllowedUIDs("")
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "Unable to configure Go engine", t)
             releaseResources()
@@ -196,11 +252,20 @@ class DitingVpnService : VpnService() {
             .onFailure { Log.w(TAG, "engine.stop failed", it) }
         runCatching { current?.stopStackMitm() }
         runCatching { current?.releaseTun() }
+        closeDataPlane()
         releaseResources()
         isRunning = false
         setPersistedRunning(this, false)
         stopForegroundCompat()
         stopSelf()
+    }
+
+    /// Flushes the buffered traffic / HTTP rows. Runs after the engine has
+    /// stopped so no callback can append to a writer that is closing.
+    private fun closeDataPlane() {
+        val plane = dataPlane
+        dataPlane = null
+        runCatching { plane?.close() }
     }
 
     private fun releaseResources() {
@@ -213,6 +278,7 @@ class DitingVpnService : VpnService() {
         lastError = message
         isRunning = false
         activeEngine = null
+        closeDataPlane()
         setPersistedRunning(this, false)
         releaseResources()
         stopForegroundCompat()
@@ -226,7 +292,7 @@ class DitingVpnService : VpnService() {
     }
 
     override fun onDestroy() {
-        if (engine != null || isRunning) {
+        if (engine != null || isRunning || dataPlane != null) {
             stopping = true
             val current = engine
             engine = null
@@ -234,6 +300,7 @@ class DitingVpnService : VpnService() {
             runCatching { current?.stop() }
             runCatching { current?.stopStackMitm() }
             runCatching { current?.releaseTun() }
+            closeDataPlane()
             releaseResources()
             isRunning = false
             setPersistedRunning(this, false)
@@ -324,11 +391,29 @@ class DitingVpnService : VpnService() {
         const val EXTRA_IPV6_MODE = "ipv6_mode"
         const val EXTRA_EXCLUDED_PACKAGES = "excluded_packages"
 
+        /// `blocked_app_packages`: converted to UIDs for `setBlockedUIDs`.
+        const val EXTRA_BLOCKED_PACKAGES = "blocked_packages"
+
+        /// `http_inspection_app_packages`: converted to UIDs for
+        /// `setMitmAllowedUIDs`.
+        const val EXTRA_INSPECTION_PACKAGES = "inspection_packages"
+
+        /// Precomputed by Dart as `https_inspection_ready &&
+        /// http_inspection_enabled && packages.isNotEmpty()`, because the CA must
+        /// be installed before intercepting or every HTTPS request in the
+        /// selected apps breaks.
+        const val EXTRA_INSPECTION_ENABLED = "inspection_enabled"
+
         private const val CHANNEL_ID = "diting_vpn"
         private const val NOTIFICATION_ID = 1001
         private const val PREFS_NAME = "dns_vpn_prefs"
         private const val KEY_VPN_RUNNING = "vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"
+
+        /// Same directory as 1.4.3's `GoInspectionCaManager.certificateDirectory`,
+        /// so an upgraded install keeps using its already-trusted root CA
+        /// instead of minting a new one the user would have to install again.
+        private const val MITM_DIR = "go-mitm"
 
         // Outbound proxy is not wired from Flutter yet; an explicit disabled
         // config keeps the Go side from logging a parse failure on every start.
@@ -340,6 +425,9 @@ class DitingVpnService : VpnService() {
 
         @Volatile
         private var activeEngine: Engine? = null
+
+        /** Read-only handle for the diagnostics channel; never expose a setter. */
+        internal fun engineForDiagnostics(): Engine? = activeEngine
 
         @Volatile
         var lastError: String? = null
@@ -374,6 +462,9 @@ class DitingVpnService : VpnService() {
             bypassLan: Boolean,
             ipv6Mode: String,
             excludedPackages: List<String>,
+            blockedPackages: List<String> = emptyList(),
+            inspectionPackages: List<String> = emptyList(),
+            inspectionEnabled: Boolean = false,
         ): Intent = Intent(context, DitingVpnService::class.java).apply {
             action = ACTION_START
             putExtra(EXTRA_DNS_CONFIG, dnsConfig)
@@ -383,6 +474,9 @@ class DitingVpnService : VpnService() {
             putExtra(EXTRA_BYPASS_LAN, bypassLan)
             putExtra(EXTRA_IPV6_MODE, ipv6Mode)
             putStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES, ArrayList(excludedPackages))
+            putStringArrayListExtra(EXTRA_BLOCKED_PACKAGES, ArrayList(blockedPackages))
+            putStringArrayListExtra(EXTRA_INSPECTION_PACKAGES, ArrayList(inspectionPackages))
+            putExtra(EXTRA_INSPECTION_ENABLED, inspectionEnabled)
         }
 
         fun stopIntent(context: Context): Intent =

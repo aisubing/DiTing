@@ -327,6 +327,9 @@ class DitingDnsServerService : Service() {
         @Volatile
         private var activeEngine: Engine? = null
 
+        /** Read-only handle for the diagnostics channel; never expose a setter. */
+        internal fun engineForDiagnostics(): Engine? = activeEngine
+
         @Volatile
         var lastError: String? = null
 
