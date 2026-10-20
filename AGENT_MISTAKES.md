@@ -1,184 +1,236 @@
 # AGENT_MISTAKES.md
 
-> 每条含「现象 → 根因 → 教训」，只留能改变后续决策的信息；同源条目已合并，被证伪的做法以「反例」并入。
+> 现象和根因已删，只留能改变后续决策的教训与修法。同源条目已合并，被证伪的做法以「反例」并入，最新的排在最前面。
 
 ## 通用铁律（跨条目去重）
 
-1. **期望源**：协议/布局以规范样例向量为准；测试红先分辨「期望错 vs 代码错」，禁止改被测代码让测试变绿；位段先手写逐位表（含跨字节拆分）；解析器先列「像但不合法」负例（`[::1]:53`、`256.1.1.1`、`2001:db8::1::2`）。
-2. **可达性**：严重度 = 缺陷机制 × 可达面。双向 grep caller（Go 导出方法 → gomobile → Kotlin 调用点，含接口注入/默认构造）并查设备/模式门；legacy/平行实现须证明「在生产被执行」。判「会执行」须走完整控制流（`if`/循环守卫与跳转目标）；崩溃类高危先找「为何现场没炸」反证。
-3. **代理结论零权重**：子代理的「已确认/高危」逐条回读源码到调用链两端，组合主张拆条验；计数与规模自己数，「实测 N」须来自本会话工具输出；核验对象是它的位表/判据本身。报告未到手=零信息；复核批按 6–12 条切，含「待定」立即拆小批重派。
-4. **归因顺序**：先 `git show HEAD:<file>` 确认基线，别把「我以为它没做」当事实；据错判写的改动整体回退。判「问题不存在」须显式走一遍「发生路径」——「代码保留了 X」通常证明 X 会被后续流程消费，而非证明无害；「机制成立但修它不划算」记「本轮不改」，不得记「证伪」。
-5. **交付自证**：多文档分类用脚本 set 差集证明互斥；清单声明口径与扩展名；误报/撤回留痕，编号不复用；补「对称性差距」前先确认被对标那半真被消费（无人渲染的字段照抄只会放大死代码）。
-6. **产物时序**：AAR/jar/exe 只在源码定稿后重建：改源码 → `gofmt`/`go vet`/`go test` → 构建 → 目标平台编译/单测/启动验证；不以退出码 0 或单文件可读为完成标准；`.vue` 改动须跑含 `vue-tsc` 的完整构建。
-7. **仓内优先**：列「需外部取证」前先搜源码、测试、仓库注释——作者注释比记忆更硬；判「无法修」前查完平台 API（「模型缺字段」常意味着「该换判据」），以「需加 DB 字段/迁移」为由放弃须附「已排除的替代判据」。
+1. **期望源**：协议和布局以规范样例为准；测试报红先分清是期望错还是代码错，绝不能改被测代码把测试改绿；位段先手写逐位表（含跨字节拆分）；解析器先列「像但不合法」的负例（`[::1]:53`、`256.1.1.1`、`2001:db8::1::2`）。
+2. **可达性**：严重度 = 缺陷机制 × 可达面。双向 grep 调用链（Go 导出方法 → gomobile → Kotlin 调用点，含接口注入与默认构造），并查设备、模式门；legacy 或平行实现要先证明「生产上真会执行」。判「会执行」得走完整控制流（`if`、循环守卫、跳转目标）；崩溃类高危先找「现场为什么没炸」的反证。
+3. **代理结论零权重**：子代理说的「已确认 / 高危」要逐条回读源码到调用链两端，组合主张拆开验；计数和规模自己数，「实测 N」必须出自本会话的工具输出；核验的是它的位表和判据本身。报告没到手等于没有信息；复核按 6–12 条分批，出现「待定」立即拆小批重派。
+4. **归因顺序**：先用 `git show HEAD:<file>` 确认基线，别把「我以为它没做」当事实，据错判写下的改动整体回退。判「问题不存在」要显式走一遍发生路径——「代码保留了 X」通常说明 X 会被后续流程消费，恰恰不说明无害；「机制成立但修它不划算」记「本轮不改」，不能记「证伪」。
+5. **交付自证**：多文档分类用脚本做集合差集，证明互斥；清单要声明口径和扩展名；误报、撤回都留痕，编号不复用；补「对称性差距」之前先确认被对标的那一半真被消费——没人渲染的字段照抄过去只会放大死代码。
+6. **产物时序**：AAR、jar、exe 只在源码定稿后重建，顺序是改源码 → `gofmt`/`go vet`/`go test` → 构建 → 目标平台编译、单测、启动验证；退出码 0 或单个文件能读都不算完成；`.vue` 改动要跑含 `vue-tsc` 的完整构建。
+7. **仓内优先**：列「需要外部取证」之前先搜源码、测试和仓库注释，作者注释比记忆可靠；判「无法修」之前把平台 API 查完（「模型缺字段」往往意味着「该换判据」）；以「要加 DB 字段或迁移」为由放弃的，必须附上「已排除的替代判据」。
+8. **改动方式**：改代码一律用编辑工具，不要用 `sed -i`、PowerShell `-replace` 或 Python 脚本做文本替换。同类事故已经出了三次：`-replace` 把 `$1`、`$&` 当反向引用、多行替换里 `\r\n` 还会错位，`sed -i` 直接把脚本改出 `SyntaxError`。不能因为某一次没出事就认为这条路安全。文件改坏了别试图修补，`git checkout --` 回基线重做更快。
 
 ## 事件记录（时间倒序）
 
-### 2026-10-19: 全站卡片贴边：改共享件一次修 46 页，同时把 4 页推成双重缩进
+### 2026-10-19：全站卡片贴边，改共享件一次修好 46 页，也把 4 页推成双重缩进
 
-- **现象/根因**：
-  1. **`generateSection` 一处都不给横向留白**，全站 157 个分组 / 88 个文件的卡片直接贴住屏幕左右边沿（真机像素量到 `leftGap=0.0dp`），而同页的 `ListHeader`/`ListFooter` 自带 16 → 同一屏两种边距混用。修法是把 16 加在共享件的「卡片列」上（`ListHeader`/`ListFooter` 已有自己的 16，加在外层会让组头缩进 32）。改完 46 页一次归正，但**另外 4 页变成 x=32**：它们外层已经套了 `Padding(horizontal: 16)`。
-  2. **想靠静态分析枚举「哪些调用点外层已给 16」，连错三版**。`generateSection` 的祖先在语法树里要看括号嵌套，但 `ListView(children: […])` 的 `children:` 是**顶层实参**，里面任何后代写的 `EdgeInsets.fromLTRB(16…)` 都被算成「这个 ListView 自己的」——于是把 `PageBody`/`ListView` 下所有调用点全报成双重缩进（73 页有发现）。改成「只看非 child 实参」仍然错，因为 `Padding` 的 `child:` 也常带内层边距。**最后是靠真机量每页卡片外壳的 x 分布**（`[...new Set(shells.map(b=>Math.round(b.x)))]`）一次定死 4 个真实站点。
-  3. **卡片矩形要分「外壳」与「内行」**：`ListItem` 与包它的 `CommonCard` 矩形完全重合（双计），`_ListTile` 是卡内 16 内边距（落在 x=32），WebDAV 表单是「卡里套卡」。不做包含关系剔除，会把每张正常卡都报成「缩进过大」。
-  4. **`ListHeader` 的矩形是通栏的（x=0），文字才在 16**——拿它的 x 当「正文列」参照，等于要求所有卡片贴边，方向完全反了。参照列应直接取设计常量。
-- **教训**：① **仓库级布局不变量（「所有卡片左边距 16」）不要靠静态枚举调用点**，157 个点里嵌套关系肉眼和正则都数不准；改完共享件后跑一遍真机量 x 分布，一轮就能列出全部违规页。② 改共享件的默认值属于「一次改全站」，必须同一轮内做完回归，不能留给下一轮。③ 判据的参照物要选**设计常量**而不是**某个 widget 的矩形**——后者的坐标系口径（通栏容器 vs 文字列）随时会骗人。④ 本轮又用 Python 脚本改 `custom_profile_page.dart`（第 3 次同类事故，前两次是 `sed -i` 与 PowerShell `-replace`）：虽然用了字面串替换、`occurrences=1` 事后核对无误，但规则是「改代码一律用编辑工具」，脚本改代码的风险不在这次有没有出事。
+- 仓库级的布局不变量（比如「所有卡片左边距 16」）别靠静态枚举调用点来验证。157 个点里的嵌套关系，肉眼和正则都数不准；改完共享件跑一遍真机量 x 分布，一轮就能列出全部违规页。
+- 改共享件的默认值等于「一次改全站」，回归必须同轮做完，不能留给下一轮。把 16 加在 `generateSection` 的「卡片列」上是对的，加在外层会让组头缩进 32——`ListHeader`/`ListFooter` 自带 16，同一屏混用两种边距就是这么来的。
+- 判据的参照物要选设计常量，而不是某个 widget 的矩形。后者的坐标系口径（通栏容器还是文字列）随时会骗人。
 
-### 2026-10-19: 「顶栏下空档」判据分不清「居中设计」与「布局塌陷」
+### 2026-10-19：「顶栏下空档」的判据分不清「居中设计」和「布局塌陷」
 
-- **现象/根因**：体检按「栏底 → 第一个内容块的距离 > 60dp」报空档，于是首页大圆钮、扫码取景框、引导步骤、`档案不存在` 空状态各报 143–360dp。它们其实都是**故意居中**：内容上下留白对称，是设计选择。三个叠加的成因：
-  1. **JS 侧的内容块名单与 Dart 侧 `_structureTypes` 不同步**——Dart 已登记 `Button`/`CustomPaint`/`GlyphIcon`，JS 的正则漏了，于是这些块「注册了但不算内容」，首页/扫码/关于页各报一次假空档。两处名单靠注释约束，注释挡不住。
-  2. **可用区底边取了屏幕底**：引导页「下一步」是钉在屏底的按钮，在滚动视口之外，用它算「下方余量」≈0，居中因此判不出来。必须用内容文本自带的视口底边 `vb`。
-  3. **空隙计算把「大块的内部空间」当成块间空隙**：360 高输入框里的提示文字（`EditableText` 高 18）与框下方那张卡之间被量成 262dp 留白。要先按包含关系剔掉被大框套住的小条目。
-- **教训**：① 判「留白异常」必须能区分「上下对称的居中」与「上方空、下方挤」——加一条 `gapAbove/gapBelow` 比值判据，并在报告里把两个数都打出来，便于人眼复核；② 双端各存一份 widget 名单的结构，改一处必须同轮改另一处，或干脆让 JS 只按 Dart 输出的名单过滤；③ 凡是「距离屏幕底」的量都要先问「这块内容属于哪个视口」；④ 报告里带上判定所用的原始数字（首块 y、栏底、内容区底、下方余量），否则假阳性无法在离线复检里被识破。
+- 判「留白异常」要能区分「上下对称的居中」和「上方空、下方挤」。加一条 `gapAbove/gapBelow` 比值判据，报告里把两个数都打出来，人眼复核才有依据。
+- 双端各存一份 widget 名单的结构，改一处必须同轮改另一处；更省事的做法是让 JS 只按 Dart 输出的名单过滤。
+- 凡是「距离屏幕底」的量，先问清楚这块内容属于哪个视口。
+- 报告要带上判定所用的原始数字（首块 y、栏底、内容区底、下方余量），否则假阳性在离线复检里识破不了。
 
-### 2026-10-19: `FilledInputTheme` 默认胶囊圆角，套到高框上画成一个巨大的圆
+### 2026-10-19：`FilledInputTheme` 的胶囊圆角套到高框上，画成一个巨大的圆
 
-- **现象/根因**：`/rules/batch` 的规则输入框（`SizedBox(height: 360)` + `expands`）在真机上渲染成一个占满半屏的**圆**：提示文字挤在上缘，下面整片是空壳。根因是 `FilledInputTheme` 的 `borderRadius` 默认值 `AppRadius.full`（=1000），它是为「单行胶囊高度」设计的——圆角半径超过短边一半时按短边收敛，框一高就变成圆。`analyze`、路由冒烟、溢出检查三类静态/半静态手段全绿，只有截图看得见。
-  - **只有这一处中招**：仓内另外三个多行输入（`icon_sets_form` minLines 6、`override_quick_edit` 12、`scripts_editor` 14）各自在 `decoration` 里显式写了 `border: OutlineInputBorder()`，`InputDecoration.applyDefaults` 让字段自己的 `border` 覆盖主题的同名属性，所以拿到的是 4dp 圆角而不是胶囊。我一度把这三处写进「同样中招」的清单，那是**只看 `minLines≥5` 就外推**、没读 `decoration` 的未验证结论，已删。
-- **教训**：① 「默认值只在某个尺寸下成立」的组件参数，用在别的尺寸上就是缺陷；给这类默认值写注释时要把**成立前提**写进去（现在写的是「单行胶囊高度」）。② 判断主题类缺陷的影响面，要看字段是否**自己覆盖了该属性**（`decoration.border` 非空即覆盖），不能按「尺寸像不像」归类。③ 写进本文档的每一条影响面清单都要有引证（读到的那行代码），否则比不写更坏——它会被后续轮次当事实复述。
+- 有些组件参数「默认值只在某个尺寸下成立」，换个尺寸用就是缺陷。`FilledInputTheme` 的 `borderRadius` 默认 `AppRadius.full`（=1000）是为单行胶囊设计的，套到 `SizedBox(height: 360)` 的输入框上就画成一个占满半屏的圆。给这类默认值写注释时，把成立前提一并写进去。
+- 判断主题类缺陷的影响面，要看字段是否自己覆盖了该属性（`decoration.border` 非空即覆盖，`InputDecoration.applyDefaults` 会让字段覆盖主题同名属性），不能按「尺寸像不像」归类。当初只看 `minLines≥5` 就外推，把三处显式写了 `border: OutlineInputBorder()` 的地方也列进了清单。
+- 写进本文档的每一条影响面清单都要有引证（读到的那行代码）。没有引证的条目比不写更坏，它会被后续轮次当成事实复述。
 
-### 2026-10-19: 真机 UI 体检的三类假阳性 + `StackFit.expand` 让空状态整棵子树消失
+### 2026-10-19：真机 UI 体检的三类假阳性，以及 `StackFit.expand` 让空状态整棵子树消失
 
-- **现象/根因**：
-  1. **`NullStatusSwitcher` 的 `AnimatedSwitcher.layoutBuilder` 写死 `Stack(fit: StackFit.expand)`，放进 `ListView` 就变成「空白页」**。`/config/dns`、`/config/ntp`、`/config/sniffer`、`/config/tun` 四页顶栏以下全空，肉眼看是「异常留白」，真机上量到的是 `BoxConstraints forces an infinite height.` → `RenderBox was not laid out: RenderStack` → `sliver_multi_box_adaptor.dart:629 'child.hasSize'` 断言失败：空状态子树根本没参与布局，所以探针里连一个 `RichText` 都找不到。修法：`LayoutBuilder` 读父级约束，`hasBoundedHeight` 才 `expand`、否则 `loose`；四页从 2 行文本恢复到 19–20 行。
-  2. **`Row(crossAxisAlignment: CrossAxisAlignment.stretch)` 直接放在 `ListView` 的 `Column` 里，整片卡片不上屏**。`/profiles` 的档案卡片网格只有 8 行文本、卡片一张没有，报 `BoxConstraints forces an infinite height` → `RenderFlex` → `sliver_multi_box_adaptor.dart:629`。**这条错误此前被诊断通道的关键词过滤器藏了三轮**（只筛 `overflowed`/`viewport`/`too large`），所以前两次数检都报 `OK`。修法沿用仓内既有约定（`connection_stats_card.dart` 就是这么写的）：外面套 `IntrinsicHeight` 先把行高定下来，卡片仍然等高；改完 8 行 → 32 行文本。
-  3. **「正文侵入系统导航条区」25 条全是假阳性**。列表停在中间时最后一行必然被视口底边裁掉，被裁掉的像素没上屏，却按屏幕坐标算成「画进手势条」。判据改成「文本矩形落在它所属滚动视口底边之内」后才成立。
-  4. **「顶栏下空档」按第一行文本量**，而卡片外壳、图片、输入框都不在登记名单里，于是首页、`/server`、`/scan` 各报 190/558dp 空档；把矩形叠加回截图核对，内容其实紧贴顶栏。改为量「第一个画上屏幕的块（文本或容器）」，并把 `Card`/`Tile`/`Image`/`Chart`/`EditableText`/`NullStatus` 登记进结构名单。
-  5. **`go()` 换页面栈不会关掉上一页留下的浮层**（`PopupRoute`），于是 `/rules/batch`、`/config/override` 报出上一格浮层的「内容画进顶栏区」。跳路由前先 `popUntil((route) => route is! PopupRoute)`。
-  6. **截图与矩形可能取自不同帧**（回弹动画未停），两边对不上时无法判断谁错。改成探针连打两次、比较同名文本位移 > 2dp 就重截图，保证 PNG 与 JSON 出自同一静止画面。
-- **教训**：① 诊断通道的 `FlutterError.onError` 过滤要宽（`RenderBox`/`infinite`/断言失败都留痕），只筛 `overflowed` 会把「同样让内容消失」的错误全丢掉——本轮两条真缺陷（`/config/dns` 空白、`/profiles` 卡片消失）都是放开过滤后才现形的；② 判「留白」必须能区分「背景是空的」与「子树没布局」，后者只能靠错误流，光看文本数量会漏；③ 缩略图上肉眼判断 y 坐标不可靠，怀疑数字时把矩形叠加回截图自证，别凭印象推翻测量；④ 体检判据一律按「像素是否真的上屏」写——视口裁剪、浮层遮挡、动画中间帧都算没上屏；⑤ 给设计系统补的回归测试要做**反向验证**：把修复临时改回去、用例必须变红（`NullStatusSwitcher` 那条在去掉 `hasBoundedHeight` 判定后报 10 个异常），否则它可能只是恒真断言；⑥ 改代码一律用编辑工具，本轮 `sed -i` 又把脚本改出 `SyntaxError`（与 PowerShell `-replace` 同类的批量文本替换事故，第二次发生）。
+- 诊断通道的 `FlutterError.onError` 过滤要放宽，`RenderBox`、`infinite`、断言失败都留痕。只筛 `overflowed`，会把「同样让内容消失」的错误全丢掉。
+- 判「留白」要能区分「背景是空的」和「子树没布局」。后者只能靠错误流发现，光看文本数量会漏。
+- 量空档要看「第一个画上屏幕的块」，文本和容器都算。只按第一行文本量，卡片外壳、图片、输入框都不在名单里，就会把紧贴顶栏的页面报成几百 dp 空档——结构名单里要登记 `Card`/`Tile`/`Image`/`Chart`/`EditableText`/`NullStatus`。
+- 缩略图上肉眼判断 y 坐标不可靠。怀疑数字时，把矩形叠加回截图自证，别凭印象推翻测量。
+- 体检判据一律按「像素是否真的上屏」写：视口裁剪、浮层遮挡、动画中间帧都算没上屏。探针连打两次，同名文本位移超过 2dp 就重截图，保证 PNG 与 JSON 出自同一静止画面。
+- 换页面栈不会关掉上一页留下的浮层（`PopupRoute`）。跳路由前先 `popUntil((route) => route is! PopupRoute)`。
+- 给设计系统补的回归测试要做反向验证：把修复临时改回去，用例必须变红，否则它可能只是一条恒真断言。
+- 修法备忘：`NullStatusSwitcher` 这类空状态组件放进可滚动容器时，用 `LayoutBuilder` 读父级约束，`hasBoundedHeight` 才 `expand`，否则用 `loose`；`Row(crossAxisAlignment: CrossAxisAlignment.stretch)` 直接放进 `ListView` 的 `Column` 时，外面套一层 `IntrinsicHeight`（仓内 `connection_stats_card.dart` 就是这么写的），卡片仍然等高。
 
-### 2026-10-19: `.bat` 里写中文会截断解析器；`set /p` 空 stdin 无限循环；直接 `gradlew` 编 Flutter 是空壳
+### 2026-10-19：`.bat` 里写中文会截断解析器；`set /p` 空 stdin 死循环；直接 `gradlew` 编 Flutter 是空壳
 
-- **现象/根因**：
-  1. **UTF-8 中文写进 `.bat` 会把脚本解析成乱码命令**。我给 `build_apk.bat` 加了中文提示与注释，运行时刷出一屏 `'xx' is not recognized as an internal or external command`，`if`/`goto` 行被从中间截断。根因是 `cmd.exe` 按 **OEM 代码页**（本机 936/GBK）解析批处理文件，UTF-8 的汉字字节被当成 GBK 解码，多字节序列吞掉了后面的 ASCII 引号与换行。**把 `chcp 65001` 写在文件里救不了**——脚本本身在 `chcp` 执行前就已被解析。原 `Android/build_apk.bat` 全英文，所以一直没暴露。教训：`.bat` 保持**纯 ASCII**，中文说明放 `.md`（这里落在 `android/SIGNING.md`）；改完用「统计 >127 字节数 == 0」自检。
-  2. **`set /p` 在 stdin 非控制台时立即返回空值 → 无限循环**。脚本里「无设备时请输 IP，空输入则重试」的分支，在有终端时正常，但被 `type file | script.bat`、CI 或重定向运行时，`set /p` 永远拿到空串，于是 `goto` 无条件重试，**每轮还刷一屏提示**，把输出文件撑到 62 MB。这是**继承自原脚本**的缺陷，不是迁移引入的。修法：加重试计数（3 次后走 `ERR_NO_INPUT`），并在错误信息里直接给出 `adb install -r <apk>` 让用户手动装。
-  3. **Flutter 工程不能用 `gradlew assembleDebug` 代替 `flutter build apk`**。原生工程的脚本可以直接调 Gradle；Flutter 工程直调 Gradle 只编 Android 壳，Dart 代码不会被编进 APK（缺 `flutter assemble` 产出的快照），装上去是空壳。迁移脚本时必须把入口从 `gradlew` 换成 `flutter build apk`，并把 `-PsignDebugWithRelease` 这类 Gradle 参数**原样透传**（`flutter build apk --debug -PsignDebugWithRelease=true` 是有效的）。
-  4. **验收签名不能只看「构建成功」**。`flutter build apk --release` 在密钥缺失时会**静默回退 debug 签名**（这是我的回退设计），构建照样成功、退出码 0。必须比指纹：`keytool -list -v -keystore <jks>` 的 SHA256 与 `apksigner verify --print-certs <apk>` 的 SHA-256 一致；并确认 DN 不是 `CN=Android Debug`。
-- **教训**：① `.bat` 纯 ASCII，中文进 `.md`；② 所有 `set /p` 重试分支都要设上限，否则无终端场景必炸；③ Flutter 的构建入口只能是 `flutter build`，迁移脚本先改入口再谈其它；④ 签名验收靠证书指纹比对，不靠退出码；⑤ 密钥文件先查 `git check-ignore` + `git ls-files` 双确认，再提交。
+- `.bat` 保持纯 ASCII，中文说明放 `.md`（本项目落在 `android/SIGNING.md`）；改完用「统计 >127 字节数 == 0」自检。把 `chcp 65001` 写进文件救不了，`cmd.exe` 按 OEM 代码页解析脚本，它执行前就已经乱了。
+- 所有 `set /p` 重试分支都要设上限，否则无终端场景（管道、CI、重定向）必炸；错误信息里直接给出 `adb install -r <apk>` 这类补救命令，比让用户重试有用。
+- Flutter 的构建入口只能是 `flutter build apk`，直调 Gradle 只编 Android 壳，Dart 代码不会进 APK。迁移脚本先改入口再谈其它，`-PsignDebugWithRelease` 这类 Gradle 参数要原样透传（`flutter build apk --debug -PsignDebugWithRelease=true` 是有效的）。
+- 签名验收靠证书指纹比对，不靠退出码——`--release` 在密钥缺失时会静默回退 debug 签名，构建照样成功。比对 `keytool -list -v` 的 SHA256 与 `apksigner verify --print-certs` 的 SHA-256，并确认 DN 不是 `CN=Android Debug`。
+- 密钥文件先 `git check-ignore` + `git ls-files` 双确认，再提交。
 
-### 2026-10-19: 「并行流停滞 2 小时零页面」+ `searchState.query` 让整页隐身 + widget 测试断言选错标尺
+### 2026-10-19：「并行流停滞 2 小时零页面」，`searchState.query` 让整页隐身，widget 测试断言选错标尺
 
-- **现象/根因**：
-  1. **子代理停滞的空转识别太晚**。proxies-ui 交付数据层 276 行 + 状态层 516 行后停滞约 2 小时，期间零页面产出，最后是我主动 `interrupt_agent` 才止损。当时它已交的两份产物**零消费方**——`dart analyze lib` 全绿只证明可解析，运行时行为一次都没被执行过。教训：**并行流的完成判据是「有消费方且测试跑过」**，不是「文件存在且 analyze 绿」；超过一轮没有新文件就该主动查它卡在哪，而不是等它自己报。
-  2. **`AppBarSearchState` 传非空 `query:` 会把整页藏掉**。`CommonScaffold` 用 `searchState.query != null` 判「当前是否在搜索模式」（`scaffold_a.dart:13` 的 `_isSearch`），而非「搜索词的初值」。我在代理页把 provider 里的当前搜索词回灌给顶栏，结果一进页面就展开搜索框、标题和所有分组全部不渲染。**analyze 绿、路由可达测试也绿**（页面确实 build 了，只是 build 出的是一根搜索框）。抓法：`find.text('代理')` 为 0 而 `find.byType(CommonScaffold).widget.title == '代理'`——「组件属性对、屏幕上没有」这个组合只在「组件被另一分支替换掉」时出现。
-  3. **widget 测试断言选错标尺，把设计意图当成 bug**。我在代理页断言「第二个组的组名不存在」，实际顶部 chip 条本来就列出所有组名（那是切换入口）；又断言「过滤后选中节点不存在」，实际组头始终显示该组的当前选中节点（那是组的属性，不随搜索变化）。两次都是**先猜再测**，而不是先看清哪些文字由哪个 widget 承载。正确做法：断言用一个**只可能由目标控件承载**的字符串（这里是非选中节点名），而不是顺手抓一个在场字符串。
-  4. **顶栏 `iconActions` 会被静默折进「更多」菜单**。`_maxBarButtons`/`_maxGroupedActions` = 2，页面自己占一个动作后，加进去的 `iconActions` 就不在栏上了。测试里 `find.byTooltip('测速全部')` 找不到是**设计行为**，不是缺陷；应该改测组内入口，或从「更多」菜单点。同理 `Tooltip` 在无头测试里不一定建出可命中节点，`find.bySemanticsLabel` 比 `find.byTooltip` 稳。
-  5. **`pumpAndSettle` 会吞掉「短暂中间态」**。测速是 `Future.delayed(900ms)`，`pumpAndSettle` 推帧直到静止，一次就把 900ms 走完，「测速中」那一帧永远观察不到。要观察中间态必须 `pump()` + `pump(短时长)`，把 `pumpAndSettle` 留给最终态。
-- **教训**：① 子代理交付判据加「有消费方 + 交互测试」，停滞一轮即主动查；② `AppBarSearchState.query` 是「模式开关」不是「初值」，代码里写注释挡住复发；③ 先读承载 widget 再写断言，别拿在场字符串当标尺；④ 折叠/裁剪类容器（顶栏、`Wrap`、`ListView`）里的 `findsNothing` 先确认是「没渲染」还是「折进去了」；⑤ 中间态观察用定步 `pump`，终态用 `pumpAndSettle`；⑥ 探测脚本（`test/probe*_test.dart`）用完立刻删——遗留文件会让全量 `flutter test` 变红。
+- 子代理的交付判据是「有消费方 + 交互测试跑过」，不是「文件存在 + analyze 绿」。`dart analyze lib` 全绿只证明能解析，运行时行为可能一次都没执行过；停滞一轮就主动去查它卡在哪，必要时直接 `interrupt_agent` 止损，别等它自己报。
+- `AppBarSearchState.query` 是「模式开关」而不是「初值」（`CommonScaffold` 用 `searchState.query != null` 判当前是否在搜索模式）。把 provider 里的当前搜索词回灌给顶栏，一进页面就展开搜索框、标题和所有分组全不渲染，而 analyze 和路由可达测试都是绿的。代码里写注释挡住复发。
+- 先读承载文案的 widget 再写断言，别顺手拿一个在场字符串当标尺；断言要用只可能由目标控件承载的字符串。
+- 折叠或裁剪类容器里的 `findsNothing`，先确认是「没渲染」还是「折进去了」。顶栏 `iconActions` 会被静默折进「更多」菜单（`_maxBarButtons`/`_maxGroupedActions` = 2），页面自己占一个动作后，加进去的图标就不在栏上了，这时 `find.byTooltip` 找不到属于设计行为。无头测试里 `find.bySemanticsLabel` 比 `find.byTooltip` 稳。
+- 中间态用定步 `pump()` 观察，终态才交给 `pumpAndSettle`——后者会一路推帧到静止，短暂的「进行中」状态永远看不到。
+- 探测脚本（`test/probe*_test.dart`）用完立刻删，遗留文件会让全量 `flutter test` 变红。
 
-### 2026-10-19: 三类「analyze 全绿、运行时才炸」的缺陷 + GoRouter 未匹配路由静默放行
+### 2026-10-19：三类「analyze 全绿、运行时才炸」的缺陷，加上 GoRouter 未匹配路由静默放行
 
-- **现象/根因**：
-  1. **手写泰勒级数近似 `sin` 在大参数下发散**。为「不想为一行数学引入 `dart:math`」写了 7 阶泰勒展开，输入到 `2π×t×3.7`（t 到 60 量级）时误差爆炸，速率算成 `6,582,849`，`ui/line_chart.dart` 的 `slopesOf` 里 `.clamp(-3v, 3v)` 因此拿到 `lower > upper` → `ArgumentError: Invalid argument(s): 6582849.66`。**analyze 完全看不见**，只有在 widget 测试里真正 `paint()` 才炸。同一 commit 里我在两处各写了一份 `_sin`（数据层 + 卡片 `CustomPainter`），所以两处都要改。
-  2. **无限动画让 `pumpAndSettle` 永远超时**。首页速率曲线用 1 秒 `Future.delayed` 自循环 + `profiles_card` 波浪进度条 `AnimationController..repeat()`。`pumpAndSettle` 的前提是「没有待处理帧」，两者不可兼得——表现是 `pumpAndSettle timed out`，栈里只有 `LineChart`，**看上去像路由/scope 问题，实际是动画**。`CommonCircleLoading`（`ui/loading.dart`）与 `ui/skeleton.dart` 也是永久 `repeat()`，只是它们只在加载态出现才没炸。
-  3. **`GoRouter` 对未匹配路径不抛异常**。它渲染 `errorBuilder`，我没设 `errorBuilder` 时是一片空白；更糟的是「每条路由都能 build 且不 throw」这类用例**对漏注册的路由静默放行**——本轮 `/proxies` 就是这么一路绿到最后一轮全量扫描才被抓到的。给路由器加 `errorBuilder: UnknownRoutePage` 后，测试改成同时断言 `find.byType(UnknownRoutePage) == findsNothing`，漏注册立刻变硬失败。
-  4. **固定像素高度的卡片在 1.4 倍字号下溢出**（`feature_hub_page` 92dp 卡片溢出 6dp）。横向同理：`Row` 里放三组「标签+数值」时 320 宽下溢出 36/130dp。
-- **教训**：
-  - (a) **永不手写三角函数/超越函数的近似**——`dart:math` 就在标准库里，「省一个 import」换来的是 analyze 查不出、只在 paint/test 阶段炸的数值缺陷。凡是「数学近似」都要问一句「参数域上界是多少，近似在那里还成立吗」。
-  - (b) **演示用的永动动画必须有全局关闭开关**。本仓约定：`debugDisableDashboardLiveUpdates`（`lib/state/dashboard_providers.dart`），测试统一走 `test/support/test_hooks.dart` 的 `installGlobalTestHooks()`。新加任何 `repeat()` / 自循环定时器前先想「`pumpAndSettle` 还能过吗」。
-  - (c) **「没抛异常」不等于「路由存在」**：任何「每个路由都能构建」的测试，都必须同时排除兜底页，否则用例只证明「GoRouter 能把请求导向某处」。
-  - (d) **固定尺寸容器 + 可放大文字 = 潜在溢出**：高度用 `textScaler` 线性放大，横向多列一律 `Expanded` + `ellipsis`，不要指望 `Text` 自己收缩。
-  - (e) 长测跑完看到一堆 `pumpAndSettle timed out`，先 `grep -r "\.repeat("` 与「自循环 `Future.delayed`」，比逐页找布局问题快得多。
+- **永不手写三角函数或超越函数的近似**。`dart:math` 就在标准库里，「省一个 import」换来的是 analyze 查不出、只在 paint/test 阶段才炸的数值缺陷。凡是写数学近似，都要问一句「参数域上界是多少，近似在那里还成立吗」。
+- **演示用的永动动画必须有全局关闭开关**。本仓约定用 `debugDisableDashboardLiveUpdates`（`lib/state/dashboard_providers.dart`），测试统一走 `test/support/test_hooks.dart` 的 `installGlobalTestHooks()`。新增任何 `repeat()` 或自循环定时器之前，先想「`pumpAndSettle` 还能过吗」。
+- **「没抛异常」不等于「路由存在」**。GoRouter 对未匹配路径不抛异常，只渲染 `errorBuilder`，没设就是一片空白；「每条路由都能 build 且不 throw」这类用例还会对漏注册的路由静默放行。给路由器加 `errorBuilder: UnknownRoutePage`，断言里同时写 `find.byType(UnknownRoutePage) == findsNothing`，漏注册才会硬失败。
+- **固定尺寸容器 + 可放大文字 = 潜在溢出**。高度按 `textScaler` 线性放大，横向多列一律 `Expanded` + `ellipsis`，别指望 `Text` 自己收缩。
+- 长测跑完看到一堆 `pumpAndSettle timed out`，先 `grep -r "\.repeat("` 和「自循环 `Future.delayed`」，比逐页找布局问题快得多。
 
-### 2026-10-19: 并行流里跑 `dart format` 误伤同伴文件；`-replace` 改测试文件把结构改坏
+### 2026-10-19：并行流里跑 `dart format` 误伤同伴文件
 
-- **现象/根因**：(1) config-ui 在收尾时对 `lib/state`/`lib/` 整体跑了 `dart format`，把 `appearance/rules/subscription/work_mode_providers.dart` 一并改写（纯格式差异），只能 `git checkout --` 逐个还原。并行开发的写域隔离在**工具层没有被强制**——`dart format`、`dart fix`、代码生成器都按目录工作，不受「我只负责这几个文件」的约束。(2) 我用 PowerShell `-replace` 给三个测试文件的 `void main() {` 插入一行调用，替换串里含 `$` 与换行，反向引用被解释，直接把 `app_shell_test.dart` / `layout_regression_test.dart` 改成语法错误（`missing_function_body`、`duplicate_definition`），只能从 git 恢复重做。
-- **教训**：(a) 并行阶段禁止任何**目录级**格式化/批量改写命令，只对自己负责的文件列表显式逐个跑。(b) **改代码用 edit/write 工具，不要用 PowerShell 正则替换**——`-replace` 会把 `$1`、`$&` 当反向引用，多行替换里 `\r\n` 还会错位；只有「确定不含 `$` 与正则元字符的单行字面替换」才勉强可用，而这条判断本身不值得做。(c) 已提交的文件被改坏时别试图修补，直接 `git checkout --` 回基线再重做一遍，比修语法错误快。
+- 并行阶段禁止任何目录级的格式化或批量改写命令，只对自己负责的文件列表显式逐个跑。`dart format`、`dart fix`、代码生成器都按目录工作，工具层不会替你守住写域。
 
-### 2026-10-19: 把「网络不可达、Android 构建跑不通」当成事实引用了三轮（实际全 200）
-- **现象/根因**：`README.md` 与 `20-handoff.md §6` 都写着「`services.gradle.org`/`repo1.maven.org`/`plugins.gradle.org` 全不可达，仅腾讯镜像 200，因此 `flutter build apk` 无法完成」，并在三轮交付里被当作既定事实复述。**实测全部 200**，`gradle-9.3.1-all.zip`（224 MB）、NDK 28.2（约 2.1 GB）、SDK Platform 36、AGP 9.1.0/Kotlin 2.4.0 依赖全部下载成功，`flutter build apk --debug` 产出 157 MB APK。同时还有第二个假象叠加：命令写成 `flutter build apk --debug 2>&1 | Select-Object -Last 40`，`Select-Object -Last` **缓冲全部输出直到进程结束**，中间十分钟一个字节都不显示，主观上完全等于「卡死」，于是又反过来「印证」了网络不可达的结论。
-- **教训**：(a) 判「网络不可达」必须用 `curl`/`Invoke-WebRequest` 打**真实构件 URL**，不能打域名根路径——根路径 404/400 是正常的（`dl.google.com`、`storage.googleapis.com` 都如此），把 404 当「不可达」会直接得出反向结论。(b) 文档里的环境类结论**有保质期**，引用前必须重测；「上轮记录的失败」不等于「本轮仍然失败」。(c) 长任务跟进度一律写日志文件 + `Get-Content -Tail`（或 `Start-Process -RedirectStandardOutput`），**禁止用 `Select-Object -Last`/`Tee-Object` 之类会缓冲的过滤器**——它们会让「慢」看起来像「死」。(d) 首次 Flutter Android 构建要下约 3 GB（Gradle + NDK + SDK + 依赖），必须区分「一次性环境准备」与「真的卡死」，判据是看 Gradle 守护进程 CPU 是否在动 + `build/app/intermediates/` 是否在长。
-### 2026-10-19: 枚举上屏变源码字形（`ProviderProtocol.doh`）+ 分组标题与滑杆标签同名
-- **现象/根因**：(1) 设置页「解析服务商」副标题由 `providerEndpointOf(id)` 生成，实现里拼的是 `'${provider.protocol} · ${provider.address}'`——`ProviderProtocol` 没覆写 `toString`，于是 UI 上真的显示 `ProviderProtocol.doh · https://…`。**这个缺陷在 analyze 与「路由能构建」两类检查里都是绿的**，只有把页面文字 dump 出来才看得见。同仓 `home_page.dart:311` 早就写对了（`provider.protocol.label`），是我照着「同一工具函数」复用才带进来。(2) `HomeLayer.poem` 的标签就是「首页句子」，而我给设置分组也起名「首页句子」→ 同屏两个 17pt 标题，一个在 `ListHeader` 里（13pt）、一个在滑杆卡里，肉眼看不出谁是分组。
-- **教训**：凡是把枚举/对象插值进 `Text`，先确认它的 `toString` 被覆写过或显式取 `.label`——编译器、analyze、路由冒烟**三类检查都拦不住**这类问题；复用「现成的工具函数」前读它的实现，别只看名字；自测时把整页 `Text` dump 一遍（`for (final e in find.byType(Text).evaluate())`）比只断言几个关键文案更能抓到这种字面错误；同一屏内的标题文案必须唯一，分组名要给控件标签让位。
+### 2026-10-19：把「网络不可达、Android 构建跑不通」当成事实引用了三轮
 
-### 2026-10-19: 长设置页自测：`scrollUntilVisible` 三重失效 + 浮条遮挡导致 tap 落空
-- **现象/根因**：给 `lib/pages/settings` 写交互自测时连续踩三坑：(1) `scrollUntilVisible(find.text(x), 300)` 在页面里有多个 `Scrollable` 时抛 `Bad state: Too many elements`；(2) 传入 `scrollable:` 后仍失败，因为**底栏项一改动 shell 会重建**，缓存的 `ScrollPosition` 失效，`jumpTo` 静默失效后循环到上限即 `fail('滚不到')`；(3) 目标行滚到视口边缘时 `tap()` 报 `derived an Offset … that would not hit test`，命中点落在固定的 `NavigationDock` 上（浮条盖住底部约 100dp），而 `tester.ensureVisible` 认为「已在视口内」不会再挪。
-- **教训**：长页自测统一用「每次循环**重新取** `ScrollableState.position` → `jumpTo(pixels ± step)` → `pumpAndSettle`」的粗扫，别缓存 position；命中后再按 `tester.getRect(row).center.dy - 视口中线` 微调一次，把行挪到中部避开浮条；`find.text` 会同时命中页面行与底栏标签（`BottomBarDestination.label` 与设置行同名），断言前先用 `find.descendant(of: find.byType(ListView), …)` 排除浮条；自测脚本放 `tool/` 下（不进 `test/`）跑完即删，避免污染交付的测试集。
+- 判「网络不可达」要用 `curl` 或 `Invoke-WebRequest` 打真实构件 URL，不能打域名根路径。根路径 404/400 是正常的，把 404 当「不可达」会直接得出反向结论。
+- 文档里的环境类结论有保质期，引用前必须重测。「上轮记录的失败」不等于「本轮仍然失败」。
+- 长任务跟进度一律写日志文件 + `Get-Content -Tail`（或 `Start-Process -RedirectStandardOutput`），禁止用 `Select-Object -Last`、`Tee-Object` 这类会缓冲的过滤器——它们会让「慢」看起来像「死」。
+- 首次 Flutter Android 构建要下约 3 GB（Gradle + NDK + SDK + 依赖），得区分「一次性环境准备」和「真的卡死」。判据是看 Gradle 守护进程的 CPU 是否在动、`build/app/intermediates/` 是否在长。
 
-### 2026-10-19: 设计系统 API 三处「按直觉写就报错」（primaryAction 类型 / 具名构造的类型参数 / 同屏重复文案）
-- **现象/根因**：(1) `CommonScaffold.primaryAction`/`confirmationAction` 收的是 `IconButtonData`（顶栏图标按钮），不是 `Widget`；传 `FilledButton` 直接 `argument_type_not_assignable`。需要可见文案的主按钮（如「导入 N 条」）得放进 `body`，顶栏只能放图标 + `tooltip`。(2) `ListItem.options` 是泛型类的**具名构造**，类型实参写在类名上——`ListItem<RuleKind>.options(...)`；写成 `ListItem.options<RuleKind>(...)` 报 `wrong_number_of_type_arguments_constructor`，报错文案不会提示该改位置。(3) 计数头写「空时显示『没有匹配的规则』」，同时 `NullStatus.label` 也是同一句 → 同屏两份完全相同文案，既是视觉重复也让 `findsOneWidget` 失败。
-- **教训**：写组件前先 `Select-String` 读构造签名，别按「应该是 Widget」推断；泛型类的具名构造类型参数一律前移到类名；空状态文案与计数头文案必须分工（一个报数字、一个说原因），否则同屏重复且不可断言。
+### 2026-10-19：枚举上屏变源码字形；分组标题与滑杆标签同名
 
-### 2026-10-19: Flutter 页面自测四坑（同名文本 finder / 浮层读不到 scope / sheet 首屏溢出 / 并发编译失败归因）
-- **现象/根因**：(1) `SegmentedControl` 视图标签「缓存」与 `TonalChip(LogAction.cached.label)`（也是「缓存」）同屏 → `find.text('缓存')` 命中 12 个，`tap()` 抛 "Found 12 widgets"；标签文案必须与同一屏内的枚举文案去重（改为「缓存表」），不能靠 `.first` 掩盖。(2) **浮层里读 `ViewScope`/`MeasureScope` 会 assert**：`showSheet`/`showFloatingDialog` 的监听器挂在根 `Navigator` 上，是与 `home:` **平级**的兄弟路由，所以 `home:` 里装的 scopes 覆盖不到浮层内容，`ViewScope.isMobileOf` 立刻 `Failed assertion: 'scope != null'`（本会话已用对照 probe 钉死，见 `test/scope_placement_test.dart` 两条用例）。正确做法是 scopes 装 `MaterialApp.builder`——它的 `child` 就是 `Navigator` 本身，scopes 因此在 Navigator 之上。另注：`SheetOverhangScope` 的 `of`/`fillsDetentOf` 都是**空安全**的，它不是 assert 来源，别把它当元凶。(3) 临时测试文件放仓根时 `import 'support/app_host.dart'` 解析失败，必须放进 `test/`。(4) `tester.pageBack()` 找 `CupertinoNavigationBarBackButton`，本工程 sheet 的关闭按钮是 `GlyphIcon`，一律用 `Navigator.of(element).maybePop()`；`scrollUntilVisible` 在 finder 命中多个可滚动区时抛 `Bad state: Too many elements`，限高后直接断言可见项更快。(5) 面板里 6 行服务商列表把「发起查询」挤出首屏 → 次要选项改横向 chip 行。(6) `flutter test` 报 `lib/pages/server/server_page.dart: Error: The method '_showUpstreamSheet' isn't defined`——那是并行代理正在改的别人的文件，**编译期失败先看报错文件是否自己的**，等 30–60s 重试即可，不要动手改。
-- **教训**：同屏文案唯一性是可测性前提（也是可用性前提）；「能弹出 / 浮层能渲染」类用例必须用真实 App 路由壳（`DitingApp(initialLocation:)`）或在 `builder` 装 scopes；断言「某 scope 缺失」前先读它的 `of()` 是不是空安全——空安全的 scope 永远不会 assert；行数统计用 `(Get-Content $f).Count`（`Measure-Object -Line` 跳过空行，见 2026-10-18 条）；并发工作区里编译错误先归因到文件归属，再决定等或改。
+- 把枚举或对象插值进 `Text` 之前，先确认它的 `toString` 被覆写过，或者显式取 `.label`。`ProviderProtocol` 没覆写 `toString`，UI 上就真的显示 `ProviderProtocol.doh · https://…`，而编译器、analyze、路由冒烟三类检查都拦不住；同仓 `home_page.dart` 早就写对了（`provider.protocol.label`），照「同一工具函数」复用才带进来。
+- 复用「现成的工具函数」之前读它的实现，别只看名字。
+- 自测时把整页 `Text` dump 一遍（`for (final e in find.byType(Text).evaluate())`），比只断言几个关键文案更容易抓到字面错误。
+- 同一屏内的标题文案必须唯一，分组名要给控件标签让位。
 
-### 2026-10-19: 宿主层级结论两次翻车（先误判「必须 home:」，再误判「两种都行」）+ zh_CN 缺 MaterialLocalizations + 构建产物受网络所限
-- **现象/根因**：(1) **这条结论本身被推翻过两次，最终定论见下**。第一版说「scopes 装 `MaterialApp.builder` 会让浮层报 `Navigator operation requested with a context that does not include a Navigator`，必须放 `home:`」。我据此做了「对照实验」并宣称两边都无异常、于是判定第一版「证伪」——**但那次实验本身是无效的**：探针内容用的 `CommonCard` 恰好没走 assert 路径，于是两边都「通过」。两路代理随后各自撞到真实失败，我改用**会真正 assert 的读法**（浮层内容里调 `ViewScope.isMobileOf`）重测，才得到确定结论：`home:` 装法下浮层内 `Failed assertion: 'scope != null': No ViewScope found above Builder(dirty)`；`builder` 装法正常。**定论：scopes 必须装在 `MaterialApp.builder`**（其 `child` 就是 `Navigator`，scopes 因此在 Navigator 之上，路由与浮层都能拿到），`home:` 只覆盖首个路由、浮层是它的兄弟路由所以覆盖不到。已用 `test/scope_placement_test.dart` 两条用例（正例 + 故意复刻错误装法的反例）钉死。(2) `DefaultMaterialLocalizations` 只带 en_US：`locale: zh_CN` 时 `AppBar` 直接抛 `No MaterialLocalizations found`（先有一条 "locale not supported by all delegates" 警告）。zh_CN 必须用 `material_ui` 里 intl 生成的 `GlobalMaterialLocalizations.delegates`（它同时含 Cupertino/Widgets 三个 delegate）。(3) `LocalizationsDelegate.load` 是异步的，`pumpWidget` 后首帧渲染为空，直接 `expect(find.text(...))` 必红；补一次 `pump()`。(4) `lib/ui` 的 `UiLocalizations.of` 是 `assert` 而非默认值，缺 delegate 时在 build 期崩溃。(5) `flutter build apk` 失败真因是 `services.gradle.org`/`repo1.maven.org`/`plugins.gradle.org` 全不可达（仅腾讯镜像 200），本地缓存的 gradle-9.4.1-bin 与 flutter 插件所需的 `kotlin-dsl 6.5.2` 都不全；把 wrapper 指向镜像属改工程配置，未获授权不得自行改。
-- **教训**：(a) **「对照实验没复现」不等于「缺陷不存在」**——探针必须先证明自己处在会被触发的路径上（这里要用会 assert 的读法，而不是「能渲染就算过」）；负结果要连同「探针为什么足以触发」一起写，否则假阴性会被当成证据写进文档，比不测更坏。(b) 同一个结论被推翻两次后，不要再靠推理定论，直接把不变量写成**正例 + 反例两条测试**钉住（`test/scope_placement_test.dart`）。(c) 凡 `MaterialApp` 带非英文 `locale`，先确认用了 `GlobalMaterialLocalizations`。(d) 测试宿主 `test/support/app_host.dart` 与 `lib/app/bootstrap.dart` 的 scopes 装法必须一致，改一处就要同步另一处。(e) 构建失败先 `curl` 逐个探域名，把「环境不可达」与「代码坏」分开写进交付说明，不拿退出码当结论。
+### 2026-10-19：长设置页自测，`scrollUntilVisible` 三重失效加浮条遮挡
 
-### 2026-10-18: 三次「问题不存在」初判被自己推翻（A-096/A-100/O-107）
-- **现象/根因**：A-096 称「`finally` 只删本线程 temp」，实为两个 `Mapped*Index` **无条件** `temp.delete()`，缺的只是残留清扫（`RuleIndexLayout.deleteAll` 零调用）⇒ 应判「成立但不改」；A-100 拿「`editRule:444` 保留 `SOURCE_PRESET`」当反证——正因保留，升级时 `deleteBySource(SOURCE_PRESET)` 才删掉用户改动；O-107 真因不是 `DnsCachePolicy:34-35`（`<=0 return 0` 正确），而是 `log_aggregator.go` 的 `json:"ttl,omitempty"` 删掉 TTL=0 的键 + `recordResolved` 用 `<=0` 合并「真实 0」与「未知」（基线早有 `notifyLogWithTTL`）。
-- **教训**：结论若是「因此不会发生」，先把发生路径写出来走一遍（铁律 4）。
+- 长页自测统一用「每次循环重新取 `ScrollableState.position` → `jumpTo(pixels ± step)` → `pumpAndSettle`」的粗扫，别缓存 position。底栏项一改 shell 就重建，缓存的 position 会静默失效，`jumpTo` 不报错但也不动。
+- 命中后再按 `tester.getRect(row).center.dy - 视口中线` 微调一次，把行挪到中部。滚到视口边缘时 `tap()` 会落在固定浮条上，`ensureVisible` 认为「已在视口内」不会再挪。
+- `find.text` 会同时命中页面行和底栏标签，断言前先用 `find.descendant(of: find.byType(ListView), …)` 排除浮条。
+- 自测脚本放 `tool/` 下（不进 `test/`），跑完即删，避免污染交付的测试集。
 
-### 2026-10-18: 照抄他人的 `Stop()` 早退守卫会回归同轮已修项（O-104 vs A-017）
-- **现象/根因**：给 `Engine.Stop()` 加 `if !e.running { return }` 修 O-104，会让空闲期不再释放 `dnsCache`/`stackCertMgr`，**回归同轮刚修的 A-017**；改用 `sessionGen` 代际判定后两件事同时成立。
-- **教训**：采纳外部修复建议前先算它对其他已修项的影响面；守卫条件要表达「是谁」（代际/身份），而非会被下个会话重置为真的状态位（`running`）。
+### 2026-10-19：设计系统 API 三处「按直觉写就报错」
 
-### 2026-10-18: 词法截断改「搜索起点」换来新回归；死分支用「单原子」近似（A-095/O-133）
-- **现象/根因**：首版把 `indexOf('#')` 改成「从正则字面量闭合 `/` 之后搜」，`/ads#banner/` 修好了，但 `@@/ads#banner/ # keep this` 的真注释被跳过 ⇒ 合法 allow 规则被判 unsupported；改为「`#` 在行首或紧跟空白才开注释，仅当前导正则字面量**体内**时跳过」后两输入同时成立。之后的「优化」版在 606 组差分用例上 0 差异 ⇒ 属等价重写，已回退。O-133 死分支：按「只含单个 `text.` 谓词」得 8 个、按合取蕴含得 14 个、triage 文档 13 个（含错项 108/119、漏 49/72/83/84/106），三者互异。
-- **教训**：词法缺陷的判据是「什么字符序列构成注释」而非「从哪里开始找」——改起点等于重定义词法，先列「旧行为必须保持」的回归用例；声称有缺陷前用差分用例证明两版**不等价**；`when` 可达性须逐原子蕴含且 `text` 参数同一，先排除 `||`/`in`/正则等非原子内容。
+- 写组件之前先用 `Select-String` 读构造签名，别按「应该是 Widget」推断。`CommonScaffold.primaryAction` 收的是 `IconButtonData`，需要可见文案的主按钮得放进 `body`，顶栏只能放图标加 `tooltip`。
+- 泛型类的具名构造，类型实参一律前移到类名（`ListItem<RuleKind>.options(...)`）。写到构造名后面报的错不会提示该改位置。
+- 空状态文案与计数头文案必须分工，一个报数字、一个说原因。两处写同一句，既视觉重复又让 `findsOneWidget` 失败。
 
-### 2026-10-18: 先入为主复述「fgRequired 被重新武装」的相反结论（AOSP 取证）
-- **现象/根因**：把冷启动崩溃根因写成「`stop()` 里 `startService(stopIntent)` 把 `fgRequired` 重新置 true」并已写进注释；回读 `ActiveServices.startServiceInnerLocked:1196` 的 `r.fgRequired = fgRequired;` 才知该值来自**调用方 API**（`startService`→false、`startForegroundService`→true），故它是**清除**义务。真凶是同 `stop()` 里的 `stopService()`：置 `startRequested=false` 后经 `bringDownServiceIfNeededLocked`（`mPendingServices` 无记录，走 `r.app != null` 分支）到 `bringDownServiceLocked`，`fgRequired` 仍 true ⇒ 立即 `SERVICE_FOREGROUND_CRASH_MSG`（三次崩溃 uptime≈520ms，远小于 30s，可排除 timeout 路径）。
-- **教训**：「某调用把标志设为 X」须回读到**赋值右值来源**，不能凭调用名/action 推断；崩溃归因用日志时间轴反向验证；修复方向被证伪后先改注释再改代码。
+### 2026-10-19：Flutter 页面自测的几个坑
 
-### 2026-10-18: 过早断言「受模型限制无法修」+ 把死字段当差距（A-083）
-- **现象/根因**：判「订阅删除侧无法修，因 `SubscriptionEntity` 无『是否持久化授权』标志」，而 `ContentResolver.getPersistedUriPermissions()` 即权威来源；同轮差点把 `WhitelistStats.subscriptionTotal/Enabled` 复制到 `BlacklistStats`「补差距」，实测白名单侧这两个字段**从未被任何 UI 渲染**。
-- **教训**：见铁律 5、7；未覆盖项要区分「确实做不到」（写进限制）与「当时没想到」（回头补）。
+- 同屏文案唯一性既是可用性前提，也是可测性前提。`find.text` 命中多个时不要用 `.first` 掩盖，改文案。
+- 浮层里读 scope 会 assert，因为 `showSheet`/`showFloatingDialog` 的监听器挂在根 `Navigator` 上，是与 `home:` 平级的兄弟路由。scopes 要装 `MaterialApp.builder`，它的 `child` 就是 `Navigator` 本身。
+- 「能弹出 / 浮层能渲染」类用例必须用真实 App 路由壳（`DitingApp(initialLocation:)`）或在 `builder` 里装 scopes。
+- 断言「某 scope 缺失」之前先读它的 `of()` 是不是空安全——空安全的 scope 永远不会 assert，别把它当元凶。
+- 临时测试文件要放进 `test/`，放仓根会让 `import 'support/...'` 解析失败。
+- `tester.pageBack()` 找的是 `CupertinoNavigationBarBackButton`，本工程 sheet 的关闭按钮是 `GlyphIcon`，一律用 `Navigator.of(element).maybePop()`。
+- `scrollUntilVisible` 在 finder 命中多个可滚动区时抛 `Bad state: Too many elements`；限高后直接断言可见项更快。
+- 面板内容超出首屏时（比如 6 行服务商列表把「发起查询」挤下去），把次要选项改成横向 chip 行，别指望用户滚动。
+- 并发工作区里编译错误先归因到文件归属——是不是别人正在改的文件，再决定等 30–60s 重试还是动手改。
+- 行数统计用 `(Get-Content $f).Count`，`Measure-Object -Line` 会跳过空行。
 
-### 2026-10-18: 并发 Gradle 撞 KSP 缓存；期望错/代码错未分辨；行数口径错
-- **现象/根因**：5 个子代理并行跑 `gradlew`，反复 `IllegalStateException: Storage for ...kspCaches\...\file-to-id.tab is already registered`，被误判为「代码坏」并各自重试；7 个首轮失败里 `DohUrlParserTest`（期望错）与 `LatestRequestGateTest`（代码错）处置相反；子代理用 `Measure-Object -Line`（**跳过空行**）统计行数，系统性偏低 6%–15%；我按「分支 9 兜底没生效」指挥修复，实际卡点在上游分支 5 把 `$~app=` 的 `=` 当重写箭头。
-- **教训**：多代理共享工作区时**构建单点串行**由 Lead 统一跑，子代理只做静态自检与离屏单测；行数用 `(Get-Content $f).Count`；改前先定位**真实卡点分支**（同一输入会被多个前置分支截走）；分片修复出现「新用例反而红」常是抓到更上游的真缺陷，先归因再改。
+### 2026-10-19：宿主层级结论两次翻车；zh_CN 缺 MaterialLocalizations
 
-### 2026-10-18: 身份判定误用 `==`（`LatestRequestGate`/`ActiveHealthEngineRegistry`）
-- **现象/根因**：`isLatest` 用 `latest == request`，请求是 `data class` ⇒ 结构相等 ⇒ 同参请求互等 ⇒ **旧请求被判最新**，废掉 A-051 的修复；同型错误用 `ConcurrentHashMap.remove(k,v)`（走 `equals`）在 `clearIfCurrent` 再次出现。
-- **教训**：「是不是我注册的那一份」必须用 `===`；`data class` 承载「请求/令牌/代际」时假定有人误用 `==`，KDoc 写明并补「等值但不同实例」测试。
+- **「对照实验没复现」不等于「缺陷不存在」**。探针必须先证明自己处在会被触发的路径上——要用会 assert 的读法，而不是「能渲染就算过」。负结果要连同「探针为什么足以触发」一起写，否则假阴性会被当成证据写进文档，比不测更坏。
+- 同一个结论被推翻两次之后，不要再靠推理定论，直接把不变量写成正例 + 反例两条测试钉住（`test/scope_placement_test.dart`）。
+- 凡 `MaterialApp` 带非英文 `locale`，先确认用了 `GlobalMaterialLocalizations`。`DefaultMaterialLocalizations` 只有 en_US，zh_CN 下 `AppBar` 会直接抛 `No MaterialLocalizations found`。
+- `LocalizationsDelegate.load` 是异步的，`pumpWidget` 后首帧是空的，要补一次 `pump()`；`lib/ui` 的 `UiLocalizations.of` 是 assert 而非默认值，缺 delegate 会在 build 期崩。
+- 测试宿主 `test/support/app_host.dart` 与 `lib/app/bootstrap.dart` 的 scopes 装法必须一致，改一处就要同步另一处。
+- 构建失败先用 `curl` 逐个探域名，把「环境不可达」和「代码坏」分开写进交付说明，不拿退出码当结论。
 
-### 2026-10-18: `gofmt -l` 以 CRLF 误报为「格式未过」
-- **现象/根因**：`gofmt -l .` 在 `Android/tunnel` 列出 63/76 文件；实为工作区 CRLF（`core.autocrlf=true`），`git show HEAD:<file>` 基线同样被列出。
-- **教训**：判据改为「CRLF→LF 归一化后单独 gofmt，与基线比真差异行数」；**禁止** `gofmt -w` 整目录（会翻掉全仓换行符）。
+### 2026-10-18：三次「问题不存在」的初判被自己推翻
 
-### 2026-10-18: 解析器负例缺失 + 二进制产物早于源码定稿
-- **现象/根因**：`isIpLiteral` 正例全绿却把 `2001:db8::1::2`（双压缩）判成合法 IPv6；A-076 补集、A-086 退避测试首败是期望错（`224.0.0.0/4` 应为 `/3`；40 次退避最坏约 2.4s，超测试超时）；AAR 在 `gofmt` 未过时重建，返工两次。
-- **教训**：注入 N 次失败须按重试预算折算时间，长退避要有「降级态单次尝试即丢」分支；`gomobile bind -work` 可把生成 Java 与 `tunnel-sources.jar` 对比，导出 API 未变则无需重生成。
+- 结论若是「因此不会发生」，先把发生路径写出来走一遍（见铁律 4）。像「`finally` 只删本线程 temp」这类说法，要读到无条件 `delete()` 那一行；拿「代码保留了 X」当反证时，往往正说明 X 会被后续流程消费。
 
-### 2026-10-18: 先落笔后取证：legacy 路径误判高危 + Edit 锚点凭记忆
-- **现象/根因**：A-067/068/070/074 引证全落在 `Engine.Start`/`SetTries`/原生 trie+bloom 旧拦截路径，caller grep（含 gomobile/Kotlin/test）仅命中定义行，复核后三条判不存在（A-067 写序缺陷真实，降 Low）；A-089 写完才核出 `Engine.Start` 零生产调用者（Kotlin 只用 `startFull`/`startStandalone`/`startStackMitm`）；A-095 收录含已证伪分支的「`$$` 转义 + sinkhole」组合主张（`dnsrewriteIsBlock` 并不置 `dnsrewriteTargetType`）；`old_string` 用记忆中的上节结尾，两次 not found。另有 O-119「.aar 定版」伪缺口、O-148/O-121 计数各少 1、13 条子代理批只完成 1 条、三份分级文档重复收录 A-059。
-- **教训**：见铁律 2、3、5；可达性引证与 Edit 锚点 grep 都在落笔前完成（`serveDNS` 被 standalone 与 full-tunnel 多入口共用 ≠ 路径无生产者）。
+### 2026-10-18：照抄别人的 `Stop()` 早退守卫，回归了同轮刚修的问题
 
-### 2026-10-17~18: 子代理「高危」未收窄即采信；位表/控制流核验方向反了
-- **现象/根因**：D-01 从「minSdk 24 存在 UPSERT」跳到「24–29 全设备流量历史丢失」，实际唯一写入链 `TrafficDatabaseSyncer.flushPendingDeltas` 仅经 NORMAL 模式、UI 硬拦 API 29+，且 `DnsCacheDao.kt` 注释已写明 UPSERT 需 API 30；D-03 被三条独立事实证伪。同型：称 `query[2]=0x01` 写进 Z 位、`byte3|=0x80` 无条件伪造 AD，逐位展开（byte2 QR 0x80/AA 0x04/TC 0x02/RD 0x01、byte3 RA 0x80/AD 0x20/CD 0x10/RCODE）后确认代码正确，属误报；Room `isException` 迁移 `DEFAULT 0` 被判「升级即崩」，但 `defaultValueEqualsCommon` 被 `aload_2; ifnull` 守卫，实体无默认值时跳过校验。
-- **教训**：一手版本表取不到时降级为「收窄后的触发面 + 标注待定事实」，交真机 logcat 定版，不按原 severity 入库；多代理并行扫描先对汇总表去重（Express IPv6 死代码、订阅 kind 失效应分别命中 A-012/A-030）。
+- 采纳外部修复建议之前，先算它对其他已修项的影响面。守卫条件要表达「是谁」（代际、身份），而不是会被下个会话重置为真的状态位（`running`）。
 
-### 2026-10-17: 构建链路三坑：WSL 无 Go、embed 依赖环、Vue key 类型
-- **现象/根因**：(1) deb 预检只查 `wsl` 不查 WSL 内 Go，`go.exe` 在 WSL PATH 中也不被 `command -v go` 解析。(2) `frontend/embed.go` 的 `//go:embed all:dist` 要求目录非空，而 `wails generate module` 先编译 Go 包，形成「产物 → 绑定 → 前端构建 → 产物」环。(3) `:key="row"` 违反 `PropertyKey` 类型，`vue-tsc` 报 TS2322 中止桌面打包，且该修复只做局部验证。
-- **教训**：(1) 跨子系统构建在实际环境内跑 `command -v`；交叉编译放宿主（`GOOS=linux CGO_ENABLED=0 go build`），WSL 只做 `dpkg-deb` 组装，验证到包内 ELF 执行 `--version`。(2) 冷启动固定顺序 `go mod download` → `npm install` → 占位 `frontend/dist/index.html` → `wails generate module` → `npm run build` → `wails build`，验证落到真实产物起窗。(3) 按对象身份稳定的 key 用 `WeakMap<object, string>`（`createRowKey`），不塞对象或退回下标；`git update-index --really-refresh` 消除 CRLF 假变更。
+### 2026-10-18：词法截断改「搜索起点」换来新回归；死分支用「单原子」近似
 
-### 2026-10-17: 工具脚本两例：双击闪退与版本号伪变更
-- **现象/根因**：维护工具箱缺 `requirements.txt` 与依赖探测，`ModuleNotFoundError: webview` 随窗口立即关闭；`get_file_targets()` 硬编码 6 个桌面文件，漏 Android Gradle、前端锁文件与 NSIS 模板，且 `re.subn` 返回 `n>0` 即视为变更，重跑不幂等。
-- **教训**：GUI 启动脚本先探测依赖、缺失按清单安装，非零退出 `pause` 保留窗口，双击故障先在终端复现拿 traceback；版本目标清单按全仓声明点维护并跑全量 dry-run，是否修改比较新旧内容，Android `versionCode` 取 `max(旧值, major*10000+minor*100+patch)`，锁文件只改根节点与 `packages[""]` 并验证 round-trip。
+- 词法缺陷的判据是「什么字符序列构成注释」，不是「从哪里开始找」。改起点等于重新定义词法，先列「旧行为必须保持」的回归用例。
+- 声称有缺陷之前，用差分用例证明两版确实不等价。0 差异的「优化」属于等价重写，应当回退。
+- 判断 `when` 的可达性要逐原子蕴含且 `text` 参数同一，先排除 `||`、`in`、正则等非原子内容。口径不同会得出 8 / 13 / 14 三个互异的数字。
 
-### 2026-10-17: 批量修复中的跨模块契约陷阱（实现）
-- **现象/根因**：编译与单测全绿仍漏三类：持 `p.mu` 调 `ReloadEncrypted` 后 `wg.Wait()` 等在途查询，单次保存卡死数秒；流水线按值捕获 `groupResolver`，热替换不生效；`os.WriteFile(_, 0o600)`/`os.Chmod` 在 Windows 只切只读位不设 ACL，路径大小写、systemd 相对 `ExecStart`、XDG 转义亦然。
-- **教训**：锁内只做快照，锁外做重活（持锁不调 `wg.Wait`/网络/`time.Sleep`/回调）；长生命周期对象不按值捕获可热替换字段，改 getter 或 atomic 指针并同步构造点与测试桩；权限/路径/编码在目标平台实机验证（`icacls`、读生成文件），无法 CI 的差异用 `//go:build` 分包 + no-op 桩；拆分逼近 550 行文件须确认同包、import 无遗漏并重跑构建测试。
+### 2026-10-18：先入为主复述「`fgRequired` 被重新武装」的相反结论
 
-### 2026-10-17: 复核旧「实证」先审期望（RFC 6052 / 计数 / 假阴性）
-- **现象/根因**：BUG-44 把对 RFC 6052 的同一误读写进代码与断言，后用规范 Table 1/2 六例对账全中；BUG-66 grep 计 14 处未剔除前置 `MaxBytesReader` 的 1 处（实 13）；BUG-35 因 `CacheConfig.Enabled` 未置 true 在闸门早退，复现假阴性；子代理称 `DaysRemaining` 无消费者，实际前端 `CertificateCard` 在用；另有 DNS64 手算期望全错、常量表达式验溢出编译失败。
-- **教训**：见铁律 1、3；计数逐点带上下文（前后 3 行）并抽查 2–3 点；复现失败先怀疑 harness，为每条早退分支加断言；「无消费者」须 Go 与前端 camelCase 两查；同鉴权族实现不一致先疑孤立一侧遗漏；溢出验证走运行期（`strconv.ParseInt`/变量乘法），临时 `zz_tmp_*` 用完即删。
+- 「某个调用把标志设成 X」必须回读到赋值右值的来源，不能凭调用名或 action 推断。
+- 崩溃归因用日志时间轴反向验证。三次崩溃的 uptime 都在 520ms 左右，就足以排除 30s timeout 路径。
+- 修复方向被证伪之后，先改注释再改代码。
 
-### 2026-10-16: 页面级 max-w 致单列卡片宽度不足（布局）
-- **现象/根因**：6 个页面根容器遗留 `max-w-7xl`（1280px）/`max-w-4xl`（896px），与「单列卡片延伸到内容区边缘」冲突，页面本身不报错。
-- **教训**：页面根容器不设 `max-w-*`，宽度交给 `main` 的 padding；`pb-12` 由 `views/*.vue` 统一负责；布局缺陷用 `getBoundingClientRect()` 量宽与 x/w，不看截图；Web 模式 `ui_capturer.py` 只截登录页，可用 CDP 注入伪 `window.go.main.App` 并设 `diting_ipc_host/port` 截真实界面（仅本地核对，不入库）；未覆盖 1280/1920 与 768–1024 折叠侧栏。
+### 2026-10-18：过早断言「受模型限制无法修」，把死字段当差距
 
-### 2026-10-16: 呼吸灯 infinite 动画拖垮 WebView2 GPU（性能）
-- **现象/根因**：`.seal-pulse` 对 `opacity` 逐帧插值的 `infinite` 动画使合成器每帧重绘整个窗口，GUI 空闲时 GPU 17%–28%；开销只与出帧频率相关，与动画元素数量/大小无关。证据：`Get-Counter '\GPU Engine(*)\Utilization Percentage'` 按 pid 归因，最小化归零；A/B 基线 27.8% → 关全部无限动画 1.7% → 仅关 `seal-pulse` 3.2%；保留动画但关键帧数值恒定仅 1.95%。
-- **教训**：`will-change`/`translateZ(0)`/`contain:strict`/改 `transform`/改 `background-color`/延长周期均无效；唯一有效杠杆是降低出帧数：`steps()` 后 1.4%–4.0%（`steps(2)`≈1.5%、`steps(4)`≈3.3%、`steps(8)`≈7.1%）；对 `infinite` 动画（含 Tailwind `animate-spin`/`animate-pulse`、`md-circular-progress indeterminate`）保持怀疑；未覆盖高刷/多显示器，观感未经人眼确认。
+- 判「做不到」之前先把平台 API 查完。`ContentResolver.getPersistedUriPermissions()` 就是「是否持久化授权」的权威来源，不需要加 DB 字段。
+- 区分「确实做不到」（写进限制）和「当时没想到」（回头补）。
+- 补差距之前先确认被对标的那一半真被消费，复制没人渲染的字段只会放大死代码。
 
-### 2026-10-16: 托盘 SetWindowSubclass 静默失败与时序补丁链（Win32）
-- **现象/根因**：`SetWindowSubclass` 在本进程 Wails 窗口恒返 FALSE（`ret=0`、`GetLastError=0`），返回值被丢弃，子类过程从未安装；历史补丁用时间防抖、前台句柄比对、异步派发等时序启发式规避消息语义，必然吞点击、失效或丢前台令牌。
-- **教训**：绝不丢弃 Win32 返回值，改用 `SetWindowLongPtr(GWLP_WNDPROC)` + `CallWindowProcW` 链式转发，失败时回收已注册托盘图标；幂等动作替代时间去重（单击/键盘/双击/气泡统一为「显示并置顶」）；语义过滤替代时间防抖（`isV4` 忽略 `WM_RBUTTONUP`）；可见性判定替代前台句柄（`IsWindowVisible() && !IsIconic()`）；窗口显隐在窗口线程内同步调用，仅服务启停等阻塞操作异步；`EnumWindows` 按类名 `wailsWindow` 匹配并接受隐藏窗口；`gofmt -w <目录>` 会剥离无关文件 BOM，应逐文件格式化；`OnDomReady` 每次导航都触发，初始化必须幂等。
-- **反例**：250ms 菜单防抖 + `isShowingMenu` 重入拦截；`keybd_event(VK_MENU)` 破焦点；`WM_ACTIVATE` 维护失活时间戳；`IsWindowActive` 仅比对前台句柄；兜底模式把 `wParam` 当 X 坐标（实为图标 ID 1，且未处理副屏负坐标）；菜单回调在窗口过程内同步阻塞。
+### 2026-10-18：并发 Gradle 撞 KSP 缓存；期望错与代码错未分辨；行数口径错
 
+- 多代理共享工作区时，构建单点串行由 Lead 统一跑，子代理只做静态自检和离屏单测。
+- 同一批失败里，期望错要改期望、代码错要改代码，两者处置相反。先分辨再动手。
+- 行数用 `(Get-Content $f).Count`。`Measure-Object -Line` 跳过空行，系统性偏低 6%–15%。
+- 改之前先定位真实卡点分支，同一输入会被多个前置分支截走。
+- 分片修复出现「新用例反而红」，常常是抓到了更上游的真缺陷，先归因再改。
+
+### 2026-10-18：身份判定误用 `==`
+
+- 「是不是我注册的那一份」必须用 `===`。`data class` 结构相等，同参请求会互等，旧请求被判最新，`ConcurrentHashMap.remove(k,v)` 同理。
+- `data class` 承载请求、令牌、代际时，要假定有人误用 `==`。KDoc 写明，并补「等值但不同实例」的测试。
+
+### 2026-10-18：`gofmt -l` 把 CRLF 误报成「格式未过」
+
+- 判据改成「CRLF→LF 归一化后单独 gofmt，再和基线比真实差异行数」。
+- 禁止 `gofmt -w` 整目录，那会翻掉全仓换行符；它还会剥离无关文件的 BOM，应当逐文件格式化。
+
+### 2026-10-18：解析器负例缺失 + 二进制产物早于源码定稿
+
+- 解析器的正例全绿说明不了问题。`2001:db8::1::2` 这种双压缩地址会被判成合法 IPv6，负例必须成组补上。
+- 注入 N 次失败要按重试预算折算时间，长退避要有「降级态单次尝试即丢」的分支。
+- `gomobile bind -work` 可以把生成的 Java 与 `tunnel-sources.jar` 对比，导出 API 没变就不用重新生成。
+
+### 2026-10-18：先落笔后取证：legacy 路径误判高危，Edit 锚点凭记忆
+
+- 可达性引证要在落笔前完成（见铁律 2、3、5）。`Engine.Start` 这类方法可能零生产调用者（Kotlin 只用 `startFull`/`startStandalone`/`startStackMitm`），caller grep 只命中定义行说明不了「会被执行」；反过来，`serveDNS` 被 standalone 与 full-tunnel 多入口共用，也不等于路径没有生产者。
+- `old_string` 要现场 grep 确认，不能凭记忆写下节结尾。
+
+### 2026-10-17~18：子代理「高危」未收窄即采信；位表和控制流的核验方向反了
+
+- 一手版本表拿不到时，降级为「收窄后的触发面 + 标注待定事实」，交真机 logcat 定版，不按原 severity 入库。
+- 逐位展开核实之前不要断言位段写错（byte2 QR 0x80 / AA 0x04 / TC 0x02 / RD 0x01，byte3 RA 0x80 / AD 0x20 / CD 0x10 / RCODE）。很多「写进 Z 位」「无条件伪造 AD」都是误报。
+- Room 迁移的 `DEFAULT 0` 校验有 `ifnull` 守卫，实体无默认值时会被跳过，不是「升级即崩」。
+- 多代理并行扫描先对汇总表去重。
+
+### 2026-10-17：构建链路三坑：WSL 无 Go、embed 依赖环、Vue key 类型
+
+- 跨子系统构建要在实际环境里跑 `command -v`。WSL 里没有 Go，`go.exe` 也不会被 `command -v go` 解析。交叉编译放宿主（`GOOS=linux CGO_ENABLED=0 go build`），WSL 只做 `dpkg-deb` 组装，验证到包内 ELF 能执行 `--version`。
+- 冷启动固定顺序：`go mod download` → `npm install` → 占位 `frontend/dist/index.html` → `wails generate module` → `npm run build` → `wails build`。验证落到真实产物起窗。
+- 按对象身份稳定的 key 用 `WeakMap<object, string>`（`createRowKey`），不要塞对象或退回下标；`git update-index --really-refresh` 消除 CRLF 假变更。
+
+### 2026-10-17：工具脚本两例：双击闪退与版本号伪变更
+
+- GUI 启动脚本先探测依赖、缺失就按清单安装，非零退出要 `pause` 保留窗口。双击故障先在终端复现拿 traceback。
+- 版本目标清单按全仓声明点维护并跑全量 dry-run。是否修改要比较新旧内容，而不是看 `re.subn` 的计数——`n>0` 不等于有变更，重跑必须幂等。
+- Android `versionCode` 取 `max(旧值, major*10000+minor*100+patch)`；锁文件只改根节点与 `packages[""]`，并验证 round-trip。
+
+### 2026-10-17：批量修复中的跨模块契约陷阱
+
+- 锁内只做快照，锁外做重活。持锁不调 `wg.Wait()`、网络、`time.Sleep` 或回调，否则单次保存能卡死数秒。
+- 长生命周期对象不按值捕获可热替换的字段，改用 getter 或 atomic 指针，并同步构造点和测试桩。
+- 权限、路径、编码要在目标平台实机验证（`icacls`、读生成文件）。`os.WriteFile(_, 0o600)`/`os.Chmod` 在 Windows 上只切只读位、不设 ACL，路径大小写、systemd 相对 `ExecStart`、XDG 转义同理；没法 CI 的差异用 `//go:build` 分包加 no-op 桩。
+- 拆分逼近 550 行的文件要确认同包、import 无遗漏，并重跑构建测试。
+
+### 2026-10-17：复核旧「实证」先审期望
+
+- 规范类结论先对规范原文（RFC 6052 的 Table 1/2 六例）。
+- 计数要逐点带上下文（前后 3 行）并抽查 2–3 点。未剔除前置 `MaxBytesReader`，14 处会数成 13 处。
+- 复现失败先怀疑 harness。闸门早退（`CacheConfig.Enabled` 未置 true）造成的假阴性比代码缺陷更常见，为每条早退分支加断言。
+- 「无消费者」要 Go 与前端 camelCase 两查。同鉴权族的实现不一致，先怀疑孤立一侧遗漏。
+- 溢出验证走运行期（`strconv.ParseInt` 或变量乘法），常量表达式会直接编译失败；临时 `zz_tmp_*` 文件用完即删。
+
+### 2026-10-16：页面级 max-w 导致单列卡片宽度不足
+
+- 页面根容器不设 `max-w-*`，宽度交给 `main` 的 padding；`pb-12` 由 `views/*.vue` 统一负责。
+- 布局缺陷用 `getBoundingClientRect()` 量宽和 x/w，不看截图。
+- Web 模式 `ui_capturer.py` 只截登录页。可以用 CDP 注入伪 `window.go.main.App` 并设 `diting_ipc_host/port` 截真实界面（仅本地核对，不入库）。
+- 注意 1280/1920 与 768–1024 折叠侧栏这几档还没覆盖。
+
+### 2026-10-16：呼吸灯 infinite 动画拖垮 WebView2 GPU
+
+- 这类开销只和出帧频率相关，与动画元素的数量、大小无关。所以 `will-change`、`translateZ(0)`、`contain:strict`、改 `transform`、改 `background-color`、延长周期统统无效，唯一有效的杠杆是降低出帧数。
+- `steps()` 之后降到 1.4%–4.0%（`steps(2)`≈1.5%、`steps(4)`≈3.3%、`steps(8)`≈7.1%）。对 `infinite` 动画（含 Tailwind 的 `animate-spin`/`animate-pulse`、`md-circular-progress indeterminate`）保持怀疑。
+- 性能归因用 `Get-Counter '\GPU Engine(*)\Utilization Percentage'` 按 pid 定位，最小化后归零可佐证。
+- 高刷和多显示器还没覆盖，观感也未经人眼确认。
+
+### 2026-10-16：托盘 `SetWindowSubclass` 静默失败与时序补丁链
+
+- 绝不丢弃 Win32 返回值。`SetWindowSubclass` 在本进程 Wails 窗口恒返 FALSE 且 `GetLastError=0`，返回值一丢就查不出子类过程从未安装。改用 `SetWindowLongPtr(GWLP_WNDPROC)` + `CallWindowProcW` 链式转发，失败时回收已注册的托盘图标。
+- 用幂等动作替代时间去重（单击、键盘、双击、气泡统一为「显示并置顶」），用语义过滤替代时间防抖（`isV4` 忽略 `WM_RBUTTONUP`），用可见性判定替代前台句柄（`IsWindowVisible() && !IsIconic()`）。
+- 窗口显隐在窗口线程内同步调用，只有服务启停这类阻塞操作才异步。
+- `EnumWindows` 按类名 `wailsWindow` 匹配并接受隐藏窗口。
+- `OnDomReady` 每次导航都触发，初始化必须幂等。
+- **反例**：250ms 菜单防抖加 `isShowingMenu` 重入拦截；`keybd_event(VK_MENU)` 破焦点；用 `WM_ACTIVATE` 维护失活时间戳；`IsWindowActive` 只比对前台句柄；兜底模式把 `wParam` 当 X 坐标（实为图标 ID 1，且没处理副屏负坐标）；菜单回调在窗口过程里同步阻塞。
