@@ -1,16 +1,30 @@
 ---
 所属: 谛听 Flutter UI 框架
-状态: 第三轮台账（UI 全覆盖 + 数据接线）持续更新
+状态: 第四轮台账（数据接线）持续更新
 最后校验: 2026-10-20
-口径: 上游 = LearningObjects/DITING-1.4.3/lib（GPL-3.0，只读参照）；本仓 = DITING_flutter/lib
+口径: 上游 = Android/app/src/main/java/com/haoze/diting（1.4.3 Kotlin/Compose，只读参照）；本仓 = DITING_flutter/lib
 ---
 
 # 21 · UI 全覆盖台账
 
-> 本文件是「对照 DITING 原版逐项核对 UI」的唯一清单。**每一项都必须能被
-> 指到上游源码位置**；本仓侧只允许三态：`已迁移` / `部分` / `缺失`。
-> 任何新增页面都要在 §11 登记，否则视为未完成。
+> ## ⚠️ 口径更正（2026-10-20 第四轮实测，推翻此前全部「上游」引用）
 >
+> 本文件此前把 `LearningObjects/DITING-1.4.3/lib`（`lib/ui/` 90 文件、`lib/views/` 74 文件、
+> `lib/features/` 28 文件）记为「上游」。**该目录在本工作区里是空的**（`Get-ChildItem -Recurse`
+> 计数为 0），且从未被 Git 跟踪（`git ls-files LearningObjects` 无输出，
+> `.gitignore` 的 `LearningObjects/` 已排除）。也就是说：
+>
+> - §1、§4、§5、§6、§7、§8、§10 里那些「上游文件 / 行数」对照表**无法被任何人复现**，
+>   不应再被当作事实引用；
+> - 唯一可验证、可 grep、可运行的参照是 **`Android/`（522 个 `.kt` / 92,186 行，
+>   DITING 1.4.3 的 Kotlin + Jetpack Compose 实现）**；
+> - 由此派生的事实：部分页面在 1.4.3 里**根本没有对应后端**（见 §15）。
+>   它们不是「迁移未完成」，而是「上游没有这个功能」。
+>
+> 后续轮次请一律以 `Android/` 为参照。要恢复 Flutter 上游对照，必须先把
+> `LearningObjects/DITING-1.4.3/` 真正检出，否则只能按 Kotlin 版重写对照表。
+
+> 本文件是「对照 DITING 原版逐项核对 UI」的唯一清单。
 > 第三轮在此基础上补了第四态：**数据来源**（真实持久化 / 演示数据）。
 > 两者的区别见 §14——UI 已迁移但数据仍为演示的页面，不得在交付说明里写成「已完成」。
 
@@ -22,8 +36,8 @@
    浮层、条件分支）。
 2. **不算**：纯业务逻辑（网络、数据库、VPN、内核）、桌面专属（`sidebar.dart`、
    `table_layout.dart`、窗口管理、托盘、快捷键录制）、以及上游已证零调用点的死路由。
-3. **本阶段只做 UI**：交互只需演示反馈（本地 state / 延时模拟），不接真实业务。
-4. **不修改上游**：`LearningObjects/DITING-1.4.3/` 只读，禁止写入。
+3. **本阶段做数据接线**：演示状态要换成真实持久化；确实没有上游后端的，如实标注。
+4. **不修改上游**：`Android/` 只读，禁止写入。
 5. **每个代码文件 ≤550 行**（AGENTS.md）；超了拆 `library` + `part`。
 
 ## 1. 上游规模实测与第二轮交付量
@@ -372,8 +386,11 @@
   `encrypted_dns_blocking_enabled` / `address_rules_enabled`）。
 - 引导解析三键 + `bootstrap_log` 24 小时聚合（替换页面上的假样本）。
 - 禁止联网 / 排除应用 / HTTPS 检查应用三份名单与开关，含互斥清洗。
-  ⚠️ 注意：「名单」落盘已通，但可选**应用清单**仍是 `mockInstalledApps` 的 12 条常量
-  （见 §14.2），且原生侧尚未消费 `blocked_app_packages`（见 §14.3）。
+- 应用清单接真实通道 `com.haoze.diting/apps`（`AppsBridge.kt`），四张选择页
+  （`/apps`、应用独立规则、HTTPS 检查应用、出站代理应用）共用
+  `installedAppsProvider`，不再有 `mockInstalledApps` / `mockPackages`；
+  过滤与排序按 1.4.3 的 `AppListFilter` / `AppListSort` 落盘到各自的 `*_filter` /
+  `*_sort` 键。原生侧尚未消费 `blocked_app_packages`（见 §14.3）。
 - 首页统计条改读 `dnsLogDailyStatsProvider`（原先读 `mockServiceStatsSnapshot` 常量）。
 - 日志页补 `LogAction.failed`（`ERROR` 不再显示成「放行」），仪表盘统计改读 `dns_log` 当日聚合。
 
@@ -506,11 +523,9 @@
 | `/requests` 请求列表 | `mock_observability_connections.dart`：`MockRequest`（380ms 假加载） | 需 `http_request_log` 读写 |
 | `/dns-queries` DNS 查询 | `mock_observability_dns.dart`：`MockDnsQuery` | 可改为读 `dns_log`（与日志页同表），成本最低的一项 |
 | `/resources` 资源更新 | `mock_observability_resources.dart`：`mockObsResources` | 更新动作只改内存时间戳/体积 |
-| `/apps` 应用选择页 | `mock_apps.dart`：`mockInstalledApps`（12 条 `com.example.*`） | 需原生 `getInstalledPackages` 通道 + `QUERY_ALL_PACKAGES` 权限（当前 Manifest 无此权限，Kotlin 也没有枚举实现） |
+| `/apps` 应用选择页 | **已接**：`com.haoze.diting/apps` 通道（`AppsBridge.kt`）+ `excluded_app_packages`；本页即「排除应用」编辑器 | 语义见交付报告：1.4.3 无独立通用选择页 |
 | `/subscriptions` 订阅 | `subscription_providers.dart` 以 `mockSubscriptions` 播种，更新是 `Future.delayed` 假进度 | 需订阅表读取 + 下载/更新任务（`SubscriptionAutoUpdateScheduler`） |
-| `/hub/app-rules` 应用独立规则 | `mock_system.dart`：`mockPackages` + 页面内 `State` 局部规则 | 需 `app_rules` 表与引擎按 UID 规则下发 |
-| `/hub/outbound-proxy`(+`/apps`) 出站代理 | `mock_system.dart`：`mockPackages`；配置为内存 `OutboundProxyState`，保存只弹 SnackBar | 需 `outbound_proxy_*` 落盘 + 传给引擎（见 §14.3） |
-| `/hub/http-inspection`(+`/apps`、`/ca`) | 开关与目标应用读写真实 prefs，但应用清单是 `mockPackages`；`caReady` 只在内存，证书指纹硬编码 | 需原生 CA 生成/导出/系统安装校验，并把 `https_inspection_ready` 读进页面 |
+| `/hub/app-rules` 应用独立规则 | 应用清单已接 `com.haoze.diting/apps`、放行域名读写 `app_allowlist_rules_json`；**DNS 专属黑白名单与「默认拦截全部外联」仍为说明位** | 后两项存在 `block_rule`/`allow_rule` 的 `appScope` 列上，`RuleRepository` 尚无按应用读写接口 |
 | `/tools` 网络工具 | `mockServiceStats.averageLatencyMs`、`.uptimeLabel` | 四个面板的查询结果需原生诊断通道（上游 `NetworkToolsViewModel`） |
 | `/hub` 功能中心、`/hub/hidden-features` | `mock_feature_hub.dart` 的静态卡片清单；隐藏开关为内存态 | 属文案清单而非业务数据；隐藏开关需要落盘 |
 | 代理域（`/proxies`、`/profiles/*`） | `mock_proxies.dart`、`mock_profiles*.dart` | 上游是 Clash 内核语义，本仓仅 UI；接真实内核前保持演示 |
@@ -535,3 +550,25 @@
 接线位置：`DitingVpnService` / `ExpressVpnService` 组装引擎配置处，两条服务都要改；
 `blocked_app_packages` 还需要先在原生侧补 package→UID 解析（`getPackageUid`），
 上游 1.4.3 走的是 `GoInspectionTunnel.setBlockedUIDs(csv)`。
+
+## 15. 无 1.4.3 后端的页面（2026-10-20 第四轮核查）
+
+> 判定方法：对每个功能关键词在 `Android/app/src/main/java/com/haoze/diting/`
+> 全库 `.kt` 做 `Select-String -SimpleMatch`，命中数为 0 且没有等价实现，即判「无后端」。
+> 这些页面是照着「不存在的 Flutter 上游」搭出来的脚手架（见文件头的口径更正），
+> **不是迁移欠账**。后续要么按 Kotlin 版重写对照、要么明确删掉，不能继续当「待接线」挂着。
+
+| 页面 / 路由 | 核查关键词（命中数） | 结论与建议 |
+|---|---|---|
+| `/connections` 连接列表 | `ConnectionsViewModel`(0)、`TrackerInfo`(0)、`activeConnections`(0)、`ConnectionTracker`(0) | 1.4.3 只有**请求日志**（`dns_log` + `http_request_log`），没有「活动连接」概念。Go 引擎也未导出连接枚举 API（`tunnel-debug-sources.jar` 的 `Engine` 无相关方法）。**建议**：与 `/requests` 合并，或改为「当前会话」视图；不要虚构连接表 |
+| `/resources` 资源更新 | `geoip`(0)、`geosite`(0)、`RuleProvider`(0) | 1.4.3 的规则来自订阅（`SubscriptionDownloader`）+ 内置预设资产，没有 geo/icon/rule-provider 远程下载器。**建议**：删页面，或改为「内置预设资产版本」只读信息页 |
+| 代理域 `/proxies`、`/profiles/*` | `ProxiesScreen`(0)、`ProxyGroup`(0)、`Clash`(0)、`proxy_group`(0) | 1.4.3 是 **DNS 应用**，没有 Clash 内核、代理组、配置档案。这些 UI 属另一套产品语义。**建议**：整域标为「非本产品功能」，不要接假数据 |
+| `/config/{tun,sniffer,ntp,override,filters,rules,scripts,providers,icon-sets,user-agents,on-demand}` | `sniffer`/`Sniff`(0)、`tun_stack`(0)、`ntp_server`(0)、`override`(0)、`clash`(0)、`on_demand`(0)、`user_agent`(0)、`icon_set`(0) | 1.4.3 的「配置覆写」只有 `bypass_lan_enabled`、`ipv6_mode`、`dns_*` 等真实键（见 `legacy_settings.dart`），并无 TUN 栈/嗅探/NTP/脚本覆写。**建议**：删掉无后端的 11 个页面，保留与真实 prefs 键对应的部分 |
+
+**仍然真实可接的（本轮接线目标）**：流量（`app_traffic_daily`）、请求
+（`http_request_log`）、DNS 查询（`dns_log`）、应用清单
+（`PackageManager` + `QUERY_ALL_PACKAGES`）、订阅（4 张订阅表）、应用独立规则
+（`app_allowlist_rules_json`）、出站代理（`outbound_proxy_*` 9 键 + AndroidKeyStore）、
+HTTPS/CA（`GoInspectionCaManager` + `AndroidCAStore`）、网络工具
+（`NetworkPingTool` / `NetworkTraceRouteTool` / `DnsLatencyTester` / `NetworkInfoProbe`）、
+功能中心隐藏项（`hidden_features_set`）。

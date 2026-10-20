@@ -1,6 +1,6 @@
 ---
 所属: 谛听 Flutter UI 框架
-状态: 第三阶段（旧版设置与数据库接线）进行中
+状态: 第四阶段（数据接线）完成，待 arm64 真机复核
 最后校验: 2026-10-20
 口径: 所有行数/文件数/命令输出均来自 2026-10-20 本会话真实工具输出
 ---
@@ -23,13 +23,19 @@
 （含 `bootstrap_log` 24 小时聚合）、禁止联网 / 排除应用 / HTTPS 检查三份应用名单，
 以及日志仪表盘的真实数据与当日统计口径。
 
-实测（2026-10-20 第三阶段）：`flutter analyze lib test` → **No issues found**；
-`flutter test` → **153 个用例全绿**（22 个测试文件）；`lib/` **419 文件 / 90,401 行**，
-`lib/pages/` **206 文件 / 45,369 行**，`lib/ui/` 127 文件 / 28,301 行；所有文件 ≤550 行
-（最大 `pages/system/editor_page.dart` 550 行）。
+实测（2026-10-20 第四轮，全部为本会话工具输出）：`flutter analyze lib test` → **No issues found**；
+`flutter test` → **274 个用例全绿**（29 个测试文件）；`lib/` **440 文件 / 96,415 行**，
+`lib/pages/` **210 文件 / 47,301 行**；原生 Kotlin **33 文件 / 4,770 行**；所有 Dart 与 Kotlin
+文件均 ≤550 行。`flutter build apk --debug` 通过，并在 `emulator-5554` 上实机验证。
 
-**仍然走演示数据的页面**：应用流量、连接 / 请求、订阅、应用独立规则、出站代理、
-CA 证书流程。清单与逐条原因见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §14。
+**第四轮已接真实数据源**：流量（`app_traffic_daily`）、请求（`http_request_log`）、
+DNS 查询（`dns_log`）、应用清单（`PackageManager`）、订阅（4 张订阅表）、
+应用独立规则（`app_allowlist_rules_json`）、出站代理（AndroidKeyStore + 通道）、
+HTTPS/CA（`AndroidCAStore` 实查）、网络工具（原生 ping/traceroute/DNS）、
+功能中心隐藏项（`hidden_features_set`）。
+
+**仍为演示数据（1.4.3 根本没有对应后端，不是迁移欠账）**：连接页、资源页、
+代理域与配置覆写页。逐条原因见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §15。
 
 ## 2. 已完成清单（可直接依赖）
 
@@ -476,24 +482,59 @@ flutter build apk --debug
    的胜出，失败数来自整表汇总；单服务商模式也会写记录，排行不区分模式；
 3. **缓存表**：Go 缓存纯内存，无枚举接口；`dns_cache` 表是 1.4.3 的快照，升级后为空属正常。
 
-### 10.3 原生侧未接线的配置（2026-10-20 静态调用链复核）
+### 10.3 原生接线现状（2026-10-20 第四轮，**已实机验证**）
 
-以下结论来自 Kotlin 全库 grep + `rule_snapshot.dart` / `vpn_bridge.dart` / 两个 VpnService 的实读：
+第四轮把此前「只写盘未读」的配置全部接进了引擎入参。下表是接线后的真实状态，
+「实机证据」一列来自本会话在 `emulator-5554`（x86_64，API 34）上的工具输出。
 
-| 键 | Dart 写盘 | Kotlin 读 | 进入 Go | 结论 |
+| 键 | Dart 写盘 | 进入 Go 的路径 | 结论 | 实机证据 |
 |---|---|---|---|---|
-| `blocked_app_packages`（+`blocked_apps_enabled`） | ✅ | ❌ 全库零命中 | ❌ | **只写盘未读**：`VpnStartRequest` 无此字段；原生也没有 package→UID 解析 |
-| `excluded_app_packages` | ✅ | ✅ `VpnStartRequest.excludedPackages` → `addDisallowedApplication` | ⚠️ 仅 TUN 层 | **已排除出隧道，引擎侧白名单仍空**（`rule_snapshot.dart` 的 `appRules` 恒为 `{}`，`setAppAllowlist` 零调用） |
-| 出站代理 | ❌ 仅内存 `OutboundProxyState` | ✅ 读 `outboundProxy` 参数 | ⚠️ 恒为空 | **读了但恒为空**：`_launch()` 组装请求时未传，Kotlin 回落 `DEFAULT_OUTBOUND_PROXY`（`enabled:false`） |
-| `http_inspection_app_packages` | ✅ | ❌ | ❌ | 仅 Dart UI 消费 |
-| `https_inspection_ready` | ✅ | — | — | CA 页未读该键，只读内存 provider |
+| `blocked_app_packages` | ✅ | `VpnStartRequest.blockedPackages` → `PackageUids` 换算 UID → `Engine.setBlockedUIDs(csv)` | **已接通**（普通模式；极速模式窄路由无 firewall 阶段，显式不传） | 待专项（需先勾选禁止联网应用） |
+| `excluded_app_packages` | ✅ | `VpnStartRequest.excludedPackages` → `Builder.addDisallowedApplication` | **已接通**（TUN 层，引擎本就不需要这份名单） | 同上 |
+| `http_inspection_app_packages` | ✅ | `VpnStartRequest.inspectionPackages` → UID → `Engine.setMitmAllowedUIDs(csv)` | **已接通**（仅普通模式；关闭时写空 CSV 清残留） | CA 页显示「已生成但未安装」 |
+| `https_inspection_ready` | ✅ | `LegacySettings.httpsInspectionOperational` 门控 `inspectionEnabled` | **已接通**：`ready && enabled && packages 非空` 才启动 MITM | `ca.crt` 指纹与 UI 逐字一致 |
+| 出站代理 | ✅ `OutboundProxyStore`（AES-GCM） | `_launch()` → `outboundProxy` JSON → `Engine.configureOutboundProxy` | **已接通**（未启用或校验失败时传空串，回落直连） | 待专项（需选一个本地代理应用） |
+| `app_allowlist_rules_json` | ✅ | `encodeRuleSnapshot(appAllowlist:)` → `appRules{允许域名}` → `Engine.applyRuleSnapshot` | **已接通**（普通模式） | 待专项 |
+| 流量 / HTTP 日志 | — | `setTrafficCallback` / `setHttpLogCallback` / `setUIDResolver` / `setAppUidResolver` | **已接通**（`EngineDataPlane`） | ✅ 见下方三行 |
 
-接线时按 `docs/refactor/09-normal-mode-vpn.md` 的配置快照路径补，并同时覆盖普通与极速两种
-服务（`DitingVpnService` / `ExpressVpnService`）。`blocked_app_packages` 需先补
-`getPackageUid` 解析（上游走 `GoInspectionTunnel.setBlockedUIDs(csv)`）。
+**实机数据面验证（本次会话工具输出，非推断）**：
 
-> 未取证：Go 侧内部消费行为（仓库无 Go 源码，只能从 `android/app/libs/tunnel-debug-sources.jar`
-> 确认 `SetBlockedUIDs` / `SetAppAllowlist` / `ConfigureOutboundProxy` 导出方法存在）；
-> 所有「进入 Go」结论均为静态调用链判断，没有 logcat 实锤。
+```
+dns_log                    : 38 行
+  packageName 归因          : RootProxy|8  com.android.browser|25
+                              com.google.android.webview|2  uid:1051|3
+app_traffic_daily          : 2 行
+  2026-10-20|com.android.browser|浏览器|98235|933072
+  2026-10-20|com.google.android.webview|Android System WebView|942|21571
+dns_race_log               : 22 行
+```
+
+结论：`dns_log.packageName` 由 NULL 变为真实包名，证明 UID 归因链路（`setUIDResolver`
++ `setAppUidResolver` 这一对）真正生效；`app_traffic_daily` 由 0 行变为真实字节数，
+证明 `setTrafficCallback` 生效。流量页 UI 与库内数字逐项吻合
+（954.6 KB 下行 / 99.2 KB 上行 / 2 个应用），且隧道重启后数值继续累加，说明 flush 正常。
+
+**仍未接线的两处（如实登记）**：
+
+1. `http_request_log` 在本次验证中仍为 0 行 —— 它只在 MITM 真正拦截流量时才产生，
+   而模拟器未安装 CA 到信任库。代码路径已注册（`attachHttp`），属「等用户装证书」
+   而非缺陷。
+2. `http_request_log.blockSubscriptionId` 写 NULL：旧版用 Kotlin 规则缓存反查订阅 id，
+   本移植没有那套缓存；填错比留空更坏，Dart 侧按「未知」处理。
+
+**仍需真机（arm64）复核**：`ConnectivityManager.getConnectionOwnerUid` 的参数方向是按
+Go 侧 `resolveFlowUID` 的实参顺序推导的（Go 把 `id.appIP` 传第一位），模拟器上已产出
+正确包名，但 arm64 真机（25102RKBEC）本轮未测。
+
+> **口径更正**：此前本文写「仓库无 Go 源码，只能从 `tunnel-debug-sources.jar` 确认导出方法」——
+> 这是错的。`Android/tunnel/` 下有 **85 个 `.go` 文件、87 个受 Git 跟踪的文件**，完整数据面
+> 都在仓库里。第四轮的接线结论都是从 Go 源码反向确认的，例如：
+> - `traffic_tracker.go:208 tick()` 只在 `len(deltas) > 0` 时才回调，且 `RecordTx/RecordRx`
+>   对 `uid <= 0` 直接 return —— 所以 UID 解析失败会导致流量表静默为空；
+> - `engine_full_tunnel.go:372/401` 的 `WrapClientConn(conn, uid)` 在 `uid <= 0` 时原样返回
+>   连接（不计数），与上一条同源；
+> - `engine_config.go:358 ConfigureOutboundProxy` 把 `parseOutboundProxyConfig` 的错误
+>   **当字符串返回**，调用方不检查就会「静默不生效」——本轮据此修掉了 `port` 写成字符串
+>   导致 `json.Unmarshal` 失败的缺陷。
 
 

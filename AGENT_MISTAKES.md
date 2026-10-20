@@ -15,6 +15,21 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：互斥清洗「先写 A 再读 A 做差集」会把用户的保存清空
+
+- `_dropOverlaps` 最初写成 `setBlockedApps(packages)` 之后紧接
+  `blockedAppPackages.difference(packages)`。`LegacySettings` 是 store 的直读视图，
+  第二句读回来的**就是刚写进去的那一份**，差集恒为空 —— 用户点「保存」等于清空
+  自己刚勾的选择，而 SnackBar 照样显示「已保存」。这类缺陷不抛异常、analyze 也看
+  不出，只有「写完再断言该键仍是提交值」的测试能抓到。
+- 根因是把互斥清洗当成「从四份名单里各删一次」，而归属方不能被删。修法是显式传
+  归属方（`_Owner` 枚举）并跳过它，而不是靠读回来做差集。
+- 推广：任何「写 X → 从 X 读 → 基于该值再写 X」的序列，都要先问「这一句读的是不是
+  我自己刚写的」。有则改成「基于写之前抓的快照」或「显式排除自己」。
+- 上游 Kotlin 在这里反而不会踩坑：`setBlockedAppPackages(context, getBlockedAppPackages(context) - selected)`
+  是**先读后写**（参数求值先于调用）。Dart 里把这两步拆成两条语句就变了顺序，
+  等价重写必须逐句核对求值时机，不能只看「逻辑一样」。
+
 ### 2026-10-20：`jumpTo(maxScrollExtent)` 在「刚追加内容的那一帧」拿到的是旧上界
 
 - 面板跑完探测后把结果卡追加到 `PageBody` 的 `ListView`，随后 `jumpTo(maxScrollExtent)` 仍停在旧上界，尾部断言必然失败。`ListView` 懒构建，新 item 的布局发生在下一帧，`maxScrollExtent` 此时还没变。判据要落在「内容确实进了视口」而不是「我调了滚动」：用多次 `drag(anchor, Offset(0, -400))` + `pumpAndSettle` 把尾部顶上来，先在临时探针里 dump 全部 `Text.data` 确认再写断言。
@@ -51,11 +66,11 @@
 - 修法：草稿必须能识别「别人改了同一份键」。`/apps` 用**集合深比较**（`_sameSet(persisted, _lastPrefs)`）；应用独立规则用**指纹字符串**（`appRulesKey(master, rules)`，包名与域名各自排序后拼接），因为那里是多层 Map。判据不是「我用 `ref.watch` 了」，而是「落盘值变了以后本地草稿会不会跟着让位」。
 - `watch` 只保证**重建**，不保证**丢弃本地状态**。凡是「本地 draft + 远程真相源」的组合，都要显式写这个让位分支；只 `watch` 而不处理，等价于把 prefs 当成单向管道，用户的草稿反而成了权威。
 
-### 2026-10-20：多个 teammate 并行 `flutter test` 会锁住 `build/native_assets/windows/*.dll`
+### 2026-10-20：多个 agent 并行 `flutter test` 会锁住 `build/native_assets/windows/*.dll`
 
-- 症状是 `flutter test` 直接失败并提示 `Flutter failed to delete file at ...build\native_assets\windows\sqlite3.dll`，看起来像权限问题或工程损坏，实际是**另一个 teammate 的 `flutter_tester` 正持有那个 DLL**。用 `[System.IO.File]::Open($f,'Open','ReadWrite','None')` 试探能立刻确诊，再 `Get-CimInstance Win32_Process` 看 `CommandLine` 就知道是哪个测试文件在跑。
-- 不要删 `build/`、不要 kill 别人的测试进程（会毁掉对方正在跑的 271 条用例）。正确做法是等锁释放后重跑；等待期间去做不需要测试的活（读上游 Kotlin 源、补注释、核 line count），别反复重试同一个命令。
-- `flutter test --help` 里没有 `--build-dir`，换不出隔离目录。若必须并行，只能约定「同一时刻只有一个 `flutter test`」，这条要写进并行工作契约。
+- 症状是 `flutter test` 直接失败并提示 `Flutter failed to delete file at ...build\native_assets\windows\sqlite3.dll`，看起来像权限问题或工程损坏，实际是**另一个 agent 的 `flutter_tester` 正持有那个 DLL**。用 `[System.IO.File]::Open($f,'Open','ReadWrite','None')` 试独占打开能立刻确诊，再 `Get-CimInstance Win32_Process`（含 `ParentProcessId` 与 `CommandLine`）就知道是哪个测试文件在跑：父进程还活着就是同事在跑，等而不是杀。
+- 不要删 `build/`、不要 kill 别人的测试进程（会毁掉对方正在跑的几百条用例）。正确做法是等锁释放后重跑；等待期间去做不需要测试的活（读上游 Kotlin 源、补注释、核 line count），别反复重试同一命令。`flutter test --help` 里没有 `--build-dir`，换不出隔离目录；若要并行，只能约定「同一时刻只有一个 `flutter test`」。
+- 归因教训：全量 `flutter test` 的失败集合**每次都不一样**（`express_mode` / `native_bridge` / `observability_pages` / `app_layer` 轮换）且单文件跑必过，说明是被并发编辑的邻居文件或抢锁，不是自己的回归。把「我负责的文件 + 守门测试」单独跑一遍拿到全绿，才是可交付的证据；报告里要写清全量红的是哪些、为什么判为他人范围。
 
 ### 2026-10-20：原生数据面「注册了回调」≠「表有数据」；UPSERT 语法与 SQLite 版本
 
