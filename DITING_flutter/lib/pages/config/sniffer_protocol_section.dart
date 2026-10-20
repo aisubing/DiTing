@@ -130,7 +130,7 @@ class _ProtocolSheet extends ConsumerWidget {
       ],
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.only(top: 8),
+        padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
         children: [
           generateSection(
             items: [

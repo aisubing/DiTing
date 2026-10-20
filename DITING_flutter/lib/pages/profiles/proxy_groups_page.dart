@@ -282,7 +282,7 @@ class _AddGroupSheetState extends ConsumerState<_AddGroupSheet> {
       ),
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.only(top: 8),
+        padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
         children: [
           generateSection(
             title: '基本信息',

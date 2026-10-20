@@ -163,12 +163,14 @@ class _GroupEditPageState extends ConsumerState<GroupEditPage> {
     if (!_loaded || group == null) {
       return CommonScaffold(
         title: '编辑代理组',
-        body: const SizedBox(
-          height: 320,
-          child: NullStatus(
-            label: '代理组不存在',
-            description: '它可能已被删除',
-            illustration: NullStatusIllustration.proxies,
+        body: const AppBarClearance(
+          child: SizedBox(
+            height: 320,
+            child: NullStatus(
+              label: '代理组不存在',
+              description: '它可能已被删除',
+              illustration: NullStatusIllustration.proxies,
+            ),
           ),
         ),
       );

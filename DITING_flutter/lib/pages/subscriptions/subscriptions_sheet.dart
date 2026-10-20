@@ -38,12 +38,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     setState(() => _submitting = true);
     final result = await ref
         .read(subscriptionActionsProvider)
-        .add(
-          name: _name.text,
-          url: _url.text,
-          kind: _kind,
-          groupId: _groupId,
-        );
+        .add(name: _name.text, url: _url.text, kind: _kind, groupId: _groupId);
     if (!mounted) {
       return;
     }
@@ -84,7 +79,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
         key: _formKey,
         child: ListView(
           controller: sheetScrollController(context),
-          padding: const EdgeInsets.only(top: 8),
+          padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
           children: [
             generateSection(
               title: '订阅信息',
@@ -94,9 +89,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                   child: TextFormField(
                     controller: _name,
                     autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: '留空则取链接末段',
-                    ),
+                    decoration: const InputDecoration(hintText: '留空则取链接末段'),
                   ),
                 ),
                 _FieldRow(
@@ -141,7 +134,8 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
               ],
             ),
             ListFooter(
-              text: '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定）。'
+              text:
+                  '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定）。'
                   '保存后会立即下载一次正文并统计行数；规则解析与入库将在后续版本接入。',
             ),
             SizedBox(height: NavigationDock.insetOf(context)),
@@ -170,7 +164,10 @@ class _FieldRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         spacing: 12,
         children: [
-          SizedBox(width: 76, child: Text(label, style: context.listTitleStyle)),
+          SizedBox(
+            width: 76,
+            child: Text(label, style: context.listTitleStyle),
+          ),
           Expanded(child: child),
         ],
       ),

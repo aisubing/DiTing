@@ -190,10 +190,13 @@ class ConnectionDetailSheet extends ConsumerWidget {
     if (connection == null) {
       return CommonScaffold(
         title: '连接详情',
-        body: obsEmpty(
-          label: '连接已关闭',
-          description: '这条连接在别处被关闭了。',
-          illustration: NullStatusIllustration.connections,
+        // 空态是居中件，正文从 y=0 起排会顶进浮着的顶栏底部。
+        body: AppBarClearance(
+          child: obsEmpty(
+            label: '连接已关闭',
+            description: '这条连接在别处被关闭了。',
+            illustration: NullStatusIllustration.connections,
+          ),
         ),
       );
     }

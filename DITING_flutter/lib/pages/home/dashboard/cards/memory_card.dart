@@ -54,10 +54,7 @@ class MemoryCard extends ConsumerWidget {
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  '%',
-                  style: DashboardText.unit(context),
-                ),
+                child: Text('%', style: DashboardText.unit(context)),
               ),
               const Spacer(),
               Text(
@@ -79,9 +76,7 @@ class MemoryCard extends ConsumerWidget {
                   ),
                   Expanded(
                     flex: ((1 - memory.ratio) * 1000).round(),
-                    child: ColoredBox(
-                      color: DashboardColors.of(context).track,
-                    ),
+                    child: ColoredBox(color: DashboardColors.of(context).track),
                   ),
                 ],
               ),
@@ -106,7 +101,8 @@ class MemoryDetailSheet extends ConsumerWidget {
     return CommonScaffold(
       title: '内存详情',
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -118,10 +114,7 @@ class MemoryDetailSheet extends ConsumerWidget {
                 children: [
                   Text(
                     '总览',
-                    style: AppTextStyle.headline.of(
-                      context,
-                      emphasized: true,
-                    ),
+                    style: AppTextStyle.headline.of(context, emphasized: true),
                   ),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -137,10 +130,7 @@ class MemoryDetailSheet extends ConsumerWidget {
                       ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          '%',
-                          style: DashboardText.unit(context),
-                        ),
+                        child: Text('%', style: DashboardText.unit(context)),
                       ),
                       const Spacer(),
                       Text(

@@ -35,9 +35,7 @@ class CurrentOutboundCard extends ConsumerWidget {
           DashboardCardHeader(
             glyph: AppGlyphs.status,
             title: '当前状态',
-            trailing: [
-              DashboardChip(label: core.label, tone: tone, dot: true),
-            ],
+            trailing: [DashboardChip(label: core.label, tone: tone, dot: true)],
           ),
           // 出站链：规则 → 代理组 → 节点，上游用三段可点的横条表示，
           // 每段之间画箭头。这里保留箭头与可点性。
@@ -99,9 +97,7 @@ class CurrentOutboundCard extends ConsumerWidget {
               Expanded(
                 child: DashboardMetric(
                   label: '上行',
-                  value: dashboardTraffic(
-                    ref.watch(trafficTotalsProvider).up,
-                  ),
+                  value: dashboardTraffic(ref.watch(trafficTotalsProvider).up),
                 ),
               ),
               Expanded(
@@ -123,12 +119,8 @@ class CurrentOutboundCard extends ConsumerWidget {
                   child: FilledButton.tonal(
                     onPressed: core == CoreState.starting
                         ? null
-                        : () => ref
-                              .read(coreStateProvider.notifier)
-                              .restart(),
-                    child: Text(
-                      core == CoreState.starting ? '重启中…' : '重启内核',
-                    ),
+                        : () => ref.read(coreStateProvider.notifier).restart(),
+                    child: Text(core == CoreState.starting ? '重启中…' : '重启内核'),
                   ),
                 ),
                 Expanded(
@@ -189,9 +181,7 @@ class _ChainNode extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: AppTextStyle.caption1
-              .of(context, emphasized: true)
-              .toTabular,
+          style: AppTextStyle.caption1.of(context, emphasized: true).toTabular,
         ),
       ],
     );
@@ -209,7 +199,8 @@ class _CoreDetailSheet extends ConsumerWidget {
     return CommonScaffold(
       title: '内核详情',
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           ListHeader(title: '运行信息'),
           ListItem(

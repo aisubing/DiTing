@@ -38,7 +38,7 @@ class _OverrideAddSheet extends ConsumerWidget {
         ),
         child: ListView(
           controller: sheetScrollController(context),
-          padding: const EdgeInsets.only(top: 8),
+          padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
           children: [
             for (final section in grouped.entries)
               generateSection(

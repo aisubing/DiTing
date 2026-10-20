@@ -170,7 +170,7 @@ class _MatchTargetSheet extends StatelessWidget {
       title: '匹配目标',
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        padding: EdgeInsets.fromLTRB(16, 8 + context.contentTopPadding, 16, 16),
         children: [
           Text('所有没被前面规则命中的流量，最终交给这里选的目标。', style: context.listCaptionStyle),
           const SizedBox(height: 12),

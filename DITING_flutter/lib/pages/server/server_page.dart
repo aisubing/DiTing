@@ -67,7 +67,8 @@ class ServerPage extends ConsumerWidget {
           const SizedBox(height: 6),
           generateSection(
             title: '局域网接入',
-            footer: '把同网段设备的 DNS 指向上面任一地址即可；'
+            footer:
+                '把同网段设备的 DNS 指向上面任一地址即可；'
                 '端口只在启动时绑定，改动后需要重启服务。',
             items: [
               for (final address in _lanAddresses)
@@ -78,7 +79,9 @@ class ServerPage extends ConsumerWidget {
                       fontFamily: 'JetBrainsMono',
                     ),
                   ),
-                  subtitle: Text(address == _lanAddresses.first ? 'Wi-Fi' : '以太网'),
+                  subtitle: Text(
+                    address == _lanAddresses.first ? 'Wi-Fi' : '以太网',
+                  ),
                   leading: const GlyphIcon(AppGlyphs.wifi),
                   trailing: GlyphIcon(
                     AppGlyphs.copy,
@@ -177,7 +180,8 @@ class ServerPage extends ConsumerWidget {
             ],
           ),
           const ListFooter(
-            text: '服务器模式不建立 VPN 隧道：它只在本机监听 DNS 端口，'
+            text:
+                '服务器模式不建立 VPN 隧道：它只在本机监听 DNS 端口，'
                 '因此可以与其它 VPN 共存，也不占用系统的 VPN 槽位。',
           ),
         ],
@@ -199,7 +203,8 @@ class _PowerArea extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final busy = status == ServerStatus.starting || status == ServerStatus.stopping;
+    final busy =
+        status == ServerStatus.starting || status == ServerStatus.stopping;
     return Column(
       children: [
         const SizedBox(height: 4),
@@ -307,7 +312,11 @@ Future<void> _pickUpstream(
     builder: (sheetContext) => CommonScaffold(
       title: '当前上游',
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 16),
+        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        padding: EdgeInsets.only(
+          top: sheetContext.contentTopPadding,
+          bottom: 16,
+        ),
         children: [
           generateSection(
             footer: '服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。',

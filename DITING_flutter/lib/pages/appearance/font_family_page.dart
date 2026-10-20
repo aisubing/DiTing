@@ -74,7 +74,11 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
     });
   }
 
-  static final _noMore = MockFontFamily(family: null, label: '', description: '');
+  static final _noMore = MockFontFamily(
+    family: null,
+    label: '',
+    description: '',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -87,10 +91,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
           : PageBody(
               dockSpacer: false,
               children: [
-                _PreviewHero(
-                  family: selected,
-                  label: _labelOf(selected),
-                ),
+                _PreviewHero(family: selected, label: _labelOf(selected)),
                 const SizedBox(height: 12),
                 generateSection(
                   title: '可选字体',
@@ -105,7 +106,8 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
                             .select(family.family),
                       ),
                   ],
-                  footer: '本仓只打包了 JetBrains Mono 与 Twemoji；'
+                  footer:
+                      '本仓只打包了 JetBrains Mono 与 Twemoji；'
                       '其余是系统常见字体，选中未安装的字族会静默回退到系统默认。',
                 ),
                 const SizedBox(height: 12),
@@ -143,7 +145,7 @@ class _FontSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: EdgeInsets.fromLTRB(16, 12 + context.contentTopPadding, 16, 24),
       children: [
         const SkeletonPill(width: double.infinity, height: 96),
         const SizedBox(height: 20),

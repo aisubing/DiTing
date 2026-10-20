@@ -30,10 +30,13 @@ class ProfileDetailPage extends ConsumerWidget {
     if (profile == null) {
       return const CommonScaffold(
         title: '配置详情',
-        body: NullStatus(
-          label: '没有选中的配置',
-          description: '先在配置档案里选一个',
-          illustration: NullStatusIllustration.profile,
+        // 空态是居中件，正文从 y=0 起排会顶进浮着的顶栏底部。
+        body: AppBarClearance(
+          child: NullStatus(
+            label: '没有选中的配置',
+            description: '先在配置档案里选一个',
+            illustration: NullStatusIllustration.profile,
+          ),
         ),
       );
     }
@@ -185,9 +188,9 @@ class _StatsGrid extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyle.caption2.of(context).copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      style: AppTextStyle.caption2
+                          .of(context)
+                          .copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),

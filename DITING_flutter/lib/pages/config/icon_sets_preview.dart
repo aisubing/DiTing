@@ -22,7 +22,7 @@ class _IconSetPreviewSheet extends StatelessWidget {
       title: iconSet.name,
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.only(top: 8),
+        padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
         children: [
           if (iconSet.icons.isEmpty)
             SizedBox(

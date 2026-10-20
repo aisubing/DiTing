@@ -40,11 +40,7 @@ enum ProbeKind {
 }
 
 const probeServices = <ProbeService>[
-  ProbeService(
-    name: '本机解析',
-    description: '53 端口 · UDP',
-    kind: ProbeKind.dns,
-  ),
+  ProbeService(name: '本机解析', description: '53 端口 · UDP', kind: ProbeKind.dns),
   ProbeService(
     name: 'DoH 通道',
     description: 'https://doh.example/dns-query',
@@ -275,7 +271,8 @@ class _ProbeDetailSheet extends StatelessWidget {
     return CommonScaffold(
       title: service.name,
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           ListHeader(title: '探测项'),
           ListItem(

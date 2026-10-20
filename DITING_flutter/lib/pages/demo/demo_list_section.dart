@@ -79,7 +79,8 @@ class _DemoListSectionState extends State<_DemoListSection> {
               suffixText: '',
               resetValue: '默认策略',
               maxLength: 24,
-              onChanged: (value) => _demoToast(context, 'input → ${value ?? ''}'),
+              onChanged: (value) =>
+                  _demoToast(context, 'input → ${value ?? ''}'),
             ),
             ListItem.checkbox(
               title: const Text('checkbox · 复选框'),
@@ -121,7 +122,8 @@ class _DemoListSectionState extends State<_DemoListSection> {
           onPressed: () => _demoToast(context, 'MoreActionButton'),
         ),
         const ListFooter(
-          text: 'ListFooter 的左右缩进跟着 1.mAp(context) 缩放，'
+          text:
+              'ListFooter 的左右缩进跟着 1.mAp(context) 缩放，'
               '所以平板上它不会和行内容错位。',
         ),
       ],
@@ -178,20 +180,24 @@ class _DemoOpenDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonScaffold(
       title: '详情页',
-      body: _DemoSectionBody(
-        children: [
-          Text(
-            '这一页由 ListItem.open / .next 推入，用来验证内嵌展开与整页跳转'
-            '两条路径都能正常返回。',
-            style: AppTextStyle.footnote.of(context),
-          ),
-          TonalButton(
-            size: TonalButtonSize.section,
-            glyph: AppGlyphs.arrowBack,
-            label: '返回',
-            onPressed: () => context.safeNestedPop(),
-          ),
-        ],
+      // `_DemoSectionBody` 是 `Column`，正文从 y=0 起排会被浮着的顶栏压住，
+      // 这里补上浮位（`PageBody` 那类滚动正文才用 padding 方案）。
+      body: AppBarClearance(
+        child: _DemoSectionBody(
+          children: [
+            Text(
+              '这一页由 ListItem.open / .next 推入，用来验证内嵌展开与整页跳转'
+              '两条路径都能正常返回。',
+              style: AppTextStyle.footnote.of(context),
+            ),
+            TonalButton(
+              size: TonalButtonSize.section,
+              glyph: AppGlyphs.arrowBack,
+              label: '返回',
+              onPressed: () => context.safeNestedPop(),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -27,7 +27,11 @@ class _RequestRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          TonalChip(label: entry.action.label, color: container, foregroundColor: color),
+          TonalChip(
+            label: entry.action.label,
+            color: container,
+            foregroundColor: color,
+          ),
         ],
       ),
       subtitle: Text(
@@ -39,8 +43,7 @@ class _RequestRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 6,
         children: [
-          if (entry.cached)
-            const GlyphIcon(AppGlyphs.dataUsage, size: 16),
+          if (entry.cached) const GlyphIcon(AppGlyphs.dataUsage, size: 16),
           Text(
             '${entry.latencyMs}ms',
             style: AppTextStyle.caption1
@@ -81,11 +84,13 @@ class _CacheRow extends StatelessWidget {
       ),
       trailing: Text(
         'TTL ${entry.remainingTtlSeconds}s · ${entry.hitCount} 次',
-        style: AppTextStyle.caption1.of(context).copyWith(
-          color: entry.remainingTtlSeconds < 30
-              ? colorScheme.warning
-              : colorScheme.success,
-        ),
+        style: AppTextStyle.caption1
+            .of(context)
+            .copyWith(
+              color: entry.remainingTtlSeconds < 30
+                  ? colorScheme.warning
+                  : colorScheme.success,
+            ),
       ),
     );
   }
@@ -121,9 +126,13 @@ class _RaceRow extends StatelessWidget {
         child: Text(
           '$rank',
           textAlign: TextAlign.center,
-          style: AppTextStyle.headline.of(context, emphasized: true).copyWith(
-            color: rank == 1 ? colorScheme.primary : colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.headline
+              .of(context, emphasized: true)
+              .copyWith(
+                color: rank == 1
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
         ),
       ),
       title: Text(entry.provider, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -134,9 +143,9 @@ class _RaceRow extends StatelessWidget {
       ),
       trailing: Text(
         '${entry.averageLatencyMs}ms',
-        style: AppTextStyle.subheadline.of(context).copyWith(
-          color: colorScheme.delayColor(entry.averageLatencyMs),
-        ),
+        style: AppTextStyle.subheadline
+            .of(context)
+            .copyWith(color: colorScheme.delayColor(entry.averageLatencyMs)),
       ),
     );
   }
@@ -155,7 +164,10 @@ class _LogDetailSheet extends StatelessWidget {
     return CommonScaffold(
       title: '请求详情',
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        // 浮层标题是浮在正文之上的（`FloatingHeaderBody`），不预留这段
+        // `contentTopPadding`，「域名」这一行就会被标题压住——用户看到的
+        // 就是「顶部内容高度不对、被遮挡」。
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -164,7 +176,11 @@ class _LogDetailSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  KeyValueRow(label: '域名', value: entry.domain, monospace: true),
+                  KeyValueRow(
+                    label: '域名',
+                    value: entry.domain,
+                    monospace: true,
+                  ),
                   KeyValueRow(label: '时间', value: entry.time, monospace: true),
                   KeyValueRow(label: '处置', value: entry.action.label),
                   KeyValueRow(
@@ -173,10 +189,7 @@ class _LogDetailSheet extends StatelessWidget {
                     monospace: true,
                   ),
                   KeyValueRow(label: '来源客户端', value: entry.client),
-                  KeyValueRow(
-                    label: '缓存命中',
-                    value: entry.cached ? '是' : '否',
-                  ),
+                  KeyValueRow(label: '缓存命中', value: entry.cached ? '是' : '否'),
                 ],
               ),
             ),
@@ -208,9 +221,7 @@ class _LogDetailSheet extends StatelessWidget {
               ),
             ),
           ),
-          ListFooter(
-            text: '演示数据只有一条规则来源，真实实现会记录规则所属订阅与命中行号。',
-          ),
+          ListFooter(text: '演示数据只有一条规则来源，真实实现会记录规则所属订阅与命中行号。'),
         ],
       ),
     );
@@ -223,19 +234,13 @@ class _LogDetailSheet extends StatelessWidget {
 /// 对应设计系统已有的四种强调色，不需要另造色板。
 (Color, Color) _actionColors(ColorScheme colorScheme, LogAction action) =>
     switch (action) {
-      LogAction.allowed => (
-        colorScheme.success,
-        colorScheme.successContainer,
-      ),
+      LogAction.allowed => (colorScheme.success, colorScheme.successContainer),
       LogAction.blocked => (colorScheme.error, colorScheme.errorContainer),
       LogAction.rewritten => (
         colorScheme.warning,
         colorScheme.warningContainer,
       ),
-      LogAction.cached => (
-        colorScheme.primary,
-        colorScheme.primaryContainer,
-      ),
+      LogAction.cached => (colorScheme.primary, colorScheme.primaryContainer),
       LogAction.failed => (colorScheme.error, colorScheme.errorContainer),
     };
 

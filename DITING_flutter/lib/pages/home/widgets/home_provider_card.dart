@@ -53,7 +53,9 @@ class _ProviderSheet extends ConsumerWidget {
     return CommonScaffold(
       title: resolution.isSingle ? '选择解析服务商' : '选择竞速服务商',
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        // 浮层标题浮在正文之上，不预留这段留白首行（「可选服务商」）就被
+        // 标题压住。
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           ListHeader(title: resolution.isSingle ? '可选服务商' : '至少选 2 个'),
           for (final provider in visible)

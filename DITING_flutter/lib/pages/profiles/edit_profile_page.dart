@@ -153,12 +153,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     if (!_loaded || profile == null) {
       return CommonScaffold(
         title: '编辑档案',
-        body: const SizedBox(
-          height: 320,
-          child: NullStatus(
-            label: '档案不存在',
-            description: '它可能已被删除',
-            illustration: NullStatusIllustration.profile,
+        body: const AppBarClearance(
+          child: SizedBox(
+            height: 320,
+            child: NullStatus(
+              label: '档案不存在',
+              description: '它可能已被删除',
+              illustration: NullStatusIllustration.profile,
+            ),
           ),
         ),
       );

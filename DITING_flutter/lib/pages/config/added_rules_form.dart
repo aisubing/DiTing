@@ -111,7 +111,7 @@ class _AddedRuleFormSheetState extends ConsumerState<_AddedRuleFormSheet> {
         key: _formKey,
         child: ListView(
           controller: sheetScrollController(context),
-          padding: const EdgeInsets.only(top: 8),
+          padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
           children: [
             generateSection(
               items: [
@@ -249,7 +249,7 @@ class _RulePresetSheet extends ConsumerWidget {
       title: '快速预设',
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.only(top: 8),
+        padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
         children: [
           generateSection(
             items: [

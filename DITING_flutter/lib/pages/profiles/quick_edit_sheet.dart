@@ -210,7 +210,12 @@ class _QuickEditSheetState extends ConsumerState<_QuickEditSheet> {
       ],
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12 + context.contentTopPadding,
+          16,
+          16,
+        ),
         children: [
           Text(
             '${widget.kind.label} · ${widget.kind.hint}',

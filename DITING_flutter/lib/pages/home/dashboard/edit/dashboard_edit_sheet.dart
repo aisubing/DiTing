@@ -28,15 +28,21 @@ class DashboardEditSheet extends ConsumerWidget {
         ),
       ],
       body: available.isEmpty
-          ? const Center(
-              child: NullStatus(
-                illustration: NullStatusIllustration.data,
-                label: '卡片都放上来了',
-                description: '想减少卡片，请回到编辑模式点卡片右上角的移除。',
+          ? const AppBarClearance(
+              child: Center(
+                child: NullStatus(
+                  illustration: NullStatusIllustration.data,
+                  label: '卡片都放上来了',
+                  description: '想减少卡片，请回到编辑模式点卡片右上角的移除。',
+                ),
               ),
             )
           : ListView(
-              padding: const EdgeInsets.only(bottom: 24),
+              // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+              padding: EdgeInsets.only(
+                top: context.contentTopPadding,
+                bottom: 24,
+              ),
               children: [
                 const ListHeader(title: '可添加的卡片'),
                 for (final widget in available)
@@ -44,18 +50,13 @@ class DashboardEditSheet extends ConsumerWidget {
                     leading: GlyphIcon(_glyphOf(widget)),
                     title: Text(widget.label),
                     subtitle: Text(_descriptionOf(widget)),
-                    trailing: const GlyphIcon(
-                      AppGlyphs.addCircle,
-                      size: 20,
-                    ),
+                    trailing: const GlyphIcon(AppGlyphs.addCircle, size: 20),
                     onTap: () {
                       notifier.add(widget);
                       Navigator.of(context).maybePop();
                     },
                   ),
-                const ListFooter(
-                  text: '卡片顺序可在编辑模式下拖拽调整；本演示不持久化。',
-                ),
+                const ListFooter(text: '卡片顺序可在编辑模式下拖拽调整；本演示不持久化。'),
               ],
             ),
     );

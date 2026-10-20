@@ -7,6 +7,7 @@
 //   node tool/ui_probe.mjs all [limit]            # 批量：tool/routes.txt 全量
 //   node tool/ui_probe.mjs scroll /settings 3     # 下滑 3 屏逐屏体检
 //   node tool/ui_probe.mjs tap 120 300            # 按逻辑坐标点按（换算物理像素）
+//   node tool/ui_probe.mjs sheet /logs 205 430 请求详情  # 点开浮层后取证（含顶栏遮挡判据）
 //   node tool/ui_probe.mjs shot /settings name    # 只截图
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -70,17 +71,20 @@ async function openSocket(url) {
   throw new Error(`无法连接 VM Service: ${url}`);
 }
 
-async function connect() {
-  adb('logcat', '-c');
-  adb('shell', 'am', 'force-stop', 'com.haoze.diting');
-  await sleep(300);
-  adb('shell', 'am', 'start', '-n', 'com.haoze.diting/.MainActivity');
+async function connect({ attach = false } = {}) {
+  if (!attach) {
+    adb('logcat', '-c');
+    adb('shell', 'am', 'force-stop', 'com.haoze.diting');
+    await sleep(300);
+    adb('shell', 'am', 'start', '-n', 'com.haoze.diting/.MainActivity');
+  }
   let uri = null;
   for (let i = 0; i < 40 && !uri; i++) {
-    await sleep(700);
+    // 附着模式只看已有日志：先 `-c` 会把「服务已监听」那行清掉，附着就再没有来源了。
     const log = adb('logcat', '-d').toString('utf8');
     const m = log.match(/Dart VM service is listening on (http:\/\/127\.0\.0\.1:(\d+)\/([^/]+)\/)/);
     if (m) uri = { url: m[1], port: m[2], token: m[3] };
+    else await sleep(700);
   }
   if (!uri) throw new Error('VM service URI not found in logcat');
   adb('forward', `tcp:${uri.port}`, `tcp:${uri.port}`);
@@ -97,15 +101,21 @@ async function connect() {
   ws.onerror = () => {};
   // 设备上可能同时挂着多个 isolate（重启中的旧 isolate 还没回收），
   // 只有注册了探针扩展的那个才是当前 UI isolate。
-  const vm = await send('getVM');
-  for (const iso of vm.isolates) {
-    isolateId = iso.id;
-    try {
-      await ext('ext.diting.probe');
-      return uri;
-    } catch {
-      /* 换下一个 isolate */
+  //
+  // 刚 `am start` 时 UI isolate 还没跑到注册扩展那一步，一次查不到就报错会把
+  // 「启动慢」误判成「探针没注册」；所以这里轮询到超时为止。
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const vm = await send('getVM');
+    for (const iso of vm.isolates ?? []) {
+      isolateId = iso.id;
+      try {
+        await ext('ext.diting.probe');
+        return uri;
+      } catch {
+        /* 换下一个 isolate */
+      }
     }
+    await sleep(500);
   }
   throw new Error('没有任何 isolate 注册 ext.diting.probe');
 }
@@ -315,8 +325,18 @@ function audit(p, label) {
 }
 
 async function gotoRoute(loc, waitMs = 900) {
-  await ext('ext.diting.go', { loc });
-  await sleep(waitMs);
+  // 刚启动时 `rootNavigatorKey.currentContext` 还是空的，`go` 会静默返回
+  // `ok: false`（探针不报错），于是「跳页成功」其实是首页——之前量到的
+  // 一屏首页文本就是这么来的。这里验返回体，失败就重试。
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const r = await ext('ext.diting.go', { loc });
+    if (r && r.ok) {
+      await sleep(waitMs);
+      return;
+    }
+    await sleep(500);
+  }
+  throw new Error(`跳转到 ${loc} 失败（导航器未就绪）`);
 }
 
 /** 两次探针之间的最大纵向位移：动画/回弹没停时，矩形与截图会对不上。 */
@@ -350,7 +370,7 @@ async function swipeUp() {
 }
 
 async function main() {
-  const [cmd, a1, a2] = process.argv.slice(2);
+  const [cmd, a1, a2, a3, a4] = process.argv.slice(2);
 
   // 体检规则本身可以离线跑：改判据不该逼一次真机往返，否则每次调阈值都要重连设备。
   //
@@ -391,7 +411,9 @@ async function main() {
     return;
   }
 
-  await connect();
+  // `now` 只量当前画面，必须附着到已经在跑的实例：`one`/`sheet` 都会重启 app，
+  // 一重启浮层就没了，量到的是重启后的首页。
+  await connect({ attach: cmd === 'now' });
   fs.mkdirSync(OUT, { recursive: true });
 
   if (cmd === 'one') {
@@ -450,11 +472,37 @@ async function main() {
       console.log(f.length ? f.join('\n') : `${a1}#${i}: OK`);
     }
   } else if (cmd === 'tap') {
+    await probe(); // 先刷 dpr，否则默认 3.25 在 dpr=2.625 的机器上会点偏。
     const x = Math.round(Number(a1) * dpr);
     const y = Math.round(Number(a2) * dpr);
     adb('shell', 'input', 'tap', String(x), String(y));
     await sleep(900);
     console.log(`tap 逻辑(${a1},${a2}) → 物理(${x},${y}) dpr=${dpr}`);
+  } else if (cmd === 'sheet') {
+    // 浮层体检：跳页 → 点按打开浮层 → 在原地重新取证。
+    // `one` 只量路由首屏，浮层里的顶栏遮挡量不到；而浮层的顶栏是
+    // `FloatingHeader`（盖在正文上），判据得靠正文首行的 y 与栏底比。
+    await gotoRoute(a1);
+    // `dpr` 只有 `probe()` 会从真机刷新；不先取一次就会用默认 3.25 换算，
+    // 点按落到屏幕别处（验证过：dpr=2.625 的机器点空了）。
+    await probe();
+    const x = Math.round(Number(a2) * dpr);
+    const y = Math.round(Number(a3) * dpr);
+    adb('shell', 'input', 'tap', String(x), String(y));
+    await sleep(1200);
+    const label = `${a1} ⊃ ${a4 || `tap(${a2},${a3})`}`;
+    const p = await capture(label, false);
+    fs.writeFileSync(path.join(OUT, `${slug(label)}.json`), JSON.stringify(p, null, 1));
+    const f = audit(p, label);
+    console.log(f.length ? f.join('\n') : `${label}: OK (${p.texts.filter((t) => !t.off).length} 文本)`);
+  } else if (cmd === 'now') {
+    // 量「当前屏幕」而不跳页：浮层里的顶栏遮挡只有在点开之后才量得到，
+    // 一旦 `go` 就会把浮层关掉。
+    const label = a1 || 'now';
+    const p = await capture(label, false);
+    fs.writeFileSync(path.join(OUT, `${slug(label)}.json`), JSON.stringify(p, null, 1));
+    const f = audit(p, label);
+    console.log(f.length ? f.join('\n') : `${label}: OK (${p.texts.filter((t) => !t.off).length} 文本)`);
   } else if (cmd === 'shot') {
     if (a1) await gotoRoute(a1);
     shot(a2 || `shot_${Date.now()}`);

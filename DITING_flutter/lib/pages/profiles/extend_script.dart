@@ -45,9 +45,7 @@ class _ScriptContent extends ConsumerWidget {
                   '${script.enabled ? '' : ' · 已停用'}',
                   style: context.listCaptionStyle,
                 ),
-                trailing: selected == script.id
-                    ? const SelectionCheck()
-                    : null,
+                trailing: selected == script.id ? const SelectionCheck() : null,
                 onPressed: script.enabled
                     ? () => ref
                           .read(scriptSelectionProvider.notifier)
@@ -97,7 +95,12 @@ class _ScriptLibrarySheet extends StatelessWidget {
       title: '脚本库',
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12 + context.contentTopPadding,
+          16,
+          16,
+        ),
         children: [
           Text(
             '脚本用 JavaScript 编写，在配置加载后执行。演示版不运行脚本，'

@@ -187,13 +187,15 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
               ),
             ],
       body: state.profiles.isEmpty
-          ? NullStatus(
-              label: '还没有配置档案',
-              description: '从订阅链接、本地文件或一份空白配置开始',
-              illustration: NullStatusIllustration.profile,
-              action: FilledButton(
-                onPressed: () => context.push(ProfilesPaths.add),
-                child: const Text('添加配置档案'),
+          ? AppBarClearance(
+              child: NullStatus(
+                label: '还没有配置档案',
+                description: '从订阅链接、本地文件或一份空白配置开始',
+                illustration: NullStatusIllustration.profile,
+                action: FilledButton(
+                  onPressed: () => context.push(ProfilesPaths.add),
+                  child: const Text('添加配置档案'),
+                ),
               ),
             )
           : PageBody(

@@ -76,10 +76,12 @@ class _IconPickerPageState extends ConsumerState<IconPickerPage> {
             setState(() => _query = value.trim().toLowerCase()),
       ),
       body: groups.isEmpty
-          ? const NullStatus(
-              label: '没有匹配的图标',
-              description: '试试其它关键词',
-              illustration: NullStatusIllustration.search,
+          ? const AppBarClearance(
+              child: NullStatus(
+                label: '没有匹配的图标',
+                description: '试试其它关键词',
+                illustration: NullStatusIllustration.search,
+              ),
             )
           : PageBody(
               children: [

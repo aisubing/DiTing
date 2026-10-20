@@ -15,6 +15,33 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-21：`CommonScaffold.body` 不预留顶栏浮位是「零报错」缺陷，必须用源码扫描守住
+
+- `CommonScaffold` 走 `extendBodyBehindAppBar` 语义：正文从屏幕 y=0 起排，顶栏浮在正文
+  之上；compact 浮层更狠，`FloatingHeader`（拖拽把手 + 标题栏，高 `sheetAppBarHeight
+  = 68`）直接盖在正文上方。**留白只由正文自己负责**：`PageBody` / `AppBarClearance`
+  封好了，或者滚动件自己在 `padding` 里加 `context.contentTopPadding`
+  （页面用 `context.appBarInset`）。
+- 把 `ListView` / `Column` / `Center` / `SizedBox(height:)` / `Form` 直接塞给 `body:`
+  完全合法：analyze 不报、widget 测试不失败、路由冒烟也过，**只有真机跑到那一屏才
+  看得见**——首行被浮层标题压住。本轮一次性修掉 44 个文件里约 35 处，最早的用户
+  反馈就是「顶部内容高度不对、被遮挡」的那张截图。
+- 量化判据：探针报「内容画进顶栏区(y < 栏底)」。修前「请求详情」浮层里「域名」行
+  y=437.5、浮层标题区 413.5–481.5；修后 y=505.5。判据必须是**实测几何**，不能是
+  `findsOneWidget`——文本在不在屏幕上是两回事。
+- 结构性护栏：`test/body_top_inset_test.dart` 扫 `lib/pages` 下每个 `body:` 表达式，
+  顶对齐容器里没有 `contentTopPadding` / `appBarInset` / `PageBody` / `AppBarClearance`
+  之一就失败。**加护栏时必须先做负向对照**：故意写一个漏留白的 body，确认测试报红，
+  再删掉那个对照文件——否则无法区分「扫描真的生效」和「正则没匹配上所以永远绿」。
+- 修法要成对地看清「留白加在哪一层」：`Column` 首件顶到最上时，留白必须加在**整列
+  外面**（`AppBarClearance`），加在内层 `Expanded` 列表的 padding 里只把列表往下推，
+  上面那行说明文字照旧被压；反过来，滚动件要加在**自己的 padding**里，外面套一层
+  `Padding` 会把视口裁在顶栏下沿，滚动时内容被硬切断。同一个 `Column` 里这两种错法
+  会互相抵消成「看起来只有一点点不对」。
+- 排查这类「多处同源」的缺陷别一个个点过去：先按目录 grep `^\s*body:\s*`，再用脚本
+  判定每个 body 的形态（首词是不是顶对齐容器、表达式里有没有留白符号），产出一张
+  清单再动手。手工逐个看 100+ 个调用点必然漏。
+
 ### 2026-10-20：互斥清洗「先写 A 再读 A 做差集」会把用户的保存清空
 
 - `_dropOverlaps` 最初写成 `setBlockedApps(packages)` 之后紧接

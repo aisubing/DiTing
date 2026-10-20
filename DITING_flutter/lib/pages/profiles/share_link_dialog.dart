@@ -199,7 +199,12 @@ class _ShareLinkParseSheetState extends ConsumerState<ShareLinkParseSheet> {
       ),
       body: ListView(
         controller: sheetScrollController(context),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12 + context.contentTopPadding,
+          16,
+          16,
+        ),
         children: [
           Text(
             '支持 ss / vmess / vless / trojan / hysteria2 / tuic。演示版只识别协议与'

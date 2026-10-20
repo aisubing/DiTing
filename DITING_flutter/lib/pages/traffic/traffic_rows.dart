@@ -164,7 +164,8 @@ class _AppTrafficSheet extends StatelessWidget {
     return CommonScaffold(
       title: row.appName.isEmpty ? row.packageName : row.appName,
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -222,7 +223,8 @@ class _AppTrafficSheet extends StatelessWidget {
             child: ShareBar(share: share),
           ),
           ListFooter(
-            text: '流量按 UID 归因到应用（上游 TrafficAttributionDialog 的口径）；'
+            text:
+                '流量按 UID 归因到应用（上游 TrafficAttributionDialog 的口径）；'
                 '同一应用的多进程流量合并计算。',
           ),
           Padding(
@@ -259,7 +261,7 @@ class _AttributionSheet extends StatelessWidget {
     return CommonScaffold(
       title: '流量归因说明',
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -310,7 +312,8 @@ class _AttributionSheet extends StatelessWidget {
             ),
           ),
           ListFooter(
-            text: '上游对应 ui/traffic/TrafficAttributionDialog.kt 与 '
+            text:
+                '上游对应 ui/traffic/TrafficAttributionDialog.kt 与 '
                 'AppTrafficDetailDialog.kt；本页数字来自 app_traffic_daily。',
           ),
         ],

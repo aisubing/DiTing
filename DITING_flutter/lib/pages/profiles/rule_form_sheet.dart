@@ -136,7 +136,7 @@ class _RuleFormSheetState extends ConsumerState<RuleFormSheet> {
         key: _formKey,
         child: ListView(
           controller: sheetScrollController(context),
-          padding: const EdgeInsets.only(top: 8),
+          padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
           children: [
             generateSection(
               title: '匹配',

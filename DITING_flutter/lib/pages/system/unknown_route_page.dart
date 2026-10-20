@@ -25,36 +25,40 @@ class UnknownRoutePage extends StatelessWidget {
     final colorScheme = context.colorScheme;
     return CommonScaffold(
       title: '页面不存在',
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 12,
-            children: [
-              GlyphIcon(
-                AppGlyphs.search,
-                size: 40,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              Text(
-                '找不到这个页面',
-                textAlign: TextAlign.center,
-                style: AppTextStyle.title3.of(context, emphasized: true),
-              ),
-              SelectableText(
-                location,
-                textAlign: TextAlign.center,
-                style: AppTextStyle.footnote
-                    .of(context)
-                    .copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: 4),
-              FilledButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                child: const Text('返回'),
-              ),
-            ],
+      // 正文从 y=0 起排（顶栏浮在上方），居中件在窄屏或大字号下会把内容
+      // 顶进顶栏底部，所以统一用 `AppBarClearance` 让开浮位。
+      body: AppBarClearance(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 12,
+              children: [
+                GlyphIcon(
+                  AppGlyphs.search,
+                  size: 40,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                Text(
+                  '找不到这个页面',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyle.title3.of(context, emphasized: true),
+                ),
+                SelectableText(
+                  location,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyle.footnote
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 4),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  child: const Text('返回'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

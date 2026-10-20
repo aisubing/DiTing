@@ -130,11 +130,13 @@ class _GroupMembersPageState extends ConsumerState<GroupMembersPage> {
     if (!_loaded || group == null) {
       return CommonScaffold(
         title: '选择成员',
-        body: const SizedBox(
-          height: 320,
-          child: NullStatus(
-            label: '代理组不存在',
-            illustration: NullStatusIllustration.proxies,
+        body: const AppBarClearance(
+          child: SizedBox(
+            height: 320,
+            child: NullStatus(
+              label: '代理组不存在',
+              illustration: NullStatusIllustration.proxies,
+            ),
           ),
         ),
       );

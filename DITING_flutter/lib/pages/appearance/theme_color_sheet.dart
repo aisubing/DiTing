@@ -44,7 +44,12 @@ class _CustomColorSheetState extends State<CustomColorSheet> {
         onPressed: () => Navigator.of(context).pop(seed),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12 + context.contentTopPadding,
+          16,
+          24,
+        ),
         children: [
           _ColorHero(color: seed, hsv: _hsv),
           const SizedBox(height: 16),
@@ -184,17 +189,16 @@ class _ColorHero extends StatelessWidget {
           ),
           Text(
             _hex(color),
-            style: AppTextStyle.title2.of(context, emphasized: true).copyWith(
-              color: _onColor(color),
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: AppTextStyle.title2
+                .of(context, emphasized: true)
+                .copyWith(color: _onColor(color), fontFamily: 'JetBrainsMono'),
           ),
           Text(
             'H ${hsv.hue.round()}° · S ${(hsv.saturation * 100).round()}% · '
             'V ${(hsv.value * 100).round()}%',
-            style: AppTextStyle.footnote.of(context).copyWith(
-              color: _onColor(color).withValues(alpha: 0.85),
-            ),
+            style: AppTextStyle.footnote
+                .of(context)
+                .copyWith(color: _onColor(color).withValues(alpha: 0.85)),
           ),
         ],
       ),
@@ -268,8 +272,7 @@ class _RampSlider extends StatelessWidget {
 }
 
 /// 渐变轨道：`SliderTheme` 没有现成的渐变轨道，自己画一条。
-class _GradientTrackShape extends SliderTrackShape
-    with BaseSliderTrackShape {
+class _GradientTrackShape extends SliderTrackShape with BaseSliderTrackShape {
   const _GradientTrackShape({required this.gradient});
 
   final Gradient gradient;
@@ -342,10 +345,12 @@ class _SchemePreview extends StatelessWidget {
           children: [
             Text(
               label,
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             for (final (role, background, foreground) in roles)
               Container(
@@ -358,9 +363,9 @@ class _SchemePreview extends StatelessWidget {
                 ),
                 child: Text(
                   role,
-                  style: AppTextStyle.caption1.of(context).copyWith(
-                    color: foreground,
-                  ),
+                  style: AppTextStyle.caption1
+                      .of(context)
+                      .copyWith(color: foreground),
                 ),
               ),
           ],

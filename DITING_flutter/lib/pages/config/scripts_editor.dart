@@ -73,7 +73,7 @@ class _ScriptEditorSheetState extends ConsumerState<_ScriptEditorSheet> {
         key: _formKey,
         child: ListView(
           controller: sheetScrollController(context),
-          padding: const EdgeInsets.only(top: 8),
+          padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
           children: [
             generateSection(
               items: [
