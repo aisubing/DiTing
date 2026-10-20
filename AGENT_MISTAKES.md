@@ -15,6 +15,15 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：极速模式可复用 Go 引擎，但窄路由与模式切换顺序必须自己保证
+
+- 极速模式不必移植 7.9k 行 Kotlin DNS 核心：同一 AAR 的 `startFull` 配合「只注册 DNS 地址路由」的 TUN（`10.0.0.0/30` + 22 个公共 DNS `/32` + 可选 8 个 IPv6 `/128`）即可获得相同语义。判据：`ip route get <非 DNS 地址>` 走 `wlan0`，向 `1.1.1.1:53` 发 UDP/TCP 查询都能拿到应答。
+- 极速的 prefs 是拆开的：DNS 键在 `diting_express_prefs`（键名与普通模式相同），运行标志在 `express_vpn_prefs/express_vpn_running`，规则库在 `diting_express`。给 `LegacySettings` 加一个只替换 DNS 容器的视图，比复制整套 getter 稳。
+- 切换工作模式时必须先停旧模式、再改 `workModeProvider`：`PowerNotifier` 用「当前模式」选 MethodChannel，先改状态会把 stop 发给新模式的控制器，旧隧道留在后台。`stop()` 内要先捕获 `express` 再 await。
+- 极速模式同样会被 `am force-stop` 留下 `express_vpn_running=true`；启动时用原生 `status` 回写并清旗标，不能直接信任持久化值。
+- 验证规则过滤要临时建 `diting_express` 并从正常库复制 schema，插入 `ads.example.com` 后通过 `1.1.1.1:53` 查询得到 rcode 3，正常域名仍 rcode 0；测试结束删库，别留测试域名。
+- 极速模式的通知 ID/频道必须与普通/服务器分开（2003/`channel_express`），否则同一次启动里两个前台服务会互相覆盖通知。
+
 ### 2026-10-20：服务器模式首页必须换成服务器概览；standalone 验收要压到协议层
 
 - 工作模式只改标题、正文仍是普通仪表盘时，首页电源按钮驱动的是 `powerProvider`（VPN），`start()` 会在模式检查处失败，界面只剩「启动失败」而看不到任何服务日志。服务器模式的首页应直接渲染服务器概览页，并保留「切换工作模式」入口，否则用户进了这个模式就出不去。

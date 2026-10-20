@@ -2,6 +2,7 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/server_upstream_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';

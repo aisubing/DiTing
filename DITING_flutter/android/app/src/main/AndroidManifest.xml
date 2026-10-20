@@ -49,6 +49,19 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="vpn" />
         </service>
+        <!-- Express mode: narrow-route TUN that only owns DNS traffic. -->
+        <service
+            android:name=".express.ExpressVpnService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="vpn" />
+        </service>
         <!-- 1.4.3 standalone LAN DNS server (server mode). -->
         <service
             android:name=".server.DitingDnsServerService"

@@ -6,7 +6,7 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';
 import 'package:diting/data/server/dns_server_config.dart';
-import 'package:diting/state/work_mode_providers.dart';
+import 'package:diting/state/server_status_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 

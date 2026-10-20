@@ -11,15 +11,27 @@ import 'dart:convert';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 
 class LegacySettings {
-  LegacySettings(this._store);
+  LegacySettings(this._store, {String? dnsContainer})
+    : dnsContainer = dnsContainer ?? uiContainer;
 
   final LegacyPrefsStore _store;
+
+  /// Container for the DNS/tunnel keys. Normal and express modes use the same
+  /// key names in different files; an express instance only swaps this
+  /// container and keeps UI keys on [uiContainer].
+  final String dnsContainer;
 
   /// Global UI keys (`SettingsPreferencesExtensions.PREFS_NAME`).
   static const uiContainer = 'dns_vpn_prefs';
 
   /// Work-mode selection (`WorkModeStore`).
   static const workModeContainer = 'diting_settings';
+
+  /// Express-mode DNS settings (`RuleDataset.EXPRESS.prefsName`).
+  static const expressContainer = 'diting_express_prefs';
+
+  /// Express-mode runtime flag (`VpnStateRegistry.isExpressRunning`).
+  static const expressRunningContainer = 'express_vpn_prefs';
 
   /// Server-mode settings (`DnsModePreferences`).
   static const serverContainer = 'diting_dns_mode_prefs';
@@ -174,13 +186,13 @@ class LegacySettings {
 
   // ------------------------------------------------------------- resolution
 
-  /// Normal dataset's resolution mode (the dataset-aware key lives in the
-  /// same container as the global UI keys).
+  /// Dataset-aware resolution mode; normal reads `dns_vpn_prefs`, express
+  /// reads `diting_express_prefs`.
   String get resolutionModeRaw =>
-      _string(uiContainer, 'dns_resolution_mode') ?? 'single';
+      _string(dnsContainer, 'dns_resolution_mode') ?? 'single';
 
   void setResolutionModeRaw(String storageValue) =>
-      _store.putString(uiContainer, 'dns_resolution_mode', storageValue);
+      _store.putString(dnsContainer, 'dns_resolution_mode', storageValue);
 
   // ------------------------------------------------------------- dns upstream
 
@@ -189,11 +201,17 @@ class LegacySettings {
   void setVpnRunning(bool value) =>
       _store.putBool(uiContainer, 'vpn_running', value);
 
+  bool get expressVpnRunning =>
+      _bool(expressRunningContainer, 'express_vpn_running', false);
+
+  void setExpressVpnRunning(bool value) =>
+      _store.putBool(expressRunningContainer, 'express_vpn_running', value);
+
   String get selectedProviderId =>
-      _string(uiContainer, 'selected_provider_id') ?? 'preset_alidns_dns';
+      _string(dnsContainer, 'selected_provider_id') ?? 'preset_alidns_dns';
 
   String? get userProvidersJson =>
-      _string(uiContainer, 'user_providers_json');
+      _string(dnsContainer, 'user_providers_json');
 
   List<String> get smartPredictionProviderIds =>
       _idList('smart_prediction_provider_ids');
@@ -205,34 +223,34 @@ class LegacySettings {
       _idList('primary_backup_provider_ids');
 
   String get blockResponseModeRaw =>
-      _string(uiContainer, 'block_response_mode') ?? 'nxdomain';
+      _string(dnsContainer, 'block_response_mode') ?? 'nxdomain';
 
   bool get cacheEnabled =>
-      _bool(uiContainer, 'dns_cache_enabled_v2', true);
+      _bool(dnsContainer, 'dns_cache_enabled_v2', true);
 
   String get cacheModeRaw =>
-      _string(uiContainer, 'dns_cache_mode_v2') ?? 'limit_max_ttl';
+      _string(dnsContainer, 'dns_cache_mode_v2') ?? 'limit_max_ttl';
 
   int get cacheMaxTtlSeconds =>
-      _int(uiContainer, 'dns_cache_max_ttl_seconds_v2', 3600);
+      _int(dnsContainer, 'dns_cache_max_ttl_seconds_v2', 3600);
 
   int get cacheFixedTtlSeconds =>
-      _int(uiContainer, 'dns_cache_fixed_ttl_seconds_v2', 3600);
+      _int(dnsContainer, 'dns_cache_fixed_ttl_seconds_v2', 3600);
 
   bool get cacheMinTtlEnabled =>
-      _bool(uiContainer, 'dns_cache_min_ttl_enabled_v2', false);
+      _bool(dnsContainer, 'dns_cache_min_ttl_enabled_v2', false);
 
   int get cacheMinTtlSeconds =>
-      _int(uiContainer, 'dns_cache_min_ttl_seconds_v2', 60);
+      _int(dnsContainer, 'dns_cache_min_ttl_seconds_v2', 60);
 
   bool get cacheStaleFallbackEnabled =>
-      _bool(uiContainer, 'dns_cache_stale_fallback_enabled_v2', false);
+      _bool(dnsContainer, 'dns_cache_stale_fallback_enabled_v2', false);
 
   int get cacheStaleFallbackSeconds =>
-      _int(uiContainer, 'dns_cache_stale_fallback_seconds_v2', 300);
+      _int(dnsContainer, 'dns_cache_stale_fallback_seconds_v2', 300);
 
   bool get bootstrapEnabled =>
-      _bool(uiContainer, 'bootstrap_enabled', true);
+      _bool(dnsContainer, 'bootstrap_enabled', true);
 
   List<String> get bootstrapPresetIds => _idList(
     'bootstrap_preset_ids',
@@ -240,20 +258,25 @@ class LegacySettings {
   );
 
   String? get bootstrapCustomJson =>
-      _string(uiContainer, 'bootstrap_custom_json');
+      _string(dnsContainer, 'bootstrap_custom_json');
 
   /// Raw value for keys that only the Go config builder consumes.
-  Object? rawValue(String key) => _store.read(uiContainer, key);
+  Object? rawValue(String key) => _store.read(dnsContainer, key);
+
+  /// A view over the express-mode dataset. UI keys stay global; DNS keys move
+  /// to `diting_express_prefs`, exactly like `RuleDataset.EXPRESS`.
+  LegacySettings forExpress() =>
+      LegacySettings(_store, dnsContainer: expressContainer);
 
   // ------------------------------------------------------------ tunnel system
 
   bool get bypassLanEnabled =>
       _bool(uiContainer, 'bypass_lan_enabled', true);
 
-  String get ipv6ModeRaw => _string(uiContainer, 'ipv6_mode') ?? 'auto';
+  String get ipv6ModeRaw => _string(dnsContainer, 'ipv6_mode') ?? 'auto';
 
   Set<String> get excludedPackages {
-    final value = _store.read(uiContainer, 'excluded_app_packages');
+    final value = _store.read(dnsContainer, 'excluded_app_packages');
     if (value is List) {
       return {
         for (final item in value)
@@ -362,7 +385,7 @@ class LegacySettings {
     String key, {
     List<String> fallback = const ['preset_alidns_dns', 'preset_dnspod_dns'],
   }) {
-    final raw = _string(uiContainer, key);
+    final raw = _string(dnsContainer, key);
     if (raw == null) return fallback;
     try {
       final decoded = jsonDecode(raw);

@@ -7,8 +7,6 @@ import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_snapshot.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
-import 'package:diting/data/server/dns_server_bridge.dart';
-import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/state/appearance_providers.dart';
@@ -76,16 +74,18 @@ class WorkModeNotifier extends Notifier<AppWorkMode> {
       AppWorkMode.fromStorageValue(ref.read(legacySettingsProvider).workModeRaw);
 
   void select(AppWorkMode mode) {
-    state = mode;
-    ref.read(legacySettingsProvider).setWorkModeRaw(mode.storageValue);
-    // The Go tunnel only serves normal mode; leaving it behind while the UI
-    // claims another mode would keep traffic redirected with no visible owner.
-    if (mode != AppWorkMode.normal) {
+    final previous = state;
+    // Stop before publishing the new mode: the notifier picks its platform
+    // channel from the current mode, so flipping state first would send the
+    // stop to the wrong service.
+    if (previous != mode) {
       final power = ref.read(powerProvider);
       if (power.isRunning || power == PowerState.starting) {
         unawaited(ref.read(powerProvider.notifier).stop());
       }
     }
+    state = mode;
+    ref.read(legacySettingsProvider).setWorkModeRaw(mode.storageValue);
   }
 }
 
@@ -98,6 +98,13 @@ final vpnControllerProvider = Provider<VpnController>(
   (ref) => MethodChannelVpnController(),
 );
 
+/// Express mode uses the same contract on its own channel.
+final expressVpnControllerProvider = Provider<VpnController>(
+  (ref) => MethodChannelVpnController(
+    channel: MethodChannel(expressVpnChannelName),
+  ),
+);
+
 class PowerNotifier extends Notifier<PowerState> {
   bool _disposed = false;
   bool _pendingPermissionStart = false;
@@ -107,11 +114,22 @@ class PowerNotifier extends Notifier<PowerState> {
   /// diagnostics possible without a debugger.
   String? lastError;
 
+  bool get _isExpress => ref.read(workModeProvider) == AppWorkMode.express;
+
+  VpnController get _controller => _isExpress
+      ? ref.read(expressVpnControllerProvider)
+      : ref.read(vpnControllerProvider);
+
   @override
   PowerState build() {
     ref.onDispose(() => _disposed = true);
     ref.read(vpnControllerProvider).onPrepareResult = _onPrepareResult;
-    if (ref.read(legacySettingsProvider).vpnRunning) {
+    ref.read(expressVpnControllerProvider).onPrepareResult = _onPrepareResult;
+    final settings = ref.read(legacySettingsProvider);
+    final persisted = _isExpress
+        ? settings.expressVpnRunning
+        : settings.vpnRunning;
+    if (persisted) {
       // The legacy flag survives process death; ask the service whether the
       // tunnel is really alive before showing "running".
       scheduleMicrotask(syncStatus);
@@ -121,10 +139,18 @@ class PowerNotifier extends Notifier<PowerState> {
   }
 
   Future<void> syncStatus() async {
+    // Capture the dataset before awaiting: a mode switch during the platform
+    // round-trip must not write the other mode's flag.
+    final express = _isExpress;
+    final settings = ref.read(legacySettingsProvider);
     try {
-      final status = await ref.read(vpnControllerProvider).status();
+      final status = await _controller.status();
       if (_disposed) return;
-      ref.read(legacySettingsProvider).setVpnRunning(status.running);
+      if (express) {
+        settings.setExpressVpnRunning(status.running);
+      } else {
+        settings.setVpnRunning(status.running);
+      }
       if (status.error != null && !status.running) {
         lastError = status.error;
         state = PowerState.error;
@@ -145,23 +171,31 @@ class PowerNotifier extends Notifier<PowerState> {
     await _start();
   }
 
+  /// Stops the tunnel only when it is running or starting; server mode calls
+  /// this before binding its port so both data planes never coexist.
+  Future<void> stopIfActive() async {
+    if (state.isRunning || state == PowerState.starting) {
+      await stop();
+    }
+  }
+
   Future<void> _start() async {
-    if (ref.read(workModeProvider) != AppWorkMode.normal) {
+    final mode = ref.read(workModeProvider);
+    if (mode != AppWorkMode.normal && mode != AppWorkMode.express) {
       _fail('当前工作模式尚未接入数据面');
       return;
     }
     state = PowerState.starting;
     lastError = null;
-    final controller = ref.read(vpnControllerProvider);
     try {
-      final prepared = await controller.prepare();
+      final prepared = await _controller.prepare();
       if (_disposed) return;
       if (!prepared) {
         // The consent dialog is showing; _onPrepareResult continues the flow.
         _pendingPermissionStart = true;
         return;
       }
-      await _launch();
+      await _launch(mode);
     } catch (error) {
       _fail(error);
     }
@@ -176,27 +210,34 @@ class PowerNotifier extends Notifier<PowerState> {
       return;
     }
     try {
-      await _launch();
+      await _launch(ref.read(workModeProvider));
     } catch (error) {
       _fail(error);
     }
   }
 
-  Future<void> _launch() async {
-    final settings = ref.read(legacySettingsProvider);
-    final repository = ref.read(ruleRepositoryProvider);
-    final rules = repository == null
-        ? ref.read(initialRulesProvider)
-        : await repository.loadAll();
+  Future<void> _launch(AppWorkMode mode) async {
+    if (ref.read(workModeProvider) != mode) {
+      // The user switched modes while the consent dialog was open.
+      state = PowerState.stopped;
+      return;
+    }
+    final express = mode == AppWorkMode.express;
+    final baseSettings = ref.read(legacySettingsProvider);
+    final settings = express ? baseSettings.forExpress() : baseSettings;
+    final rules = await _rulesFor(express);
     if (_disposed) return;
 
     final config = buildDnsConfig(settings);
-    final result = await ref.read(vpnControllerProvider).start(
+    final controller = express
+        ? ref.read(expressVpnControllerProvider)
+        : ref.read(vpnControllerProvider);
+    final result = await controller.start(
       VpnStartRequest(
         dnsConfig: config.encode(settings),
         ruleSnapshot: encodeRuleSnapshot(rules),
         rewriteRules: encodeRewriteRules(rules),
-        bypassLan: settings.bypassLanEnabled,
+        bypassLan: express ? false : settings.bypassLanEnabled,
         ipv6Mode: settings.ipv6ModeRaw,
         excludedPackages: settings.excludedPackages.toList(),
       ),
@@ -206,25 +247,59 @@ class PowerNotifier extends Notifier<PowerState> {
       _fail(result.error ?? 'VPN 启动失败');
       return;
     }
-    settings.setVpnRunning(true);
+    if (express) {
+      settings.setExpressVpnRunning(true);
+    } else {
+      settings.setVpnRunning(true);
+    }
     state = PowerState.running;
   }
 
+  /// Express keeps its own database; a fresh install legitimately has none, so
+  /// an empty rule set is the correct fallback (unlike normal mode, which shows
+  /// the bundled presets).
+  Future<Map<RuleKind, List<MockRule>>> _rulesFor(bool express) async {
+    if (!express) {
+      final repository = ref.read(ruleRepositoryProvider);
+      return repository == null
+          ? ref.read(initialRulesProvider)
+          : await repository.loadAll();
+    }
+    try {
+      final repository = await ref.read(expressRuleRepositoryProvider.future);
+      return repository == null
+          ? <RuleKind, List<MockRule>>{}
+          : await repository.loadAll();
+    } catch (_) {
+      return <RuleKind, List<MockRule>>{};
+    }
+  }
+
   Future<void> stop() async {
+    final express = _isExpress;
     state = PowerState.stopping;
     try {
-      await ref.read(vpnControllerProvider).stop();
+      await (express
+          ? ref.read(expressVpnControllerProvider)
+          : ref.read(vpnControllerProvider)).stop();
     } catch (error) {
       lastError = _messageOf(error);
     }
     if (_disposed) return;
-    ref.read(legacySettingsProvider).setVpnRunning(false);
+    final settings = ref.read(legacySettingsProvider);
+    if (express) {
+      settings.setExpressVpnRunning(false);
+    } else {
+      settings.setVpnRunning(false);
+    }
     state = PowerState.stopped;
   }
 
   void _fail(Object error) {
     lastError = error is String ? error : _messageOf(error);
-    ref.read(legacySettingsProvider).setVpnRunning(false);
+    final settings = ref.read(legacySettingsProvider);
+    settings.setVpnRunning(false);
+    settings.setExpressVpnRunning(false);
     state = PowerState.error;
   }
 
@@ -284,168 +359,6 @@ class RaceProvidersNotifier extends Notifier<Set<String>> {
 final raceProvidersProvider =
     NotifierProvider<RaceProvidersNotifier, Set<String>>(
       RaceProvidersNotifier.new,
-    );
-
-/// 服务器模式的监听端口。
-class ServerPortNotifier extends Notifier<int> {
-  @override
-  int build() => ref.read(legacySettingsProvider).serverPort;
-
-  void set(int port) {
-    final clamped = port.clamp(1024, 65535);
-    state = clamped;
-    ref.read(legacySettingsProvider).setServerPort(clamped);
-  }
-}
-
-final serverPortProvider = NotifierProvider<ServerPortNotifier, int>(
-  ServerPortNotifier.new,
-);
-
-/// 服务器模式的 5 态状态卡。
-enum ServerStatus {
-  stopped('已停止'),
-  starting('启动中'),
-  running('运行中'),
-  stopping('停止中'),
-  error('异常');
-
-  const ServerStatus(this.label);
-
-  final String label;
-}
-
-class ServerStatusNotifier extends Notifier<ServerStatus> {
-  bool _disposed = false;
-
-  /// Last native failure, kept for diagnostics without changing the five-state
-  /// UI contract.
-  String? lastError;
-
-  @override
-  ServerStatus build() {
-    ref.onDispose(() => _disposed = true);
-    // Leaving server mode must not leave a LAN DNS listener behind; the UI
-    // would otherwise show another mode while the port stays bound.
-    ref.listen(workModeProvider, (previous, next) {
-      if (next != AppWorkMode.server &&
-          (state == ServerStatus.running || state == ServerStatus.starting)) {
-        unawaited(_stop());
-      }
-    });
-    if (ref.read(legacySettingsProvider).serverServiceActive) {
-      scheduleMicrotask(syncStatus);
-      return ServerStatus.starting;
-    }
-    return ServerStatus.stopped;
-  }
-
-  Future<void> syncStatus() async {
-    try {
-      final status = await ref.read(dnsServerControllerProvider).status();
-      if (_disposed) return;
-      ref.read(legacySettingsProvider).setServerServiceActive(status.running);
-      if (status.error != null && !status.running) {
-        lastError = status.error;
-        state = ServerStatus.error;
-      } else {
-        state = status.running ? ServerStatus.running : ServerStatus.stopped;
-      }
-    } catch (_) {
-      if (!_disposed) state = ServerStatus.stopped;
-    }
-  }
-
-  Future<void> toggle() async {
-    if (state == ServerStatus.starting || state == ServerStatus.stopping) return;
-    if (state == ServerStatus.running) {
-      await _stop();
-      return;
-    }
-    await _start();
-  }
-
-  Future<void> _start() async {
-    if (ref.read(workModeProvider) != AppWorkMode.server) {
-      _fail('请先切换到服务器模式');
-      return;
-    }
-    final normal = ref.read(powerProvider);
-    if (normal.isRunning || normal == PowerState.starting) {
-      await ref.read(powerProvider.notifier).stop();
-      if (_disposed) return;
-    }
-    state = ServerStatus.starting;
-    lastError = null;
-    final settings = ref.read(legacySettingsProvider);
-    try {
-      final config = buildServerDnsConfig(settings);
-      final rules = await _serverRules();
-      if (_disposed) return;
-      final result = await ref.read(dnsServerControllerProvider).start(
-        DnsServerStartRequest(
-          port: config.port,
-          dnsConfig: config.encode(),
-          ruleSnapshot: encodeRuleSnapshot(rules),
-          rewriteRules: encodeRewriteRules(rules),
-          adBlockEnabled: config.adBlockEnabled,
-        ),
-      );
-      if (_disposed) return;
-      if (!result.started) {
-        _fail(result.error ?? 'DNS 服务启动失败');
-        return;
-      }
-      settings.setServerServiceActive(true);
-      state = ServerStatus.running;
-    } catch (error) {
-      if (!_disposed) _fail(_messageOf(error));
-    }
-  }
-
-  Future<void> _stop() async {
-    state = ServerStatus.stopping;
-    try {
-      await ref.read(dnsServerControllerProvider).stop();
-    } catch (error) {
-      lastError = _messageOf(error);
-    }
-    if (_disposed) return;
-    ref.read(legacySettingsProvider).setServerServiceActive(false);
-    state = ServerStatus.stopped;
-  }
-
-  Future<Map<RuleKind, List<MockRule>>> _serverRules() async {
-    try {
-      final repository = await ref.read(serverRuleRepositoryProvider.future);
-      return repository == null
-          ? <RuleKind, List<MockRule>>{}
-          : await repository.loadAll();
-    } catch (_) {
-      // A missing/locked legacy DB must not prevent the server from starting;
-      // upstream resolution still works with an empty per-dataset rule set.
-      return <RuleKind, List<MockRule>>{};
-    }
-  }
-
-  void _fail(String message) {
-    lastError = message;
-    ref.read(legacySettingsProvider).setServerServiceActive(false);
-    state = ServerStatus.error;
-  }
-
-  static String _messageOf(Object error) => error is PlatformException
-      ? (error.message ?? error.code)
-      : error.toString();
-}
-
-final dnsServerControllerProvider = Provider<DnsServerController>(
-  (ref) => MethodChannelDnsServerController(),
-);
-
-final serverStatusProvider =
-    NotifierProvider<ServerStatusNotifier, ServerStatus>(
-      ServerStatusNotifier.new,
     );
 
 /// 服务统计（服务器模式 / 日志页共用）。

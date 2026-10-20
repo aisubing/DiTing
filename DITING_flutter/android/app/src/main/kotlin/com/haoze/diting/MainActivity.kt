@@ -6,17 +6,20 @@ import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterActivity() {
     private var vpnBridge: VpnBridge? = null
+    private var expressVpnBridge: ExpressVpnBridge? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         LegacyPrefsBridge(applicationContext)
             .register(flutterEngine.dartExecutor.binaryMessenger)
         vpnBridge = VpnBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        expressVpnBridge = ExpressVpnBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         DnsServerBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        vpnBridge?.onActivityResult(requestCode, resultCode)
+        if (vpnBridge?.onActivityResult(requestCode, resultCode) == true) return
+        expressVpnBridge?.onActivityResult(requestCode, resultCode)
     }
 }

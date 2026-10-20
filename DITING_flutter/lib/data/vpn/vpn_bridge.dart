@@ -9,6 +9,7 @@ library;
 import 'package:flutter/services.dart';
 
 const vpnChannelName = 'com.haoze.diting/vpn';
+const expressVpnChannelName = 'com.haoze.diting/express_vpn';
 
 class VpnStartRequest {
   const VpnStartRequest({

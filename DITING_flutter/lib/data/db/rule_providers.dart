@@ -13,6 +13,12 @@ final serverRuleRepositoryProvider = FutureProvider<RuleRepository?>((ref) async
   return db == null ? null : RuleRepository(db);
 });
 
+/// Express mode owns `diting_express` (version 2); same tables, separate file.
+final expressRuleRepositoryProvider = FutureProvider<RuleRepository?>((ref) async {
+  final db = await LegacyDatabase.open(LegacyDatabase.expressFile);
+  return db == null ? null : RuleRepository(db);
+});
+
 /// Rules visible on the first frame.
 ///
 /// `main()` overrides this with the database snapshot. The mock default keeps
