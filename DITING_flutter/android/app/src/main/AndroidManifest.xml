@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 1.4.3 enumerated every installed app for the block / exclude / HTTPS
+         inspection pickers. Without these the platform silently returns only
+         this app's own packages and every picker falls back to its empty state. -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
     <application
         android:label="谛听"
         android:name="${applicationName}"

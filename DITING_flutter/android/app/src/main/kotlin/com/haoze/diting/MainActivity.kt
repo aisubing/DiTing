@@ -1,6 +1,10 @@
 package com.haoze.diting
 
 import android.content.Intent
+import com.haoze.diting.apps.AppsBridge
+import com.haoze.diting.cert.CaInspectionBridge
+import com.haoze.diting.net.DiagnosticsBridge
+import com.haoze.diting.proxy.OutboundProxyBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
@@ -10,11 +14,19 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        LegacyPrefsBridge(applicationContext)
-            .register(flutterEngine.dartExecutor.binaryMessenger)
-        vpnBridge = VpnBridge(this, flutterEngine.dartExecutor.binaryMessenger)
-        expressVpnBridge = ExpressVpnBridge(this, flutterEngine.dartExecutor.binaryMessenger)
-        DnsServerBridge(applicationContext, flutterEngine.dartExecutor.binaryMessenger)
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
+        LegacyPrefsBridge(applicationContext).register(messenger)
+        vpnBridge = VpnBridge(this, messenger)
+        expressVpnBridge = ExpressVpnBridge(this, messenger)
+        DnsServerBridge(applicationContext, messenger)
+
+        // 1.4.3 capabilities that had no Flutter counterpart: the real app
+        // inventory, the MITM root CA, the outbound proxy (keystore-encrypted
+        // credentials), and the network diagnostic tools.
+        AppsBridge(applicationContext).register(messenger)
+        CaInspectionBridge(applicationContext).register(messenger)
+        OutboundProxyBridge(applicationContext).register(messenger)
+        DiagnosticsBridge(applicationContext).register(messenger)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
