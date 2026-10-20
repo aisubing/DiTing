@@ -78,6 +78,9 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       } else {
         state = status.running ? ServerStatus.running : ServerStatus.stopped;
       }
+      ref
+          .read(serviceStatsProvider.notifier)
+          .applyNative(status.stats, running: status.running);
     } catch (_) {
       if (!_disposed) state = ServerStatus.stopped;
     }
@@ -122,6 +125,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
         return;
       }
       settings.setServerServiceActive(true);
+      ref.read(serviceStatsProvider.notifier).markStarted();
       state = ServerStatus.running;
     } catch (error) {
       if (!_disposed) _fail(_messageOf(error));
@@ -137,6 +141,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     }
     if (_disposed) return;
     ref.read(legacySettingsProvider).setServerServiceActive(false);
+    ref.read(serviceStatsProvider.notifier).reset();
     state = ServerStatus.stopped;
   }
 

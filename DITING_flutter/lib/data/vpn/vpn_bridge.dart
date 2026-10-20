@@ -57,18 +57,25 @@ class VpnStatus {
     required this.running,
     required this.persisted,
     this.error,
+    this.stats = const {},
   });
 
   final bool running;
   final bool persisted;
   final String? error;
 
+  /// Engine counters (`queries`, `blocked`, `cacheHits`, ...); empty when the
+  /// tunnel has not started or the platform has no Engine instance.
+  final Map<String, Object?> stats;
+
   factory VpnStatus.fromMap(Object? raw) {
     final map = raw is Map ? raw : const {};
+    final stats = map['stats'];
     return VpnStatus(
       running: map['running'] == true,
       persisted: map['persisted'] == true,
       error: map['error'] as String?,
+      stats: stats is Map ? Map<String, Object?>.from(stats) : const {},
     );
   }
 }

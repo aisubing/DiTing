@@ -14,6 +14,9 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
+import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineStats
+import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.SocketProtector
 
@@ -95,6 +98,7 @@ class DitingVpnService : VpnService() {
             return
         }
         engine = goEngine
+        activeEngine = goEngine
 
         try {
             val proxyError = goEngine.configureOutboundProxy(
@@ -111,6 +115,14 @@ class DitingVpnService : VpnService() {
             if (rewriteRules.isNotBlank()) {
                 goEngine.setRewriteRules(rewriteRules)
             }
+            val logMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
+                ?: DnsLogWriter.MODE_ALL
+            goEngine.setBatchLogCallback(object : BatchLogCallback {
+                override fun onDNSQueryBatch(jsonLogs: String) {
+                    DnsLogWriter.writeBatch(this@DitingVpnService, DnsLogWriter.DB_NORMAL, logMode, jsonLogs)
+                }
+            })
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
         } catch (t: Throwable) {
@@ -142,6 +154,7 @@ class DitingVpnService : VpnService() {
         stopping = true
         val current = engine
         engine = null
+        activeEngine = null
         runCatching { current?.stop() }
             .onFailure { Log.w(TAG, "engine.stop failed", it) }
         runCatching { current?.stopStackMitm() }
@@ -162,6 +175,7 @@ class DitingVpnService : VpnService() {
     private fun fail(message: String) {
         lastError = message
         isRunning = false
+        activeEngine = null
         setPersistedRunning(this, false)
         releaseResources()
         stopForegroundCompat()
@@ -179,6 +193,7 @@ class DitingVpnService : VpnService() {
             stopping = true
             val current = engine
             engine = null
+            activeEngine = null
             runCatching { current?.stop() }
             runCatching { current?.stopStackMitm() }
             runCatching { current?.releaseTun() }
@@ -276,6 +291,7 @@ class DitingVpnService : VpnService() {
         private const val NOTIFICATION_ID = 1001
         private const val PREFS_NAME = "dns_vpn_prefs"
         private const val KEY_VPN_RUNNING = "vpn_running"
+        private const val KEY_LOG_MODE = "dns_log_mode"
 
         // Outbound proxy is not wired from Flutter yet; an explicit disabled
         // config keeps the Go side from logging a parse failure on every start.
@@ -284,6 +300,9 @@ class DitingVpnService : VpnService() {
 
         @Volatile
         var isRunning: Boolean = false
+
+        @Volatile
+        private var activeEngine: Engine? = null
 
         @Volatile
         var lastError: String? = null
@@ -306,6 +325,7 @@ class DitingVpnService : VpnService() {
             "running" to isRunning,
             "persisted" to isPersistedRunning(context),
             "error" to lastError,
+            "stats" to EngineStats.snapshot(activeEngine),
         )
 
         fun startIntent(

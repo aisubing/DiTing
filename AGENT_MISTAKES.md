@@ -15,6 +15,15 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：DNS 日志要直写旧库；三模式的日志开关并不同名
+
+- Go 引擎的批量日志走 `setBatchLogCallback`，payload 是短字段 JSON 数组：`d` 域名、`b` 拦截、`t` 类型、`r` 耗时、`a` 应用、`i` 解析结果、`k` 命中来源、`e` 错误、`c` 缓存、`ts` 时间、`ttl`。字段名不要按直觉拼长名。
+- 日志落库直接 `SQLiteDatabase.openDatabase` 写 `dns_log`，与 Flutter 的 sqflite 共用同一个文件；库不存在（全新安装）必须跳过而不是新建，否则会覆盖 Dart 侧的建库逻辑。
+- 开关不是同一套：普通/极速读 `dns_log_mode`（`all`/`blocked_and_errors`/`off`），服务器模式读布尔 `log_queries`（默认 false）。极速日志写 `diting_express`，普通与服务器都写 `diting_database`。
+- 运行统计用 `Engine.getStats()`（`total`/`blocked`）+ `getDNSCacheStats()`（`totalHits`/`totalMisses`/`entryCount`/`hitRatio`）；服务停止后主动把 `activeEngine` 置空，否则状态里会返回上一条隧道的计数。
+- 从 adb shell 发起查询时 `app=RootProxy` 是 shell uid 的解析结果，不是引擎串包；判日志字段别把它当缺陷。
+- `adb shell run-as pkg sh -c 'cat > /data/data/.../file'` 的重定向必须在 run-as 的 `sh -c` 内执行；写成 `run-as pkg sh -c "cat > 相对路径"` 会在 shell uid 下创建并失败。
+
 ### 2026-10-20：极速模式可复用 Go 引擎，但窄路由与模式切换顺序必须自己保证
 
 - 极速模式不必移植 7.9k 行 Kotlin DNS 核心：同一 AAR 的 `startFull` 配合「只注册 DNS 地址路由」的 TUN（`10.0.0.0/30` + 22 个公共 DNS `/32` + 可选 8 个 IPv6 `/128`）即可获得相同语义。判据：`ip route get <非 DNS 地址>` 走 `wlan0`，向 `1.1.1.1:53` 发 UDP/TCP 查询都能拿到应答。

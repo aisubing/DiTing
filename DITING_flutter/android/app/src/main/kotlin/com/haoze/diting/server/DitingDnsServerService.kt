@@ -15,6 +15,9 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
+import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineStats
+import tunnel.BatchLogCallback
 import tunnel.Engine
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -84,6 +87,23 @@ class DitingDnsServerService : Service() {
                     created.setRewriteRules(rewriteRules)
                 }
                 created.setFilterDNS(adBlockEnabled)
+                val logMode = if (
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(KEY_LOG_QUERIES, false)
+                ) {
+                    DnsLogWriter.MODE_ALL
+                } else {
+                    DnsLogWriter.MODE_OFF
+                }
+                created.setBatchLogCallback(object : BatchLogCallback {
+                    override fun onDNSQueryBatch(jsonLogs: String) {
+                        DnsLogWriter.writeBatch(
+                            this@DitingDnsServerService,
+                            DnsLogWriter.DB_NORMAL,
+                            logMode,
+                            jsonLogs,
+                        )
+                    }
+                })
                 created.startStandalone(port.toLong())
                 if (generation.get() != token) {
                     Log.i(TAG, "discarding DNS engine: stop requested during start")
@@ -92,6 +112,7 @@ class DitingDnsServerService : Service() {
                     return@Thread
                 }
                 engine = created
+                activeEngine = created
                 isRunning = true
                 lastError = null
                 setServiceActive(this, true)
@@ -109,6 +130,7 @@ class DitingDnsServerService : Service() {
         generation.incrementAndGet()
         val current = engine
         engine = null
+        activeEngine = null
         runCatching { current?.stopStandalone() }
             .onFailure { Log.w(TAG, "stopStandalone failed", it) }
         runCatching { current?.stop() }
@@ -122,6 +144,7 @@ class DitingDnsServerService : Service() {
     private fun fail(message: String) {
         lastError = message
         isRunning = false
+        activeEngine = null
         setServiceActive(this, false)
         releaseLocks()
         stopForegroundCompat()
@@ -132,6 +155,7 @@ class DitingDnsServerService : Service() {
         generation.incrementAndGet()
         val current = engine
         engine = null
+        activeEngine = null
         runCatching { current?.stopStandalone() }
         runCatching { current?.stop() }
         isRunning = false
@@ -249,6 +273,7 @@ class DitingDnsServerService : Service() {
         private const val PREFS_NAME = "diting_dns_mode_prefs"
         private const val KEY_SERVICE_ACTIVE = "service_active"
         private const val KEY_LOCAL_PORT = "local_listen_port"
+        private const val KEY_LOG_QUERIES = "log_queries"
 
         const val ACTION_START = "com.haoze.diting.server.START"
         const val ACTION_STOP = "com.haoze.diting.server.STOP"
@@ -261,6 +286,9 @@ class DitingDnsServerService : Service() {
 
         @Volatile
         var isRunning: Boolean = false
+
+        @Volatile
+        private var activeEngine: Engine? = null
 
         @Volatile
         var lastError: String? = null
@@ -280,6 +308,7 @@ class DitingDnsServerService : Service() {
             "running" to isRunning,
             "persisted" to isServiceActive(context),
             "error" to lastError,
+            "stats" to EngineStats.snapshot(activeEngine),
             "port" to context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getInt(KEY_LOCAL_PORT, DEFAULT_PORT),
         )

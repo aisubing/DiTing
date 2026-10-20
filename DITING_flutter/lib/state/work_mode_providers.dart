@@ -157,6 +157,9 @@ class PowerNotifier extends Notifier<PowerState> {
       } else {
         state = status.running ? PowerState.running : PowerState.stopped;
       }
+      ref
+          .read(serviceStatsProvider.notifier)
+          .applyNative(status.stats, running: status.running);
     } catch (_) {
       if (!_disposed) state = PowerState.stopped;
     }
@@ -252,6 +255,7 @@ class PowerNotifier extends Notifier<PowerState> {
     } else {
       settings.setVpnRunning(true);
     }
+    ref.read(serviceStatsProvider.notifier).markStarted();
     state = PowerState.running;
   }
 
@@ -292,6 +296,7 @@ class PowerNotifier extends Notifier<PowerState> {
     } else {
       settings.setVpnRunning(false);
     }
+    ref.read(serviceStatsProvider.notifier).reset();
     state = PowerState.stopped;
   }
 
@@ -363,10 +368,46 @@ final raceProvidersProvider =
 
 /// 服务统计（服务器模式 / 日志页共用）。
 class ServiceStatsNotifier extends Notifier<ServiceStats> {
-  @override
-  ServiceStats build() => mockServiceStats;
+  static const zero = ServiceStats(
+    queries: 0,
+    cacheHits: 0,
+    blocked: 0,
+    averageLatencyMs: 0,
+    uptime: Duration.zero,
+  );
 
-  void reset() => state = mockServiceStats;
+  DateTime? _startedAt;
+
+  @override
+  ServiceStats build() => zero;
+
+  void reset() {
+    _startedAt = null;
+    state = zero;
+  }
+
+  /// Called when a tunnel reports `running` for the first time.
+  void markStarted() {
+    _startedAt = DateTime.now();
+    state = zero;
+  }
+
+  /// Replaces the mock counters with the Go engine's real ones.
+  void applyNative(Map<String, Object?> stats, {required bool running}) {
+    if (!running) {
+      reset();
+      return;
+    }
+    _startedAt ??= DateTime.now();
+    int read(String key) => (stats[key] as num?)?.toInt() ?? 0;
+    state = ServiceStats(
+      queries: read('queries'),
+      cacheHits: read('cacheHits'),
+      blocked: read('blocked'),
+      averageLatencyMs: 0,
+      uptime: DateTime.now().difference(_startedAt!),
+    );
+  }
 
   void bump() {
     state = ServiceStats(

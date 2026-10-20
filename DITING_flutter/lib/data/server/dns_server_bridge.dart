@@ -42,20 +42,24 @@ class DnsServerStatus {
     required this.persisted,
     required this.port,
     this.error,
+    this.stats = const {},
   });
 
   final bool running;
   final bool persisted;
   final int port;
   final String? error;
+  final Map<String, Object?> stats;
 
   factory DnsServerStatus.fromMap(Object? raw) {
     final map = raw is Map ? raw : const {};
+    final stats = map['stats'];
     return DnsServerStatus(
       running: map['running'] == true,
       persisted: map['persisted'] == true,
       port: map['port'] is int ? map['port'] as int : 1053,
       error: map['error'] as String?,
+      stats: stats is Map ? Map<String, Object?>.from(stats) : const {},
     );
   }
 }

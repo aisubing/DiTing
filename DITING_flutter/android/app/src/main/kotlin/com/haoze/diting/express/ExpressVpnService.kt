@@ -14,6 +14,9 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
+import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineStats
+import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.SocketProtector
 
@@ -90,6 +93,7 @@ class ExpressVpnService : VpnService() {
             return
         }
         engine = goEngine
+        activeEngine = goEngine
 
         try {
             val proxyError = goEngine.configureOutboundProxy(
@@ -106,6 +110,14 @@ class ExpressVpnService : VpnService() {
             if (rewriteRules.isNotBlank()) {
                 goEngine.setRewriteRules(rewriteRules)
             }
+            val logMode = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
+                .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
+                ?: DnsLogWriter.MODE_ALL
+            goEngine.setBatchLogCallback(object : BatchLogCallback {
+                override fun onDNSQueryBatch(jsonLogs: String) {
+                    DnsLogWriter.writeBatch(this@ExpressVpnService, DnsLogWriter.DB_EXPRESS, logMode, jsonLogs)
+                }
+            })
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
         } catch (t: Throwable) {
@@ -137,6 +149,7 @@ class ExpressVpnService : VpnService() {
         stopping = true
         val current = engine
         engine = null
+        activeEngine = null
         runCatching { current?.stop() }
             .onFailure { Log.w(TAG, "engine.stop failed", it) }
         runCatching { current?.stopStackMitm() }
@@ -157,6 +170,7 @@ class ExpressVpnService : VpnService() {
     private fun fail(message: String) {
         lastError = message
         isRunning = false
+        activeEngine = null
         setPersistedRunning(this, false)
         releaseResources()
         stopForegroundCompat()
@@ -174,6 +188,7 @@ class ExpressVpnService : VpnService() {
             stopping = true
             val current = engine
             engine = null
+            activeEngine = null
             runCatching { current?.stop() }
             runCatching { current?.stopStackMitm() }
             runCatching { current?.releaseTun() }
@@ -268,12 +283,17 @@ class ExpressVpnService : VpnService() {
         private const val NOTIFICATION_ID = 2003
         private const val PREFS_NAME = "express_vpn_prefs"
         private const val KEY_VPN_RUNNING = "express_vpn_running"
+        private const val KEY_LOG_MODE = "dns_log_mode"
+        private const val SETTINGS_PREFS = "diting_express_prefs"
 
         private const val DEFAULT_OUTBOUND_PROXY =
             """{"enabled":false,"protocol":"SOCKS5","host":"127.0.0.1","port":7890,"username":"","password":""}"""
 
         @Volatile
         var isRunning: Boolean = false
+
+        @Volatile
+        private var activeEngine: Engine? = null
 
         @Volatile
         var lastError: String? = null
@@ -293,6 +313,7 @@ class ExpressVpnService : VpnService() {
             "running" to isRunning,
             "persisted" to isPersistedRunning(context),
             "error" to lastError,
+            "stats" to EngineStats.snapshot(activeEngine),
         )
 
         fun startIntent(
