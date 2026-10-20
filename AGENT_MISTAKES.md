@@ -15,6 +15,48 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：`jumpTo(maxScrollExtent)` 在「刚追加内容的那一帧」拿到的是旧上界
+
+- 面板跑完探测后把结果卡追加到 `PageBody` 的 `ListView`，随后 `jumpTo(maxScrollExtent)` 仍停在旧上界，尾部断言必然失败。`ListView` 懒构建，新 item 的布局发生在下一帧，`maxScrollExtent` 此时还没变。判据要落在「内容确实进了视口」而不是「我调了滚动」：用多次 `drag(anchor, Offset(0, -400))` + `pumpAndSettle` 把尾部顶上来，先在临时探针里 dump 全部 `Text.data` 确认再写断言。
+- 同类护栏：断言「页面上没有某个 mock 数字」时，如果该数字可能在视口外，`findsNothing` 会因为没渲染而恒真——这种断言证明不了「已删除」，要么先滚到该区域，要么改断言同一位置的真实数据源。
+- 真缺陷是读代码读出来的，不是测试报出来的：`updateOne` 从列表 provider 的 `.value` 缓存里找行，而「添加面板 insert 完立刻更新一次」时列表还没重建完，缓存在这一段窗口里不含新行，于是自动更新静默什么都不做。写操作接口要**从库实时取**（`repository.byId`），不要把 UI 缓存当写入口的输入。
+
+### 2026-10-20：并行 `flutter test` 会锁住 `build/native_assets/windows/sqlite3.dll`
+
+- 多个 agent 同目录并发跑 `flutter test` 时，先起的那次持有 `sqlite3.dll`，后来者直接 `Flutter failed to delete file ... cannot access`，与代码无关。判定方法：`[System.IO.File]::Open(path,'Open','ReadWrite','None')` 试独占打开，再用 `Get-Process | %{ $_.Modules }` 找出持有者 pid 与其 `ParentProcessId`；父进程还活着就是同事在跑，等而不是杀。
+- 顺带一条归因教训：全量 `flutter test` 的失败集合**每次都不一样**（`express_mode` / `native_bridge` / `observability_pages` / `app_layer` 轮换）且单文件跑必过，说明是被并发编辑的邻居文件，不是自己的回归。把「我负责的文件 + 守门测试」单独跑一遍拿到 55/55 全绿，才是可交付的证据；报告里要写清全量红的是哪些、为什么判为他人范围。
+
+### 2026-10-20：Dart→Go 的 JSON 字段类型由 Go 结构体决定，不由 Dart 的 `toString` 决定
+
+- `OutboundProxyConfig.toEngineJson()` 把 `port` 写成了字符串（`"port":"7890"`），而 Go 侧 `outboundProxyConfig.Port int`（`Android/tunnel/flow_outbound.go:29`）由 `json.Unmarshal` 解析——整份配置解析失败，`Engine.configureOutboundProxy` 返回错误字符串，代理**静默不生效**，UI 上却显示「已保存」。判据不是「Dart 里 port 是 int」，而是「对端结构体的字段类型」：生成 JSON 的 switch 必须按类型分支（bool / int / 其余走引号），不能只特判 bool 然后把所有值 `'$value'` 塞进引号。
+- 这类缺陷不会被 analyze 抓到（字符串拼接永远是 `String`），也不会被「保存成功」的 SnackBar 抓到。**它只能被形状断言抓到**：`toEngineJson` 的测试要断言整串逐字节相等，而不是 `contains('port')`。
+- 上游旧实现是新旧对照的最省事证据：`OutboundProxyConfig.toNativeJson()` 用 `JSONObject.put("port", port)`（Int 重载）写的是数字。迁移时「Dart 侧自己拼 JSON」这个动作本身就值得单独 review 一遍每个字段的类型。
+- 同一族陷阱：`json.Encode`/`jsonDecode` 能用的地方别手写拼串。这里手写是因为要保字段顺序（旧实现顺序一致），代价就是每个值都得自己定性。
+
+### 2026-10-20：演示数据接线时，删掉 mock 符号比留着更安全
+
+- 接完 `com.haoze.diting/apps` 后 `MockInstalledApp` / `mockInstalledApps` 已无人引用。留着它的下场很明确：下一个页面要应用清单时，grep 到「有现成的」就直接用，于是又长出一页假数据。**删掉符号（原位置留注释指向真实数据源）比留着更省后继者的判断成本**，而且 analyze 会立刻暴露任何漏改的引用。
+- 但删之前要确认「零引用」是靠 `grep` 而不是靠 `analyze`：Dart 不会报未使用的顶层常量。三个入口都查过——`lib/`、`test/`、`docs/`（文档里那份清单要同步改，否则交接时别人按文档去找一个已删除的符号）。
+- `part` 文件（`apps_rows.dart`）与主文件必须同时改：先改一边会编译不过，看着像「改坏了」，其实只是配对没跟上。
+
+### 2026-10-20：测试里 `putStringSet` 的种子必须是 `List`，不是 `Set`
+
+- `LegacyPrefsStore.putStringSet` 的存储形态是**字符串数组**（桥接层 `value.toList()`），`MemoryLegacyPrefsStore` 照此保存；读取侧的 `_stringSet` 只认 `List` 或 JSON 数组字符串，拿到 `Set` 会走不到解析分支直接返回 null。用它做测试种子会得到「读出空集」的假结果——第一次跑就是在这里误判成「互斥清洗没生效」。
+- 判据：写测试种子之前先看**存储形态**（`putStringSet` / `putString` / `putBool`），别照着 Dart 侧 getter 的返回类型（`Set<String>`）抄。两者不一致正是这一层的设计。
+- 同时暴露的另一个问题：`expect(map, {...})` 的深度比较对 `Map<String, Set<String>>` 是按值比 `Set`，顺序无关；但 `expect(list, [...])` 是**有序**比较。`AppListSort.packageAsc` 逐字符比字符串，`com.a.app` < `com.android.systemui` < `com.b.app`（`.`=46 < `n`=110），按「短前缀在前」的直觉写期望会错。
+
+### 2026-10-20：互斥清洗 + 本地草稿 = 被删的规则会自我复活
+
+- 四张选择页共用三份互斥名单（`blocked_app_packages` / `excluded_app_packages` / `http_inspection_app_packages`）外加 `app_allowlist_rules_json`。A 页删掉某应用的放行规则后，若 B 页（应用独立规则）还抱着进入页面时抄的草稿，用户看到一条已不存在的规则，点「保存」就把它写回去了——互斥清洗当场失效，而且没有任何报错。
+- 修法：草稿必须能识别「别人改了同一份键」。`/apps` 用**集合深比较**（`_sameSet(persisted, _lastPrefs)`）；应用独立规则用**指纹字符串**（`appRulesKey(master, rules)`，包名与域名各自排序后拼接），因为那里是多层 Map。判据不是「我用 `ref.watch` 了」，而是「落盘值变了以后本地草稿会不会跟着让位」。
+- `watch` 只保证**重建**，不保证**丢弃本地状态**。凡是「本地 draft + 远程真相源」的组合，都要显式写这个让位分支；只 `watch` 而不处理，等价于把 prefs 当成单向管道，用户的草稿反而成了权威。
+
+### 2026-10-20：多个 teammate 并行 `flutter test` 会锁住 `build/native_assets/windows/*.dll`
+
+- 症状是 `flutter test` 直接失败并提示 `Flutter failed to delete file at ...build\native_assets\windows\sqlite3.dll`，看起来像权限问题或工程损坏，实际是**另一个 teammate 的 `flutter_tester` 正持有那个 DLL**。用 `[System.IO.File]::Open($f,'Open','ReadWrite','None')` 试探能立刻确诊，再 `Get-CimInstance Win32_Process` 看 `CommandLine` 就知道是哪个测试文件在跑。
+- 不要删 `build/`、不要 kill 别人的测试进程（会毁掉对方正在跑的 271 条用例）。正确做法是等锁释放后重跑；等待期间去做不需要测试的活（读上游 Kotlin 源、补注释、核 line count），别反复重试同一个命令。
+- `flutter test --help` 里没有 `--build-dir`，换不出隔离目录。若必须并行，只能约定「同一时刻只有一个 `flutter test`」，这条要写进并行工作契约。
+
 ### 2026-10-20：原生数据面「注册了回调」≠「表有数据」；UPSERT 语法与 SQLite 版本
 
 - 引擎回调是**逐项开关**，不是「注册了一套」。`tunnel.Engine` 上 `setBatchLogCallback`/`setRaceLogCallback`/`setTrafficCallback`/`setHttpLogCallback` 各自独立；只注册前两个的后果是 `app_traffic_daily` 与 `http_request_log` 恒空，且 `dns_log.packageName` 恒 NULL——因为 `engine_dns.go` 的 `a` 字段来自 `setUIDResolver`+`setAppUidResolver` 这一对，缺任一个都走不进归因分支。判「某表没数据」先 grep 该表的**生产者回调**是否被注册，别只 grep 表名。
