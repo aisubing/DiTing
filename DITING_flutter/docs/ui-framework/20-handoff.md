@@ -1,8 +1,8 @@
 ---
 所属: 谛听 Flutter UI 框架
-状态: 第二阶段（应用层 + 演示页面）完成，可 flutter run
-最后校验: 2026-10-19
-口径: 所有行数/文件数/命令输出均来自 2026-10-19 本会话真实工具输出
+状态: 第三阶段（旧版设置与数据库接线）进行中
+最后校验: 2026-10-20
+口径: 所有行数/文件数/命令输出均来自 2026-10-20 本会话真实工具输出
 ---
 
 # 20 · 交接：已完成什么、下一步怎么写
@@ -14,18 +14,22 @@
 ## 1. 一句话状态
 
 `lib/ui/` 是 DITING 1.4.3 设计系统的完整移植；应用层（`lib/app/` + `lib/router.dart` +
-`lib/shell/`）、演示状态（`lib/state/`）、演示数据（`lib/data/`）与 **73 条路由**
-（16 基线 + 57 领域）全部写完。第二轮按领域补齐了上游全部可见页面：
-仪表盘 10 张卡片 + 编辑模式、代理域、观测域、配置档案域、内核配置域（16 页）、
-系统/外观/表单域（19 页 + 5 个表单演示页）。
+`lib/routes/` + `lib/shell/`）、状态（`lib/state/`）、数据兼容层（`lib/data/prefs` +
+`lib/data/db` + `lib/data/vpn`）与 **85 条路由**全部落地。
 
-实测（2026-10-19 第二轮收官）：`dart analyze lib test` → **No issues found**；
-`flutter test` → **62 个用例全绿**（含全路由构建、功能中心卡片可达性、
-3 档尺寸 × 1.4 倍字号的布局回归）；`lib/` **370 文件 / 79,728 行**，
-`lib/pages/` **187 文件 / 40,004 行**（第二轮前 43 文件 / 10,514 行，**3.80×**）；
-所有文件 ≤550 行（最大 `pages/system/editor_page.dart` 532 行）。
-**`flutter run` 现在可以启动**；`flutter build apk --debug` 也已实测出包（157 MB，见 §6），
-要跑桌面/Web 需先 `flutter create . --platforms windows,web`。
+第三阶段已把**设置域的持久化接回旧版 SharedPreferences**：服务商管理（18 preset +
+自定义增删改）、三种解析模式的候选列表与主备顺序、首页服务显示过滤、缓存三档 preset
+（覆写 9 个 `dns_cache_*_v2` 键）、拦截响应 + 动态拦截参数、规则总控 4 个开关、引导解析
+（含 `bootstrap_log` 24 小时聚合）、禁止联网 / 排除应用 / HTTPS 检查三份应用名单，
+以及日志仪表盘的真实数据与当日统计口径。
+
+实测（2026-10-20 第三阶段）：`flutter analyze lib test` → **No issues found**；
+`flutter test` → **153 个用例全绿**（22 个测试文件）；`lib/` **419 文件 / 90,390 行**，
+`lib/pages/` **206 文件 / 45,358 行**，`lib/ui/` 127 文件 / 28,301 行；所有文件 ≤550 行
+（最大 `pages/system/editor_page.dart` 550 行）。
+
+**仍然走演示数据的页面**：应用流量、连接 / 请求、订阅、应用独立规则、出站代理、
+CA 证书流程。清单与逐条原因见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §14。
 
 ## 2. 已完成清单（可直接依赖）
 
@@ -99,22 +103,34 @@
 | 目录 | 内容 |
 |---|---|
 | `lib/shell/` | `AppShell`：六 tab `indexedStack` + `NavigationDock`（>5 项或非移动端降级 `NavigationBar`） |
-| `lib/state/` | `appearance_providers`（主题/色板/纯黑/字号/透明度/句子/底栏/触感/解析模式）、`work_mode_providers`（工作模式/电源/服务商/竞速/端口/服务状态/引导）、`rules_providers`、`subscription_providers`、`app_selection_providers` |
-| `lib/data/` | `mock_data.dart` 拆 3 个 part：`mock_providers`（服务商/规则）、`mock_content`（订阅/日志/缓存/竞速/统计）、`mock_apps`（流量/应用/功能卡/采样） |
+| `lib/routes/` | 按域拆分的 `GoRoute` 声明：`dashboard` / `hub` / `observability` / `profiles` / `config` / `system` / `proxies` + `routes.dart` 汇总，共 **85 条** |
+| `lib/state/` | `appearance_providers`（主题/色板/纯黑/字号/透明度/句子/底栏/触感）、`work_mode_providers`（工作模式/电源/端口/服务状态/引导）、`provider_catalog_providers`（目录/选中/可见性/竞速候选）、`rules_providers`、`log_providers`（日志/缓存/竞速聚合，含 `dnsLogRevisionProvider`）、`server_status_providers` |
+| `lib/data/prefs/` | `legacy_prefs_store`（原生桥 + 内存桩）、`legacy_settings`（库根 + 外观/网络）、`legacy_settings_dns`（DNS 域访问器，part）、`legacy_settings_provider`（`legacySettingsRevisionProvider`） |
+| `lib/data/db/` | `legacy_database`（只读打开旧 Room 库）、`rule_repository`、`dns_log_repository`、`dns_cache_repository`、`race_log_repository`、`bootstrap_log_repository` |
+| `lib/data/vpn/` | `dns_config_builder`（引擎配置 JSON）、`provider_store`（`user_providers_json` 增删改）、`cache_presets`（三档 preset）、`block_response_settings`、`vpn_bridge` |
+| `lib/data/mock_*.dart` | 仍未接线的演示数据（3 个 part），消费方清单见 `21-ui-coverage-ledger.md` §14 |
 | `lib/widgets/` | `stat_strip.dart`（`StatStrip` / `KeyValueRow` / `SectionBlock` / `PageBody` / `DockSpacer`）、`glyph_lookup.dart`（名字→Glyph，122 项） |
-| `lib/pages/` | 18 条路由，见 §4.1 |
+| `lib/pages/` | 206 文件 / 45,358 行，路由清单见 `21-ui-coverage-ledger.md` §11 |
 
 ### 2.4 测试
 
 | 文件 | 用例 | 守什么 |
 |---|---|---|
-| `test/ui_components_smoke_test.dart` | 8 | 移植层组件不回归 |
-| `test/app_shell_test.dart` | 5 | 首页渲染、电源四态、tab 保活、浮层可弹、全路由可构建 |
-| `test/app_layer_test.dart` | 28 | 主题装配顺序/缓存上界/色板/断点/provider 不变量 |
+| `test/legacy_settings_test.dart` | 15 | 旧版 11 个容器的键名/默认值/读写往返 |
+| `test/provider_catalog_test.dart` | 20 | 服务商目录与选中的**落盘契约**（增删改、三模式 id 列表、主备顺序、可见性过滤、删除时的引用清洗） |
+| `test/vpn_config_test.dart` | 10 | 引擎配置 JSON 组装（服务商、缓存策略、拦截响应、Bootstrap） |
+| `test/dns_log_stats_test.dart` | 6 | 日志当日聚合口径（四桶互斥、命中率分母、平均延迟窗口、空样本） |
+| `test/app_shell_test.dart` | 6 | 首页渲染、电源四态、tab 保活、浮层可弹、解析服务商选择 |
+| `test/app_layer_test.dart` | 30 | 主题装配顺序/缓存上界/色板/断点/provider 不变量 |
 | `test/scope_placement_test.dart` | 2 | **scopes 必须在 `Navigator` 之上**（正例 + 反例） |
-| `test/enum_display_test.dart` | 5 | 展示文案不得漏出枚举源码标识符 |
-| `test/layout_regression_test.dart` | 4 | 18 路由 × 3 档尺寸 + 小屏 1.4 倍字号无溢出 |
-| `test/support/` | — | `app_host.dart`、`demoTheme`、`UiLocalizations` stub |
+| `test/enum_display_test.dart` | 5 | 展示文案不得漏出枚举源码标识符（现按真实服务商目录校验） |
+| `test/layout_regression_test.dart` | 2 | 全部路由 × 320/412/834 三档宽度 + 1.4 倍字号无溢出 |
+| `test/route_catalog_test.dart` | 4 | 每条路由真实注册，不得落到 `UnknownRoutePage` |
+| `test/express_mode_test.dart` / `server_mode_test.dart` | 7 / 9 | 极速与服务器模式的启停、prefs 容器隔离 |
+| `test/rule_repository_test.dart` | 11 | 旧版规则表 SQL（模式、来源、级联删除） |
+| `test/engine_stats_test.dart` | 4 | 原生 stats → `ServiceStats` 映射 |
+| `test/ui_components_smoke_test.dart` / `proxies_interaction_test.dart` / `feature_hub_migration_test.dart` | 9 / 6 / 4 | 设计系统组件、代理域交互、功能中心迁移 |
+| `test/support/` | — | `app_host.dart`、`test_hooks.dart`、`UiLocalizations` stub、两个 Fake 控制器 |
 
 ## 3. 必须知道的约束与坑
 
@@ -209,37 +225,38 @@ AGENTS.md 硬性要求 ≤550 行。已用的三种拆分法都在 `tool/` 里�
 `pubspec.yaml` 已声明 `shaders:`。`LiquidGlassScope.of(context)` 默认 false，各组件自动走
 非玻璃回退。要做玻璃效果时打开 scope 即可，不需要恢复代码。
 
-## 4. 应用层剩余可做的事
+## 4. 剩余可做的事
 
-`lib/ui/`、`lib/app/`、`lib/router.dart`、`lib/shell/`、`lib/state/`、`lib/data/` 与
-18 条页面都已写完。下面都是**增量**，不是「还没开始」：
+`lib/ui/`、`lib/app/`、`lib/routes/`、`lib/shell/`、`lib/state/` 与设置域的数据层都已接真实
+持久化。下面都是**增量**，按优先级排列：
 
-1. **补平台目录**：本机只有 `android/`（Android 已能出包，见 §6）；要 `flutter run`
-   到桌面或浏览器，先 `flutter create . --platforms windows,web`。
-   `lib/app/theme/layout.dart` 的 `maxLaptopWidth` 与 `AppShell._Dock` 的非移动端分支
-   已经写好，但没有平台目录就只在测试里跑到过。
-2. **持久化**：`lib/state/` 全是纯内存状态。接真实存储时替换各 `Notifier.build()` 的
-   默认值即可，页面无需改动。
-3. **`NullStatusSwitcher` 未上屏**：它需要 loading/empty 状态机，放进静态画廊会引入
-   定时器（画廊已经为此把 `repeat()` 动画套了 `TickerMode`）。需要时再补。
-4. **视觉走查**：所有验证都是 widget 级断言，**没有真机截图**。`_PaletteDot` 打勾的
-   对比色、AI 气泡宽度上限（78%）、首页电源按钮的光晕层次值得 `flutter run` 时过一眼。
-5. **`lib/ui` 里仍未被页面用到的组件**：跑 `python -I tool/unreferenced.py` 看最新清单，
-   需要的话往 `lib/pages/demo/` 补一区——画廊已覆盖 122 个 `AppGlyphs` 与绝大多数容器，
-   是最省事的落点。
+1. **把剩余演示页面接上真实数据源**（当前最大缺口）：应用流量、连接 / 请求 / DNS 查询、
+   资源更新、应用选择（`/apps` 仍在用 12 条 `com.example.*` 常量，且原生侧没有包枚举通道与
+   `QUERY_ALL_PACKAGES` 权限）、订阅、应用独立规则、出站代理、CA 证书流程、网络工具。
+   逐页清单与所需原生能力见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §14.2。
+2. **原生侧补齐引擎入参**：`blocked_app_packages`（只写盘未读）、应用白名单
+   （`appRules` 恒为空）、出站代理（入参恒为空），详见 §10.3。
+3. **真机回归**：本轮只在模拟器（`emulator-5554`，x86_64）验证；arm64 真机（25102RKBEC）
+   未测。模拟器必须用 `-PtunnelAar=libs/tunnel-debug.aar` 才有可加载的 `libgojni.so`。
+4. **补平台目录**：本机只有 `android/`；要 `flutter run` 到桌面或浏览器，先
+   `flutter create . --platforms windows,web`。
+5. **`NullStatusSwitcher` 状态机**：已在观测域列表上屏，但 `isSearching: true` 时会忽略
+   自定义 `nullStatus`，页面级过滤不要传这个参数。
+6. **`lib/ui` 里仍未被页面用到的组件**：跑 `python -I tool/unreferenced.py` 看最新清单，
+   需要的话往 `lib/pages/demo/` 补一区——画廊已覆盖 122 个 `AppGlyphs` 与绝大多数容器。
 
 ### 4.1 页面清单（已实现，供对照）
 
 | 路由 | 页面 | 实现要点 |
 |---|---|---|
-| `/` | 首页（三模式共用壳） | 电源四态 + 光晕、模式 chip、服务商卡、解析模式、快捷入口、四层透明度 |
+| `/` | 首页（三模式共用壳） | 电源四态 + 光晕、模式 chip、服务商卡（读真实目录 + 延迟）、解析模式、快捷入口、四层透明度 |
 | `/hub` | 功能中心 | 5 分类 19 卡，2 列网格，按下 0.90 缩放 |
 | `/rules/:kind` | 规则列表（黑/白/覆写共模板） | StatStrip + 防抖搜索 + 来源 chips + 分组列表 + 行内 Switch/More；白名单有只读保护，覆写显示 `pattern → target` |
 | `/rules/batch` | 批量编辑器 | 大文本框 + 解析计数（有效/重复/拒收）+ `#@#` 拒收文案 |
-| `/subscriptions` | 订阅 | 汇总条 + 分组 chips + 卡片（含错误态/更新进度）+ 添加面板 |
-| `/apps` | 应用选择 | 防抖搜索 + 按分类分组 + 整行圆形勾选 + 全选/反选只作用当前可见集 |
-| `/logs` | 日志仪表盘 | 三视图（请求/缓存表/竞速排行）+ 搜索 + 处置筛选 + 详情面板 + 清空确认 |
-| `/traffic` | 流量 | 实时/今日/本周 + `LineChart` + 应用排行（自绘占比条） |
+| `/subscriptions` | 订阅 | 汇总条 + 分组 chips + 卡片（含错误态/更新进度）+ 添加面板（**数据仍为演示**） |
+| `/apps` | 应用选择 | 防抖搜索 + 按分类分组 + 整行圆形勾选 + 全选/反选只作用当前可见集；勾选结果落 `blocked_app_packages` |
+| `/logs` | 日志仪表盘 | 三视图（请求读 `dns_log` / 缓存表读 `dns_cache` / 竞速排行读 `dns_race_log`）+ 搜索 + 处置筛选 + 详情面板 + 清空确认 |
+| `/traffic` | 流量 | 实时/今日/本周 + `LineChart` + 应用排行（**数据仍为演示**） |
 | `/tools` | 网络工具 | 测速/Ping/DNS/路由四个 `showSheet` 面板，各有运行态与结果区 |
 | `/settings` | 设置 | 外观/首页/底栏/解析/关于五组；拆库根 + 5 个 part |
 | `/agent` | AI 助手 | 聊天气泡 + 快捷提问 + 800ms 模拟回复 + 空态 |
@@ -248,6 +265,8 @@ AGENTS.md 硬性要求 ≤550 行。已用的三种拆分法都在 `tool/` 里�
 | `/mode/select` | 工作模式选择 | 三卡 + `AnimatedSize` 特性清单 |
 | `/mode/onboarding` | 三步引导 | `PageView` + 指示器 + 完成回首页 |
 | `/demo` | 组件画廊 | 14 文件（库根 + 13 part），覆盖排版/颜色/形状/图标/按钮/标签/输入/列表/卡片/浮层/反馈 |
+
+> 全量 85 条路由（含 hub 各二级页与设置域）见 `21-ui-coverage-ledger.md` §11。
 
 ### 4.2 路由与导航约定（已落地）
 
@@ -281,8 +300,8 @@ for f in $(find lib test -name '*.dart'); do n=$(wc -l < "$f"); [ "$n" -gt 550 ]
 python -I tool/unreferenced.py
 ```
 
-实测（2026-10-19 第二轮）：`dart analyze lib test` → **No issues found**；`flutter test`
-→ **62 个用例全绿**。覆盖面如下：
+实测（2026-10-20 第三阶段）：`flutter analyze lib test` → **No issues found**；`flutter test`
+→ **153 个用例全绿**（22 个文件）。覆盖面如下：
 
 | 测试文件 | 覆盖的东西 |
 |---|---|
@@ -395,6 +414,86 @@ flutter build apk --debug
 | 修正 `AGENT_MISTAKES.md` 两条旧结论 | 「scopes 装 `home:`」被推翻两次，最终用正例+反例钉死 |
 | 修正 `test/support/app_host.dart` 装法 | 与 `lib/app/bootstrap.dart` 对齐，否则单组件测试会给出假阴性 |
 
-**当前状态**：`flutter analyze lib test` 零问题，`flutter test` 52 个用例全绿，
-`lib/` 共 190 个 `.dart` / 41,842 行，最大文件 549 行（`lib/ui/navigation_dock_c.dart`）。
+### 8.3 第三阶段：设置项接回旧版 SharedPreferences（2026-10-20）
+
+| 改动 | 原因 |
+|---|---|
+| 新增 `lib/data/prefs/legacy_settings_dns.dart` | `legacy_settings.dart` 逼近 550 行，DNS 域访问器拆成同库 `extension`（part），调用点不变 |
+| 新增 `lib/data/vpn/provider_store.dart` | `user_providers_json` 的解析/增删改，含旧版丢弃规则（协议未知、DoH 非 https、host/port 非法）与删除后的引用清洗 |
+| 新增 `lib/data/vpn/cache_presets.dart` | 三档 preset 各自覆写 9 个 `dns_cache_*_v2` 键；旧安装无 preset 键时用 `fromPolicy` 反推 |
+| 新增 `lib/data/vpn/block_response_settings.dart` | 拦截响应模式 + 动态拦截四键，含 2–100 / 10–300 / 60–3600 夹取 |
+| 新增 `lib/state/provider_catalog_providers.dart` | 目录 / 选中 / 可见性 / 竞速候选四个 provider，全部读写 prefs |
+| 新增 `lib/data/db/bootstrap_log_repository.dart` | 24 小时 `bootstrap_log` 聚合，替换页面上的假样本 |
+| `legacy_settings_provider` 增加 `legacySettingsRevisionProvider` | `SharedPreferences` 不可观察，写盘后自增让所有读方失效重建 |
+| 首页 / 解析模式 / 服务商管理 / 可见性 / 缓存 / 拦截响应 / 规则总控 / 引导解析 / 三份应用名单 | 从 mock 常量改为读写旧版键 |
+| 新增 `test/provider_catalog_test.dart`（20 用例） | 把落盘契约钉死：键名、JSON 形状、主备顺序、引用清洗、可见性规则 |
+| 修 `enum_display_test` / `express_mode_test` / `app_shell_test` | 换数据源后旧断言失效：预设服务商在三组里同名、`excluded_app_packages` 属全局容器 |
+| 日志页补 `LogAction.failed` | `DnsLogResult` 是四值，`ERROR` 原先落进 `_` 分支被显示成「放行」，语义相反 |
+| 仪表盘统计改读 `dns_log` 当日聚合 | 引擎 `stats` 是会话计数，重启隧道即归零；「今日」只能来自落库表 |
+
+## 9. 设置域持久化对照表（写代码前先查这张表）
+
+| 设置 | 容器 | 键 |
+|---|---|---|
+| 解析服务商目录 | `dns_vpn_prefs` | `user_providers_json`（只存自定义；18 个 preset 在代码里） |
+| 当前服务商 | `dns_vpn_prefs` | `selected_provider_id`（默认 `preset_alidns_dns`） |
+| 三种解析模式候选 | `dns_vpn_prefs` | `smart_prediction_provider_ids` / `parallel_race_provider_ids` / `primary_backup_provider_ids`（JSON 数组，主备保序） |
+| 首页服务显示过滤 | `dns_vpn_prefs` | `home_visible_protocols` / `home_hidden_provider_ids` / `home_visible_provider_ids` |
+| 缓存 | `dns_vpn_prefs` | `dns_cache_preset_v3` + 9 个 `dns_cache_*_v2` |
+| 拦截响应 | `dns_vpn_prefs` | `block_response_mode` + `dynamic_block_response_enabled` / `dynamic_block_request_threshold` / `dynamic_block_window_seconds` / `dynamic_block_nxdomain_duration_seconds` |
+| 规则总控 | `dns_vpn_prefs`（全局） | `domain_rules_enabled` / `http3_inspection_enabled` / `encrypted_dns_blocking_enabled` / `address_rules_enabled` |
+| 引导解析 | `dns_vpn_prefs` | `bootstrap_enabled` / `bootstrap_preset_ids` / `bootstrap_custom_json` |
+| 三份应用名单 | `dns_vpn_prefs`（**全局，不进极速容器**） | `blocked_app_packages` / `excluded_app_packages` / `http_inspection_app_packages` |
+| 极速模式 DNS 键 | `diting_express_prefs` | 键名同上，容器不同（`RuleDataset.EXPRESS`） |
+| 极速运行标志 | `express_vpn_prefs` | `express_vpn_running` |
+
+三条硬约定：
+
+1. 写入后必须 `bump()` `legacySettingsRevisionProvider`，否则其他页面读到旧值；
+2. 数值夹取写在 setter（`LegacySettings`），不要只依赖控件；
+3. 三份应用名单互斥：加入一份要从未选中的另两份删除。
+
+## 10. 统计口径与接线现状
+
+### 10.1 日志仪表盘四个数字
+
+全部来自 `DnsLogRepository.dailyStats()` 对 `dns_log` 的**当日**扫描（`timestamp >= 今日零点`）：
+
+| 指标 | 来源 | 备注 |
+|---|---|---|
+| 今日查询 | 当日行数 | 含 BLOCKED / ERROR |
+| 缓存命中 | `cached = 1` 的行数 | 只在 PASSED/REWRITTEN 桶内统计 |
+| 已拦截 | `result = 'BLOCKED'` | 上游返回拦截（`upstream_dns`）也记在该列 |
+| 平均延迟 | 当日 `elapsed=NNms` 的均值 | 无样本显示 `—`，不显示 `0ms` |
+
+命中率分母取 `passed + error`，对齐 Go `dns_cache.go` 的 `hitRatio = totalHits/(totalHits+totalMisses)`。
+
+### 10.2 已知口径差异（不是缺陷，勿「修」）
+
+1. **stale 命中**：stale-while-revalidate 命中在日志里是 `cached=1`，引擎计入 `staleHits`
+   而非 `totalHits`，所以 DB 口径命中率会略高于引擎 `hitRatio`；
+2. **竞速排行**：`RaceLogDao.winnerStats` 只统计 `success = 1 AND winnerProviderId IS NOT NULL`
+   的胜出，失败数来自整表汇总；单服务商模式也会写记录，排行不区分模式；
+3. **缓存表**：Go 缓存纯内存，无枚举接口；`dns_cache` 表是 1.4.3 的快照，升级后为空属正常。
+
+### 10.3 原生侧未接线的配置（2026-10-20 静态调用链复核）
+
+以下结论来自 Kotlin 全库 grep + `rule_snapshot.dart` / `vpn_bridge.dart` / 两个 VpnService 的实读：
+
+| 键 | Dart 写盘 | Kotlin 读 | 进入 Go | 结论 |
+|---|---|---|---|---|
+| `blocked_app_packages`（+`blocked_apps_enabled`） | ✅ | ❌ 全库零命中 | ❌ | **只写盘未读**：`VpnStartRequest` 无此字段；原生也没有 package→UID 解析 |
+| `excluded_app_packages` | ✅ | ✅ `VpnStartRequest.excludedPackages` → `addDisallowedApplication` | ⚠️ 仅 TUN 层 | **已排除出隧道，引擎侧白名单仍空**（`rule_snapshot.dart` 的 `appRules` 恒为 `{}`，`setAppAllowlist` 零调用） |
+| 出站代理 | ❌ 仅内存 `OutboundProxyState` | ✅ 读 `outboundProxy` 参数 | ⚠️ 恒为空 | **读了但恒为空**：`_launch()` 组装请求时未传，Kotlin 回落 `DEFAULT_OUTBOUND_PROXY`（`enabled:false`） |
+| `http_inspection_app_packages` | ✅ | ❌ | ❌ | 仅 Dart UI 消费 |
+| `https_inspection_ready` | ✅ | — | — | CA 页未读该键，只读内存 provider |
+
+接线时按 `docs/refactor/09-normal-mode-vpn.md` 的配置快照路径补，并同时覆盖普通与极速两种
+服务（`DitingVpnService` / `ExpressVpnService`）。`blocked_app_packages` 需先补
+`getPackageUid` 解析（上游走 `GoInspectionTunnel.setBlockedUIDs(csv)`）。
+
+> 未取证：Go 侧内部消费行为（仓库无 Go 源码，只能从 `android/app/libs/tunnel-debug-sources.jar`
+> 确认 `SetBlockedUIDs` / `SetAppAllowlist` / `ConfigureOutboundProxy` 导出方法存在）；
+> 所有「进入 Go」结论均为静态调用链判断，没有 logcat 实锤。
+
 

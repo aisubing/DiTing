@@ -1,6 +1,8 @@
+import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/mock_dashboard.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/dashboard_providers.dart';
+import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -62,7 +64,9 @@ class HomeQuickEntries extends ConsumerWidget {
 
 /// 服务统计条：今日查询 / 缓存命中 / 平均延迟。
 ///
-/// 电源未运行时全部归零——上游同样在停止态显示空数据而不是上次的旧值。
+/// 三个数都来自 `dns_log` 的当日聚合（与日志仪表盘同一 provider），不是引擎
+/// session 计数：后者重启隧道就归零，与「今日」语义不符。电源未运行时不显示
+/// 上次的旧值——但仍在运行的隧道会继续写日志，所以这里只切换文案不丢弃数据。
 class _ServiceStatsStrip extends ConsumerWidget {
   const _ServiceStatsStrip();
 
@@ -71,24 +75,28 @@ class _ServiceStatsStrip extends ConsumerWidget {
     final power = ref.watch(powerProvider);
     final core = ref.watch(coreStateProvider);
     final running = power.isRunning && core == CoreState.running;
-    final stats = mockServiceStatsSnapshot;
+    final daily =
+        ref.watch(dnsLogDailyStatsProvider).value ??
+        const DnsLogDailyStats.empty();
     return CommonCard(
       child: StatStrip(
         stats: [
           StatItem(
             label: '今日查询',
-            value: running ? stats.queries : '0',
+            value: running ? _formatCount(daily.total) : '0',
           ),
           StatItem(
             label: '缓存命中',
-            value: running ? stats.cacheHitRate : '0',
+            value: running ? '${(daily.cacheHitRate * 100).round()}' : '0',
             unit: '%',
             color: context.colorScheme.success,
           ),
           StatItem(
             label: '平均延迟',
-            value: running ? stats.averageLatency : '—',
-            unit: running ? 'ms' : null,
+            value: running && daily.latencySamples > 0
+                ? '${daily.averageLatencyMs}'
+                : '—',
+            unit: running && daily.latencySamples > 0 ? 'ms' : null,
           ),
         ],
       ),
@@ -96,12 +104,15 @@ class _ServiceStatsStrip extends ConsumerWidget {
   }
 }
 
-/// 统计条要的四个数，从 `mock_data` 的 `mockServiceStats` 摊平。
-///
-/// 单独建一个小结构而不是直接用 `ServiceStats`，是因为这里只要展示用的字符串，
-/// 不想要那层的 `Duration` / `double` 语义。
-const mockServiceStatsSnapshot = (
-  queries: '28,471',
-  cacheHitRate: '98',
-  averageLatency: '14',
-);
+/// 与日志页同口径的千分位，避免首页显示 28471、日志页显示 28,471。
+String _formatCount(int value) {
+  final digits = value.abs().toString();
+  final buffer = StringBuffer(value < 0 ? '-' : '');
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
+}

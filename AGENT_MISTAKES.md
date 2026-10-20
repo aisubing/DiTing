@@ -15,6 +15,24 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：仪表盘四个数字必须同窗口同口径；`ERROR` 不是「放行」
+
+- 顶部四格（今日查询/缓存命中/已拦截/平均延迟）里只要有一格换了数据源，另外三格就当场失真：本轮把前三格改成「`dns_log` 当日聚合」后，平均延迟仍是「最近 200 行均值」，跨零点或日志量大时两列互相矛盾。凡是四条并排的统计条，先把窗口写进注释，再逐条对来源。
+- 缓存命中率的分母要跟 Go 对齐：`dns_cache.go` 的 `hitRatio = totalHits/(totalHits+totalMisses)`，而上游失败（`ERROR`）行的缓存查找**发生在**上游调用之前，因此必须计入分母；被规则拦截的行从不查缓存，不能计入。用「放行行数」作分母会系统性偏高。
+- 已知近似要写进代码注释而不是留在心里：stale-while-revalidate 命中在日志里是 `cached=1`，引擎却记进 `staleHits` 而非 `totalHits`，所以 DB 口径的命中率天然略高于引擎，别把它当缺陷去「修」。
+- `DnsLogResult` 是四值（PASSED/REWRITTEN/BLOCKED/ERROR）。Dart 侧 switch 只写了前三个时，`ERROR` 会落进 `_` 分支被渲染成「放行」——语义正好相反。加处置枚举后要回头核对每个 `switch` 的 `default` 语义，并让筛选 chip 由枚举 `values` 生成，避免漏项。
+- 引擎的 `stats` 是**会话计数**，重启隧道即归零；「今日」类数字只能来自落库表。两套计数并存时，UI 上标明各自窗口，不要混用。
+
+### 2026-10-20：设置项接回旧版前，先分辨「数据集容器」与「全局容器」
+
+- 1.4.3 的键分三类，写错容器就等于写进没人读的抽屉：**按数据集分仓**的 DNS 键（`dns_vpn_prefs` / `diting_express_prefs`，由 `RuleDataset.prefsName()` 决定）、**全局 UI 键**（`dns_vpn_prefs` 里的 `http3_inspection_enabled`、`address_rules_enabled`、`vpn_running`）、以及**独立运行标志**（`express_vpn_prefs/express_vpn_running`）。迁移前逐键 grep 旧版 setter，别按「都属于 DNS 域」归类；`excluded_app_packages` 就是全局键，误放进极速容器后极速模式读不到。
+- 三份应用包名列表（禁止联网 / 排除应用 / HTTPS 检查）在旧版有互斥清洗：加入一份要从未选中的另两份删除。只写不删会让同一个应用同时被「禁止联网」和「排除」命中，引擎侧判定顺序决定结果，用户看到的是随机行为。
+- 数值型策略键的夹取必须落在写盘处：动态拦截的 2–100 / 10–300 / 60–3600、TTL 秒数等，UI 控件能夹住不代表其他入口（自定义输入、配置导入）也夹住。夹在 `LegacySettings` 的 setter 里，一处生效全局。
+- 「三档 preset」不是存一个名字：1.4.3 的缓存预设要**同时覆写 9 个 `dns_cache_*_v2` 键**，引擎只读这套键。只写 `dns_cache_preset_v3` 会让 UI 显示高命中、引擎仍按旧策略跑。反向也要做：旧安装没有 preset 键时，用 `fromPolicy` 从原始键反推档位，否则界面永远停在默认档。
+- `SharedPreferences` 写入不可观察。页面 A 写盘、页面 B 已经 build 过就读到旧值，必须有一个显式的 revision provider 在写后自增，让所有读 `LegacySettings` 的 provider 失效重建；指望 `ref.watch(legacySettingsProvider)` 自己发现变化是行不通的。
+- 预设服务商在 DNS/DoH/DoT 三组里同名（「腾讯云 DNSPod」出现三次）。换数据源后 `find.text('腾讯 DNSPod')` 这类旧断言会从「找不到」变成「命中多个」，两处都要按 `.first` 或唯一文案重写；这不是测试噪音，而是提醒 UI 上同名可点项本身需要上下文区分。
+- 文件逼近 550 行时，`LegacySettings` 这类「一堆访问器」的类拆 part 用**同库 extension** 最省事：既能访问私有 store 与静态 helper，调用点也完全不变。拆完要同时跑 analyze 与全量 test，`part of` 漏写会让符号静默解析失败。
+
 ### 2026-10-20：缓存表与竞速排行要按旧版口径聚合，别把失败摊给某个服务商
 
 - Go 的 DNS 缓存是纯内存分片 LRU（`dns_cache.go`），没有任何枚举接口；日志页「缓存表」只能读旧版 Room 写入的 `dns_cache` 表。表里的行是 1.4.3 留下的快照，Go 引擎不会往里写，所以升级后看到空表属正常——空状态文案必须如实说明，不能写「启动后会写入缓存表」。

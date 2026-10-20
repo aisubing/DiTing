@@ -64,6 +64,7 @@
 | **Android** | ⚡ 极速模式 | Android 7.0+ / `arm64-v8a` | 纯 Kotlin 窄路由，仅接管 DNS（53 端口），轻量省电 |
 | **Android** | 🛡️ 普通模式 | Android 10.0+ / `arm64-v8a` | gVisor 全隧道，支持应用分流、HTTPS 检查、出站代理 |
 | **Android** | 🏠 服务器模式 | Android 10.0+ | Go 独立 DNS 服务，监听 `0.0.0.0:1053`，共享给局域网设备 |
+| **Android（Flutter 重写）** | 三模式 | 同左 | 复用同一 Go 引擎（`tunnel.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
 | **Windows** | ⚙️ 特权核心服务 | Windows 10+ 64-bit | 双栈接管物理网卡、本地 53 监听、缓存规则、局域网 DNS、崩溃自愈 |
 | **Windows** | 🖥️ 桌面 GUI | Windows 10+ 64-bit + WebView2 | Wails v2 + Vue 3，免管理员权限管理服务与实时日志 |
 | **Windows** | 🌐 Web 控制台 | 任意主流浏览器 | 访问 15353 端口远程管理 Windows 核心服务 |
@@ -77,6 +78,11 @@
 ```
 DITING/
 ├── Android/                  # Android 客户端（app + tunnel，构建为 tunnel.aar）
+├── DITING_flutter/           # Android 客户端的 Flutter 重写（兼容 1.4.3 的配置与数据库）
+│   ├── lib/ui/               #   移植自 1.4.3 的设计系统（GPL-3.0）
+│   ├── lib/data/             #   旧版 SharedPreferences（11 个容器）与旧版 SQLite 读写
+│   ├── lib/pages/            #   页面（85 条路由）
+│   └── android/              #   Flutter Android 壳（包名 com.haoze.diting）
 ├── Desktop/                  # Windows / Linux 工程
 │   ├── cmd/service/          # 特权核心服务（Windows Service / Linux systemd）
 │   ├── internal/             # DNS 内核、平台适配、IPC、鉴权、查询日志
@@ -96,8 +102,24 @@ DITING/
 
 ## 构建指南
 
-### 📱 Android
-要求 JDK 11+、Android SDK，产物架构为 `arm64-v8a`。
+### 📱 Android（Flutter 重写）
+
+要求 Flutter 3.47+、JDK 11+、Android SDK；产物架构为 `arm64-v8a`。
+
+```bash
+cd DITING_flutter
+flutter pub get
+flutter analyze lib test
+flutter test
+flutter build apk --debug
+```
+
+模拟器（x86_64）联调需多 ABI 的 AAR：`flutter build apk --debug -PtunnelAar=libs/tunnel-debug.aar`
+（该文件不入库），否则 `libgojni.so` 只有 `arm64-v8a`，`System.loadLibrary` 会失败。
+详情见 [DITING_flutter/README.md](DITING_flutter/README.md) 与
+[Go AAR 构建记录](docs/development/aar-build-notes.md)。
+
+### 📱 Android（Kotlin 1.4.3 基线）
 
 ```bash
 cd Android
@@ -188,7 +210,8 @@ REM 同步到目标版本（示例）
 
 ## 技术栈
 
-- **Android**：Kotlin / Jetpack Compose / Material 3 / Coroutines & Flow / Room / DataStore / VpnService / OkHttp / WorkManager
+- **Android（Kotlin 基线 1.4.3）**：Kotlin / Jetpack Compose / Material 3 / Coroutines & Flow / Room / DataStore / VpnService / OkHttp / WorkManager
+- **Android（Flutter 重写）**：Flutter / Dart 3 / Riverpod / go_router / sqflite（直接打开 1.4.3 的库）/ 移植的 Material 3 设计系统
 - **Windows**：Go 1.25+ / Wails v2 / Vue 3 / TypeScript / Vite / Material Web / Win32 API / Windows Service
 - **Linux**：Go 1.25+ / systemd / resolvectl / nmcli / netlink / Vue 3 内嵌控制台
 - **DNS 引擎**：Go / gVisor netstack / miekg/dns / quic-go / Singleflight
@@ -198,6 +221,9 @@ REM 同步到目标版本（示例）
 
 ## 开发文档
 
+- [Flutter 重写交接文档](DITING_flutter/docs/ui-framework/20-handoff.md) — 已完成范围、冻结约定、统计口径、剩余缺口与验证口径。
+- [UI 全覆盖台账](DITING_flutter/docs/ui-framework/21-ui-coverage-ledger.md) — 逐项对照 1.4.3 的迁移状态，以及数据来源台账（哪些页面仍是演示数据）。
+- [DITING Android 功能图谱](DITING_flutter/docs/refactor/README.md) — 15 章，覆盖内核、规则、UI、测试与迁移策略。
 - [Windows DNS 内核架构与开发规划](docs/development/windows-dns-kernel-roadmap.md) — 双进程架构、网卡接管与恢复状态机、IPC 与 Pipeline 设计。
 - [Linux 移植说明](docs/development/linux-port-notes.md) — 平台差异、DNS 接管后端、`DITING_DATA_DIR` 调试与功能差异。
 - [Go AAR 构建记录](docs/development/aar-build-notes.md) — Android `tunnel.aar` 的编译环境、参数与交叉编译细节。

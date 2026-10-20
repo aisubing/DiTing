@@ -57,6 +57,19 @@ final dnsLogsProvider = FutureProvider<List<DnsLogRecord>>((ref) async {
   );
 });
 
+/// Today's counters for the dashboard header, read from the same legacy table
+/// the rows come from. The engine's session counters reset on every tunnel
+/// start and stay at zero when normal mode runs without a logging session, so
+/// the persisted table is the authoritative "today" number.
+final dnsLogDailyStatsProvider = FutureProvider<DnsLogDailyStats>((ref) async {
+  ref.watch(dnsLogRevisionProvider);
+  return _viaDatabase(
+    ref,
+    (db) => DnsLogRepository(db).dailyStats(),
+    const DnsLogDailyStats.empty(),
+  );
+});
+
 final dnsCacheProvider = FutureProvider<List<DnsCacheRecord>>((ref) async {
   ref.watch(dnsLogRevisionProvider);
   return _viaDatabase(

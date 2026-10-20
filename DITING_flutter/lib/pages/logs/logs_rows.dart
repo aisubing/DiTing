@@ -236,6 +236,7 @@ class _LogDetailSheet extends StatelessWidget {
         colorScheme.primary,
         colorScheme.primaryContainer,
       ),
+      LogAction.failed => (colorScheme.error, colorScheme.errorContainer),
     };
 
 Glyph _actionGlyph(LogAction action) => switch (action) {
@@ -243,4 +244,5 @@ Glyph _actionGlyph(LogAction action) => switch (action) {
   LogAction.blocked => AppGlyphs.block,
   LogAction.rewritten => AppGlyphs.swap,
   LogAction.cached => AppGlyphs.dataUsage,
+  LogAction.failed => AppGlyphs.warning,
 };

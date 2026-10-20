@@ -111,7 +111,8 @@ enum LogAction {
   allowed('放行'),
   blocked('拦截'),
   rewritten('覆写'),
-  cached('缓存');
+  cached('缓存'),
+  failed('失败');
 
   const LogAction(this.label);
 

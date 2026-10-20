@@ -120,13 +120,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// `dns_log` 只存原始字段；处置、客户端与耗时都从结果列和 message 还原。
   static MockLogEntry _toEntry(DnsLogRecord record) {
     final message = record.message ?? '';
-    final latency = int.tryParse(
-          RegExp(r'elapsed=(\d+)ms').firstMatch(message)?.group(1) ?? '',
-        ) ??
-        0;
+    // 与顶部「平均延迟」共用同一解析口径，避免两处正则漂移。
+    final latency = DnsLogRepository.elapsedMsOf(message) ?? 0;
     final action = switch (record.result) {
       'BLOCKED' => LogAction.blocked,
       'REWRITTEN' => LogAction.rewritten,
+      // 上游 `DnsLogResult.ERROR`：解析/上游失败，不能当成放行。
+      'ERROR' => LogAction.failed,
       _ => record.cached ? LogAction.cached : LogAction.allowed,
     };
     final timestamp = DateTime.fromMillisecondsSinceEpoch(record.timestamp);
@@ -147,18 +147,25 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final stats = ref.watch(serviceStatsProvider);
+    // The dashboard branch stays alive across tab switches, and rows are
+    // written by native services while it is off-screen. A tunnel start/stop
+    // changes the counters at the same moment, so reload the table then
+    // instead of leaving yesterday's list until the user taps 刷新.
+    ref.listen(powerProvider, (previous, next) {
+      if (previous != next &&
+          (next == PowerState.running || next == PowerState.stopped)) {
+        ref.read(dnsLogRevisionProvider.notifier).bump();
+      }
+    });
     final asyncLogs = ref.watch(dnsLogsProvider);
+    final daily = ref.watch(dnsLogDailyStatsProvider).value ??
+        const DnsLogDailyStats.empty();
     final colorScheme = context.colorScheme;
     final all = [
       for (final record in asyncLogs.value ?? const <DnsLogRecord>[])
         _toEntry(record),
     ];
     final visible = _visibleLogs(all);
-    final averageLatency = all.isEmpty
-        ? stats.averageLatencyMs
-        : all.map((entry) => entry.latencyMs).reduce((a, b) => a + b) ~/
-              all.length;
 
     return CommonScaffold(
       title: '日志仪表盘',
@@ -184,23 +191,27 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                 stats: [
                   StatItem(
                     label: '今日查询',
-                    value: _formatCount(stats.queries),
+                    value: _formatCount(daily.total),
                   ),
                   StatItem(
                     label: '缓存命中',
-                    value: '${(stats.cacheHitRate * 100).round()}',
+                    value: '${(daily.cacheHitRate * 100).round()}',
                     unit: '%',
                     color: colorScheme.success,
                   ),
                   StatItem(
                     label: '已拦截',
-                    value: _formatCount(stats.blocked),
+                    value: _formatCount(daily.blocked),
                     color: colorScheme.error,
                   ),
                   StatItem(
                     label: '平均延迟',
-                    value: '$averageLatency',
-                    unit: 'ms',
+                    // 与「今日查询」同窗口：全是最近 200 行的均值会把窗口
+                    // 缩到几分钟，跨零点后两列数字互相矛盾。
+                    value: daily.latencySamples == 0
+                        ? '—'
+                        : '$daily.averageLatencyMs',
+                    unit: daily.latencySamples == 0 ? null : 'ms',
                   ),
                 ],
               ),

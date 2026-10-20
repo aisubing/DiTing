@@ -88,7 +88,8 @@ void main() {
     await tester.tap(find.text('解析服务商'));
     await tester.pumpAndSettle();
     expect(find.text('选择解析服务商'), findsOneWidget);
-    await tester.tap(find.text('腾讯 DNSPod'));
+    // 预设名在 DNS/DoH/DoT 三组里重复，这里只验证点选后面板关闭。
+    await tester.tap(find.text('腾讯云 DNSPod').first);
     await tester.pumpAndSettle();
     expect(find.text('选择解析服务商'), findsNothing);
   });
@@ -104,6 +105,26 @@ void main() {
     // `SafeArea` 会把外壳注入的浮条高度变成底部内边距，滚动视口便停在浮条
     // 上沿；页面应一直铺到屏幕底，由 `DockSpacer` 在内容末尾给浮条让位。
     expect(tester.getRect(list).bottom, screenHeight);
+  });
+
+  testWidgets('首页统计条读当日聚合而不是 mock 常量', (tester) async {
+    await pumpApp(tester);
+    // 统计条在仪表盘卡片下方：直接跳到底，避免 scrollUntilVisible 对
+    // 「ListView 包 Scrollable」这类层级差异敏感。
+    final scrollable = find
+        .descendant(
+          of: find.byType(PageBody),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final position = tester.state<ScrollableState>(scrollable).position;
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pumpAndSettle();
+    // 停止态三格归零 / 破折号：数字不再是 mockServiceStatsSnapshot 里
+    // 写死的 28,471 / 98% / 14ms。
+    expect(find.text('28,471'), findsNothing);
+    expect(find.text('缓存命中'), findsOneWidget);
+    expect(find.text('0'), findsWidgets);
   });
 
   testWidgets('每个路由都能构建', (tester) async {

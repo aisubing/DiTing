@@ -1,15 +1,18 @@
 ---
 所属: 谛听 Flutter UI 框架
-状态: 第二轮 UI 全覆盖台账（持续更新）
-最后校验: 2026-10-19
+状态: 第三轮台账（UI 全覆盖 + 数据接线）持续更新
+最后校验: 2026-10-20
 口径: 上游 = LearningObjects/DITING-1.4.3/lib（GPL-3.0，只读参照）；本仓 = DITING_flutter/lib
 ---
 
-# 21 · 第二轮 UI 全覆盖台账
+# 21 · UI 全覆盖台账
 
-> 本文件是第二轮「对照 DITING 原版逐项核对 UI」的唯一清单。**每一项都必须能被
+> 本文件是「对照 DITING 原版逐项核对 UI」的唯一清单。**每一项都必须能被
 > 指到上游源码位置**；本仓侧只允许三态：`已迁移` / `部分` / `缺失`。
-> 任何新增页面都要在 §10 登记，否则视为未完成。
+> 任何新增页面都要在 §11 登记，否则视为未完成。
+>
+> 第三轮在此基础上补了第四态：**数据来源**（真实持久化 / 演示数据）。
+> 两者的区别见 §14——UI 已迁移但数据仍为演示的页面，不得在交付说明里写成「已完成」。
 
 ## 0. 判定规则（先读，避免口径漂移）
 
@@ -27,23 +30,25 @@
 
 | 目录 | 文件数 | 行数 | 本仓对应（第二轮后） |
 |---|---|---|---|
-| `lib/ui/` | 90 | 29,421 | `lib/ui/` 127 文件 / 28,261 行（已全量移植，本阶段未改） |
+| `lib/ui/` | 90 | 29,421 | `lib/ui/` 127 文件 / 28,301 行（已全量移植，本阶段未改） |
 | `lib/views/` | 74 | 约 26,900 | `lib/pages/` 覆盖 |
 | `lib/pages/` | 5 | 2,878 | 覆盖（含编辑器 / 扫码 / 错误页） |
 | `lib/features/` | 28 | 约 8,000 | `lib/pages/forms/` + 各域表单浮层 |
-| **UI 合计** | — | **约 42,800** | **`lib/pages/` 187 文件 / 40,004 行** |
+| **UI 合计** | — | **约 42,800** | **`lib/pages/` 206 文件 / 45,358 行** |
 
 **第二轮交付量（基线 → 现状）**
 
-| 指标 | 第二轮前 | 第二轮后 | 倍数 |
+| 指标 | 第二轮前 | 第二轮后 | 第三轮后（2026-10-20） |
 |---|---|---|---|
-| `lib/` 总行数 | 约 41,836 | **79,728**（370 文件） | 1.90× |
-| `lib/pages/` 行数 | 10,514（43 文件） | **40,004**（187 文件） | **3.80×** |
-| 路由数 | 18 | **73**（16 基线路由 + 57 领域路由 GoRoute） | 3.9× |
-| 单文件最大行数 | — | 532（`pages/system/editor_page.dart`） | 全部 ≤550 |
+| `lib/` 总行数 | 约 41,836 | **79,728**（370 文件） | **90,390**（419 文件） |
+| `lib/pages/` 行数 | 10,514（43 文件） | **40,004**（187 文件） | **45,358**（206 文件） |
+| 路由数 | 18 | **73**（16 基线 + 57 领域 GoRoute） | **85**（`lib/routes/*.dart` 全量） |
+| 单文件最大行数 | — | 532（`pages/system/editor_page.dart`） | 550（同上，全部 ≤550） |
+| 测试用例 | 8 | 62 | **153**（22 文件，运行期实测） |
 
-结论：**设计系统层 100% 移植；页面层从约 25% 提升到覆盖上游全部可见页面**。剩余
-未迁移项只有 §13 列出的桌面专属能力与本轮主动延后的 `paged_sheet`。
+结论：**设计系统层 100% 移植；页面层覆盖上游全部可见页面**；第三轮把设置与观测域的
+**数据来源**接到旧版持久化（见 §14 台账）。剩余未迁移项只有 §13 列出的桌面专属能力与
+主动延后的 `paged_sheet`。
 
 
 ## 2. 设计系统 `lib/ui/`（已完成，仅登记差异）
@@ -349,6 +354,43 @@
 |---|---|---|---|
 | R1 | 2026-10-19 | 全量清点 + 台账建立 + 路由骨架 + 首页仪表盘 + 代理 + 配置档案 + 主题 + 观测 | 见 §13 |
 | R2 | 2026-10-19 | 五条并行流全量补齐 + 仪表盘重建 + 壳层动画/玻璃接通 + 测试补强 | 见下 |
+| R3 | 2026-10-20 | 设置域接回旧版 SharedPreferences + 日志真实数据 + 统计口径 | 见 §12.3 |
+
+### R3 详细结论（2026-10-20）
+
+**范围**：设置域的持久化，不新增页面。
+
+已完成：
+
+- 服务商：18 个 preset + `user_providers_json` 增删改、`selected_provider_id`、三种解析
+  模式的 id 列表与主备顺序；删除自定义服务商时同步清洗选中与三份列表。
+- 首页 / 解析模式的服务商目录与延迟展示（延迟读 `provider_health_json`，无记录显示「未测速」）。
+- 服务显示过滤三键（`home_visible_protocols` / `home_hidden_provider_ids` / `home_visible_provider_ids`）。
+- 缓存设置对齐 1.4.3 三档 preset，一次覆写 9 个 `dns_cache_*_v2` 键。
+- 拦截响应 `block_response_mode` + 动态策略四键（含 2–100 / 10–300 / 60–3600 夹取）。
+- 规则总控四开关（`domain_rules_enabled` / `http3_inspection_enabled` /
+  `encrypted_dns_blocking_enabled` / `address_rules_enabled`）。
+- 引导解析三键 + `bootstrap_log` 24 小时聚合（替换页面上的假样本）。
+- 禁止联网 / 排除应用 / HTTPS 检查应用三份名单与开关，含互斥清洗。
+  ⚠️ 注意：「名单」落盘已通，但可选**应用清单**仍是 `mockInstalledApps` 的 12 条常量
+  （见 §14.2），且原生侧尚未消费 `blocked_app_packages`（见 §14.3）。
+- 首页统计条改读 `dnsLogDailyStatsProvider`（原先读 `mockServiceStatsSnapshot` 常量）。
+- 日志页补 `LogAction.failed`（`ERROR` 不再显示成「放行」），仪表盘统计改读 `dns_log` 当日聚合。
+
+数据仍未接线的页面：§14.2；原生侧缺失的引擎入参：§14.3。
+
+**验证**：`flutter analyze lib test` 零问题；`flutter test` 153 用例全绿（新增
+`provider_catalog_test.dart` 20 条落盘契约、`dns_log_stats_test.dart` 6 条统计口径；
+`app_shell_test` 加 1 条首页统计条读真实聚合的回归）。
+模拟器（`emulator-5554`）验证通过：设置项改动均能在 `dns_vpn_prefs.xml` 读到对应键值，
+启动隧道后 Go 引擎加载成功、系统 DNS 经隧道解析并写入 `dns_log`。
+
+**未覆盖**：arm64 真机（25102RKBEC）本轮未测；剩余演示页面与原生入参见 §14.2 / §14.3。
+
+**R3 复核撤回**：初稿曾把首页统计条与 `/apps` 列入「已接真实持久化」，复核后发现
+首页统计条读的是 `mockServiceStatsSnapshot` 常量（已在本轮改为读 `dnsLogDailyStatsProvider`），
+`/apps` 的应用列表是 `mockInstalledApps` 常量——应用**名单**已落盘，但可选**应用清单**不是真的。
+两者已分别更正为「已接」与「演示」。
 
 ### R2 详细结论
 
@@ -430,3 +472,66 @@
 | 托盘 / 通知栏自定义 | 平台能力，非 UI 移植范围 |
 | 真实数据源（内核流 / 订阅下载 / 测速 / 扫码 / 相机） | 本阶段只做 UI；所有页面用确定性假数据，形状与真实一致 |
 | 按需连接的定位/电池优化授权 | 需要平台通道，本仓只报状态 |
+
+## 14. 数据来源台账（R3 新增）
+
+> 口径：只要页面渲染的**列表 / 记录 / 统计数字**来自 `lib/data/mock_*.dart` 的常量，
+> 就记为「演示数据」；只用到 mock 里的枚举标签、文案或格式化函数（不承载数据）不算。
+> 行数、条目数均为 2026-10-20 本会话工具实测。
+
+### 14.1 已接真实持久化（设置与观测域）
+
+| 域 / 页面 | 数据源 |
+|---|---|
+| 首页服务商卡 + 选择面板 | `provider_catalog_providers`（18 preset + `user_providers_json`），延迟读 `provider_health_json` |
+| 首页统计条 + 日志仪表盘四格 | `dnsLogDailyStatsProvider`（当日 `dns_log` 聚合：行数/缓存命中/已拦截/平均延迟） |
+| 解析模式页（候选与主备顺序） | `smart_prediction_provider_ids` / `parallel_race_provider_ids` / `primary_backup_provider_ids` |
+| 服务商管理页（增删改） | `user_providers_json`，删除时同步清洗选中与三份 id 列表 |
+| 服务显示过滤页 | `home_visible_protocols` / `home_hidden_provider_ids` / `home_visible_provider_ids` |
+| 缓存设置页 | `dns_cache_preset_v3` + 9 个 `dns_cache_*_v2` |
+| 拦截响应页 | `block_response_mode` + 4 个动态拦截键 |
+| 规则总控页 | `domain_rules_enabled` / `http3_inspection_enabled` / `encrypted_dns_blocking_enabled` / `address_rules_enabled` |
+| 引导解析页 | `bootstrap_enabled` / `bootstrap_preset_ids` / `bootstrap_custom_json` + `bootstrap_log` 24 小时聚合 |
+| 禁止联网 / 排除应用 / HTTPS 检查应用 | `blocked_app_packages` / `excluded_app_packages` / `http_inspection_app_packages`（三处互斥清洗） |
+| 规则列表（黑/白/覆写）、批量编辑 | 旧版 `diting_database` / `diting_dns_rules` 规则表 |
+| 日志仪表盘（三视图） | `dns_log` / `dns_cache` / `dns_race_log` |
+| 服务器模式统计 | 原生 `DnsServerStatus.stats`（引擎会话计数，UI 标注为当前会话） |
+
+### 14.2 仍走演示数据（交接时必须如实说明）
+
+| 页面 / 路由 | 依赖的 mock 文件与符号 | 缺口 |
+|---|---|---|
+| `/traffic` 应用流量 | `mock_data.dart`：`mockTrafficSamples`、`MockAppTraffic` | 需原生 `app_traffic_daily`（`TrafficStatsManager` 按 UID 归因）落库与查询通道 |
+| `/connections` 连接列表 | `mock_observability_connections.dart`：`mockConnections`（`_loadDelay` 420ms 假加载） | 需引擎连接事件流（上游 `ConnectionsViewModel`） |
+| `/requests` 请求列表 | `mock_observability_connections.dart`：`MockRequest`（380ms 假加载） | 需 `http_request_log` 读写 |
+| `/dns-queries` DNS 查询 | `mock_observability_dns.dart`：`MockDnsQuery` | 可改为读 `dns_log`（与日志页同表），成本最低的一项 |
+| `/resources` 资源更新 | `mock_observability_resources.dart`：`mockObsResources` | 更新动作只改内存时间戳/体积 |
+| `/apps` 应用选择页 | `mock_apps.dart`：`mockInstalledApps`（12 条 `com.example.*`） | 需原生 `getInstalledPackages` 通道 + `QUERY_ALL_PACKAGES` 权限（当前 Manifest 无此权限，Kotlin 也没有枚举实现） |
+| `/subscriptions` 订阅 | `subscription_providers.dart` 以 `mockSubscriptions` 播种，更新是 `Future.delayed` 假进度 | 需订阅表读取 + 下载/更新任务（`SubscriptionAutoUpdateScheduler`） |
+| `/hub/app-rules` 应用独立规则 | `mock_system.dart`：`mockPackages` + 页面内 `State` 局部规则 | 需 `app_rules` 表与引擎按 UID 规则下发 |
+| `/hub/outbound-proxy`(+`/apps`) 出站代理 | `mock_system.dart`：`mockPackages`；配置为内存 `OutboundProxyState`，保存只弹 SnackBar | 需 `outbound_proxy_*` 落盘 + 传给引擎（见 §14.3） |
+| `/hub/http-inspection`(+`/apps`、`/ca`) | 开关与目标应用读写真实 prefs，但应用清单是 `mockPackages`；`caReady` 只在内存，证书指纹硬编码 | 需原生 CA 生成/导出/系统安装校验，并把 `https_inspection_ready` 读进页面 |
+| `/tools` 网络工具 | `mockServiceStats.averageLatencyMs`、`.uptimeLabel` | 四个面板的查询结果需原生诊断通道（上游 `NetworkToolsViewModel`） |
+| `/hub` 功能中心、`/hub/hidden-features` | `mock_feature_hub.dart` 的静态卡片清单；隐藏开关为内存态 | 属文案清单而非业务数据；隐藏开关需要落盘 |
+| 代理域（`/proxies`、`/profiles/*`） | `mock_proxies.dart`、`mock_profiles*.dart` | 上游是 Clash 内核语义，本仓仅 UI；接真实内核前保持演示 |
+| `/config/*` 覆写与策略页 | `mock_config_*.dart` | 引擎的 TUN/DNS/嗅探覆写未接线 |
+
+> 这些页面的 UI 迁移状态仍为「已迁移」——迁移的是**界面**。交付说明里必须成对写：
+> 「UI 已迁移、数据仍为演示」，不得只写一半。接线顺序建议：`/dns-queries`（同表）→
+> `/connections` + `/requests`（同库）→ `/apps`（需新增原生通道）→ `/traffic`（需新表）→ 其余。
+
+### 14.3 原生侧尚未接线的引擎入参
+
+静态调用链结论（2026-10-20 复核，Kotlin 全库 grep）：
+
+| 键 | Dart 写盘 | Kotlin 读 | 进入 Go | 结论 |
+|---|---|---|---|---|
+| `blocked_app_packages`（+`blocked_apps_enabled`） | ✅ `legacy_settings.dart` | ❌ `blocked_app_packages` / `blockedApp` / `setBlockedUIDs` 全库零命中 | ❌ | **只写盘未读**：UI 勾选能保存，引擎完全收不到；`VpnStartRequest` 里也没有这个字段 |
+| `excluded_app_packages` | ✅ | ✅ → `VpnRouteConfig` / `ExpressRouteConfig` 的 `addDisallowedApplication` | ⚠️ 仅 TUN 层 | **已接 TUN 路由，引擎侧白名单仍空**：`rule_snapshot.dart` 的 `appRules` 恒为 `{}`，`setAppAllowlist` 零调用 |
+| 出站代理 | ❌ 只有内存 `OutboundProxyState` | ✅ `VpnBridge`/`ExpressVpnBridge` 读 `outboundProxy` | ⚠️ 恒为空 | **读了但恒为空**：Dart `_launch()` 组装 `VpnStartRequest` 时未传该字段，Kotlin 回落到 `DEFAULT_OUTBOUND_PROXY`（`enabled:false`） |
+| `http_inspection_app_packages`（+ 开关） | ✅ | ❌ | ❌ | 只在 Dart UI 消费 |
+| `https_inspection_ready` | ✅ 已有 getter | — | — | CA 证书页未读该键（只读内存 provider） |
+
+接线位置：`DitingVpnService` / `ExpressVpnService` 组装引擎配置处，两条服务都要改；
+`blocked_app_packages` 还需要先在原生侧补 package→UID 解析（`getPackageUid`），
+上游 1.4.3 走的是 `GoInspectionTunnel.setBlockedUIDs(csv)`。
