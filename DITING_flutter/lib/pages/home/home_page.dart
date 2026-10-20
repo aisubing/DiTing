@@ -77,19 +77,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     return DashboardDensityScopeHost(
       child: CommonScaffold(
         title: editing ? '编辑仪表盘' : _titleOf(mode),
-        actions: [
-          if (!editing)
-            _ModeChip(
-              mode: mode,
-              onPressed: () => context.push(Routes.modeSelect),
-            ),
-        ],
         primaryAction: IconButtonData(
           glyph: editing ? AppGlyphs.check : AppGlyphs.customize,
           tooltip: editing ? '完成' : '编辑仪表盘',
           onPressed: () =>
               ref.read(dashboardEditingProvider.notifier).toggle(),
         ),
+        // 模式已在标题里写明，顶栏不再放文字胶囊——它夹在两个圆形按钮之间
+        // 显得突兀。改用同尺寸圆形图标，三种动作保持同一种形状。
+        actions: [
+          if (!editing)
+            IconButton(
+              tooltip: '切换工作模式',
+              onPressed: () => context.push(Routes.modeSelect),
+              icon: const GlyphIcon(AppGlyphs.swap),
+            ),
+        ],
         menuItems: [
           CommonPopupMenuItem(
             label: '工作模式',
@@ -232,24 +235,4 @@ class DashboardDensityScopeHost extends StatelessWidget {
 extension on ({String running, String stopped}) {
   String? forState(PowerState state) =>
       state.isRunning || state == PowerState.starting ? running : stopped;
-}
-
-class _ModeChip extends StatelessWidget {
-  const _ModeChip({required this.mode, required this.onPressed});
-
-  final AppWorkMode mode;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: TonalChip(
-        label: mode.title,
-        color: context.colorScheme.primaryContainer,
-        foregroundColor: context.colorScheme.onPrimaryContainer,
-        onPressed: onPressed,
-      ),
-    );
-  }
 }

@@ -221,9 +221,11 @@ class DockSpacer extends StatelessWidget {
 ///
 /// 顶部留白必须显式取 `context.appBarInset`：`CommonScaffold` 走
 /// `extendBodyBehindAppBar`，正文从屏幕 y=0 起排，不预留就会整片画到顶栏
-/// 底下（标题压行、首个分组头藏进状态栏）。占位统一走 `AppBarClearance`，
-/// 它同时把 `MediaQuery.padding.top` 清零并关掉 `FloatingBarScope`，避免
-/// 正文里再算一次同样的留白。
+/// 底下（标题压行、首个分组头藏进状态栏）。
+///
+/// 留白放在 `ListView.padding` 里而不是套一层 `Padding`：视口必须从 y=0
+/// 开始，内容才能滚到浮动的半透明顶栏底下并透过遮罩渐隐；若用外层
+/// `Padding`，视口被裁在顶栏下沿，滚动时内容会被硬生生切断。
 class PageBody extends StatelessWidget {
   const PageBody({
     super.key,
@@ -238,10 +240,16 @@ class PageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBarClearance(
-      child: ListView(
-        padding: padding,
-        children: [...children, if (dockSpacer) const DockSpacer()],
+    final inset = context.appBarInset;
+    return MediaQuery.removePadding(
+      context: context,
+      removeTop: true,
+      child: FloatingBarScope(
+        inset: 0,
+        child: ListView(
+          padding: padding + EdgeInsets.only(top: inset),
+          children: [...children, if (dockSpacer) const DockSpacer()],
+        ),
       ),
     );
   }

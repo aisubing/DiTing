@@ -27,6 +27,8 @@ class NetworkSpeedCard extends ConsumerWidget {
     final series = ref.watch(speedSeriesProvider);
     final totals = ref.watch(trafficTotalsProvider);
     final last = series.last;
+    final density = DashboardDensityScope.of(context);
+    final cardPadding = dashboardCardPadding(density);
     final scale = DashboardDensityScope.scaleOf(context);
     final colors = DashboardColors.of(context);
     final colorScheme = context.colorScheme;
@@ -38,23 +40,18 @@ class NetworkSpeedCard extends ConsumerWidget {
       semanticLabel: '网络速率',
       // 图表要贴着卡片下沿出血，因此这一张必须裁剪。
       clipBehavior: Clip.antiAlias,
+      // `.horizontal` 是左右之和，直接 `/2` 得到的是整条边距（20），再叠一层
+      // 内边距就把标题推到 40；这里按单边取半：图表 10，文字 20。
       padding: EdgeInsets.only(
-        top: dashboardCardPadding(DashboardDensityScope.of(context)).top,
-        left: dashboardCardPadding(DashboardDensityScope.of(context)).horizontal /
-            2,
-        right: dashboardCardPadding(DashboardDensityScope.of(context)).horizontal /
-            2,
+        top: cardPadding.top,
+        left: cardPadding.left / 2,
+        right: cardPadding.right / 2,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal:
-                  dashboardCardPadding(DashboardDensityScope.of(context))
-                      .horizontal /
-                  2,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: cardPadding.left / 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 12,

@@ -233,6 +233,8 @@ class _EditingBoard extends ConsumerWidget {
                   key: ValueKey(widget),
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Stack(
+                    // 徽标骑在卡片外沿（负偏移），必须允许画出 Stack 边界。
+                    clipBehavior: Clip.none,
                     children: [
                       // 编辑态卡片整体罩一层禁用遮罩：内容不可点，避免误触。
                       DisabledMask(
@@ -244,9 +246,11 @@ class _EditingBoard extends ConsumerWidget {
                           onOpenProfiles: null,
                         ),
                       ),
+                      // 左右各骑在卡片边缘 14dp：页面横向留白 16dp，够放下一半
+                      // 徽标，同时不压住卡内从 20dp 才开始的标题与右侧动作。
                       Positioned(
                         top: 6,
-                        right: 6,
+                        right: -14,
                         child: _RemoveBadge(
                           onPressed: () => ref
                               .read(dashboardWidgetsProvider.notifier)
@@ -255,7 +259,7 @@ class _EditingBoard extends ConsumerWidget {
                       ),
                       Positioned(
                         top: 6,
-                        left: 6,
+                        left: -14,
                         child: ReorderableDragStartListener(
                           index: index,
                           child: _DragBadge(),

@@ -324,11 +324,15 @@ extension CommonScaffoldStateBuild on CommonScaffoldState {
 
   Widget _buildFloatingHeader(Widget appBar) {
     final top = MediaQuery.paddingOf(context).top;
+    // 渐隐起点压在工具栏下方（约 72% 高）：正文从栏底透出才有半透明感，若从
+    // 状态栏下就开始淡出，滚动中的大号数字会直接叠在标题与动作上。
+    const fadeUntil = 0.72;
     return FloatingHeader(
       backgroundColor:
           widget.backgroundColor ??
           SurfaceLevel.page.colorOf(context.colorScheme),
-      fadeStart: top / (top + pageToolbarHeight),
+      fadeStart:
+          (top + pageToolbarHeight * fadeUntil) / (top + pageToolbarHeight),
       overhang: _headerOverhang,
       child: appBar,
     );
