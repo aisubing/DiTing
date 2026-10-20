@@ -21,7 +21,7 @@ SharedPreferences 与旧版 SQLite**，因此外观、工作模式、解析服�
 | 数据兼容 `lib/data/` | 旧版 11 个 SharedPreferences 容器 + 旧版 SQLite（`diting_database` / `diting_express` / `diting_dns_rules`） | ✅ 完成 |
 | 状态 `lib/state/` | 外观、工作模式、服务商目录/可见性、解析模式、规则、日志聚合（全部读旧版持久化） | ✅ 完成 |
 | 壳层 `lib/shell/` | 六 tab 底栏（`StatefulShellRoute.indexedStack` + `NavigationDock`） | ✅ 完成 |
-| 页面 `lib/pages/` | 206 文件 / 45,358 行；**85 条路由**（含设置域二级页） | ✅ 完成 |
+| 页面 `lib/pages/` | 206 文件 / 45,369 行；**85 条路由**（含设置域二级页） | ✅ 完成 |
 | 测试 `test/` | **22 文件 / 153 个用例**：落盘契约、VPN 配置、三模式、日志聚合、全路由构建、多尺寸布局 | ✅ 通过 |
 
 > **下一步工作请读 [docs/ui-framework/20-handoff.md](docs/ui-framework/20-handoff.md)** ——

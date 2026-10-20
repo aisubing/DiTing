@@ -24,8 +24,8 @@
 以及日志仪表盘的真实数据与当日统计口径。
 
 实测（2026-10-20 第三阶段）：`flutter analyze lib test` → **No issues found**；
-`flutter test` → **153 个用例全绿**（22 个测试文件）；`lib/` **419 文件 / 90,390 行**，
-`lib/pages/` **206 文件 / 45,358 行**，`lib/ui/` 127 文件 / 28,301 行；所有文件 ≤550 行
+`flutter test` → **153 个用例全绿**（22 个测试文件）；`lib/` **419 文件 / 90,401 行**，
+`lib/pages/` **206 文件 / 45,369 行**，`lib/ui/` 127 文件 / 28,301 行；所有文件 ≤550 行
 （最大 `pages/system/editor_page.dart` 550 行）。
 
 **仍然走演示数据的页面**：应用流量、连接 / 请求、订阅、应用独立规则、出站代理、
@@ -110,7 +110,7 @@ CA 证书流程。清单与逐条原因见 [`21-ui-coverage-ledger.md`](21-ui-co
 | `lib/data/vpn/` | `dns_config_builder`（引擎配置 JSON）、`provider_store`（`user_providers_json` 增删改）、`cache_presets`（三档 preset）、`block_response_settings`、`vpn_bridge` |
 | `lib/data/mock_*.dart` | 仍未接线的演示数据（3 个 part），消费方清单见 `21-ui-coverage-ledger.md` §14 |
 | `lib/widgets/` | `stat_strip.dart`（`StatStrip` / `KeyValueRow` / `SectionBlock` / `PageBody` / `DockSpacer`）、`glyph_lookup.dart`（名字→Glyph，122 项） |
-| `lib/pages/` | 206 文件 / 45,358 行，路由清单见 `21-ui-coverage-ledger.md` §11 |
+| `lib/pages/` | 206 文件 / 45,369 行，路由清单见 `21-ui-coverage-ledger.md` §11 |
 
 ### 2.4 测试
 
