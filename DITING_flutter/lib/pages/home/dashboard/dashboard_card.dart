@@ -32,9 +32,21 @@ class DashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final density = DashboardDensityScope.of(context);
     final shape = AppShape.all(dashboardCardRadius(density));
+    final editBar = DashboardEditBar.of(context);
     final content = Padding(
       padding: padding ?? dashboardCardPadding(density),
-      child: child,
+      child: editBar == null
+          ? child
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: DashboardEditBar.height, child: editBar),
+                const SizedBox(height: DashboardEditBar.gap),
+                // 只罩正文：操作条要保持原色，否则会被灰度滤镜洗淡。
+                DisabledMask(status: true, child: child),
+              ],
+            ),
     );
     return Semantics(
       container: true,
@@ -62,6 +74,26 @@ class DashboardCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 编辑态卡片顶部操作条。
+///
+/// 由仪表盘编辑面板注入，[DashboardCard] 在内容上方为它留出独立一行，卡片
+/// 随之变高。徽标因此落在卡片内部，又不会压住标题或右侧动作。
+class DashboardEditBar extends InheritedWidget {
+  const DashboardEditBar({super.key, required this.bar, required super.child});
+
+  /// 操作条高度与它和正文之间的间距。
+  static const height = 28.0;
+  static const gap = 10.0;
+
+  final Widget bar;
+
+  static Widget? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DashboardEditBar>()?.bar;
+
+  @override
+  bool updateShouldNotify(DashboardEditBar oldWidget) => bar != oldWidget.bar;
 }
 
 /// 卡片标题行：图标 + 标题 + 右侧动作。

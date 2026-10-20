@@ -9,6 +9,7 @@ import 'package:diting/pages/home/dashboard/cards/profiles_card.dart';
 import 'package:diting/pages/home/dashboard/cards/proxy_groups_card.dart';
 import 'package:diting/pages/home/dashboard/cards/service_status_card.dart';
 import 'package:diting/pages/home/dashboard/cards/vpn_card.dart';
+import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/edit/dashboard_edit_sheet.dart';
 import 'package:diting/state/dashboard_providers.dart';
@@ -232,40 +233,30 @@ class _EditingBoard extends ConsumerWidget {
                 return Padding(
                   key: ValueKey(widget),
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Stack(
-                    // 徽标骑在卡片外沿（负偏移），必须允许画出 Stack 边界。
-                    clipBehavior: Clip.none,
-                    children: [
-                      // 编辑态卡片整体罩一层禁用遮罩：内容不可点，避免误触。
-                      DisabledMask(
-                        status: true,
-                        child: buildDashboardCard(
-                          widget,
-                          onOpenConnections: null,
-                          onOpenGroup: null,
-                          onOpenProfiles: null,
+                  // 操作条注入卡片内部：卡片顶部多出独立一行，徽标不再与
+                  // 标题、右侧动作抢同一块空间。正文的禁用遮罩由卡片施加，
+                  // 这样操作条不会被一起灰度化。
+                  child: DashboardEditBar(
+                    bar: Row(
+                      children: [
+                        ReorderableDragStartListener(
+                          index: index,
+                          child: _DragBadge(),
                         ),
-                      ),
-                      // 左右各骑在卡片边缘 14dp：页面横向留白 16dp，够放下一半
-                      // 徽标，同时不压住卡内从 20dp 才开始的标题与右侧动作。
-                      Positioned(
-                        top: 6,
-                        right: -14,
-                        child: _RemoveBadge(
+                        const Spacer(),
+                        _RemoveBadge(
                           onPressed: () => ref
                               .read(dashboardWidgetsProvider.notifier)
                               .remove(widget),
                         ),
-                      ),
-                      Positioned(
-                        top: 6,
-                        left: -14,
-                        child: ReorderableDragStartListener(
-                          index: index,
-                          child: _DragBadge(),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: buildDashboardCard(
+                      widget,
+                      onOpenConnections: null,
+                      onOpenGroup: null,
+                      onOpenProfiles: null,
+                    ),
                   ),
                 );
               },

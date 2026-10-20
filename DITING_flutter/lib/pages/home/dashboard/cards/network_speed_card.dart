@@ -38,20 +38,17 @@ class NetworkSpeedCard extends ConsumerWidget {
     );
     return DashboardCard(
       semanticLabel: '网络速率',
-      // 图表要贴着卡片下沿出血，因此这一张必须裁剪。
+      // 图表从卡片左右与下沿出血，因此这一张必须裁剪。
       clipBehavior: Clip.antiAlias,
-      // `.horizontal` 是左右之和，直接 `/2` 得到的是整条边距（20），再叠一层
-      // 内边距就把标题推到 40；这里按单边取半：图表 10，文字 20。
-      padding: EdgeInsets.only(
-        top: cardPadding.top,
-        left: cardPadding.left / 2,
-        right: cardPadding.right / 2,
-      ),
+      // 图表要真正贴边：只留顶部内边距，左右由文字块自己让出。此前按
+      // `EdgeInsets.horizontal / 2` 取「一半」得到的仍是整条边距，图上左右
+      // 各余一条 10dp 的白边，看起来像缩进错了。
+      padding: EdgeInsets.only(top: cardPadding.top),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: cardPadding.left / 2),
+            padding: EdgeInsets.symmetric(horizontal: cardPadding.left),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 12,
