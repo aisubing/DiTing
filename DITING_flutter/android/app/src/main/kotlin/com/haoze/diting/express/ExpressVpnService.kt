@@ -16,8 +16,10 @@ import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
+import com.haoze.diting.log.RaceLogWriter
 import tunnel.BatchLogCallback
 import tunnel.Engine
+import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 
 /// Express-mode VpnService: the same Go engine as normal mode, but the TUN
@@ -116,6 +118,41 @@ class ExpressVpnService : VpnService() {
             goEngine.setBatchLogCallback(object : BatchLogCallback {
                 override fun onDNSQueryBatch(jsonLogs: String) {
                     DnsLogWriter.writeBatch(this@ExpressVpnService, DnsLogWriter.DB_EXPRESS, logMode, jsonLogs)
+                }
+            })
+            goEngine.setRaceLogCallback(object : RaceLogCallback {
+                override fun onRaceResult(
+                    queryName: String,
+                    queryType: Long,
+                    strategy: String,
+                    providerCount: Long,
+                    success: Boolean,
+                    elapsedMs: Long,
+                    selectedProviderID: String,
+                    selectedElapsedMs: Long,
+                    winnerProviderID: String,
+                    winnerElapsedMs: Long,
+                    fallbackUsed: Boolean,
+                    fallbackSuccess: Boolean,
+                    errorMessage: String,
+                ) {
+                    RaceLogWriter.write(
+                        this@ExpressVpnService,
+                        DnsLogWriter.DB_EXPRESS,
+                        queryName = queryName,
+                        queryType = queryType.toInt(),
+                        strategy = strategy,
+                        providerCount = providerCount.toInt(),
+                        success = success,
+                        elapsedMs = elapsedMs,
+                        selectedProviderId = selectedProviderID,
+                        selectedElapsedMs = selectedElapsedMs,
+                        winnerProviderId = winnerProviderID,
+                        winnerElapsedMs = winnerElapsedMs,
+                        fallbackUsed = fallbackUsed,
+                        fallbackSuccess = fallbackSuccess,
+                        errorMessage = errorMessage,
+                    )
                 }
             })
             goEngine.setFilterDNS(true)

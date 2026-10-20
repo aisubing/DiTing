@@ -15,6 +15,16 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：缓存表与竞速排行要按旧版口径聚合，别把失败摊给某个服务商
+
+- Go 的 DNS 缓存是纯内存分片 LRU（`dns_cache.go`），没有任何枚举接口；日志页「缓存表」只能读旧版 Room 写入的 `dns_cache` 表。表里的行是 1.4.3 留下的快照，Go 引擎不会往里写，所以升级后看到空表属正常——空状态文案必须如实说明，不能写「启动后会写入缓存表」。
+- 旧版 `DnsCacheDao` 只展示 `expiresAt > now` 的行；Dart 侧查询漏了这条过滤会把过期条目当场显示成 TTL 0，看着像缓存坏掉。
+- `RaceLogDao.winnerStats` 的口径是 `success = 1 AND winnerProviderId IS NOT NULL` 再按服务商分组。若直接 `GROUP BY winnerProviderId` 并顺手 `SUM(success = 0)`，失败行（winner 为 NULL）会被算到某个服务商头上；失败数应来自整表汇总，排行只统计胜出。
+- 竞速回调对单服务商模式也会触发（`resolver_strategy.go` 里 single 走同一路径），因此排行数据不区分模式，只在 UI 上说明「单模式下这里是上次多路记录」即可。
+- 原生侧只有 provider id，显示名要在 Dart 用 `defaultDnsProviders` + `parseUserProviders` 解析；用户自定义服务商的名字就来自 prefs。
+- 三个服务（普通/极速/服务器）都要注册 `setRaceLogCallback`：漏一个模式，该模式下的竞速页就永远空白。
+- 给设备插测试行时，`adb shell run-as ... sqlite3 "insert ... '...'"` 经多层引号会被吃掉；把 SQL 写到本地文件、`base64 -w0` 后 `echo $B64 | base64 -d | sqlite3 <db>` 最稳。验完必须删掉测试行（`dns_log`/`dns_race_log`/`dns_cache` 三张表一起清），并复原 `dns_resolution_mode`、`dns_log_mode`。
+
 ### 2026-10-20：日志页读真实库，但顶部统计不随查询变化；轮询要覆盖三种模式
 
 - 日志列表改读 `dns_log` 后，顶部「今日查询/缓存命中/已拦截/平均延迟」仍长时间停在 0：统计来自 `status` 的 `stats`，而状态只在启动、回前台、手动操作时同步。服务持续运行期间必须定时轮询（5s），并在启动成功后补一次短延迟刷新（700ms）。

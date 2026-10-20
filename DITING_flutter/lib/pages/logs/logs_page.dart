@@ -6,13 +6,12 @@
 /// （`docs/refactor/05-traffic-log-system.md` §3.3），拆页会让一次切换变成两次
 /// 导航，也保不住搜索框与筛选条件。
 ///
-/// 数据全部来自 `mockLogs` / `mockDnsCache` / `mockRaceRanking`；清空只改页面
-/// 本地状态，不碰任何 provider——演示页不该把自己的临时操作写进全局状态。
-///
-/// 「请求」视图已经改为读取原生服务写入的 `dns_log`；缓存表与竞速排行仍用
-/// 演示数据，等对应的 Go 回调接进来后再替换。
+/// 「请求」读原生写入的 `dns_log`，「缓存表」读旧版 `dns_cache`（Go 只在内存
+/// 里维护 LRU，没有枚举接口），「竞速排行」由原生 `RaceLogWriter` 落库后在
+/// Dart 侧聚合。清空只删 `dns_log`，不碰缓存与竞速历史。
 library;
 
+import 'package:diting/data/db/dns_cache_repository.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/appearance_providers.dart';
@@ -83,9 +82,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         entry,
   ];
 
-  List<MockDnsCacheEntry> get _sortedCache =>
-      [...mockDnsCache]..sort((a, b) => b.hits.compareTo(a.hits));
-
   Future<void> _clearLogs() async {
     final localizations = UiLocalizations.of(context);
     final confirmed = await showFloatingDialog<bool>(
@@ -109,8 +105,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     if (confirmed != true || !mounted) {
       return;
     }
-    final repository = await ref.read(dnsLogRepositoryProvider.future);
-    await repository?.clear();
+    final db = await ref.read(activeLogDatabaseProvider.future);
+    await db?.delete('dns_log');
     ref.read(dnsLogRevisionProvider.notifier).bump();
   }
 
@@ -153,7 +149,6 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   Widget build(BuildContext context) {
     final stats = ref.watch(serviceStatsProvider);
     final asyncLogs = ref.watch(dnsLogsProvider);
-    final resolution = ref.watch(resolutionModeProvider);
     final colorScheme = context.colorScheme;
     final all = [
       for (final record in asyncLogs.value ?? const <DnsLogRecord>[])
@@ -228,8 +223,11 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   : asyncLogs.hasError
                   ? const [_LogsError()]
                   : _requestChildren(visible),
-            _LogsView.cache => _cacheChildren(),
-            _LogsView.race => _raceChildren(resolution),
+            _LogsView.cache => _cacheChildren(ref.watch(dnsCacheProvider)),
+            _LogsView.race => _raceChildren(
+              ref.watch(resolutionModeProvider),
+              ref.watch(raceRankingProvider),
+            ),
           },
         ],
       ),
@@ -286,18 +284,36 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       ),
   ];
 
-  List<Widget> _cacheChildren() => [
-    generateSection(
-      title: 'DNS 缓存',
-      footer: '按命中次数排序。TTL 归零后，下一轮缓存清扫才会移除条目——所以这里能看到 '
-          'TTL 很小但仍在列表里的记录。',
-      items: [
-        for (final entry in _sortedCache) _CacheRow(entry: entry),
-      ],
-    ),
+  List<Widget> _cacheChildren(AsyncValue<List<DnsCacheRecord>> cache) => [
+    if (cache.isLoading && !cache.hasValue)
+      const _LogsLoading()
+    else if (cache.hasError)
+      const _LogsError()
+    else if ((cache.value ?? const []).isEmpty)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: NullStatus(
+          label: '暂无缓存条目',
+          description: 'Go 引擎的缓存只在内存里，不落这张表；这里显示的是旧版 1.4.3 '
+              '遗留、且尚未过期的条目。',
+          illustration: NullStatusIllustration.logs,
+        ),
+      )
+    else
+      generateSection(
+        title: 'DNS 缓存',
+        footer: '按命中次数排序，只显示尚未过期的旧版缓存条目；'
+            '当前引擎的命中率见顶部「缓存命中」。',
+        items: [
+          for (final entry in cache.value!) _CacheRow(entry: entry),
+        ],
+      ),
   ];
 
-  List<Widget> _raceChildren(ResolutionMode resolution) => [
+  List<Widget> _raceChildren(
+    ResolutionMode resolution,
+    AsyncValue<RaceRankingBoard> ranking,
+  ) => [
     if (resolution.isSingle)
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -310,13 +326,31 @@ class _LogsPageState extends ConsumerState<LogsPage> {
           ),
         ),
       ),
-    generateSection(
-      title: '上游竞速排行',
-      footer: '胜出次数是「最先返回」的次数；失败数是超时或解析失败的次数。',
-      items: [
-        for (final entry in mockRaceRanking) _RaceRow(entry: entry),
-      ],
-    ),
+    if (ranking.isLoading && !ranking.hasValue)
+      const _LogsLoading()
+    else if (ranking.hasError)
+      const _LogsError()
+    else if ((ranking.value?.entries ?? const []).isEmpty)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: NullStatus(
+          label: '暂无竞速记录',
+          description: '切换到并行竞速或主备切换模式后，每次多路上游解析都会记录胜出服务商。',
+          illustration: NullStatusIllustration.logs,
+        ),
+      )
+    else
+      generateSection(
+        title: '上游竞速排行',
+        footer: '胜出次数是「最先返回」的次数；整轮失败共 '
+            '${ranking.value!.summary.failures} 次，平均耗时 '
+            '${ranking.value!.summary.averageLatencyMs}ms（共 '
+            '${ranking.value!.summary.requests} 次多路解析）。',
+        items: [
+          for (final (index, entry) in ranking.value!.entries.indexed)
+            _RaceRow(rank: index + 1, entry: entry),
+        ],
+      ),
   ];
 }
 

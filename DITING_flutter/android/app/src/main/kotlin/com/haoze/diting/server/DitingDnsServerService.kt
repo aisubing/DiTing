@@ -17,8 +17,10 @@ import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
+import com.haoze.diting.log.RaceLogWriter
 import tunnel.BatchLogCallback
 import tunnel.Engine
+import tunnel.RaceLogCallback
 import java.util.concurrent.atomic.AtomicInteger
 
 /// LAN DNS server backed by the same Go engine as 1.4.3.
@@ -101,6 +103,41 @@ class DitingDnsServerService : Service() {
                             DnsLogWriter.DB_NORMAL,
                             logMode,
                             jsonLogs,
+                        )
+                    }
+                })
+                created.setRaceLogCallback(object : RaceLogCallback {
+                    override fun onRaceResult(
+                        queryName: String,
+                        queryType: Long,
+                        strategy: String,
+                        providerCount: Long,
+                        success: Boolean,
+                        elapsedMs: Long,
+                        selectedProviderID: String,
+                        selectedElapsedMs: Long,
+                        winnerProviderID: String,
+                        winnerElapsedMs: Long,
+                        fallbackUsed: Boolean,
+                        fallbackSuccess: Boolean,
+                        errorMessage: String,
+                    ) {
+                        RaceLogWriter.write(
+                            this@DitingDnsServerService,
+                            DnsLogWriter.DB_NORMAL,
+                            queryName = queryName,
+                            queryType = queryType.toInt(),
+                            strategy = strategy,
+                            providerCount = providerCount.toInt(),
+                            success = success,
+                            elapsedMs = elapsedMs,
+                            selectedProviderId = selectedProviderID,
+                            selectedElapsedMs = selectedElapsedMs,
+                            winnerProviderId = winnerProviderID,
+                            winnerElapsedMs = winnerElapsedMs,
+                            fallbackUsed = fallbackUsed,
+                            fallbackSuccess = fallbackSuccess,
+                            errorMessage = errorMessage,
                         )
                     }
                 })

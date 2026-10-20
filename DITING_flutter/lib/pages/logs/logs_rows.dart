@@ -59,7 +59,7 @@ class _RequestRow extends StatelessWidget {
 class _CacheRow extends StatelessWidget {
   const _CacheRow({required this.entry});
 
-  final MockDnsCacheEntry entry;
+  final DnsCacheRecord entry;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +72,7 @@ class _CacheRow extends StatelessWidget {
       ),
       title: Text(entry.domain, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        '${entry.answer} · TTL ${entry.ttl}s',
+        '${_queryTypeLabel(entry.queryType)} · ${entry.responseSize}B',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppTextStyle.footnote
@@ -80,29 +80,41 @@ class _CacheRow extends StatelessWidget {
             .copyWith(fontFamily: 'JetBrainsMono'),
       ),
       trailing: Text(
-        '${entry.hits} 次',
+        'TTL ${entry.remainingTtlSeconds}s · ${entry.hitCount} 次',
         style: AppTextStyle.caption1.of(context).copyWith(
-          color: entry.ttl < 30 ? colorScheme.warning : colorScheme.success,
+          color: entry.remainingTtlSeconds < 30
+              ? colorScheme.warning
+              : colorScheme.success,
         ),
       ),
     );
   }
 }
 
+String _queryTypeLabel(int type) => switch (type) {
+  1 => 'A',
+  2 => 'NS',
+  5 => 'CNAME',
+  6 => 'SOA',
+  12 => 'PTR',
+  15 => 'MX',
+  16 => 'TXT',
+  28 => 'AAAA',
+  33 => 'SRV',
+  65 => 'HTTPS',
+  _ => 'TYPE$type',
+};
+
 /// 一行竞速排行：名次 + 服务商 + 胜出次数 + 平均延迟。
 class _RaceRow extends StatelessWidget {
-  const _RaceRow({required this.entry});
+  const _RaceRow({required this.rank, required this.entry});
 
-  final MockRaceEntry entry;
-
-  /// 名次靠 mockRaceRanking 的既有顺序（已按胜出次数降序），不重排。
-  static int _rankOf(MockRaceEntry entry) =>
-      mockRaceRanking.indexOf(entry) + 1;
+  final int rank;
+  final RaceRanking entry;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final rank = _rankOf(entry);
     return ListItem(
       leading: SizedBox(
         width: 24,
@@ -116,7 +128,7 @@ class _RaceRow extends StatelessWidget {
       ),
       title: Text(entry.provider, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        '胜出 ${entry.wins} 次 · 失败 ${entry.failures} 次',
+        '胜出 ${entry.wins} 次',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

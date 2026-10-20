@@ -16,8 +16,10 @@ import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
+import com.haoze.diting.log.RaceLogWriter
 import tunnel.BatchLogCallback
 import tunnel.Engine
+import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 
 /// Full-tunnel VpnService backed by the unchanged 1.4.3 Go engine.
@@ -121,6 +123,41 @@ class DitingVpnService : VpnService() {
             goEngine.setBatchLogCallback(object : BatchLogCallback {
                 override fun onDNSQueryBatch(jsonLogs: String) {
                     DnsLogWriter.writeBatch(this@DitingVpnService, DnsLogWriter.DB_NORMAL, logMode, jsonLogs)
+                }
+            })
+            goEngine.setRaceLogCallback(object : RaceLogCallback {
+                override fun onRaceResult(
+                    queryName: String,
+                    queryType: Long,
+                    strategy: String,
+                    providerCount: Long,
+                    success: Boolean,
+                    elapsedMs: Long,
+                    selectedProviderID: String,
+                    selectedElapsedMs: Long,
+                    winnerProviderID: String,
+                    winnerElapsedMs: Long,
+                    fallbackUsed: Boolean,
+                    fallbackSuccess: Boolean,
+                    errorMessage: String,
+                ) {
+                    RaceLogWriter.write(
+                        this@DitingVpnService,
+                        DnsLogWriter.DB_NORMAL,
+                        queryName = queryName,
+                        queryType = queryType.toInt(),
+                        strategy = strategy,
+                        providerCount = providerCount.toInt(),
+                        success = success,
+                        elapsedMs = elapsedMs,
+                        selectedProviderId = selectedProviderID,
+                        selectedElapsedMs = selectedElapsedMs,
+                        winnerProviderId = winnerProviderID,
+                        winnerElapsedMs = winnerElapsedMs,
+                        fallbackUsed = fallbackUsed,
+                        fallbackSuccess = fallbackSuccess,
+                        errorMessage = errorMessage,
+                    )
                 }
             })
             goEngine.setFilterDNS(true)
