@@ -14,8 +14,8 @@ class HttpInspectionPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(httpInspectionProvider);
-    final apps = ref.watch(hubAppSelectionsProvider)[
-        HubAppPool.httpInspection] ??
+    final apps =
+        ref.watch(hubAppSelectionsProvider)[HubAppPool.httpInspection] ??
         const <String>{};
     final notifier = ref.read(httpInspectionProvider.notifier);
     final canUse = state.caReady;
@@ -61,9 +61,7 @@ class HttpInspectionPage extends ConsumerWidget {
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.verified),
                 title: const Text('CA 证书'),
-                subtitle: Text(
-                  state.caReady ? '证书已就绪，可查看或重置' : '未安装或未验证，点击配置',
-                ),
+                subtitle: Text(state.caReady ? '证书已就绪，可查看或重置' : '未安装或未验证，点击配置'),
                 onTap: () => context.push('/hub/https-inspection/ca'),
               ),
             ],
@@ -160,8 +158,8 @@ class _HttpInspectionAppsPageState
 
   @override
   Widget build(BuildContext context) {
-    final selected = ref.watch(hubAppSelectionsProvider)[
-        HubAppPool.httpInspection] ??
+    final selected =
+        ref.watch(hubAppSelectionsProvider)[HubAppPool.httpInspection] ??
         const <String>{};
     final notifier = ref.read(hubAppSelectionsProvider.notifier);
     final query = _query.trim().toLowerCase();
@@ -197,6 +195,7 @@ class _HttpInspectionAppsPageState
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，'
                 '其他应用直接转发。选择应用会取消其「排除应用」状态。',
@@ -230,11 +229,15 @@ class _HttpInspectionAppsPageState
                   trailing: CommonCheckBox(
                     value: selected.contains(app.packageName),
                     isCircle: true,
-                    onChanged: (_) =>
-                        notifier.toggle(HubAppPool.httpInspection, app.packageName),
+                    onChanged: (_) => notifier.toggle(
+                      HubAppPool.httpInspection,
+                      app.packageName,
+                    ),
                   ),
-                  onTap: () =>
-                      notifier.toggle(HubAppPool.httpInspection, app.packageName),
+                  onTap: () => notifier.toggle(
+                    HubAppPool.httpInspection,
+                    app.packageName,
+                  ),
                 ),
             ],
             footer: visible.isEmpty ? '未找到匹配应用' : null,

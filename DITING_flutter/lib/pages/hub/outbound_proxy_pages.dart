@@ -180,8 +180,7 @@ class OutboundProxyAppsPage extends ConsumerStatefulWidget {
       _OutboundProxyAppsPageState();
 }
 
-class _OutboundProxyAppsPageState
-    extends ConsumerState<OutboundProxyAppsPage> {
+class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
   final _search = TextEditingController();
   String _query = '';
 
@@ -209,6 +208,7 @@ class _OutboundProxyAppsPageState
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '选择提供本地代理端口的应用。代理应用本身会绕过 DITING。',
                 style: context.listSubtitleStyle,
@@ -242,9 +242,12 @@ class _OutboundProxyAppsPageState
                       ? const SelectionCheck()
                       : null,
                   onTap: () {
-                    ref.read(outboundProxyProvider.notifier).update(
-                      (current) => current.copyWith(appPackage: app.packageName),
-                    );
+                    ref
+                        .read(outboundProxyProvider.notifier)
+                        .update(
+                          (current) =>
+                              current.copyWith(appPackage: app.packageName),
+                        );
                     context.pop();
                   },
                 ),

@@ -125,6 +125,7 @@ class _AppSelectionScaffoldState extends State<_AppSelectionScaffold> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(widget.info, style: context.listSubtitleStyle),
             ),
           ),
@@ -171,10 +172,7 @@ class _AppSelectionScaffoldState extends State<_AppSelectionScaffold> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: TonalButton(
-              label: '保存',
-              onPressed: dirty ? _save : null,
-            ),
+            child: TonalButton(label: '保存', onPressed: dirty ? _save : null),
           ),
           const SizedBox(height: 24),
         ],

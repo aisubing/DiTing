@@ -176,7 +176,7 @@ class CaCertificateGuidePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonScaffold(
       title: 'CA 证书安装与卸载指南',
-      body: ListView(
+      body: PageBody(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: const [
           _GuideHeading('一、如何安装 CA 证书'),
@@ -233,7 +233,10 @@ class _GuideHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 6),
-      child: Text(text, style: AppTextStyle.title3.of(context, emphasized: true)),
+      child: Text(
+        text,
+        style: AppTextStyle.title3.of(context, emphasized: true),
+      ),
     );
   }
 }
@@ -247,7 +250,10 @@ class _GuideBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: AppTextStyle.body.of(context).copyWith(height: 1.6)),
+      child: Text(
+        text,
+        style: AppTextStyle.body.of(context).copyWith(height: 1.6),
+      ),
     );
   }
 }

@@ -32,6 +32,7 @@ class AgentProvidersPage extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '点选下方预设厂商会自动预填接口地址；模型不预置硬编码，'
                 '填好 API Key 后即可在线拉取并点选。编辑时若 API Key 留空则保留原密钥。',
@@ -104,7 +105,9 @@ class AgentProvidersPage extends ConsumerWidget {
                     trailing: TonalChip(
                       label: added.contains(preset.id) ? '已添加' : '添加',
                       color: added.contains(preset.id)
-                          ? context.raisedSurfaceLevel.colorOf(context.colorScheme)
+                          ? context.raisedSurfaceLevel.colorOf(
+                              context.colorScheme,
+                            )
                           : context.colorScheme.primary,
                       foregroundColor: added.contains(preset.id)
                           ? context.colorScheme.onSurfaceVariant
@@ -136,21 +139,24 @@ class AgentProvidersPage extends ConsumerWidget {
       return;
     }
     final current = ref.read(agentApiProvider);
-    final id = existing?.id ?? 'provider_${DateTime.now().microsecondsSinceEpoch}';
-    ref.read(agentApiProvider.notifier).saveProvider(
-      AiProviderConfig(
-        id: id,
-        name: result.name,
-        baseUrl: result.baseUrl,
-        model: result.model,
-        presetId: preset?.id ?? existing?.presetId ?? '',
-        hasKey: result.key.isNotEmpty || (existing?.hasKey ?? false),
-      ),
-    );
+    final id =
+        existing?.id ?? 'provider_${DateTime.now().microsecondsSinceEpoch}';
+    ref
+        .read(agentApiProvider.notifier)
+        .saveProvider(
+          AiProviderConfig(
+            id: id,
+            name: result.name,
+            baseUrl: result.baseUrl,
+            model: result.model,
+            presetId: preset?.id ?? existing?.presetId ?? '',
+            hasKey: result.key.isNotEmpty || (existing?.hasKey ?? false),
+          ),
+        );
     if (current.providers.isEmpty) {
-      ref.read(agentApiProvider.notifier).update(
-        (state) => state.copyWith(activeProviderId: id),
-      );
+      ref
+          .read(agentApiProvider.notifier)
+          .update((state) => state.copyWith(activeProviderId: id));
     }
   }
 
@@ -288,9 +294,9 @@ class _ProviderEditorState extends State<_ProviderEditor> {
           if (_error != null)
             Text(
               _error!,
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: context.colorScheme.error,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: context.colorScheme.error),
             ),
         ],
       ),
@@ -359,7 +365,9 @@ class AgentParamsPage extends ConsumerWidget {
                 for (final entry in _templates.entries)
                   TonalChip(
                     label: entry.key,
-                    color: context.raisedSurfaceLevel.colorOf(context.colorScheme),
+                    color: context.raisedSurfaceLevel.colorOf(
+                      context.colorScheme,
+                    ),
                     foregroundColor: context.colorScheme.onSurfaceVariant,
                     onPressed: () => notifier.update(
                       (current) => current.copyWith(systemPrompt: entry.value),
@@ -377,9 +385,9 @@ class AgentParamsPage extends ConsumerWidget {
                 subtitle: Text(temperatureLabel),
                 trailing: Text(
                   state.temperature.toStringAsFixed(1),
-                  style: AppTextStyle.footnote.of(context).copyWith(
-                    color: context.colorScheme.primary,
-                  ),
+                  style: AppTextStyle.footnote
+                      .of(context)
+                      .copyWith(color: context.colorScheme.primary),
                 ),
               ),
             ],
@@ -392,9 +400,8 @@ class AgentParamsPage extends ConsumerWidget {
               max: 2,
               divisions: 20,
               onChanged: (value) => notifier.update(
-                (current) => current.copyWith(
-                  temperature: (value * 10).round() / 10,
-                ),
+                (current) =>
+                    current.copyWith(temperature: (value * 10).round() / 10),
               ),
             ),
           ),

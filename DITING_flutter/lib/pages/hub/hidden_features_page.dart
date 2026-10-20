@@ -34,6 +34,7 @@ class HiddenFeaturesPage extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，'
                 '默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。',
@@ -47,7 +48,10 @@ class HiddenFeaturesPage extends ConsumerWidget {
               items: [
                 for (final feature in entry.value)
                   ListItem(
-                    leading: GlyphIcon(glyphByName(feature.glyphName), size: 20),
+                    leading: GlyphIcon(
+                      glyphByName(feature.glyphName),
+                      size: 20,
+                    ),
                     title: Text(feature.title),
                     subtitle: Text(feature.description),
                     trailing: CommonCheckBox(
@@ -62,9 +66,7 @@ class HiddenFeaturesPage extends ConsumerWidget {
                   ),
               ],
             ),
-          const ListFooter(
-            text: '「隐藏功能」卡片固定常驻，确保随时可以在这里恢复。',
-          ),
+          const ListFooter(text: '「隐藏功能」卡片固定常驻，确保随时可以在这里恢复。'),
           const SizedBox(height: 24),
         ],
       ),

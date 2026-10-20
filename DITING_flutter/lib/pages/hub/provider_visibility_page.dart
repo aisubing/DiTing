@@ -15,9 +15,7 @@ class ProviderVisibilityPage extends StatefulWidget {
 }
 
 class _ProviderVisibilityPageState extends State<ProviderVisibilityPage> {
-  final Set<ProviderProtocol> _visibleProtocols = {
-    ...ProviderProtocol.values,
-  };
+  final Set<ProviderProtocol> _visibleProtocols = {...ProviderProtocol.values};
   final Set<String> _hiddenProviders = {};
 
   bool _visible(ProviderProtocol protocol, MockProvider provider) =>
@@ -48,6 +46,7 @@ class _ProviderVisibilityPageState extends State<ProviderVisibilityPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '关闭竞速模式时，首页解析服务下拉框仅显示这里选中的服务。'
                 '当前正在使用的服务会始终保留。',
@@ -67,7 +66,9 @@ class _ProviderVisibilityPageState extends State<ProviderVisibilityPage> {
     final providers = mockProviders
         .where((provider) => provider.protocol == protocol)
         .toList(growable: false);
-    final selectedCount = providers.where((provider) => _visible(protocol, provider)).length;
+    final selectedCount = providers
+        .where((provider) => _visible(protocol, provider))
+        .length;
     final protocolVisible = _visibleProtocols.contains(protocol);
     return generateSection(
       title: '${protocol.label} 服务',

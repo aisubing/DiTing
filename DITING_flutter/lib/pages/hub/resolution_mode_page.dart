@@ -44,10 +44,15 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Row(
                 spacing: 12,
                 children: [
-                  GlyphIcon(AppGlyphs.shuffle, size: 24, color: colorScheme.primary),
+                  GlyphIcon(
+                    AppGlyphs.shuffle,
+                    size: 24,
+                    color: colorScheme.primary,
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,6 +271,7 @@ class _ResolutionModeConfigPageState
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Row(
                 spacing: 12,
                 children: [
@@ -286,7 +292,9 @@ class _ResolutionModeConfigPageState
                     label: valid ? '已就绪' : '待配置',
                     color: valid
                         ? context.colorScheme.primary
-                        : context.raisedSurfaceLevel.colorOf(context.colorScheme),
+                        : context.raisedSurfaceLevel.colorOf(
+                            context.colorScheme,
+                          ),
                     foregroundColor: valid
                         ? context.colorScheme.onPrimary
                         : context.colorScheme.onSurfaceVariant,
@@ -329,17 +337,12 @@ class _ResolutionModeConfigPageState
                   ),
                   title: Text(provider.name),
                   subtitle: Text(provider.address),
-                  trailing: _mode == ResolutionMode.primaryBackup &&
+                  trailing:
+                      _mode == ResolutionMode.primaryBackup &&
                           raceIds.contains(provider.id)
                       ? _OrderButtons(
-                          onUp: () => _move(
-                            _order.indexOf(provider.id),
-                            -1,
-                          ),
-                          onDown: () => _move(
-                            _order.indexOf(provider.id),
-                            1,
-                          ),
+                          onUp: () => _move(_order.indexOf(provider.id), -1),
+                          onDown: () => _move(_order.indexOf(provider.id), 1),
                         )
                       : null,
                   onTap: () => _select(provider),

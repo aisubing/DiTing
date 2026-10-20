@@ -23,13 +23,18 @@ class AgentApiPage extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 12,
                 children: [
                   Row(
                     children: [
-                      GlyphIcon(AppGlyphs.sparkle, size: 24, color: colorScheme.primary),
+                      GlyphIcon(
+                        AppGlyphs.sparkle,
+                        size: 24,
+                        color: colorScheme.primary,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -37,10 +42,10 @@ class AgentApiPage extends ConsumerWidget {
                           style: context.listTitleStyle,
                         ),
                       ),
-                      CommonCheckBox(
+                      Switch(
                         value: state.enabled,
                         onChanged: (value) => notifier.update(
-                          (current) => current.copyWith(enabled: value ?? false),
+                          (current) => current.copyWith(enabled: value),
                         ),
                       ),
                     ],
@@ -55,7 +60,11 @@ class AgentApiPage extends ConsumerWidget {
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      MetaChip(label: provider?.hasKey == true ? '密钥已配置' : '缺少 API Key'),
+                      MetaChip(
+                        label: provider?.hasKey == true
+                            ? '密钥已配置'
+                            : '缺少 API Key',
+                      ),
                       MetaChip(
                         label: provider == null
                             ? '未选择厂商'
@@ -74,9 +83,7 @@ class AgentApiPage extends ConsumerWidget {
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.devices),
                 title: const Text('AI 厂商管理'),
-                subtitle: Text(
-                  '${state.providers.length} 个已配置厂商 · 选择接口与模型',
-                ),
+                subtitle: Text('${state.providers.length} 个已配置厂商 · 选择接口与模型'),
                 onTap: () => context.push('/hub/agent/providers'),
               ),
               ListItem(

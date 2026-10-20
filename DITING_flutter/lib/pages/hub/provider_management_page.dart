@@ -142,10 +142,15 @@ class _ProviderManagementPageState
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Row(
                 spacing: 12,
                 children: [
-                  GlyphIcon(AppGlyphs.dns, size: 22, color: colorScheme.primary),
+                  GlyphIcon(
+                    AppGlyphs.dns,
+                    size: 22,
+                    color: colorScheme.primary,
+                  ),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,14 +213,12 @@ class _ProviderManagementPageState
               items: const [
                 ListItem(
                   title: Text('暂无自定义服务商'),
-                  subtitle: Text('点击右上角「新增」添加 DoH、DoT 或传统 DNS 服务'),
+                  subtitle: Text('点击右上角「+」添加 DoH、DoT 或传统 DNS 服务'),
                   leading: GlyphIcon(AppGlyphs.addCircle),
                 ),
               ],
             ),
-          const ListFooter(
-            text: '内置服务商由应用维护，只能切换；自定义服务商可编辑或删除。',
-          ),
+          const ListFooter(text: '内置服务商由应用维护，只能切换；自定义服务商可编辑或删除。'),
           const SizedBox(height: 24),
         ],
       ),
@@ -334,9 +337,8 @@ class _ProviderEditorState extends State<_ProviderEditor> {
       });
       return;
     }
-    Navigator.of(context).pop(
-      _ProviderDraft(name: name, protocol: _protocol, address: address),
-    );
+    Navigator.of(context)
+        .pop(_ProviderDraft(name: name, protocol: _protocol, address: address));
   }
 
   @override
@@ -379,9 +381,9 @@ class _ProviderEditorState extends State<_ProviderEditor> {
           if (_error != null)
             Text(
               _error!,
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: context.colorScheme.error,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: context.colorScheme.error),
             ),
         ],
       ),

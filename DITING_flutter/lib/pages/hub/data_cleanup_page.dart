@@ -111,6 +111,7 @@ class DataCleanupPage extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '以下操作会立即删除本机数据，删除后无法恢复。'
                 '重要规则或配置请在执行前备份。',

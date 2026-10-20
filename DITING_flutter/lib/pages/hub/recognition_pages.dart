@@ -53,6 +53,7 @@ class _SponsorListPageState extends State<SponsorListPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '感谢每一位支持谛听项目的朋友！名单默认按赞助时间由早到晚排列，'
                 '可通过右上角按钮切换为由晚到早；与赞助金额无关，每一份支持都同样珍贵。',
@@ -64,11 +65,7 @@ class _SponsorListPageState extends State<SponsorListPage> {
             title: '赞助者（${names.length}）',
             items: [
               for (var index = 0; index < names.length; index++)
-                _MemberRow(
-                  name: names[index],
-                  index: index,
-                  badge: '赞助者',
-                ),
+                _MemberRow(name: names[index], index: index, badge: '赞助者'),
             ],
           ),
           const SizedBox(height: 24),
@@ -128,6 +125,7 @@ class _CoBuildersPageState extends State<CoBuildersPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '感谢每一位为谛听提出建议、帮助测试的共建者！名单按用户名称的字母顺序排列，'
                 '中文名称按拼音排序。',
@@ -182,9 +180,9 @@ class _MemberRow extends StatelessWidget {
         ),
         child: Text(
           initial,
-          style: AppTextStyle.subheadline.of(context, emphasized: true).copyWith(
-            color: colors[index % colors.length],
-          ),
+          style: AppTextStyle.subheadline
+              .of(context, emphasized: true)
+              .copyWith(color: colors[index % colors.length]),
         ),
       ),
       title: Text(name),

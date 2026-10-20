@@ -34,9 +34,7 @@ class _AutoUpdateSettingsPageState extends State<AutoUpdateSettingsPage> {
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.refresh),
                 title: const Text('自动更新规则订阅'),
-                subtitle: const Text(
-                  '在后台定期更新所有网络订阅，实际执行时间可能受系统调度影响',
-                ),
+                subtitle: const Text('在后台定期更新所有网络订阅，实际执行时间可能受系统调度影响'),
                 value: _enabled,
                 onChanged: (value) => setState(() => _enabled = value),
               ),
@@ -142,7 +140,10 @@ class MirrorTemplatesPage extends StatefulWidget {
 class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
   final List<({String name, String template})> _templates = [
     (name: 'GitHub 镜像', template: 'https://ghproxy.example.com/{url}'),
-    (name: 'Cloudflare 加速', template: 'https://cf.example.com/{scheme}/{host}/{path}'),
+    (
+      name: 'Cloudflare 加速',
+      template: 'https://cf.example.com/{scheme}/{host}/{path}',
+    ),
     (name: '内网镜像', template: 'http://10.0.0.2:8080/{urlEncoded}'),
   ];
 
@@ -151,17 +152,14 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
     return CommonScaffold(
       title: '镜像站模板',
       iconActions: [
-        IconButtonData(
-          glyph: AppGlyphs.add,
-          tooltip: '添加模板',
-          onPressed: _add,
-        ),
+        IconButtonData(glyph: AppGlyphs.add, tooltip: '添加模板', onPressed: _add),
       ],
       body: PageBody(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '保存常用的订阅下载镜像。添加规则订阅时，可以直接选择这里的模板。',
                 style: context.listSubtitleStyle,
@@ -197,7 +195,8 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
                       ),
                       IconButton(
                         tooltip: '删除',
-                        onPressed: () => setState(() => _templates.removeAt(index)),
+                        onPressed: () =>
+                            setState(() => _templates.removeAt(index)),
                         icon: const GlyphIcon(AppGlyphs.delete, size: 20),
                       ),
                     ],
@@ -235,8 +234,11 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
       context: context,
       child: StatefulBuilder(
         builder: (context, setDialogState) {
-          final match = RegExp(r'\{(url|scheme|urlEncoded|host|path|pathAndQuery)\}');
-          final valid = template.text.startsWith('http') && match.hasMatch(template.text);
+          final match = RegExp(
+            r'\{(url|scheme|urlEncoded|host|path|pathAndQuery)\}',
+          );
+          final valid =
+              template.text.startsWith('http') && match.hasMatch(template.text);
           return CommonDialog(
             title: initial == null ? '添加镜像站模板' : '编辑镜像站模板',
             hasFields: true,
@@ -262,13 +264,16 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
                   ),
                 ),
                 Text(
-                  valid ? '可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'
+                  valid
+                      ? '可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'
                       : '必须使用 HTTP(S) 并包含至少一个占位符',
-                  style: AppTextStyle.footnote.of(context).copyWith(
-                    color: valid
-                        ? context.colorScheme.onSurfaceVariant
-                        : context.colorScheme.error,
-                  ),
+                  style: AppTextStyle.footnote
+                      .of(context)
+                      .copyWith(
+                        color: valid
+                            ? context.colorScheme.onSurfaceVariant
+                            : context.colorScheme.error,
+                      ),
                 ),
               ],
             ),

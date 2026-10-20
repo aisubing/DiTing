@@ -26,8 +26,8 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
   @override
   Widget build(BuildContext context) {
     final inspection = ref.watch(httpInspectionProvider);
-    final inspectionApps = ref.watch(hubAppSelectionsProvider)[
-        HubAppPool.httpInspection] ??
+    final inspectionApps =
+        ref.watch(hubAppSelectionsProvider)[HubAppPool.httpInspection] ??
         const <String>{};
     final urlSubtitle = !inspection.caReady
         ? '未就绪 · 需先安装并验证 CA 根证书'
@@ -45,6 +45,7 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: CommonCard(
+              padding: const EdgeInsets.all(16),
               child: Text(
                 '统一管理域名过滤、URL 规则及规则覆写的总控开关、拦截策略与在线规则订阅。'
                 '黑名单、白名单与覆写名单可在功能中心中独立管理。',
@@ -184,7 +185,8 @@ class _BlockResponsePageState extends State<BlockResponsePage> {
                   onTap: () => setState(() => _mode = mode),
                 ),
             ],
-            footer: '动态策略开启时会临时覆盖以上选择：先返回 NODATA，'
+            footer:
+                '动态策略开启时会临时覆盖以上选择：先返回 NODATA，'
                 '高频请求后返回 NXDOMAIN。',
           ),
           generateSection(
@@ -204,7 +206,8 @@ class _BlockResponsePageState extends State<BlockResponsePage> {
                 onTap: _dynamic ? _editParameters : null,
               ),
             ],
-            footer: '正常客户端会缓存 NODATA 响应。动态策略主要用于持续重试或'
+            footer:
+                '正常客户端会缓存 NODATA 响应。动态策略主要用于持续重试或'
                 '忽略负缓存的请求。',
           ),
           const SizedBox(height: 24),
@@ -214,14 +217,15 @@ class _BlockResponsePageState extends State<BlockResponsePage> {
   }
 
   Future<void> _editParameters() async {
-    final result = await showFloatingDialog<({int threshold, int window, int duration})>(
-      context: context,
-      child: _DynamicParameterDialog(
-        threshold: _threshold,
-        window: _window,
-        duration: _duration,
-      ),
-    );
+    final result =
+        await showFloatingDialog<({int threshold, int window, int duration})>(
+          context: context,
+          child: _DynamicParameterDialog(
+            threshold: _threshold,
+            window: _window,
+            duration: _duration,
+          ),
+        );
     if (result == null || !mounted) {
       return;
     }
@@ -245,7 +249,8 @@ class _DynamicParameterDialog extends StatefulWidget {
   final int duration;
 
   @override
-  State<_DynamicParameterDialog> createState() => _DynamicParameterDialogState();
+  State<_DynamicParameterDialog> createState() =>
+      _DynamicParameterDialogState();
 }
 
 class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
@@ -278,11 +283,8 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
       setState(() => _error = error);
       return;
     }
-    Navigator.of(context).pop((
-      threshold: threshold!,
-      window: window!,
-      duration: duration!,
-    ));
+    Navigator.of(context)
+        .pop((threshold: threshold!, window: window!, duration: duration!));
   }
 
   @override
@@ -322,9 +324,9 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
           if (_error != null)
             Text(
               _error!,
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: context.colorScheme.error,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: context.colorScheme.error),
             ),
         ],
       ),
