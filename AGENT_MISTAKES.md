@@ -15,6 +15,13 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：嵌套 `Scaffold` 把浮条高度灌进 `padding.bottom`，页面视口停在浮条上沿
+
+- 浮条壳的 `Scaffold(extendBody: true)` 会把底栏高度写进正文的 `MediaQuery.padding.bottom`；内层页面的 `SafeArea` 又把它变成底部 `Padding`，滚动视口于是止于浮条上沿。浮条背后只剩页面背景，肉眼就是「悬浮底栏后面有一块矩形背景」。
+- 修复放在 `CommonScaffold` 的**正文**而不是整个壳：正文的 `padding.bottom` 取 `min(padding.bottom, viewPadding.bottom)`。`SafeArea` / `DockSpacer` 拿到系统安全区，同一 `Scaffold` 里的 SnackBar 仍按浮条高度布局，不会被浮条盖住。
+- 这类回归要量**滚动视口**的矩形（`ListView` 底部 == 屏高），不要量 `PageBody` 的 `MediaQuery.padding.bottom`：`SafeArea` 已经把 padding 消费掉了，读到恒为 0，用例会永远通过。
+- 探针在路由切换动画未结束时截图，会出现所有块同向平移（本次为 0.04×屏宽 ≈ 16.5dp），并连带把卡片误报成贴边/缩进异常；看到整页同向偏移先等 1–2 秒重截，别改布局。
+
 ### 2026-10-20：`CommonCard` 默认没有内边距；绕过 `PageBody` 的滚动页会把正文顶进半透明栏
 
 - `CommonCard` 的 `padding` 默认是 `EdgeInsets.zero`。列表卡片看起来有留白，是因为 `ListItem` 自带 16dp；自绘 `CommonCard(child: Text/Row)` 不传 `padding` 时正文会贴住圆角边缘。新增自定义卡先按 `EdgeInsets.all(16)` 起步，再在真机上量内容 x 是否与列表正文同为 32dp。

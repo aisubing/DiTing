@@ -304,11 +304,24 @@ class CommonScaffoldState extends State<CommonScaffold> {
           )
         : body;
     if (!isCompact) {
+      final media = MediaQuery.of(context);
+      // 底栏壳会把浮条高度写进 `padding.bottom`；页面用 `DockSpacer` 自己
+      // 给浮条让位，正文只该保留系统安全区。否则 `SafeArea` 会在浮条上沿
+      // 截断滚动视口，浮条背后露出一条页面背景。键盘弹出时取 min 归零，
+      // 不会多留一条系统栏。
+      final pagePadding = media.padding.copyWith(
+        bottom: math.min(media.padding.bottom, media.viewPadding.bottom),
+      );
       return AppBarInsetScope(
         child: Scaffold(
           appBar: appBar,
           extendBodyBehindAppBar: barFloats,
-          body: _BodyScope(child: content),
+          body: _BodyScope(
+            child: MediaQuery(
+              data: media.copyWith(padding: pagePadding),
+              child: content,
+            ),
+          ),
           resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
           backgroundColor: widget.backgroundColor,
         ),

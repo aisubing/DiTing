@@ -4,6 +4,7 @@ import 'package:diting/pages/hub/feature_hub_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -75,6 +76,19 @@ void main() {
     await tester.tap(find.text('腾讯 DNSPod'));
     await tester.pumpAndSettle();
     expect(find.text('选择解析服务商'), findsNothing);
+  });
+
+  testWidgets('浮条高度不截断页面的滚动视口', (tester) async {
+    await pumpApp(tester, initialLocation: Routes.settings);
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final list = find.descendant(
+      of: find.byType(PageBody),
+      matching: find.byType(ListView),
+    );
+    // `SafeArea` 会把外壳注入的浮条高度变成底部内边距，滚动视口便停在浮条
+    // 上沿；页面应一直铺到屏幕底，由 `DockSpacer` 在内容末尾给浮条让位。
+    expect(tester.getRect(list).bottom, screenHeight);
   });
 
   testWidgets('每个路由都能构建', (tester) async {
