@@ -117,6 +117,15 @@ kotlin {
     }
 }
 
+dependencies {
+    // Go userspace tunnel (gomobile AAR) reused unchanged from 1.4.3.
+    // Local x86_64 emulators need an amd64 build; pass
+    // -PtunnelAar=libs/tunnel-debug.aar to swap it in without touching the
+    // shipped arm64 artifact.
+    val tunnelAar = project.findProperty("tunnelAar")?.toString() ?: "libs/tunnel.aar"
+    implementation(files(tunnelAar))
+}
+
 flutter {
     source = "../.."
 }

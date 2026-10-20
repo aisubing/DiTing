@@ -13,3 +13,7 @@ key.properties
 **/*.keystore
 **/*.jks
 /build/
+
+# Local multi-ABI tunnel AAR for x86_64 emulator testing (built on demand).
+app/libs/tunnel-debug.aar
+app/libs/tunnel-debug-sources.jar

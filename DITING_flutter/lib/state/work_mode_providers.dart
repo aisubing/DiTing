@@ -1,9 +1,16 @@
 /// 演示用状态：工作模式、电源状态、服务商选择、服务器模式。
 library;
 
+import 'dart:async';
+
+import 'package:diting/data/db/rule_providers.dart';
+import 'package:diting/data/db/rule_snapshot.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/vpn/dns_config_builder.dart';
+import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 三种工作模式（上游 `ui/mode/AppWorkMode.kt`）。
@@ -69,6 +76,14 @@ class WorkModeNotifier extends Notifier<AppWorkMode> {
   void select(AppWorkMode mode) {
     state = mode;
     ref.read(legacySettingsProvider).setWorkModeRaw(mode.storageValue);
+    // The Go tunnel only serves normal mode; leaving it behind while the UI
+    // claims another mode would keep traffic redirected with no visible owner.
+    if (mode != AppWorkMode.normal) {
+      final power = ref.read(powerProvider);
+      if (power.isRunning || power == PowerState.starting) {
+        unawaited(ref.read(powerProvider.notifier).stop());
+      }
+    }
   }
 }
 
@@ -76,21 +91,144 @@ final workModeProvider = NotifierProvider<WorkModeNotifier, AppWorkMode>(
   WorkModeNotifier.new,
 );
 
-class PowerNotifier extends Notifier<PowerState> {
-  @override
-  PowerState build() => PowerState.stopped;
+/// Real normal-mode tunnel control; tests override it with a fake.
+final vpnControllerProvider = Provider<VpnController>(
+  (ref) => MethodChannelVpnController(),
+);
 
-  /// 模拟一次 900ms 的启动/停止。演示层不用真实定时器之外的东西，
-  /// 但必须让「启动中」这个中间态可见，否则三态按钮等于没演示。
+class PowerNotifier extends Notifier<PowerState> {
+  bool _disposed = false;
+  bool _pendingPermissionStart = false;
+
+  /// Last failure surfaced by the platform bridge; the UI shows the generic
+  /// [PowerState.error] label, but keeping the reason here makes device
+  /// diagnostics possible without a debugger.
+  String? lastError;
+
+  @override
+  PowerState build() {
+    ref.onDispose(() => _disposed = true);
+    ref.read(vpnControllerProvider).onPrepareResult = _onPrepareResult;
+    if (ref.read(legacySettingsProvider).vpnRunning) {
+      // The legacy flag survives process death; ask the service whether the
+      // tunnel is really alive before showing "running".
+      scheduleMicrotask(syncStatus);
+      return PowerState.starting;
+    }
+    return PowerState.stopped;
+  }
+
+  Future<void> syncStatus() async {
+    try {
+      final status = await ref.read(vpnControllerProvider).status();
+      if (_disposed) return;
+      ref.read(legacySettingsProvider).setVpnRunning(status.running);
+      if (status.error != null && !status.running) {
+        lastError = status.error;
+        state = PowerState.error;
+      } else {
+        state = status.running ? PowerState.running : PowerState.stopped;
+      }
+    } catch (_) {
+      if (!_disposed) state = PowerState.stopped;
+    }
+  }
+
   Future<void> toggle() async {
-    if (state.isBusy) {
+    if (state.isBusy) return;
+    if (state.isRunning) {
+      await stop();
       return;
     }
-    final wasRunning = state.isRunning;
-    state = wasRunning ? PowerState.stopping : PowerState.starting;
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    state = wasRunning ? PowerState.stopped : PowerState.running;
+    await _start();
   }
+
+  Future<void> _start() async {
+    if (ref.read(workModeProvider) != AppWorkMode.normal) {
+      _fail('当前工作模式尚未接入数据面');
+      return;
+    }
+    state = PowerState.starting;
+    lastError = null;
+    final controller = ref.read(vpnControllerProvider);
+    try {
+      final prepared = await controller.prepare();
+      if (_disposed) return;
+      if (!prepared) {
+        // The consent dialog is showing; _onPrepareResult continues the flow.
+        _pendingPermissionStart = true;
+        return;
+      }
+      await _launch();
+    } catch (error) {
+      _fail(error);
+    }
+  }
+
+  Future<void> _onPrepareResult(bool granted) async {
+    if (!_pendingPermissionStart) return;
+    _pendingPermissionStart = false;
+    if (_disposed) return;
+    if (!granted) {
+      state = PowerState.stopped;
+      return;
+    }
+    try {
+      await _launch();
+    } catch (error) {
+      _fail(error);
+    }
+  }
+
+  Future<void> _launch() async {
+    final settings = ref.read(legacySettingsProvider);
+    final repository = ref.read(ruleRepositoryProvider);
+    final rules = repository == null
+        ? ref.read(initialRulesProvider)
+        : await repository.loadAll();
+    if (_disposed) return;
+
+    final config = buildDnsConfig(settings);
+    final result = await ref.read(vpnControllerProvider).start(
+      VpnStartRequest(
+        dnsConfig: config.encode(settings),
+        ruleSnapshot: encodeRuleSnapshot(rules),
+        rewriteRules: encodeRewriteRules(rules),
+        bypassLan: settings.bypassLanEnabled,
+        ipv6Mode: settings.ipv6ModeRaw,
+        excludedPackages: settings.excludedPackages.toList(),
+      ),
+    );
+    if (_disposed) return;
+    if (!result.started) {
+      _fail(result.error ?? 'VPN 启动失败');
+      return;
+    }
+    settings.setVpnRunning(true);
+    state = PowerState.running;
+  }
+
+  Future<void> stop() async {
+    state = PowerState.stopping;
+    try {
+      await ref.read(vpnControllerProvider).stop();
+    } catch (error) {
+      lastError = _messageOf(error);
+    }
+    if (_disposed) return;
+    ref.read(legacySettingsProvider).setVpnRunning(false);
+    state = PowerState.stopped;
+  }
+
+  void _fail(Object error) {
+    lastError = error is String ? error : _messageOf(error);
+    ref.read(legacySettingsProvider).setVpnRunning(false);
+    state = PowerState.error;
+  }
+
+  static String _messageOf(Object error) => error is PlatformException
+      ? (error.message ?? error.code)
+      : error.toString();
 
   void fail() => state = PowerState.error;
 

@@ -15,6 +15,16 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-20：arm64-only AAR 在 x86_64 模拟器装得上、跑不起来
+
+- `abiList` 含 `arm64-v8a` 不代表模拟器能执行 arm64：APK 会装上 `lib/arm64-v8a/libgojni.so`，但进程是 x86_64，`System.loadLibrary` 报 `dlopen failed: library "libgojni.so" not found`。判「引擎不可用」前先 `unzip -l apk | grep lib/`，确认 ABI 与进程一致。
+- 本地联调用 `gomobile bind -target=android/arm64,android/amd64` 生成多 ABI AAR，Gradle 用 `-PtunnelAar=libs/tunnel-debug.aar` 切换；测试 AAR `gitignore`，release 仍只带 arm64，避免 APK 多出约 14 MB。
+- VPN 数据面验收要三层：`tun0` 出现 `10.0.0.2/30` → `ping 域名` 能解析（DNS 走 Go）→ `nc` 建 TCP 拿到 HTTP 200。用户态栈不回 ICMP 属预期，`ping` 的 100% loss 不能当失败。
+- `am force-stop` 不走 `onDestroy`，`vpn_running` 会残留 true；启动/回前台必须以原生 `status` 回写，否则首页谎报运行中。停止后 `tun0` 与 ServiceRecord 要等 3–5 秒才消失，别在 1 秒内判残留。
+- `MethodChannel.setMethodCallHandler` 在无 `WidgetsFlutterBinding` 的纯 provider 测试里会 assert；控制器把 handler 安装延迟到首次平台调用。
+- Flutter 页面的 `uiautomator dump` 可能返回上一屏 XML（本次 dump 是主题页、截图却是首页）；冲突时以截图为准，按旧 XML 改布局必然误伤。
+- 引擎日志在 logcat 的 `GoLog`（error 级别）；`ApplyRuleSnapshot`、`StartFull`、`HandleTCP` 是判断配置是否真正生效的最快证据。
+
 ### 2026-10-20：Room 库只能原文件打开；Maven 镜像要覆盖插件自带的 `buildscript`
 
 - 兼容旧库不能 `openDatabase(..., version:)`：带上 version 会改写 Room 的 `user_version`/触发迁移。做法是 `databaseExists` → 直接 `openDatabase(path)`，打开后核对 `user_version` 仍为 3，`-wal` 仍在。文件名固定 `diting_database` / `diting_express` / `diting_dns_rules`。

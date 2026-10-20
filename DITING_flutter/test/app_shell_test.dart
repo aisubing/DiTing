@@ -3,12 +3,14 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/pages/hub/feature_hub_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'support/fake_vpn_controller.dart';
 import 'support/test_hooks.dart';
 
 /// 整机冒烟：把真实 `DitingApp`（含路由、主题、scopes）挂起来。
@@ -20,12 +22,21 @@ import 'support/test_hooks.dart';
 void main() {
   installGlobalTestHooks();
 
-  Future<void> pumpApp(WidgetTester tester, {String? initialLocation}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    String? initialLocation,
+    FakeVpnController? vpn,
+  }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ProviderScope(child: DitingApp(initialLocation: initialLocation)),
+      ProviderScope(
+        overrides: [
+          if (vpn != null) vpnControllerProvider.overrideWithValue(vpn),
+        ],
+        child: DitingApp(initialLocation: initialLocation),
+      ),
     );
     // LocalizationsDelegate.load 是异步的，首帧之后要再 pump 一次才拿到文案。
     await tester.pump();
@@ -40,7 +51,10 @@ void main() {
   });
 
   testWidgets('电源按钮经历启动中并回到运行态', (tester) async {
-    await pumpApp(tester);
+    await pumpApp(
+      tester,
+      vpn: FakeVpnController(delay: const Duration(milliseconds: 200)),
+    );
     await tester.tap(find.byType(HomePowerButton));
     await tester.pump();
     expect(find.byType(CommonCircleLoading), findsOneWidget);

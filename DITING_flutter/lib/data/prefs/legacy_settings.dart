@@ -182,6 +182,87 @@ class LegacySettings {
   void setResolutionModeRaw(String storageValue) =>
       _store.putString(uiContainer, 'dns_resolution_mode', storageValue);
 
+  // ------------------------------------------------------------- dns upstream
+
+  bool get vpnRunning => _bool(uiContainer, 'vpn_running', false);
+
+  void setVpnRunning(bool value) =>
+      _store.putBool(uiContainer, 'vpn_running', value);
+
+  String get selectedProviderId =>
+      _string(uiContainer, 'selected_provider_id') ?? 'preset_alidns_dns';
+
+  String? get userProvidersJson =>
+      _string(uiContainer, 'user_providers_json');
+
+  List<String> get smartPredictionProviderIds =>
+      _idList('smart_prediction_provider_ids');
+
+  List<String> get parallelRaceProviderIds =>
+      _idList('parallel_race_provider_ids');
+
+  List<String> get primaryBackupProviderIds =>
+      _idList('primary_backup_provider_ids');
+
+  String get blockResponseModeRaw =>
+      _string(uiContainer, 'block_response_mode') ?? 'nxdomain';
+
+  bool get cacheEnabled =>
+      _bool(uiContainer, 'dns_cache_enabled_v2', true);
+
+  String get cacheModeRaw =>
+      _string(uiContainer, 'dns_cache_mode_v2') ?? 'limit_max_ttl';
+
+  int get cacheMaxTtlSeconds =>
+      _int(uiContainer, 'dns_cache_max_ttl_seconds_v2', 3600);
+
+  int get cacheFixedTtlSeconds =>
+      _int(uiContainer, 'dns_cache_fixed_ttl_seconds_v2', 3600);
+
+  bool get cacheMinTtlEnabled =>
+      _bool(uiContainer, 'dns_cache_min_ttl_enabled_v2', false);
+
+  int get cacheMinTtlSeconds =>
+      _int(uiContainer, 'dns_cache_min_ttl_seconds_v2', 60);
+
+  bool get cacheStaleFallbackEnabled =>
+      _bool(uiContainer, 'dns_cache_stale_fallback_enabled_v2', false);
+
+  int get cacheStaleFallbackSeconds =>
+      _int(uiContainer, 'dns_cache_stale_fallback_seconds_v2', 300);
+
+  bool get bootstrapEnabled =>
+      _bool(uiContainer, 'bootstrap_enabled', true);
+
+  List<String> get bootstrapPresetIds => _idList(
+    'bootstrap_preset_ids',
+    fallback: const ['preset_volcengine', 'preset_dnspod', 'preset_alidns'],
+  );
+
+  String? get bootstrapCustomJson =>
+      _string(uiContainer, 'bootstrap_custom_json');
+
+  /// Raw value for keys that only the Go config builder consumes.
+  Object? rawValue(String key) => _store.read(uiContainer, key);
+
+  // ------------------------------------------------------------ tunnel system
+
+  bool get bypassLanEnabled =>
+      _bool(uiContainer, 'bypass_lan_enabled', true);
+
+  String get ipv6ModeRaw => _string(uiContainer, 'ipv6_mode') ?? 'auto';
+
+  Set<String> get excludedPackages {
+    final value = _store.read(uiContainer, 'excluded_app_packages');
+    if (value is List) {
+      return {
+        for (final item in value)
+          if (item is String && item.isNotEmpty) item,
+      };
+    }
+    return const {};
+  }
+
   // ----------------------------------------------------------- server mode
 
   int get serverPort =>
@@ -208,6 +289,27 @@ class LegacySettings {
   int _int(String container, String key, int fallback) {
     final value = _store.read(container, key);
     return value is int ? value : fallback;
+  }
+
+  /// Reads a JSON array of ids; the legacy stores fall back to the two default
+  /// race providers for every resolution list when the value is missing or
+  /// malformed.
+  List<String> _idList(
+    String key, {
+    List<String> fallback = const ['preset_alidns_dns', 'preset_dnspod_dns'],
+  }) {
+    final raw = _string(uiContainer, key);
+    if (raw == null) return fallback;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return fallback;
+      return [
+        for (final item in decoded)
+          if (item is String && item.isNotEmpty) item,
+      ];
+    } on FormatException {
+      return fallback;
+    }
   }
 
   double _double(String container, String key, double fallback) {

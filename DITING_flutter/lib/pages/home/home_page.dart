@@ -30,7 +30,8 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   /// 速率曲线靠定时器推进：只有页面在树上时才走，离开就停。
   ///
   /// 刻意不用 `AnimationController`：图表要的是「每秒一个新采样点」而不是逐帧
@@ -43,7 +44,17 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startTicking();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // The notification action can stop the tunnel while the app is in the
+      // background; re-read the native status instead of trusting local state.
+      ref.read(powerProvider.notifier).syncStatus();
+    }
   }
 
   void _startTicking() {
@@ -63,6 +74,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void dispose() {
     _ticking = false;
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 

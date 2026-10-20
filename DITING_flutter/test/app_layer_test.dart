@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'support/fake_vpn_controller.dart';
+
 /// 应用层纯逻辑用例（不挂 UI，因此不受页面实现进度影响）。
 void main() {
   group('AppThemeSpec 值语义', () {
@@ -246,25 +248,26 @@ void main() {
 
   group('工作模式 provider', () {
     ProviderContainer container() {
-      final c = ProviderContainer();
+      final c = ProviderContainer(
+        overrides: [vpnControllerProvider.overrideWithValue(FakeVpnController())],
+      );
       addTearDown(c.dispose);
       return c;
     }
 
-    test('电源四态经 toggle 正确流转', () async {
+    test('电源状态经真实桥接的 toggle 流转', () async {
       final c = container();
       final power = c.read(powerProvider.notifier);
       expect(c.read(powerProvider), PowerState.stopped);
 
       power.toggle();
       expect(c.read(powerProvider), PowerState.starting);
-      // 模拟延迟 900ms。
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await Future<void>.delayed(Duration.zero);
       expect(c.read(powerProvider), PowerState.running);
 
       power.toggle();
       expect(c.read(powerProvider), PowerState.stopping);
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await Future<void>.delayed(Duration.zero);
       expect(c.read(powerProvider), PowerState.stopped);
     });
 
@@ -274,8 +277,35 @@ void main() {
       power.toggle();
       power.toggle();
       expect(c.read(powerProvider), PowerState.starting);
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await Future<void>.delayed(Duration.zero);
       expect(c.read(powerProvider), PowerState.running);
+    });
+
+    test('未授予 VPN 权限时保持启动中，授权后继续', () async {
+      final fake = FakeVpnController(prepared: false);
+      final c = ProviderContainer(
+        overrides: [vpnControllerProvider.overrideWithValue(fake)],
+      );
+      addTearDown(c.dispose);
+      await c.read(powerProvider.notifier).toggle();
+      expect(c.read(powerProvider), PowerState.starting);
+      expect(fake.startCalls, 0);
+
+      fake.grantPermission();
+      await Future<void>.delayed(Duration.zero);
+      expect(c.read(powerProvider), PowerState.running);
+      expect(fake.startCalls, 1);
+    });
+
+    test('启动失败进入 error 状态', () async {
+      final fake = FakeVpnController(started: false, error: 'boom');
+      final c = ProviderContainer(
+        overrides: [vpnControllerProvider.overrideWithValue(fake)],
+      );
+      addTearDown(c.dispose);
+      await c.read(powerProvider.notifier).toggle();
+      expect(c.read(powerProvider), PowerState.error);
+      expect(c.read(powerProvider.notifier).lastError, 'boom');
     });
 
     test('端口夹在 1024–65535', () {
@@ -326,4 +356,3 @@ void main() {
     });
   });
 }
-
