@@ -8,10 +8,16 @@
 ///
 /// 数据全部来自 `mockLogs` / `mockDnsCache` / `mockRaceRanking`；清空只改页面
 /// 本地状态，不碰任何 provider——演示页不该把自己的临时操作写进全局状态。
+///
+/// 「请求」视图已经改为读取原生服务写入的 `dns_log`；缓存表与竞速排行仍用
+/// 演示数据，等对应的 Go 回调接进来后再替换。
 library;
 
+import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/log_providers.dart';
+import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -48,7 +54,21 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// 迟钝（规则页要防抖是因为那边每次按键都要重建几十个可编辑行）。
   var _query = '';
   LogAction? _action;
-  var _cleared = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Counters live in the native engine; pull them as soon as the dashboard
+    // opens instead of waiting for the next lifecycle resume.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(workModeProvider) == AppWorkMode.server) {
+        ref.read(serverStatusProvider.notifier).syncStatus();
+      } else {
+        ref.read(powerProvider.notifier).syncStatus();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -56,17 +76,12 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     super.dispose();
   }
 
-  List<MockLogEntry> get _visibleLogs {
-    if (_cleared) {
-      return const [];
-    }
-    return [
-      for (final entry in mockLogs)
-        if ((_action == null || entry.action == _action) &&
-            (_query.isEmpty || entry.domain.toLowerCase().contains(_query)))
-          entry,
-    ];
-  }
+  List<MockLogEntry> _visibleLogs(List<MockLogEntry> all) => [
+    for (final entry in all)
+      if ((_action == null || entry.action == _action) &&
+          (_query.isEmpty || entry.domain.toLowerCase().contains(_query)))
+        entry,
+  ];
 
   List<MockDnsCacheEntry> get _sortedCache =>
       [...mockDnsCache]..sort((a, b) => b.hits.compareTo(a.hits));
@@ -88,42 +103,81 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             child: const Text('清空'),
           ),
         ],
-        child: const Text('将清空本页的请求日志演示数据。清空后可用「恢复示例日志」还原。'),
+        child: const Text('将删除当前模式数据库中的全部 DNS 请求日志。'),
       ),
     );
     if (confirmed != true || !mounted) {
       return;
     }
-    setState(() => _cleared = true);
+    final repository = await ref.read(dnsLogRepositoryProvider.future);
+    await repository?.clear();
+    ref.read(dnsLogRevisionProvider.notifier).bump();
   }
 
-  void _restoreLogs() => setState(() => _cleared = false);
+  void _refreshLogs() => ref.read(dnsLogRevisionProvider.notifier).bump();
 
   void _openDetail(MockLogEntry entry) => showSheet<void>(
     context: context,
     builder: (_) => _LogDetailSheet(entry: entry),
   );
 
+  /// `dns_log` 只存原始字段；处置、客户端与耗时都从结果列和 message 还原。
+  static MockLogEntry _toEntry(DnsLogRecord record) {
+    final message = record.message ?? '';
+    final latency = int.tryParse(
+          RegExp(r'elapsed=(\d+)ms').firstMatch(message)?.group(1) ?? '',
+        ) ??
+        0;
+    final action = switch (record.result) {
+      'BLOCKED' => LogAction.blocked,
+      'REWRITTEN' => LogAction.rewritten,
+      _ => record.cached ? LogAction.cached : LogAction.allowed,
+    };
+    final timestamp = DateTime.fromMillisecondsSinceEpoch(record.timestamp);
+    String two(int value) => value.toString().padLeft(2, '0');
+    return MockLogEntry(
+      time: '${two(timestamp.hour)}:${two(timestamp.minute)}:'
+          '${two(timestamp.second)}',
+      domain: record.domain,
+      action: action,
+      latencyMs: latency,
+      client: record.packageName?.isNotEmpty == true
+          ? record.packageName!
+          : '系统',
+      rule: message.isEmpty ? null : message,
+      cached: record.cached,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final stats = ref.watch(serviceStatsProvider);
+    final asyncLogs = ref.watch(dnsLogsProvider);
     final resolution = ref.watch(resolutionModeProvider);
     final colorScheme = context.colorScheme;
-    final visible = _visibleLogs;
+    final all = [
+      for (final record in asyncLogs.value ?? const <DnsLogRecord>[])
+        _toEntry(record),
+    ];
+    final visible = _visibleLogs(all);
+    final averageLatency = all.isEmpty
+        ? stats.averageLatencyMs
+        : all.map((entry) => entry.latencyMs).reduce((a, b) => a + b) ~/
+              all.length;
 
     return CommonScaffold(
       title: '日志仪表盘',
       menuItems: [
         CommonPopupMenuItem(
+          label: '刷新日志',
+          glyph: AppGlyphs.reset,
+          onPressed: _refreshLogs,
+        ),
+        CommonPopupMenuItem(
           label: '清空日志',
           glyph: AppGlyphs.broom,
           danger: true,
-          onPressed: _cleared ? null : _clearLogs,
-        ),
-        CommonPopupMenuItem(
-          label: '恢复示例日志',
-          glyph: AppGlyphs.reset,
-          onPressed: _cleared ? _restoreLogs : null,
+          onPressed: all.isEmpty ? null : _clearLogs,
         ),
       ],
       body: PageBody(
@@ -150,7 +204,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                   ),
                   StatItem(
                     label: '平均延迟',
-                    value: '${stats.averageLatencyMs}',
+                    value: '$averageLatency',
                     unit: 'ms',
                   ),
                 ],
@@ -168,7 +222,12 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             ),
           ),
           ...switch (_view) {
-            _LogsView.requests => _requestChildren(visible),
+            _LogsView.requests =>
+              asyncLogs.isLoading && !asyncLogs.hasValue
+                  ? const [_LogsLoading()]
+                  : asyncLogs.hasError
+                  ? const [_LogsError()]
+                  : _requestChildren(visible),
             _LogsView.cache => _cacheChildren(),
             _LogsView.race => _raceChildren(resolution),
           },
@@ -207,23 +266,19 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       SizedBox(
         height: 300,
         child: NullStatus(
-          label: _cleared ? '日志已清空' : '没有匹配的请求',
-          description: _cleared
-              ? '清空只影响本页演示数据，可随时恢复。'
-              : '换个关键词或处置类型再试',
+          label: '暂无请求日志',
+          description: '启动任一模式后，DNS 查询会出现在这里；也可以点「刷新日志」重新读取。',
           illustration: NullStatusIllustration.logs,
-          action: _cleared
-              ? FilledButton(
-                  onPressed: _restoreLogs,
-                  child: const Text('恢复示例日志'),
-                )
-              : null,
+          action: FilledButton(
+            onPressed: _refreshLogs,
+            child: const Text('刷新日志'),
+          ),
         ),
       )
     else
       generateSection(
         title: '最近请求',
-        footer: '点按一行查看完整解析信息；演示数据按时间倒序，共 ${mockLogs.length} 条。',
+        footer: '点按一行查看完整解析信息；数据按时间倒序，共 ${visible.length} 条。',
         items: [
           for (final entry in visible)
             _RequestRow(entry: entry, onTap: () => _openDetail(entry)),
@@ -265,9 +320,34 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   ];
 }
 
+/// 首次读取旧库时的占位；只在拿到第一帧数据前出现。
+class _LogsLoading extends StatelessWidget {
+  const _LogsLoading();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    height: 260,
+    child: Center(child: CommonCircleLoading.page()),
+  );
+}
+
+/// 旧库损坏/被占用时的兜底。日志页不该因此把整屏变成错误页。
+class _LogsError extends StatelessWidget {
+  const _LogsError();
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 300,
+    child: NullStatus(
+      label: '无法读取日志库',
+      description: '数据库可能被占用或已损坏；重启应用后再试。',
+      illustration: NullStatusIllustration.logs,
+    ),
+  );
+}
+
 /// 处置筛选 chip 行：全部 / 放行 / 拦截 / 覆写 / 缓存。
-class _ActionChips extends StatelessWidget {
-  const _ActionChips({required this.value, required this.onChanged});
+class _ActionChips extends StatelessWidget {  const _ActionChips({required this.value, required this.onChanged});
 
   final LogAction? value;
   final ValueChanged<LogAction?> onChanged;

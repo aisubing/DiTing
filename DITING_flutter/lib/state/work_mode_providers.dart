@@ -108,6 +108,7 @@ final expressVpnControllerProvider = Provider<VpnController>(
 class PowerNotifier extends Notifier<PowerState> {
   bool _disposed = false;
   bool _pendingPermissionStart = false;
+  Timer? _statsTimer;
 
   /// Last failure surfaced by the platform bridge; the UI shows the generic
   /// [PowerState.error] label, but keeping the reason here makes device
@@ -122,7 +123,10 @@ class PowerNotifier extends Notifier<PowerState> {
 
   @override
   PowerState build() {
-    ref.onDispose(() => _disposed = true);
+    ref.onDispose(() {
+      _disposed = true;
+      _statsTimer?.cancel();
+    });
     ref.read(vpnControllerProvider).onPrepareResult = _onPrepareResult;
     ref.read(expressVpnControllerProvider).onPrepareResult = _onPrepareResult;
     final settings = ref.read(legacySettingsProvider);
@@ -160,6 +164,11 @@ class PowerNotifier extends Notifier<PowerState> {
       ref
           .read(serviceStatsProvider.notifier)
           .applyNative(status.stats, running: status.running);
+      if (status.running) {
+        _ensureStatsPolling();
+      } else {
+        _cancelStatsPolling();
+      }
     } catch (_) {
       if (!_disposed) state = PowerState.stopped;
     }
@@ -257,6 +266,22 @@ class PowerNotifier extends Notifier<PowerState> {
     }
     ref.read(serviceStatsProvider.notifier).markStarted();
     state = PowerState.running;
+    _ensureStatsPolling();
+    // First counters land a moment after start; refresh once without waiting
+    // a full poll interval.
+    Timer(const Duration(milliseconds: 700), syncStatus);
+  }
+
+  void _ensureStatsPolling() {
+    _statsTimer ??= Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => syncStatus(),
+    );
+  }
+
+  void _cancelStatsPolling() {
+    _statsTimer?.cancel();
+    _statsTimer = null;
   }
 
   /// Express keeps its own database; a fresh install legitimately has none, so
@@ -281,6 +306,7 @@ class PowerNotifier extends Notifier<PowerState> {
 
   Future<void> stop() async {
     final express = _isExpress;
+    _cancelStatsPolling();
     state = PowerState.stopping;
     try {
       await (express

@@ -1,5 +1,6 @@
 import 'package:diting/app/app.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/pages/hub/feature_hub_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/router.dart';
@@ -51,10 +52,10 @@ void main() {
   });
 
   testWidgets('电源按钮经历启动中并回到运行态', (tester) async {
-    await pumpApp(
-      tester,
-      vpn: FakeVpnController(delay: const Duration(milliseconds: 200)),
-    );
+    final fake = FakeVpnController(
+      delay: const Duration(milliseconds: 200),
+    )..statusValue = const VpnStatus(running: true, persisted: true);
+    await pumpApp(tester, vpn: fake);
     await tester.tap(find.byType(HomePowerButton));
     await tester.pump();
     expect(find.byType(CommonCircleLoading), findsOneWidget);

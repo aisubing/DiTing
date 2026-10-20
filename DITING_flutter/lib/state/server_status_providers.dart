@@ -44,6 +44,7 @@ enum ServerStatus {
 
 class ServerStatusNotifier extends Notifier<ServerStatus> {
   bool _disposed = false;
+  Timer? _statsTimer;
 
   /// Last native failure, kept for diagnostics without changing the five-state
   /// UI contract.
@@ -51,7 +52,10 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
 
   @override
   ServerStatus build() {
-    ref.onDispose(() => _disposed = true);
+    ref.onDispose(() {
+      _disposed = true;
+      _statsTimer?.cancel();
+    });
     // Leaving server mode must not leave a LAN DNS listener behind; the UI
     // would otherwise show another mode while the port stays bound.
     ref.listen(workModeProvider, (previous, next) {
@@ -81,6 +85,11 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       ref
           .read(serviceStatsProvider.notifier)
           .applyNative(status.stats, running: status.running);
+      if (status.running) {
+        _ensureStatsPolling();
+      } else {
+        _cancelStatsPolling();
+      }
     } catch (_) {
       if (!_disposed) state = ServerStatus.stopped;
     }
@@ -127,12 +136,27 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       settings.setServerServiceActive(true);
       ref.read(serviceStatsProvider.notifier).markStarted();
       state = ServerStatus.running;
+      _ensureStatsPolling();
+      Timer(const Duration(milliseconds: 700), syncStatus);
     } catch (error) {
       if (!_disposed) _fail(_messageOf(error));
     }
   }
 
+  void _ensureStatsPolling() {
+    _statsTimer ??= Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => syncStatus(),
+    );
+  }
+
+  void _cancelStatsPolling() {
+    _statsTimer?.cancel();
+    _statsTimer = null;
+  }
+
   Future<void> _stop() async {
+    _cancelStatsPolling();
     state = ServerStatus.stopping;
     try {
       await ref.read(dnsServerControllerProvider).stop();
