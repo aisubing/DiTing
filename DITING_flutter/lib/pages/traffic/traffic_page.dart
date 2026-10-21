@@ -24,6 +24,7 @@ import 'package:diting/pages/observability/observability_common.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/chip_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -132,15 +133,15 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
+          // 档位行统一走 [ChipRow]：`Wrap` 不给交叉轴约束，`TonalChip` 会停在
+          // 18dp 的文本行高上；放不下时还会换行，把下面的卡片整列推低。
+          child: ChipRow(
             children: [
               for (final option in _rangeOptions)
-                _OptionChip(
+                FilterPill(
                   label: option.label,
                   selected: option.window == window,
-                  unavailableReason: option.unavailableReason,
+                  disabled: option.unavailableReason != null,
                   onPressed: () {
                     final target = option.window;
                     if (target == null) {

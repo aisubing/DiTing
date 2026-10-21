@@ -5,6 +5,7 @@ import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -469,8 +470,8 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
               child: Center(child: CommonCircleLoading()),
             )
           else if (snapshot.value?.error != null)
-            SizedBox(
-              height: 260,
+            EmptyStateBox(
+              minHeight: 260,
               child: NullStatus(
                 label: '读不到应用列表',
                 description: snapshot.value!.error,

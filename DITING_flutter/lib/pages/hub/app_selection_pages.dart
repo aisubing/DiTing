@@ -2,6 +2,7 @@ import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -260,8 +261,10 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
               child: Center(child: CommonCircleLoading()),
             )
           else if (snapshot.value?.error case final error?)
-            SizedBox(
-              height: 260,
+            // 读不到应用列表时的错误串长度不可控，写死 260 会把说明裁掉，
+            // 下面的「保存」按钮就压在被裁掉的文字上（真机上两段叠着）。
+            EmptyStateBox(
+              minHeight: 260,
               child: NullStatus(
                 label: '读不到应用列表',
                 description: error,
