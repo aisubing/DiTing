@@ -15,6 +15,23 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-21：输入框只写 `TextEditingController`、不写回 provider，测试全绿但功能是错的
+
+- 现场：网络诊断「测速」页把域名填进 `TextEditingController` 就直接在 `_run()` 里读
+  provider 里的域名去测速。用户改了输入框，provider 里还是上一次的值，于是**测的是
+  旧域名**。全部 298 个测试（含 diagnostic 面板测试）都是绿的——因为测试用
+  `enterText` 之后点按钮，断言的是「结果渲染出来没有」，而桩 runner 不校验入参。
+- 铁律：一个字段如果同时存在「输入框」和「状态源」，先写清谁是唯一真相。
+  `controller` 只是显示层，业务逻辑读的必须是 provider；因此 `onChanged` 里要
+  `setDomain(...)` 落回 provider（`_ToolField` 为此加了 `onChanged` 参数）。
+  自查方式：grep 所有 `_run` / 提交动作里 `ref.read(...)` 的字段，逐个确认它
+  在输入路径上也有写入口——「有写入口」指用户打字时就写，不是只在初始 `build`
+  里灌一次。
+- 另一条同源：默认值也别照枚举顺序猜。旧版 `NetworkToolMode` 枚举把 `SPEED_TEST`
+  写在第一个，但 `NetworkToolsViewModel` 的初值是 `NetworkToolMode.PING`——页面
+  打开停在 Ping 测试。默认值必须从 ViewModel 的 `MutableStateFlow` 初值读，
+  不能按枚举声明顺序取 `first`。
+
 ### 2026-10-21：多人共用一个 git index，不带路径的 `git commit` 会把别人的改动卷进来
 
 - 现场：本 agent 用 `git commit -m … -- <自己的路径>` 提交后，又跑了一次不带路径的
