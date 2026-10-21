@@ -11,6 +11,12 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// 左边「今日代理流量」、右边「实时速率」，两列用 `SpaceBetween` 分开——
 /// 旧版就是这样并排的，卡片高度固定在一行数字，不抢下面的概览块。
+///
+/// ## 两列各有各的诚实边界
+/// - **今日代理流量**读 `app_traffic_daily` 的当日行；库还没打开时显示 `—`，
+///   而不是 `0 B`——`0 B` 是「今天确实没流量」，与「还没读到」不是一回事。
+/// - **实时速率**来自原生 `TrafficRateMonitor` 的每秒快照。极速模式与没有原生
+///   通道的宿主拿不到，此时显示「本模式不统计」而不是 `0 B/s` 的假读数。
 class TrafficMonitorCard extends ConsumerWidget {
   const TrafficMonitorCard({super.key, this.onDetail});
 
@@ -19,10 +25,16 @@ class TrafficMonitorCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totals = ref.watch(trafficTotalsProvider);
+    final totals = ref.watch(trafficTotalsProvider).value;
     final series = ref.watch(speedSeriesProvider);
     final last = series.last;
     final colorScheme = context.colorScheme;
+    final speedText = series.unsupported
+        ? '本模式不统计'
+        : series.samples.isEmpty
+        ? '—'
+        : '↓ ${dashboardBinarySpeed(last.down)}  '
+              '↑ ${dashboardBinarySpeed(last.up)}';
     return DashboardCard(
       semanticLabel: '流量监控',
       child: Column(
@@ -52,7 +64,9 @@ class TrafficMonitorCard extends ConsumerWidget {
                   children: [
                     Text('今日代理流量', style: DashboardText.label(context)),
                     Text(
-                      dashboardBinaryBytes(totals.total),
+                      totals == null
+                          ? '—'
+                          : dashboardBinaryBytes(totals.total),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: DashboardText.figure(
@@ -72,8 +86,7 @@ class TrafficMonitorCard extends ConsumerWidget {
                   children: [
                     Text('实时速率', style: DashboardText.label(context)),
                     Text(
-                      '↓ ${dashboardBinarySpeed(last.down)}  '
-                      '↑ ${dashboardBinarySpeed(last.up)}',
+                      speedText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.end,

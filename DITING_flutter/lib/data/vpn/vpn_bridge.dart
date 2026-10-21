@@ -101,6 +101,43 @@ class VpnStatus {
   }
 }
 
+/// 一个瞬时速率采样（字节/秒）。
+///
+/// [unsupported] 表示「这条通道压根没有流量统计」——极速模式的窄 TUN 不注册
+/// `EngineDataPlane.attachTraffic`，`diting_express` 也没有 `app_traffic_daily`
+/// 表。它与「有统计但当前是 0 B/s」是两件事：前者页面上要说明缺失，后者是真实
+/// 的空闲。
+class VpnTrafficRates {
+  const VpnTrafficRates({
+    required this.running,
+    required this.txBps,
+    required this.rxBps,
+    this.unsupported = false,
+  });
+
+  const VpnTrafficRates.idle()
+    : running = false,
+      txBps = 0,
+      rxBps = 0,
+      unsupported = false;
+
+  final bool running;
+  final double txBps;
+  final double rxBps;
+  final bool unsupported;
+
+  factory VpnTrafficRates.fromMap(Object? raw) {
+    final map = raw is Map ? raw : const {};
+    double read(String key) => (map[key] as num?)?.toDouble() ?? 0;
+    return VpnTrafficRates(
+      running: map['running'] == true,
+      txBps: read('txBps'),
+      rxBps: read('rxBps'),
+      unsupported: map['unsupported'] == true,
+    );
+  }
+}
+
 abstract class VpnController {
   /// Called after the system VPN consent dialog closes.
   void Function(bool granted)? onPrepareResult;
@@ -114,6 +151,13 @@ abstract class VpnController {
   Future<void> stop();
 
   Future<VpnStatus> status();
+
+  /// 实时上下行速率（`TrafficRateMonitor.snapshot()`）。
+  ///
+  /// 单独一个方法而不是塞进 [status]：仪表盘每秒轮询一次速率，而 `status` 还要
+  /// 序列化引擎的计数器 JSON，用同一个调用会让 1 Hz 的读秒变成每秒一次重活。
+  /// 通道缺失（桌面宿主 / 单元测试）时返回 [VpnTrafficRates.idle]，不抛异常。
+  Future<VpnTrafficRates> trafficRates();
 }
 
 class MethodChannelVpnController implements VpnController {
@@ -175,5 +219,24 @@ class MethodChannelVpnController implements VpnController {
   Future<VpnStatus> status() async {
     _ensureHandler();
     return VpnStatus.fromMap(await _channel.invokeMethod<Object?>('status'));
+  }
+
+  @override
+  Future<VpnTrafficRates> trafficRates() async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('trafficRates');
+      return VpnTrafficRates.fromMap(raw);
+    } on MissingPluginException {
+      // 没有原生实现（桌面宿主 / 组件画廊 / 纯 Dart 测试）：既不是「0 B/s」也
+      // 不是错误，而是「这台设备没有这个数据源」。
+      return const VpnTrafficRates(
+        running: false,
+        txBps: 0,
+        rxBps: 0,
+        unsupported: true,
+      );
+    } on PlatformException {
+      return const VpnTrafficRates.idle();
+    }
   }
 }

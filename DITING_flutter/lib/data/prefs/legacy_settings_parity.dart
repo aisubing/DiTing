@@ -173,4 +173,45 @@ extension LegacySettingsParity on LegacySettings {
     _store.putString(_notification, 'custom_running_text', running);
     _store.putString(_notification, 'custom_stopped_text', stopped);
   }
+
+  // ------------------------------------------------------- 订阅自动更新（数据集）
+
+  /// 自动更新的两个键在**数据集容器**里（`dns_vpn_prefs` / `diting_express_prefs`
+  /// / `diting_dns_mode_prefs`），由 `SubscriptionAutoUpdateSettings` 按
+  /// `RuleDataset.prefsName()` 选容器。写到 `uiContainer` 会让极速模式与服务器
+  /// 模式共用同一份开关，而旧版三份是彼此独立的。
+  ///
+  /// 默认值逐字照抄旧版：**关闭**、间隔 24 小时，合法区间 1–168。
+  bool get subscriptionAutoUpdateEnabled => _bool(
+    dnsContainer,
+    LegacySettings.subscriptionAutoUpdateEnabledKey,
+    false,
+  );
+
+  int get subscriptionAutoUpdateIntervalHours {
+    final value = _int(
+      dnsContainer,
+      LegacySettings.subscriptionAutoUpdateIntervalKey,
+      LegacySettings.defaultSubscriptionAutoUpdateIntervalHours,
+    );
+    return value >= LegacySettings.minSubscriptionAutoUpdateIntervalHours &&
+            value <= LegacySettings.maxSubscriptionAutoUpdateIntervalHours
+        ? value
+        : LegacySettings.defaultSubscriptionAutoUpdateIntervalHours;
+  }
+
+  void setSubscriptionAutoUpdateEnabled(bool value) => _store.putBool(
+    dnsContainer,
+    LegacySettings.subscriptionAutoUpdateEnabledKey,
+    value,
+  );
+
+  void setSubscriptionAutoUpdateIntervalHours(int hours) => _store.putInt(
+    dnsContainer,
+    LegacySettings.subscriptionAutoUpdateIntervalKey,
+    hours.clamp(
+      LegacySettings.minSubscriptionAutoUpdateIntervalHours,
+      LegacySettings.maxSubscriptionAutoUpdateIntervalHours,
+    ),
+  );
 }

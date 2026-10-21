@@ -69,6 +69,26 @@ class LegacySettings {
 
   static const defaultServerPort = 1053;
 
+  // ------------------------------------------------------- 订阅自动更新（键名）
+
+  /// `SubscriptionAutoUpdateSettings.KEY_ENABLED`。
+  static const subscriptionAutoUpdateEnabledKey =
+      'subscription_auto_update_enabled';
+
+  /// `SubscriptionAutoUpdateSettings.KEY_INTERVAL`。
+  static const subscriptionAutoUpdateIntervalKey =
+      'subscription_auto_update_interval_hours';
+
+  /// `SubscriptionAutoUpdateSettings.DEFAULT_INTERVAL_HOURS`。
+  static const defaultSubscriptionAutoUpdateIntervalHours = 24;
+
+  /// `MIN_INTERVAL_HOURS` / `MAX_INTERVAL_HOURS`。
+  static const minSubscriptionAutoUpdateIntervalHours = 1;
+  static const maxSubscriptionAutoUpdateIntervalHours = 168;
+
+  /// `SubscriptionAutoUpdateSettings.intervals`：预设档位（自定义档另算）。
+  static const subscriptionAutoUpdatePresetHours = [6, 12, 24, 48];
+
   // ---------------------------------------------------------------- appearance
 
   String? get themeModeRaw => _string(uiContainer, 'app_theme_mode');

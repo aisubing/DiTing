@@ -39,20 +39,22 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage>
     with WidgetsBindingObserver {
-  /// 速率曲线靠定时器推进：只有页面在树上时才走，离开就停。
+  /// 进页面时抓住 notifier 引用。
   ///
-  /// 刻意不用 `AnimationController`：图表要的是「每秒一个新采样点」而不是逐帧
-  /// 重绘，用 `Ticker` 会让 60fps 都在重建整棵卡片树。
-  ///
-  /// 每拍都重建并排帧，因此**测试里必须关掉**（[debugDisableDashboardLiveUpdates]），
-  /// 否则 `pumpAndSettle` 永远等不到静止。
-  bool _ticking = false;
+  /// `dispose()` 里不能 `ref.read`——Riverpod 3 会抛「Using ref when a widget is
+  /// about to or has been unmounted」。缓存在字段里是官方推荐的写法。
+  SpeedSeriesNotifier? _speed;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _startTicking();
+    // 速率曲线由 provider 自己的定时器推进（`SpeedSeriesNotifier.attachPolling`）：
+    // 首页与 `/traffic` 共用一条序列，谁在树上谁「持有」它，两处各起一个定时器
+    // 会让 60 点窗口缩短一半。测试里 `debugDisableDashboardLiveUpdates` 关掉了
+    // 自动推进，否则 `pumpAndSettle` 永远等不到静止。
+    _speed = ref.read(speedSeriesProvider.notifier);
+    _speed!.attachPolling();
   }
 
   @override
@@ -66,23 +68,9 @@ class _HomePageState extends ConsumerState<HomePage>
     }
   }
 
-  void _startTicking() {
-    if (_ticking || debugDisableDashboardLiveUpdates) {
-      return;
-    }
-    _ticking = true;
-    Future<void>.delayed(const Duration(seconds: 1), () {
-      if (!mounted || !_ticking) {
-        return;
-      }
-      ref.read(speedSeriesProvider.notifier).tick();
-      _startTicking();
-    });
-  }
-
   @override
   void dispose() {
-    _ticking = false;
+    _speed?.detachPolling();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

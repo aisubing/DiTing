@@ -58,6 +58,27 @@ class DnsCacheRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
+  /// `DnsCacheDao.countUnexpired`：有效缓存条数（概览块的「有效缓存」）。
+  Future<int> countUnexpired() async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final rows = await _db.rawQuery(
+      'SELECT COUNT(*) AS n FROM dns_cache WHERE expiresAt > ?',
+      [now],
+    );
+    return (rows.first['n'] as num?)?.toInt() ?? 0;
+  }
+
+  /// `DnsCacheDao.totalHitCount`：`COALESCE(SUM(hitCount), 0)`。
+  ///
+  /// 统计的是**整张表**的命中累计，不过期过滤：过期行的命中确实发生过，
+  /// 旧版「累计缓存命中」也是这么算的。
+  Future<int> totalHitCount() async {
+    final rows = await _db.rawQuery(
+      'SELECT COALESCE(SUM(hitCount), 0) AS n FROM dns_cache',
+    );
+    return (rows.first['n'] as num?)?.toInt() ?? 0;
+  }
+
   static DnsCacheRecord _fromRow(Map<String, Object?> row) => DnsCacheRecord(
     domain: row['queryName'] as String? ?? '',
     queryType: (row['queryType'] as num?)?.toInt() ?? 1,

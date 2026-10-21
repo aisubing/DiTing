@@ -1,4 +1,4 @@
-import 'package:diting/data/mock_dashboard.dart';
+import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/log_list_cards.dart';
 import 'package:diting/pages/home/dashboard/cards/service_status_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';

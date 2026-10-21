@@ -1,29 +1,36 @@
 // ignore_for_file: sort_child_properties_last
-import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/db/mirror_template_repository.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/state/auto_update_providers.dart';
+import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 规则订阅自动更新（上游 `SubscriptionAutoUpdateIntervalScreen`）。
-class AutoUpdateSettingsPage extends StatefulWidget {
+///
+/// ## 这里没有本地 state
+/// 旧版把总开关与间隔写在数据集 prefs 里（`subscription_auto_update_enabled` /
+/// `subscription_auto_update_interval_hours`），分组开关写在
+/// `subscription_group.autoUpdateEnabled` 列里。页面上一轮的 `_enabled` /
+/// `_hours` / `_groups` 是内存变量：退出再进来就回到「已开启 · 每 6 小时」，
+/// 与规则控制页显示的数字也对不上。现在全部读 [autoUpdateSettingsProvider] 与
+/// [autoUpdateGroupsProvider]，写入口在 [autoUpdateActionsProvider]。
+///
+/// ## 关于「后台调度」
+/// 旧版写完设置会调 `SubscriptionAutoUpdateScheduler.sync()` 去重排 WorkManager。
+/// 本仓原生侧没有移植那个调度器，因此 footer 如实说明「设置已保存，后台调度
+/// 需原生侧接入」——不写「会在后台按此频率更新」这种做不到的承诺。
+class AutoUpdateSettingsPage extends ConsumerWidget {
   const AutoUpdateSettingsPage({super.key});
 
   @override
-  State<AutoUpdateSettingsPage> createState() => _AutoUpdateSettingsPageState();
-}
-
-class _AutoUpdateSettingsPageState extends State<AutoUpdateSettingsPage> {
-  static const _intervals = [1, 3, 6, 12, 24];
-
-  bool _enabled = true;
-  int _hours = 6;
-  final Map<String, bool> _groups = {
-    for (final group in mockSubscriptionGroups) group: true,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final custom = !_intervals.contains(_hours);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(autoUpdateSettingsProvider);
+    final groups = ref.watch(autoUpdateGroupsProvider).value;
+    final actions = ref.read(autoUpdateActionsProvider);
+    final enabled = settings.enabled;
     return CommonScaffold(
       title: '自动更新设置',
       body: PageBody(
@@ -34,54 +41,75 @@ class _AutoUpdateSettingsPageState extends State<AutoUpdateSettingsPage> {
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.refresh),
                 title: const Text('自动更新规则订阅'),
-                subtitle: const Text('在后台定期更新所有网络订阅，实际执行时间可能受系统调度影响'),
-                value: _enabled,
-                onChanged: (value) => setState(() => _enabled = value),
+                subtitle: const Text('记录总开关；后台调度由原生侧执行'),
+                value: enabled,
+                onChanged: actions.setEnabled,
               ),
             ],
           ),
           generateSection(
             title: '更新频率',
             items: [
-              for (final hours in _intervals)
+              for (final hours
+                  in LegacySettings.subscriptionAutoUpdatePresetHours)
                 ListItem(
                   leading: GlyphIcon(
-                    _hours == hours ? AppGlyphs.checkCircle : AppGlyphs.clock,
+                    settings.intervalHours == hours
+                        ? AppGlyphs.checkCircle
+                        : AppGlyphs.clock,
                     size: 20,
                   ),
                   title: Text('每 $hours 小时'),
-                  trailing: _hours == hours ? const SelectionCheck() : null,
-                  onTap: _enabled ? () => setState(() => _hours = hours) : null,
+                  trailing: settings.intervalHours == hours
+                      ? const SelectionCheck()
+                      : null,
+                  onTap: enabled ? () => actions.setIntervalHours(hours) : null,
                 ),
               ListItem(
                 leading: GlyphIcon(
-                  custom ? AppGlyphs.checkCircle : AppGlyphs.sliders,
+                  settings.isCustom ? AppGlyphs.checkCircle : AppGlyphs.sliders,
                   size: 20,
                 ),
                 title: const Text('自定义更新时间'),
                 subtitle: Text(
-                  custom ? '每 $_hours 小时' : '输入 1 至 168 小时之间的更新时间',
+                  settings.isCustom
+                      ? '每 ${settings.intervalHours} 小时'
+                      : '输入 1 至 168 小时之间的更新时间',
                 ),
-                trailing: custom ? const SelectionCheck() : null,
-                onTap: _enabled ? _editCustom : null,
+                trailing: settings.isCustom ? const SelectionCheck() : null,
+                onTap: enabled ? () => _editCustom(context, ref, settings) : null,
               ),
             ],
-            footer: '系统会在后台按此频率检查网络规则订阅，实际执行时间可能受系统调度影响。',
+            footer:
+                '间隔保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。'
+                '本机尚未接入后台调度器：设置会保存，实际执行需原生侧任务队列。',
           ),
           generateSection(
             title: '分组自动更新',
             items: [
-              for (final group in _groups.keys)
-                ListItem.toggle(
-                  leading: const GlyphIcon(AppGlyphs.layers),
-                  title: Text(group),
-                  value: _groups[group] ?? true,
-                  onChanged: _enabled
-                      ? (value) => setState(() => _groups[group] = value)
-                      : null,
-                ),
+              if (groups == null)
+                const ListItem(
+                  leading: GlyphIcon(AppGlyphs.layers),
+                  title: Text('读取分组中…'),
+                )
+              else if (groups.isEmpty)
+                const ListItem(
+                  leading: GlyphIcon(AppGlyphs.layers),
+                  title: Text('还没有分组'),
+                  subtitle: Text('在规则订阅页新建分组后，可以在这里单独开关'),
+                )
+              else
+                for (final group in groups)
+                  ListItem.toggle(
+                    leading: const GlyphIcon(AppGlyphs.layers),
+                    title: Text(group.name),
+                    value: group.autoUpdateEnabled,
+                    onChanged: enabled
+                        ? (value) => actions.setGroupEnabled(group.id, value)
+                        : null,
+                  ),
             ],
-            footer: '仅会自动更新已开启的分组中的网络订阅。',
+            footer: '仅会自动更新已开启的分组中的网络订阅；写入 `subscription_group` 表。',
           ),
           const SizedBox(height: 24),
         ],
@@ -89,8 +117,12 @@ class _AutoUpdateSettingsPageState extends State<AutoUpdateSettingsPage> {
     );
   }
 
-  Future<void> _editCustom() async {
-    final controller = TextEditingController(text: '$_hours');
+  Future<void> _editCustom(
+    BuildContext context,
+    WidgetRef ref,
+    AutoUpdateSettings settings,
+  ) async {
+    final controller = TextEditingController(text: '${settings.intervalHours}');
     final value = await showFloatingDialog<int>(
       context: context,
       child: CommonDialog(
@@ -112,7 +144,11 @@ class _AutoUpdateSettingsPageState extends State<AutoUpdateSettingsPage> {
           TextButton(
             onPressed: () {
               final parsed = int.tryParse(controller.text);
-              if (parsed == null || parsed < 1 || parsed > 168) {
+              if (parsed == null ||
+                  parsed <
+                      LegacySettings.minSubscriptionAutoUpdateIntervalHours ||
+                  parsed >
+                      LegacySettings.maxSubscriptionAutoUpdateIntervalHours) {
                 return;
               }
               Navigator.of(context).pop(parsed);
@@ -123,36 +159,32 @@ class _AutoUpdateSettingsPageState extends State<AutoUpdateSettingsPage> {
       ),
     );
     controller.dispose();
-    if (value != null && mounted) {
-      setState(() => _hours = value);
+    if (value != null) {
+      ref.read(autoUpdateActionsProvider).setIntervalHours(value);
     }
   }
 }
 
 /// 镜像站模板（上游 `MirrorTemplateScreen`）。
-class MirrorTemplatesPage extends StatefulWidget {
+///
+/// 模板存在旧库 `mirror_template` 表里（`id` / `name` / `template` / `addedAt`），
+/// 由 `MirrorTemplateRepository` 读写。上一轮这里是三条内存常量
+/// （GitHub 镜像 / Cloudflare 加速 / 内网镜像），刷新就回来、重启就丢。
+class MirrorTemplatesPage extends ConsumerWidget {
   const MirrorTemplatesPage({super.key});
 
   @override
-  State<MirrorTemplatesPage> createState() => _MirrorTemplatesPageState();
-}
-
-class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
-  final List<({String name, String template})> _templates = [
-    (name: 'GitHub 镜像', template: 'https://ghproxy.example.com/{url}'),
-    (
-      name: 'Cloudflare 加速',
-      template: 'https://cf.example.com/{scheme}/{host}/{path}',
-    ),
-    (name: '内网镜像', template: 'http://10.0.0.2:8080/{urlEncoded}'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final templates = ref.watch(mirrorTemplatesProvider);
+    final rows = templates.value;
     return CommonScaffold(
       title: '镜像站模板',
       iconActions: [
-        IconButtonData(glyph: AppGlyphs.add, tooltip: '添加模板', onPressed: _add),
+        IconButtonData(
+          glyph: AppGlyphs.add,
+          tooltip: '添加模板',
+          onPressed: () => _add(context, ref),
+        ),
       ],
       body: PageBody(
         children: [
@@ -173,59 +205,104 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
                 leading: const GlyphIcon(AppGlyphs.info),
                 title: const Text('镜像站格式示例'),
                 subtitle: const Text('了解占位符如何组成镜像地址'),
-                onTap: _showFormatGuide,
+                onTap: () => _showFormatGuide(context),
               ),
             ],
           ),
-          generateSection(
-            title: '已保存模板（${_templates.length}）',
-            items: [
-              for (var index = 0; index < _templates.length; index++)
+          if (templates.hasError)
+            generateSection(
+              title: '已保存模板',
+              items: const [
                 ListItem(
-                  leading: const GlyphIcon(AppGlyphs.layers, size: 20),
-                  title: Text(_templates[index].name),
-                  subtitle: Text(_templates[index].template),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: '编辑',
-                        onPressed: () => _edit(index),
-                        icon: const GlyphIcon(AppGlyphs.edit, size: 20),
-                      ),
-                      IconButton(
-                        tooltip: '删除',
-                        onPressed: () =>
-                            setState(() => _templates.removeAt(index)),
-                        icon: const GlyphIcon(AppGlyphs.delete, size: 20),
-                      ),
-                    ],
-                  ),
+                  leading: GlyphIcon(AppGlyphs.error),
+                  title: Text('无法读取镜像站模板'),
+                  subtitle: Text('旧库尚未就绪或该表不可用'),
                 ),
-            ],
-            footer: _templates.isEmpty ? '暂无模板。点击右上角「添加模板」开始使用。' : null,
-          ),
+              ],
+            )
+          else
+            generateSection(
+              title: '已保存模板（${rows?.length ?? 0}）',
+              items: [
+                for (final row in rows ?? const <MirrorTemplateRecord>[])
+                  ListItem(
+                    leading: const GlyphIcon(AppGlyphs.layers, size: 20),
+                    title: Text(row.name),
+                    subtitle: Text(row.template),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: '编辑',
+                          onPressed: () => _edit(context, ref, row),
+                          icon: const GlyphIcon(AppGlyphs.edit, size: 20),
+                        ),
+                        IconButton(
+                          tooltip: '删除',
+                          onPressed: () =>
+                              ref.read(mirrorTemplateActionsProvider).remove(
+                                row.id,
+                              ),
+                          icon: const GlyphIcon(AppGlyphs.delete, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+              footer: rows == null
+                  ? '正在读取镜像站模板…'
+                  : rows.isEmpty
+                  ? '暂无模板。点击右上角「添加模板」开始使用。'
+                  : null,
+            ),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Future<void> _add() async {
-    final result = await _editTemplate();
-    if (result != null && mounted) {
-      setState(() => _templates.add(result));
+  Future<void> _add(BuildContext context, WidgetRef ref) async {
+    final result = await _editTemplate(context);
+    if (result == null) return;
+    final id = await ref
+        .read(mirrorTemplateActionsProvider)
+        .create(name: result.name, template: result.template);
+    if (id == null && context.mounted) {
+      // 同名唯一索引会拒绝插入：明确告知，而不是静默什么都不发生。
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('同名模板已存在，请换一个名称'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  Future<void> _edit(int index) async {
-    final result = await _editTemplate(initial: _templates[index]);
-    if (result != null && mounted) {
-      setState(() => _templates[index] = result);
+  Future<void> _edit(
+    BuildContext context,
+    WidgetRef ref,
+    MirrorTemplateRecord row,
+  ) async {
+    final result = await _editTemplate(
+      context,
+      initial: (name: row.name, template: row.template),
+    );
+    if (result == null) return;
+    final ok = await ref
+        .read(mirrorTemplateActionsProvider)
+        .update(id: row.id, name: result.name, template: result.template);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('保存失败：名称与已有模板重复'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
-  Future<({String name, String template})?> _editTemplate({
+  Future<({String name, String template})?> _editTemplate(
+    BuildContext context, {
     ({String name, String template})? initial,
   }) {
     final name = TextEditingController(text: initial?.name ?? '');
@@ -249,6 +326,7 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
               children: [
                 TextField(
                   controller: name,
+                  onChanged: (_) => setDialogState(() {}),
                   decoration: const InputDecoration(
                     labelText: '模板名称',
                     hintText: '例如：GitHub 镜像',
@@ -301,7 +379,7 @@ class _MirrorTemplatesPageState extends State<MirrorTemplatesPage> {
     });
   }
 
-  void _showFormatGuide() {
+  void _showFormatGuide(BuildContext context) {
     showFloatingDialog<void>(
       context: context,
       child: CommonDialog(

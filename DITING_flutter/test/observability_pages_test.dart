@@ -3,6 +3,7 @@ import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
 import 'package:diting/pages/observability/requests_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
+import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,19 @@ import 'support/app_host.dart';
 /// `pumpAndSettle` 一直等到 10 分钟超时（本轮实测过，不是猜测）。因此这里
 /// 注入与仓储同形的真实模型（`DnsLogRow` / `ObservedRequest` /
 /// `AppTrafficDaily`），而不是再造一份 mock 类型。
+/// 固定快照的速率 notifier：让「没有原生通道」这一档可复现。
+///
+/// 不重写 `tick()`：测试宿主本来就没有通道，`attachPolling` 又因
+/// `debugDisableDashboardLiveUpdates` 不启动定时器，因此状态不会被覆盖。
+class _FakeSpeedSeries extends SpeedSeriesNotifier {
+  _FakeSpeedSeries(this._value);
+
+  final SpeedSeries _value;
+
+  @override
+  SpeedSeries build() => _value;
+}
+
 void main() {
   /// 与 `AppTrafficRepository` 的 `yyyy-MM-dd` 同形。
   const today = '2026-10-20';
@@ -210,25 +224,43 @@ void main() {
   });
 
   group('流量页', () {
-    testWidgets('渲染 app_traffic_daily 排行并如实标注实时速率缺失', (tester) async {
+    testWidgets('渲染 app_traffic_daily 排行，实时速率如实来自原生', (tester) async {
       await pumpPage(tester, const TrafficPage());
       expect(tester.takeException(), isNull);
 
       expect(find.text('浏览器'), findsOneWidget);
       // appName 为空时回退到包名。
       expect(find.text('com.example.ads'), findsWidgets);
-      // 「实时速率」这一格必须如实说明缺失，而不是画一条假曲线。
-      //
-      // 旧版这里是 `TrafficGaugeCard`（真实上下行速率），本仓的按天流量表只存
-      // 「日期 + 包名 + 上下行累计字节」，没有速率序列。上一轮的做法是画一条
-      // 「会话曲线（示意）」并标注「不反映真实网速」——一张标着「示意」的折线图
-      // 仍然会被当成网速读，这是本轮删掉它的原因。
+      // 「实时速率」这一格现在有真实来源（原生 `TrafficRateMonitor`），所以
+      // 不能再断言「暂无实时速率」。测试宿主没有 `com.haoze.diting/vpn` 通道，
+      // 因此这一格必须是破折号（尚未采到点），而不是编出来的 `0 B/s`。
       expect(find.text('实时速率'), findsOneWidget);
-      expect(find.textContaining('暂无实时速率'), findsOneWidget);
-      expect(find.textContaining('都是真实数字'), findsOneWidget);
+      expect(find.text('—'), findsWidgets);
       // 假曲线与它的免责标注都不该再出现。
       expect(find.textContaining('会话曲线'), findsNothing);
       expect(find.textContaining('不反映真实网速'), findsNothing);
+    });
+
+    testWidgets('没有原生速率通道时说明缺失，而不是画 0 的平线', (tester) async {
+      await pumpPage(
+        tester,
+        const TrafficPage(),
+        providerOverrides: [
+          ...defaultOverrides(),
+          speedSeriesProvider.overrideWith(
+            () => _FakeSpeedSeries(
+              const SpeedSeries(
+                samples: [],
+                revision: 0,
+                source: SpeedSource.noNativeChannel,
+              ),
+            ),
+          ),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('本模式不统计实时速率'), findsOneWidget);
+      expect(find.textContaining('都是真实数字'), findsOneWidget);
     });
 
     testWidgets('带旧版的时间窗口、搜索、排序与隐藏系统应用', (tester) async {

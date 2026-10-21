@@ -205,19 +205,24 @@ class _AttributionBanner extends StatelessWidget {
   }
 }
 
-/// 「实时速率」位置的**如实占位**。
+/// 「实时速率」块：有原生速率就显示，没有就如实说明缺失。
 ///
-/// 旧版这里是一张 `TrafficGaugeCard`：标题「实时速率」+ 上下行 B/s。本仓没有
-/// 每秒速率来源（引擎只报累计字节数），所以既不留一个没有数字的标题，也不画
-/// 假曲线——只说明缺什么、真实数字在哪。
-class _RateUnavailableCard extends StatelessWidget {
-  const _RateUnavailableCard({required this.windowLabel});
+/// 旧版这里是 `TrafficGaugeCard`：标题「实时速率」+ 上下行 B/s。本仓的原生侧
+/// 有 `TrafficRateMonitor`（常驻通知里那个 ↑/↓ 读数就是它），但**只覆盖本次
+/// 会话**，而按天流量表存的是「日期 + 包名 + 上下行累计字节」。所以：
+/// - 普通 / 服务器模式：显示真实速率，并注明「本次会话」；
+/// - 极速模式与无原生通道的宿主：显示缺失说明，不画假曲线、不留空标题。
+class _LiveRateCard extends ConsumerWidget {
+  const _LiveRateCard({required this.windowLabel});
 
   final String windowLabel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
+    final series = ref.watch(speedSeriesProvider);
+    final last = series.last;
+    final missing = series.unsupported;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: CommonCard(
@@ -237,12 +242,28 @@ class _RateUnavailableCard extends StatelessWidget {
                 Text('实时速率', style: context.listTitleStyle),
               ],
             ),
-            Text(
-              '暂无实时速率：它需要内核每秒回报的速率序列，本仓的按天流量表只存'
-              '「日期 + 包名 + 上下行累计字节」。上面的 $windowLabel 下行 / 上行'
-              '与下方排行都是真实数字。',
-              style: context.listCaptionStyle,
-            ),
+            if (missing)
+              Text(
+                '本模式不统计实时速率：极速模式的窄路由不经过引擎的流量计数器，'
+                '本仓也没有它的累计表。上面的 $windowLabel 下行 / 上行与下方排行'
+                '都是真实数字。',
+                style: context.listCaptionStyle,
+              )
+            else ...[
+              Text(
+                series.samples.isEmpty
+                    ? '—'
+                    : '↓ ${obsFormatBytes(last.down.round())} /s   '
+                          '↑ ${obsFormatBytes(last.up.round())} /s',
+                style: context.listTitleStyle,
+              ),
+              Text(
+                '来自引擎的每秒速率（本次会话），与常驻通知里的读数同源；'
+                '上面的 $windowLabel 下行 / 上行是 `app_traffic_daily` 的累计字节，'
+                '两者口径不同，数字不必相等。',
+                style: context.listCaptionStyle,
+              ),
+            ],
           ],
         ),
       ),

@@ -2,7 +2,9 @@
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/block_response_settings.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/auto_update_providers.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
+import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,19 +15,17 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// 总开关 + URL 规则入口 + 拦截响应 + 订阅与更新；黑/白/覆写名单仍在
 /// 功能中心对应卡片里独立管理。
-class RuleControlPage extends ConsumerStatefulWidget {
+///
+/// ## 两处曾经是字面量
+/// 「规则订阅 5 个」「镜像站模板 3 个」与「已开启 · 每 6 小时」原本是写死的。
+/// 现在分别读 `subscription` 表、`mirror_template` 表与数据集 prefs 的
+/// `subscription_auto_update_*`；旧库为空时显示 `0 个`（这是真的「一条都没有」），
+/// 读取中显示破折号。
+class RuleControlPage extends ConsumerWidget {
   const RuleControlPage({super.key});
 
   @override
-  ConsumerState<RuleControlPage> createState() => _RuleControlPageState();
-}
-
-class _RuleControlPageState extends ConsumerState<RuleControlPage> {
-  final bool _autoUpdate = true;
-  final int _intervalHours = 6;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(legacySettingsProvider);
     final domainRules = settings.domainRulesEnabled;
     final blockMode = BlockResponseMode.fromStorage(
@@ -36,6 +36,12 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
     // 永远显示「需先安装并验证 CA 根证书」，哪怕用户已经装好。
     final caReady = ref.watch(caReadyProvider);
     final inspectionApps = settings.httpInspectionPackages;
+    final subscriptions = ref.watch(subscriptionEntriesProvider).value;
+    final mirrors = ref.watch(mirrorTemplatesProvider).value;
+    final autoUpdate = ref.watch(autoUpdateSettingsProvider);
+    final footnote = AppTextStyle.footnote
+        .of(context)
+        .copyWith(color: context.colorScheme.onSurfaceVariant);
     final urlSubtitle = !caReady
         ? '未就绪 · 需先安装并验证 CA 根证书'
         : !settings.httpInspectionEnabled
@@ -87,9 +93,7 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
                           caReady
                       ? '运行中'
                       : '未就绪',
-                  style: AppTextStyle.footnote
-                      .of(context)
-                      .copyWith(color: context.colorScheme.onSurfaceVariant),
+                  style: footnote,
                 ),
                 onTap: () => context.push('/hub/https-inspection'),
               ),
@@ -118,10 +122,8 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
                 title: const Text('规则订阅'),
                 subtitle: const Text('管理域名规则与 IPv4/IPv6 覆写订阅源及分组'),
                 trailing: Text(
-                  '5 个',
-                  style: AppTextStyle.footnote
-                      .of(context)
-                      .copyWith(color: context.colorScheme.onSurfaceVariant),
+                  subscriptions == null ? '—' : '${subscriptions.length} 个',
+                  style: footnote,
                 ),
                 onTap: () => context.push(Routes.subscriptions),
               ),
@@ -129,7 +131,9 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
                 leading: const GlyphIcon(AppGlyphs.refresh),
                 title: const Text('自动更新设置'),
                 subtitle: Text(
-                  _autoUpdate ? '已开启 · 每 $_intervalHours 小时自动更新' : '已关闭自动更新',
+                  autoUpdate.enabled
+                      ? '已开启 · 每 ${autoUpdate.intervalHours} 小时自动更新'
+                      : '已关闭自动更新',
                 ),
                 onTap: () => context.push('/hub/rules/auto-update'),
               ),
@@ -138,10 +142,8 @@ class _RuleControlPageState extends ConsumerState<RuleControlPage> {
                 title: const Text('镜像站模板'),
                 subtitle: const Text('维护订阅下载镜像，可在添加订阅时直接选择'),
                 trailing: Text(
-                  '3 个',
-                  style: AppTextStyle.footnote
-                      .of(context)
-                      .copyWith(color: context.colorScheme.onSurfaceVariant),
+                  mirrors == null ? '—' : '${mirrors.length} 个',
+                  style: footnote,
                 ),
                 onTap: () => context.push('/hub/rules/mirrors'),
               ),

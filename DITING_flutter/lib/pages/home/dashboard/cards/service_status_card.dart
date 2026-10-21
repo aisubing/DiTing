@@ -1,68 +1,31 @@
-import 'package:diting/data/mock_dashboard.dart';
+import 'package:diting/data/native/dns_latency_bridge.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/state/dashboard_providers.dart';
+import 'package:diting/state/network_tools_providers.dart';
+import 'package:diting/state/service_probe_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 单个被探测服务（上游 `widgets/service_status.dart` 的 ServiceStatus）。
-class ProbeService {
-  const ProbeService({
-    required this.name,
-    required this.description,
-    required this.kind,
-  });
-
-  final String name;
-  final String description;
-  final ProbeKind kind;
-
-  Glyph get glyph => switch (kind) {
-    ProbeKind.dns => AppGlyphs.dns,
-    ProbeKind.http => AppGlyphs.link,
-    ProbeKind.cache => AppGlyphs.layers,
-    ProbeKind.upstream => AppGlyphs.cloudSync,
-  };
-}
-
-/// 服务种类。决定图标与探测方式说明，避免把「类型」写成裸字符串。
-enum ProbeKind {
-  dns('DNS'),
-  http('HTTP'),
-  cache('缓存'),
-  upstream('上游');
-
-  const ProbeKind(this.label);
-
-  final String label;
-}
-
-const probeServices = <ProbeService>[
-  ProbeService(name: '本机解析', description: '53 端口 · UDP', kind: ProbeKind.dns),
-  ProbeService(
-    name: 'DoH 通道',
-    description: 'https://doh.example/dns-query',
-    kind: ProbeKind.http,
-  ),
-  ProbeService(
-    name: '本地缓存',
-    description: '容量 4096 · 命中 98%',
-    kind: ProbeKind.cache,
-  ),
-  ProbeService(
-    name: '上游服务商',
-    description: '5 个可用 · 1 个异常',
-    kind: ProbeKind.upstream,
-  ),
-];
+export 'package:diting/state/service_probe_providers.dart'
+    show ProbeKind, ProbeService, probeAgoLabel, probeServicesProvider;
 
 /// 服务状态卡（上游 `widgets/service_status.dart`，1050 行）。
 ///
 /// 上游这张卡有「单服务大圆环」与「多服务迷你列表」两种形态，这里取多服务
-/// 形态：每行一个探测项 + 状态点 + 可点开看延迟历史。1050 行里绝大部分是
+/// 形态：每行一个探测项 + 状态点 + 可点开看最近一次结果。1050 行里绝大部分是
 /// 桌面多列与动画细节，Android 单列用不到。
+///
+/// ## 探测是真的
+/// 点刷新会调 `dnsLatencyRunnerProvider`（原生 `DnsLatencyBridge` → 真实
+/// DoH/DoT/UDP 查询），耗时是实测值；失败显示「失败」，设备没有通道则整列
+/// 显示「不可用」。**没有**「按行号编一个 12 + index*9」的演示值。
+///
+/// ## 探测目标也不是写死的
+/// 四行的端口、服务商、缓存条数、已测速个数全部来自真实状态，见
+/// `state/service_probe_providers.dart` 的 `probeServicesProvider`。
 class ServiceStatusCard extends ConsumerStatefulWidget {
   const ServiceStatusCard({super.key, this.onDetail});
 
@@ -74,16 +37,26 @@ class ServiceStatusCard extends ConsumerStatefulWidget {
 }
 
 class _ServiceStatusCardState extends ConsumerState<ServiceStatusCard> {
-  /// 每项延迟；`null` = 尚未探测，`-1` = 探测失败。与上游同语义。
-  final Map<String, int?> _latencies = {};
+  /// 每项实测耗时；`null` = 尚未探测，`-1` = 探测失败。与上游同语义。
+  final Map<String, int> _latencies = {};
   var _probing = false;
+  var _unavailable = false;
+  DateTime? _lastProbeAt;
 
   @override
   Widget build(BuildContext context) {
     final core = ref.watch(coreStateProvider);
+    final services = ref.watch(probeServicesProvider);
     final scale = DashboardDensityScope.scaleOf(context);
     final colorScheme = context.colorScheme;
-    final alive = _latencies.entries.where((e) => (e.value ?? -1) > 0).length;
+
+    final targets = [
+      for (final service in services)
+        if (service.spec != null) service,
+    ];
+    final alive = targets
+        .where((service) => (_latencies[service.id] ?? -1) > 0)
+        .length;
     return DashboardCard(
       semanticLabel: '服务状态',
       child: Column(
@@ -103,43 +76,49 @@ class _ServiceStatusCardState extends ConsumerState<ServiceStatusCard> {
               DashboardIconButton(
                 glyph: AppGlyphs.refresh,
                 tooltip: '重新探测',
-                onPressed: core == CoreState.running && !_probing
-                    ? _probe
-                    : null,
+                onPressed: core.isRunning && !_probing ? _probe : null,
               ),
             ],
           ),
-          // 摘要行：活着几个 / 共几个。
+          // 摘要行：活着几个 / 可探测几个。没有可探测项时不给 0/0。
           Row(
             spacing: 8,
             children: [
               DashboardChip(
                 label: _probing
                     ? '探测中…'
-                    : '$alive / ${probeServices.length} 正常',
+                    : targets.isEmpty
+                    ? '无可探测项'
+                    : '$alive / ${targets.length} 正常',
                 tone: _probing
                     ? DashboardChipTone.idle
-                    : alive == probeServices.length
-                    ? DashboardChipTone.ok
-                    : DashboardChipTone.warn,
+                    : targets.isEmpty || alive < targets.length
+                    ? DashboardChipTone.warn
+                    : DashboardChipTone.ok,
                 dot: true,
               ),
-              if (core != CoreState.running)
+              if (!core.isRunning)
                 Text(
                   '内核未运行',
                   style: DashboardText.label(context, color: colorScheme.error),
                 ),
             ],
           ),
-          for (final service in probeServices)
+          for (final service in services)
             _ProbeRow(
               service: service,
-              latency: _latencies[service.name],
+              latency: _latencies[service.id],
               probing: _probing,
-              disabled: core != CoreState.running,
+              unavailable: _unavailable,
+              disabled: !core.isRunning,
               onTap: () => showSheet<void>(
                 context: context,
-                builder: (_) => _ProbeDetailSheet(service: service),
+                builder: (_) => _ProbeDetailSheet(
+                  service: service,
+                  latency: _latencies[service.id],
+                  lastProbeAt: _lastProbeAt,
+                  unavailable: _unavailable,
+                ),
               ),
             ),
           SizedBox(height: 2 * scale),
@@ -148,25 +127,53 @@ class _ServiceStatusCardState extends ConsumerState<ServiceStatusCard> {
     );
   }
 
-  /// 演示探测：先清空、900ms 后填回一组稳定值。
+  /// 真实探测：把所有带网络目标的项一次性交给原生测速通道。
   ///
-  /// 不用随机数：随机值会让 widget 测试与截图不可复现（AGENT_MISTAKES）。
+  /// 一轮 `probe` 而不是逐项 `await`：原生侧本来就是并发跑的，逐项等待会把
+  /// 「N 项 × 3 次查询」串成一条长队。
   Future<void> _probe() async {
+    final targets = [
+      for (final service in ref.read(probeServicesProvider))
+        if (service.spec != null) service,
+    ];
+    if (targets.isEmpty) return;
     setState(() {
       _probing = true;
       _latencies.clear();
+      _unavailable = false;
     });
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    if (!mounted) {
-      return;
+    try {
+      final samples = await ref
+          .read(dnsLatencyRunnerProvider)
+          .probe(
+            providers: [for (final service in targets) service.spec!],
+            domain: ref.read(latencyDomainProvider),
+            attempts: 1,
+          );
+      if (!mounted) return;
+      final byId = {for (final sample in samples) sample.providerId: sample};
+      setState(() {
+        _probing = false;
+        _lastProbeAt = DateTime.now();
+        for (final service in targets) {
+          final sample = byId[service.id];
+          // 没有回包的项记 -1（失败），不是「仍在探测」——否则状态点会一直
+          // 停在灰色，用户以为还在跑。
+          _latencies[service.id] = sample == null
+              ? -1
+              : sample.success
+              ? sample.elapsedMs
+              : -1;
+        }
+      });
+    } on DnsLatencyUnavailable {
+      if (!mounted) return;
+      setState(() {
+        _probing = false;
+        _unavailable = true;
+        _latencies.clear();
+      });
     }
-    setState(() {
-      _probing = false;
-      for (final (index, service) in probeServices.indexed) {
-        // 上游「异常的那个」固定不吃延迟，用来演示红色失败态。
-        _latencies[service.name] = index == 3 ? -1 : 12 + index * 9;
-      }
-    });
   }
 }
 
@@ -175,6 +182,7 @@ class _ProbeRow extends StatelessWidget {
     required this.service,
     required this.latency,
     required this.probing,
+    required this.unavailable,
     required this.disabled,
     required this.onTap,
   });
@@ -182,6 +190,7 @@ class _ProbeRow extends StatelessWidget {
   final ProbeService service;
   final int? latency;
   final bool probing;
+  final bool unavailable;
   final bool disabled;
   final VoidCallback onTap;
 
@@ -189,16 +198,19 @@ class _ProbeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final failed = latency != null && latency! < 0;
-    final pending = probing || latency == null;
-    final dotColor = disabled
-        ? colorScheme.outline
-        : pending
+    final hasTarget = service.spec != null;
+    final pending = probing || (hasTarget && latency == null);
+    final dotColor = disabled || pending
         ? colorScheme.outline
         : failed
         ? colorScheme.error
         : colorScheme.success;
-    final trailing = disabled
+    final trailing = !hasTarget
         ? '—'
+        : disabled
+        ? '—'
+        : unavailable
+        ? '不可用'
         : pending
         ? '…'
         : failed
@@ -225,7 +237,7 @@ class _ProbeRow extends StatelessWidget {
                 ),
               ),
               GlyphIcon(
-                service.glyph,
+                _glyphOf(service.kind),
                 size: 16,
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -268,24 +280,40 @@ class _ProbeRow extends StatelessWidget {
       ),
     );
   }
+
+  static Glyph _glyphOf(ProbeKind kind) => switch (kind) {
+    ProbeKind.dns => AppGlyphs.dns,
+    ProbeKind.http => AppGlyphs.link,
+    ProbeKind.cache => AppGlyphs.layers,
+    ProbeKind.upstream => AppGlyphs.cloudSync,
+  };
 }
 
 class _ProbeDetailSheet extends StatelessWidget {
-  const _ProbeDetailSheet({required this.service});
+  const _ProbeDetailSheet({
+    required this.service,
+    required this.latency,
+    required this.lastProbeAt,
+    required this.unavailable,
+  });
 
   final ProbeService service;
+  final int? latency;
+  final DateTime? lastProbeAt;
+  final bool unavailable;
 
   @override
   Widget build(BuildContext context) {
+    final measured = latency != null && latency! > 0;
     return CommonScaffold(
       title: service.name,
       body: ListView(
         // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
-          ListHeader(title: '探测项'),
+          const ListHeader(title: '探测项'),
           ListItem(
-            leading: GlyphIcon(service.glyph),
+            leading: GlyphIcon(_ProbeRow._glyphOf(service.kind)),
             title: const Text('类型'),
             trailing: Text(service.kind.label),
           ),
@@ -294,12 +322,33 @@ class _ProbeDetailSheet extends StatelessWidget {
             title: const Text('目标'),
             subtitle: Text(service.description),
           ),
-          const ListItem(
-            leading: GlyphIcon(AppGlyphs.clock),
-            title: Text('最近探测'),
-            trailing: Text('12 秒前'),
+          ListItem(
+            leading: const GlyphIcon(AppGlyphs.speed),
+            title: const Text('最近结果'),
+            trailing: Text(
+              service.spec == null
+                  ? '无网络目标'
+                  : unavailable
+                  ? '不可用'
+                  : measured
+                  ? '${latency}ms'
+                  : latency == null
+                  ? '尚未探测'
+                  : '失败',
+            ),
           ),
-          const ListFooter(text: '演示数据：探测结果不来自真实网络。'),
+          ListItem(
+            leading: const GlyphIcon(AppGlyphs.clock),
+            title: const Text('最近探测'),
+            trailing: Text(probeAgoLabel(lastProbeAt)),
+          ),
+          if (service.spec == null)
+            const ListFooter(
+              text: '这一项没有网络目标：它显示的是本地表里的实际条数与累计命中，'
+                  '不会发起查询。',
+            )
+          else if (unavailable)
+            const ListFooter(text: '当前设备没有可用的测速通道，无法发起真实查询。'),
         ],
       ),
     );

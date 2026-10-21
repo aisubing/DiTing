@@ -1,4 +1,4 @@
-import 'package:diting/data/mock_dashboard.dart';
+import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

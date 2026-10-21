@@ -15,6 +15,12 @@ import io.flutter.plugin.common.MethodChannel
 /// `prepare` may open the system consent dialog; its result is delivered to
 /// Dart as an `onPrepareResult` callback so the UI can retry `start` without
 /// polling.
+///
+/// `trafficRates` exists because the dashboard's 实时速率 readout polls at 1 Hz
+/// and `status` is a heavier call (it also serialises the engine's counter JSON
+/// on every poll). The rates themselves come from the same
+/// [com.haoze.diting.log.TrafficRateMonitor] the notification reads, so the two
+/// surfaces can never disagree.
 class VpnBridge(
     private val activity: Activity,
     messenger: BinaryMessenger,
@@ -34,6 +40,7 @@ class VpnBridge(
                 result.success(true)
             }
             "status" -> result.success(DitingVpnService.status(activity))
+            "trafficRates" -> result.success(DitingVpnService.trafficRates())
             else -> result.notImplemented()
         }
     }

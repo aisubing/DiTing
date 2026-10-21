@@ -30,6 +30,19 @@ class ExpressVpnBridge(
                 result.success(true)
             }
             "status" -> result.success(ExpressVpnService.status(activity))
+            // Express has no traffic statistics at all: `ExpressRulesDatabase`
+            // excludes `app_traffic_daily`, and `ExpressVpnService` never calls
+            // `EngineDataPlane.attachTraffic` (see that class's comment). Answer
+            // explicitly instead of leaving the channel method missing, so Dart
+            // shows "极速模式无流量统计" rather than a `MissingPluginException`.
+            "trafficRates" -> result.success(
+                mapOf(
+                    "running" to ExpressVpnService.isRunning,
+                    "txBps" to 0L,
+                    "rxBps" to 0L,
+                    "unsupported" to true,
+                )
+            )
             else -> result.notImplemented()
         }
     }

@@ -11,6 +11,7 @@
 library;
 
 import 'package:diting/data/db/legacy_database.dart';
+import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
 import 'package:diting/data/subscriptions/subscription_fetcher.dart';
@@ -456,3 +457,64 @@ class SubscriptionActions {
 final subscriptionActionsProvider = Provider<SubscriptionActions>(
   SubscriptionActions.new,
 );
+
+// ---------------------------------------------------------------------------
+// 镜像站模板（mirror_template 表）
+// ---------------------------------------------------------------------------
+
+/// 模板仓库：没有旧库时为 null，页面据此渲染空状态。
+final mirrorTemplateRepositoryProvider =
+    FutureProvider<MirrorTemplateRepository?>((ref) async {
+      final db = await ref.watch(subscriptionDatabaseProvider.future);
+      if (db == null) return null;
+      return MirrorTemplateRepository(
+        db,
+        onChanged: () => ref.read(subscriptionRevisionProvider.notifier).bump(),
+      );
+    });
+
+/// 全部镜像站模板（`addedAt DESC`，与旧版 `observeAll` 同序）。
+final mirrorTemplatesProvider = FutureProvider<List<MirrorTemplateRecord>>((
+  ref,
+) async {
+  ref.watch(subscriptionRevisionProvider);
+  final repository = await ref.watch(mirrorTemplateRepositoryProvider.future);
+  return repository == null
+      ? const <MirrorTemplateRecord>[]
+      : repository.all();
+});
+
+/// 镜像站模板的增删改。写成功后由仓库的 `onChanged` 自增 revision，
+/// 列表 provider 自动重建。
+class MirrorTemplateActions {
+  MirrorTemplateActions(this._ref);
+
+  final Ref _ref;
+
+  Future<MirrorTemplateRepository?> _repository() =>
+      _ref.read(mirrorTemplateRepositoryProvider.future);
+
+  /// 返回新行 id；同名或空输入返回 null（调用方据此提示，不静默覆盖）。
+  Future<int?> create({required String name, required String template}) async =>
+      (await _repository())?.insert(name: name, template: template);
+
+  /// 返回 false 表示同名冲突或输入非法。
+  Future<bool> update({
+    required int id,
+    required String name,
+    required String template,
+  }) async =>
+      await (await _repository())?.update(
+        id: id,
+        name: name,
+        template: template,
+      ) ??
+      false;
+
+  Future<void> remove(int id) async => (await _repository())?.delete(id);
+}
+
+final mirrorTemplateActionsProvider = Provider<MirrorTemplateActions>(
+  MirrorTemplateActions.new,
+);
+
