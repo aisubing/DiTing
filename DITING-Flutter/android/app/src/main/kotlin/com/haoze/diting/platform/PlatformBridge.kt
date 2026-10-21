@@ -29,6 +29,9 @@ import java.io.File
  *   port had a fake `_crashLogCount = 3`. This bridge enumerates and clears the
  *   real directory.
  * - **导出 CSV** — writes to the app's external files dir and returns the path.
+ * - **备份导出 / 恢复导入** — the system "save / open document" pickers. 1.4.3 used
+ *   `ActivityResultContracts.CreateDocument` / `OpenDocument`; both need an
+ *   `Activity` and an `onActivityResult` round trip, which only exists here.
  *
  * Notification settings are **not** handled here: they live in
  * `notification_settings_prefs` and are consumed by the foreground services
@@ -36,7 +39,8 @@ import java.io.File
  * exactly how 1.4.3 wired them. A method channel would only add a hop.
  *
  * The Activity is required for the battery-optimisation intent (it must be
- * started from a UI context) and for the task-list enumeration.
+ * started from a UI context), for the task-list enumeration, and for both
+ * document pickers.
  */
 class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallHandler {
 
@@ -69,6 +73,10 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
         private const val BACKGROUND_CACHE_FILE = "custom_background_cached.png"
         private const val BACKGROUND_CACHE_TMP = "custom_background_cached.tmp"
         private const val BACKGROUND_MARKER_FILE = "custom_background_uri.txt"
+
+        /** Document-picker request codes; distinct from the VPN ones (0x5650/0x5651). */
+        private const val REQUEST_EXPORT_DOCUMENT = 0x5701
+        private const val REQUEST_IMPORT_DOCUMENT = 0x5702
 
         /** Exports go here; visible to the user through the system file picker. */
         private const val EXPORT_DIR = "exports"
@@ -126,9 +134,162 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             // reaches the app's `databases/` directory.
             "clearUpdateCache" -> result.success(clearUpdateCache(call.argument<Boolean>("includeTemp") ?: true))
             "clearCustomBackgroundCache" -> result.success(clearCustomBackgroundCache())
+            // Backup / restore. Both are picker round trips, so the answer comes
+            // back through `onActivityResult` → `pendingDocumentResult`, not here.
+            "exportDocument" -> exportDocument(call, result)
+            "importDocument" -> importDocument(call, result)
             else -> result.notImplemented()
         }
     }
+
+    // --------------------------------------------------- 备份导出 / 恢复导入
+
+    /**
+     * Opens the system "save document" picker and writes [content] to the chosen URI.
+     *
+     * The result map is `{saved: Boolean, name: String?}`. `saved = false` with no
+     * name means the user cancelled — that is not an error, and treating it as one
+     * would make a cancelled backup look like a failed backup.
+     */
+    private fun exportDocument(call: MethodCall, result: MethodChannel.Result) {
+        val suggested = call.argument<String>("name")?.takeIf { it.isNotBlank() }
+            ?: "diting-backup.json"
+        val content = call.argument<String>("content").orEmpty()
+        if (pendingDocumentResult != null) {
+            result.error("picker_busy", "另一个文件选择器仍在打开", null)
+            return
+        }
+        pendingDocumentResult = result
+        pendingExportContent = content
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, suggested)
+        }
+        runCatching { activity.startActivityForResult(intent, REQUEST_EXPORT_DOCUMENT) }
+            .onFailure {
+                pendingDocumentResult = null
+                pendingExportContent = null
+                result.error("picker_failed", it.message, null)
+            }
+    }
+
+    /** Opens the system "open document" picker; the text is returned on selection. */
+    private fun importDocument(call: MethodCall, result: MethodChannel.Result) {
+        if (pendingDocumentResult != null) {
+            result.error("picker_busy", "另一个文件选择器仍在打开", null)
+            return
+        }
+        pendingDocumentResult = result
+        pendingExportContent = null
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            // `application/json` alone hides files a file manager labelled
+            // `text/plain`; `*/*` is filtered in Dart by parsing, which is what
+            // 1.4.3's OpenDocument did as well.
+            type = "*/*"
+        }
+        runCatching { activity.startActivityForResult(intent, REQUEST_IMPORT_DOCUMENT) }
+            .onFailure {
+                pendingDocumentResult = null
+                result.error("picker_failed", it.message, null)
+            }
+    }
+
+    /**
+     * Settles a pending picker call. Called from `MainActivity.onActivityResult`.
+     *
+     * Returns true when the request belonged to this bridge, so the Activity can
+     * stop looking for other handlers.
+     */
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+        val isExport = requestCode == REQUEST_EXPORT_DOCUMENT
+        val isImport = requestCode == REQUEST_IMPORT_DOCUMENT
+        if (!isExport && !isImport) return false
+        val pending = pendingDocumentResult
+        val content = pendingExportContent
+        pendingDocumentResult = null
+        pendingExportContent = null
+        if (pending == null) return true
+        val uri = data?.data
+        if (resultCode != Activity.RESULT_OK || uri == null) {
+            pending.success(mapOf("saved" to false, "name" to null, "cancelled" to true))
+            return true
+        }
+        if (isExport) {
+            pending.success(
+                runCatching {
+                    // "wt" truncates: without it a shorter backup leaves the tail
+                    // of the previous file, producing invalid JSON.
+                    activity.contentResolver.openOutputStream(uri, "wt")?.use {
+                        it.write(content.orEmpty().toByteArray())
+                    } ?: error("无法打开导出文件")
+                    mapOf(
+                        "saved" to true,
+                        "name" to (uri.lastPathSegment ?: ""),
+                        "cancelled" to false,
+                    )
+                }.getOrElse { error ->
+                    mapOf(
+                        "saved" to false,
+                        "name" to null,
+                        "cancelled" to false,
+                        "error" to (error.message ?: error.javaClass.simpleName),
+                    )
+                },
+            )
+            return true
+        }
+        pending.success(
+            runCatching {
+                val text = activity.contentResolver.openInputStream(uri)?.use {
+                    it.readBytes().toString(Charsets.UTF_8)
+                } ?: error("无法读取该文件")
+                mapOf(
+                    "text" to text,
+                    "name" to (displayNameOf(uri) ?: uri.lastPathSegment ?: ""),
+                    "cancelled" to false,
+                )
+            }.getOrElse { error ->
+                mapOf(
+                    "text" to null,
+                    "name" to null,
+                    "cancelled" to false,
+                    "error" to (error.message ?: error.javaClass.simpleName),
+                )
+            },
+        )
+        return true
+    }
+
+    /**
+     * Human-readable file name for a `content://` URI.
+     *
+     * `uri.lastPathSegment` is the provider's opaque document id (`1`, `msf:12`),
+     * not the name the user sees: showing it as 「来源文件：1」 tells the user
+     * nothing. `OpenableColumns.DISPLAY_NAME` is what the picker rendered.
+     */
+    private fun displayNameOf(uri: Uri): String? = runCatching {
+        activity.contentResolver.query(
+            uri,
+            arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getString(0)
+            } else {
+                null
+            }
+        }
+    }.getOrNull()
+
+    /** The in-flight picker, if any. Only one can be open at a time. */
+    private var pendingDocumentResult: MethodChannel.Result? = null
+
+    /** Content waiting for the export picker to return a URI. */
+    private var pendingExportContent: String? = null
 
     // -------------------------------------------------------- 后台隐藏
 

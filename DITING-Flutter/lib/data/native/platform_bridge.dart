@@ -169,4 +169,113 @@ class PlatformBridge {
       return 0;
     }
   }
+
+  /// 打开系统「保存文件」选择器并把 [content] 写进去。
+  ///
+  /// 必须走系统选择器而不是直接写应用目录：备份文件的用途就是让用户拿出去，
+  /// 而应用外部私有目录在 Android 11+ 连文件管理器都不容易找到。
+  ///
+  /// 返回值区分三件事——保存成功（带文件名）、用户取消、保存失败（带原因）。
+  /// 把「取消」当成「失败」会让用户以为备份坏了；把「失败」当成「成功」更糟。
+  Future<DocumentSaveResult> exportDocument({
+    required String name,
+    required String content,
+  }) async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('exportDocument', {
+        'name': name,
+        'content': content,
+      });
+      return DocumentSaveResult.fromMap(raw);
+    } on MissingPluginException {
+      return const DocumentSaveResult.unavailable();
+    } on PlatformException catch (error) {
+      return DocumentSaveResult.failed('无法打开保存对话框：${error.message}');
+    }
+  }
+
+  /// 打开系统「打开文件」选择器并读回文本内容。
+  Future<DocumentOpenResult> importDocument() async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('importDocument');
+      return DocumentOpenResult.fromMap(raw);
+    } on MissingPluginException {
+      return const DocumentOpenResult.unavailable();
+    } on PlatformException catch (error) {
+      return DocumentOpenResult.failed('无法打开文件选择器：${error.message}');
+    }
+  }
+}
+
+/// 保存对话框的结果。
+class DocumentSaveResult {
+  const DocumentSaveResult({
+    required this.saved,
+    this.name,
+    this.cancelled = false,
+    this.error,
+  });
+
+  /// 本机没有该能力（非 Android 宿主 / 测试）：既不是成功也不是取消。
+  const DocumentSaveResult.unavailable()
+    : saved = false,
+      name = null,
+      cancelled = false,
+      error = '当前环境不支持系统文件选择器';
+
+  const DocumentSaveResult.failed(String this.error)
+    : saved = false,
+      name = null,
+      cancelled = false;
+
+  final bool saved;
+  final String? name;
+  final bool cancelled;
+  final String? error;
+
+  static DocumentSaveResult fromMap(Object? raw) {
+    final map = raw is Map ? Map<Object?, Object?>.from(raw) : const {};
+    return DocumentSaveResult(
+      saved: map['saved'] == true,
+      name: map['name'] as String?,
+      cancelled: map['cancelled'] == true,
+      error: map['error'] as String?,
+    );
+  }
+}
+
+/// 打开对话框的结果。
+class DocumentOpenResult {
+  const DocumentOpenResult({
+    this.text,
+    this.name,
+    this.cancelled = false,
+    this.error,
+  });
+
+  const DocumentOpenResult.unavailable()
+    : text = null,
+      name = null,
+      cancelled = false,
+      error = '当前环境不支持系统文件选择器';
+
+  const DocumentOpenResult.failed(String this.error)
+    : text = null,
+      name = null,
+      cancelled = false;
+
+  final String? text;
+  final String? name;
+  final bool cancelled;
+  final String? error;
+
+  static DocumentOpenResult fromMap(Object? raw) {
+    final map = raw is Map ? Map<Object?, Object?>.from(raw) : const {};
+    return DocumentOpenResult(
+      text: map['text'] as String?,
+      name: map['name'] as String?,
+      cancelled: map['cancelled'] == true,
+      error: map['error'] as String?,
+    );
+  }
 }

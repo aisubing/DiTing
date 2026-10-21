@@ -52,6 +52,10 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (vpnBridge?.onActivityResult(requestCode, resultCode) == true) return
+        // 备份导出 / 恢复导入：都是文档选择器的往返。请求码 0x5701 / 0x5702
+        // 与 VPN 的 0x5650 / 0x5651 不重叠，所以顺序无关，但仍放在前面，
+        // 因为它要读 `data.data`（VPN 那两个只看 resultCode）。
+        if (platformBridge?.onActivityResult(requestCode, resultCode, data) == true) return
         expressVpnBridge?.onActivityResult(requestCode, resultCode)
     }
 }
