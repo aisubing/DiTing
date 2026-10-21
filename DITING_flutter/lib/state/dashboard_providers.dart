@@ -13,7 +13,7 @@
 /// 刻意**不**把定时器放进 provider 构造函数：那样每个 watch 都会起一个 timer。
 /// 用 [speedSeriesProvider] 这种 `Notifier` + 显式 `tick()`，由页面在
 /// `initState` 里启动、`dispose` 里停止，避免测试里 timer 泄漏
-/// （AGENT_MISTAKES：widget 测试必须能 settle）。
+/// （widget 测试必须能 settle）。
 library;
 
 import 'dart:async';

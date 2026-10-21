@@ -350,7 +350,7 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
 /// 一次性的 SnackBar 提示。
 ///
 /// 设置页的大量动作是「改了就生效」，被规则拒绝时除了开关弹回去没有任何痕迹，
-/// 用户会以为点坏了——必须补一句说明（这条经验写在本仓 AGENT_MISTAKES 里）。
+/// 用户会以为点坏了——必须补一句说明。
 void showSettingHint(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(

@@ -6,8 +6,8 @@ import 'support/app_host.dart';
 
 /// 守住「scopes 必须在 `Navigator` 之上」这条不变量。
 ///
-/// 这是本会话里被误判过两次的地方：旧版 `AGENT_MISTAKES.md` 与旧版
-/// `test/support/app_host.dart` 都声称 scopes 要装在 `home:`，理由是
+/// 这里曾被误判过两次：旧版 `test/support/app_host.dart` 与更早的注释
+/// 都声称 scopes 要装在 `home:`，理由是
 /// 「装 `builder` 会让浮层报 `Navigator operation requested with a context
 /// that does not include a Navigator`」。实测两个方向都能 push，真正的差别
 /// 在**浮层内容能不能读到 scope**：`showSheet` / `showFloatingDialog` 的

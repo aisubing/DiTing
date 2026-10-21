@@ -9,7 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 /// 唯一索引、外键 `ON DELETE CASCADE` 都与设备上 `subscription` /
 /// `subscription_group` / `subscription_auto_update_item` 三张表一致——只有这样才能
 /// 证明仓库里的 `ORDER BY`、唯一冲突与级联删除真的成立，而不是被宽松的测试库
-/// 静默放过（AGENT_MISTAKES 铁律 1：判据要落在真实结构上）。
+/// 静默放过（判据要落在真实结构上，不能落在测试库的宽容行为上）。
 void main() {
   setUpAll(() {
     sqfliteFfiInit();

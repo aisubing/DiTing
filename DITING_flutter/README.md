@@ -363,8 +363,8 @@ WebDAV、Agent 设置页等），另一部分**没有**（见 §8.2）。补标�
 
 ## 9. 提交约定
 
-中文 Conventional Commits，一个阶段一个提交；提交前 `flutter analyze` 零问题、`flutter test`
-全绿、文件行数达标。新踩的坑写进仓库根 `AGENT_MISTAKES.md`（时间倒序、去重）。
+中文 Conventional Commits，一个阶段一个提交；提交前 `flutter analyze` 零问题，测试范围按改动
+的实际风险决定（高风险改动跑 `flutter test` 全绿），文件行数不超过 600 行。
 `dart format` / `flutter analyze` / 不带路径的 `git commit` 都是全局操作，只对自己作用域的路径
 跑；提交一律带明确文件列表——同一工作区里多个 agent 共享 `.git/index`。
 
