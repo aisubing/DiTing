@@ -45,9 +45,8 @@ enum BatteryOptimizationState {
 /// 查询忽略电池优化状态；通道缺失返回 [BatteryOptimizationState.unavailable]。
 Future<BatteryOptimizationState> readBatteryOptimization() async {
   try {
-    final granted = await const MethodChannel(
-      platformChannelName,
-    ).invokeMethod<bool>('isIgnoringBatteryOptimizations');
+    final granted = await const MethodChannel(platformChannelName)
+        .invokeMethod<bool>('isIgnoringBatteryOptimizations');
     if (granted == null) {
       return BatteryOptimizationState.unavailable;
     }
@@ -68,9 +67,8 @@ Future<BatteryOptimizationState> readBatteryOptimization() async {
 /// 重读一次。
 Future<BatteryOptimizationState> requestBatteryOptimization() async {
   try {
-    await const MethodChannel(
-      platformChannelName,
-    ).invokeMethod<bool>('requestIgnoreBatteryOptimizations');
+    await const MethodChannel(platformChannelName)
+        .invokeMethod<bool>('requestIgnoreBatteryOptimizations');
   } on MissingPluginException {
     return BatteryOptimizationState.unavailable;
   } on PlatformException {
@@ -85,9 +83,8 @@ Future<BatteryOptimizationState> requestBatteryOptimization() async {
 /// 写死 `false`：等原生补上 `clearCache`，这里自动生效，页面不用改。
 Future<bool> clearServerDnsCache() async {
   try {
-    return await const MethodChannel(
-          serverChannelName,
-        ).invokeMethod<bool>('clearCache') ??
+    return await const MethodChannel(serverChannelName)
+            .invokeMethod<bool>('clearCache') ??
         false;
   } on MissingPluginException {
     return false;
