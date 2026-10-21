@@ -49,3 +49,6 @@ app.*.map.json
 
 # 真机 UI 取证产物（截图与几何 dump），不入库
 tool/uiprobe/
+
+# 多轮 ADB 实测的截图、UI dump 与 VM Service 驱动脚本，不入库
+.tmp_verify/

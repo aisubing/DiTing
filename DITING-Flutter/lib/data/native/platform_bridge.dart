@@ -118,4 +118,39 @@ class PlatformBridge {
       return null;
     }
   }
+
+  /// 删除已下载的更新安装包；[includeTemp] 为真时连临时缓存目录一起删。
+  ///
+  /// 返回删掉的条目数。**不能用 sqflite 做这件事**：它只认识应用私有目录下的
+  /// `databases/`，删不到 `filesDir/app-update`（1.4.3 `AppUpdateManager` 的
+  /// 真实下载目录）与 `cacheDir`。
+  ///
+  /// 通道缺失时返回 0 而不是抛异常：调用方据此提示「本机无可用下载缓存」，
+  /// 与「删了 0 个」在语义上一致——两者都不该谎报成功。
+  Future<int> clearUpdateCache({bool includeTemp = true}) async {
+    try {
+      final result = await _channel.invokeMethod<int>('clearUpdateCache', {
+        'includeTemp': includeTemp,
+      });
+      return result ?? 0;
+    } on MissingPluginException {
+      return 0;
+    } on PlatformException {
+      return 0;
+    }
+  }
+
+  /// 删除自定义壁纸的缓存位图与路径标记文件，返回删掉的文件数。
+  Future<int> clearCustomBackgroundCache() async {
+    try {
+      final result = await _channel.invokeMethod<int>(
+        'clearCustomBackgroundCache',
+      );
+      return result ?? 0;
+    } on MissingPluginException {
+      return 0;
+    } on PlatformException {
+      return 0;
+    }
+  }
 }

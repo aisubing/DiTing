@@ -43,11 +43,43 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
     companion object {
         const val CHANNEL = "com.haoze.diting/platform"
 
-        /** Crash records, matching 1.4.3's `filesDir/crash`. */
+        /**
+         * Crash records.
+         *
+         * Two names on purpose: 1.4.3 wrote `filesDir/crash_logs`
+         * (`CrashLogManager.DIR_NAME`), an upgraded install therefore still has
+         * that directory; this port has always used `crash`. Clearing only one
+         * leaves the other's files behind while the UI says 「已删除」.
+         */
         private const val CRASH_DIR = "crash"
+        private const val LEGACY_CRASH_DIR = "crash_logs"
+
+        /** 1.4.3 `CrashLogManager.PREFS_NAME`. */
+        private const val CRASH_PREFS = "diting_crash_state"
+
+        /** `CrashLogManager` streak keys reset by `clearCrashLogs`. */
+        private val CRASH_STATE_KEYS = arrayOf(
+            "consecutive_crash_count",
+            "has_manually_exported",
+            "pending_auto_export_notice",
+            "last_recorded_native_exit_time",
+        )
+
+        /** 1.4.3 `CustomBackgroundManager` cache files under `filesDir`. */
+        private const val BACKGROUND_CACHE_FILE = "custom_background_cached.png"
+        private const val BACKGROUND_CACHE_TMP = "custom_background_cached.tmp"
+        private const val BACKGROUND_MARKER_FILE = "custom_background_uri.txt"
 
         /** Exports go here; visible to the user through the system file picker. */
         private const val EXPORT_DIR = "exports"
+
+        /**
+         * 1.4.3 `AppUpdateDirectories.downloadDirectory(filesDir)`.
+         *
+         * Data-cleanup 的「清理下载与临时缓存」必须删这个目录：更新安装包留在这里
+         * 才不会被系统清掉，删错了地方会让「已清理」变成谎报。
+         */
+        private const val UPDATE_DIR = "updates"
 
         /** Key 1.4.3's `SystemSettingsStore` used for 后台隐藏. */
         private const val HIDE_FROM_RECENTS_KEY = "hide_from_recents_enabled"
@@ -84,9 +116,15 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             "applyRecentsPrivacy" -> applyRecentsPrivacy(call, result)
             "isIgnoringBatteryOptimizations" -> result.success(isIgnoringBatteryOptimizations())
             "requestIgnoreBatteryOptimizations" -> requestIgnoreBatteryOptimizations(result)
-            "crashLogCount" -> result.success(crashDir().listFiles()?.size ?: 0)
+            "crashLogCount" -> result.success(crashLogCount())
             "clearCrashLogs" -> clearCrashLogs(result)
             "exportText" -> exportText(call, result)
+            // Data-cleanup actions that touch the file system. Their Dart
+            // counterparts (logs / traffic / cache / rules / subscriptions) run
+            // through the sqflite layer; these two cannot, because sqflite only
+            // reaches the app's `databases/` directory.
+            "clearUpdateCache" -> result.success(clearUpdateCache(call.argument<Boolean>("includeTemp") ?: true))
+            "clearCustomBackgroundCache" -> result.success(clearCustomBackgroundCache())
             else -> result.notImplemented()
         }
     }
@@ -143,13 +181,85 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
 
     private fun crashDir(): File = File(context.filesDir, CRASH_DIR).apply { mkdirs() }
 
+    /** Files in both the Flutter directory and 1.4.3's `crash_logs`. */
+    private fun crashLogCount(): Int {
+        val legacy = File(context.filesDir, LEGACY_CRASH_DIR)
+        return (crashDir().listFiles()?.size ?: 0) + (legacy.listFiles()?.size ?: 0)
+    }
+
+    /**
+     * Deletes the crash records and resets the crash streak counters.
+     *
+     * The counters matter: `CrashLogManager.clearCrashLogs` also re-arms the
+     * automatic export for the next streak. Deleting only the files leaves
+     * `consecutive_crash_count` at its old value, so the next single crash
+     * immediately trips the "crash loop" threshold again.
+     */
     private fun clearCrashLogs(result: MethodChannel.Result) {
-        val dir = crashDir()
         var removed = 0
-        dir.listFiles()?.forEach { file ->
-            if (file.isFile && file.delete()) removed++
+        removed += deleteContents(crashDir())
+        removed += deleteContents(File(context.filesDir, LEGACY_CRASH_DIR))
+        runCatching {
+            val prefs = context.getSharedPreferences(CRASH_PREFS, Context.MODE_PRIVATE)
+            val editor = prefs.edit()
+            CRASH_STATE_KEYS.forEach { editor.remove(it) }
+            editor.apply()
         }
         result.success(removed)
+    }
+
+    // ------------------------------------------------- 下载 / 背景缓存清理
+
+    /**
+     * Deletes downloaded update APKs, and with [includeTemp] the two cache
+     * directories as well.
+     *
+     * Returns the number of deleted entries. `filesDir/app-update` is the
+     * directory 1.4.3's `AppUpdateManager` writes to; an earlier cleanup that
+     * targeted `filesDir/updates` deleted nothing and still reported success.
+     */
+    private fun clearUpdateCache(includeTemp: Boolean): Int {
+        var removed = deleteContents(File(context.filesDir, UPDATE_DIR))
+        if (includeTemp) {
+            removed += deleteContents(context.cacheDir)
+            removed += deleteContents(context.externalCacheDir)
+        }
+        return removed
+    }
+
+    /**
+     * Deletes the cached custom wallpaper plus its marker file.
+     *
+     * The preference keys are cleared by the Dart layer (it owns the prefs
+     * snapshot); this only removes the files, or the next launch re-reads a
+     * stale bitmap whose URI no longer exists.
+     */
+    private fun clearCustomBackgroundCache(): Int {
+        val root = context.filesDir
+        var removed = 0
+        val names = arrayOf(
+            BACKGROUND_CACHE_FILE,
+            BACKGROUND_CACHE_TMP,
+            BACKGROUND_MARKER_FILE,
+        )
+        for (name in names) {
+            val file = File(root, name)
+            if (file.exists() && file.delete()) removed++
+        }
+        return removed
+    }
+
+    /** Deletes every child of [dir]; returns how many entries disappeared. */
+    private fun deleteContents(dir: File?): Int {
+        if (dir == null || !dir.exists()) return 0
+        var removed = 0
+        dir.listFiles()?.forEach { file ->
+            val ok = runCatching {
+                if (file.isDirectory) file.deleteRecursively() else file.delete()
+            }.getOrDefault(false)
+            if (ok) removed++
+        }
+        return removed
     }
 
     // ----------------------------------------------------------- 导出

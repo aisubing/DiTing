@@ -312,7 +312,7 @@ Agent 设置页。
 WebDAV、Agent 设置页等），另一部分**没有**（见 §8.2）。补标注可以，**换成看起来像真的
 假数据不行**；也不要把这些页面写成已完成。
 
-流量、请求、DNS 日志、订阅、出站代理、CA/HTTPS、网络工具、应用清单已接真实数据源。
+流量、请求、DNS 日志、订阅、出站代理、CA/HTTPS、网络工具、应用清单、数据清理已接真实数据源。
 
 **本轮新增接线**（此前是写死的演示值）：
 
@@ -326,6 +326,34 @@ WebDAV、Agent 设置页等），另一部分**没有**（见 §8.2）。补标�
 | 规则控制页的「N 个」与自动更新摘要 | `subscription` 表、`mirror_template` 表、数据集 prefs 的 `subscription_auto_update_*` |
 | 自动更新设置页 | 同上（写入数据集 prefs + `subscription_group.autoUpdateEnabled` 列） |
 | 镜像站模板页 | `mirror_template` 表（增删改全落库） |
+| `/hub/data-cleanup` 全部十六个动作 | 真实删除：日志/流量/缓存三表、权重 JSON、规则与订阅事务、四份应用名单、出站代理、CA、下载与背景缓存、引导标记（`DataCleanupService`） |
+
+### 8.1.1 数据清理是「真删」，不是弹提示
+
+`/hub/data-cleanup` 上一轮十六个动作**全部**只弹一句「已删除 X」然后什么都不做——这是本仓
+最坏的一种占位：文案描述的是后果，用户据此以为数据没了，磁盘上一个字节都没动。现在每个动作
+都落到真实存储（`lib/data/cleanup/`）：
+
+| 存储 | 动作 | 落点 |
+|---|---|---|
+| sqflite | 请求日志 / 流量 / 缓存 | 四张日志表 + `app_traffic_daily` + `dns_cache`，逐表容错（极速库没有 `http_request_log`） |
+| sqflite 事务 | 域名 / 地址规则、订阅 | 规则表 + `*_source` 表 + `deleteOrphans` + `resetAfterRuleCleanup` |
+| prefs | 权重、应用名单、壁纸、引导 | 三个数据集容器各删一份；`mode_permission_preferences` 的 `recommendation_dismissed_*` 也要清 |
+| 原生通道 | 崩溃 / 下载缓存 / 背景缓存 / 代理 / 证书 | `platform` 的 `clearCrashLogs`、`clearUpdateCache`、`clearCustomBackgroundCache`；`outbound_proxy.reset`；`inspectCa(regenerate)` |
+
+三条照抄旧版、**不能省**的语义：
+
+1. **删域名规则后必须重播预设白名单**。旧版「删 + `DefaultWhitelistSeeder.seed(forceReset)`」；
+   只删不播会让保活域名从放行变成拦截，而界面已经说了「已删除」。
+2. **订阅行要 `resetAfterRuleCleanup()`**。`ruleCount` / `lastUpdated` / ETag 仍指向已被删掉的
+   规则时，下次自动更新会拿旧 ETag 请求、被判「未修改」而永不重新导入（旧版 A-066）。
+3. **「清理全部本地数据」按序跑完整清单**。中途失败就停会留下「日志清了、规则还在」的半清理
+   态，而应用已经退出。引导重置与全面清理两个动作会主动退出应用：它们清掉了首启协议标记，
+   留在前台会出现「应用还在跑、但下次启动要重新同意协议」的分裂状态。
+
+条数为 0 时提示「没有可清理的数据」，**不说「已删除」**——静默的假成功是最坏的结果。
+`test/data_cleanup_test.dart` 直接对着内存数据库断言删除结果（14 条），因为这个缺陷在
+Widget 测试里看不见（SnackBar 文案本来就是对的）。
 
 ### 8.2 旧版没有后端的界面
 
