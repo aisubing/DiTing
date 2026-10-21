@@ -185,6 +185,17 @@ void main() {
   });
 
   group('Ping 面板', () {
+    /// 打开 Ping 页签。
+    ///
+    /// 页签文案是「Ping 测试」而不是「Ping」：逐字照抄旧版
+    /// `NetworkToolMode.PING("Ping 测试")`。默认页签本来就是 ping
+    /// （`NetworkToolsViewModel._toolMode` 初值），点它只是为了让用例「先切走
+    /// 再回来」这类扩展不需要改桩。
+    Future<void> openPing(WidgetTester tester) async {
+      await tester.tap(find.text('Ping 测试'));
+      await tester.pumpAndSettle();
+    }
+
     Future<void> pumpPanel(WidgetTester tester, DiagnosticsRunner runner) async {
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3;
@@ -196,9 +207,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      // 打开 Ping 面板（列表第一项）。
-      await tester.tap(find.text('Ping'));
-      await tester.pumpAndSettle();
+      await openPing(tester);
     }
 
     testWidgets('成功态渲染 min/avg/max、丢包与逐条 reply', (tester) async {
@@ -335,10 +344,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Ping'));
+      await tester.tap(find.text('Ping 测试'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('走隧道探测'));
+      await tester.tap(find.text('通过 Go 隧道解析'));
       await tester.pumpAndSettle();
 
       expect(
@@ -346,6 +355,103 @@ void main() {
         isTrue,
         reason: '开关必须落到 network_tools_settings 容器的 ping_via_tunnel 键',
       );
+    });
+  });
+
+  group('DNS 解析的服务器模式', () {
+    /// 打开「DNS 解析」页签。
+    Future<void> openDns(
+      WidgetTester tester,
+      _FakeRunner runner, {
+      LegacyPrefsStore? store,
+    }) async {
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            if (store != null) legacyPrefsStoreProvider.overrideWithValue(store),
+            diagnosticsRunnerProvider.overrideWithValue(runner),
+          ],
+          child: const AppHost(child: ToolsPage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('DNS 解析'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('默认跟随系统：不向通道传服务器', (tester) async {
+      final runner = _FakeRunner(pingResult: _successfulPing);
+      await openDns(tester, runner);
+
+      await tester.enterText(find.byType(TextField).first, 'example.com');
+      await tester.pump();
+      await tester.tap(find.text('开始查询'));
+      await tester.pumpAndSettle();
+
+      // 1.4.3 的 `DnsServerMode.SYSTEM`：问本机解析器，没有指定服务器。
+      expect(runner.dnsLookupServers, [null]);
+      // 「跟随系统」在选择器和结果行里各出现一次：结果区必须写明本次问了谁，
+      // 否则用户改过输入框后会以为结果来自新填的服务器。
+      expect(find.text('跟随系统'), findsNWidgets(2));
+    });
+
+    testWidgets('切到自定义并填 IP 后，服务器被传给通道', (tester) async {
+      final runner = _FakeRunner(pingResult: _successfulPing);
+      await openDns(tester, runner);
+
+      // 两档服务器选择器是旧版 `DnsServerMode` 的原样，上一轮迁移时丢了。
+      expect(find.text('跟随系统'), findsOneWidget);
+      await tester.tap(find.text('自定义'));
+      await tester.pumpAndSettle();
+
+      // 输入框顺序：域名 → 服务器 IP。
+      await tester.enterText(find.byType(TextField).first, 'example.com');
+      await tester.enterText(find.byType(TextField).at(1), '1.1.1.1');
+      await tester.pump();
+      await tester.tap(find.text('开始查询'));
+      await tester.pumpAndSettle();
+
+      expect(
+        runner.dnsLookupServers,
+        ['1.1.1.1'],
+        reason: '自定义服务器必须原样传到原生侧，否则测的还是系统解析器',
+      );
+    });
+
+    testWidgets('自定义档留空时拦在前端，不发请求', (tester) async {
+      final runner = _FakeRunner(pingResult: _successfulPing);
+      await openDns(tester, runner);
+
+      await tester.tap(find.text('自定义'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'example.com');
+      await tester.pump();
+      await tester.tap(find.text('开始查询'));
+      await tester.pumpAndSettle();
+
+      // 空服务器若被放过去，原生侧会当成「系统」——用户在测 A、实际测的是 B。
+      expect(find.text('请输入自定义 DNS 服务器 IP'), findsOneWidget);
+      expect(runner.dnsLookupServers, isEmpty);
+    });
+
+    testWidgets('开启隧道后隐藏服务器选择器（此时由隧道决定）', (tester) async {
+      final runner = _FakeRunner(pingResult: _successfulPing);
+      await openDns(
+        tester,
+        runner,
+        // `dnsLookupViaTunnel` 走 prefs，预置成已开启省去一次点击。
+        store: MemoryLegacyPrefsStore({
+          networkToolsContainer: {dnsLookupViaTunnelKey: true},
+        }),
+      );
+
+      // 隧道模式下服务器不可选，两档控件应当不存在而不是灰掉——灰掉会让人以为
+      // 「启用后就能选」，实际永远不会。
+      expect(find.text('自定义'), findsNothing);
+      expect(find.text('跟随系统'), findsNothing);
     });
   });
 }
@@ -369,6 +475,7 @@ class _ThrowingRunner implements DiagnosticsRunner {
     String domain, {
     bool viaTunnel = false,
     bool ipv4 = true,
+    String? server,
   }) async => throw PlatformException(code: 'dns_failed', message: '引擎未启动');
 
   @override
@@ -390,6 +497,9 @@ class _FakeRunner implements DiagnosticsRunner {
   final TraceResult traceResult;
   final List<String> pingCalls = [];
 
+  /// 每次 DNS 查询收到的服务器参数，用来验证「自定义服务器」真的传到了通道。
+  final List<String?> dnsLookupServers = [];
+
   @override
   Future<PingSummary> ping(
     String target, {
@@ -409,12 +519,16 @@ class _FakeRunner implements DiagnosticsRunner {
     String domain, {
     bool viaTunnel = false,
     bool ipv4 = true,
-  }) async => DnsLookupResult(
-    domain: domain,
-    source: 'upstream',
-    answers: const [DnsAnswer(recordType: 'A', value: '1.2.3.4', ttl: 60)],
-    elapsedMs: 8,
-  );
+    String? server,
+  }) async {
+    dnsLookupServers.add(server);
+    return DnsLookupResult(
+      domain: domain,
+      source: 'upstream',
+      answers: const [DnsAnswer(recordType: 'A', value: '1.2.3.4', ttl: 60)],
+      elapsedMs: 8,
+    );
+  }
 
   @override
   Future<NetworkInfoSnapshot> networkInfo() async => const NetworkInfoSnapshot(

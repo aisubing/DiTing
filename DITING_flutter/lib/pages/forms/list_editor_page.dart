@@ -231,7 +231,10 @@ class _ListEditorPageState<T> extends State<ListEditorPage<T>> {
               child: Row(
                 spacing: 6,
                 children: [
-                  Text('已选 ${_selected.length} 项', style: context.listCaptionStyle),
+                  Text(
+                    '已选 ${_selected.length} 项',
+                    style: context.listCaptionStyle,
+                  ),
                   const Spacer(),
                   TextButton.icon(
                     onPressed: _deleteSelected,

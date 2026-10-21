@@ -48,8 +48,9 @@ class DnsProviderEntry {
   final String host;
   final int port;
 
-  String get hostPort =>
-      host.contains(':') && !host.startsWith('[') ? '[$host]:$port' : '$host:$port';
+  String get hostPort => host.contains(':') && !host.startsWith('[')
+      ? '[$host]:$port'
+      : '$host:$port';
 
   /// Endpoint exactly as 1.4.3 renders it (`[DoH] https://…` / `[DNS] 1.1.1.1:53`).
   String get endpointLabel => switch (protocol) {
@@ -58,24 +59,24 @@ class DnsProviderEntry {
   };
 
   /// `host:port` the management UI edits; DoH providers keep an empty one.
-  String get address =>
-      protocol == DnsProtocol.doh ? url : hostPort;
+  String get address => protocol == DnsProtocol.doh ? url : hostPort;
 
-  MockProvider toMock({int latencyMs = 0, bool isPreset = false}) => MockProvider(
-    id: id,
-    name: name,
-    protocol: switch (protocol) {
-      DnsProtocol.dns => ProviderProtocol.dns,
-      DnsProtocol.doh => ProviderProtocol.doh,
-      DnsProtocol.dot => ProviderProtocol.dot,
-    },
-    address: switch (protocol) {
-      DnsProtocol.doh => url,
-      _ => hostPort,
-    },
-    latencyMs: latencyMs,
-    isPreset: isPreset,
-  );
+  MockProvider toMock({int latencyMs = 0, bool isPreset = false}) =>
+      MockProvider(
+        id: id,
+        name: name,
+        protocol: switch (protocol) {
+          DnsProtocol.dns => ProviderProtocol.dns,
+          DnsProtocol.doh => ProviderProtocol.doh,
+          DnsProtocol.dot => ProviderProtocol.dot,
+        },
+        address: switch (protocol) {
+          DnsProtocol.doh => url,
+          _ => hostPort,
+        },
+        latencyMs: latencyMs,
+        isPreset: isPreset,
+      );
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -230,7 +231,11 @@ const _defaultSelectedProviderId = 'preset_alidns_dns';
 const _defaultRaceIds = ['preset_alidns_dns', 'preset_dnspod_dns'];
 
 class DnsConfig {
-  DnsConfig({required this.mode, required this.providers, required this.bootstrap});
+  DnsConfig({
+    required this.mode,
+    required this.providers,
+    required this.bootstrap,
+  });
 
   final String mode;
   final List<DnsProviderEntry> providers;
@@ -284,7 +289,10 @@ class DnsConfig {
 }
 
 DnsConfig buildDnsConfig(LegacySettings settings) {
-  final all = [...defaultDnsProviders, ...parseUserProviders(settings.userProvidersJson)];
+  final all = [
+    ...defaultDnsProviders,
+    ...parseUserProviders(settings.userProvidersJson),
+  ];
   final byId = {for (final provider in all) provider.id: provider};
   final mode = _validResolutionModes.contains(settings.resolutionModeRaw)
       ? settings.resolutionModeRaw

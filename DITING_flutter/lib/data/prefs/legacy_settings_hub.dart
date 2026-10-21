@@ -17,8 +17,11 @@ extension LegacyHubSettings on LegacySettings {
   String get excludedAppsFilterRaw =>
       _string(LegacySettings.uiContainer, 'excluded_apps_filter') ?? 'USER';
 
-  void setExcludedAppsFilterRaw(String value) =>
-      _store.putString(LegacySettings.uiContainer, 'excluded_apps_filter', value);
+  void setExcludedAppsFilterRaw(String value) => _store.putString(
+    LegacySettings.uiContainer,
+    'excluded_apps_filter',
+    value,
+  );
 
   /// `excluded_apps_sort`. Values are `AppListSort` enum names:
   /// `LABEL_ASC` / `LABEL_DESC` / `PACKAGE_ASC` / `PACKAGE_DESC`.
@@ -43,11 +46,8 @@ extension LegacyHubSettings on LegacySettings {
   String get appAllowlistSortRaw =>
       _string(LegacySettings.uiContainer, 'app_allowlist_sort') ?? 'LABEL_ASC';
 
-  void setAppAllowlistSortRaw(String value) => _store.putString(
-    LegacySettings.uiContainer,
-    'app_allowlist_sort',
-    value,
-  );
+  void setAppAllowlistSortRaw(String value) =>
+      _store.putString(LegacySettings.uiContainer, 'app_allowlist_sort', value);
 
   /// `https_bypass_rules`: the **custom** half of the MITM bypass list.
   ///
@@ -59,12 +59,9 @@ extension LegacyHubSettings on LegacySettings {
       _stringSet('https_bypass_rules', container: LegacySettings.uiContainer) ??
       const {};
 
-  void setHttpsBypassRules(Set<String> rules) => _store.putStringSet(
-    LegacySettings.uiContainer,
-    'https_bypass_rules',
-    {
-      for (final rule in rules)
-        if (rule.trim().isNotEmpty) rule.trim(),
-    },
-  );
+  void setHttpsBypassRules(Set<String> rules) =>
+      _store.putStringSet(LegacySettings.uiContainer, 'https_bypass_rules', {
+        for (final rule in rules)
+          if (rule.trim().isNotEmpty) rule.trim(),
+      });
 }

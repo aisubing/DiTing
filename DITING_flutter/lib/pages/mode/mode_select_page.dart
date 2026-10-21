@@ -92,7 +92,8 @@ class _ModeSelectPageState extends ConsumerState<ModeSelectPage> {
             ),
           ),
           const ListFooter(
-            text: '随时可以在设置里重新选择；切换模式会先停止当前模式的服务，'
+            text:
+                '随时可以在设置里重新选择；切换模式会先停止当前模式的服务，'
                 '两个模式不会同时运行。',
           ),
         ],
@@ -112,9 +113,9 @@ class _ModeSelectIntro extends StatelessWidget {
       child: Text(
         '三种模式共用一套规则与缓存，区别在接管方式：普通模式走全隧道，'
         '服务器模式只做局域网 DNS，极速模式是纯 Kotlin 窄路由。',
-        style: AppTextStyle.footnote.of(context).copyWith(
-          color: colorScheme.onSurfaceVariant,
-        ),
+        style: AppTextStyle.footnote
+            .of(context)
+            .copyWith(color: colorScheme.onSurfaceVariant),
       ),
     );
   }
@@ -140,7 +141,9 @@ class _WorkModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final accent = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
+    final accent = selected
+        ? colorScheme.primary
+        : colorScheme.onSurfaceVariant;
     return CommonCard(
       isSelected: selected,
       onPressed: onPressed,
@@ -185,9 +188,9 @@ class _WorkModeCard extends StatelessWidget {
                     ),
                     Text(
                       mode.summary,
-                      style: AppTextStyle.footnote.of(context).copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      style: AppTextStyle.footnote
+                          .of(context)
+                          .copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -283,9 +286,9 @@ class _ModeFeatureList extends StatelessWidget {
                       ),
                       Text(
                         detail,
-                        style: AppTextStyle.caption1.of(context).copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                        style: AppTextStyle.caption1
+                            .of(context)
+                            .copyWith(color: colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),

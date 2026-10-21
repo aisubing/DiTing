@@ -243,7 +243,8 @@ class MockErrorDetail {
 const mockErrorDetail = MockErrorDetail(
   code: 'DITING-CORE-4302',
   title: '内核启动失败',
-  description: '内核在 3 次重试后仍未能在 10 秒内完成握手。'
+  description:
+      '内核在 3 次重试后仍未能在 10 秒内完成握手。'
       '常见原因是配置文件端口冲突，或上一次运行的内核进程没有正常退出。',
   stack: '''
 #0      CoreProcess.start (package:diting/core/process.dart:142)
@@ -317,20 +318,9 @@ const mockIpQualityReport = MockIpQualityReport(
       ipType: '机房',
       latencyMs: 264,
     ),
-    MockIpQualitySource(
-      name: 'scamalytics',
-      status: '限流',
-      latencyMs: null,
-    ),
-    MockIpQualitySource(
-      name: 'ipwho.is',
-      status: '超时',
-    ),
-    MockIpQualitySource(
-      name: 'ip-api.com',
-      status: 'IP 不一致',
-      ipType: '商业',
-    ),
+    MockIpQualitySource(name: 'scamalytics', status: '限流', latencyMs: null),
+    MockIpQualitySource(name: 'ipwho.is', status: '超时'),
+    MockIpQualitySource(name: 'ip-api.com', status: 'IP 不一致', ipType: '商业'),
   ],
 );
 

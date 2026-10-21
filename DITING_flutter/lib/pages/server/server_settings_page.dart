@@ -99,7 +99,13 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
       return;
     }
     setState(() => _clearingCache = false);
-    showServerHint(context, cleared ? '缓存已清空' : '当前版本尚未接入清空缓存');
+    // 失败只有两种原因：服务没在跑（没有缓存可清）或引擎清空抛异常。两者对用户
+    // 的结论相同——这次没清成功——所以给一条可操作的提示，而不是「尚未接入」
+    // （那条文案在通道补上 `clearCache` 之前是准确的，之后就成了谎报）。
+    showServerHint(
+      context,
+      cleared ? '缓存已清空' : '清空失败：请先启动解析服务再试',
+    );
   }
 
   @override

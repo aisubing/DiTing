@@ -23,7 +23,8 @@ class _DemoTypeSection extends StatelessWidget {
         ),
         _DemoCustomTypeRow(),
         const ListFooter(
-          text: '字形来自 textTheme 的 13 个槽位：display/largeTitle 走 headlineLarge，'
+          text:
+              '字形来自 textTheme 的 13 个槽位：display/largeTitle 走 headlineLarge，'
               'body/callout 走 bodyLarge，caption2 走 labelSmall。',
         ),
       ],
@@ -53,10 +54,12 @@ class _DemoTypeRow extends StatelessWidget {
               style.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTextStyle.caption2.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontFamily: 'JetBrainsMono',
-              ),
+              style: AppTextStyle.caption2
+                  .of(context)
+                  .copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontFamily: 'JetBrainsMono',
+                  ),
             ),
           ),
           Expanded(
@@ -73,10 +76,12 @@ class _DemoTypeRow extends StatelessWidget {
           Text(
             '${_trim(style.size)}/${_trim(style.leading)} · w$weight',
             maxLines: 1,
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFamily: 'JetBrainsMono',
+                ),
           ),
         ],
       ),
@@ -130,10 +135,12 @@ class _DemoCustomTypeRowState extends State<_DemoCustomTypeRow> {
               child: Text(
                 'custom(size: ${_size.toStringAsFixed(0)}, leading: '
                 '${(_size * 1.1).toStringAsFixed(0)})',
-                style: AppTextStyle.footnote.of(context).copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
-                ),
+                style: AppTextStyle.footnote
+                    .of(context)
+                    .copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontFamily: 'JetBrainsMono',
+                    ),
               ),
             ),
           ],

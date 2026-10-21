@@ -174,7 +174,9 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   Future<int> resetPreset(RuleKind kind) async {
     final repo = _repo;
     if (repo != null && kind == RuleKind.allow) {
-      final content = await rootBundle.loadString('assets/https_passthrough.txt');
+      final content = await rootBundle.loadString(
+        'assets/https_passthrough.txt',
+      );
       final entries = parsePresetWhitelist(content);
       if (entries.isEmpty) {
         return 0;
@@ -305,7 +307,10 @@ class RuleLineParseResult {
 }
 
 /// 逐行解析粘贴内容；[existing] 是目标表里已有的 pattern。
-RuleLineParseResult parseRuleLines(String text, {Set<String> existing = const {}}) {
+RuleLineParseResult parseRuleLines(
+  String text, {
+  Set<String> existing = const {},
+}) {
   final accepted = <String>[];
   final duplicated = <String>[];
   final rejected = <String>[];

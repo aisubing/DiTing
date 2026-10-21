@@ -37,6 +37,66 @@ internal object DnsLookupProbe {
         return if (viaTunnel) tunnelLookup(host, ipv4) else systemLookup(host, ipv4)
     }
 
+    /**
+     * Queries a user-specified resolver over UDP (1.4.3's `DnsServerMode.CUSTOM`).
+     *
+     * Shares the result shape with [lookup] so the page renders both modes
+     * identically; only the transport differs. `source` is reported as
+     * `upstream` because the answer really did come from an upstream resolver —
+     * labelling it `cache` or `rewrite` would claim a code path that never ran.
+     *
+     * [server] must be an IP literal: 1.4.3 validated it the same way
+     * (`DnsProvider.isIpLiteral`), so a typo fails loudly instead of being
+     * silently resolved through the very resolver the user is trying to bypass.
+     */
+    fun customServerLookup(domain: String, server: String, ipv4: Boolean): Map<String, Any?> {
+        val host = NetHost.sanitize(domain)
+        if (host.isEmpty()) return error("", "请输入要查询的域名")
+        if (!isIpLiteral(server)) {
+            return error(host, "自定义 DNS 服务器须为有效 IP 地址")
+        }
+        val probe = runCatching { DnsServerProbe.lookup(host, server, ipv4) }
+            .getOrElse { failure ->
+                return error(host, failure.message ?: "向 $server 查询失败")
+            }
+        if (probe.records.isEmpty()) {
+            val type = if (ipv4) "A" else "AAAA"
+            return error(host, "$server 未返回 $type 记录", probe.elapsedMs)
+        }
+        return result(
+            host,
+            "upstream",
+            probe.records.map { mapOf("type" to it.type, "value" to it.value, "ttl" to it.ttl) },
+            probe.elapsedMs,
+            null,
+        )
+    }
+
+    /**
+     * True for an IPv4 / IPv6 literal (optionally bracketed).
+     *
+     * Hand-rolled rather than `InetAddress.getByName` + null check: `getByName`
+     * resolves hostnames too, so `"dns.google"` would come back as a valid
+     * address and pass the very check that exists to reject hostnames.
+     */
+    private fun isIpLiteral(value: String): Boolean {
+        val text = value.removePrefix("[").removeSuffix("]")
+        if (text.isEmpty()) return false
+        val parts = text.split(".")
+        if (parts.size == 4 && !text.contains(":")) {
+            return parts.all { part ->
+                part.isNotEmpty() && part.length <= 3 && part.all { it.isDigit() } &&
+                    (part.toIntOrNull() ?: return false) in 0..255
+            }
+        }
+        // IPv6: a colon is mandatory, at least two of them, hex digits only.
+        if (!text.contains(":")) return false
+        if (text.count { it == ':' } < 2) return false
+        return text.all {
+            it.isDigit() || it in 'a'..'f' || it in 'A'..'F' || it == ':' || it == '.'
+        }
+    }
+
     private fun tunnelLookup(host: String, ipv4: Boolean): Map<String, Any?> {
         val engine = EngineAccess.current()
             ?: return error(host, "隧道未运行，无法经内核解析（可用系统解析）")

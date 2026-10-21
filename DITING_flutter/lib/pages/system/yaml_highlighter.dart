@@ -14,25 +14,14 @@ import 'package:material_ui/material_ui.dart';
 
 /// 一段被着色的文本。
 class HighlightSpan {
-  const HighlightSpan({
-    required this.text,
-    required this.kind,
-  });
+  const HighlightSpan({required this.text, required this.kind});
 
   final String text;
   final TokenKind kind;
 }
 
 /// 词法分类。
-enum TokenKind {
-  comment,
-  key,
-  string,
-  number,
-  keyword,
-  punctuation,
-  plain,
-}
+enum TokenKind { comment, key, string, number, keyword, punctuation, plain }
 
 /// 一组颜色：由调用方按当前主题给出，高亮器本身不碰 `Theme`。
 class HighlightPalette {
@@ -140,15 +129,16 @@ List<HighlightSpan> highlightYamlLine(String line) {
     spans.add(
       HighlightSpan(text: rest.substring(0, colonIndex), kind: TokenKind.key),
     );
-    spans.add(
-      const HighlightSpan(text: ':', kind: TokenKind.punctuation),
-    );
+    spans.add(const HighlightSpan(text: ':', kind: TokenKind.punctuation));
     rest = rest.substring(colonIndex + 1);
   }
   _appendValue(spans, rest);
   if (commentIndex >= 0) {
     spans.add(
-      HighlightSpan(text: line.substring(commentIndex), kind: TokenKind.comment),
+      HighlightSpan(
+        text: line.substring(commentIndex),
+        kind: TokenKind.comment,
+      ),
     );
   }
   return spans;

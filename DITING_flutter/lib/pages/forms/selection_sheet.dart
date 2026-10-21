@@ -99,9 +99,8 @@ class _SelectionSheetState<T> extends State<SelectionSheet<T>> {
     });
   }
 
-  bool _isSelected(T item) => _isMulti
-      ? _multi.contains(item)
-      : widget.selected == item;
+  bool _isSelected(T item) =>
+      _isMulti ? _multi.contains(item) : widget.selected == item;
 
   @override
   Widget build(BuildContext context) {
@@ -135,9 +134,12 @@ class _SelectionSheetState<T> extends State<SelectionSheet<T>> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: SearchField(controller: _search, onChanged: (value) {
-              setState(() => _query = value);
-            }),
+            child: SearchField(
+              controller: _search,
+              onChanged: (value) {
+                setState(() => _query = value);
+              },
+            ),
           ),
           if (total == 0)
             SizedBox(
@@ -179,8 +181,7 @@ class _SelectionSheetState<T> extends State<SelectionSheet<T>> {
                       ),
                   ],
                 ),
-          if (widget.footer case final footer?)
-            ListFooter(text: footer),
+          if (widget.footer case final footer?) ListFooter(text: footer),
           if (_isMulti)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),

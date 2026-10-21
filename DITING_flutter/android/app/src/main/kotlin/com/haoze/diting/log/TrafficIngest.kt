@@ -69,6 +69,8 @@ class TrafficIngest(
         if (array.length() == 0) return
 
         var overThreshold = false
+        var tickTx = 0L
+        var tickRx = 0L
         synchronized(lock) {
             val date = todayString()
             val bucket = buckets.getOrPut(date) { LinkedHashMap() }
@@ -78,6 +80,12 @@ class TrafficIngest(
                 val tx = obj.optLong("tx", 0L)
                 val rx = obj.optLong("rx", 0L)
                 if (uid <= 0 || (tx <= 0 && rx <= 0)) continue
+                // Rates are a device-wide figure, so they count every delta —
+                // including rows skipped below for lack of a package name. Using
+                // the persisted sum instead would make the notification readout
+                // dip whenever an app's label was still unresolved.
+                tickTx += tx
+                tickRx += rx
                 val packageName = uidPackageCache.packageForUid(uid)
                 if (packageName.isBlank()) {
                     // Without a package there is no primary-key value, and the
@@ -102,6 +110,10 @@ class TrafficIngest(
                 Log.w(TAG, "Traffic buffer over ${MAX_BUFFERED_BYTES}B; dropped $oldest")
             }
         }
+        // Feed the notification's 实时速率 readout. Outside the lock: the monitor
+        // only stores two numbers, and this callback thread is the one that also
+        // drives packet processing.
+        TrafficRateMonitor.onTick(tickTx, tickRx)
         // Enqueue only; the single-threaded executor owns the writing.
         if (overThreshold) submitFlush()
     }

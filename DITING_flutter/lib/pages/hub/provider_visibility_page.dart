@@ -35,11 +35,13 @@ class _ProviderVisibilityPageState
   }
 
   void _save() {
-    ref.read(legacySettingsProvider).setHomeProviderVisibility(
-      visibleProtocols: _visibleProtocols,
-      hiddenProviderIds: _hiddenProviders,
-      visibleProviderIds: _explicitVisible,
-    );
+    ref
+        .read(legacySettingsProvider)
+        .setHomeProviderVisibility(
+          visibleProtocols: _visibleProtocols,
+          hiddenProviderIds: _hiddenProviders,
+          visibleProviderIds: _explicitVisible,
+        );
     ref.read(legacySettingsRevisionProvider.notifier).bump();
   }
 

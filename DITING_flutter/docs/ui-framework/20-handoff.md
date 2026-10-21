@@ -13,9 +13,16 @@
 
 ## 1. 一句话状态
 
-`lib/ui/` 是 DITING 1.4.3 设计系统的完整移植；应用层（`lib/app/` + `lib/router.dart` +
-`lib/routes/` + `lib/shell/`）、状态（`lib/state/`）、数据兼容层（`lib/data/prefs` +
-`lib/data/db` + `lib/data/vpn`）与 **85 条路由**全部落地。
+`lib/ui/` 是 DITING 1.4.3 设计系统的完整移植（第五轮**零改动**）；应用层（`lib/app/` +
+`lib/router.dart` + `lib/routes/` + `lib/shell/`）、状态（`lib/state/`）、数据兼容层
+（`lib/data/prefs` + `lib/data/db` + `lib/data/vpn`）与 **77 条路由**全部落地。
+
+**第五轮（2026-10-21）改变了范围口径**：不再问「Flutter 侧还能做什么」，而是
+**旧版存在的界面必须保留、旧版不存在的一律移除**，同时完整沿用 `lib/ui` 的视觉体系。
+结果是删除 22 条 FlClash 路由（代理域、配置档案域、12 个内核配置页、DNS 查询页、
+`/apps`、`/agent`、`/error`、`/theme/preview`、`/access`、`/backup`、`/disclaimer`），
+补齐 20 余处旧版有而本仓缺失的界面。完整判定表见
+[`../refactor/15-legacy-parity-audit.md`](../refactor/15-legacy-parity-audit.md)。
 
 第三阶段已把**设置域的持久化接回旧版 SharedPreferences**：服务商管理（18 preset +
 自定义增删改）、三种解析模式的候选列表与主备顺序、首页服务显示过滤、缓存三档 preset
@@ -23,19 +30,29 @@
 （含 `bootstrap_log` 24 小时聚合）、禁止联网 / 排除应用 / HTTPS 检查三份应用名单，
 以及日志仪表盘的真实数据与当日统计口径。
 
-实测（2026-10-20 第四轮，全部为本会话工具输出）：`flutter analyze lib test` → **No issues found**；
-`flutter test` → **274 个用例全绿**（29 个测试文件）；`lib/` **440 文件 / 96,415 行**，
-`lib/pages/` **210 文件 / 47,301 行**；原生 Kotlin **33 文件 / 4,770 行**；所有 Dart 与 Kotlin
-文件均 ≤550 行。`flutter build apk --debug` 通过，并在 `emulator-5554` 上实机验证。
+实测（2026-10-21 第五轮，全部为本会话工具输出）：`flutter analyze` → **No issues found**；
+`flutter test` → **302 个用例全绿**；`flutter build apk --debug` 与 Kotlin 侧
+`compileDebugKotlin` 均通过。所有 Dart 与 Kotlin 文件均 ≤550 行。
 
 **第四轮已接真实数据源**：流量（`app_traffic_daily`）、请求（`http_request_log`）、
 DNS 查询（`dns_log`）、应用清单（`PackageManager`）、订阅（4 张订阅表）、
 应用独立规则（`app_allowlist_rules_json`）、出站代理（AndroidKeyStore + 通道）、
-HTTPS/CA（`AndroidCAStore` 实查）、网络工具（原生 ping/traceroute/DNS）、
+HTTPS/CA（`AndroidCAStore` 实查）、网络工具（原生 ping/traceroute/DNS/测速）、
 功能中心隐藏项（`hidden_features_set`）。
 
-**仍为演示数据（1.4.3 根本没有对应后端，不是迁移欠账）**：连接页、资源页、
-代理域与配置覆写页。逐条原因见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §15。
+**第五轮补齐的原生能力**（此前整块缺失，全部在本次会话验证过 Kotlin 可编译）：
+
+| 通道 | 能力 | 补回前 |
+|---|---|---|
+| `com.haoze.diting/dns_latency` | `probe`：真实 DoH / DoT / 明文查询测速 | **测速功能完全没有** |
+| `com.haoze.diting/platform` | 后台隐藏 / 电池优化 / 崩溃日志计数与清空 / 导出文本 | 后台隐藏缺失；崩溃日志写死为 3 |
+| `com.haoze.diting/dns_server` | `clearCache` | 页面只能显示「尚未接入」 |
+| `com.haoze.diting/diagnostics` | `lookupDns` 增加 `server` 参数 | 「自定义 DNS 服务器」模式丢失 |
+| 通知栏四键 | `notification_settings_prefs` 的常驻/速率/自定义文案 | 前台服务读不到用户设置 |
+
+**仍为演示数据（1.4.3 根本没有对应后端）**：连接页、资源页。两者按用户要求保留，
+在 `/developer` 有入口，页脚明确标注「不属于旧版 1.4.3 的界面」。
+逐条原因见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §15–§16。
 
 ## 2. 已完成清单（可直接依赖）
 
@@ -152,22 +169,17 @@ HTTPS/CA（`AndroidCAStore` 实查）、网络工具（原生 ping/traceroute/DN
 **正确装法：`MaterialApp.builder`。** 它的 `child` 就是 `Navigator` 本身，scopes 包在外面，
 于是所有路由**和浮层**都读得到。
 
-> ⚠️ **本文旧版把这条写反了**，原话是「宿主必须挂在 `Navigator` 之下，即 `home:` 里，
-> 挂 builder 会报 `Navigator operation requested with a context that does not include a
-> Navigator`」。该结论先后被推翻两次，最终由 `test/scope_placement_test.dart` 的两条
-> 用例钉死：
+> ⚠️ **本文旧版把这条写反了**（原话是「必须挂在 `Navigator` 之下，即 `home:` 里」）。
+> 该结论被 `test/scope_placement_test.dart` 钉死为错：装 `home:` 时 `showSheet` /
+> `showFloatingDialog` 的监听器挂在根 `Navigator` 上，是与 `home:` **平级的兄弟路由**，
+> 覆盖不到 → 浮层内一读 `ViewScope` 就 `Failed assertion: 'scope != null'`。
 >
-> - 装 `builder`：路由与浮层都能读到 scope ✅
-> - 装 `home:`：`showSheet` / `showFloatingDialog` 的监听器挂在根 `Navigator` 上，是与
->   `home:` **平级的兄弟路由**，覆盖不到 → 浮层内一读 `ViewScope` 就
->   `Failed assertion: 'scope != null': No ViewScope found above Builder(dirty)` ❌
+> 两次误判的共同原因是**探针不够狠**：拿根本不会 assert 的 `CommonCard` 当浮层内容，
+> 两种装法都「通过」，把假阴性当成了证据。要复现必须用真正读 scope 的代码
+> （如 `ViewScope.isMobileOf`）。
 >
-> 两次误判的共同原因是**探针不够狠**：第一次拿根本不会 assert 的 `CommonCard` 当浮层
-> 内容，两种装法都「通过」，于是把假阴性当成了证据写进文档。要复现必须用会真正读
-> scope 的代码（如 `ViewScope.isMobileOf`）。
->
-> `test/support/app_host.dart` 与 `lib/app/bootstrap.dart` 现在装法一致，**改一处必须
-> 同步另一处**，否则「单组件测试」和「整机测试」会给出不同结论。
+> `test/support/app_host.dart` 与 `lib/app/bootstrap.dart` 装法一致，**改一处必须同步
+> 另一处**，否则「单组件测试」和「整机测试」会给出不同结论。
 
 ### 3.2 `locale: zh_CN` 必须配 `GlobalMaterialLocalizations`
 
@@ -234,55 +246,48 @@ AGENTS.md 硬性要求 ≤550 行。已用的三种拆分法都在 `tool/` 里�
 ## 4. 剩余可做的事
 
 `lib/ui/`、`lib/app/`、`lib/routes/`、`lib/shell/`、`lib/state/` 与设置域的数据层都已接真实
-持久化。下面都是**增量**，按优先级排列：
+持久化；第五轮又把界面集合收敛到旧版范围。下面都是**增量**，按优先级排列：
 
-1. **把剩余演示页面接上真实数据源**（当前最大缺口）：应用流量、连接 / 请求 / DNS 查询、
-   资源更新、应用选择（`/apps` 仍在用 12 条 `com.example.*` 常量，且原生侧没有包枚举通道与
-   `QUERY_ALL_PACKAGES` 权限）、订阅、应用独立规则、出站代理、CA 证书流程、网络工具。
-   逐页清单与所需原生能力见 [`21-ui-coverage-ledger.md`](21-ui-coverage-ledger.md) §14.2。
-2. **原生侧补齐引擎入参**：`blocked_app_packages`（只写盘未读）、应用白名单
-   （`appRules` 恒为空）、出站代理（入参恒为空），详见 §10.3。
-3. **真机回归**：本轮只在模拟器（`emulator-5554`，x86_64）验证；arm64 真机（25102RKBEC）
-   未测。模拟器必须用 `-PtunnelAar=libs/tunnel-debug.aar` 才有可加载的 `libgojni.so`。
-4. **补平台目录**：本机只有 `android/`；要 `flutter run` 到桌面或浏览器，先
+1. **真机回归**（最高优先）：第五轮只在 `flutter analyze` / `flutter test` / Kotlin
+   `compileDebugKotlin` 层面验证，**没有上真机**。要重点看的四处：DNS 测速的真实耗时、
+   自定义 DNS 服务器查询、通知栏自定义文案、后台隐藏是否真的从最近任务消失。
+   模拟器必须用 `-PtunnelAar=libs/tunnel-debug.aar` 才有可加载的 `libgojni.so`。
+2. **arm64 真机复核 UID 归因**：`ConnectivityManager.getConnectionOwnerUid` 的参数方向是
+   按 Go 侧 `resolveFlowUID` 的实参顺序推导的（Go 把 `id.appIP` 传第一位），模拟器上已
+   产出正确包名，arm64 真机（25102RKBEC）未测。
+3. **服务器模式的两处引擎缺口**：`EngineStats.snapshot()` 不返回 latency（概览页固定显示
+   `-- ms`）；`engine.clearDNSCache()` 已接出通道但未在真机验证。
+4. **`/resources` 与 `/connections` 的最终归属**：两者旧版无对应界面、用户要求保留，
+   目前挂在 `/developer` 下。若将来要「做得像真的」，需要新的 Go 导出 API；
+   在那之前页脚的「不属于旧版界面」标注不能摘。
+5. **补平台目录**：本机只有 `android/`；要 `flutter run` 到桌面或浏览器，先
    `flutter create . --platforms windows,web`。
-5. **`NullStatusSwitcher` 状态机**：已在观测域列表上屏，但 `isSearching: true` 时会忽略
-   自定义 `nullStatus`，页面级过滤不要传这个参数。
-6. **`lib/ui` 里仍未被页面用到的组件**：跑 `python -I tool/unreferenced.py` 看最新清单，
-   需要的话往 `lib/pages/demo/` 补一区——画廊已覆盖 122 个 `AppGlyphs` 与绝大多数容器。
 
-### 4.1 页面清单（已实现，供对照）
+### 4.1 页面清单
 
-| 路由 | 页面 | 实现要点 |
-|---|---|---|
-| `/` | 首页（三模式共用壳） | 电源四态 + 光晕、模式 chip、服务商卡（读真实目录 + 延迟）、解析模式、快捷入口、四层透明度 |
-| `/hub` | 功能中心 | 5 分类 19 卡，2 列网格，按下 0.90 缩放 |
-| `/rules/:kind` | 规则列表（黑/白/覆写共模板） | StatStrip + 防抖搜索 + 来源 chips + 分组列表 + 行内 Switch/More；白名单有只读保护，覆写显示 `pattern → target` |
-| `/rules/batch` | 批量编辑器 | 大文本框 + 解析计数（有效/重复/拒收）+ `#@#` 拒收文案 |
-| `/subscriptions` | 订阅 | 汇总条 + 分组 chips + 卡片（含错误态/更新进度）+ 添加面板（**数据仍为演示**） |
-| `/apps` | 应用选择 | 防抖搜索 + 按分类分组 + 整行圆形勾选 + 全选/反选只作用当前可见集；勾选结果落 `blocked_app_packages` |
-| `/logs` | 日志仪表盘 | 三视图（请求读 `dns_log` / 缓存表读 `dns_cache` / 竞速排行读 `dns_race_log`）+ 搜索 + 处置筛选 + 详情面板 + 清空确认 |
-| `/traffic` | 流量 | 实时/今日/本周 + `LineChart` + 应用排行（**数据仍为演示**） |
-| `/tools` | 网络工具 | 测速/Ping/DNS/路由四个 `showSheet` 面板，各有运行态与结果区 |
-| `/settings` | 设置 | 外观/首页/底栏/解析/关于五组；拆库根 + 5 个 part |
-| `/agent` | AI 助手 | 聊天气泡 + 快捷提问 + 800ms 模拟回复 + 空态 |
-| `/about` | 关于 | 图标/名称/版本 + 说明卡 + 许可/组件/链接行 |
-| `/server` | 服务器模式 | 复用 `HomePowerButton` + 五态文案 + 上游抽屉 + 局域网多 IP×端口 + 5 项统计 |
-| `/mode/select` | 工作模式选择 | 三卡 + `AnimatedSize` 特性清单 |
-| `/mode/onboarding` | 三步引导 | `PageView` + 指示器 + 完成回首页 |
-| `/demo` | 组件画廊 | 14 文件（库根 + 13 part），覆盖排版/颜色/形状/图标/按钮/标签/输入/列表/卡片/浮层/反馈 |
+**已废弃**。第五轮删除 22 条路由、新增 20 余处界面后，任何手写页面清单都会立刻过期。
+以代码为权威：
 
-> 全量 85 条路由（含 hub 各二级页与设置域）见 `21-ui-coverage-ledger.md` §11。
+| 权威来源 | 内容 |
+|---|---|
+| `lib/routes/*.dart` | 各领域 `Paths` 常量 + `xxxRoutes()` 路由表 |
+| `lib/router.dart` | `Routes` 顶层常量 + `_branchOrder` 六个 branch |
+| `test/route_catalog_test.dart` | 逐条 build 验活的两张表 |
+| `docs/refactor/15-legacy-parity-audit.md` | 每条路由与旧版的对应关系、保留项落点、删除理由 |
 
 ### 4.2 路由与导航约定（已落地）
 
 - 六个 tab 走 `StatefulShellRoute.indexedStack`：**branch 自带 `Navigator`，切 tab 不销毁**，
   所以不要额外套 `KeepScope`；
-- 底栏用 `NavigationDock`（浮条），宽度非移动端或超过 5 项时降级为 `NavigationBar`；
+- 底栏用 `NavigationDock`（浮条），非移动端宽度或超过 `maxDockDestinations`（=**4**，
+  对齐旧版 `BottomBarDestination.MAX`）时降级为 `NavigationBar`；
 - 列表底部留白用 `DockSpacer`（= `NavigationDock.insetOf(context) + extra`），
   `CommonScaffold` 里 `extendBody: true`；
 - 二级页面用 `context.push`，`pageTransitionsTheme` 统一 `commonSharedXPageTransitions`；
-- 模式选择页与引导页**不在** shell 里（全屏、无底栏），用 `parentNavigatorKey: rootNavigatorKey`。
+- 模式选择页与引导页**不在** shell 里（全屏、无底栏），用 `parentNavigatorKey: rootNavigatorKey`；
+- `branchIndexOf` 按**最长前缀**匹配（`/` 是任何路径的前缀，第一版用
+  `indexWhere(location.startsWith)` 恒返回 0，见 `AGENT_MISTAKES.md`）。
+
 
 ## 5. 验证口径
 
@@ -328,49 +333,27 @@ python -I tool/unreferenced.py
 
 ### 6.1 现状：能构建
 
-实测（2026-10-19）：
-
-```
-flutter build apk --debug
-→ build/app/outputs/flutter-apk/app-debug.apk   157 MB   12:47:17
-```
-
-首次构建耗时集中在**一次性环境准备**（合计约 3 GB）：
-
-| 下载项 | 实测大小 | 落地位置 |
-|---|---|---|
-| Gradle 9.3.1 发行版 | 224 MB | `~/.gradle/wrapper/dists/gradle-9.3.1-all/` |
-| NDK 28.2.13676358 (r28c) | ~2.1 GB | `~/AppData/Local/Android/Sdk/ndk/28.2.13676358/` |
-| SDK Platform 36 | ~100 MB | `~/AppData/Local/Android/Sdk/platforms/android-36/` |
-| Gradle 依赖（AGP 9.1.0 / Kotlin 2.4.0 等） | 数百 MB | `~/.gradle/caches/` |
-
-之后是增量编译，几十秒级。
+实测（2026-10-19，`flutter build apk --debug` → 157 MB APK，12:47 完成）。首次构建
+耗时集中在**一次性环境准备**（合计约 3 GB）：Gradle 9.3.1 发行版 224 MB、NDK
+28.2.13676358 约 2.1 GB、SDK Platform 36 约 100 MB、Gradle 依赖数百 MB。之后是
+增量编译，几十秒级。
 
 ### 6.2 旧结论为什么错了（反例，勿再引用）
 
-本文旧版 §6 写着「`services.gradle.org` / `repo1.maven.org` / `plugins.gradle.org`
-全不可达，仅腾讯镜像 200，因此 `flutter build apk` 无法完成」。**该结论是错的**，
-2026-10-19 复测：
+本文旧版 §6 曾写「`services.gradle.org` / `repo1.maven.org` / `plugins.gradle.org`
+全不可达，因此 `flutter build apk` 无法完成」。**该结论是错的**，2026-10-19 复测全部
+200（含 224 MB 的 `gradle-9.3.1-all.zip` 实际下载成功）。
 
-| 目标 | 实测 |
-|---|---|
-| `services.gradle.org/distributions/` | **200**（1.3s） |
-| `repo1.maven.org/maven2/` | **200**（0.7s） |
-| `plugins.gradle.org/m2/` | **200**（1.2s） |
-| `services.gradle.org/.../gradle-9.3.1-all.zip` | **200**（224 MB 下载成功） |
-| `dl.google.com/.../gradle-8.9.1.pom` | **200** |
-| `mirrors.cloud.tencent.com/gradle/` | 200 |
-
-推断当时失败的真实原因有两个，都与「网络封锁」无关：
+真实原因有两个，都与网络封锁无关：
 
 1. **首次构建本来就要下 3 GB**，没等够就当成卡死了；
 2. **看进度的命令写错了**：`flutter build apk ... | Select-Object -Last N` 会缓冲全部
    输出直到进程结束，中间十分钟一个字节都不显示，主观上完全像卡住。
 
-**教训**：判「网络不可达」必须用 `curl`/`Invoke-WebRequest` 打**真实构件 URL**（不是
-域名根路径——根路径 404/400 是正常的，`dl.google.com` 与 `storage.googleapis.com` 就是），
-并且要区分「慢」与「断」。构建类长任务一律写日志文件 + `Get-Content -Tail` 跟进度，
-不要用会缓冲的管道过滤器。
+**教训**：判「网络不可达」必须用 `curl` / `Invoke-WebRequest` 打**真实构件 URL**
+（不是域名根路径——根路径 404/400 是正常的，`dl.google.com` 与
+`storage.googleapis.com` 就是），并且要区分「慢」与「断」。构建类长任务一律写日志
+文件 + `Get-Content -Tail` 跟进度，不要用会缓冲的管道过滤器。
 
 ### 6.3 命令
 
@@ -382,6 +365,19 @@ Get-Content build.log -Tail 20
 # 之后：增量
 flutter build apk --debug
 ```
+
+### 6.4 Kotlin 侧单独编译
+
+改原生代码后不必等完整 APK（几分钟），用：
+
+```powershell
+cd android; .\gradlew.bat compileDebugKotlin --console=plain -q
+```
+
+失败时去掉 `-q` 看 `^e:` 行。第五轮靠这一步抓到过三次 Kotlin 编译错——
+其中一次是编辑工具把两行合成一行（`InetAddress.getByName(spec.host)        DatagramSocket()`），
+`-q` 模式下 grep `^e:` 能立刻定位到行号。
+
 
 ## 7. 提交约定
 
@@ -453,11 +449,35 @@ flutter build apk --debug
 | 极速模式 DNS 键 | `diting_express_prefs` | 键名同上，容器不同（`RuleDataset.EXPRESS`） |
 | 极速运行标志 | `express_vpn_prefs` | `express_vpn_running` |
 
-三条硬约定：
+**第五轮新增的键**（全部照抄旧版容器与键名，实现见
+`lib/data/prefs/legacy_settings_parity.dart`）：
+
+| 设置 | 容器 | 键 | 默认 |
+|---|---|---|---|
+| 日志模式 | 数据集容器 | `dns_log_mode`（`all` / `blocked_and_errors` / `off`） | `all` |
+| 日志保留天数 | `dns_vpn_prefs` | `log_retention_days`（1–30） | 7 |
+| 悬浮日志窗 | `dns_vpn_prefs` | `floating_log_enabled` | false |
+| 后台隐藏 | `dns_vpn_prefs` | `hide_from_recents_enabled` | false |
+| 绕过局域网 | `dns_vpn_prefs` | `bypass_lan_enabled` | true |
+| IPv6 模式 | 数据集容器 | `ipv6_mode`（`auto`/`disable`/`prefer`） | `auto` |
+| 语言 | `dns_vpn_prefs` | `app_language_mode` | `system` |
+| 首启须知 | `dns_vpn_prefs` | `initial_agreement_accepted` | false |
+| 启动检查更新 | `dns_vpn_prefs` | `disable_startup_update_check` | **true**（默认不检查） |
+| 软件背景 | `dns_vpn_prefs` | `custom_background_enabled` / `_uri` / `_uris` | false / null / [] |
+| 首页 DNS 详情透明度 | `dns_vpn_prefs` | `home_dns_detail_opacity` | 1.0 |
+| **通知栏四键** | **`notification_settings_prefs`** | `persistent` / `speed` / `custom_running_text` / `custom_stopped_text` | true / false / '' / '' |
+
+> **通知栏四键的容器是独立的 `notification_settings_prefs`**，不是 `dns_vpn_prefs`。
+> 写错容器界面上看不出任何区别，但前台服务读的是前者——通知栏行为不会变。
+> `settings_catalog_test.dart` 专门断言了这一点。
+
+四条硬约定：
 
 1. 写入后必须 `bump()` `legacySettingsRevisionProvider`，否则其他页面读到旧值；
 2. 数值夹取写在 setter（`LegacySettings`），不要只依赖控件；
-3. 三份应用名单互斥：加入一份要从未选中的另两份删除。
+3. 三份应用名单互斥：加入一份要从未选中的另两份删除；
+4. **键名与容器逐字照抄旧版**：写错一个字母，设置照样存、界面照样显示，只有
+   升级/降级后才丢设置——渲染测试抓不到这一类缺陷，只有 `settings_catalog_test.dart` 能抓。
 
 ## 10. 统计口径与接线现状
 
@@ -482,43 +502,35 @@ flutter build apk --debug
    的胜出，失败数来自整表汇总；单服务商模式也会写记录，排行不区分模式；
 3. **缓存表**：Go 缓存纯内存，无枚举接口；`dns_cache` 表是 1.4.3 的快照，升级后为空属正常。
 
-### 10.3 原生接线现状（2026-10-20 第四轮，**已实机验证**）
+### 10.3 原生接线现状（2026-10-20 第四轮实机验证 + 第五轮补充）
 
-第四轮把此前「只写盘未读」的配置全部接进了引擎入参。下表是接线后的真实状态，
-「实机证据」一列来自本会话在 `emulator-5554`（x86_64，API 34）上的工具输出。
+第四轮把此前「只写盘未读」的配置全部接进了引擎入参。下表是接线后的真实状态：
 
-| 键 | Dart 写盘 | 进入 Go 的路径 | 结论 | 实机证据 |
-|---|---|---|---|---|
-| `blocked_app_packages` | ✅ | `VpnStartRequest.blockedPackages` → `PackageUids` 换算 UID → `Engine.setBlockedUIDs(csv)` | **已接通**（普通模式；极速模式窄路由无 firewall 阶段，显式不传） | 待专项（需先勾选禁止联网应用） |
-| `excluded_app_packages` | ✅ | `VpnStartRequest.excludedPackages` → `Builder.addDisallowedApplication` | **已接通**（TUN 层，引擎本就不需要这份名单） | 同上 |
-| `http_inspection_app_packages` | ✅ | `VpnStartRequest.inspectionPackages` → UID → `Engine.setMitmAllowedUIDs(csv)` | **已接通**（仅普通模式；关闭时写空 CSV 清残留） | CA 页显示「已生成但未安装」 |
-| `https_inspection_ready` | ✅ | `LegacySettings.httpsInspectionOperational` 门控 `inspectionEnabled` | **已接通**：`ready && enabled && packages 非空` 才启动 MITM | `ca.crt` 指纹与 UI 逐字一致 |
-| 出站代理 | ✅ `OutboundProxyStore`（AES-GCM） | `_launch()` → `outboundProxy` JSON → `Engine.configureOutboundProxy` | **已接通**（未启用或校验失败时传空串，回落直连） | 待专项（需选一个本地代理应用） |
-| `app_allowlist_rules_json` | ✅ | `encodeRuleSnapshot(appAllowlist:)` → `appRules{允许域名}` → `Engine.applyRuleSnapshot` | **已接通**（普通模式） | 待专项 |
-| 流量 / HTTP 日志 | — | `setTrafficCallback` / `setHttpLogCallback` / `setUIDResolver` / `setAppUidResolver` | **已接通**（`EngineDataPlane`） | ✅ 见下方三行 |
+| 键 | 进入 Go 的路径 | 结论 |
+|---|---|---|
+| `blocked_app_packages` | `VpnStartRequest.blockedPackages` → UID → `Engine.setBlockedUIDs(csv)` | **已接通**（普通模式；极速窄路由无 firewall 阶段，显式不传） |
+| `excluded_app_packages` | `Builder.addDisallowedApplication` | **已接通**（TUN 层，引擎本就不需要这份名单） |
+| `http_inspection_app_packages` | → UID → `Engine.setMitmAllowedUIDs(csv)` | **已接通**（仅普通模式；关闭时写空 CSV 清残留） |
+| `https_inspection_ready` | 门控 `inspectionEnabled`：`ready && enabled && packages 非空` | **已接通** |
+| 出站代理 | AES-GCM `OutboundProxyStore` → `outboundProxy` JSON → `Engine.configureOutboundProxy` | **已接通**（未启用或校验失败时传空串，回落直连） |
+| `app_allowlist_rules_json` | `encodeRuleSnapshot(appAllowlist:)` → `Engine.applyRuleSnapshot` | **已接通**（普通模式） |
+| 流量 / HTTP 日志 | `setTrafficCallback` / `setHttpLogCallback` / `setUIDResolver` / `setAppUidResolver` | **已接通**（`EngineDataPlane`） |
 
-**实机数据面验证（本次会话工具输出，非推断）**：
+**实机数据面证据**（2026-10-20，`emulator-5554` x86_64 / API 34）：
 
 ```
-dns_log                    : 38 行
-  packageName 归因          : RootProxy|8  com.android.browser|25
-                              com.google.android.webview|2  uid:1051|3
-app_traffic_daily          : 2 行
-  2026-10-20|com.android.browser|浏览器|98235|933072
-  2026-10-20|com.google.android.webview|Android System WebView|942|21571
-dns_race_log               : 22 行
+dns_log            : 38 行（packageName 由 NULL 变为真实包名 → UID 归因链路生效）
+app_traffic_daily  : 2 行（由 0 行变为真实字节数 → setTrafficCallback 生效）
+dns_race_log       : 22 行
 ```
 
-结论：`dns_log.packageName` 由 NULL 变为真实包名，证明 UID 归因链路（`setUIDResolver`
-+ `setAppUidResolver` 这一对）真正生效；`app_traffic_daily` 由 0 行变为真实字节数，
-证明 `setTrafficCallback` 生效。流量页 UI 与库内数字逐项吻合
-（954.6 KB 下行 / 99.2 KB 上行 / 2 个应用），且隧道重启后数值继续累加，说明 flush 正常。
+流量页 UI 与库内数字逐项吻合（954.6 KB 下行 / 99.2 KB 上行 / 2 个应用），隧道重启后
+数值继续累加，说明 flush 正常。
 
-**仍未接线的两处（如实登记）**：
+**仍未接线（如实登记）**：
 
-1. `http_request_log` 在本次验证中仍为 0 行 —— 它只在 MITM 真正拦截流量时才产生，
-   而模拟器未安装 CA 到信任库。代码路径已注册（`attachHttp`），属「等用户装证书」
-   而非缺陷。
+1. `http_request_log` 为 0 行 —— 只在 MITM 真正拦截流量时才产生，模拟器未装 CA 到
+   信任库。代码路径已注册（`attachHttp`），属「等用户装证书」而非缺陷；
 2. `http_request_log.blockSubscriptionId` 写 NULL：旧版用 Kotlin 规则缓存反查订阅 id，
    本移植没有那套缓存；填错比留空更坏，Dart 侧按「未知」处理。
 
@@ -526,15 +538,13 @@ dns_race_log               : 22 行
 Go 侧 `resolveFlowUID` 的实参顺序推导的（Go 把 `id.appIP` 传第一位），模拟器上已产出
 正确包名，但 arm64 真机（25102RKBEC）本轮未测。
 
-> **口径更正**：此前本文写「仓库无 Go 源码，只能从 `tunnel-debug-sources.jar` 确认导出方法」——
-> 这是错的。`Android/tunnel/` 下有 **85 个 `.go` 文件、87 个受 Git 跟踪的文件**，完整数据面
-> 都在仓库里。第四轮的接线结论都是从 Go 源码反向确认的，例如：
+> **口径更正**：此前本文写「仓库无 Go 源码，只能从 `tunnel-debug-sources.jar` 确认导出
+> 方法」——这是错的。`Android/tunnel/` 下有 **85 个 `.go` 文件**，完整数据面都在仓库里。
+> 第四轮的接线结论都是从 Go 源码反向确认的，例如：
 > - `traffic_tracker.go:208 tick()` 只在 `len(deltas) > 0` 时才回调，且 `RecordTx/RecordRx`
->   对 `uid <= 0` 直接 return —— 所以 UID 解析失败会导致流量表静默为空；
-> - `engine_full_tunnel.go:372/401` 的 `WrapClientConn(conn, uid)` 在 `uid <= 0` 时原样返回
->   连接（不计数），与上一条同源；
+>   对 `uid <= 0` 直接 return —— UID 解析失败会导致流量表**静默为空**；
+> - `engine_full_tunnel.go:372/401` 的 `WrapClientConn(conn, uid)` 在 `uid <= 0` 时原样
+>   返回连接（不计数），与上一条同源；
 > - `engine_config.go:358 ConfigureOutboundProxy` 把 `parseOutboundProxyConfig` 的错误
->   **当字符串返回**，调用方不检查就会「静默不生效」——本轮据此修掉了 `port` 写成字符串
->   导致 `json.Unmarshal` 失败的缺陷。
-
-
+>   **当字符串返回**，调用方不检查就会「静默不生效」——据此修掉了 `port` 写成字符串导致
+>   `json.Unmarshal` 失败的缺陷。

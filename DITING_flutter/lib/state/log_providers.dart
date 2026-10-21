@@ -117,7 +117,11 @@ class RaceRankingBoard {
   const RaceRankingBoard({required this.summary, required this.entries});
 
   const RaceRankingBoard.empty()
-    : summary = const RaceSummary(requests: 0, failures: 0, averageLatencyMs: 0),
+    : summary = const RaceSummary(
+        requests: 0,
+        failures: 0,
+        averageLatencyMs: 0,
+      ),
       entries = const [];
 
   final RaceSummary summary;

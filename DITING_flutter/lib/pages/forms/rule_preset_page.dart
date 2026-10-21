@@ -189,7 +189,8 @@ class _RulePresetPageState extends State<RulePresetPage> {
             ),
           ),
           const ListFooter(
-            text: '阻塞类规则默认用 REJECT；需要「静默丢弃」时改成 REJECT-DROP，'
+            text:
+                '阻塞类规则默认用 REJECT；需要「静默丢弃」时改成 REJECT-DROP，'
                 '两者的区别是前者会立刻回一个空响应，后者直接丢包。',
           ),
           const SizedBox(height: 24),
@@ -285,10 +286,12 @@ class _PresetTile extends StatelessWidget {
                 for (final rule in preset.rules)
                   Text(
                     rule,
-                    style: AppTextStyle.footnote.of(context).copyWith(
-                      fontFamily: 'JetBrainsMono',
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyle.footnote
+                        .of(context)
+                        .copyWith(
+                          fontFamily: 'JetBrainsMono',
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                   ),
               ],
             ),

@@ -74,9 +74,7 @@ Map<String, Object?> _encodeAppRules(Map<String, Set<String>> appAllowlist) {
 String encodeRuleSnapshot(
   Map<RuleKind, List<MockRule>> rules, {
   Map<String, Set<String>> appAllowlist = const {},
-}) => jsonEncode(
-  buildRuleSnapshot(rules, appAllowlist: appAllowlist),
-);
+}) => jsonEncode(buildRuleSnapshot(rules, appAllowlist: appAllowlist));
 
 /// `Engine.setRewriteRules` takes a flat domain -> target map. CNAME targets
 /// and IP literals share the same shape, so no type detection is needed.

@@ -94,7 +94,8 @@ class _DemoInputSectionState extends State<_DemoInputSection> {
           onPressed: () => _openInputDialog(context),
         ),
         const ListFooter(
-          text: 'SegmentedControl 的滑块用 AnimatedAlign 走 250ms easeOutCubic，'
+          text:
+              'SegmentedControl 的滑块用 AnimatedAlign 走 250ms easeOutCubic，'
               '所以连续切换时滑块会追着走，而不是瞬移。',
         ),
       ],
@@ -147,18 +148,20 @@ class _DemoCheckBoxRow extends StatelessWidget {
               CommonCheckBox(value: value, onChanged: null),
               Text(
                 label,
-                style: AppTextStyle.caption2.of(context).copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
-                ),
+                style: AppTextStyle.caption2
+                    .of(context)
+                    .copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontFamily: 'JetBrainsMono',
+                    ),
               ),
             ],
           ),
         Text(
           '（onChanged: null 即禁用）',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -191,10 +194,7 @@ class _DemoCheckBoxes extends StatelessWidget {
           spacing: 6,
           children: [
             CommonCheckBox(value: checked, onChanged: onChecked),
-            Text(
-              '方形 $checked',
-              style: AppTextStyle.footnote.of(context),
-            ),
+            Text('方形 $checked', style: AppTextStyle.footnote.of(context)),
           ],
         ),
         Row(
@@ -206,10 +206,7 @@ class _DemoCheckBoxes extends StatelessWidget {
               onChanged: onCircleChecked,
               isCircle: true,
             ),
-            Text(
-              '圆形 $circleChecked',
-              style: AppTextStyle.footnote.of(context),
-            ),
+            Text('圆形 $circleChecked', style: AppTextStyle.footnote.of(context)),
           ],
         ),
       ],

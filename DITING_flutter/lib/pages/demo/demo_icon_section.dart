@@ -62,10 +62,12 @@ class _DemoCaptionIcons extends StatelessWidget {
                 ),
                 Text(
                   glyph.name,
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ],
             ),
@@ -102,10 +104,12 @@ class _DemoGlyphSizes extends StatelessWidget {
                 ),
                 Text(
                   size.toStringAsFixed(0),
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ],
             ),
@@ -144,10 +148,12 @@ class _DemoGlyphFills extends StatelessWidget {
                 ),
                 Text(
                   fill.toStringAsFixed(2),
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ],
             ),
@@ -178,24 +184,23 @@ class _DemoAnimatedGlyphRowState extends State<_DemoAnimatedGlyphRow> {
       child: Row(
         spacing: 12,
         children: [
-          AnimatedGlyph(
-            glyph: AppGlyphs.star,
-            filled: _filled,
-          ),
+          AnimatedGlyph(glyph: AppGlyphs.star, filled: _filled),
           Expanded(
             child: Text(
               _filled ? 'filled: true' : 'filled: false',
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontFamily: 'JetBrainsMono',
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontFamily: 'JetBrainsMono',
+                  ),
             ),
           ),
           Text(
             '点按切换',
-            style: AppTextStyle.caption1.of(context).copyWith(
-              color: colorScheme.primary,
-            ),
+            style: AppTextStyle.caption1
+                .of(context)
+                .copyWith(color: colorScheme.primary),
           ),
         ],
       ),
@@ -231,10 +236,12 @@ class _DemoParametricGlyphs extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ],
             ),
@@ -276,11 +283,13 @@ class _DemoGlyphGrid extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 9,
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 9,
+                      ),
                 ),
               ],
             ),

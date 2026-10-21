@@ -127,10 +127,15 @@ class HttpRequestRepository {
     final sql = StringBuffer('SELECT * FROM http_request_log WHERE 1=1');
 
     if (trimmed.isNotEmpty) {
-      sql.write(' AND (authority LIKE ? OR packageName LIKE ? '
-          'OR matchedRule LIKE ?)');
+      sql.write(
+        ' AND (authority LIKE ? OR packageName LIKE ? '
+        'OR matchedRule LIKE ?)',
+      );
       final pattern = '%${trimmed.toLowerCase()}%';
-      args..add(pattern)..add(pattern)..add(pattern);
+      args
+        ..add(pattern)
+        ..add(pattern)
+        ..add(pattern);
     }
 
     switch (status) {

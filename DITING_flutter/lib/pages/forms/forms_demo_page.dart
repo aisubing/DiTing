@@ -195,8 +195,7 @@ class _FormsDemoPageState extends State<FormsDemoPage> {
               ),
             ),
           ),
-          if (_issues.isNotEmpty)
-            CustomIssuesBanner(issues: _issues),
+          if (_issues.isNotEmpty) CustomIssuesBanner(issues: _issues),
           if (_error case final error?) ErrorBanner(message: error),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -332,21 +331,23 @@ class _FormsDemoPageState extends State<FormsDemoPage> {
                     label: preset.title,
                     color: context.raisedSurfaceLevel.colorOf(colorScheme),
                     foregroundColor: colorScheme.onSurface,
-                    onPressed: () => ScaffoldMessenger.maybeOf(
-                      context,
-                    )?.showSnackBar(
-                      SnackBar(
-                        content: Text('插入「${preset.title}」的 ${preset.rules.length} 条规则'),
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(milliseconds: 1400),
-                      ),
-                    ),
+                    onPressed: () =>
+                        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '插入「${preset.title}」的 ${preset.rules.length} 条规则',
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(milliseconds: 1400),
+                          ),
+                        ),
                   ),
               ],
             ),
           ),
           ListFooter(
-            text: '表单族的完整页面：命名 URL、列表编辑器、键值编辑器、选择浮层、'
+            text:
+                '表单族的完整页面：命名 URL、列表编辑器、键值编辑器、选择浮层、'
                 '规则预设，都可以从右上角菜单进入。',
           ),
         ],

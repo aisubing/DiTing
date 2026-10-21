@@ -49,9 +49,7 @@ class BootstrapSettingsPage extends ConsumerWidget {
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.language),
                 title: const Text('启用 Bootstrap IP'),
-                subtitle: const Text(
-                  '使用独立递归 DNS 解析加密服务商域名，支持智能权重优选与自动回退',
-                ),
+                subtitle: const Text('使用独立递归 DNS 解析加密服务商域名，支持智能权重优选与自动回退'),
                 value: enabled,
                 onChanged: (value) {
                   settings.setBootstrapEnabled(value);
@@ -59,7 +57,8 @@ class BootstrapSettingsPage extends ConsumerWidget {
                 },
               ),
             ],
-            footer: '开启后将通过加权算法动态优选 Bootstrap IP；'
+            footer:
+                '开启后将通过加权算法动态优选 Bootstrap IP；'
                 '关闭后将通过系统 DNS 解析加密上游域名。',
           ),
           generateSection(
@@ -106,9 +105,7 @@ class BootstrapSettingsPage extends ConsumerWidget {
                   ]),
                 ),
             ],
-            footer: custom.isEmpty
-                ? '暂无自定义 Bootstrap IP。点击右上角「新增」添加。'
-                : null,
+            footer: custom.isEmpty ? '暂无自定义 Bootstrap IP。点击右上角「新增」添加。' : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -139,17 +136,19 @@ class BootstrapSettingsPage extends ConsumerWidget {
   }
 
   void _writeCustom(WidgetRef ref, List<BootstrapEntry> entries) {
-    ref.read(legacySettingsProvider).setBootstrapCustomJson(
-      jsonEncode([
-        for (final entry in entries)
-          {
-            'id': entry.id,
-            'name': entry.name,
-            'ip': entry.ip,
-            'enabled': entry.enabled,
-          },
-      ]),
-    );
+    ref
+        .read(legacySettingsProvider)
+        .setBootstrapCustomJson(
+          jsonEncode([
+            for (final entry in entries)
+              {
+                'id': entry.id,
+                'name': entry.name,
+                'ip': entry.ip,
+                'enabled': entry.enabled,
+              },
+          ]),
+        );
     ref.read(legacySettingsRevisionProvider.notifier).bump();
   }
 
@@ -186,17 +185,18 @@ class BootstrapSettingsPage extends ConsumerWidget {
 
 /// 24-hour aggregate of the legacy `bootstrap_log`; empty on a fresh install or
 /// when bootstrap probing never ran.
-final bootstrapStatsProvider =
-    FutureProvider<List<BootstrapIpStat>>((ref) async {
-      final mode = ref.watch(workModeProvider);
-      final db = await LegacyDatabase.open(
-        mode == AppWorkMode.express
-            ? LegacyDatabase.expressFile
-            : LegacyDatabase.mainFile,
-      );
-      if (db == null) return const [];
-      return _readStats(db);
-    });
+final bootstrapStatsProvider = FutureProvider<List<BootstrapIpStat>>((
+  ref,
+) async {
+  final mode = ref.watch(workModeProvider);
+  final db = await LegacyDatabase.open(
+    mode == AppWorkMode.express
+        ? LegacyDatabase.expressFile
+        : LegacyDatabase.mainFile,
+  );
+  if (db == null) return const [];
+  return _readStats(db);
+});
 
 Future<List<BootstrapIpStat>> _readStats(Database db) async {
   try {
@@ -320,9 +320,9 @@ class _BootstrapEditorState extends State<_BootstrapEditor> {
           if (_error != null)
             Text(
               _error!,
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: context.colorScheme.error,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: context.colorScheme.error),
             ),
         ],
       ),

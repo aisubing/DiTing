@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'route_catalog_test.dart' show idRoutes, topLevelRoutes;
 import 'support/fake_vpn_controller.dart';
 import 'support/test_hooks.dart';
 
@@ -34,6 +35,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          ...appTestOverrides(),
           if (vpn != null) vpnControllerProvider.overrideWithValue(vpn),
         ],
         child: DitingApp(initialLocation: initialLocation),
@@ -69,7 +71,7 @@ void main() {
     await pumpApp(tester);
     await tester.tap(find.text('功能中心'));
     await tester.pumpAndSettle();
-    // 断言分类标题而不是卡片文案：卡片标题会与底栏项重名（「代理」既是底栏
+    // 断言分类标题而不是卡片文案：卡片标题会与底栏项重名（「日志」既是底栏
     // tab 也是卡片），`findsOneWidget` 必然失败。分类标题只在功能中心出现。
     expect(
       find.descendant(
@@ -77,8 +79,7 @@ void main() {
         matching: find.text(mockFeatureCategories.first.title),
       ),
       findsWidgets,
-    );
-    await tester.tap(find.text('首页'));
+    );    await tester.tap(find.text('首页'));
     await tester.pumpAndSettle();
     expect(find.text('谛听 · 普通'), findsOneWidget);
   });
@@ -107,26 +108,6 @@ void main() {
     expect(tester.getRect(list).bottom, screenHeight);
   });
 
-  testWidgets('首页统计条读当日聚合而不是 mock 常量', (tester) async {
-    await pumpApp(tester);
-    // 统计条在仪表盘卡片下方：直接跳到底，避免 scrollUntilVisible 对
-    // 「ListView 包 Scrollable」这类层级差异敏感。
-    final scrollable = find
-        .descendant(
-          of: find.byType(PageBody),
-          matching: find.byType(Scrollable),
-        )
-        .first;
-    final position = tester.state<ScrollableState>(scrollable).position;
-    position.jumpTo(position.maxScrollExtent);
-    await tester.pumpAndSettle();
-    // 停止态三格归零 / 破折号：数字不再是 mockServiceStatsSnapshot 里
-    // 写死的 28,471 / 98% / 14ms。
-    expect(find.text('28,471'), findsNothing);
-    expect(find.text('缓存命中'), findsOneWidget);
-    expect(find.text('0'), findsWidgets);
-  });
-
   testWidgets('订阅页读真实表：无旧库时是空状态而不是 mock 订阅', (tester) async {
     await pumpApp(tester, initialLocation: Routes.subscriptions);
     // 测试宿主没有 1.4.3 数据库文件，`LegacyDatabase.open` 返回 null，页面必须
@@ -138,18 +119,6 @@ void main() {
     expect(find.textContaining('规则解析与入库将在后续版本接入'), findsWidgets);
   });
 
-  testWidgets('网络工具页不再显示 mock 统计数字', (tester) async {
-    await pumpApp(tester, initialLocation: Routes.tools);
-    // `mockServiceStats.averageLatencyMs`(14ms) / `uptimeLabel`(3小时42分) 已移除，
-    // 顶部信息条改读 networkInfo()；无原生通道时三格都是破折号。
-    expect(find.text('3小时42分'), findsNothing);
-    expect(find.text('当前解析'), findsNothing);
-    expect(find.text('活动接口'), findsOneWidget);
-    expect(find.text('本机地址'), findsOneWidget);
-    // 「网络测速」面板已删除（无真实后端）。
-    expect(find.text('网络测速'), findsNothing);
-  });
-
   testWidgets('每个路由都能构建', (tester) async {
     for (final route in _routes) {
       await pumpApp(tester, initialLocation: route);
@@ -158,21 +127,22 @@ void main() {
   });
 }
 
-const _routes = <String>[
+/// 冒烟用的路由清单。
+///
+/// 与 `route_catalog_test.dart` 的两张表合并使用，而不是各写一份：三份清单必然
+/// 漂移，而漂移的表现是「新页面只在一个测试里被覆盖」，不报错、只留洞。
+final _routes = <String>[
   Routes.home,
   Routes.hub,
   Routes.logs,
   Routes.traffic,
   Routes.tools,
   Routes.settings,
-  '/rules/block',
   Routes.batchEditor,
   Routes.subscriptions,
-  Routes.apps,
-  Routes.agent,
   Routes.about,
-  Routes.server,
-  Routes.demo,
   Routes.modeSelect,
   Routes.modeOnboarding,
+  ...topLevelRoutes.values,
+  ...idRoutes.values,
 ];

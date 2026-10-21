@@ -9,13 +9,17 @@ part of 'legacy_settings.dart';
 extension LegacyDnsSettings on LegacySettings {
   // ------------------------------------------------------------- dns upstream
 
-  bool get vpnRunning => _bool(LegacySettings.uiContainer, 'vpn_running', false);
+  bool get vpnRunning =>
+      _bool(LegacySettings.uiContainer, 'vpn_running', false);
 
   void setVpnRunning(bool value) =>
       _store.putBool(LegacySettings.uiContainer, 'vpn_running', value);
 
-  bool get expressVpnRunning =>
-      _bool(LegacySettings.expressRunningContainer, 'express_vpn_running', false);
+  bool get expressVpnRunning => _bool(
+    LegacySettings.expressRunningContainer,
+    'express_vpn_running',
+    false,
+  );
 
   void setExpressVpnRunning(bool value) => _store.putBool(
     LegacySettings.expressRunningContainer,
@@ -75,11 +79,17 @@ extension LegacyDnsSettings on LegacySettings {
     jsonEncode(ids),
   );
 
-  void setParallelRaceProviderIds(List<String> ids) =>
-      _store.putString(dnsContainer, 'parallel_race_provider_ids', jsonEncode(ids));
+  void setParallelRaceProviderIds(List<String> ids) => _store.putString(
+    dnsContainer,
+    'parallel_race_provider_ids',
+    jsonEncode(ids),
+  );
 
-  void setPrimaryBackupProviderIds(List<String> ids) =>
-      _store.putString(dnsContainer, 'primary_backup_provider_ids', jsonEncode(ids));
+  void setPrimaryBackupProviderIds(List<String> ids) => _store.putString(
+    dnsContainer,
+    'primary_backup_provider_ids',
+    jsonEncode(ids),
+  );
 
   /// The mode-specific candidate list the resolution UI edits. Single mode has
   /// no list: its selection lives in `selected_provider_id`.
@@ -298,8 +308,11 @@ extension LegacyDnsSettings on LegacySettings {
   bool get http3InspectionEnabled =>
       _bool(LegacySettings.uiContainer, 'http3_inspection_enabled', false);
 
-  bool get encryptedDnsBlockingEnabled =>
-      _bool(LegacySettings.uiContainer, 'encrypted_dns_blocking_enabled', false);
+  bool get encryptedDnsBlockingEnabled => _bool(
+    LegacySettings.uiContainer,
+    'encrypted_dns_blocking_enabled',
+    false,
+  );
 
   /// Address (CNAME/URL) rules are the second half of HTTPS inspection.
   bool get addressRulesEnabled =>
@@ -333,8 +346,6 @@ extension LegacyDnsSettings on LegacySettings {
 
   /// A view over the express-mode dataset. UI keys stay global; DNS keys move
   /// to `diting_express_prefs`, exactly like `RuleDataset.EXPRESS`.
-  LegacySettings forExpress() => LegacySettings(
-    _store,
-    dnsContainer: LegacySettings.expressContainer,
-  );
+  LegacySettings forExpress() =>
+      LegacySettings(_store, dnsContainer: LegacySettings.expressContainer);
 }

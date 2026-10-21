@@ -60,9 +60,7 @@ class BatchSection extends StatelessWidget {
                       size: 18,
                       color: colorScheme.primary,
                     ),
-                    Expanded(
-                      child: Text(title, style: context.listTitleStyle),
-                    ),
+                    Expanded(child: Text(title, style: context.listTitleStyle)),
                     ValueListenableBuilder<TextEditingValue>(
                       valueListenable: controller,
                       builder: (context, value, _) {
@@ -94,9 +92,11 @@ class BatchSection extends StatelessWidget {
                     minLines: minLines,
                     maxLines: maxLines,
                     keyboardType: TextInputType.multiline,
-                    style: AppTextStyle.subheadline.of(context).copyWith(
-                      fontFamily: monospace ? 'JetBrainsMono' : null,
-                    ),
+                    style: AppTextStyle.subheadline
+                        .of(context)
+                        .copyWith(
+                          fontFamily: monospace ? 'JetBrainsMono' : null,
+                        ),
                     decoration: InputDecoration.collapsed(
                       hintText: hintText,
                       hintStyle: context.listCaptionStyle,

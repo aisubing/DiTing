@@ -342,11 +342,8 @@ final dnsQueriesProvider = FutureProvider<List<DnsLogRow>>((ref) async {
   final query = ref.watch(dnsQueryTextProvider);
   final db = await ref.watch(activeLogDatabaseProvider.future);
   if (db == null) return _noDnsRows;
-  return DnsQueryRepository(db).recent(
-    limit: _dnsWindowSize,
-    status: status,
-    query: query,
-  );
+  return DnsQueryRepository(db)
+      .recent(limit: _dnsWindowSize, status: status, query: query);
 });
 
 // ---------------------------------------------------------------------------

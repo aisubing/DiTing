@@ -36,33 +36,27 @@ class WebDavForm extends ConsumerWidget {
                   value: dav.server,
                   hintText: 'https://dav.example.com',
                   keyboardType: TextInputType.url,
-                  invalid: dav.status == DavStatus.failed &&
-                      dav.server.isEmpty,
+                  invalid: dav.status == DavStatus.failed && dav.server.isEmpty,
                   onChanged: (value) => field.update(
-                    (state) => state.copyWith(
-                      server: value,
-                      status: DavStatus.idle,
-                    ),
+                    (state) =>
+                        state.copyWith(server: value, status: DavStatus.idle),
                   ),
                 ),
                 FormRowTextField(
                   title: '用户名',
                   value: dav.username,
-                  invalid: dav.status == DavStatus.failed &&
-                      dav.username.isEmpty,
+                  invalid:
+                      dav.status == DavStatus.failed && dav.username.isEmpty,
                   onChanged: (value) => field.update(
-                    (state) => state.copyWith(
-                      username: value,
-                      status: DavStatus.idle,
-                    ),
+                    (state) =>
+                        state.copyWith(username: value, status: DavStatus.idle),
                   ),
                 ),
                 FormRowSecretTextField(
                   title: '密码',
                   controller: _passwordController(ref),
-                  onChanged: (value) => field.update(
-                    (state) => state.copyWith(password: value),
-                  ),
+                  onChanged: (value) =>
+                      field.update((state) => state.copyWith(password: value)),
                 ),
                 FormRowTextField(
                   title: '远端路径',

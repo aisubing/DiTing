@@ -112,7 +112,8 @@ class _RulePresetSheetState extends State<RulePresetSheet> {
                   }),
                 ),
             ],
-            footer: '预设只是把常用规则拼成一段文本插入，插入后仍可逐条编辑。'
+            footer:
+                '预设只是把常用规则拼成一段文本插入，插入后仍可逐条编辑。'
                 '阻塞类规则默认用 REJECT，需要静默丢弃时改成 REJECT-DROP。',
           ),
           const SizedBox(height: 24),
@@ -208,10 +209,12 @@ class _PresetRow extends StatelessWidget {
                 for (final rule in preset.rules)
                   Text(
                     rule,
-                    style: AppTextStyle.footnote.of(context).copyWith(
-                      fontFamily: 'JetBrainsMono',
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyle.footnote
+                        .of(context)
+                        .copyWith(
+                          fontFamily: 'JetBrainsMono',
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                   ),
               ],
             ),

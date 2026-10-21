@@ -93,11 +93,7 @@ enum ProxyGroupType {
 
 /// 一个节点。
 class MockProxy {
-  const MockProxy({
-    required this.name,
-    required this.protocol,
-    this.delayMs,
-  });
+  const MockProxy({required this.name, required this.protocol, this.delayMs});
 
   final String name;
   final ProxyProtocol protocol;
@@ -141,12 +137,36 @@ const mockProxyGroups = <MockProxyGroup>[
     proxies: [
       MockProxy(name: '🇭🇰 香港 01', protocol: ProxyProtocol.ss, delayMs: 42),
       MockProxy(name: '🇭🇰 香港 02', protocol: ProxyProtocol.ss, delayMs: 88),
-      MockProxy(name: '🇯🇵 日本 01', protocol: ProxyProtocol.vmess, delayMs: 136),
-      MockProxy(name: '🇯🇵 日本 02', protocol: ProxyProtocol.vmess, delayMs: 158),
-      MockProxy(name: '🇸🇬 新加坡 01', protocol: ProxyProtocol.trojan, delayMs: 96),
-      MockProxy(name: '🇺🇸 美国 01', protocol: ProxyProtocol.hysteria2, delayMs: 212),
-      MockProxy(name: '🇺🇸 美国 02', protocol: ProxyProtocol.hysteria2, delayMs: 468),
-      MockProxy(name: '🇩🇪 德国 01', protocol: ProxyProtocol.trojan, delayMs: -1),
+      MockProxy(
+        name: '🇯🇵 日本 01',
+        protocol: ProxyProtocol.vmess,
+        delayMs: 136,
+      ),
+      MockProxy(
+        name: '🇯🇵 日本 02',
+        protocol: ProxyProtocol.vmess,
+        delayMs: 158,
+      ),
+      MockProxy(
+        name: '🇸🇬 新加坡 01',
+        protocol: ProxyProtocol.trojan,
+        delayMs: 96,
+      ),
+      MockProxy(
+        name: '🇺🇸 美国 01',
+        protocol: ProxyProtocol.hysteria2,
+        delayMs: 212,
+      ),
+      MockProxy(
+        name: '🇺🇸 美国 02',
+        protocol: ProxyProtocol.hysteria2,
+        delayMs: 468,
+      ),
+      MockProxy(
+        name: '🇩🇪 德国 01',
+        protocol: ProxyProtocol.trojan,
+        delayMs: -1,
+      ),
       MockProxy(name: '🇬🇧 英国 01', protocol: ProxyProtocol.ss),
     ],
   ),
@@ -186,7 +206,11 @@ const mockProxyGroups = <MockProxyGroup>[
       MockProxy(name: '香港 流媒体', protocol: ProxyProtocol.ss, delayMs: 64),
       MockProxy(name: '日本 流媒体', protocol: ProxyProtocol.trojan, delayMs: 118),
       MockProxy(name: '新加坡 流媒体', protocol: ProxyProtocol.vmess, delayMs: 176),
-      MockProxy(name: '美国 流媒体', protocol: ProxyProtocol.hysteria2, delayMs: 356),
+      MockProxy(
+        name: '美国 流媒体',
+        protocol: ProxyProtocol.hysteria2,
+        delayMs: 356,
+      ),
     ],
   ),
   MockProxyGroup(

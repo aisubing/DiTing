@@ -14,7 +14,6 @@ library;
 export 'config_routes.dart';
 export 'dashboard_routes.dart';
 export 'hub_routes.dart';
+export 'logs_routes.dart';
 export 'observability_routes.dart';
-export 'profiles_routes.dart';
-export 'proxies_routes.dart';
 export 'system_routes.dart';

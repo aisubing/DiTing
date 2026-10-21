@@ -1,7 +1,7 @@
 import 'package:diting/app/app.dart';
 import 'package:diting/data/mock_data.dart';
-import 'package:diting/data/mock_profiles.dart';
 import 'package:diting/pages/system/unknown_route_page.dart';
+import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,13 +11,16 @@ import 'support/test_hooks.dart';
 
 /// 路由覆盖守门。
 ///
-/// 第二轮把页面从 18 条扩到 50+ 条，光靠人眼核对「哪些路由注册了」不现实。
-/// 这组用例做两件互不重叠的事：
+/// 三件互不重叠的事：
 ///
 /// 1. **功能中心的每个卡片都指向一条真实注册的路由**——卡片是字符串字面量
-///    （`mock_apps.dart` 是 part，不能 import 常量），漂了只会在用户点击时崩；
+///    （`mock_feature_hub.dart` 是 part，不能 import 常量），漂了只会在用户点击
+///    时崩；
 /// 2. **每条路由都能 build 且不 assert**——布局类问题（无界高度、缺 scope、
-///    枚举插值）在 analyze 阶段查不出来。
+///    枚举插值）在 analyze 阶段查不出来；
+/// 3. **保留页可达**——那 18 个「旧版没有、用户要求保留」的页面必须有入口，
+///    否则下一轮就会被当成孤儿删掉（这条是第三轮新增的，见
+///    `retained_pages_reachable_test.dart`）。
 ///
 /// 光断言「没抛异常」是不够的：`GoRouter` 对未匹配路径**不抛异常**，它会渲染
 /// `errorBuilder`。所以每个用例都额外断言 `UnknownRoutePage` 没有出现——否则
@@ -30,7 +33,10 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ProviderScope(child: DitingApp(initialLocation: location)),
+      ProviderScope(
+        overrides: appTestOverrides(),
+        child: DitingApp(initialLocation: location),
+      ),
     );
     await tester.pump();
     await tester.pumpAndSettle();
@@ -70,7 +76,7 @@ void main() {
       }
     });
 
-    testWidgets('带 id 的二级页都能构建', (tester) async {
+    testWidgets('带参数的二级页都能构建', (tester) async {
       for (final entry in idRoutes.entries) {
         await pumpAt(tester, entry.value);
         expectReached(tester, entry.value, entry.key);
@@ -95,51 +101,53 @@ void main() {
 ///
 /// 这份表同时被 `layout_regression_test.dart` 消费——各自维护一份会让
 /// 「新页面只在其中一个测试里被覆盖」静默发生。
+///
+/// 第三轮把 FlClash 的代理 / 配置档案 / 内核配置族全部删掉后，这份表与
+/// `lib/router.dart` 的实际注册集合同步过一次。删路由必须同时改三张清单：
+/// 本表、`layout_regression_test.dart` 的 `_routes`、`app_shell_test.dart`。
 final Map<String, String> topLevelRoutes = {
   '首页': DashboardPaths.dashboard,
-  '配置详情': DashboardPaths.profileDetail,
-  '代理': ProxiesPaths.proxies,
-  '代理提供者': ProxiesPaths.providers,
   '连接': ObservabilityPaths.connections,
   '请求': ObservabilityPaths.requests,
-  'DNS 查询': ObservabilityPaths.dnsQueries,
   '资源': ObservabilityPaths.resources,
-  '配置档案': ProfilesPaths.profiles,
-  '添加配置': ProfilesPaths.add,
-  '扩展': ProfilesPaths.extend,
+  // —— 外观子树（旧版 APPEARANCE_SETTINGS 三组八项）——
   '主题': SystemPaths.theme,
-  '主题预览': SystemPaths.themePreview,
+  '日夜模式': SystemPaths.dayNight,
+  '主题色配置': SystemPaths.colorStyle,
+  '首页透明度': SystemPaths.homeOpacity,
+  '底栏自定义': SystemPaths.bottomBar,
+  '首页句子': SystemPaths.homeSentence,
+  '通知栏设置': SystemPaths.notification,
+  '软件背景': SystemPaths.background,
   '字体': SystemPaths.fontFamily,
-  '访问控制': SystemPaths.access,
-  '备份': SystemPaths.backup,
-  '免责声明': SystemPaths.disclaimer,
+  // —— 设置子页 ——
+  '前后台行为': SystemPaths.foregroundBackground,
+  '语言设置': SystemPaths.language,
+  // —— 系统 ——
   '开发者': SystemPaths.developer,
   '赞助': SystemPaths.sponsor,
   '检查更新': SystemPaths.appUpdate,
+  // —— 保留页（旧版无对应界面，用户要求保留）——
   'IP 质量': SystemPaths.ipQuality,
   '编辑器': SystemPaths.editor,
   '扫码': SystemPaths.scan,
-  '错误页': SystemPaths.errorPage,
+  // —— 演示页 ——
+  '组件画廊': SystemPaths.demo,
+  '表单演示': SystemPaths.formDemo,
   '规则预设': SystemPaths.formRulePreset,
   '列表编辑器': SystemPaths.formListEditor,
   '键值编辑器': SystemPaths.formMapEdit,
   '命名 URL': SystemPaths.formNamedUrl,
   '选择浮层': SystemPaths.formSelection,
-  '通用设置': ConfigPaths.general,
-  '网络设置': ConfigPaths.network,
-  'TUN 覆写': ConfigPaths.tun,
-  'DNS 覆写': ConfigPaths.dns,
-  'NTP': ConfigPaths.ntp,
-  '嗅探': ConfigPaths.sniffer,
-  '覆写编辑器': ConfigPaths.override,
-  '过滤器': ConfigPaths.filters,
-  '追加规则': ConfigPaths.rules,
-  '脚本': ConfigPaths.scripts,
-  'Clash 提供者': ConfigPaths.providers,
+  // —— 日志下钻 ——
+  '缓存表': LogPaths.cache,
+  '竞速排行': LogPaths.race,
+  'Bootstrap DNS': LogPaths.bootstrap,
+  '订阅拦截统计': LogPaths.subscriptionStats,
+  // —— 自定义资源（旧版无对应界面，用户要求保留）——
   '图标集': ConfigPaths.iconSets,
   'User-Agent': ConfigPaths.userAgents,
   '按需连接': ConfigPaths.onDemand,
-  '高级': ConfigPaths.advanced,
   '自定义资源': ConfigPaths.customResources,
   // —— 功能中心二级 / 三级页 ——
   '服务商管理': HubPaths.providerManagement,
@@ -171,6 +179,7 @@ final Map<String, String> topLevelRoutes = {
   '日志模式': HubPaths.logRetention,
   '数据清理': HubPaths.dataCleanup,
   '备份与迁移': HubPaths.configTransfer,
+  'WebDAV 云同步': HubPaths.configTransferWebdav,
   '赞助者名单': HubPaths.sponsorList,
   '共建者名单': HubPaths.coBuilders,
 };
@@ -179,15 +188,11 @@ final Map<String, String> topLevelRoutes = {
 ///
 /// 参数一律取 mock 数据里真实存在的 id：塞瞎编的 id 会走到「找不到该配置」的
 /// 错误分支，那个分支能 build 但证明不了正常分支能 build。
+///
+/// 第三轮删掉配置档案后，本表只剩规则种类（`/rules/:kind`）——它仍然需要真实
+/// 存在的 kind，否则会渲染空列表而不是正常分支。
 final Map<String, String> idRoutes = {
-  '编辑配置': ProfilesPaths.editOf(mockProfiles.first.id),
-  '配置预览': ProfilesPaths.previewOf(mockProfiles.first.id),
-  '自定义配置': ProfilesPaths.customOf(mockProfiles.first.id),
-  '自定义节点': ProfilesPaths.proxiesOf(mockProfiles.first.id),
-  '自定义组': ProfilesPaths.groupsOf(mockProfiles.first.id),
-  '自定义规则': ProfilesPaths.rulesOf(mockProfiles.first.id),
-  '自定义提供者': ProfilesPaths.providersOf(mockProfiles.first.id),
-  '拨号器': ProfilesPaths.dialersOf(mockProfiles.first.id),
-  '图标选择': ProfilesPaths.iconOf(mockProfiles.first.id),
-  '扩展详情': ProfilesPaths.extendOf(mockProfiles.first.id),
+  '规则-黑名单': Routes.rulesOf('block'),
+  '规则-白名单': Routes.rulesOf('allow'),
+  '规则-覆写': Routes.rulesOf('rewrite'),
 };

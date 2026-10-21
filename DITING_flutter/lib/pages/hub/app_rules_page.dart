@@ -66,7 +66,10 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
   /// 里删掉。本页若继续用旧草稿，用户会看到一条已经不存在的放行规则，点保存还会
   /// 把它写回去——正是 1.4.3 里互斥清洗要防的那种「自我复活」。
   AppRulesDraft _draftOf(LegacySettings settings) {
-    final key = appRulesKey(settings.appAllowlistEnabled, settings.appAllowlistRules);
+    final key = appRulesKey(
+      settings.appAllowlistEnabled,
+      settings.appAllowlistRules,
+    );
     if (_draft == null || (key != _lastKey && key != _draft!.baselineKey)) {
       _draft = AppRulesDraft.load(settings);
       _lastKey = key;
@@ -125,7 +128,9 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     LegacySettings settings,
   ) {
     final apps = snapshot.value?.apps ?? const <InstalledApp>[];
-    final filter = AppListFilter.fromStorageValue(settings.appAllowlistFilterRaw);
+    final filter = AppListFilter.fromStorageValue(
+      settings.appAllowlistFilterRaw,
+    );
     final sort = AppListSort.fromStorageValue(settings.appAllowlistSortRaw);
     final visible = appRulesVisibleApps(
       apps: apps,
@@ -199,7 +204,8 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
                 onChanged: (value) => setState(() => draft.master = value),
               ),
             ],
-            footer: '为指定应用深度定制网络与解析控制。以下是软件网络层的白名单隔离'
+            footer:
+                '为指定应用深度定制网络与解析控制。以下是软件网络层的白名单隔离'
                 '（只放行列出的域名）；DNS 专属黑白名单与「默认拦截全部外联」'
                 '需要按应用读写规则库，本轮尚未接通，配置入口暂为只读说明。',
           ),
@@ -314,8 +320,10 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
                   ),
                 ),
             ],
-            footer: domains.isEmpty ? null : '这些域名会写入 app_allowlist_rules_json，'
-                '由引擎在下一次启动隧道时下发给 setAppAllowlist。',
+            footer: domains.isEmpty
+                ? null
+                : '这些域名会写入 app_allowlist_rules_json，'
+                      '由引擎在下一次启动隧道时下发给 setAppAllowlist。',
           ),
           generateSection(
             title: 'DNS 专属黑/白名单',

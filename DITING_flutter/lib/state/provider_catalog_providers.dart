@@ -31,10 +31,7 @@ List<MockProvider> buildProviderCatalog(LegacySettings settings) {
   final latencies = settings.providerLatenciesMs;
   return [
     for (final provider in defaultDnsProviders)
-      provider.toMock(
-        latencyMs: latencies[provider.id] ?? -1,
-        isPreset: true,
-      ),
+      provider.toMock(latencyMs: latencies[provider.id] ?? -1, isPreset: true),
     for (final record in readUserProviders(settings))
       MockProvider(
         id: record.id,
@@ -262,7 +259,9 @@ class RaceProvidersNotifier extends Notifier<Set<String>> {
     if (mode.isSingle) {
       ref.read(legacySettingsProvider).setParallelRaceProviderIds(ordered);
     } else {
-      ref.read(legacySettingsProvider).setProviderIdsOf(mode.storageValue, ordered);
+      ref
+          .read(legacySettingsProvider)
+          .setProviderIdsOf(mode.storageValue, ordered);
     }
     state = ordered.toSet();
   }

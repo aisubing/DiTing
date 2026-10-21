@@ -238,7 +238,12 @@ class _PermissionStep extends ConsumerWidget {
       description: '全部权限只在本机使用，不会上传任何数据；拒绝「可选」项只影响对应功能。',
       children: [
         for (final (glyph, name, level, detail) in permissions)
-          _PermissionRow(glyph: glyph, name: name, level: level, detail: detail),
+          _PermissionRow(
+            glyph: glyph,
+            name: name,
+            level: level,
+            detail: detail,
+          ),
       ],
     );
   }
@@ -326,7 +331,11 @@ class _StepScaffold extends StatelessWidget {
                       shape: AppShape.full,
                       color: colorScheme.primary.withValues(alpha: 0.12),
                     ),
-                    child: GlyphIcon(glyph, size: 40, color: colorScheme.primary),
+                    child: GlyphIcon(
+                      glyph,
+                      size: 40,
+                      color: colorScheme.primary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -339,9 +348,9 @@ class _StepScaffold extends StatelessWidget {
                 Text(
                   description,
                   textAlign: TextAlign.center,
-                  style: AppTextStyle.footnote.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyle.footnote
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 18),
                 ...children,
@@ -392,9 +401,9 @@ class _TipCard extends StatelessWidget {
                   ),
                   Text(
                     detail,
-                    style: AppTextStyle.caption1.of(context).copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyle.caption1
+                        .of(context)
+                        .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -473,9 +482,9 @@ class _PermissionRow extends StatelessWidget {
                   ),
                   Text(
                     detail,
-                    style: AppTextStyle.caption1.of(context).copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyle.caption1
+                        .of(context)
+                        .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),

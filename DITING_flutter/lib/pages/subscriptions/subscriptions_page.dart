@@ -76,8 +76,10 @@ class SubscriptionsPage extends ConsumerWidget {
             child: const Text('删除'),
           ),
         ],
-        child: Text('删除「${entry.name}」后不可撤销。\n\n'
-            '本轮订阅正文尚未写入规则表，因此删除只影响这一条订阅记录本身。'),
+        child: Text(
+          '删除「${entry.name}」后不可撤销。\n\n'
+          '本轮订阅正文尚未写入规则表，因此删除只影响这一条订阅记录本身。',
+        ),
       ),
     );
     if (confirmed ?? false) {
@@ -114,7 +116,10 @@ class SubscriptionsPage extends ConsumerWidget {
     final update = ref.watch(subscriptionUpdateProvider);
 
     final enabledCount = entries.where((entry) => entry.enabled).length;
-    final lineCount = entries.fold<int>(0, (sum, entry) => sum + entry.ruleCount);
+    final lineCount = entries.fold<int>(
+      0,
+      (sum, entry) => sum + entry.ruleCount,
+    );
     final failedCount = entries.where((entry) => entry.isFailed).length;
 
     return CommonScaffold(
@@ -125,9 +130,7 @@ class SubscriptionsPage extends ConsumerWidget {
           glyph: AppGlyphs.refresh,
           tooltip: '更新全部订阅',
           isLoading: update.updatingAll,
-          onPressed: update.updatingAll
-              ? null
-              : () => _updateAll(context, ref),
+          onPressed: update.updatingAll ? null : () => _updateAll(context, ref),
         ),
         IconButtonData(
           glyph: AppGlyphs.add,
@@ -217,7 +220,8 @@ class SubscriptionsPage extends ConsumerWidget {
               height: 300,
               child: NullStatus(
                 label: '还没有订阅',
-                description: '订阅可以批量维护规则；本轮只下载正文并统计行数，'
+                description:
+                    '订阅可以批量维护规则；本轮只下载正文并统计行数，'
                     '规则解析与入库将在后续版本接入',
                 illustration: NullStatusIllustration.rules,
                 action: FilledButton(
@@ -244,8 +248,9 @@ class SubscriptionsPage extends ConsumerWidget {
                       onToggle: (value) => ref
                           .read(subscriptionActionsProvider)
                           .setEnabled(entry.id, value),
-                      onUpdate: () =>
-                          ref.read(subscriptionUpdateProvider.notifier).updateOne(entry.id),
+                      onUpdate: () => ref
+                          .read(subscriptionUpdateProvider.notifier)
+                          .updateOne(entry.id),
                       onDelete: () => _delete(context, ref, entry),
                       onEdit: () => _rename(context, ref, entry),
                     ),
@@ -255,7 +260,8 @@ class SubscriptionsPage extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(0, 8, 0, 0),
             child: ListFooter(
-              text: '本轮订阅更新只做真实下载与行数统计：正文不会写入拦截/放行规则表，'
+              text:
+                  '本轮订阅更新只做真实下载与行数统计：正文不会写入拦截/放行规则表，'
                   '因此更新后拦截行为不会改变。规则解析与入库将在后续版本接入。',
             ),
           ),

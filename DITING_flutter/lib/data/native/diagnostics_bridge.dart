@@ -94,7 +94,8 @@ class PingSummary {
       replies: [
         if (rawReplies is List)
           for (final item in rawReplies)
-            if (item is Map) PingReply.fromMap(Map<Object?, Object?>.from(item)),
+            if (item is Map)
+              PingReply.fromMap(Map<Object?, Object?>.from(item)),
       ],
       success: map['success'] == true,
       message: map['message'] as String?,
@@ -277,11 +278,28 @@ abstract class DiagnosticsRunner {
   Future<TraceResult> traceRoute(String target, {int maxHops = 30});
 
   /// Resolves through the tunnel's own decision path
-  /// (`Engine.resolveDomain`) when [viaTunnel]; otherwise asks the OS resolver.
+  /// (`Engine.resolveDomain`) when [viaTunnel]; otherwise asks a specific
+  /// resolver.
+  ///
+  /// [server] names the resolver for the non-tunnel path, mirroring 1.4.3's
+  /// `DnsServerMode`:
+  ///
+  /// - `null` / empty — 系统：ask this device's own resolver
+  ///   (`InetAddress.getAllByName`), i.e. whatever the VPN or Wi-Fi handed us.
+  /// - an IP literal — 自定义：send a real A/AAAA query to that server over UDP.
+  ///
+  /// 1.4.3 offered both modes in `DnsLookupSection`（`DnsServerMode.SYSTEM` /
+  /// `CUSTOM` + 「自定义 DNS 服务器 IP」输入框）. The migrated `lookupDns` only
+  /// had `viaTunnel`, so 「自定义」 was lost — a real parity gap, since the point
+  /// of the tool is checking what a *specific* server answers.
+  ///
+  /// `viaTunnel` ignores [server]: the tunnel resolves through its own policy
+  /// path and never lets you pick a resolver.
   Future<DnsLookupResult> lookupDns(
     String domain, {
     bool viaTunnel = false,
     bool ipv4 = true,
+    String? server,
   });
 
   Future<NetworkInfoSnapshot> networkInfo();
@@ -325,11 +343,15 @@ class MethodChannelDiagnosticsRunner implements DiagnosticsRunner {
     String domain, {
     bool viaTunnel = false,
     bool ipv4 = true,
+    String? server,
   }) async {
     final raw = await _channel.invokeMethod<Object?>('lookupDns', {
       'domain': domain,
       'viaTunnel': viaTunnel,
       'ipv4': ipv4,
+      // 空串与 null 在原生侧等价（都表示「系统」）；显式传空串而不是省略参数，
+      // 免得原生侧区分「没传」和「传了空」这两种语义。
+      'server': server ?? '',
     });
     return DnsLookupResult.fromMap(
       raw is Map ? Map<Object?, Object?>.from(raw) : const {},

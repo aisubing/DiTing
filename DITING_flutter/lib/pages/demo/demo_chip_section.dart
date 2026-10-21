@@ -14,14 +14,18 @@ class _DemoChipSection extends StatelessWidget {
       children: [
         const _DemoLabel('CommonChip', trailing: '可带删除按钮'),
         const _DemoCommonChips(),
-        const _DemoLabel('TonalChip', trailing: 'label + color + foregroundColor'),
+        const _DemoLabel(
+          'TonalChip',
+          trailing: 'label + color + foregroundColor',
+        ),
         const _DemoTonalChips(),
         const _DemoLabel('MetaChip', trailing: '最小号的元信息标签'),
         const _DemoMetaChips(),
         const _DemoLabel('SelectionCheck / SelectionBadge', trailing: '勾选标记'),
         const _DemoSelectionMarks(),
         const ListFooter(
-          text: 'TonalChip 内部用 _CapCentered 按 cap height 居中，所以它比同字号的 '
+          text:
+              'TonalChip 内部用 _CapCentered 按 cap height 居中，所以它比同字号的 '
               'CommonChip 略矮——这是刻意的，别去「修正」它。',
         ),
       ],
@@ -161,9 +165,9 @@ class _DemoMetaChips extends StatelessWidget {
           MetaChip(label: label),
         Text(
           '↑ MetaChip 与正文基线对齐',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: context.colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: context.colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -202,9 +206,9 @@ class _DemoSelectionMarks extends StatelessWidget {
         ),
         Text(
           'pin 标记代理组当前偏好的节点；tonal 表示只是候选。',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -225,11 +229,13 @@ class _DemoMarkCell extends StatelessWidget {
         SizedBox(height: 24, child: Center(child: child)),
         Text(
           label,
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: context.colorScheme.onSurfaceVariant,
-            fontFamily: 'JetBrainsMono',
-            fontSize: 9,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+                fontFamily: 'JetBrainsMono',
+                fontSize: 9,
+              ),
         ),
       ],
     );

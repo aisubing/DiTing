@@ -34,7 +34,9 @@ class _MapEditDemoPageState extends State<MapEditDemoPage> {
     for (final entry in _entries) {
       final key = entry.key.trim();
       if (key.isEmpty) {
-        issues.add('有 ${_entries.where((e) => e.key.trim().isEmpty).length} 个空键');
+        issues.add(
+          '有 ${_entries.where((e) => e.key.trim().isEmpty).length} 个空键',
+        );
         break;
       }
       if (!seen.add(key)) {
@@ -138,7 +140,8 @@ class _MapEditDemoPageState extends State<MapEditDemoPage> {
             ),
           ),
           ListFooter(
-            text: '保存前会检查空键、重复键与空值；这三类问题在真实配置里都会让'
+            text:
+                '保存前会检查空键、重复键与空值；这三类问题在真实配置里都会让'
                 '内核拒绝启动，所以放在 UI 层先拦。',
           ),
           const SizedBox(height: 24),

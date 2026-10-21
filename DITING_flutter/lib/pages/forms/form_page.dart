@@ -193,8 +193,7 @@ class FormRow extends StatelessWidget {
 class EntryButton extends StatelessWidget {
   const EntryButton.add({super.key, required this.onPressed}) : _add = true;
 
-  const EntryButton.remove({super.key, required this.onPressed})
-    : _add = false;
+  const EntryButton.remove({super.key, required this.onPressed}) : _add = false;
 
   final VoidCallback? onPressed;
   final bool _add;

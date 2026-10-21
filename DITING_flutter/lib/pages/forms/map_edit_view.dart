@@ -156,8 +156,10 @@ class _MapEditViewState extends State<MapEditView> {
         if (_entries.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('还没有键值对，用下面的批量输入一次粘贴吧。',
-                style: context.listCaptionStyle),
+            child: Text(
+              '还没有键值对，用下面的批量输入一次粘贴吧。',
+              style: context.listCaptionStyle,
+            ),
           )
         else
           generateSection(
@@ -207,7 +209,8 @@ class _MapEditViewState extends State<MapEditView> {
           controller: _batch,
           title: '批量导入',
           hintText: 'mixed-port=7890\nallow-lan=true',
-          footer: '每行一条，格式为「键=值」；忽略空行与不含等号的行。'
+          footer:
+              '每行一条，格式为「键=值」；忽略空行与不含等号的行。'
               '导入后追加到现有列表，不覆盖同名键（同名键在保存时由调用方去重）。',
           onChanged: (_) => setState(() {}),
         ),

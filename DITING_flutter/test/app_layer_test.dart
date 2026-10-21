@@ -200,14 +200,14 @@ void main() {
       expect(c.read(themeModeProvider), AppThemeMode.dark);
     });
 
-    test('底栏至少留 2 项、最多 5 项', () {
+    test('底栏至少留 2 项、最多 $maxDockDestinations 项', () {
       final c = container();
       final notifier = c.read(bottomBarProvider.notifier);
       final defaults = c.read(bottomBarProvider);
       expect(defaults.length, greaterThanOrEqualTo(2));
       expect(defaults.length, lessThanOrEqualTo(maxDockDestinations));
 
-      // 全部打开：被 5 项上限挡住。
+      // 全部打开：被上限挡住。
       for (final destination in BottomBarDestination.values) {
         notifier.toggle(destination);
       }

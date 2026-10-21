@@ -35,10 +35,7 @@ class MockFeatureCard {
 
 /// 功能中心的一个分类（上游 7 类 28 卡）。
 class MockFeatureCategory {
-  const MockFeatureCategory({
-    required this.title,
-    required this.cards,
-  });
+  const MockFeatureCategory({required this.title, required this.cards});
 
   final String title;
   final List<MockFeatureCard> cards;
@@ -330,7 +327,9 @@ final List<MockHiddenFeature> mockHiddenFeatures = [
 ];
 
 /// 按分类分组后的隐藏功能，供管理页按上游顺序渲染。
-Map<String, List<MockHiddenFeature>> hiddenFeaturesByCategory({required bool express}) {
+Map<String, List<MockHiddenFeature>> hiddenFeaturesByCategory({
+  required bool express,
+}) {
   final result = <String, List<MockHiddenFeature>>{};
   for (final feature in mockHiddenFeatures) {
     if (express && !feature.expressVisible) {

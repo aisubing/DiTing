@@ -9,16 +9,8 @@ library;
 import 'package:diting/data/prefs/legacy_settings.dart';
 
 enum BlockResponseMode {
-  nxdomain(
-    'nxdomain',
-    '返回 NXDOMAIN',
-    '返回域名不存在，并提供 5 分钟负缓存以减少重复查询',
-  ),
-  nodata(
-    'nodata',
-    '返回 NODATA',
-    '返回域名存在但没有该记录，并提供 5 分钟负缓存',
-  ),
+  nxdomain('nxdomain', '返回 NXDOMAIN', '返回域名不存在，并提供 5 分钟负缓存以减少重复查询'),
+  nodata('nodata', '返回 NODATA', '返回域名存在但没有该记录，并提供 5 分钟负缓存'),
   refused('refused', '返回 REFUSED', '返回服务器拒绝该查询，不提供缓存记录'),
   zeroAddress(
     'zero_address',

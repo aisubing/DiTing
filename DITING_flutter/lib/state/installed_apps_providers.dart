@@ -59,7 +59,9 @@ class InstalledAppsRevision extends Notifier<int> {
 final installedAppsRevisionProvider =
     NotifierProvider<InstalledAppsRevision, int>(InstalledAppsRevision.new);
 
-final installedAppsProvider = FutureProvider<InstalledAppsSnapshot>((ref) async {
+final installedAppsProvider = FutureProvider<InstalledAppsSnapshot>((
+  ref,
+) async {
   ref.watch(installedAppsRevisionProvider);
   final source = ref.watch(installedAppsSourceProvider);
   try {
@@ -68,7 +70,9 @@ final installedAppsProvider = FutureProvider<InstalledAppsSnapshot>((ref) async 
     // contract in `InstalledAppsSnapshot` belongs to this provider: any other
     // source (a fake, a future Room-backed one) must not be able to hand the
     // pages a differently-ordered list.
-    return InstalledAppsSnapshot(apps: [...apps]..sort(AppListSort.labelAsc.compare));
+    return InstalledAppsSnapshot(
+      apps: [...apps]..sort(AppListSort.labelAsc.compare),
+    );
   } on MissingPluginException catch (error) {
     return InstalledAppsSnapshot.empty('应用列表通道不可用：${error.message ?? '未注册'}');
   } on PlatformException catch (error) {
@@ -103,9 +107,7 @@ Future<Map<String, int>> resolveInstalledUids(
 
 String _describe(PlatformException error) {
   final message = (error.message ?? '').trim();
-  return message.isEmpty
-      ? '读取应用列表失败（${error.code}）'
-      : '读取应用列表失败：$message';
+  return message.isEmpty ? '读取应用列表失败（${error.code}）' : '读取应用列表失败：$message';
 }
 
 /// The `AppListFilter` of 1.4.3, in the enum's own declaration order.

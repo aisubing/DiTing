@@ -115,9 +115,7 @@ class HttpInspectionPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.bolt),
                 title: const Text('拦截 HTTP/3 (QUIC)'),
                 subtitle: Text(
-                  !enabled
-                      ? '需先启用 HTTPS 检查'
-                      : '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭',
+                  !enabled ? '需先启用 HTTPS 检查' : '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭',
                 ),
                 value: http3,
                 onChanged: enabled
@@ -180,7 +178,11 @@ class HttpInspectionPage extends ConsumerWidget {
               for (final rule in bypass.toList()..sort())
                 ListItem(
                   leading: const GlyphIcon(AppGlyphs.split, size: 20),
-                  title: Text(rule, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(
+                    rule,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   subtitle: const Text('不参与解密，直接透传'),
                   trailing: IconButton(
                     tooltip: '删除',
@@ -192,7 +194,8 @@ class HttpInspectionPage extends ConsumerWidget {
                   ),
                 ),
             ],
-            footer: '写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单'
+            footer:
+                '写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单'
                 '合并后交给引擎的 setExtraPassthroughSuffixes。',
           ),
           const SizedBox(height: 24),

@@ -21,7 +21,10 @@ import 'support/test_hooks.dart';
 void main() {
   installGlobalTestHooks();
 
-  /// 覆盖所有路由；底栏六页之外还有规则三态、订阅、应用等旧路由。
+  /// 覆盖所有路由；底栏六页之外还有规则三态、订阅、模式切换等。
+  ///
+  /// `topLevelRoutes` 已经涵盖九个领域文件里的每个常量；这里只补那些不属于
+  /// 任何 `Paths` 类、直接写在 `lib/router.dart` 里的 `Routes.*`。
   final routes = <String>[
     Routes.hub,
     Routes.logs,
@@ -30,16 +33,9 @@ void main() {
     Routes.settings,
     Routes.batchEditor,
     Routes.subscriptions,
-    Routes.apps,
-    Routes.agent,
     Routes.about,
-    Routes.server,
-    Routes.demo,
     Routes.modeSelect,
     Routes.modeOnboarding,
-    '/rules/block',
-    '/rules/allow',
-    '/rules/rewrite',
     ...topLevelRoutes.values,
     ...idRoutes.values,
   ];
@@ -61,7 +57,10 @@ void main() {
     tester.view.devicePixelRatio = 2;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      ProviderScope(child: DitingApp(initialLocation: route)),
+      ProviderScope(
+        overrides: appTestOverrides(),
+        child: DitingApp(initialLocation: route),
+      ),
     );
     // 本地化 delegate 异步加载，首帧后再推一帧才有文案。
     await tester.pump();

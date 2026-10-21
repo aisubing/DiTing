@@ -1,4 +1,5 @@
 import 'package:diting/app/bootstrap.dart';
+import 'package:diting/app/initial_agreement.dart';
 import 'package:diting/app/l10n/ui_strings.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/manager.dart';
@@ -69,6 +70,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
         //
         // `LiquidGlassScope` 也挂在这一层：`lib/ui` 的浮条与卡片用它决定要不要
         // 走模糊路径，挂在 Navigator 之下会让浮层里的玻璃效果失效。
+        // 首启「使用须知与免责声明」也挂在这一层（旧版 `InitialAgreementDialog`
+        // 在 Activity 里弹一次）：它必须盖住整棵树，包括浮层路由。已同意时
+        // `InitialAgreementGate` 直接返回 child，不增加任何布局层级。
         final glass = ref.watch(liquidGlassModeProvider);
         return ThemeCrossFade(
           child: AppSystemUi(
@@ -77,7 +81,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
               child: LiquidGlassScope(
                 enabled: glass.enabled,
                 quality: glass.quality,
-                child: child ?? const SizedBox.shrink(),
+                child: InitialAgreementGate(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           ),

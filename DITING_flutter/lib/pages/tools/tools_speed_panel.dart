@@ -139,27 +139,24 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
             ),
           ),
         if (state.results.isNotEmpty) ...[
-          const ListHeader(title: '查询耗时结果'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: CommonCard(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final (index, sample) in state.results.indexed)
-                    _SpeedResultRow(
-                      sample: sample,
-                      rank: index + 1,
-                      isFastest: index == 0 && sample.success,
-                      barMax: barMax,
-                    ),
-                ],
-              ),
-            ),
-          ),
-          ListFooter(
-            text:
+          // 结果行用 `generateSection` 而不是自己套 `CommonCard` + `Column`：
+          // 旧版 `DnsSpeedTestSection` 每行之间有 0.5dp 的 `HorizontalDivider`，
+          // 而 `lib/ui` 的行分隔线由 `ItemPosition` 驱动（`list_row_separator`）——
+          // 它按设备像素比取整到真正的发丝线，并在高亮/聚焦时自动收线。
+          // 自己画一条 `Divider(height: 0.5)` 会得到 1 逻辑像素（粗一倍），且与
+          // 其它列表页的线条粗细不一致。
+          generateSection(
+            title: '查询耗时结果',
+            items: [
+              for (final (index, sample) in state.results.indexed)
+                _SpeedResultRow(
+                  sample: sample,
+                  rank: index + 1,
+                  isFastest: index == 0 && sample.success,
+                  barMax: barMax,
+                ),
+            ],
+            footer:
                 '测速结果按成功优先、平均耗时从低到高排序；'
                 '结果只反映本次查询时的网络状态。域名当前为「$domain」。',
           ),

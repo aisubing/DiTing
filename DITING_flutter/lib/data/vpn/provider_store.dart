@@ -70,12 +70,7 @@ List<UserProviderRecord> readUserProviders(LegacySettings settings) {
     if (protocol == DnsProtocol.doh) {
       if (!url.toLowerCase().startsWith('https://')) continue;
       result.add(
-        UserProviderRecord(
-          id: id,
-          name: name,
-          protocol: protocol,
-          url: url,
-        ),
+        UserProviderRecord(id: id, name: name, protocol: protocol, url: url),
       );
     } else {
       if (host.isEmpty || port < 1 || port > 65535) continue;
@@ -153,13 +148,10 @@ void updateUserProvider(
 /// Removes a custom provider and scrubs it from every place that references it,
 /// exactly like `DnsProvider.deleteUserProvider` + the resolution cleanup.
 void deleteUserProvider(LegacySettings settings, String id) {
-  writeUserProviders(
-    settings,
-    [
-      for (final provider in readUserProviders(settings))
-        if (provider.id != id) provider,
-    ],
-  );
+  writeUserProviders(settings, [
+    for (final provider in readUserProviders(settings))
+      if (provider.id != id) provider,
+  ]);
   if (settings.selectedProviderId == id) {
     settings.setSelectedProviderId('preset_alidns_dns');
   }

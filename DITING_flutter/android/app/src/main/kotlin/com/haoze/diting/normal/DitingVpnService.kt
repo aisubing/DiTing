@@ -3,7 +3,6 @@ package com.haoze.diting.normal
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -11,14 +10,13 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.RaceLogWriter
+import com.haoze.diting.log.TrafficRateMonitor
 import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.RaceLogCallback
@@ -41,6 +39,10 @@ class DitingVpnService : VpnService() {
 
     @Volatile
     private var stopping = false
+
+    /// Notification speed-refresh loop; `null` until the tunnel actually starts.
+    @Volatile
+    private var speedTicker: Thread? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -227,6 +229,7 @@ class DitingVpnService : VpnService() {
 
         isRunning = true
         setPersistedRunning(this, true)
+        startSpeedTicker()
         worker = Thread({
             try {
                 goEngine.startFull(pfd.fd.toLong(), SocketProtector { fd ->
@@ -272,6 +275,11 @@ class DitingVpnService : VpnService() {
         runCatching { tun?.close() }
         tun = null
         worker = null
+        // The ticker spins on `isRunning`, but stop it explicitly as well: the
+        // failure path drops straight out of `onStartCommand` where `isRunning`
+        // was never set, and a leaked thread would keep re-notifying.
+        stopSpeedTicker()
+        TrafficRateMonitor.reset()
     }
 
     private fun fail(message: String) {
@@ -328,30 +336,43 @@ class DitingVpnService : VpnService() {
         }
     }
 
-    private fun buildNotification(): Notification {
-        val openIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val stopIntent = PendingIntent.getService(
-            this,
-            1,
-            Intent(this, DitingVpnService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val label = applicationInfo.loadLabel(packageManager).toString()
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(label)
-            .setContentText("VPN 正在运行")
-            .setContentIntent(openIntent)
-            .addAction(0, "停止", stopIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+    private fun buildNotification(): Notification =
+        VpnNotification.build(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP)
+
+    /**
+     * Ticks the notification's speed line while the tunnel runs.
+     *
+     * 1.4.3 used `VpnSpeedMonitor`, a coroutine that polled a `StateFlow` and only
+     * re-notified when the formatted string changed. Same idea here, on a plain
+     * daemon thread because this module has no coroutine dependency:
+     *
+     * - the screen-off interval is longer (nobody reads a notification while the
+     *   display is dark, and waking to redraw it costs battery);
+     * - [VpnNotification.refresh] itself no-ops when 实时速率 is disabled, so the
+     *   loop costs one pref read per tick when the feature is off.
+     */
+    private fun startSpeedTicker() {
+        if (speedTicker != null) return
+        speedTicker = Thread({
+            val power = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+            while (isRunning && !stopping) {
+                val onScreen = power?.isInteractive ?: true
+                try {
+                    Thread.sleep(if (onScreen) SCREEN_ON_INTERVAL_MS else SCREEN_OFF_INTERVAL_MS)
+                } catch (interrupted: InterruptedException) {
+                    return@Thread
+                }
+                VpnNotification.refresh(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP)
+            }
+        }, "diting-speed-ticker").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    private fun stopSpeedTicker() {
+        speedTicker?.interrupt()
+        speedTicker = null
     }
 
     private fun createNotificationChannel() {
@@ -406,6 +427,11 @@ class DitingVpnService : VpnService() {
 
         private const val CHANNEL_ID = "diting_vpn"
         private const val NOTIFICATION_ID = 1001
+
+    /// Notification speed refresh cadence: 1 s while the screen is on (the
+    /// readout is a per-second figure), 10 s while it is off.
+    private const val SCREEN_ON_INTERVAL_MS = 1000L
+    private const val SCREEN_OFF_INTERVAL_MS = 10_000L
         private const val PREFS_NAME = "dns_vpn_prefs"
         private const val KEY_VPN_RUNNING = "vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"

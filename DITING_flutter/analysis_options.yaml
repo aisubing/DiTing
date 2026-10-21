@@ -13,6 +13,11 @@ analyzer:
   exclude:
     - build/**
     - android/**
+    # `tool/` 是一次性代码生成脚本（把大文件拆成 part、从 glyph 表切分字形）。
+    # 它们跑完就丢，不必遵守 app 侧的 lint（`avoid_print`、字符串插值等）。
+    # 不排除的话，`flutter analyze` 会一直报 10 条与产品代码无关的 info，把
+    # 「零告警」这个验收标准变成噪音。
+    - tool/**
 
 linter:
   # The lint rules applied to this project can be customized in the

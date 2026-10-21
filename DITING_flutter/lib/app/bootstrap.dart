@@ -29,9 +29,7 @@ class AppScopes extends StatelessWidget {
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final size = mediaQuery.size;
-    final scale = clampTextScale(
-      textScale * mediaQuery.textScaler.scale(1),
-    );
+    final scale = clampTextScale(textScale * mediaQuery.textScaler.scale(1));
     return MediaQuery(
       data: mediaQuery.copyWith(
         textScaler: TextScaler.linear(scale),

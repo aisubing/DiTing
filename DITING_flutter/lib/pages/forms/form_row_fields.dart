@@ -53,12 +53,13 @@ class FormRowTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final towardEnd = Directionality.of(context) == TextDirection.ltr ? 1.0 : -1.0;
+    final towardEnd = Directionality.of(context) == TextDirection.ltr
+        ? 1.0
+        : -1.0;
     final action = trailingAction;
     final field = InputDecorationTheme(
-      data: InputDecorationTheme.of(
-        context,
-      ).copyWith(floatingLabelBehavior: FloatingLabelBehavior.never),
+      data: InputDecorationTheme.of(context)
+          .copyWith(floatingLabelBehavior: FloatingLabelBehavior.never),
       child: Transform.translate(
         offset: Offset(_caretMargin * towardEnd, 0),
         child: _buildField(context),
@@ -71,7 +72,10 @@ class FormRowTextField extends StatelessWidget {
           ? field
           : Row(
               mainAxisSize: MainAxisSize.min,
-              children: [Flexible(child: field), action],
+              children: [
+                Flexible(child: field),
+                action,
+              ],
             ),
     );
   }
@@ -110,10 +114,12 @@ class FormRowTextField extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
-                  style: AppTextStyle.body.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: monospace ? 'JetBrainsMono' : null,
-                  ),
+                  style: AppTextStyle.body
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: monospace ? 'JetBrainsMono' : null,
+                      ),
                 ),
               ),
       ),

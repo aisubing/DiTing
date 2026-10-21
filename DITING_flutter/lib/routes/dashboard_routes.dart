@@ -1,15 +1,17 @@
 /// 仪表盘（首页）领域路由。
 ///
-/// 上游仪表盘是**一屏 + 编辑模式**（`lib/views/dashboard/dashboard.dart`），
-/// 编辑模式不是独立路由而是同屏状态。这里仍然给它一条路由，理由是：
-/// 深链与测试都需要「不点两次就进编辑态」的入口，而首页组件本身从路由参数里
-/// 拿不到状态（`StatefulShellRoute` 的 branch 只按 location 匹配）。
+/// 1.4.3 的仪表盘是**一屏 + 编辑模式**（`lib/ui/dashboard/`），编辑模式不是独立
+/// 路由而是同屏状态。这里仍给它一条路由，理由是深链与测试都需要「不点两次就
+/// 进编辑态」的入口，而首页组件本身从路由参数里拿不到状态（`StatefulShellRoute`
+/// 的 branch 只按 location 匹配）。
 ///
-/// 这两条路由进入后会**立刻**跳回 `/`：它们的作用是「设置一个开关再回首页」，
-/// 不是渲染一屏内容。所以它们只有 `redirect`，没有 `builder`。
+/// 这条路由进入后会**立刻**跳回 `/`：它的作用是「设置一个开关再回首页」，
+/// 不是渲染一屏内容。所以它只有 `redirect`，没有 `builder`。
+///
+/// 上一轮这里还有 `/dashboard/profile`（配置档案详情浮层）。配置档案是 FlClash
+/// 的概念，1.4.3 没有对应物，随 `lib/pages/profiles/` 一并删除。
 library;
 
-import 'package:diting/pages/home/dashboard/profile_detail_page.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,9 +23,6 @@ abstract final class DashboardPaths {
 
   /// 深链进编辑模式：设置开关后跳回首页。
   static const edit = '/dashboard/edit';
-
-  /// 配置详情浮层（上游 `ProfileDetailSheet` 是 sheet，这里用路由方便深链）。
-  static const profileDetail = '/dashboard/profile';
 }
 
 /// 仪表盘领域路由表。由 `lib/router.dart` 拼接。
@@ -39,13 +38,6 @@ List<RouteBase> dashboardRoutes() => [
       _setEditing(context, true);
       return DashboardPaths.dashboard;
     },
-  ),
-  GoRoute(
-    path: DashboardPaths.profileDetail,
-    parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => ProfileDetailPage(
-      profileId: state.uri.queryParameters['id'],
-    ),
   ),
 ];
 

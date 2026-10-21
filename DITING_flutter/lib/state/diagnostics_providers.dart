@@ -75,8 +75,14 @@ class GuardedDiagnosticsRunner implements DiagnosticsRunner {
     String domain, {
     bool viaTunnel = false,
     bool ipv4 = true,
+    String? server,
   }) => _guard(
-    () => _inner.lookupDns(domain, viaTunnel: viaTunnel, ipv4: ipv4),
+    () => _inner.lookupDns(
+      domain,
+      viaTunnel: viaTunnel,
+      ipv4: ipv4,
+      server: server,
+    ),
     (message) => DnsLookupResult(
       domain: domain,
       source: 'error',
@@ -153,6 +159,7 @@ class UnavailableDiagnosticsRunner implements DiagnosticsRunner {
     String domain, {
     bool viaTunnel = false,
     bool ipv4 = true,
+    String? server,
   }) async => DnsLookupResult(
     domain: domain,
     source: 'error',
@@ -216,9 +223,7 @@ final networkToolFlagsProvider = Provider<NetworkToolFlags>((ref) {
 
 /// 写一个开关并通知所有读 `network_tools_settings` 的 provider。
 void setNetworkToolFlag(WidgetRef ref, String key, bool value) {
-  ref
-      .read(legacyPrefsStoreProvider)
-      .putBool(networkToolsContainer, key, value);
+  ref.read(legacyPrefsStoreProvider).putBool(networkToolsContainer, key, value);
   ref.read(legacySettingsRevisionProvider.notifier).bump();
 }
 

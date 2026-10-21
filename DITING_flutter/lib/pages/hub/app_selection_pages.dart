@@ -92,7 +92,9 @@ void _dropOverlaps(
     return;
   }
   if (owner != _Owner.excluded) {
-    settings.setExcludedPackages(settings.excludedPackages.difference(packages));
+    settings.setExcludedPackages(
+      settings.excludedPackages.difference(packages),
+    );
   }
   if (owner != _Owner.blocked) {
     settings.setBlockedApps(

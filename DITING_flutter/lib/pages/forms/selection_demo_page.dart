@@ -46,8 +46,9 @@ class _SelectionDemoPageState extends State<SelectionDemoPage> {
       title: '选择代理组',
       items: [for (final option in _demoOptions) option.label],
       labelBuilder: (label) => label,
-      subtitleBuilder: (label) =>
-          _demoOptions.firstWhere((option) => option.label == label).description,
+      subtitleBuilder: (label) => _demoOptions
+          .firstWhere((option) => option.label == label)
+          .description,
       selected: _single,
     );
     if (result != null && mounted) {
@@ -64,18 +65,14 @@ class _SelectionDemoPageState extends State<SelectionDemoPage> {
         sections: [
           SelectionSection<String>(
             label: '策略组',
-            items: [
-              for (final option in _demoOptions.take(4)) option.label,
-            ],
+            items: [for (final option in _demoOptions.take(4)) option.label],
             subtitleBuilder: (label) => _demoOptions
                 .firstWhere((option) => option.label == label)
                 .description,
           ),
           SelectionSection<String>(
             label: '节点',
-            items: [
-              for (final option in _demoOptions.skip(4)) option.label,
-            ],
+            items: [for (final option in _demoOptions.skip(4)) option.label],
             subtitleBuilder: (label) => _demoOptions
                 .firstWhere((option) => option.label == label)
                 .description,

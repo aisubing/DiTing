@@ -30,9 +30,8 @@ class SubscriptionRepository {
   // ------------------------------------------------------------------- 读取
 
   /// `SELECT * FROM subscription ORDER BY addedAt DESC`
-  Future<List<SubscriptionRecord>> all() async => _records(
-    await _db.query('subscription', orderBy: 'addedAt DESC'),
-  );
+  Future<List<SubscriptionRecord>> all() async =>
+      _records(await _db.query('subscription', orderBy: 'addedAt DESC'));
 
   /// `SELECT * FROM subscription WHERE sourceType = 'remote' ORDER BY addedAt DESC`
   Future<List<SubscriptionRecord>> allRemote() async => _records(
@@ -442,6 +441,7 @@ class SubscriptionRepository {
   static SubscriptionRecord? _first(List<Map<String, Object?>> rows) =>
       rows.isEmpty ? null : SubscriptionRecord.fromRow(rows.first);
 
-  static SubscriptionGroupRecord? _firstGroup(List<Map<String, Object?>> rows) =>
-      rows.isEmpty ? null : SubscriptionGroupRecord.fromRow(rows.first);
+  static SubscriptionGroupRecord? _firstGroup(
+    List<Map<String, Object?>> rows,
+  ) => rows.isEmpty ? null : SubscriptionGroupRecord.fromRow(rows.first);
 }

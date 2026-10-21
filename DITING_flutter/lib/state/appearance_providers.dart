@@ -25,14 +25,14 @@ class ThemeModeNotifier extends Notifier<AppThemeMode> {
   }
 }
 
-final themeModeProvider =
-    NotifierProvider<ThemeModeNotifier, AppThemeMode>(ThemeModeNotifier.new);
+final themeModeProvider = NotifierProvider<ThemeModeNotifier, AppThemeMode>(
+  ThemeModeNotifier.new,
+);
 
 /// 主题色九选一。
 class PaletteNotifier extends Notifier<AppPalette> {
   @override
-  AppPalette build() =>
-      AppPalette.fromStorageValue(_settings(ref).paletteRaw);
+  AppPalette build() => AppPalette.fromStorageValue(_settings(ref).paletteRaw);
 
   void select(AppPalette palette) {
     state = palette;
@@ -40,8 +40,9 @@ class PaletteNotifier extends Notifier<AppPalette> {
   }
 }
 
-final paletteProvider =
-    NotifierProvider<PaletteNotifier, AppPalette>(PaletteNotifier.new);
+final paletteProvider = NotifierProvider<PaletteNotifier, AppPalette>(
+  PaletteNotifier.new,
+);
 
 /// 纯黑（仅深色模式生效）。
 class PureBlackNotifier extends Notifier<bool> {
@@ -51,8 +52,9 @@ class PureBlackNotifier extends Notifier<bool> {
   void toggle(bool value) => state = value;
 }
 
-final pureBlackProvider =
-    NotifierProvider<PureBlackNotifier, bool>(PureBlackNotifier.new);
+final pureBlackProvider = NotifierProvider<PureBlackNotifier, bool>(
+  PureBlackNotifier.new,
+);
 
 /// 用户选的文本缩放，进 [clampTextScale] 前是原始值。
 class TextScaleNotifier extends Notifier<double> {
@@ -62,15 +64,25 @@ class TextScaleNotifier extends Notifier<double> {
   void set(double value) => state = clampTextScale(value);
 }
 
-final textScaleProvider =
-    NotifierProvider<TextScaleNotifier, double>(TextScaleNotifier.new);
+final textScaleProvider = NotifierProvider<TextScaleNotifier, double>(
+  TextScaleNotifier.new,
+);
 
-/// 首页四类元素的透明度（`home_*_opacity`，0.1–1.0）。
+/// 首页五类元素的透明度（`home_*_opacity`，0.1–1.0）。
+///
+/// 1.4.3 `HomeComponentOpacityScreen` 把这几项分成两组渲染：
+/// 「交互组件」= 启动按钮 / 解析服务选择框 / 模式切换按钮，
+/// 「文字」= 首页古诗 / DNS 服务详情。
+///
+/// 上一轮漏了第 5 项 `dnsDetail`（`home_dns_detail_opacity`）：首页没有
+/// 「DNS 服务详情」那一块，滑杆自然也无从谈起。补这一项时两边要同时到位，
+/// 否则会留下「有滑杆没内容」或「有内容没滑杆」的半截状态。
 enum HomeLayer {
   powerButton('电源按钮', 'home_power_button_opacity'),
   providerSelector('服务商选择', 'home_provider_selector_opacity'),
   modeButton('模式按钮', 'home_mode_button_opacity'),
-  poem('首页句子', 'home_poem_opacity');
+  poem('首页句子', 'home_poem_opacity'),
+  dnsDetail('DNS 服务详情', 'home_dns_detail_opacity');
 
   const HomeLayer(this.label, this.storageKey);
 
@@ -86,6 +98,7 @@ class HomeOpacityNotifier extends Notifier<Map<HomeLayer, double>> {
     HomeLayer.providerSelector: 1.0,
     HomeLayer.modeButton: 1.0,
     HomeLayer.poem: 1.0,
+    HomeLayer.dnsDetail: 1.0,
   };
 
   @override
@@ -118,7 +131,8 @@ final homeOpacityProvider =
     );
 
 /// 首页句子：运行 / 停止两态各一条，留空即不显示。
-class HomeSentenceNotifier extends Notifier<({String running, String stopped})> {
+class HomeSentenceNotifier
+    extends Notifier<({String running, String stopped})> {
   @override
   ({String running, String stopped}) build() => _settings(ref).homeSentences;
 
@@ -127,10 +141,8 @@ class HomeSentenceNotifier extends Notifier<({String running, String stopped})> 
       running: running ?? state.running,
       stopped: stopped ?? state.stopped,
     );
-    _settings(ref).setHomeSentences(
-      running: state.running,
-      stopped: state.stopped,
-    );
+    _settings(ref)
+        .setHomeSentences(running: state.running, stopped: state.stopped);
   }
 
   void reset() {
@@ -138,10 +150,8 @@ class HomeSentenceNotifier extends Notifier<({String running, String stopped})> 
       running: LegacySettings.defaultRunningSentence,
       stopped: LegacySettings.defaultStoppedSentence,
     );
-    _settings(ref).setHomeSentences(
-      running: state.running,
-      stopped: state.stopped,
-    );
+    _settings(ref)
+        .setHomeSentences(running: state.running, stopped: state.stopped);
   }
 }
 
@@ -195,9 +205,9 @@ class BottomBarNotifier extends Notifier<List<BottomBarDestination>> {
   }
 
   void _save(List<BottomBarDestination> destinations) {
-    _settings(ref).setBottomBarIds(
-      [for (final destination in destinations) destination.storageValue],
-    );
+    _settings(ref).setBottomBarIds([
+      for (final destination in destinations) destination.storageValue,
+    ]);
   }
 
   /// 至少留 2 项，最多 [maxDockDestinations] 项；越界的操作被忽略。

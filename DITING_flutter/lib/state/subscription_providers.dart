@@ -51,18 +51,18 @@ final subscriptionFetcherProvider = Provider<SubscriptionFetcher>(
 );
 
 /// 订阅仓库：没有旧库时返回 null，调用方据此渲染空状态。
-final subscriptionRepositoryProvider = FutureProvider<SubscriptionRepository?>(
-  (ref) async {
-    final db = await ref.watch(subscriptionDatabaseProvider.future);
-    if (db == null) {
-      return null;
-    }
-    return SubscriptionRepository(
-      db,
-      onChanged: () => ref.read(subscriptionRevisionProvider.notifier).bump(),
-    );
-  },
-);
+final subscriptionRepositoryProvider = FutureProvider<SubscriptionRepository?>((
+  ref,
+) async {
+  final db = await ref.watch(subscriptionDatabaseProvider.future);
+  if (db == null) {
+    return null;
+  }
+  return SubscriptionRepository(
+    db,
+    onChanged: () => ref.read(subscriptionRevisionProvider.notifier).bump(),
+  );
+});
 
 /// 一条订阅在 UI 上的展开形态（模型 + 分组名 + 派生文案）。
 class SubscriptionEntry {
@@ -95,7 +95,8 @@ class SubscriptionEntry {
 
   bool get isRemote => record.isRemote;
   bool get isFailed => record.importState == SubscriptionImportState.failed;
-  bool get isImporting => record.importState == SubscriptionImportState.importing;
+  bool get isImporting =>
+      record.importState == SubscriptionImportState.importing;
 
   /// 分组 chip 的键。`null` 分组统一显示「未分组」。
   String get groupKey => groupName ?? ungroupedLabel;
@@ -122,15 +123,14 @@ final subscriptionEntriesProvider = FutureProvider<List<SubscriptionEntry>>((
 });
 
 /// 分组列表（`subscription_group` 表，顺序即 `addedAt ASC, name NOCASE ASC`）。
-final subscriptionGroupsProvider = FutureProvider<List<SubscriptionGroupRecord>>(
-  (ref) async {
-    ref.watch(subscriptionRevisionProvider);
-    final repository = await ref.watch(subscriptionRepositoryProvider.future);
-    return repository == null
-        ? const <SubscriptionGroupRecord>[]
-        : repository.groups();
-  },
-);
+final subscriptionGroupsProvider =
+    FutureProvider<List<SubscriptionGroupRecord>>((ref) async {
+      ref.watch(subscriptionRevisionProvider);
+      final repository = await ref.watch(subscriptionRepositoryProvider.future);
+      return repository == null
+          ? const <SubscriptionGroupRecord>[]
+          : repository.groups();
+    });
 
 /// 当前选中的分组 id；`null` 表示「全部」。
 class SubscriptionGroupFilterNotifier extends Notifier<int?> {
@@ -291,7 +291,10 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
       );
       return const SubscriptionFetchResult.failed('本地文件订阅无法更新');
     }
-    await repository.setImportState(entry.id, SubscriptionImportState.importing);
+    await repository.setImportState(
+      entry.id,
+      SubscriptionImportState.importing,
+    );
     final result = await ref
         .read(subscriptionFetcherProvider)
         .fetch(entry.record);
@@ -399,7 +402,9 @@ class SubscriptionActions {
       SubscriptionRecord(
         id: 0,
         url: trimmedUrl,
-        name: trimmedName.isEmpty ? extractNameFromUrl(trimmedUrl) : trimmedName,
+        name: trimmedName.isEmpty
+            ? extractNameFromUrl(trimmedUrl)
+            : trimmedName,
         sourceType: SubscriptionSourceType.remote,
         kind: kind,
         enabled: true,

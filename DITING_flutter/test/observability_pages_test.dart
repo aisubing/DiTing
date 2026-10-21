@@ -1,7 +1,6 @@
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
-import 'package:diting/pages/observability/dns_queries_page.dart';
 import 'package:diting/pages/observability/requests_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/state/observability_providers.dart';
@@ -15,12 +14,17 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/app_host.dart';
 
-/// 观测域三页的「真实数据上屏」探针。
+/// 观测域两页的「真实数据上屏」探针。
 ///
 /// 查询口径由 `legacy_repository_test.dart` 守（真 SQL、真 schema）。这里守
 /// 另一类缺陷：SQL 与模型都对，但页面拿到真实行时会崩或说谎——典型的是把
 /// 可空的 `authority` / `packageName` 直接插值、把 `cached`（INTEGER 0/1）
 /// 当 bool 用、把连接行（`queryType = 0`）当 A 记录渲染。
+///
+/// 第三轮删掉了 `/dns-queries`：它与 `/requests`（来源选 DNS）读同一张
+/// `dns_log`、同一批六档状态，旧版也只有「请求日志」一页（来源用分段切换）。
+/// 那一组用例随之删除——DNS 行仍由请求页覆盖，因为请求页把 `dns_log` 的
+/// 行一起并进了列表。
 ///
 /// **为什么覆盖 provider 而不是挂真库**：`sqflite_common_ffi` 走真实异步
 /// I/O，而 widget 测试跑在 fake async 下，`Future` 永远不会被推进——表现是
@@ -205,53 +209,41 @@ void main() {
     });
   });
 
-  group('DNS 页', () {
-    testWidgets('渲染真实行并区分连接记录的类型标签', (tester) async {
-      await pumpPage(tester, const DnsQueriesPage());
-      expect(tester.takeException(), isNull);
-
-      expect(find.text('api.github.com'), findsOneWidget);
-      expect(find.text('TCP 1.1.1.1:443'), findsOneWidget);
-      // `queryType = 0` 显示为「连接」而不是「A」：挡住「把连接行当普通查询
-      // 渲染」的回归。
-      expect(find.text('连接'), findsOneWidget);
-      expect(find.text('查询总数'), findsOneWidget);
-    });
-
-    testWidgets('失败行标出状态而不是被当成成功', (tester) async {
-      await pumpPage(tester, const DnsQueriesPage());
-      expect(find.text('broken.example'), findsOneWidget);
-      // 「失败」既在概览卡标签上，也在这一行的状态文本上。
-      expect(find.text('失败'), findsWidgets);
-    });
-
-    testWidgets('空列表进入空态而不是报错', (tester) async {
-      await pumpPage(
-        tester,
-        const DnsQueriesPage(),
-        providerOverrides: [
-          dnsQueryWindowProvider.overrideWith(
-            (ref) async => const <DnsLogRow>[],
-          ),
-          dnsQueriesProvider.overrideWith((ref) async => const <DnsLogRow>[]),
-        ],
-      );
-      expect(tester.takeException(), isNull);
-      expect(find.text('还没有 DNS 查询'), findsOneWidget);
-    });
-  });
-
   group('流量页', () {
-    testWidgets('渲染 app_traffic_daily 排行并标注曲线是示意', (tester) async {
+    testWidgets('渲染 app_traffic_daily 排行并如实标注实时速率缺失', (tester) async {
       await pumpPage(tester, const TrafficPage());
       expect(tester.takeException(), isNull);
 
       expect(find.text('浏览器'), findsOneWidget);
       // appName 为空时回退到包名。
       expect(find.text('com.example.ads'), findsWidgets);
-      // 曲线区必须如实标注：不能让人以为那是真实网速。
-      expect(find.textContaining('会话曲线（示意）'), findsOneWidget);
-      expect(find.textContaining('不反映真实网速'), findsOneWidget);
+      // 「实时速率」这一格必须如实说明缺失，而不是画一条假曲线。
+      //
+      // 旧版这里是 `TrafficGaugeCard`（真实上下行速率），本仓的按天流量表只存
+      // 「日期 + 包名 + 上下行累计字节」，没有速率序列。上一轮的做法是画一条
+      // 「会话曲线（示意）」并标注「不反映真实网速」——一张标着「示意」的折线图
+      // 仍然会被当成网速读，这是本轮删掉它的原因。
+      expect(find.text('实时速率'), findsOneWidget);
+      expect(find.textContaining('暂无实时速率'), findsOneWidget);
+      expect(find.textContaining('都是真实数字'), findsOneWidget);
+      // 假曲线与它的免责标注都不该再出现。
+      expect(find.textContaining('会话曲线'), findsNothing);
+      expect(find.textContaining('不反映真实网速'), findsNothing);
+    });
+
+    testWidgets('带旧版的时间窗口、搜索、排序与隐藏系统应用', (tester) async {
+      await pumpPage(tester, const TrafficPage());
+      expect(tester.takeException(), isNull);
+
+      // 旧版 `AppTrafficStatsScreen` 有 `SecondaryScrollableTabRow` 时间窗口，
+      // `TrafficFilterBar` 有搜索框 + 排序 chip + 「隐藏系统应用」开关。
+      // 这四样都不是 FlClash 残留，不能以「旧版没有」为由删掉。
+      expect(find.text('今日'), findsWidgets);
+      expect(find.text('本周'), findsWidgets);
+      expect(find.text('本月'), findsWidgets);
+      expect(find.text('全部历史'), findsWidgets);
+      expect(find.text('隐藏系统应用'), findsOneWidget);
+      expect(find.byType(TextField), findsWidgets);
     });
 
     testWidgets('空列表进入空态而不是报错', (tester) async {
@@ -265,7 +257,8 @@ void main() {
         ],
       );
       expect(tester.takeException(), isNull);
-      expect(find.text('这个窗口还没有流量记录'), findsOneWidget);
+      // 文案逐字来自旧版 `AppTrafficStatsScreen` 的空态。
+      expect(find.text('暂无流量数据'), findsOneWidget);
     });
   });
 }

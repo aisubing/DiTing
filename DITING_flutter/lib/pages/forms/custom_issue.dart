@@ -52,19 +52,14 @@ class InfoBanner extends StatelessWidget {
         colorScheme.warningContainer,
         colorScheme.onWarningContainer,
       ),
-      _ => (
-        colorScheme.secondaryContainer,
-        colorScheme.onSecondaryContainer,
-      ),
+      _ => (colorScheme.secondaryContainer, colorScheme.onSecondaryContainer),
     };
     final tint = color ?? resolvedColor;
     final foreground =
         foregroundColor ??
         (color == null
             ? resolvedForeground
-            : (tint.computeLuminance() > 0.55
-                  ? Colors.black
-                  : Colors.white));
+            : (tint.computeLuminance() > 0.55 ? Colors.black : Colors.white));
     final actions = this.actions;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

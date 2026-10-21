@@ -7,12 +7,14 @@
 /// 明细用「记录表 + 映射」的写法而不是逐条 `const`：连接与请求各有二十多条，
 /// 逐条写会把常量区撑到几百行，而它们的字段几乎完全重复。
 ///
-/// 按 AGENTS.md 的 550 行上限拆成三个 part：
-/// - `mock_observability_connections.dart`：连接与请求；
+/// 按 AGENTS.md 的 550 行上限拆成四个 part：
+/// - `mock_observability_connections.dart`：连接；
+/// - `mock_observability_requests.dart`：请求；
 /// - `mock_observability_dns.dart`：DNS 查询与 IP 质量；
 /// - `mock_observability_resources.dart`：四类可刷新资源。
 library;
 
 part 'mock_observability_connections.dart';
 part 'mock_observability_dns.dart';
+part 'mock_observability_requests.dart';
 part 'mock_observability_resources.dart';

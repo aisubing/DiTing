@@ -72,11 +72,8 @@ class _NamedUrlFormState extends State<NamedUrlForm> {
     super.dispose();
   }
 
-  NamedUrl get _value => (
-    label: _label.text,
-    url: _url.text,
-    ageSecretKey: _secret.text,
-  );
+  NamedUrl get _value =>
+      (label: _label.text, url: _url.text, ageSecretKey: _secret.text);
 
   void _submit() {
     final value = _value;
@@ -122,10 +119,7 @@ class _NamedUrlFormState extends State<NamedUrlForm> {
             onChanged: (value) => setState(() => _batchMode = value),
           ),
         ),
-        if (_batchMode)
-          ..._buildBatch(context)
-        else
-          ..._buildSingle(context),
+        if (_batchMode) ..._buildBatch(context) else ..._buildSingle(context),
         if (_issues.isNotEmpty) CustomIssuesBanner(issues: _issues),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -138,9 +132,7 @@ class _NamedUrlFormState extends State<NamedUrlForm> {
                 : _batchMode
                 ? () {
                     final parsed = _parsed;
-                    final bad = [
-                      for (final entry in parsed) ...entry.issues,
-                    ];
+                    final bad = [for (final entry in parsed) ...entry.issues];
                     setState(() => _issues = bad);
                     if (bad.isEmpty && parsed.isNotEmpty) {
                       for (final entry in parsed) {
@@ -164,9 +156,7 @@ class _NamedUrlFormState extends State<NamedUrlForm> {
                 : '密钥用于 age 加密，留空表示不加密。演示层不发起真实请求，'
                       '保存只会写进内存状态。',
             style: context.listCaptionStyle.copyWith(
-              color:
-                  _batchMode &&
-                      _parsed.any((e) => e.issues.isNotEmpty)
+              color: _batchMode && _parsed.any((e) => e.issues.isNotEmpty)
                   ? colorScheme.error
                   : null,
             ),
@@ -229,7 +219,8 @@ class _NamedUrlFormState extends State<NamedUrlForm> {
       BatchSection(
         controller: _batch,
         title: '批量粘贴',
-        hintText: '主订阅,https://sub.example.com/diting/main\n'
+        hintText:
+            '主订阅,https://sub.example.com/diting/main\n'
             '备用,https://backup.example.com/diting/backup,age1...',
         footer: '逗号分隔。密钥可省略。逐行校验，全部通过才会一次写入。',
         minLines: 5,

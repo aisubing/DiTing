@@ -121,9 +121,9 @@ class _DemoIntro extends StatelessWidget {
               '这一页不演示业务，只把设计系统的每一类组件铺满：字号、颜色、表面、'
               '形状、图标、按钮、标签、输入、列表行、卡片、浮层、反馈。任何一处'
               '视觉回归都应该在这里被一眼看出。',
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant),
             ),
             Wrap(
               spacing: 6,

@@ -25,7 +25,8 @@ class LogModeNotifier extends Notifier<({DnsLogMode mode, int retentionDays})> {
   ({DnsLogMode mode, int retentionDays}) build() =>
       (mode: DnsLogMode.all, retentionDays: 7);
 
-  void setMode(DnsLogMode mode) => state = (mode: mode, retentionDays: state.retentionDays);
+  void setMode(DnsLogMode mode) =>
+      state = (mode: mode, retentionDays: state.retentionDays);
 
   void setRetentionDays(int days) =>
       state = (mode: state.mode, retentionDays: days);
@@ -91,7 +92,8 @@ class AgentApiState {
         presetId: 'deepseek',
       ),
     ],
-    this.systemPrompt = '你是一名网络安全与 DNS 威胁情报专家。'
+    this.systemPrompt =
+        '你是一名网络安全与 DNS 威胁情报专家。'
         '擅长对域名安全性、防盗链、DGA 随机特征、恶意软件外联及追踪探针进行分析，'
         '并给出明确的处置建议。',
     this.temperature = 0.3,
@@ -103,8 +105,9 @@ class AgentApiState {
   final String systemPrompt;
   final double temperature;
 
-  AiProviderConfig? get activeProvider =>
-      providers.where((provider) => provider.id == activeProviderId).firstOrNull;
+  AiProviderConfig? get activeProvider => providers
+      .where((provider) => provider.id == activeProviderId)
+      .firstOrNull;
 
   AgentApiState copyWith({
     bool? enabled,
@@ -125,7 +128,8 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
   @override
   AgentApiState build() => const AgentApiState();
 
-  void update(AgentApiState Function(AgentApiState state) fn) => state = fn(state);
+  void update(AgentApiState Function(AgentApiState state) fn) =>
+      state = fn(state);
 
   void reset() => state = const AgentApiState();
 
@@ -151,8 +155,9 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
   }
 }
 
-final agentApiProvider =
-    NotifierProvider<AgentApiNotifier, AgentApiState>(AgentApiNotifier.new);
+final agentApiProvider = NotifierProvider<AgentApiNotifier, AgentApiState>(
+  AgentApiNotifier.new,
+);
 
 /// AI 厂商预设（只用于展示与预填，不预置模型）。
 class AiProviderPreset {

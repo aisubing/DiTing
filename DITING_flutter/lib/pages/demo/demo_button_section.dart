@@ -57,10 +57,12 @@ class _DemoTonalSizes extends StatelessWidget {
               ),
               Text(
                 'icon ${size.icon.toStringAsFixed(0)}',
-                style: AppTextStyle.caption2.of(context).copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
-                ),
+                style: AppTextStyle.caption2
+                    .of(context)
+                    .copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontFamily: 'JetBrainsMono',
+                    ),
               ),
             ],
           ),
@@ -146,10 +148,12 @@ class _DemoTonalGroups extends StatelessWidget {
                 child: Text(
                   size.name,
                   textAlign: TextAlign.end,
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ),
             ],
@@ -198,10 +202,7 @@ class _DemoMaterialButtons extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: TextButton(
-                onPressed: () {},
-                child: const Text('Text'),
-              ),
+              child: TextButton(onPressed: () {}, child: const Text('Text')),
             ),
           ],
         ),

@@ -95,19 +95,16 @@ class _DemoAnimateSwitch extends StatelessWidget {
                   style: AppTextStyle.footnote.of(context),
                 ),
               ),
-              Switch.adaptive(
-                value: value,
-                onChanged: onChanged,
-              ),
+              Switch.adaptive(value: value, onChanged: onChanged),
             ],
           ),
         ),
         Text(
           '加载环与骨架屏是无限循环动画，默认暂停以免任何 pumpAndSettle 卡住；'
           '点上面这一行即可播放。',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -175,10 +172,12 @@ class _DemoScrollBarState extends State<_DemoScrollBar> {
             _scrubRate == null
                 ? '拖动右侧滚动条时这里显示 scrub 速率'
                 : 'scrub 速率 ${_scrubRate!.toStringAsFixed(3)}',
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFamily: 'JetBrainsMono',
+                ),
           ),
         ],
       ),
@@ -211,16 +210,16 @@ class _DemoLoadings extends StatelessWidget {
                   children: [
                     SizedBox(
                       height: 44,
-                      child: Center(
-                        child: CommonCircleLoading(size: size),
-                      ),
+                      child: Center(child: CommonCircleLoading(size: size)),
                     ),
                     Text(
                       size.toStringAsFixed(0),
-                      style: AppTextStyle.caption2.of(context).copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
-                      ),
+                      style: AppTextStyle.caption2
+                          .of(context)
+                          .copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontFamily: 'JetBrainsMono',
+                          ),
                     ),
                   ],
                 ),
@@ -238,10 +237,12 @@ class _DemoLoadings extends StatelessWidget {
                   ),
                   Text(
                     'color',
-                    style: AppTextStyle.caption2.of(context).copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontFamily: 'JetBrainsMono',
-                    ),
+                    style: AppTextStyle.caption2
+                        .of(context)
+                        .copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          fontFamily: 'JetBrainsMono',
+                        ),
                   ),
                 ],
               ),
@@ -255,9 +256,9 @@ class _DemoLoadings extends StatelessWidget {
           ),
           Text(
             loading ? '加载中（点按停止）' : '点按开始加载',
-            style: AppTextStyle.caption1.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyle.caption1
+                .of(context)
+                .copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -345,10 +346,7 @@ class _DemoSkeletons extends StatelessWidget {
             width: double.infinity,
             style: AppTextStyle.footnote.of(context),
           ),
-          SkeletonText(
-            width: 200,
-            style: AppTextStyle.footnote.of(context),
-          ),
+          SkeletonText(width: 200, style: AppTextStyle.footnote.of(context)),
         ],
       ),
     );
@@ -391,10 +389,12 @@ class _DemoLineChart extends StatelessWidget {
         ),
         Text(
           '上：capacity 30 / baselineRatio 0.78　　下：capacity 12 / 0.7',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-            fontFamily: 'JetBrainsMono',
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontFamily: 'JetBrainsMono',
+              ),
         ),
       ],
     );
@@ -438,7 +438,11 @@ class _DemoStats extends StatelessWidget {
           child: Column(
             spacing: 8,
             children: const [
-              KeyValueRow(label: '运行时长', value: '2 天 07:41:12', monospace: true),
+              KeyValueRow(
+                label: '运行时长',
+                value: '2 天 07:41:12',
+                monospace: true,
+              ),
               KeyValueRow(label: '当前配置', value: '订阅 · 每日更新'),
               KeyValueRow(label: '规则数量', value: '1 284', monospace: true),
             ],

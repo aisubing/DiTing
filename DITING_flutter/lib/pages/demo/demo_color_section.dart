@@ -26,7 +26,8 @@ class _DemoColorSection extends StatelessWidget {
         const _DemoLabel('toPureBlack', trailing: '深色折叠为纯黑'),
         const _DemoPureBlack(),
         const ListFooter(
-          text: '四级表面在深色模式下是逐级「提亮」，不是逐级压暗；'
+          text:
+              '四级表面在深色模式下是逐级「提亮」，不是逐级压暗；'
               '把 page 当成最暗一层看，card/block/inset 才会往上浮。',
         ),
       ],
@@ -68,10 +69,12 @@ class _DemoSurfaceLevels extends StatelessWidget {
                 ),
                 Text(
                   level.colorOf(colorScheme).hex,
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ],
             ),
@@ -147,9 +150,9 @@ class _DemoPaletteSeeds extends StatelessWidget {
         ),
         Text(
           '左半为种子色，右半为 HCT 推导出的 primary。',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -203,9 +206,9 @@ class _DemoSeedDot extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -234,10 +237,12 @@ class _DemoColorStyles extends StatelessWidget {
                 width: 82,
                 child: Text(
                   style.name,
-                  style: AppTextStyle.caption1.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption1
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ),
               for (final role in _colorStyleRoles)
@@ -330,9 +335,9 @@ class _DemoPureBlack extends StatelessWidget {
           isDark
               ? '深色主题：surface 已折叠为纯黑，容器色阶整体下移 surface 的色度。'
               : '浅色主题：toPureBlack 是恒等变换，切换深色模式后再看这一行。',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: scheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: scheme.onSurfaceVariant),
         ),
       ],
     );

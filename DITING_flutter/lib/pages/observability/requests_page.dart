@@ -87,8 +87,9 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
               CommonPopupMenuItem(
                 label: source.label,
                 checked: source == query.source,
-                onPressed: () =>
-                    ref.read(requestFeedQueryProvider.notifier).setSource(source),
+                onPressed: () => ref
+                    .read(requestFeedQueryProvider.notifier)
+                    .setSource(source),
               ),
           ],
         ),
@@ -100,8 +101,9 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
               CommonPopupMenuItem(
                 label: status.label,
                 checked: status == query.status,
-                onPressed: () =>
-                    ref.read(requestFeedQueryProvider.notifier).setStatus(status),
+                onPressed: () => ref
+                    .read(requestFeedQueryProvider.notifier)
+                    .setStatus(status),
               ),
           ],
         ),
@@ -168,10 +170,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
                 '点按一行查看规则命中与处理结果。',
             items: [
               for (final request in items)
-                RequestRow(
-                  request: request,
-                  onTap: () => _openDetail(request),
-                ),
+                RequestRow(request: request, onTap: () => _openDetail(request)),
             ],
           ),
         ],

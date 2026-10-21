@@ -88,9 +88,11 @@ class _BackupPageState extends ConsumerState<BackupPage> {
           child: const Text('恢复'),
         ),
       ],
-      child: Text('将覆盖当前的'
-          '${_restoreOptions.map((option) => option.label).join('、')}。'
-          '覆盖后无法撤销，建议先导出当前配置。'),
+      child: Text(
+        '将覆盖当前的'
+        '${_restoreOptions.map((option) => option.label).join('、')}。'
+        '覆盖后无法撤销，建议先导出当前配置。',
+      ),
     ),
   );
 

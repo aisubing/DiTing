@@ -30,12 +30,10 @@ import 'package:material_ui/material_ui.dart';
 /// 但它同时刷新了 `appAllowlistMap`，所以用户看不出差别。这里选择「保存时一次
 /// 写入」，好处是取消/返回不会留下半改状态。
 class AppRulesDraft {
-  AppRulesDraft({
-    required this.master,
-    required Map<String, Set<String>> rules,
-  }) : _baseline = _copy(rules),
-       _baselineMaster = master,
-       _rules = _copy(rules);
+  AppRulesDraft({required this.master, required Map<String, Set<String>> rules})
+    : _baseline = _copy(rules),
+      _baselineMaster = master,
+      _rules = _copy(rules);
 
   /// 从 prefs 建草稿。
   factory AppRulesDraft.load(LegacySettings settings) => AppRulesDraft(

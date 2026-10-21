@@ -53,11 +53,7 @@ class RequestRow extends StatelessWidget {
       title: Row(
         children: [
           Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           const SizedBox(width: 8),
           Text(
@@ -150,9 +146,7 @@ String _handlingOf(ObservedRequest request) {
 String _ruleOf(ObservedRequest request) {
   final rule = request.matchedRule?.trim();
   if (rule != null && rule.isNotEmpty) return rule;
-  return request.source == RequestSource.https
-      ? '未命中规则（或未记录规则）'
-      : '无';
+  return request.source == RequestSource.https ? '未命中规则（或未记录规则）' : '无';
 }
 
 /// 请求详情（上游标题「请求详情」）。
@@ -216,22 +210,11 @@ class RequestDetailSheet extends StatelessWidget {
                 value: _stampOf(request.timestamp),
                 monospace: true,
               ),
-              KeyValueRow(
-                label: '来源',
-                value: request.source.label,
-              ),
+              KeyValueRow(label: '来源', value: request.source.label),
               if (request.source == RequestSource.https)
-                KeyValueRow(
-                  label: '域名',
-                  value: title,
-                  monospace: true,
-                )
+                KeyValueRow(label: '域名', value: title, monospace: true)
               else
-                KeyValueRow(
-                  label: '查询名',
-                  value: title,
-                  monospace: true,
-                ),
+                KeyValueRow(label: '查询名', value: title, monospace: true),
               if (request.protocol case final protocol?
                   when protocol.isNotEmpty)
                 KeyValueRow(label: '协议', value: protocol, monospace: true),
@@ -260,8 +243,7 @@ class RequestDetailSheet extends StatelessWidget {
               KeyValueRow(label: '处理方式', value: _handlingOf(request)),
             ],
           ),
-          if (request.message case final message?
-              when message.isNotEmpty)
+          if (request.message case final message? when message.isNotEmpty)
             generateSection(
               title: '原始记录',
               footer: '这一列是引擎写入 message 字段的原文，未经改写。',

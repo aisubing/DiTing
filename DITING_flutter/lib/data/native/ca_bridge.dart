@@ -17,8 +17,7 @@ library;
 
 import 'package:flutter/services.dart';
 
-const httpsInspectionChannelName =
-    'com.haoze.diting/https_inspection';
+const httpsInspectionChannelName = 'com.haoze.diting/https_inspection';
 
 /// Result of inspecting the local CA.
 class CaCertificateState {

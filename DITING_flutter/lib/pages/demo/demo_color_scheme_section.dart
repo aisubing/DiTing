@@ -17,7 +17,8 @@ class _DemoSchemeSection extends StatelessWidget {
         const _DemoLabel('扩展角色', trailing: 'success / warning / destructive'),
         const _DemoExtraRoles(),
         const ListFooter(
-          text: '色块上的字用对方角色的颜色（onPrimary 写在 primary 上），'
+          text:
+              '色块上的字用对方角色的颜色（onPrimary 写在 primary 上），'
               '对比度不足时字会直接糊进底色里。',
         ),
       ],
@@ -129,10 +130,12 @@ class _DemoColorPairRow extends StatelessWidget {
             '$otherLabel ${other.hex}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFamily: 'JetBrainsMono',
+                ),
           ),
         ),
       ],
@@ -232,10 +235,12 @@ class _DemoColorTile extends StatelessWidget {
             caption,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFamily: 'JetBrainsMono',
+                ),
           ),
       ],
     );
@@ -282,9 +287,9 @@ class _DemoSwatch extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),

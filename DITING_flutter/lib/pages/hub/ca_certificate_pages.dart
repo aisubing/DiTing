@@ -95,9 +95,7 @@ class CaCertificatePage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.key),
                 title: const Text('证书指纹'),
                 subtitle: Text(
-                  fingerprint == null
-                      ? '尚未生成证书时没有指纹'
-                      : 'SHA-256（点击查看完整指纹）',
+                  fingerprint == null ? '尚未生成证书时没有指纹' : 'SHA-256（点击查看完整指纹）',
                 ),
                 onTap: fingerprint == null
                     ? null
@@ -229,9 +227,7 @@ class CaCertificatePage extends ConsumerWidget {
     }
     _toast(
       context,
-      next.error != null
-          ? '生成失败：${next.error}'
-          : '已生成新证书，请前往系统设置安装',
+      next.error != null ? '生成失败：${next.error}' : '已生成新证书，请前往系统设置安装',
     );
   }
 
@@ -322,16 +318,20 @@ class CaCertificateGuidePage extends StatelessWidget {
           generateSection(
             title: '为什么需要安装',
             items: const [
-              _GuideItem('HTTPS 流量检查需要在设备上建立一条本地解密通道。'
-                  '系统只信任「用户」证书区里手工安装的根证书，应用无法代替你点这一步。'),
+              _GuideItem(
+                'HTTPS 流量检查需要在设备上建立一条本地解密通道。'
+                '系统只信任「用户」证书区里手工安装的根证书，应用无法代替你点这一步。',
+              ),
             ],
           ),
           generateSection(
             title: '安装步骤',
             items: const [
               _GuideItem('1. 在「CA 证书设置」里点「安装根证书」，或先「查看证书内容」把 PEM 复制出去。'),
-              _GuideItem('2. 系统会跳到证书安装界面；若没有跳转，'
-                  '前往「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」。'),
+              _GuideItem(
+                '2. 系统会跳到证书安装界面；若没有跳转，'
+                '前往「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」。',
+              ),
               _GuideItem('3. 选择刚才导出的 .crt 文件，确认时系统会要求屏幕锁或指纹。'),
               _GuideItem('4. 回到本页，状态应变成「已验证」。没变就下拉重新检查。'),
             ],
@@ -339,10 +339,14 @@ class CaCertificateGuidePage extends StatelessWidget {
           generateSection(
             title: '卸载与风险',
             items: const [
-              _GuideWarning('根证书一旦装进用户信任区，任何持有对应私钥的软件都能解密本机流量。'
-                  '不再使用时请到系统设置里删除它，并在本页「重新生成根证书」作废旧私钥。'),
-              _GuideItem('部分应用使用证书绑定（SSL Pinning），装证书后仍会连接失败；'
-                  '这类应用应加入绕过规则，而不是反复重装证书。'),
+              _GuideWarning(
+                '根证书一旦装进用户信任区，任何持有对应私钥的软件都能解密本机流量。'
+                '不再使用时请到系统设置里删除它，并在本页「重新生成根证书」作废旧私钥。',
+              ),
+              _GuideItem(
+                '部分应用使用证书绑定（SSL Pinning），装证书后仍会连接失败；'
+                '这类应用应加入绕过规则，而不是反复重装证书。',
+              ),
             ],
           ),
           const SizedBox(height: 24),

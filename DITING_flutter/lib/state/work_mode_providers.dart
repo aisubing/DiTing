@@ -23,19 +23,9 @@ export 'package:diting/state/provider_catalog_providers.dart';
 /// `normal` 指「全隧道 Go 模式」、`server` 指「纯 DNS 局域网服务」、
 /// `express` 指「纯 Kotlin 窄路由」。这里沿用同一命名，避免与规格对不上。
 enum AppWorkMode {
-  normal(
-    '普通模式',
-    '推荐',
-    '全量域名解析、黑白名单、HTTPS 检查、网络管控',
-    'normal',
-  ),
+  normal('普通模式', '推荐', '全量域名解析、黑白名单、HTTPS 检查、网络管控', 'normal'),
   server('服务器模式', '轻量', '纯 DNS 代理与解析加速、低功耗', 'dns'),
-  express(
-    '极速模式',
-    '极速',
-    '纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）',
-    'express',
-  );
+  express('极速模式', '极速', '纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）', 'express');
 
   const AppWorkMode(this.title, this.badge, this.summary, this.storageValue);
 
@@ -74,8 +64,9 @@ enum PowerState {
 /// （切换模式会停止另一个模式的服务），拆开会漏掉这种约束。
 class WorkModeNotifier extends Notifier<AppWorkMode> {
   @override
-  AppWorkMode build() =>
-      AppWorkMode.fromStorageValue(ref.read(legacySettingsProvider).workModeRaw);
+  AppWorkMode build() => AppWorkMode.fromStorageValue(
+    ref.read(legacySettingsProvider).workModeRaw,
+  );
 
   void select(AppWorkMode mode) {
     final previous = state;
@@ -104,9 +95,8 @@ final vpnControllerProvider = Provider<VpnController>(
 
 /// Express mode uses the same contract on its own channel.
 final expressVpnControllerProvider = Provider<VpnController>(
-  (ref) => MethodChannelVpnController(
-    channel: MethodChannel(expressVpnChannelName),
-  ),
+  (ref) =>
+      MethodChannelVpnController(channel: MethodChannel(expressVpnChannelName)),
 );
 
 class PowerNotifier extends Notifier<PowerState> {
@@ -273,14 +263,15 @@ class PowerNotifier extends Notifier<PowerState> {
         excludedPackages: settings.excludedPackages.toList(),
         // Express mode is a narrow DNS-only route: it has no firewall or MITM
         // stage, so app-level inputs would be accepted and silently ignored.
-        blockedPackages: express ? const [] : settings.blockedAppPackages.toList(),
+        blockedPackages: express
+            ? const []
+            : settings.blockedAppPackages.toList(),
         inspectionPackages: express
             ? const []
             : settings.httpInspectionPackages.toList(),
         // 1.4.3 requires the CA to be installed before MITM may start; the
         // transport re-checks this, but failing early keeps the UI honest.
-        inspectionEnabled:
-            !express && settings.httpsInspectionOperational,
+        inspectionEnabled: !express && settings.httpsInspectionOperational,
       ),
     );
     if (_disposed) return;
@@ -339,8 +330,9 @@ class PowerNotifier extends Notifier<PowerState> {
     state = PowerState.stopping;
     try {
       await (express
-          ? ref.read(expressVpnControllerProvider)
-          : ref.read(vpnControllerProvider)).stop();
+              ? ref.read(expressVpnControllerProvider)
+              : ref.read(vpnControllerProvider))
+          .stop();
     } catch (error) {
       lastError = _messageOf(error);
     }
@@ -482,8 +474,8 @@ String raceProviderSummary(Set<String> ids) =>
 /// 必须拼 `.label`——枚举的 `toString()` 给的是 `ProviderProtocol.doh`，直接插值
 /// 会把源码标识符漏到界面上。多个调用方都踩过这一点，所以这里是唯一出口，
 /// 页面不要再自己拼。
-String providerEndpointOf(String id) => endpointOfProvider(id, defaultProviderCatalog());
+String providerEndpointOf(String id) =>
+    endpointOfProvider(id, defaultProviderCatalog());
 
 /// 让 `appearance_providers.dart` 的解析模式参与首页分支的便捷读取。
 ResolutionMode resolutionModeOf(Ref ref) => ref.read(resolutionModeProvider);
-

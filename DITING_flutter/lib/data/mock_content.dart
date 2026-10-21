@@ -1,6 +1,5 @@
 part of 'mock_data.dart';
 
-
 /// 订阅导入类型。
 enum SubscriptionImportType {
   remote('订阅地址'),

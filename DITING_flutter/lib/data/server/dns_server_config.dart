@@ -29,8 +29,9 @@ class ServerUpstream {
       ? '${protocol.storageValue} · $address'
       : '${protocol.storageValue} · $address:$port';
 
-  String get hostPort =>
-      address.contains(':') ? '[${address.replaceAll(RegExp(r'^\[|\]$'), '')}]:$port' : '$address:$port';
+  String get hostPort => address.contains(':')
+      ? '[${address.replaceAll(RegExp(r'^\[|\]$'), '')}]:$port'
+      : '$address:$port';
 }
 
 const serverPresetUpstreams = <ServerUpstream>[
@@ -211,16 +212,18 @@ ServerDnsConfig buildServerDnsConfig(LegacySettings settings) {
     port: settings.serverPort,
     upstream: upstream,
     adBlockEnabled: settings.serverAdBlockEnabled,
-    cache: _cachePolicy(settings.serverCachePresetRaw, settings.serverCacheEnabled),
+    cache: _cachePolicy(
+      settings.serverCachePresetRaw,
+      settings.serverCacheEnabled,
+    ),
     blockResponse: _goBlockResponse(settings.serverBlockResponseModeRaw),
     dynamicResponse: {
       'enabled': settings.serverDynamicBlockEnabled,
       'requestThreshold': settings.serverDynamicBlockThreshold.clamp(2, 100),
       'windowSeconds': settings.serverDynamicBlockWindowSeconds.clamp(10, 300),
-      'nxDomainDurationSeconds': settings.serverDynamicBlockNxDomainDurationSeconds.clamp(
-        60,
-        3600,
-      ),
+      'nxDomainDurationSeconds': settings
+          .serverDynamicBlockNxDomainDurationSeconds
+          .clamp(60, 3600),
     },
   );
 }
@@ -247,15 +250,26 @@ List<ServerUpstream> parseServerCustomUpstreams(String? raw) {
     final address = (item['address'] as String?)?.trim();
     if (id == null || id.isEmpty || name == null || name.isEmpty) continue;
     if (address == null || address.isEmpty) continue;
-    final protocol = DnsProtocol.fromStorage(item['protocol'] as String?) ?? DnsProtocol.dns;
-    final port = item['port'] is int ? item['port'] as int : protocol == DnsProtocol.dot ? 853 : 53;
+    final protocol =
+        DnsProtocol.fromStorage(item['protocol'] as String?) ?? DnsProtocol.dns;
+    final port = item['port'] is int
+        ? item['port'] as int
+        : protocol == DnsProtocol.dot
+        ? 853
+        : 53;
     if (protocol == DnsProtocol.doh) {
       if (!address.toLowerCase().startsWith('https://')) continue;
     } else if (port < 1 || port > 65535) {
       continue;
     }
     upstreams.add(
-      ServerUpstream(id: id, name: name, protocol: protocol, address: address, port: port),
+      ServerUpstream(
+        id: id,
+        name: name,
+        protocol: protocol,
+        address: address,
+        port: port,
+      ),
     );
   }
   return upstreams;

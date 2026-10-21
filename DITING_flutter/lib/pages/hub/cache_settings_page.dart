@@ -62,7 +62,8 @@ class CacheSettingsPage extends ConsumerWidget {
                     },
                   ),
               ],
-              footer: '建议使用「标准」。档位会自动设置最长 TTL、最短 TTL 和'
+              footer:
+                  '建议使用「标准」。档位会自动设置最长 TTL、最短 TTL 和'
                   '解析失败兜底时间，不再需要手动填写秒数。',
             ),
           const SizedBox(height: 24),

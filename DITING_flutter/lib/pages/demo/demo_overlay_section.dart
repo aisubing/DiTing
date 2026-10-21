@@ -25,7 +25,8 @@ class _DemoOverlaySection extends StatelessWidget {
         const _DemoLabel('AlertActions', trailing: '对话框按钮的排版器'),
         const _DemoAlertActions(),
         const ListFooter(
-          text: '对话框的遮罩用 alertScrim（比 modalScrim 更暗），'
+          text:
+              '对话框的遮罩用 alertScrim（比 modalScrim 更暗），'
               '抽屉用 modalScrim——两者深浅不同是刻意的。',
         ),
       ],
@@ -194,10 +195,8 @@ class _DemoSheetButtons extends StatelessWidget {
           label: 'showFormSheet',
           onPressed: () => showFormSheet<void>(
             context: context,
-            builder: (_) => const _DemoSheetContent(
-              title: 'showFormSheet',
-              hasField: true,
-            ),
+            builder: (_) =>
+                const _DemoSheetContent(title: 'showFormSheet', hasField: true),
           ),
         ),
         TonalButton(
@@ -231,10 +230,8 @@ class _DemoExtendButtons extends StatelessWidget {
           label: 'showExtend',
           onPressed: () => showExtend<void>(
             context,
-            builder: (_) => const _DemoSheetContent(
-              title: 'showExtend',
-              tall: true,
-            ),
+            builder: (_) =>
+                const _DemoSheetContent(title: 'showExtend', tall: true),
           ),
         ),
         TonalButton(

@@ -133,27 +133,33 @@ class SubscriptionRecord {
 
   bool get isRemote => sourceType == SubscriptionSourceType.remote;
 
-  static SubscriptionRecord fromRow(Map<String, Object?> row) => SubscriptionRecord(
-    id: (row['id'] as num?)?.toInt() ?? 0,
-    url: row['url'] as String? ?? '',
-    name: row['name'] as String? ?? '',
-    sourceType: SubscriptionSourceType.fromStorage(row['sourceType'] as String?),
-    kind: SubscriptionKind.normalize(row['kind'] as String?),
-    enabled: _flag(row['enabled']) ?? true,
-    ruleCount: (row['ruleCount'] as num?)?.toInt() ?? 0,
-    lastUpdated: (row['lastUpdated'] as num?)?.toInt() ?? 0,
-    addedAt: (row['addedAt'] as num?)?.toInt() ?? 0,
-    importState: SubscriptionImportState.fromStorage(row['importState'] as String?),
-    importError: row['importError'] as String?,
-    httpEtag: row['httpEtag'] as String?,
-    httpLastModified: row['httpLastModified'] as String?,
-    ruleSetHash: row['ruleSetHash'] as String?,
-    lastAttemptAt: (row['lastAttemptAt'] as num?)?.toInt() ?? 0,
-    consecutiveFailureCount: (row['consecutiveFailureCount'] as num?)?.toInt() ?? 0,
-    mirrorTemplate: row['mirrorTemplate'] as String?,
-    mirrorFallback: _flag(row['mirrorFallback']) ?? true,
-    groupId: (row['groupId'] as num?)?.toInt(),
-  );
+  static SubscriptionRecord fromRow(Map<String, Object?> row) =>
+      SubscriptionRecord(
+        id: (row['id'] as num?)?.toInt() ?? 0,
+        url: row['url'] as String? ?? '',
+        name: row['name'] as String? ?? '',
+        sourceType: SubscriptionSourceType.fromStorage(
+          row['sourceType'] as String?,
+        ),
+        kind: SubscriptionKind.normalize(row['kind'] as String?),
+        enabled: _flag(row['enabled']) ?? true,
+        ruleCount: (row['ruleCount'] as num?)?.toInt() ?? 0,
+        lastUpdated: (row['lastUpdated'] as num?)?.toInt() ?? 0,
+        addedAt: (row['addedAt'] as num?)?.toInt() ?? 0,
+        importState: SubscriptionImportState.fromStorage(
+          row['importState'] as String?,
+        ),
+        importError: row['importError'] as String?,
+        httpEtag: row['httpEtag'] as String?,
+        httpLastModified: row['httpLastModified'] as String?,
+        ruleSetHash: row['ruleSetHash'] as String?,
+        lastAttemptAt: (row['lastAttemptAt'] as num?)?.toInt() ?? 0,
+        consecutiveFailureCount:
+            (row['consecutiveFailureCount'] as num?)?.toInt() ?? 0,
+        mirrorTemplate: row['mirrorTemplate'] as String?,
+        mirrorFallback: _flag(row['mirrorFallback']) ?? true,
+        groupId: (row['groupId'] as num?)?.toInt(),
+      );
 
   static bool? _flag(Object? value) => switch (value) {
     final num number => number.toInt() != 0,
@@ -206,7 +212,9 @@ class SubscriptionAutoUpdateItemRecord {
       SubscriptionAutoUpdateItemRecord(
         batchId: row['batchId'] as String? ?? '',
         subscriptionId: (row['subscriptionId'] as num?)?.toInt() ?? 0,
-        status: SubscriptionAutoUpdateStatus.fromStorage(row['status'] as String?),
+        status: SubscriptionAutoUpdateStatus.fromStorage(
+          row['status'] as String?,
+        ),
         changed: (row['changed'] as num?)?.toInt() == 1,
         ruleCount: (row['ruleCount'] as num?)?.toInt() ?? 0,
       );

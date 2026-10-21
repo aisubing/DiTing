@@ -210,11 +210,8 @@ class MethodChannelOutboundProxyStore implements OutboundProxyStore {
   Future<void> reset() => _channel.invokeMethod<void>('reset');
 
   @override
-  Future<void> setStatus(String state, String message) =>
-      _channel.invokeMethod<void>('setStatus', {
-        'state': state,
-        'message': message,
-      });
+  Future<void> setStatus(String state, String message) => _channel
+      .invokeMethod<void>('setStatus', {'state': state, 'message': message});
 }
 
 /// In-memory store for tests / non-Android hosts.

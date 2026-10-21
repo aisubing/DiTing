@@ -140,12 +140,13 @@ final hiddenFeatureKeysProvider =
 /// `test/route_catalog_test.dart` 守着 route），这里只做过滤。
 ///
 /// 功能中心页与隐藏功能页都从这里取，避免两处各写一份过滤逻辑而漂移。
-final visibleFeatureCategoriesProvider =
-    Provider<List<MockFeatureCategory>>((ref) {
-      final express = ref.watch(workModeProvider) == AppWorkMode.express;
-      final hidden = ref.watch(hiddenFeatureKeysProvider);
-      return visibleFeatureCategories(express: express, hiddenKeys: hidden);
-    });
+final visibleFeatureCategoriesProvider = Provider<List<MockFeatureCategory>>((
+  ref,
+) {
+  final express = ref.watch(workModeProvider) == AppWorkMode.express;
+  final hidden = ref.watch(hiddenFeatureKeysProvider);
+  return visibleFeatureCategories(express: express, hiddenKeys: hidden);
+});
 
 /// 「日志卡可长按」提示是否已经看过。
 ///

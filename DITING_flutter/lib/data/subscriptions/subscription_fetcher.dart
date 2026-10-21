@@ -245,8 +245,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     final etag = response.headers.value(HttpHeaders.etagHeader);
     final lastModified = response.headers.value(HttpHeaders.lastModifiedHeader);
 
-    if (response.statusCode == HttpStatus.preconditionFailed &&
-        useValidators) {
+    if (response.statusCode == HttpStatus.preconditionFailed && useValidators) {
       await response.drain<void>();
       return null;
     }

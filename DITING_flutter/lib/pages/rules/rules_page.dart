@@ -140,7 +140,9 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   Future<void> _editRule(MockRule rule) async {
     final kind = _kind;
     final result = await _promptRule(
-      title: rule.source == RuleSource.preset ? '编辑默认预设规则' : '编辑${kind.title}规则',
+      title: rule.source == RuleSource.preset
+          ? '编辑默认预设规则'
+          : '编辑${kind.title}规则',
       initialPattern: rule.pattern,
       initialTarget: rule.target,
       existingPatterns: {
@@ -231,7 +233,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     final confirmed = await _confirm(
       context,
       title: '允许编辑默认白名单？',
-      message: '白名单是放行名单，改动它可能让本应被拦截的流量通过。'
+      message:
+          '白名单是放行名单，改动它可能让本应被拦截的流量通过。'
           '确认你清楚这条风险后再开启。',
       confirmLabel: '仍然开启',
     );

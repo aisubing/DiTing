@@ -44,9 +44,7 @@ class RuleRepository {
 
   Future<Map<int, String>> _subscriptionNames() async {
     final rows = await _db.query('subscription', columns: ['id', 'name']);
-    return {
-      for (final row in rows) row['id'] as int: row['name'] as String,
-    };
+    return {for (final row in rows) row['id'] as int: row['name'] as String};
   }
 
   Future<List<MockRule>> _loadKind(
@@ -65,7 +63,12 @@ class RuleRepository {
 
     return [
       for (final row in rows)
-        _toRule(kind, row, byRule[row['id'] as int] ?? const [], subscriptionNames),
+        _toRule(
+          kind,
+          row,
+          byRule[row['id'] as int] ?? const [],
+          subscriptionNames,
+        ),
     ];
   }
 
@@ -122,13 +125,13 @@ class RuleRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = await _db.transaction<int>((txn) async {
       final existing = await _findExisting(txn, kind, pattern, target);
-      final ruleId = existing ??
-          await _insertRule(txn, kind, pattern, target, now);
-      await txn.insert(
-        _sourceTables[kind]!,
-        {'ruleId': ruleId, 'source': 'useradd', 'enabled': 1},
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      final ruleId =
+          existing ?? await _insertRule(txn, kind, pattern, target, now);
+      await txn.insert(_sourceTables[kind]!, {
+        'ruleId': ruleId,
+        'source': 'useradd',
+        'enabled': 1,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
       return ruleId;
     });
     return MockRule(
@@ -157,7 +160,8 @@ class RuleRepository {
         : await txn.query(
             _ruleTables[kind]!,
             columns: ['id'],
-            where: 'pattern = ? AND important = 0 AND appScope IS NULL '
+            where:
+                'pattern = ? AND important = 0 AND appScope IS NULL '
                 'AND appInverted = 0 AND dnsType IS NULL AND isRegex = 0',
             whereArgs: [pattern],
             limit: 1,
@@ -199,13 +203,12 @@ class RuleRepository {
     });
   }
 
-  Future<void> setEnabled(RuleKind kind, int id, bool enabled) =>
-      _db.update(
-        _ruleTables[kind]!,
-        {'enabled': enabled ? 1 : 0},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+  Future<void> setEnabled(RuleKind kind, int id, bool enabled) => _db.update(
+    _ruleTables[kind]!,
+    {'enabled': enabled ? 1 : 0},
+    where: 'id = ?',
+    whereArgs: [id],
+  );
 
   /// Edits the rule; `promotePreset` mirrors the old whitelist behaviour where
   /// changing a preset turns it into a user rule so resets cannot revert it.
@@ -244,11 +247,11 @@ class RuleRepository {
           where: 'ruleId = ? AND source = ?',
           whereArgs: [id, 'preset'],
         );
-        await txn.insert(
-          sources,
-          {'ruleId': id, 'source': 'useradd', 'enabled': 1},
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
+        await txn.insert(sources, {
+          'ruleId': id,
+          'source': 'useradd',
+          'enabled': 1,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     });
   }
@@ -273,14 +276,17 @@ class RuleRepository {
       );
       await txn.delete(
         table,
-        where: 'NOT EXISTS (SELECT 1 FROM $sources s WHERE s.ruleId = $table.id)',
+        where:
+            'NOT EXISTS (SELECT 1 FROM $sources s WHERE s.ruleId = $table.id)',
       );
       return affected.length;
     });
   }
 
   /// Replaces the preset whitelist with [entries] (`domain`, `group`).
-  Future<int> resetPresetWhitelist(List<({String domain, String group})> entries) {
+  Future<int> resetPresetWhitelist(
+    List<({String domain, String group})> entries,
+  ) {
     return _db.transaction<int>((txn) async {
       await txn.delete(
         'allow_rule_source',
@@ -289,7 +295,8 @@ class RuleRepository {
       );
       await txn.delete(
         'allow_rule',
-        where: 'NOT EXISTS (SELECT 1 FROM allow_rule_source s '
+        where:
+            'NOT EXISTS (SELECT 1 FROM allow_rule_source s '
             'WHERE s.ruleId = allow_rule.id)',
       );
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -302,11 +309,11 @@ class RuleRepository {
           now,
           groupName: entry.group,
         );
-        await txn.insert(
-          'allow_rule_source',
-          {'ruleId': id, 'source': 'preset', 'enabled': 1},
-          conflictAlgorithm: ConflictAlgorithm.ignore,
-        );
+        await txn.insert('allow_rule_source', {
+          'ruleId': id,
+          'source': 'preset',
+          'enabled': 1,
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
       }
       return entries.length;
     });

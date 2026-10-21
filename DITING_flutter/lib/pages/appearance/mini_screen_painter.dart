@@ -184,12 +184,7 @@ class _MiniScreenPainter extends CustomPainter {
     );
   }
 
-  void _rows(
-    Canvas canvas,
-    _MiniGeometry geometry,
-    int count,
-    double opacity,
-  ) {
+  void _rows(Canvas canvas, _MiniGeometry geometry, int count, double opacity) {
     final unit = geometry.unit;
     final width = geometry.size.width;
     var y = unit * 4.2;
@@ -331,8 +326,9 @@ class _MiniScreenPainter extends CustomPainter {
         center,
         unit * (active ? 0.62 : 0.48),
         Paint()
-          ..color = (active ? colorScheme.primary : colorScheme.onSurfaceVariant)
-              .withValues(alpha: active ? 1 : 0.55),
+          ..color =
+              (active ? colorScheme.primary : colorScheme.onSurfaceVariant)
+                  .withValues(alpha: active ? 1 : 0.55),
       );
     }
   }

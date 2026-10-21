@@ -22,7 +22,8 @@ class _DemoShapeSection extends StatelessWidget {
         const _DemoLabel('AppShape.circle / AppInputBorder', trailing: '特殊形状'),
         const _DemoSpecialShapes(),
         const ListFooter(
-          text: 'AppShape 全部是 RoundedSuperellipseBorder（超椭圆），不是 '
+          text:
+              'AppShape 全部是 RoundedSuperellipseBorder（超椭圆），不是 '
               'BorderRadius.circular 的圆弧——直线段的曲率连续性在这里看得出来。',
         ),
       ],
@@ -92,10 +93,12 @@ class _DemoCornerCell extends StatelessWidget {
           ),
           Text(
             value == AppCorner.full ? '1000' : value.toStringAsFixed(0),
-            style: AppTextStyle.caption2.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFamily: 'JetBrainsMono',
+                ),
           ),
         ],
       ),
@@ -142,10 +145,12 @@ class _DemoRadiusCombos extends StatelessWidget {
                 child: Text(
                   label,
                   maxLines: 2,
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
                 ),
               ),
             ],
@@ -207,7 +212,10 @@ class _DemoSpecialShapes extends StatelessWidget {
                 decoration: ShapeDecoration(
                   color: colorScheme.surfaceContainerHighest,
                   shape: AppShape.input.copyWith(
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                 ),
                 child: const Text('input'),

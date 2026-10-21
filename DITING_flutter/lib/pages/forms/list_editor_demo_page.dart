@@ -104,8 +104,7 @@ class _ListEditorDemoPageState extends State<ListEditorDemoPage> {
       return;
     }
     setState(() {
-      _servers = [..._servers]
-        ..[index] = _DemoServer(server.name, address);
+      _servers = [..._servers]..[index] = _DemoServer(server.name, address);
     });
   }
 

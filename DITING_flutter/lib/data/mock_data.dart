@@ -9,6 +9,7 @@
 /// - `mock_content.dart`：订阅、日志、缓存、竞速排行、服务统计；
 /// - `mock_apps.dart`：应用流量、已安装应用、功能中心卡片、流量采样。
 library;
+
 part 'mock_providers.dart';
 part 'mock_content.dart';
 part 'mock_apps.dart';

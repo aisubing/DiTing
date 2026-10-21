@@ -83,8 +83,7 @@ class MethodChannelInstalledAppsSource implements InstalledAppsSource {
     if (raw is! List) return const [];
     return [
       for (final item in raw)
-        if (item is Map)
-          InstalledApp.fromMap(Map<Object?, Object?>.from(item)),
+        if (item is Map) InstalledApp.fromMap(Map<Object?, Object?>.from(item)),
     ]..sort((a, b) => a.label.compareTo(b.label));
   }
 

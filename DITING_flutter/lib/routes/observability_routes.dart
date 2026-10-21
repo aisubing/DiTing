@@ -1,25 +1,26 @@
 import 'package:diting/pages/observability/connections_page.dart';
-import 'package:diting/pages/observability/dns_queries_page.dart';
 import 'package:diting/pages/observability/requests_page.dart';
 import 'package:diting/pages/observability/resources_page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
-/// 观测领域路由（上游 `lib/views/connection/`、`views/dns_queries.dart`、
-/// `views/resources.dart`）。
+/// 观测领域路由：请求日志 / 活动连接 / 资源更新。
 ///
-/// 与已有的 `/logs`、`/traffic` 互补：那两个是「概览」，这四个是「明细」。
+/// 上一轮这里还有 `/dns-queries`：它与 `/requests`（来源选 DNS）读的是同一张
+/// `dns_log` 表、同一批六档状态，旧版也只有「请求日志」一个页面（`RequestLogScreen`
+/// 里用来源分段切换），因此那条路由是重复入口，本轮删除。
 abstract final class ObservabilityPaths {
+  /// 活动连接。旧版无对应页面，用户要求保留。
   static const connections = '/connections';
+
+  /// 请求日志：旧版 `RequestLogScreen`。
   static const requests = '/requests';
-  static const dnsQueries = '/dns-queries';
+
+  /// 资源更新。旧版无对应页面，用户要求保留。
   static const resources = '/resources';
 }
 
 /// 观测领域路由表。由 `lib/router.dart` 拼接。
-///
-/// 四个页面都是顶层页面（`parentNavigatorKey: rootNavigatorKey`）：它们从首页
-/// 快捷入口与功能中心直接进入，不挂在任何 tab 之下，返回时不应回到侧栏。
 List<RouteBase> observabilityRoutes() => [
   GoRoute(
     path: ObservabilityPaths.connections,
@@ -30,11 +31,6 @@ List<RouteBase> observabilityRoutes() => [
     path: ObservabilityPaths.requests,
     parentNavigatorKey: rootNavigatorKey,
     builder: (context, state) => const RequestsPage(),
-  ),
-  GoRoute(
-    path: ObservabilityPaths.dnsQueries,
-    parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const DnsQueriesPage(),
   ),
   GoRoute(
     path: ObservabilityPaths.resources,

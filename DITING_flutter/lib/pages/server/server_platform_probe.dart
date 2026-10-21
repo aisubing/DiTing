@@ -7,19 +7,17 @@
 /// 后者只能写「当前设备不可用」），所以这里用裸 `MethodChannel` 自己按异常
 /// 类型区分，而不是复用那个封装。
 ///
-/// 通道名与方法名逐字对齐原生实现（`PlatformBridge.kt`）：
+/// 通道名与方法名逐字对齐原生实现（`PlatformBridge.kt` / `DnsServerBridge.kt`）：
 ///
 /// | 通道 | 方法 | 返回 |
 /// |---|---|---|
 /// | `com.haoze.diting/platform` | `isIgnoringBatteryOptimizations` | `bool` |
 /// | `com.haoze.diting/platform` | `requestIgnoreBatteryOptimizations` | `bool`（是否唤起了设置页） |
+/// | `com.haoze.diting/dns_server` | `clearCache` | `bool`（服务未运行时为 false） |
 ///
-/// 「清空缓存」目前**没有**原生实现：`com.haoze.diting/dns_server` 只注册了
-/// `start` / `stop` / `status`（见 `DnsServerBridge.kt`），引擎侧的
-/// `engine.clearDNSCache()` 没有任何通道暴露它。这里同样按「探测到不可用」处理，
-/// 页面如实显示「当前版本尚未接入清空缓存」，而不是假装清空成功。
-///
-/// 待原生补上 `clearCache` 后，本文件只需改注释，页面侧不用动。
+/// 「清空缓存」对应 1.4.3 的 `DnsDataCleanupManager.clearDnsCache` →
+/// `engine.ClearDNSCache()`。原生侧返回 false 有两种原因（服务没在运行、清空抛
+/// 异常），两者对用户的结论相同：这次没清成功。页面据此提示重试，而不是假装成功。
 library;
 
 import 'package:flutter/services.dart';
@@ -77,10 +75,10 @@ Future<BatteryOptimizationState> requestBatteryOptimization() async {
   return readBatteryOptimization();
 }
 
-/// 清空服务器模式的 DNS 缓存；返回 false 表示原生侧还没有这个接口。
+/// 清空服务器模式的 DNS 缓存。
 ///
-/// 现在必然返回 false——原生只注册了 start / stop / status。保留这次调用而不是
-/// 写死 `false`：等原生补上 `clearCache`，这里自动生效，页面不用改。
+/// 返回 false 表示这次没清成功：服务未运行（没有缓存可清）或引擎清空抛异常。
+/// 页面据此提示重试，不能显示「已清空」。
 Future<bool> clearServerDnsCache() async {
   try {
     return await const MethodChannel(serverChannelName)

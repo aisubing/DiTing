@@ -122,245 +122,161 @@
 | 配置详情浮层 `ProfileDetailSheet` | `widgets/profile_detail.dart` | 已迁移 `profile_detail_page.dart`（`/dashboard/profile`，仪表盘配置档案卡直进） |
 | 卡片基元（`DashboardCard` / `DashboardChip` / `DashboardConnectedButton` / `DashboardIconButton` 等） | `widgets/card.dart:1-898` | 已迁移 `dashboard_card.dart` |
 
-## 5. 代理（Proxies）
+## 5. 代理域（Proxies）——已整域删除
 
-上游 `lib/views/proxies/` 8 文件 / 2,660 行。本仓 7 文件 / 1,381 行。
+上游 `lib/views/proxies/` 8 文件 / 2,660 行在第二轮迁移时落地过（7 文件 / 1,381 行），
+第五轮按「旧版不存在的一律移除」**整体删除**：`/proxies`、`/proxies/providers`
+两条路由、`lib/pages/proxies/` 全部文件、以及仪表盘上的 `proxy_groups_card` /
+`current_outbound_card`。
 
-| 上游 | 位置 | 本仓 | 状态 |
-|---|---|---|---|
-| `ProxiesView` 外壳（标题/搜索/延迟测试/定位/设置菜单） | `proxies.dart` | `proxies_page.dart` | 已迁移 |
-| tab 模式：`ProxiesTabView` + `GroupTabs` 分组 chip 条 | `tab.dart`、`group_tabs.dart` | `proxies_page.dart:_TabBody` / `_GroupTabs` | 已迁移 |
-| list 模式：`ProxiesListView` 折叠分组列表 | `list.dart` | `proxies_page.dart:_ListBody` | 已迁移 |
-| `ProxyCard` 代理卡片（延迟色、选中态、三档尺寸） | `card.dart` | `proxy_card.dart` | 已迁移 |
-| 外部代理提供者 `ExternalProvidersSliver` + 编辑页 | `providers.dart` | `proxy_providers_page.dart` + `proxy_provider_form.dart` | 已迁移 |
-| 代理设置面板 `ProxiesSetting`（六项） | `setting.dart` | `proxies_settings_sheet.dart` | 已迁移 |
-| 节点长按上下文菜单 | `card.dart` | `proxies_page.dart:_NodeMenuSheet` | 已迁移 |
-
-**有意简化**：`DelayText` 的延迟数字滚动动画简化为直接换字（一个列表几十个
-数字各自跑 `AnimationController` 会让 `pumpAndSettle` 永不静止）；测速与延迟
-数据用固定种子的 `Random(20261019)`，保证同一会话内可复现。
-
-**已知与上游一致的「怪」行为**（不是缺陷，接线时不要"修"）：
-- `ProxiesLayout`（紧凑/标准/宽松）与 `ProxyCardType`（宽松/标准/紧凑）在设置
-  面板里显示同一组词，同屏重复文案，`findsOneWidget` 类断言要注意；
-- 隐藏超时节点时，若某组全部节点都超时，该组整条从列表消失（不是空组态）；
-- 顶栏动作上限 2 个，页面占用「模式切换」后，`iconActions` 会折进「更多」菜单。
-
+1.4.3 是 **DNS 应用**，没有 Clash 内核、代理组、配置档案。这些 UI 属另一套产品
+语义，不迁移才是对的。若要复活，只能当新功能重新设计，不能从本仓历史里捞。
 
 ## 6. 观测域
 
 ### 6.1 已有
 
-| 上游 | 本仓 | 状态 |
+| 旧版 / 来源 | 本仓 | 状态 |
 |---|---|---|
-| `views/logs.dart` 日志列表 + 导出 | `lib/pages/logs/` 三视图 | 已迁移（导出弹窗 + 级别筛选已补） |
-| `views/dashboard/widgets/traffic.dart` 速率图 | `lib/pages/traffic/` + 仪表盘 `network_speed_card` | 已迁移（双序列 + 累计流量） |
+| `dns_log` + `http_request_log` 合并视图（`LogRouteActivity` 的「请求日志」） | `lib/pages/observability/requests_page.dart` | 已迁移（来源 全部/DNS/HTTPS + 六档状态 + 导出 CSV） |
+| `AppTrafficStatsScreen` 应用流量统计 | `lib/pages/traffic/traffic_page.dart` | 已迁移（五档时间窗口 + 搜索 + 四档排序 + 隐藏系统应用 + 清除历史） |
 
-### 6.2 连接 / DNS / 资源
+### 6.2 资源与连接（旧版无对应界面，用户要求保留）
 
-| 上游 | 行数 | 状态 |
+| 页面 | 状态 | 说明 |
 |---|---|---|
-| `views/connection/connections.dart` 连接列表 + 拦截按钮 | 214 | 已迁移 |
-| `views/connection/requests.dart` 请求列表 | 129 | 已迁移 |
-| `features/connection/tracker_info_item.dart` 连接详情条目 | 306 | 已迁移 |
-| `features/connection/tracker_info_list.dart` 连接详情列表 | 172 | 已迁移 |
-| `features/connection/tracker_info_table.dart` 连接详情表格 | 249 | 已迁移 |
-| `features/connection/tracker_speed_ranker.dart` 速率排名 | 118 | 已迁移 |
-| `views/dns_queries.dart` DNS 查询列表 + 详情 + 错误行 | 451 | 已迁移 |
-| `views/resources.dart` 资源更新（geo/icon/rule-provider/script） | 606 | 已迁移 |
+| `/connections` 活动连接 | 保留 | 1.4.3 只有请求日志，没有「活动连接」概念；Go 引擎也未导出连接枚举 API |
+| `/resources` 资源更新 | 保留 | 1.4.3 的规则来自订阅 + 内置预设资产，没有 geo/icon/rule-provider 远程下载器 |
+| `/dns-queries` DNS 查询 | **已删除** | 与 `/requests`（来源选 DNS）读同一张表、同一批状态；旧版只有一页 |
 
-## 7. 配置（Profiles / 规则 / 订阅）
+两个保留页在 `/developer` 有入口，页脚标注「不属于旧版 1.4.3 的界面」。
 
-### 7.1 配置档案
+## 7. 配置域（Profiles / 规则 / 订阅）
 
-上游 `lib/views/profiles/` 15 文件 / 约 8,600 行。
+### 7.1 配置档案——已整域删除
 
-| 上游 | 行数 | 状态 |
-|---|---|---|
-| `profiles.dart` 配置网格 + 卡片 + 长按重排 sheet | 657 | 已迁移（本仓 `/subscriptions` 是规则订阅，语义不同） |
-| `add.dart` 添加配置 | 155 | 已迁移 |
-| `edit.dart` 编辑配置（名称/URL/密钥/自动更新/文件项） | 598 | 已迁移 |
-| `preview.dart` 配置预览 | 20 | 已迁移 |
-| `custom/custom.dart` 自定义配置总览 | 621 | 已迁移 |
-| `custom/custom_proxies.dart` 自定义节点 + 分享链接 | 1,581 | 已迁移 |
-| `custom/groups.dart` 自定义代理组 | 1,404 | 已迁移 |
-| `custom/members.dart` 组成员选择 + 过滤器 | 854 | 已迁移 |
-| `custom/providers.dart` 自定义提供者 | 643 | 已迁移 |
-| `custom/rules.dart` 自定义规则 | 620 | 已迁移 |
-| `custom/dialers.dart` 拨号器 | 158 | 已迁移 |
-| `custom/icon.dart` 图标选择器（网格） | 593 | 已迁移 |
-| `custom/quick_edit.dart` 文本快速编辑 | 79 | 已迁移 |
-| `extend/extend.dart` 扩展页（脚本/标准） | 158 | 已迁移 |
-| `extend/script.dart` / `extend/standard.dart` | 89 / 403 | 已迁移 |
+上游 `lib/views/profiles/` 15 文件 / 约 8,600 行（配置网格、添加、编辑、预览、
+自定义节点/组/规则/提供者/拨号器/图标、扩展详情）在第二轮迁移时全部落地过，
+第五轮**整体删除**：15 条 `/profiles/*` 路由、`lib/pages/profiles/` 全部文件、
+`dashboard/profile_detail_page.dart`。
+
+1.4.3 没有「配置档案」这个概念。与它语义最接近的「规则订阅」由 `/subscriptions`
+承担（读旧库 4 张订阅表），两者不是同一件事。
 
 ### 7.2 规则
 
-| 上游 | 本仓 | 状态 |
+| 旧版 | 本仓 | 状态 |
 |---|---|---|
-| 黑白名单 / 覆写列表 | `lib/pages/rules/` | 已迁移 |
-| 批量添加规则 | `lib/pages/rules/batch_editor_page.dart` | 已迁移 |
-| `config/rules.dart` 追加规则（added rules） | 无 | 已迁移 |
-| `features/form/rule.dart` / `rule_preset.dart` 规则表单与预设 | 无 | 已迁移 |
+| `RuleListScreen`（黑名单 / 白名单 / 覆写三态） | `/rules/{block,allow,rewrite}` | 已迁移（真 `rule_snapshot` 表 + 只读保护 + 批量编辑） |
+| 规则来源分组（用户自定义 / 规则订阅 / 内置预设） | `rules_page.dart` 的分组 | 已迁移 |
+| 订阅拦截（`SubscriptionDownloader` + 4 张表） | `/subscriptions` | 已迁移（下载正文 + 统计行数，不入规则表） |
+| 订阅拦截率统计 | `/logs/subscription-stats` | 第五轮新增 |
 
 ### 7.3 订阅
 
-| 上游 | 本仓 | 状态 |
-|---|---|---|
-| 订阅列表 / 添加 / 自动更新间隔 | `lib/pages/subscriptions/` | 已迁移 |
-
+`/subscriptions` 读旧库 `subscription_*` 四张表；无旧库时渲染空状态而非 mock
+（`app_shell_test.dart` 守着这条，反证 mock 播种已删除）。规则解析与入库明示
+「将在后续版本接入」，不伪造入库结果。
 ## 8. 设置与外观
 
-### 8.1 外观
+> 第五轮把这一节整体重写了。旧版设置页**只渲染六行**，前文按 FlClash 的八个分组
+> 登记的设置项大部分已随配置页删除。
 
-| 上游 | 本仓 | 状态 |
+### 8.1 设置主页（`/settings`）
+
+旧版 `SettingsScreen.kt` 按 `SettingsSection.entries.sortedBy { order }` 渲染，
+每组只保留 `ScreenDestinations.mainEntries` 里的条目（`mainEntries` 只来自
+`ScreenDestinations.all` 的六条），**空组直接跳过**。页面标题是
+`R.string.other_settings` = 「其他设置」。
+
+| 分组（order） | 行 |
+|---|---|
+| 运行模式（0） | 运行模式 |
+| 性能优化（1） | 缓存设置 / 日志模式 |
+| 运行行为（2） | 前后台行为 |
+| 外观（3） | **空组，不渲染** |
+| 数据管理（4） | 语言设置 |
+| 其他设置（5） | 使用向导 |
+
+本仓 `settings_page.dart` 逐行对齐这五组六行。唯一新增的可点元素是顶栏的扳手
+图标 → `/developer`（保留页入口，见 §16.4）。
+
+### 8.2 外观子树（`/theme`）
+
+旧版 `AppearanceSettingsScreen` 是三组八项的子页菜单，本仓照此建：
+
+| 组 | 项 | 路由 |
 |---|---|---|
-| `views/theme.dart` 主题页（1209 行，14 个条目） | `lib/pages/appearance/theme_page.dart` | 已迁移（14 条目全实现） |
-| ├ 日夜模式 `_ThemeModeItem` | 有（`ListItem.options`） | 已迁移 |
-| ├ 主题色 `_PrimaryColorItem` + 8 色板 | 有（9 色板圆点） | 已迁移 |
-| ├ **自定义取色** `_CustomColorSheet`（色轮 + 吸管徽标 + 预览） | 无 | 已迁移 |
-| ├ 纯黑 `_PureBlackItem` | 有 | 已迁移 |
-| ├ 底栏样式 `_NavigationBarItem` | 无 | 已迁移 |
-| ├ **tab 切换动画** `_TabAnimationItem` | 无 | 已迁移 |
-| ├ Liquid 玻璃 `_LiquidGlassItem` | 无 | 已迁移 |
-| ├ 侧栏模糊 `_SidebarBlurItem` | — | 桌面专属，不迁移 |
-| ├ 字体 `_FontFamilyItem` + `font_family.dart` 字体选择页 | 无 | 已迁移 |
-| ├ 字号 `_TextScaleFactorItem` | 有（滑杆） | 已迁移 |
-| └ 重置按钮 `_ResetButton` | 无 | 已迁移 |
-| `views/theme_preview.dart` 主题实时预览（迷你屏/分割屏） | 无 | 已迁移 |
-| `views/tools.dart` 语言选择 `_LocaleItem` | 无 | 已迁移 |
+| 界面显示 | 日夜模式 | `/theme/day-night` |
+| | 主题色配置 | `/theme/color` |
+| | 首页透明度 | `/theme/home-opacity` |
+| | 底栏自定义 | `/theme/bottom-bar` |
+| 首页内容 | 首页句子 | `/theme/home-sentence` |
+| | 通知栏设置 | `/theme/notification` |
+| 背景与动效 | 软件背景 | `/theme/background` |
 
-### 8.2 配置页（`views/config/` 17 文件 / 约 6,600 行）
+保留项（旧版无，用户要求留）内联在 `/theme` 的组里：字体（→ `/font-family`）、
+纯黑开关、字号滑杆；「背景与动效」组内另有底栏样式 / Tab 动画 / 液态玻璃三项。
 
-| 上游 | 行数 | 状态 |
-|---|---|---|
-| `general.dart` 通用（日志级别/UA/测试 URL/端口/Hosts/鉴权/外部控制器） | 485 | 已迁移 |
-| `general/port_form.dart` 端口表单 | 207 | 已迁移 |
-| `network.dart` 网络（VPN/TUN/绕过/代理/IPv6/DNS 劫持/栈/接口名/路由） | 611 | 已迁移 |
-| `tun.dart` TUN 覆写 | 265 | 已迁移 |
-| `dns.dart` DNS（覆写规格 / 策略字段） | 414 | 已迁移 |
-| `ntp.dart` NTP | 125 | 已迁移 |
-| `sniffer.dart` 嗅探 | 285 | 已迁移 |
-| `override.dart` 覆写编辑器（5 种字段类型） | 695 | 已迁移 |
-| `filters.dart` 过滤器 | 289 | 已迁移 |
-| `rules.dart` 追加规则 | 207 | 已迁移 |
-| `scripts.dart` 脚本 | 412 | 已迁移 |
-| `providers.dart` Clash 提供者 | 636 | 已迁移 |
-| `icon_sets.dart` 图标集 + 预览 | 316 | 已迁移 |
-| `user_agents.dart` User-Agent 列表 | 235 | 已迁移 |
-| `on_demand.dart` 按需连接 | 394 | 已迁移 |
-| `advanced.dart` 高级（网络） | 52 | 已迁移 |
-| `custom_resources.dart` 自定义资源（代理） | 48 | 已迁移 |
+`CustomPrimaryColor` 的自定义取色随 `theme_color_sheet.dart` 一并删除——旧版只有
+九套预设。
 
-### 8.3 其他设置页
+### 8.3 设置子页
 
-| 上游 | 行数 | 状态 |
-|---|---|---|
-| `views/access.dart` 应用访问控制（+ `PackageListItem`/`AccessControlPanel`） | 649 | 已迁移（本仓 `/apps` 只是勾选页） |
-| `views/backup_and_restore.dart` 备份与恢复（WebDAV 表单、恢复选项） | 491 | 已迁移 |
-| `views/disclaimer.dart` 免责声明（同意/复述弹窗） | 516 | 已迁移 |
-| `views/developer.dart` 开发者选项 | 118 | 已迁移 |
-| `views/hotkey.dart` 快捷键（桌面） | 521 | 桌面专属，不迁移（录制器交互可作演示） |
-| `views/about.dart` 关于（贡献者/链接徽标/开发者模式触发） | 314 | 已迁移 |
-| `views/font_family.dart` 字体族选择 | 194 | 已迁移 |
-| `views/theme_preview.dart` | 850 | 已迁移 |
+| 路由 | 内容 |
+|---|---|
+| `/settings/background` 前后台行为 | 后台隐藏 / 绕过局域网 / IPv6 三档 |
+| `/settings/language` 语言设置 | 跟随系统 / 简体中文（旧版枚举里的英文无文案资源，不臆造） |
+| `/hub/cache` 缓存设置 | 保留 |
+| `/hub/log-retention` 日志模式 | 三档日志模式 + 保留天数 1–30 + 悬浮窗 + 崩溃日志 |
 
 ## 9. 浮层 / 交互控件 / 动画（跨页面）
 
-| 项 | 上游 | 状态 |
-|---|---|---|
-| A `paged_sheet` 分页浮层 | `ui/paged_sheet.dart` | 仍缺失（仓内仍零调用；需要多页浮层时再移植） |
-| B `NullStatusSwitcher` loading/empty 状态机 | `ui/null_status*.dart` | 已上屏（观测域各列表；注意它 `isSearching: true` 会忽略自定义 `nullStatus`） |
-| C Liquid 玻璃 | `ui/liquid_glass*.dart` | **已上屏**：`MaterialApp.builder` 挂 `LiquidGlassScope`，由主题页三档开关驱动 |
-| D `ShowBarScrollBehavior` 滚动隐藏顶栏 | `ui/scroll*.dart` | 已上屏 |
-| E 长按上下文菜单 `ContextMenuRegion` | `ui/context_menu.dart` | 已上屏（连接 / 节点长按菜单） |
-| F 拖拽排序 `SortableItem` / `SortHandle` | `ui/sortable*.dart` | 已上屏（仪表盘卡片排序、分组排序） |
-| G 折叠分区 `SliverCollapsibleSection` | `ui/collapsible_section.dart` | 已上屏（配置页分组） |
-| H 文本放大镜 `TextLoupe` | `ui/text_loupe.dart` | 已上屏（YAML 编辑器选区） |
-| I 分段控件 / 搜索框 / 骨架 / 图表 | `ui/*` | 已上屏 |
-| J 表单浮层 `showFormSheet` / `FormSheetRoute` | `ui/form_sheet.dart` | 已上屏（表单域 5 个演示页 + 各域新增/编辑浮层） |
+`lib/ui/` 已完整提供，本轮**零改动**（`docs/ui-framework/22-parallel-work-contract.md`
+的第 1 条约束）。页面侧只用不造：
+
+- 浮层：`showSheet` / `showFloatingDialog` / `CommonPopupBox` / `CommonPopupMenu`；
+- 行分隔线：由 `ItemPosition` 驱动（`list_row_separator.dart`），按设备像素比取整到
+  真正的发丝线。**不要在 `lib/ui` 之外自造 `Divider(height: 0.5)`**——那会得到 1
+  逻辑像素，比其它列表页粗一倍；测速结果列表就是靠改用 `generateSection` 拿到这
+  条发丝线的；
+- 空状态：`NullStatus` + `NullStatusIllustration`；
+- 加载：`CommonCircleLoading` / `ObservabilityLoading`；
+- 图表：`line_chart.dart`（仪表盘曲线），环形图用 `CustomPainter` 自绘（不引三方库）。
 
 ## 10. 表单与编辑器（features）
 
-| 上游 | 行数 | 状态 |
-|---|---|---|
-| `features/form/form_page.dart` 表单页 | 53 | 已迁移（`lib/pages/forms/`） |
-| `features/form/form_row.dart` 表单行（297 行，多类型） | 297 | 已迁移 |
-| `features/form/list_editor_page.dart` 列表编辑器 | 377 | 已迁移（`/form/list-editor`） |
-| `features/form/map_edit_view.dart` 键值编辑器 | 317 | 已迁移（`/form/map-edit`） |
-| `features/form/named_url_form.dart` 命名 URL 表单 | 324 | 已迁移（`/form/named-url`） |
-| `features/form/selection_sheet.dart` 选择浮层 | 346 | 已迁移（`/form/selection`） |
-| `features/form/nested_form_sheet.dart` 嵌套表单 | 113 | 已迁移 |
-| `features/form/batch_section.dart` 批量区块 | 49 | 已迁移 |
-| `features/form/custom_issue.dart` 自定义问题提示 | 170 | 已迁移（`NullStatus` 变体 + 表单内联提示） |
-| `features/form/filter.dart` 过滤 | 57 | 已迁移 |
-| `features/form/rule.dart` / `rule_preset.dart` | 429 / 145 | 已迁移（`/form/rule-preset`） |
-| `features/ip_quality/*` IP 质量浮层与文本 | 323 | 已迁移（`/ip-quality`） |
-| `features/editor/completion_popup.dart` 补全浮层 | 216 | 已迁移 |
-| `pages/editor.dart` YAML 编辑器 | 1,260 | 已迁移（`/editor`，含行号栏 + 语法高亮 + 补全浮层） |
-| `pages/scan.dart` 扫码页 | 840 | 已迁移（`/scan`，相机预览用占位画布） |
-| `pages/error.dart` 错误页 | 344 | 已迁移（`/error`） |
+上游 `lib/features/` 里的表单件在旧版中对应 `ui/components/`。第五轮的处置：
 
-## 11. 新增路由登记表（本仓）
+| 页面 | 状态 |
+|---|---|
+| `/form/rule-preset`、`/form/list-editor`、`/form/map-edit`、`/form/named-url`、`/form/selection` | 保留（用户点名的「表单演示页」，`/developer` 可达） |
+| `/demo` 组件画廊 | 保留（`/developer` 可达） |
+| `/form` 表单演示入口 | 保留 |
+| `/scan` 扫码页 | 保留（相机预览用占位画布，页脚标注演示） |
+| `/editor` 编辑器 | 保留（纯内存，页脚标注演示） |
+| `/error` 错误页 | **已删除**（全仓无入口） |
 
-> 新增页面必须在此登记，并同步 `lib/routes/paths.dart` 与对应
-> `lib/routes/<domain>_routes.dart`。
+## 11. 路由登记（以代码为准）
 
-| 路由 | 页面 | 归属 | 状态 |
-|---|---|---|---|
-| `/dashboard/edit` | 仪表盘编辑模式（redirect 进编辑态） | dashboard | 已实现 |
-| `/proxies` | 代理（tab/list 双模式 + 设置浮层 + 节点长按菜单） | proxies | 已实现 |
-| `/proxies/providers` | 代理提供者（+ 编辑表单） | proxies | 已实现 |
-| `/connections` | 连接列表 | observability | 已实现 |
-| `/requests` | 请求列表 | observability | 已实现 |
-| `/dns-queries` | DNS 查询 | observability | 已实现 |
-| `/resources` | 资源更新 | observability | 已实现 |
-| `/profiles` | 配置档案网格 | profiles | 已实现 |
-| `/profiles/add` | 添加配置 | profiles | 已实现 |
-| `/profiles/edit` | 编辑配置 | profiles | 已实现 |
-| `/profiles/preview` | 配置预览 | profiles | 已实现 |
-| `/profiles/custom` | 自定义配置总览 | profiles | 已实现 |
-| `/profiles/custom/proxies` | 自定义节点 | profiles | 已实现 |
-| `/profiles/custom/groups` | 自定义代理组 | profiles | 已实现 |
-| `/profiles/custom/rules` | 自定义规则 | profiles | 已实现 |
-| `/profiles/custom/providers` | 自定义提供者 | profiles | 已实现 |
-| `/profiles/custom/dialers` | 拨号器 | profiles | 已实现 |
-| `/profiles/custom/icon` | 图标选择器 | profiles | 已实现 |
-| `/profiles/extend` | 扩展 | profiles | 已实现 |
-| `/profiles/extend/script` | 脚本扩展 | profiles | 已实现 |
-| `/theme` | 主题设置（完整） | appearance | 已实现 |
-| `/theme/preview` | 主题实时预览 | appearance | 已实现 |
-| `/font-family` | 字体族选择 | appearance | 已实现 |
-| `/config/general` | 通用设置 | config | 已实现 |
-| `/config/network` | 网络设置 | config | 已实现 |
-| `/config/tun` | TUN 覆写 | config | 已实现 |
-| `/config/dns` | DNS 覆写 | config | 已实现 |
-| `/config/ntp` | NTP | config | 已实现 |
-| `/config/sniffer` | 嗅探 | config | 已实现 |
-| `/config/override` | 覆写编辑器 | config | 已实现 |
-| `/config/filters` | 过滤器 | config | 已实现 |
-| `/config/rules` | 追加规则 | config | 已实现 |
-| `/config/scripts` | 脚本 | config | 已实现 |
-| `/config/providers` | Clash 提供者 | config | 已实现 |
-| `/config/icon-sets` | 图标集 | config | 已实现 |
-| `/config/user-agents` | User-Agent | config | 已实现 |
-| `/config/on-demand` | 按需连接 | config | 已实现 |
-| `/config/advanced` | 高级 | config | 已实现 |
-| `/config/custom-resources` | 自定义资源 | config | 已实现 |
-| `/access` | 应用访问控制 | system | 已实现 |
-| `/backup` | 备份与恢复 | system | 已实现 |
-| `/disclaimer` | 免责声明 | system | 已实现 |
-| `/developer` | 开发者选项 | system | 已实现 |
-| `/sponsor` | 赞助与共建 | system | 已实现 |
-| `/app-update` | 应用更新 | system | 已实现 |
-| `/ip-quality` | IP 质量浮层 | system | 已实现 |
-| `/editor` | YAML 编辑器 | system | 已实现 |
-| `/scan` | 扫码 | system | 已实现 |
-| `/error` | 错误页 | system | 已实现 |
-| `/form/list-editor` | 列表编辑器 | forms | 已实现 |
-| `/form/map-edit` | 键值编辑器 | forms | 已实现 |
-| `/form/named-url` | 命名 URL 表单 | forms | 已实现 |
-| `/form/selection` | 选择浮层 | forms | 已实现 |
-| `/form/rule-preset` | 规则预设 | forms | 已实现 |
+> **本表已废弃**。第五轮之前这里维护过一份 60 行的「新增路由登记表」，表格与
+> `lib/routes/*.dart` 的实际内容漂移严重（登记的 `proxies` / `profiles` 全族已
+> 删除，而新增的 `/theme/*` 六条、`/logs/*` 四条、`/config/*` 三条都没登记）。
+> 手工维护两份清单必然漂移，所以改为**以代码为唯一权威**：
+
+| 权威来源 | 内容 |
+|---|---|
+| `lib/router.dart` | `Routes` 常量（不属任何领域的顶层页）+ `_branchOrder` 六个 branch |
+| `lib/routes/routes.dart` | 九个领域文件的 barrel |
+| `lib/routes/<domain>_routes.dart` | 各领域的 `Paths` 常量类 + `xxxRoutes()` 路由表 |
+| `test/route_catalog_test.dart` | `topLevelRoutes` / `idRoutes` 两张表，逐条 build 验活 |
+| `test/layout_regression_test.dart` | 同一份表 × 3 档宽度 × 1.4 倍字号验布局 |
+
+新增页面时**只改三处**：`Paths` 常量、`xxxRoutes()` 里的一条 `GoRoute`、
+`route_catalog_test.dart` 的表项。后者漏改的表现是「页面能构建但没有任何测试覆盖
+它」——不会报错，只会留个洞。
+
+路由总数：**77 条**（第五轮从 85 条收敛而来，删除项见 §16.1）。
 
 ## 12. 复查记录
 
@@ -572,3 +488,55 @@
 HTTPS/CA（`GoInspectionCaManager` + `AndroidCAStore`）、网络工具
 （`NetworkPingTool` / `NetworkTraceRouteTool` / `DnsLatencyTester` / `NetworkInfoProbe`）、
 功能中心隐藏项（`hidden_features_set`）。
+
+## 16. 第五轮收口：按旧版界面集合重定范围（2026-10-21）
+
+> 本轮的约束换了方向：不再是「把 Flutter 侧能做的都做出来」，而是**旧版存在的
+> 界面必须保留、旧版不存在的一律移除**，同时 `lib/ui` 设计体系零改动。
+> 完整判定表见 `docs/refactor/15-legacy-parity-audit.md`。这里只登记对本节
+> 前文结论的**修订**，避免旧结论继续误导后续判断。
+
+### 16.1 第五节「无 1.4.3 后端」结论的最终处置
+
+| 页面 | 前文建议 | 本轮最终处置 | 理由 |
+|---|---|---|---|
+| `/connections` 活动连接 | 与 `/requests` 合并或改「当前会话」 | **保留**，`/developer` 可达 | 用户在保留清单里明确点名要留；页脚标注不属于旧版界面 |
+| `/resources` 资源更新 | 删页面或改只读信息页 | **保留**，`/developer` 可达 | 同上 |
+| 代理域、配置档案 | 整域标为非本产品功能 | **已删除**（`/proxies`、`/proxies/providers`、`/profiles/*` 共 15 条路由） | 旧版无此概念 |
+| `/config/*` 11 个内核配置页 | 删掉无后端的 11 个页面 | **已删除**（general/network/tun/dns/ntp/sniffer/override/filters/rules/scripts/providers/advanced） | 旧版无内核配置 |
+| `/config/{icon-sets,user-agents,on-demand}` | 保留与真实 prefs 键对应的部分 | **保留**，收敛到 `/config/custom-resources` 三行 | 用户点名保留 |
+| `/dns-queries` DNS 查询 | —— | **已删除** | 与 `/requests`（来源选 DNS）同表同状态，旧版只有一页 |
+| `/apps`、`/agent`、`/error`、`/theme/preview`、`/access`、`/backup`、`/disclaimer`、`/dashboard/profile` | —— | **已删除** | 旧版无对应界面 / 改为首启弹窗 |
+
+路由总数从 85 条收敛到 77 条。
+
+### 16.2 本轮补齐的旧版界面（此前缺失）
+
+| 旧版界面 | 新路由 | 说明 |
+|---|---|---|
+| 五档日志模式仪表盘 | `/logs` | 顶部三选自 `dns_log_mode`，三套块组合（8/4/6 块） |
+| 缓存表 / 竞速统计 / Bootstrap 统计 / 订阅拦截率 | `/logs/{cache,race,bootstrap,subscription-stats}` | 四个下钻页，全部读真实旧库表 |
+| 前后台行为设置 | `/settings/background` | 后台隐藏 / 绕过局域网 / IPv6 三档 |
+| 语言设置 | `/settings/language` | 跟随系统 / 简体中文 |
+| 外观三组八项 | `/theme/*` 六条子页 | 日夜模式 / 主题色 / 首页透明度 / 底栏 / 首页句子 / 通知栏 / 软件背景 |
+| 网络诊断四 Tab | `/tools` | 测速 / Ping / DNS 解析 / 路由追踪，默认停 Ping（旧版初值） |
+| 服务器模式三 Tab | `/server` | 概览 / 上游服务器 / 模式设置 |
+| 首启「使用须知与免责声明」 | —— | 应用层弹窗（`lib/app/initial_agreement.dart`），非路由 |
+| 关于页核心能力/运行边界 | `/about` | 极速模式按旧版规则减两条能力 |
+
+### 16.3 本轮补回的原生能力
+
+| 通道 | 方法 | 补回前状态 |
+|---|---|---|
+| `com.haoze.diting/dns_latency` | `probe` | **整个测速功能丢失**（旧版 `DnsSpeedTestSection` + `DnsLatencyTester`） |
+| `com.haoze.diting/platform` | `applyRecentsPrivacy` / `isIgnoringBatteryOptimizations` / `requestIgnoreBatteryOptimizations` / `crashLogCount` / `clearCrashLogs` / `exportText` | 后台隐藏完全没有；崩溃日志是写死的 `_crashLogCount = 3` |
+| `com.haoze.diting/dns_server` | `clearCache` | 引擎 `engine.clearDNSCache()` 未接出，页面只能显示「尚未接入」 |
+| `com.haoze.diting/diagnostics` | `lookupDns` 增加 `server` 参数 | 「自定义 DNS 服务器」模式丢失，只能问系统解析器 |
+| 通知栏四键 | —— | `notification_settings_prefs` 的 `persistent`/`speed`/自定义文案未接 |
+
+### 16.4 保留项（旧版无界面，用户要求保留）
+
+18 项全部保留并给出可达入口。入口自造的只有一处：**设置页顶栏的扳手图标**
+（→ `/developer`），因为设置列表必须严格等于旧版的五组六行。
+`retained_pages_reachable_test.dart` 守这条，防止下一轮被当孤儿删掉。
+

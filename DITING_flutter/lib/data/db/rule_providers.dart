@@ -8,13 +8,17 @@ final ruleRepositoryProvider = Provider<RuleRepository?>((ref) => null);
 
 /// Server mode keeps its own rule dataset (`diting_dns_rules`). Opening is lazy
 /// and in-place so 1.4.3's `user_version` and journal mode stay untouched.
-final serverRuleRepositoryProvider = FutureProvider<RuleRepository?>((ref) async {
+final serverRuleRepositoryProvider = FutureProvider<RuleRepository?>((
+  ref,
+) async {
   final db = await LegacyDatabase.open(LegacyDatabase.serverFile);
   return db == null ? null : RuleRepository(db);
 });
 
 /// Express mode owns `diting_express` (version 2); same tables, separate file.
-final expressRuleRepositoryProvider = FutureProvider<RuleRepository?>((ref) async {
+final expressRuleRepositoryProvider = FutureProvider<RuleRepository?>((
+  ref,
+) async {
   final db = await LegacyDatabase.open(LegacyDatabase.expressFile);
   return db == null ? null : RuleRepository(db);
 });

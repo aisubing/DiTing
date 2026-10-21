@@ -5,12 +5,7 @@ library;
 
 typedef PresetEntry = ({String domain, String group});
 
-const _ignoredHeaders = [
-  'Format:',
-  'Comment:',
-  'Each entry',
-  'Domains in',
-];
+const _ignoredHeaders = ['Format:', 'Comment:', 'Each entry', 'Domains in'];
 
 List<PresetEntry> parsePresetWhitelist(String content) {
   final results = <PresetEntry>[];

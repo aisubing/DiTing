@@ -1,85 +1,168 @@
-/// 设置页：外观 / 首页 / 底栏 / 解析 / 关于五组设置。
+/// 设置页：旧版「其他设置」五组六行。
 ///
-/// 这一页同时是设计系统的「密度验收面」：除滑杆与色板圆点这类本质定制的控件
-/// 外，每一行都由 `ListItem` 的构造器 + `generateSection` 组合，没有手写的行
-/// 样式——否则设计系统一改行高或圆角，这里就会成为最早露馅的地方。
+/// 权威依据是 1.4.3 的渲染逻辑，而不是枚举声明：
+/// `SettingsScreen.kt` 遍历 `SettingsSection.entries.sortedBy { order }`，
+/// 每组取 `ScreenDestinations.mainEntries.filter { mainSection == section }`，
+/// **空组直接跳过**。`mainEntries` 又只来自 `ScreenDestinations.all`（六个条目），
+/// 那些声明了却不在 `all` 里的（出站代理 / 解析模式 / 数据清理 / AI 分析 /
+/// 四个 resolution 子页）根本不会被渲染。
 ///
-/// 按 AGENTS.md 的 550 行上限拆成库根 + part：本文件只放页面骨架与五个分组的
-/// 组装顺序，每组各占一个 part。
+/// 因此上屏的正好是五组六行，顺序固定：
+///
+/// | 组（按 order） | 行 | 路由 |
+/// |---|---|---|
+/// | 运行模式 (0) | 运行模式 | `/mode/select` |
+/// | 性能优化 (1) | 缓存设置 / 日志模式 | `/hub/cache` / `/hub/log-retention` |
+/// | 运行行为 (2) | 前后台行为 | `/settings/background` |
+/// | 外观 (3) | —— | 空组，不渲染 |
+/// | 数据管理 (4) | 语言设置 | `/settings/language` |
+/// | 其他设置 (5) | 使用向导 | `/mode/onboarding` |
+///
+/// 页面标题是 `R.string.other_settings` =「其他设置」（底栏 tab 仍叫「设置」）；
+/// `OTHER` 这一组的组标题同样改写成「其他设置」，与页面标题重复——这是旧版
+/// 真实行为，照抄。
+///
+/// 上一轮这一页是「外观 / 功能入口 / 观测与配置 / 系统 / 首页 / 底栏 / 解析 / 关于」
+/// 八组，绝大多数行指向 FlClash 的代理与内核配置。旧版没有这些概念，已随页面
+/// 一起删除。
+///
+/// 这一页同时是设计系统的「密度验收面」：每一行都由 `ListItem` + `generateSection`
+/// 组合，没有手写行样式，否则设计系统一改行高或圆角，这里就会最早露馅。
 library;
 
-import 'package:diting/app/theme/colors.dart';
-import 'package:diting/app/theme/layout.dart';
-import 'package:diting/data/mock_data.dart';
-import 'package:diting/data/prefs/legacy_settings_provider.dart';
-import 'package:diting/data/vpn/cache_presets.dart';
 import 'package:diting/router.dart';
-import 'package:diting/routes/routes.dart';
-import 'package:diting/state/appearance_providers.dart';
-import 'package:diting/state/work_mode_providers.dart';
+import 'package:diting/routes/hub_routes.dart';
+import 'package:diting/routes/system_routes.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-part 'settings_about_section.dart';
-part 'settings_appearance_section.dart';
-part 'settings_bottom_bar_section.dart';
-part 'settings_feature_section.dart';
-part 'settings_home_section.dart';
-part 'settings_resolution_section.dart';
-
-/// 展示用版本号。
+/// 设置页。
 ///
-/// 演示层不读 `package_info_plus`（本阶段不引依赖），所以与 `pubspec.yaml` 的
-/// `version: 1.0.0+1` 手工对齐；发版时必须同步改这两处，别只改一处。
-const appVersionLabel = '1.0.0';
-
-/// 设置页外壳。
-///
-/// 页尾的 `DockSpacer` 由 [PageBody] 自动补上（设置页是底栏 tab，浮条会盖住
-/// 最后一行），所以这里不再手动加留白。
+/// 顶栏只有一个图标按钮：扳手 → 开发者选项聚合页。这是本轮唯一在设置页上新增
+/// 的可点元素，原因是那 18 个「用户要求保留、但旧版没有对应菜单」的页面需要
+/// 唯一入口，而设置列表本身必须严格保持旧版的五组六行、一个不多一个不少。
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      title: '设置',
+      title: '其他设置',
       iconActions: [
         IconButtonData(
-          glyph: AppGlyphs.palette,
-          tooltip: '组件画廊',
-          onPressed: () => context.push(Routes.demo),
+          glyph: AppGlyphs.wrench,
+          tooltip: '开发者选项',
+          onPressed: () => context.push(SystemPaths.developer),
         ),
       ],
       body: const PageBody(
         children: [
-          _AppearanceSection(),
-          _FeatureEntrySection(),
-          _ObserveAndConfigSection(),
-          _SystemSection(),
-          _HomeSection(),
-          _BottomBarSection(),
-          _ResolutionSection(),
-          _AboutSection(),
+          // 每个 `_SettingsGroup` 对应旧版一个 `SettingsSection`，空组不出现。
+          _SettingsGroup(
+            title: '运行模式',
+            items: [
+              _SettingsRow(
+                glyph: AppGlyphs.layers,
+                title: '运行模式',
+                subtitle: '切换普通模式或服务器模式',
+                route: Routes.modeSelect,
+              ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '性能优化',
+            items: [
+              _SettingsRow(
+                glyph: AppGlyphs.cpu,
+                title: '缓存设置',
+                subtitle: '缓存已解析的域名，减少重复查询',
+                route: HubPaths.cache,
+              ),
+              _SettingsRow(
+                glyph: AppGlyphs.clock,
+                title: '日志模式',
+                subtitle: '选择 DNS 请求日志的记录范围',
+                route: HubPaths.logRetention,
+              ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '运行行为',
+            items: [
+              _SettingsRow(
+                glyph: AppGlyphs.eyeOff,
+                title: '前后台行为',
+                subtitle: '后台隐藏、通知常驻、绕过局域网',
+                route: SystemPaths.foregroundBackground,
+              ),
+            ],
+          ),
+          // 外观（order 3）在旧版是空组：条目都被移到功能中心的「界面与设置」分类，
+          // 这里刻意不补任何行。
+          _SettingsGroup(
+            title: '数据管理',
+            items: [
+              _SettingsRow(
+                glyph: AppGlyphs.language,
+                title: '语言设置',
+                subtitle: '选择应用界面语言',
+                route: SystemPaths.language,
+              ),
+            ],
+          ),
+          _SettingsGroup(
+            title: '其他设置',
+            items: [
+              _SettingsRow(
+                glyph: AppGlyphs.puzzle,
+                title: '使用向导',
+                subtitle: '查看当前工作模式的架构原理、权限配置与上手指引',
+                route: Routes.modeOnboarding,
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// 设置项的即时反馈统一走 SnackBar。
-///
-/// 底栏项数的上限/下限只由 `BottomBarNotifier` 的单次操作决定，被拒绝时除了
-/// 开关回到原位没有任何痕迹，用户会以为「点坏了」——必须补一句说明。
-void _showSettingHint(BuildContext context, String message) {
-  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-    SnackBar(
-      content: Text(message),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(milliseconds: 1600),
-    ),
-  );
+/// 一组设置：组标题 + 若干行。
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.title, required this.items});
+
+  final String title;
+  final List<Widget> items;
+
+  @override
+  Widget build(BuildContext context) =>
+      generateSection(title: title, items: items);
+}
+
+/// 一行设置入口：图标 + 标题 + 副标题 + 右箭头。
+class _SettingsRow extends StatelessWidget {
+  const _SettingsRow({
+    required this.glyph,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  final Glyph glyph;
+  final String title;
+  final String subtitle;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListItem(
+      title: Text(title),
+      subtitle: Text(subtitle),
+      leading: GlyphIcon(glyph),
+      trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+      onTap: () => context.push(route),
+    );
+  }
 }

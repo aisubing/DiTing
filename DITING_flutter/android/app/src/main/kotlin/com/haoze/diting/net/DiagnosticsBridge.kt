@@ -75,11 +75,21 @@ class DiagnosticsBridge(private val context: Context) :
                 val domain = call.argument<String>("domain").orEmpty()
                 val viaTunnel = call.argument<Boolean>("viaTunnel") ?: false
                 val ipv4 = call.argument<Boolean>("ipv4") ?: true
+                // 空串 = 系统解析器（1.4.3 的 `DnsServerMode.SYSTEM`），非空 =
+                // 自定义 DNS 服务器（`DnsServerMode.CUSTOM`）。两个模式合并成一个
+                // 可选参数，原生侧不必再猜用户选了哪个。
+                val server = call.argument<String>("server").orEmpty().trim()
                 workers.execute {
                     // A lookup never throws for a bad domain: every failure is
                     // expressed as source=error plus a readable message, because
                     // the Dart model renders `error` inline next to the answers.
-                    val value = runCatching { DnsLookupProbe.lookup(domain, viaTunnel, ipv4) }
+                    val value = runCatching {
+                        if (!viaTunnel && server.isNotEmpty()) {
+                            DnsLookupProbe.customServerLookup(domain, server, ipv4)
+                        } else {
+                            DnsLookupProbe.lookup(domain, viaTunnel, ipv4)
+                        }
+                    }
                     ChannelResults.ship(result, value, "lookup_failed")
                 }
             }

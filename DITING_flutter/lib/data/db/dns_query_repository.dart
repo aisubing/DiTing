@@ -16,8 +16,7 @@ library;
 
 import 'package:sqflite/sqflite.dart';
 
-import 'package:diting/data/db/http_request_repository.dart'
-    show RequestStatus;
+import 'package:diting/data/db/http_request_repository.dart' show RequestStatus;
 
 /// One `dns_log` row.
 class DnsLogRow {
@@ -131,9 +130,7 @@ class DnsLogMessage {
           error = value;
         case 'elapsed':
           elapsed = int.tryParse(
-            value.endsWith('ms')
-                ? value.substring(0, value.length - 2)
-                : value,
+            value.endsWith('ms') ? value.substring(0, value.length - 2) : value,
           );
       }
     }
@@ -166,10 +163,15 @@ class DnsQueryRepository {
 
     final trimmed = query.trim();
     if (trimmed.isNotEmpty) {
-      sql.write(' AND (queryName LIKE ? OR packageName LIKE ? '
-          'OR message LIKE ?)');
+      sql.write(
+        ' AND (queryName LIKE ? OR packageName LIKE ? '
+        'OR message LIKE ?)',
+      );
       final pattern = '%${trimmed.toLowerCase()}%';
-      args..add(pattern)..add(pattern)..add(pattern);
+      args
+        ..add(pattern)
+        ..add(pattern)
+        ..add(pattern);
     }
 
     final clause = _statusClause(status);

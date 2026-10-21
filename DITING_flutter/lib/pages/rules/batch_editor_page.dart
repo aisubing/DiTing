@@ -79,7 +79,10 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     context.pop();
   }
 
-  String _reportText({required int count, required RuleLineParseResult parsed}) {
+  String _reportText({
+    required int count,
+    required RuleLineParseResult parsed,
+  }) {
     final lines = <String>['已向${_kind.title}导入 $count 条规则。'];
     if (parsed.duplicated.isNotEmpty) {
       lines.add('跳过 ${parsed.duplicated.length} 条重复规则。');

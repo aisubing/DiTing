@@ -12,6 +12,7 @@ import 'package:diting/data/prefs/legacy_prefs_store.dart';
 
 part 'legacy_settings_dns.dart';
 part 'legacy_settings_hub.dart';
+part 'legacy_settings_parity.dart';
 
 class LegacySettings {
   LegacySettings(this._store, {String? dnsContainer})
@@ -38,6 +39,13 @@ class LegacySettings {
 
   /// Server-mode settings (`DnsModePreferences`).
   static const serverContainer = 'diting_dns_mode_prefs';
+
+  /// Notification-bar settings (`NotificationSettingsStore`).
+  ///
+  /// A container of its own: the foreground service reads this one, not
+  /// `dns_vpn_prefs`. Writing notification keys anywhere else silently has no
+  /// effect on the notification while still passing every UI test.
+  static const notificationContainer = 'notification_settings_prefs';
 
   static const defaultRunningSentence = '谛听万象，明察清浊';
   static const defaultStoppedSentence = '收耳静眠，归于无声';
@@ -73,29 +81,22 @@ class LegacySettings {
   void setPaletteRaw(String storageValue) =>
       _store.putString(uiContainer, 'theme_color_style', storageValue);
 
-  double get componentOpacity => _clampedOpacity(
-    _double(uiContainer, 'home_component_opacity', 1),
-  );
+  double get componentOpacity =>
+      _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
 
   /// Per-element opacity falls back to the shared component opacity, exactly
   /// like `AppearanceSettingsStore.getHomeOpacity`.
-  double homeOpacity(String storageKey) => _clampedOpacity(
-    _double(uiContainer, storageKey, componentOpacity),
-  );
+  double homeOpacity(String storageKey) =>
+      _clampedOpacity(_double(uiContainer, storageKey, componentOpacity));
 
-  void setHomeOpacity(String storageKey, double value) => _store.putFloat(
-    uiContainer,
-    storageKey,
-    _clampedOpacity(value),
-  );
+  void setHomeOpacity(String storageKey, double value) =>
+      _store.putFloat(uiContainer, storageKey, _clampedOpacity(value));
 
   ({String running, String stopped}) get homeSentences => (
     running:
-        _string(uiContainer, 'home_sentence_running') ??
-        defaultRunningSentence,
+        _string(uiContainer, 'home_sentence_running') ?? defaultRunningSentence,
     stopped:
-        _string(uiContainer, 'home_sentence_stopped') ??
-        defaultStoppedSentence,
+        _string(uiContainer, 'home_sentence_stopped') ?? defaultStoppedSentence,
   );
 
   void setHomeSentences({required String running, required String stopped}) {
@@ -103,7 +104,8 @@ class LegacySettings {
     _store.putString(uiContainer, 'home_sentence_stopped', stopped);
   }
 
-  bool get hapticEnabled => _bool(uiContainer, 'bottom_bar_haptic_enabled', true);
+  bool get hapticEnabled =>
+      _bool(uiContainer, 'bottom_bar_haptic_enabled', true);
 
   void setHapticEnabled(bool value) =>
       _store.putBool(uiContainer, 'bottom_bar_haptic_enabled', value);
@@ -164,7 +166,11 @@ class LegacySettings {
     final finalIds = unique.length < bottomBarMinCount
         ? defaultBottomBarIds
         : unique.take(bottomBarMaxCount).toList();
-    _store.putString(uiContainer, 'bottom_bar_destinations', jsonEncode(finalIds));
+    _store.putString(
+      uiContainer,
+      'bottom_bar_destinations',
+      jsonEncode(finalIds),
+    );
   }
 
   // ---------------------------------------------------------------- work mode
@@ -203,8 +209,7 @@ class LegacySettings {
   Object? rawValue(String key) => _store.read(dnsContainer, key);
 
   // ------------------------------------------------------------ tunnel system
-  bool get bypassLanEnabled =>
-      _bool(uiContainer, 'bypass_lan_enabled', true);
+  bool get bypassLanEnabled => _bool(uiContainer, 'bypass_lan_enabled', true);
 
   String get ipv6ModeRaw => _string(dnsContainer, 'ipv6_mode') ?? 'auto';
 
@@ -221,14 +226,11 @@ class LegacySettings {
 
   /// Stored as a SharedPreferences string set (`putStringSet`), which the
   /// bridge serialises as a string array.
-  void setExcludedPackages(Set<String> packages) => _store.putStringSet(
-    uiContainer,
-    'excluded_app_packages',
-    {
-      for (final item in packages)
-        if (item.trim().isNotEmpty) item,
-    },
-  );
+  void setExcludedPackages(Set<String> packages) =>
+      _store.putStringSet(uiContainer, 'excluded_app_packages', {
+        for (final item in packages)
+          if (item.trim().isNotEmpty) item,
+      });
 
   /// `app_allowlist_rules_json`: package -> allowed domains, the per-app rules
   /// behind `Engine.setAppAllowlist`. Stored as a JSON **object** (not a string
@@ -335,21 +337,18 @@ class LegacySettings {
     required Set<String> packages,
     required bool enabled,
   }) {
-    _store.putStringSet(
-      uiContainer,
-      'http_inspection_app_packages',
-      {
-        for (final item in packages)
-          if (item.trim().isNotEmpty) item,
-      },
-    );
+    _store.putStringSet(uiContainer, 'http_inspection_app_packages', {
+      for (final item in packages)
+        if (item.trim().isNotEmpty) item,
+    });
     _store.putBool(uiContainer, 'http_inspection_enabled', enabled);
   }
 
   // ----------------------------------------------------------- server mode
 
-  int get serverPort =>
-      _clampedPort(_int(serverContainer, 'local_listen_port', defaultServerPort));
+  int get serverPort => _clampedPort(
+    _int(serverContainer, 'local_listen_port', defaultServerPort),
+  );
 
   void setServerPort(int port) =>
       _store.putInt(serverContainer, 'local_listen_port', _clampedPort(port));
@@ -379,8 +378,7 @@ class LegacySettings {
   void setServerAdBlockEnabled(bool value) =>
       _store.putBool(serverContainer, 'ad_block_enabled', value);
 
-  bool get serverLogQueries =>
-      _boolIn(serverContainer, 'log_queries', false);
+  bool get serverLogQueries => _boolIn(serverContainer, 'log_queries', false);
 
   bool get serverServiceActive =>
       _boolIn(serverContainer, 'service_active', false);

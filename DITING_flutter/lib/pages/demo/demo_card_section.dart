@@ -14,7 +14,10 @@ class _DemoCardSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _DemoSectionBody(
       children: [
-        const _DemoLabel('CommonCard 六种状态', trailing: 'isSelected / isError / inert'),
+        const _DemoLabel(
+          'CommonCard 六种状态',
+          trailing: 'isSelected / isError / inert',
+        ),
         const _DemoCardStates(),
         const _DemoLabel('InfoHeader + Info', trailing: '卡片表头与右侧动作'),
         const _DemoInfoHeaders(),
@@ -61,11 +64,7 @@ class _DemoCardStates extends StatelessWidget {
           child: body('isSelected + fillsSelection'),
         ),
         CommonCard(isError: true, child: body('isError')),
-        CommonCard(
-          inert: true,
-          onPressed: () {},
-          child: body('inert（忽略点按）'),
-        ),
+        CommonCard(inert: true, onPressed: () {}, child: body('inert（忽略点按）')),
         Row(
           spacing: 8,
           children: [
@@ -90,9 +89,9 @@ class _DemoCardStates extends StatelessWidget {
             child: Text(
               'shape: AppShape.circle',
               textAlign: TextAlign.center,
-              style: AppTextStyle.footnote.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
+              style: AppTextStyle.footnote
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant),
             ),
           ),
         ),
@@ -257,9 +256,9 @@ class _DemoInlineBits extends StatelessWidget {
         ),
         Text(
           'DisclosureIndicator 是纯静态箭头，不带点击；需要点击请用 DetailButton。',
-          style: AppTextStyle.caption2.of(context).copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.caption2
+              .of(context)
+              .copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );

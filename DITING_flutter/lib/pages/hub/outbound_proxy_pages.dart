@@ -166,7 +166,9 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     final snapshot = ref.read(installedAppsProvider).value;
     // 读不到列表（通道缺失）时返回 null：`validationError` 会跳过「未安装」
     // 这一条，而不是把一个合法包名报成未安装。
-    return snapshot == null || snapshot.error != null ? null : snapshot.packageNames;
+    return snapshot == null || snapshot.error != null
+        ? null
+        : snapshot.packageNames;
   }
 
   void _toast(String message) {
@@ -217,9 +219,9 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
                 title: const Text('启用出站代理功能'),
                 subtitle: Text(
                   _statusLabel(config),
-                  style: AppTextStyle.footnote.of(context).copyWith(
-                    color: _statusColor(context, config),
-                  ),
+                  style: AppTextStyle.footnote
+                      .of(context)
+                      .copyWith(color: _statusColor(context, config)),
                 ),
                 value: config.enabled,
                 onChanged: _saving
@@ -239,9 +241,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
                 leading: const GlyphIcon(AppGlyphs.appsList),
                 title: const Text('代理应用'),
                 subtitle: Text(
-                  config.proxyAppPackage.isEmpty
-                      ? '未选择'
-                      : appLabel,
+                  config.proxyAppPackage.isEmpty ? '未选择' : appLabel,
                 ),
                 onTap: () => context.push('/hub/outbound-proxy/apps'),
               ),
