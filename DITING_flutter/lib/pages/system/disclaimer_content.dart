@@ -101,7 +101,10 @@ class InitialAgreementCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: CommonCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        // 左侧 14 的内缩对「标题 + 一行说明」是够的，但对一整块连续正文太窄：
+        // 卡片本身已经因页面左右各 16 的边距而收窄，正文再收 14，411dp 屏上
+        // 每行只剩 ~140 个字符宽度里的一半。这里改成 18，并把行距交给 1.6。
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 10,
@@ -129,7 +132,7 @@ class InitialAgreementCard extends StatelessWidget {
               InitialAgreementDialog.message,
               style: AppTextStyle.footnote
                   .of(context)
-                  .copyWith(color: colorScheme.onSurfaceVariant, height: 1.6),
+                  .copyWith(color: colorScheme.onSurfaceVariant, height: 1.7),
             ),
           ],
         ),
@@ -149,10 +152,10 @@ class DisclaimerTermCard extends StatelessWidget {
     return SectionBlock(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: CommonCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 6,
+          spacing: 8,
           children: [
             Text(
               term.title,
@@ -164,7 +167,7 @@ class DisclaimerTermCard extends StatelessWidget {
                   .of(context)
                   .copyWith(
                     color: context.colorScheme.onSurfaceVariant,
-                    height: 1.6,
+                    height: 1.7,
                   ),
             ),
           ],

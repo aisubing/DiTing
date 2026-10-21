@@ -1,13 +1,17 @@
 /// 演示用状态：主题页里上游有、但 `appearance_providers.dart` 尚未覆盖的几项。
 ///
-/// `appearance_providers.dart` 被设置页与多个页面共用，并行期不在这里改它；
-/// 本轮新增的开关（底栏形态 / tab 动画 / Liquid 玻璃 / 字体族 / 自定义主色）
-/// 单独成一份，页面只订阅自己需要的那一小块。
+/// 这几项（底栏形态 / tab 动画 / Liquid 玻璃）**都落盘**到旧版 `dns_vpn_prefs`
+/// 容器（键名由本仓新增，见 `LegacySettings.liquidGlassModeRaw` 等）。早先它们
+/// 只活在内存里，结果是：外观页显示「极致」，退出应用再进来浮条又变回实色，
+/// 而设置项仍显示用户选过的值——两边谁都不算错，但对不上。
 library;
 
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
 /// 底栏形态：浮条（`NavigationDock`）或普通底栏（`NavigationBar` 形态）。
 ///
@@ -22,13 +26,20 @@ enum BottomBarStyle {
   final String label;
 
   bool get isFloating => this == floating;
+
+  static BottomBarStyle fromStorageValue(String? raw) =>
+      values.firstWhere((v) => v.name == raw, orElse: () => floating);
 }
 
 class BottomBarStyleNotifier extends Notifier<BottomBarStyle> {
   @override
-  BottomBarStyle build() => BottomBarStyle.floating;
+  BottomBarStyle build() =>
+      BottomBarStyle.fromStorageValue(_settings(ref).bottomBarStyleRaw);
 
-  void select(BottomBarStyle style) => state = style;
+  void select(BottomBarStyle style) {
+    state = style;
+    _settings(ref).setBottomBarStyleRaw(style.name);
+  }
 }
 
 final bottomBarStyleProvider =
@@ -49,13 +60,20 @@ enum TabTransition {
   const TabTransition(this.label);
 
   final String label;
+
+  static TabTransition fromStorageValue(String? raw) =>
+      values.firstWhere((v) => v.name == raw, orElse: () => slide);
 }
 
 class TabTransitionNotifier extends Notifier<TabTransition> {
   @override
-  TabTransition build() => TabTransition.slide;
+  TabTransition build() =>
+      TabTransition.fromStorageValue(_settings(ref).tabTransitionRaw);
 
-  void select(TabTransition transition) => state = transition;
+  void select(TabTransition transition) {
+    state = transition;
+    _settings(ref).setTabTransitionRaw(transition.name);
+  }
 }
 
 final tabTransitionProvider =
@@ -77,13 +95,20 @@ enum LiquidGlassMode {
 
   LiquidGlassQuality get quality =>
       this == ultra ? LiquidGlassQuality.ultra : LiquidGlassQuality.standard;
+
+  static LiquidGlassMode fromStorageValue(String? raw) =>
+      values.firstWhere((v) => v.name == raw, orElse: () => none);
 }
 
 class LiquidGlassModeNotifier extends Notifier<LiquidGlassMode> {
   @override
-  LiquidGlassMode build() => LiquidGlassMode.none;
+  LiquidGlassMode build() =>
+      LiquidGlassMode.fromStorageValue(_settings(ref).liquidGlassModeRaw);
 
-  void select(LiquidGlassMode mode) => state = mode;
+  void select(LiquidGlassMode mode) {
+    state = mode;
+    _settings(ref).setLiquidGlassModeRaw(mode.name);
+  }
 }
 
 final liquidGlassModeProvider =

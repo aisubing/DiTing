@@ -146,24 +146,36 @@ class InitialAgreementDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: CommonDialog(
-          title: '使用须知与免责声明',
-          actions: [
-            TextButton(onPressed: onDecline, child: const Text('不同意并退出')),
-            TextButton(onPressed: onAccept, child: const Text('同意并继续')),
-          ],
-          // 正文较长（三段），必须可滚：小屏 + 大字号下整段放不下，写死高度会
-          // 把按钮挤出屏幕。
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.sizeOf(context).height * 0.5,
-            ),
-            child: SingleChildScrollView(
-              child: Text(message, style: context.listSubtitleStyle),
-            ),
+    // 三段法律文本是本应用里最长的一段连续正文。此前它被夹在
+    // `CommonDialog` 的默认内容上限（348 − 30×2 = 288dp）里，再加上外层
+    // `Padding(horizontal: 24)`，真机 411dp 宽的屏上正文只剩约 230dp 宽 ——
+    // 一行不到 12 个汉字，滚动条要拖四次才读得完。
+    //
+    // 长文档与短问句的排版要求是相反的：iOS 的告警宽度（270–348）是为一句
+    // 「是否删除」调的，而这段文本需要的是「铺满能铺的宽度」。所以这里显式
+    // 请求满宽、把 inset 收到 20，并把正文内缩从 30 降到 20：411 − 20×2 − 20×2
+    // = 331dp 的正文宽度，比原来宽 44%。
+    return CommonDialog(
+      title: '使用须知与免责声明',
+      width: double.infinity,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+      actions: [
+        TextButton(onPressed: onDecline, child: const Text('不同意并退出')),
+        TextButton(onPressed: onAccept, child: const Text('同意并继续')),
+      ],
+      // 正文较长（三段），必须可滚：小屏 + 大字号下整段放不下，写死高度会
+      // 把按钮挤出屏幕。行高 1.6 而不是默认的 1.33：连续汉字正文靠行距分辨
+      // 行，默认行距在三段法律文本上读起来是糊成一片的（与免责声明页正文
+      // `InitialAgreementCard` 的 1.6 一致）。
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+        ),
+        child: SingleChildScrollView(
+          child: Text(
+            message,
+            style: context.listSubtitleStyle.copyWith(height: 1.6),
           ),
         ),
       ),

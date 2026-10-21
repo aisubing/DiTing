@@ -411,9 +411,10 @@ async function main() {
     return;
   }
 
-  // `now` 只量当前画面，必须附着到已经在跑的实例：`one`/`sheet` 都会重启 app，
-  // 一重启浮层就没了，量到的是重启后的首页。
-  await connect({ attach: cmd === 'now' });
+  // `now`/`go` 只量当前画面，必须附着到已经在跑的实例：`one`/`sheet` 都会重启
+  // app，一重启浮层就没了、内存态设置（玻璃档位等）也回到默认值，量到的是重启后
+  // 的首页。要「先在外观页设好档位、再量别的页面」就必须用 `go`。
+  await connect({ attach: cmd === 'now' || cmd === 'go' });
   fs.mkdirSync(OUT, { recursive: true });
 
   if (cmd === 'one') {
@@ -495,6 +496,15 @@ async function main() {
     fs.writeFileSync(path.join(OUT, `${slug(label)}.json`), JSON.stringify(p, null, 1));
     const f = audit(p, label);
     console.log(f.length ? f.join('\n') : `${label}: OK (${p.texts.filter((t) => !t.off).length} 文本)`);
+  } else if (cmd === 'go') {
+    // 附着到**已经在跑**的实例后跳页：不重启，因此内存态的界面设置（Liquid
+    // 玻璃档位、底栏形态、tab 动画）都还在。`one` 每次都会 force-stop，
+    // 想量「开了玻璃之后某一页长什么样」就只能走这条路。
+    await gotoRoute(a1);
+    const p = await capture(a1, false);
+    fs.writeFileSync(path.join(OUT, `${slug(a1)}.json`), JSON.stringify(p, null, 1));
+    const f = audit(p, a1);
+    console.log(f.length ? f.join('\n') : `${a1}: OK (${p.texts.filter((t) => !t.off).length} 文本)`);
   } else if (cmd === 'now') {
     // 量「当前屏幕」而不跳页：浮层里的顶栏遮挡只有在点开之后才量得到，
     // 一旦 `go` 就会把浮层关掉。

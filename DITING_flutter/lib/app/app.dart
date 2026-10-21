@@ -70,6 +70,13 @@ class _DitingAppState extends ConsumerState<DitingApp> {
         //
         // `LiquidGlassScope` 也挂在这一层：`lib/ui` 的浮条与卡片用它决定要不要
         // 走模糊路径，挂在 Navigator 之下会让浮层里的玻璃效果失效。
+        //
+        // `LiquidGlassHost` 必须与它成对挂上，而且必须包住**所有**玻璃面：
+        // 它负责在合成阶段把玻璃背后的内容抓成一张图，供各个 pane 折射/模糊。
+        // 少挂这一层时每个 pane 只能走 `_addFrost` 的兜底——只剩下 tint + 描边，
+        // 看起来「玻璃没生效」（本轮真机复现的正是这个：开关切到标准/极致，
+        // 浮条渲染与关闭时逐像素相同）。上游 `theme_manager.dart` 里
+        // `_LiquidGlassSetting` 也是 Scope + Host 一起挂。
         // 首启「使用须知与免责声明」也挂在这一层（旧版 `InitialAgreementDialog`
         // 在 Activity 里弹一次）：它必须盖住整棵树，包括浮层路由。已同意时
         // `InitialAgreementGate` 直接返回 child，不增加任何布局层级。
@@ -81,8 +88,11 @@ class _DitingAppState extends ConsumerState<DitingApp> {
               child: LiquidGlassScope(
                 enabled: glass.enabled,
                 quality: glass.quality,
-                child: InitialAgreementGate(
-                  child: child ?? const SizedBox.shrink(),
+                child: LiquidGlassHost(
+                  enabled: glass.enabled,
+                  child: InitialAgreementGate(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),

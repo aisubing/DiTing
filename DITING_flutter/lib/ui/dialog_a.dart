@@ -111,6 +111,26 @@ class CommonDialog extends StatelessWidget {
   /// The last action destroys data: red on the plain fill, as in UIKit.
   final bool destructive;
 
+  /// The width the pane should take, in dp.
+  ///
+  /// iOS sizes an alert from its content (min 270, max 270 on compact), which is
+  /// right for one short question. Long-form text — the first-run agreement, a
+  /// licence — needs the opposite: the pane should fill the width the insets
+  /// leave, or the paragraph turns into a narrow ribbon 6–8 characters wide per
+  /// line and the reader scrolls four times as far.
+  ///
+  /// `null` keeps the alert's own intrinsic sizing. A value here is clamped to
+  /// what the screen can show, so a caller can ask for a generous width without
+  /// measuring the device first.
+  final double? width;
+
+  /// The margin between the pane and the screen edge.
+  ///
+  /// `null` keeps [AlertDialog]'s own (40 a side), which is right for an alert
+  /// whose pane is already narrow. Long-form panes want to spend that margin on
+  /// text instead.
+  final EdgeInsets? insetPadding;
+
   const CommonDialog({
     super.key,
     required this.title,
@@ -120,7 +140,19 @@ class CommonDialog extends StatelessWidget {
     this.padding,
     this.hasFields = false,
     this.destructive = false,
+    this.width,
+    this.insetPadding,
   });
+
+  /// [width] clamped to the space the dialog's own inset padding leaves.
+  double? _resolvedWidth(BuildContext context) {
+    final width = this.width;
+    if (width == null) {
+      return null;
+    }
+    final inset = insetPadding?.horizontal ?? _dialogInset * 2;
+    return math.min(width, MediaQuery.sizeOf(context).width - inset);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,8 +161,16 @@ class CommonDialog extends StatelessWidget {
     final glass = LiquidGlassScope.of(context);
     final colorScheme = context.colorScheme;
     final fill = glass ? glassFillOf(colorScheme) : null;
+    final resolvedWidth = _resolvedWidth(context);
     final dialog = AlertDialog(
       backgroundColor: glass ? Colors.transparent : null,
+      insetPadding: insetPadding,
+      // 固定宽度必须落在 `AlertDialog.constraints` 上：`content` 的 `maxWidth`
+      // 只约束内容，对话框本身仍按内容取固有宽度，于是「内容上限 288」的结果是
+      // 面板只有 283dp（真机 411dp 宽的屏上占 69%）。
+      constraints: resolvedWidth == null
+          ? null
+          : BoxConstraints(minWidth: resolvedWidth, maxWidth: resolvedWidth),
       titleTextStyle: hasFields
           ? AppTextStyle.body.of(context)
           : AppTextStyle.headline.of(context),
@@ -168,7 +208,9 @@ class CommonDialog extends StatelessWidget {
           ),
       content: Container(
         constraints: BoxConstraints(
-          maxWidth: padding == null
+          maxWidth: resolvedWidth != null
+              ? resolvedWidth - contentInset * 2
+              : padding == null
               ? _alertWidth - contentInset * 2
               : _contentMaxWidth,
         ),

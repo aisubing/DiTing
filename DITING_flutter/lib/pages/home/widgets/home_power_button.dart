@@ -7,6 +7,12 @@ import 'package:material_ui/material_ui.dart';
 /// 上游 `PowerToggleButton.kt` 是「glow + halo + 圆钮 + 文案」四层同步 250ms
 /// 变色/变尺寸；这里保留同一结构，用 `AnimatedContainer` 驱动，视觉层次与
 /// 上游一致：运行态是主色实心、停止态是表面色描边。
+///
+/// **圆钮下面不再写字**：停止态原先压一行「开启」，与圆钮里的播放三角重复表达
+/// 同一件事，而且在 124dp 圆钮下那行小字既不参与点击（命中区仍是圆钮），又把
+/// 按钮的视觉重心拉低——首页首屏最醒目的一块反而显得松散。状态改由
+/// [Semantics.value]（无障碍朗读）与运行/停止两态的配色区分；`label` 参数保留
+/// 下来喂语义，不做可见文案。
 class HomePowerButton extends StatelessWidget {
   const HomePowerButton({
     super.key,
@@ -41,9 +47,11 @@ class HomePowerButton extends StatelessWidget {
       label: label,
       value: state.label,
       child: Center(
+        // 圆钮本身只占 240 方框中间那一圈；去掉圆钮下方的文案后，方框高度可以
+        // 收紧到 halo 的直径，否则首屏会留出一段没有内容的空白。
         child: SizedBox(
           width: 240,
-          height: 240,
+          height: 176,
           child: Stack(
             alignment: Alignment.center,
             children: [
@@ -74,24 +82,6 @@ class HomePowerButton extends StatelessWidget {
                 state: state,
                 foreground: foreground,
                 onPressed: busy ? null : onPressed,
-              ),
-              // 文案压在圆钮下方，跟着状态变；busy 时显示「启动中」。
-              Positioned(
-                bottom: 34,
-                child: AnimatedSwitcher(
-                  duration: _duration,
-                  child: Text(
-                    label,
-                    key: ValueKey(label),
-                    style: AppTextStyle.subheadline
-                        .of(context, emphasized: true)
-                        .copyWith(
-                          color: running
-                              ? colorScheme.primary
-                              : colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ),
               ),
             ],
           ),

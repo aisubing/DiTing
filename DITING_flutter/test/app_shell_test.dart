@@ -64,7 +64,9 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
     expect(find.byType(CommonCircleLoading), findsNothing);
-    expect(find.text('停止'), findsOneWidget);
+    // 圆钮下面不再写「停止」：状态改由语义标签承载（视觉上由运行/停止两态的
+    // 配色区分）。所以这里断言语义标签，而不是可见文本。
+    expect(find.bySemanticsLabel('停止'), findsOneWidget);
   });
 
   testWidgets('底栏切页后 branch 保留状态', (tester) async {

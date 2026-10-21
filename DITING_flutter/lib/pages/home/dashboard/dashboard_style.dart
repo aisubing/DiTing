@@ -156,6 +156,17 @@ EdgeInsets dashboardCardPadding(DashboardDensity density) => switch (density) {
   ),
 };
 
+/// 相邻两张仪表盘卡片之间的纵向间距。
+///
+/// 首页与日志仪表盘共用同一批卡片组件，间距也必须只有一个来源：卡片自身
+/// **不带**外边距（`DashboardCard` 只有内边距与阴影），间距一律由外层
+/// `Column(spacing:)` 给出。上游 `dashboard.dart` 的移动分支同样是
+/// `spacing: 12`。
+///
+/// 12 而不是更小：卡片的圆角是 34，阴影往下铺 12，间距小于阴影高度时相邻卡片
+/// 的投影会盖到下一张的圆角上，看起来像两张卡黏在一起。
+const double dashboardCardGap = 12;
+
 double dashboardCardRadius(DashboardDensity density) => density.isDesktop
     ? DashboardCorner.desktopCard
     : DashboardCorner.mobileCard;

@@ -5,6 +5,7 @@ import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
+import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/pages/home/dashboard/edit/dashboard_edit_sheet.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -106,7 +107,7 @@ class DashboardBoard extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: side),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
+        spacing: dashboardCardGap,
         children: [
           for (final widget in widgets)
             _CardEntrance(
@@ -183,7 +184,7 @@ class _EditingBoard extends ConsumerWidget {
       padding: EdgeInsets.symmetric(horizontal: side),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
+        spacing: dashboardCardGap,
         children: [
           // 编辑提示条：说明当前处于编辑模式、手势怎么用。
           Container(

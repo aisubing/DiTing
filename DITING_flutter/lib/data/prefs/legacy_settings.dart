@@ -81,9 +81,40 @@ class LegacySettings {
   void setPaletteRaw(String storageValue) =>
       _store.putString(uiContainer, 'theme_color_style', storageValue);
 
+  // --------------------------------------------- appearance (Flutter-only)
+
+  /// Liquid 玻璃档位（`none` / `standard` / `ultra`）。
+  ///
+  /// 1.4.3 没有这一项，所以键名是本仓新增的；仍放进 `dns_vpn_prefs`，与其余
+  /// 外观键同容器，备份/恢复时天然一起走。
+  ///
+  /// **必须落盘**：这一档决定整个应用要不要走离屏合成（`LiquidGlassHost`
+  /// 抓图 + 每个玻璃面折射）。只在内存里记的后果是——用户在设置里选了「极致」，
+  /// 退出应用再进来就静默回到「关闭」，而设置项本身仍显示用户选过的值，
+  /// 看起来像「玻璃被重置了」。（本轮真机复现：`18_ultra.png` 选完生效，
+  /// 重启后 `19_home_ultra.png` 里浮条又变回实色白胶囊。）
+  String get liquidGlassModeRaw =>
+      _string(uiContainer, 'liquid_glass_mode') ?? 'none';
+
+  void setLiquidGlassModeRaw(String storageValue) =>
+      _store.putString(uiContainer, 'liquid_glass_mode', storageValue);
+
+  /// 底栏形态（`floating` / `docked`）。理由同上。
+  String get bottomBarStyleRaw =>
+      _string(uiContainer, 'bottom_bar_style') ?? 'floating';
+
+  void setBottomBarStyleRaw(String storageValue) =>
+      _store.putString(uiContainer, 'bottom_bar_style', storageValue);
+
+  /// tab 切换动画（`none` / `fade` / `slide` / `scale`）。理由同上。
+  String get tabTransitionRaw =>
+      _string(uiContainer, 'tab_transition') ?? 'slide';
+
+  void setTabTransitionRaw(String storageValue) =>
+      _store.putString(uiContainer, 'tab_transition', storageValue);
+
   double get componentOpacity =>
       _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
-
   /// Per-element opacity falls back to the shared component opacity, exactly
   /// like `AppearanceSettingsStore.getHomeOpacity`.
   double homeOpacity(String storageKey) =>

@@ -22,6 +22,9 @@ const double _actionHeight = 48;
 const double _textInset = 30;
 const double _alertWidth = 348;
 const double _contentMaxWidth = 300;
+// `AlertDialog` 默认 `insetPadding` 是左右各 40；`_dialogInset` 用它把调用方
+// 请求的宽度夹到「屏幕还放得下」的范围内（见 `CommonDialog._resolvedWidth`）。
+const double _dialogInset = 40;
 // Material 3 sets a filled field's text 4 in past its content padding.
 const double _fieldInputGap = 4;
 const double _pressGrowth = 4;
