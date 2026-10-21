@@ -1,10 +1,9 @@
 import 'package:diting/pages/home/dashboard/dashboard_board.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
+import 'package:diting/pages/home/widgets/home_dns_detail_block.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/pages/home/widgets/home_provider_card.dart';
-import 'package:diting/pages/home/widgets/home_quick_entries.dart';
 import 'package:diting/pages/home/widgets/home_resolution_card.dart';
-import 'package:diting/pages/server/server_page.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
@@ -19,12 +18,18 @@ import 'package:material_ui/material_ui.dart';
 
 /// 首页 / 仪表盘。
 ///
-/// 结构（对齐上游 `views/dashboard/dashboard.dart` 的移动分支）：
-/// 电源区 → 首页句子 → 服务商卡 → 解析模式卡 → **可编排卡片区** → 快捷入口。
+/// 结构对齐 1.4.3 的 `MainScreenContent.kt`（`DnsHomeContent`）：
+/// 电源区 → 首页句子 → 服务商选择 → 解析模式 → **DNS 服务详情** → 可编排卡片区。
 ///
-/// 上游那张「卡片编排 + 编辑模式」的实现在 `dashboard_board.dart`；这里只负责
-/// 顶部固定区与编排区的拼接。固定区不参与编排——上游同样把电源区留在了
-/// 仪表盘之外（它是 `home.dart` 的层，不是卡片）。
+/// 与旧版的两处差异，都是产品决策：
+/// 1. 旧版首页只有固定块，本仓保留了「卡片编排 + 编辑模式」
+///    （`dashboard_board.dart`），卡片集换成旧版真实存在的统计块；
+/// 2. 旧版没有快捷入口与顶栏菜单——上一轮的 `HomeQuickEntries` 与服务统计条、
+///    以及「工作模式 / 三步引导 / 代理 / 配置档案 / 外观 / 组件画廊」六项菜单
+///    已在本轮删除（FlClash 遗留，1.4.3 无对应物）。
+///
+/// 服务器模式**不在这里分支**：`lib/shell/app_shell.dart` 在壳这一层就把整棵树
+/// 换成了 `ServerModeShell`，这里再套一层会出现两套底栏。
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -85,11 +90,6 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(workModeProvider);
-    // 服务器模式的首页就是服务器概览（上游 DnsHomeScreen）：普通仪表盘的
-    // 电源开关驱动的是 VPN，放在这里只会把「启动失败」露给用户。
-    if (mode == AppWorkMode.server) {
-      return const ServerPage();
-    }
     final power = ref.watch(powerProvider);
     final sentence = ref.watch(homeSentenceProvider);
     final opacity = ref.watch(homeOpacityProvider);
@@ -101,11 +101,10 @@ class _HomePageState extends ConsumerState<HomePage>
         primaryAction: IconButtonData(
           glyph: editing ? AppGlyphs.check : AppGlyphs.customize,
           tooltip: editing ? '完成' : '编辑仪表盘',
-          onPressed: () =>
-              ref.read(dashboardEditingProvider.notifier).toggle(),
+          onPressed: () => ref.read(dashboardEditingProvider.notifier).toggle(),
         ),
         // 模式已在标题里写明，顶栏不再放文字胶囊——它夹在两个圆形按钮之间
-        // 显得突兀。改用同尺寸圆形图标，三种动作保持同一种形状。
+        // 显得突兀。改用同尺寸圆形图标，两种动作保持同一种形状。
         actions: [
           if (!editing)
             IconButton(
@@ -113,38 +112,6 @@ class _HomePageState extends ConsumerState<HomePage>
               onPressed: () => context.push(Routes.modeSelect),
               icon: const GlyphIcon(AppGlyphs.swap),
             ),
-        ],
-        menuItems: [
-          CommonPopupMenuItem(
-            label: '工作模式',
-            glyph: AppGlyphs.layers,
-            onPressed: () => context.push(Routes.modeSelect),
-          ),
-          CommonPopupMenuItem(
-            label: '三步引导',
-            glyph: AppGlyphs.puzzle,
-            onPressed: () => context.push(Routes.modeOnboarding),
-          ),
-          CommonPopupMenuItem(
-            label: '代理',
-            glyph: AppGlyphs.proxies,
-            onPressed: () => context.push(ProxiesPaths.proxies),
-          ),
-          CommonPopupMenuItem(
-            label: '配置档案',
-            glyph: AppGlyphs.profiles,
-            onPressed: () => context.push(ProfilesPaths.profiles),
-          ),
-          CommonPopupMenuItem(
-            label: '外观',
-            glyph: AppGlyphs.palette,
-            onPressed: () => context.push(SystemPaths.theme),
-          ),
-          CommonPopupMenuItem(
-            label: '组件画廊',
-            glyph: AppGlyphs.sparkle,
-            onPressed: () => context.push(Routes.demo),
-          ),
         ],
         body: PageBody(
           children: [
@@ -167,9 +134,11 @@ class _HomePageState extends ConsumerState<HomePage>
                     child: Text(
                       text,
                       textAlign: TextAlign.center,
-                      style: AppTextStyle.subheadline.of(context).copyWith(
-                        color: context.colorScheme.onSurfaceVariant,
-                      ),
+                      style: AppTextStyle.subheadline
+                          .of(context)
+                          .copyWith(
+                            color: context.colorScheme.onSurfaceVariant,
+                          ),
                     ),
                   ),
                 ),
@@ -190,23 +159,25 @@ class _HomePageState extends ConsumerState<HomePage>
                 ),
               ),
               const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Opacity(
+                  opacity: opacity[HomeLayer.dnsDetail] ?? 1,
+                  child: const HomeDnsDetailBlock(),
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
             DashboardBoard(
-              onOpenConnections: () => context.push(
-                ObservabilityPaths.connections,
+              actions: DashboardCardActions(
+                onOpenRequests: () => context.push(ObservabilityPaths.requests),
+                onOpenCache: () => context.push(LogPaths.cache),
+                onOpenRace: () => context.push(LogPaths.race),
+                onOpenBootstrap: () => context.push(LogPaths.bootstrap),
+                onOpenSubscriptionStats: () =>
+                    context.push(LogPaths.subscriptionStats),
               ),
-              onOpenGroup: (groupName) => context.push(
-                ProxiesPaths.proxies,
-              ),
-              // 上游这里点卡片直接开当前配置的详情浮层
-              // （`widgets/profiles.dart:53` 的 `showProfileDetailSheet`），
-              // 卡片上的「切换」才进配置档案列表。本仓改用路由承载详情页。
-              onOpenProfiles: () => context.push(DashboardPaths.profileDetail),
             ),
-            if (!editing) ...[
-              const SizedBox(height: 16),
-              HomeQuickEntries(mode: mode),
-            ],
             const SizedBox(height: 8),
           ],
         ),
@@ -219,37 +190,6 @@ class _HomePageState extends ConsumerState<HomePage>
     AppWorkMode.server => '谛听 · 服务器',
     AppWorkMode.express => '谛听 · 极速',
   };
-}
-
-/// 把 [DashboardDensityScope] 挂到仪表盘子树上。
-///
-/// 密度由可用宽度与高度共同决定（上游同名判定），因此需要一次 `LayoutBuilder`
-/// 才能拿到；文本缩放从 `MediaQuery` 取，与 `AppScopes` 夹过的值一致。
-class DashboardDensityScopeHost extends StatelessWidget {
-  const DashboardDensityScopeHost({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = Size(
-          constraints.maxWidth.isFinite
-              ? constraints.maxWidth
-              : MediaQuery.sizeOf(context).width,
-          constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : MediaQuery.sizeOf(context).height,
-        );
-        return DashboardDensityScope(
-          density: DashboardDensity.of(size),
-          scale: MediaQuery.textScalerOf(context).scale(1),
-          child: child,
-        );
-      },
-    );
-  }
 }
 
 /// 句子按电源状态二选一；运行/启动中显示「运行」那句。

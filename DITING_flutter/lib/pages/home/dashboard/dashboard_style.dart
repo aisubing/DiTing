@@ -156,8 +156,9 @@ EdgeInsets dashboardCardPadding(DashboardDensity density) => switch (density) {
   ),
 };
 
-double dashboardCardRadius(DashboardDensity density) =>
-    density.isDesktop ? DashboardCorner.desktopCard : DashboardCorner.mobileCard;
+double dashboardCardRadius(DashboardDensity density) => density.isDesktop
+    ? DashboardCorner.desktopCard
+    : DashboardCorner.mobileCard;
 
 /// 字节数 →「1.2 MB」。1000 进制，与流量页口径一致。
 String dashboardTraffic(num bytes) {

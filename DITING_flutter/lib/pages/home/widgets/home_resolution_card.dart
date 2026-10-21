@@ -27,9 +27,7 @@ class HomeResolutionCard extends ConsumerWidget {
             children: [
               const GlyphIcon(AppGlyphs.shuffle, size: 20),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text('解析模式', style: context.listTitleStyle),
-              ),
+              Expanded(child: Text('解析模式', style: context.listTitleStyle)),
               Text(
                 resolution.label,
                 style: AppTextStyle.footnote
@@ -40,7 +38,8 @@ class HomeResolutionCard extends ConsumerWidget {
           ),
           SegmentedControl<ResolutionMode>(
             segments: [
-              for (final option in ResolutionMode.values) (option, option.label),
+              for (final option in ResolutionMode.values)
+                (option, option.label),
             ],
             value: resolution,
             onChanged: (value) =>
@@ -48,9 +47,9 @@ class HomeResolutionCard extends ConsumerWidget {
           ),
           Text(
             _describe(resolution),
-            style: AppTextStyle.footnote.of(context).copyWith(
-              color: context.colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyle.footnote
+                .of(context)
+                .copyWith(color: context.colorScheme.onSurfaceVariant),
           ),
         ],
       ),

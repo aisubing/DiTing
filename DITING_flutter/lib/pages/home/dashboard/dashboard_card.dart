@@ -182,7 +182,9 @@ class DashboardBlock extends StatelessWidget {
       decoration: ShapeDecoration(
         color: color ?? DashboardColors.of(context).tone,
         shape: AppShape.all(
-          density.isDesktop ? DashboardCorner.block : DashboardCorner.mobileBlock,
+          density.isDesktop
+              ? DashboardCorner.block
+              : DashboardCorner.mobileBlock,
         ),
       ),
       child: child,
@@ -214,10 +216,7 @@ class DashboardChip extends StatelessWidget {
     final colorScheme = context.colorScheme;
     final colors = DashboardColors.of(context);
     final (foreground, background) = switch (tone) {
-      DashboardChipTone.idle => (
-        colorScheme.onSurfaceVariant,
-        colors.tone,
-      ),
+      DashboardChipTone.idle => (colorScheme.onSurfaceVariant, colors.tone),
       DashboardChipTone.ok => (colorScheme.success, colors.tone),
       DashboardChipTone.warn => (colorScheme.warning, colors.tone),
     };
@@ -247,9 +246,7 @@ class DashboardChip extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: (large
-                    ? AppTextStyle.footnote
-                    : AppTextStyle.caption1)
+            style: (large ? AppTextStyle.footnote : AppTextStyle.caption1)
                 .of(context, emphasized: true)
                 .toTabular
                 .copyWith(color: foreground),

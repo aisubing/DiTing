@@ -64,7 +64,10 @@ const probeServices = <ProbeService>[
 /// 形态：每行一个探测项 + 状态点 + 可点开看延迟历史。1050 行里绝大部分是
 /// 桌面多列与动画细节，Android 单列用不到。
 class ServiceStatusCard extends ConsumerStatefulWidget {
-  const ServiceStatusCard({super.key});
+  const ServiceStatusCard({super.key, this.onDetail});
+
+  /// 右上角「详情」的落点（有对应下钻页时才给）。
+  final VoidCallback? onDetail;
 
   @override
   ConsumerState<ServiceStatusCard> createState() => _ServiceStatusCardState();
@@ -91,6 +94,12 @@ class _ServiceStatusCardState extends ConsumerState<ServiceStatusCard> {
             glyph: AppGlyphs.status,
             title: '服务状态',
             trailing: [
+              if (widget.onDetail != null)
+                DashboardIconButton(
+                  glyph: AppGlyphs.chevronForward,
+                  tooltip: '详情',
+                  onPressed: widget.onDetail,
+                ),
               DashboardIconButton(
                 glyph: AppGlyphs.refresh,
                 tooltip: '重新探测',

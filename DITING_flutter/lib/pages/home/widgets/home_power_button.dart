@@ -125,7 +125,9 @@ class _ButtonFace extends StatelessWidget {
         height: size,
         decoration: ShapeDecoration(
           shape: const CircleBorder(),
-          color: running ? colorScheme.primary : colorScheme.surfaceContainerHigh,
+          color: running
+              ? colorScheme.primary
+              : colorScheme.surfaceContainerHigh,
           shadows: [
             BoxShadow(
               color: (running ? colorScheme.primary : Colors.black).withValues(

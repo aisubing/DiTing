@@ -1,8 +1,12 @@
-/// 仪表盘演示数据。
+/// 仪表盘演示数据与卡片注册表。
 ///
 /// 上游这些值全部来自内核 `trafficsProvider` / `connectionsProvider` 等实时流；
 /// 本轮只做 UI，因此用「固定形状 + 缓动」的假数据：形状与真实一致（环形缓冲、
 /// 单调递增的总量、阶段性的连接数），但数值不来自网络。
+///
+/// 旧的 FlClash 专属模型（`CurrentProfile` / `OutboundMode` / `MemoryInfo` /
+/// `IntranetInfo` / `ConnectionStats`）已随对应的仪表盘卡片一起删除：1.4.3 没有
+/// 这些界面，留着只会让后继者再长出一页假数据。
 library;
 
 import 'dart:math' as math;
@@ -102,142 +106,9 @@ const mockTrafficTotals = TrafficTotals(
   down: 1.2 * 1024 * 1024 * 1024.0,
 );
 
-/// 连接统计三计数（上游 `connection_stats.dart` 的 ConnectionStatsCard）。
-class ConnectionStats {
-  const ConnectionStats({
-    required this.active,
-    required this.closed,
-    required this.upload,
-    required this.download,
-  });
-
-  final int active;
-  final int closed;
-  final double upload;
-  final double download;
-}
-
-const mockConnectionStats = ConnectionStats(
-  active: 128,
-  closed: 4218,
-  upload: 3.4 * 1024 * 1024.0,
-  download: 84.6 * 1024 * 1024.0,
-);
-
-/// 内网 IP 信息（上游 `intranet_ip.dart`）。
-class IntranetInfo {
-  const IntranetInfo({
-    required this.address,
-    required this.interfaceName,
-    required this.allowLan,
-    required this.port,
-  });
-
-  final String address;
-  final String interfaceName;
-  final bool allowLan;
-  final int port;
-
-  /// 允许局域网连接时把端口带在地址后。
-  String get display => allowLan ? '$address:$port' : address;
-}
-
-const mockIntranet = IntranetInfo(
-  address: '192.168.1.42',
-  interfaceName: 'wlan0',
-  allowLan: true,
-  port: 7890,
-);
-
-/// 内存信息（上游 `memory_info.dart` + `MemoryDetailSheet`）。
-class MemoryInfo {
-  const MemoryInfo({
-    required this.used,
-    required this.total,
-    required this.heapUsed,
-    required this.heapTotal,
-    required this.rss,
-    required this.goroutines,
-  });
-
-  final int used;
-  final int total;
-  final int heapUsed;
-  final int heapTotal;
-  final int rss;
-  final int goroutines;
-
-  double get ratio => total == 0 ? 0 : used / total;
-
-  double get percent => ratio * 100;
-
-  /// 剩余量，详情浮层里用。
-  int get free => total - used;
-}
-
-const mockMemory = MemoryInfo(
-  used: 186 * 1024 * 1024,
-  total: 512 * 1024 * 1024,
-  heapUsed: 42 * 1024 * 1024,
-  heapTotal: 128 * 1024 * 1024,
-  rss: 214 * 1024 * 1024,
-  goroutines: 86,
-);
-
-/// 内存历史采样（详情浮层里的小趋势图）。
-List<double> buildMockMemoryHistory({int count = 40}) => [
-  for (var i = 0; i < count; i++)
-    mockMemory.used * (0.78 + 0.22 * (i % 9) / 9),
-];
-
-/// 出站模式（上游 `enum/enum.dart` 的 `Mode`）。
-enum OutboundMode {
-  rule('规则'),
-  global('全局'),
-  direct('直连');
-
-  const OutboundMode(this.label);
-
-  final String label;
-}
-
-/// 当前配置档案（上游 `profiles.dart` 的 ProfilesCard）。
-class CurrentProfile {
-  const CurrentProfile({
-    required this.name,
-    required this.type,
-    required this.updatedAt,
-    required this.upload,
-    required this.download,
-    required this.total,
-    required this.expireAt,
-    required this.progress,
-  });
-
-  final String name;
-  final String type;
-  final String updatedAt;
-  final double upload;
-  final double download;
-  final double total;
-  final String expireAt;
-
-  /// 已完成比例；`null` 表示无上限（不画进度条）。
-  final double? progress;
-}
-
-const mockCurrentProfile = CurrentProfile(
-  name: '谛听 · 订阅',
-  type: '远程',
-  updatedAt: '3 分钟前',
-  upload: 1.4 * 1024 * 1024 * 1024.0,
-  download: 42.7 * 1024 * 1024 * 1024.0,
-  total: 100 * 1024 * 1024 * 1024.0,
-  expireAt: '2027-03-14',
-  progress: 0.44,
-);
-
 /// 内核状态（上游 `core_status_button.dart`）。
+///
+/// 服务状态卡靠它判断「内核是否在跑」：未运行时探测按钮禁用、状态点变灰。
 enum CoreState {
   running('运行中'),
   stopped('已停止'),
@@ -249,52 +120,37 @@ enum CoreState {
   final String label;
 }
 
-/// 仪表盘可编排卡片（上游 `enum/enum.dart` 的 `DashboardWidget`，11 项）。
+/// 仪表盘可编排卡片。
 ///
-/// 顺序即上游 `dashboard/widget_registry.dart` 的注册顺序。编辑模式增删卡片
-/// 直接用这个枚举，避免另建一套 id。
+/// 1.4.3 的仪表盘没有「卡片编排」这个概念（它是一屏固定统计块），本仓保留
+/// 编排能力，但**卡片集换成了旧版真实存在的统计块**：全部来自
+/// `Android/.../ui/dashboard/ModernLogDashboardModeViews.kt`。
+///
+/// 顺序即「添加卡片」浮层里的展示顺序，与 `AllModeDashboard` 的块顺序一致。
 enum DashboardWidget {
-  currentOutbound('当前状态'),
-  networkSpeed('网络速率'),
-  outboundMode('出站模式'),
-  vpn('网络接管'),
   serviceStatus('服务状态'),
-  profiles('配置档案'),
-  proxyGroups('代理组'),
-  connectionStats('连接统计'),
-  intranetIp('内网 IP'),
-  memory('内存占用');
+  trafficMonitor('流量监控'),
+  requestOverview('请求概览'),
+  trafficStructure('今日流量结构'),
+  recentRequests('最近请求'),
+  cacheHotspots('缓存热点'),
+  raceWinners('竞速胜出'),
+  bootstrapDns('Bootstrap DNS'),
+  ruleBlocks('规则拦截'),
+  filteredHighlight('重点记录');
 
   const DashboardWidget(this.label);
 
   final String label;
-
-  /// 该卡片是否可以在当前平台上出现。桌面专属项在 Android 上直接不可选。
-  static const mobileAvailable = {
-    DashboardWidget.currentOutbound,
-    DashboardWidget.networkSpeed,
-    DashboardWidget.outboundMode,
-    DashboardWidget.vpn,
-    DashboardWidget.serviceStatus,
-    DashboardWidget.profiles,
-    DashboardWidget.proxyGroups,
-    DashboardWidget.connectionStats,
-    DashboardWidget.intranetIp,
-    DashboardWidget.memory,
-  };
 }
 
-/// [DashboardWidget] 的消费侧派生数据：某张卡片是否应该出现在仪表盘上。
+/// 首页默认上屏的四块：服务状态 → 流量 → 请求概览 → 流量结构。
 ///
-/// 上游把「显示哪些卡片」存在 `dashboardWidgets` 配置里（用户可编排）；这里
-/// 只在内存里维持一份，供编辑模式演示。
+/// 与旧版 `AllModeDashboard` 的前四块一一对应，也是打开首页第一屏能看到的
+/// 内容；其余六块通过编辑模式「添加卡片」加进来。
 const defaultDashboardWidgets = <DashboardWidget>[
   DashboardWidget.serviceStatus,
-  DashboardWidget.networkSpeed,
-  DashboardWidget.connectionStats,
-  DashboardWidget.profiles,
-  DashboardWidget.proxyGroups,
-  DashboardWidget.outboundMode,
-  DashboardWidget.intranetIp,
-  DashboardWidget.memory,
+  DashboardWidget.trafficMonitor,
+  DashboardWidget.requestOverview,
+  DashboardWidget.trafficStructure,
 ];

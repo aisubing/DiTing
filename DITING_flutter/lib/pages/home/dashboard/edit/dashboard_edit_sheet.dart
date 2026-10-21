@@ -16,7 +16,7 @@ class DashboardEditSheet extends ConsumerWidget {
     final widgets = ref.watch(dashboardWidgetsProvider);
     final notifier = ref.read(dashboardWidgetsProvider.notifier);
     final available = [
-      for (final widget in DashboardWidget.mobileAvailable)
+      for (final widget in DashboardWidget.values)
         if (!widgets.contains(widget)) widget,
     ];
     return CommonScaffold(
@@ -63,29 +63,29 @@ class DashboardEditSheet extends ConsumerWidget {
   }
 
   static Glyph _glyphOf(DashboardWidget widget) => switch (widget) {
-    DashboardWidget.currentOutbound => AppGlyphs.status,
-    DashboardWidget.networkSpeed => AppGlyphs.speed,
-    DashboardWidget.outboundMode => AppGlyphs.split,
-    DashboardWidget.vpn => AppGlyphs.vpn,
     DashboardWidget.serviceStatus => AppGlyphs.status,
-    DashboardWidget.profiles => AppGlyphs.profiles,
-    DashboardWidget.proxyGroups => AppGlyphs.proxies,
-    DashboardWidget.connectionStats => AppGlyphs.connections,
-    DashboardWidget.intranetIp => AppGlyphs.devices,
-    DashboardWidget.memory => AppGlyphs.memory,
+    DashboardWidget.trafficMonitor => AppGlyphs.dataUsage,
+    DashboardWidget.requestOverview => AppGlyphs.requests,
+    DashboardWidget.trafficStructure => AppGlyphs.speed,
+    DashboardWidget.recentRequests => AppGlyphs.logs,
+    DashboardWidget.cacheHotspots => AppGlyphs.layers,
+    DashboardWidget.raceWinners => AppGlyphs.shuffle,
+    DashboardWidget.bootstrapDns => AppGlyphs.dns,
+    DashboardWidget.ruleBlocks => AppGlyphs.rules,
+    DashboardWidget.filteredHighlight => AppGlyphs.block,
   };
 
   static String _descriptionOf(DashboardWidget widget) => switch (widget) {
-    DashboardWidget.currentOutbound => '内核状态、出站链与快捷动作',
-    DashboardWidget.networkSpeed => '实时上下行速率与累计流量',
-    DashboardWidget.outboundMode => '规则 / 全局 / 直连三选一',
-    DashboardWidget.vpn => '本地 VPN 接管开关',
     DashboardWidget.serviceStatus => '各服务探测结果与延迟',
-    DashboardWidget.profiles => '当前配置、用量进度与到期时间',
-    DashboardWidget.proxyGroups => '各代理组当前选中与延迟',
-    DashboardWidget.connectionStats => '活动连接、已关闭与累计流量',
-    DashboardWidget.intranetIp => '本机局域网地址与端口',
-    DashboardWidget.memory => '内核内存占用与明细',
+    DashboardWidget.trafficMonitor => '今日代理流量与实时上下行速率',
+    DashboardWidget.requestOverview => '今日请求、通过、过滤与缓存命中',
+    DashboardWidget.trafficStructure => '今日流量结构与竞速、拦截、缓存比率',
+    DashboardWidget.recentRequests => '最近五条 DNS 与 HTTPS 请求',
+    DashboardWidget.cacheHotspots => '命中次数最高的缓存域名',
+    DashboardWidget.raceWinners => '竞速胜出服务商与平均耗时',
+    DashboardWidget.bootstrapDns => 'Bootstrap 节点成功率与耗时',
+    DashboardWidget.ruleBlocks => '各订阅规则拦截次数与占比',
+    DashboardWidget.filteredHighlight => '仅拦截与错误模式的重点记录四格',
   };
 }
 

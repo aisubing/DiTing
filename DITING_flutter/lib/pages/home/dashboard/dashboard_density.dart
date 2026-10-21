@@ -36,8 +36,7 @@ const minStandardFourColumnWidth = 1040.0;
 const minStandardHeight = 824.0;
 const mobileMaxWidth = 560.0;
 
-int dashboardColumnsOf(double width) =>
-    width < minFourColumnWidth ? 2 : 4;
+int dashboardColumnsOf(double width) => width < minFourColumnWidth ? 2 : 4;
 
 /// 移动端卡片与编辑模式共用的居中列宽。
 double dashboardMobileSideOf(double width) =>
@@ -70,4 +69,38 @@ class DashboardDensityScope extends InheritedWidget {
   @override
   bool updateShouldNotify(DashboardDensityScope oldWidget) =>
       density != oldWidget.density || scale != oldWidget.scale;
+}
+
+/// 把 [DashboardDensityScope] 挂到仪表盘子树上。
+///
+/// 密度由可用宽度与高度共同决定（上游同名判定），因此需要一次 `LayoutBuilder`
+/// 才能拿到；文本缩放从 `MediaQuery` 取，与 `AppScopes` 夹过的值一致。
+///
+/// 首页与日志仪表盘都用它：两处的卡片是同一批组件，作用域挂法必须一致，否则
+/// 同一张卡在两个页面上的圆角与固定高度会不同。
+class DashboardDensityScopeHost extends StatelessWidget {
+  const DashboardDensityScopeHost({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = Size(
+          constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : MediaQuery.sizeOf(context).width,
+          constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : MediaQuery.sizeOf(context).height,
+        );
+        return DashboardDensityScope(
+          density: DashboardDensity.of(size),
+          scale: MediaQuery.textScalerOf(context).scale(1),
+          child: child,
+        );
+      },
+    );
+  }
 }

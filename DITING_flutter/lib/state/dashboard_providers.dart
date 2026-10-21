@@ -7,13 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// 让图表和计数动起来，形状与真实一致。
 ///
 /// 刻意**不**把定时器放进 provider 构造函数：那样每个 watch 都会起一个 timer。
-/// 用 [speedSeriesProvider] 这种 `Notifier` + 显式 `start()`，由页面在
+/// 用 [speedSeriesProvider] 这种 `Notifier` + 显式 `tick()`，由页面在
 /// `initState` 里启动、`dispose` 里停止，避免测试里 timer 泄漏
 /// （AGENT_MISTAKES：widget 测试必须能 settle）。
 
 /// 是否让仪表盘的速率曲线自动推进。
 ///
-/// **测试必须把它设为 `false`**（`test/*.dart` 的 `setUp` 已经这么做）。
+/// **测试必须把它设为 `false`**（`test/support/test_hooks.dart` 已经这么做）。
 /// 原因：自动推进用的是永不停歇的周期回调，每一拍都触发重建 → 排一帧，
 /// 于是 `WidgetTester.pumpAndSettle` 永远等不到「没有待处理帧」而超时。
 ///
@@ -71,46 +71,6 @@ class SpeedSeriesNotifier extends Notifier<SpeedSeries> {
 final trafficTotalsProvider = Provider<TrafficTotals>(
   (ref) => mockTrafficTotals,
 );
-
-/// 连接统计。
-final connectionStatsProvider = Provider<ConnectionStats>(
-  (ref) => mockConnectionStats,
-);
-
-/// 内网 IP（可变：允许局域网开关会改它）。
-final intranetProvider = NotifierProvider<IntranetNotifier, IntranetInfo>(
-  IntranetNotifier.new,
-);
-
-class IntranetNotifier extends Notifier<IntranetInfo> {
-  @override
-  IntranetInfo build() => mockIntranet;
-
-  void setAllowLan({required bool value}) {
-    state = IntranetInfo(
-      address: state.address,
-      interfaceName: state.interfaceName,
-      allowLan: value,
-      port: state.port,
-    );
-  }
-}
-
-/// 内存信息。
-final memoryProvider = Provider<MemoryInfo>((ref) => mockMemory);
-
-/// 出站模式。
-final outboundModeProvider =
-    NotifierProvider<OutboundModeNotifier, OutboundMode>(
-      OutboundModeNotifier.new,
-    );
-
-class OutboundModeNotifier extends Notifier<OutboundMode> {
-  @override
-  OutboundMode build() => OutboundMode.rule;
-
-  void select(OutboundMode mode) => state = mode;
-}
 
 /// 内核状态。
 final coreStateProvider = NotifierProvider<CoreStateNotifier, CoreState>(
@@ -183,7 +143,7 @@ class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
 
   /// 还没上屏的卡片（可添加项）。
   List<DashboardWidget> get available => [
-    for (final widget in DashboardWidget.mobileAvailable)
+    for (final widget in DashboardWidget.values)
       if (!state.contains(widget)) widget,
   ];
 }

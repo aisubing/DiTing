@@ -1,8 +1,10 @@
+import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
-import 'package:diting/state/work_mode_providers.dart';
+import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 首页的服务商选择卡。
@@ -11,6 +13,11 @@ import 'package:material_ui/material_ui.dart';
 /// 选。候选目录来自旧版 prefs（预设 + `user_providers_json`），再按「服务显示」
 /// 的三组过滤条件剔除；当前选中的服务商永远保留，否则用户会看不到自己正在用
 /// 的那一项。
+///
+/// 浮层末尾另有两条**动作项**（旧版 `MANAGE_PROVIDER_ID` /
+/// `PROVIDER_VISIBILITY_ID`）：管理服务… → `/hub/providers`、服务显示… →
+/// `/hub/provider-visibility`。旧版把它们混在服务商列表末尾、点中就走人，这里
+/// 保留同一位置——用户已经习惯在那里找。
 class HomeProviderCard extends ConsumerWidget {
   const HomeProviderCard({super.key});
 
@@ -92,6 +99,27 @@ class _ProviderSheet extends ConsumerWidget {
                         .read(raceProvidersProvider.notifier)
                         .toggle(provider.id),
             ),
+          // 两条动作项：与候选服务商同一张列表、同一个位置（旧版把
+          // `MANAGE_PROVIDER_ID` / `PROVIDER_VISIBILITY_ID` 塞进同一个对话框）。
+          // 先关浮层再 push：不关的话返回时会看到浮层还在，像是「点了没反应」。
+          ListItem(
+            leading: const GlyphIcon(AppGlyphs.settings, size: 20),
+            title: const Text('管理服务...'),
+            trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.push(HubPaths.providerManagement);
+            },
+          ),
+          ListItem(
+            leading: const GlyphIcon(AppGlyphs.eye, size: 20),
+            title: const Text('服务显示...'),
+            trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
+            onTap: () {
+              Navigator.of(context).pop();
+              context.push(HubPaths.providerVisibility);
+            },
+          ),
           ListFooter(
             text: resolution.isSingle
                 ? '延迟取自上一次解析的健康记录，不是实时值。'

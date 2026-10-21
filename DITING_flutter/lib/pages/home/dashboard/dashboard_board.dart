@@ -1,14 +1,8 @@
 import 'package:diting/data/mock_dashboard.dart';
-import 'package:diting/pages/home/dashboard/cards/connection_stats_card.dart';
-import 'package:diting/pages/home/dashboard/cards/current_outbound_card.dart';
-import 'package:diting/pages/home/dashboard/cards/intranet_ip_card.dart';
-import 'package:diting/pages/home/dashboard/cards/memory_card.dart';
-import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
-import 'package:diting/pages/home/dashboard/cards/outbound_mode_card.dart';
-import 'package:diting/pages/home/dashboard/cards/profiles_card.dart';
-import 'package:diting/pages/home/dashboard/cards/proxy_groups_card.dart';
+import 'package:diting/pages/home/dashboard/cards/log_list_cards.dart';
 import 'package:diting/pages/home/dashboard/cards/service_status_card.dart';
-import 'package:diting/pages/home/dashboard/cards/vpn_card.dart';
+import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
+import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/edit/dashboard_edit_sheet.dart';
@@ -17,29 +11,71 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 仪表盘卡片注册表（上游 `views/dashboard/widget_registry.dart`）。
+/// 仪表盘卡片的落点回调。
 ///
-/// 上游用 `Map<DashboardWidget, Widget Function()>` 注册 11 张卡；这里同样以
-/// 枚举为键，编辑器「添加卡片」列表直接由枚举驱动，不需要第二处维护。
+/// 统一成一个对象而不是给 `buildDashboardCard` 加十个可选参数：卡片集以后还会
+/// 增删，每加一张就改一次函数签名会让编辑态与普通态两个调用点同时漂移。没给
+/// 回调的卡片就不显示「详情」按钮。
+class DashboardCardActions {
+  const DashboardCardActions({
+    this.onOpenRequests,
+    this.onOpenCache,
+    this.onOpenRace,
+    this.onOpenBootstrap,
+    this.onOpenSubscriptionStats,
+  });
+
+  /// 无入口（编辑态用）：所有卡片都不显示「详情」。
+  static const none = DashboardCardActions();
+
+  final VoidCallback? onOpenRequests;
+  final VoidCallback? onOpenCache;
+  final VoidCallback? onOpenRace;
+  final VoidCallback? onOpenBootstrap;
+  final VoidCallback? onOpenSubscriptionStats;
+}
+
+/// 仪表盘卡片注册表。
+///
+/// 十张卡全部来自 1.4.3 的 `ModernLogDashboardModeViews.kt`：FlClash 时代的
+/// `currentOutbound` / `networkSpeed` / `vpn` / `profiles` / `proxyGroups` /
+/// `connectionStats` / `intranetIp` / `memory` 八张卡没有旧版依据，已随对应
+/// 页面文件一起删除。
 Widget buildDashboardCard(
-  DashboardWidget widget, {
-  VoidCallback? onOpenConnections,
-  void Function(String groupName)? onOpenGroup,
-  VoidCallback? onOpenProfiles,
-}) {
+  DashboardWidget widget,
+  DashboardCardActions actions,
+) {
   return switch (widget) {
-    DashboardWidget.currentOutbound => const CurrentOutboundCard(),
-    DashboardWidget.networkSpeed => const NetworkSpeedCard(),
-    DashboardWidget.outboundMode => const OutboundModeCard(),
-    DashboardWidget.vpn => const VpnCard(),
-    DashboardWidget.serviceStatus => const ServiceStatusCard(),
-    DashboardWidget.profiles => ProfilesCard(onTap: onOpenProfiles),
-    DashboardWidget.proxyGroups => ProxyGroupsCard(onOpenGroup: onOpenGroup),
-    DashboardWidget.connectionStats => ConnectionStatsCard(
-      onOpenConnections: onOpenConnections,
+    DashboardWidget.serviceStatus => ServiceStatusCard(
+      onDetail: actions.onOpenRequests,
     ),
-    DashboardWidget.intranetIp => const IntranetIpCard(),
-    DashboardWidget.memory => const MemoryCard(),
+    DashboardWidget.trafficMonitor => TrafficMonitorCard(
+      onDetail: actions.onOpenRequests,
+    ),
+    DashboardWidget.requestOverview => RequestOverviewCard(
+      onDetail: actions.onOpenRequests,
+    ),
+    DashboardWidget.trafficStructure => const LogTrafficStructureCard(
+      mode: TrafficStructureMode.all,
+    ),
+    DashboardWidget.recentRequests => RecentRequestsLogCard(
+      onDetail: actions.onOpenRequests,
+    ),
+    DashboardWidget.cacheHotspots => CacheHotspotsCard(
+      onDetail: actions.onOpenCache,
+    ),
+    DashboardWidget.raceWinners => RaceWinnersCard(
+      onDetail: actions.onOpenRace,
+    ),
+    DashboardWidget.bootstrapDns => BootstrapDnsCard(
+      onDetail: actions.onOpenBootstrap,
+    ),
+    DashboardWidget.ruleBlocks => RuleBlocksCard(
+      onDetail: actions.onOpenSubscriptionStats,
+    ),
+    DashboardWidget.filteredHighlight => FilteredHighlightCard(
+      onDetail: actions.onOpenSubscriptionStats,
+    ),
   };
 }
 
@@ -51,16 +87,9 @@ Widget buildDashboardCard(
 /// 移动端是单列（上游 `dashboard.dart:290-357` 的移动分支）；桌面多列布局
 /// 在 Android 上没有意义，因此刻意不实现。
 class DashboardBoard extends ConsumerWidget {
-  const DashboardBoard({
-    super.key,
-    this.onOpenConnections,
-    this.onOpenGroup,
-    this.onOpenProfiles,
-  });
+  const DashboardBoard({super.key, this.actions = DashboardCardActions.none});
 
-  final VoidCallback? onOpenConnections;
-  final void Function(String groupName)? onOpenGroup;
-  final VoidCallback? onOpenProfiles;
+  final DashboardCardActions actions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,13 +97,7 @@ class DashboardBoard extends ConsumerWidget {
     final editing = ref.watch(dashboardEditingProvider);
     final side = dashboardMobileSideOf(MediaQuery.sizeOf(context).width);
     if (editing) {
-      return _EditingBoard(
-        widgets: widgets,
-        side: side,
-        onOpenConnections: onOpenConnections,
-        onOpenGroup: onOpenGroup,
-        onOpenProfiles: onOpenProfiles,
-      );
+      return _EditingBoard(widgets: widgets, side: side);
     }
     if (widgets.isEmpty) {
       return _EmptyBoard(side: side);
@@ -88,12 +111,7 @@ class DashboardBoard extends ConsumerWidget {
           for (final widget in widgets)
             _CardEntrance(
               key: ValueKey(widget),
-              child: buildDashboardCard(
-                widget,
-                onOpenConnections: onOpenConnections,
-                onOpenGroup: onOpenGroup,
-                onOpenProfiles: onOpenProfiles,
-              ),
+              child: buildDashboardCard(widget, actions),
             ),
         ],
       ),
@@ -153,19 +171,10 @@ class _EmptyBoard extends ConsumerWidget {
 
 /// 编辑态：可拖拽、可移除、可添加。
 class _EditingBoard extends ConsumerWidget {
-  const _EditingBoard({
-    required this.widgets,
-    required this.side,
-    this.onOpenConnections,
-    this.onOpenGroup,
-    this.onOpenProfiles,
-  });
+  const _EditingBoard({required this.widgets, required this.side});
 
   final List<DashboardWidget> widgets;
   final double side;
-  final VoidCallback? onOpenConnections;
-  final void Function(String groupName)? onOpenGroup;
-  final VoidCallback? onOpenProfiles;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -251,11 +260,11 @@ class _EditingBoard extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    // 编辑态不给落点：点进下钻页会让「拖不动」的误判变成
+                    // 「刚拖完又被跳走」。
                     child: buildDashboardCard(
                       widget,
-                      onOpenConnections: null,
-                      onOpenGroup: null,
-                      onOpenProfiles: null,
+                      DashboardCardActions.none,
                     ),
                   ),
                 );
@@ -335,9 +344,7 @@ class _AddCardRow extends ConsumerWidget {
         ),
         icon: Icon(Icons.add, size: 18, color: colorScheme.primary),
         label: const Text('添加卡片'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-        ),
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
       ),
     );
   }
