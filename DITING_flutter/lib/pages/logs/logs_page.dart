@@ -143,38 +143,21 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   }
 
   /// 记录全部：八块。
+  ///
+  /// 这里返回的是**裸卡片**：横向边距一律由 [_CardColumn] 给，卡片自己不再包
+  /// `Padding`。上一轮两处各包了一层同样的 `dashboardMobileSideOf`，真机上叠成
+  /// 32dp（首页同一张卡是 16dp），也就是「日志页左右空隙比别处大一倍」。
   List<Widget> _allMode(BuildContext context) => [
-    _card(
-      context,
-      TrafficMonitorCard(onDetail: () => context.push(Routes.traffic)),
+    TrafficMonitorCard(onDetail: () => context.push(Routes.traffic)),
+    const RequestOverviewCard(title: '请求概览'),
+    const LogTrafficStructureCard(mode: TrafficStructureMode.all),
+    RecentRequestsLogCard(
+      onDetail: () => context.push(ObservabilityPaths.requests),
     ),
-    _card(context, const RequestOverviewCard(title: '请求概览')),
-    _card(
-      context,
-      const LogTrafficStructureCard(mode: TrafficStructureMode.all),
-    ),
-    _card(
-      context,
-      RecentRequestsLogCard(
-        onDetail: () => context.push(ObservabilityPaths.requests),
-      ),
-    ),
-    _card(
-      context,
-      CacheHotspotsCard(onDetail: () => context.push(LogPaths.cache)),
-    ),
-    _card(
-      context,
-      RaceWinnersCard(onDetail: () => context.push(LogPaths.race)),
-    ),
-    _card(
-      context,
-      BootstrapDnsCard(onDetail: () => context.push(LogPaths.bootstrap)),
-    ),
-    _card(
-      context,
-      RuleBlocksCard(onDetail: () => context.push(LogPaths.subscriptionStats)),
-    ),
+    CacheHotspotsCard(onDetail: () => context.push(LogPaths.cache)),
+    RaceWinnersCard(onDetail: () => context.push(LogPaths.race)),
+    BootstrapDnsCard(onDetail: () => context.push(LogPaths.bootstrap)),
+    RuleBlocksCard(onDetail: () => context.push(LogPaths.subscriptionStats)),
   ];
 
   /// 仅拦截与错误：四块。
@@ -182,51 +165,23 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// 旧版这一档没有「流量监控」卡（`FilteredModeDashboard` 里虽然也判断了
   /// `onNavigateToTrafficStats`，但主页面调用时不传该参数），因此这里也不放。
   List<Widget> _filteredMode(BuildContext context) => [
-    _card(context, const FilteredHighlightCard()),
-    _card(
-      context,
-      const LogTrafficStructureCard(mode: TrafficStructureMode.filtered),
+    const FilteredHighlightCard(),
+    const LogTrafficStructureCard(mode: TrafficStructureMode.filtered),
+    FilteredRecentLogCard(
+      onDetail: () => context.push(ObservabilityPaths.requests),
     ),
-    _card(
-      context,
-      FilteredRecentLogCard(
-        onDetail: () => context.push(ObservabilityPaths.requests),
-      ),
-    ),
-    _card(
-      context,
-      RuleBlocksCard(onDetail: () => context.push(LogPaths.subscriptionStats)),
-    ),
+    RuleBlocksCard(onDetail: () => context.push(LogPaths.subscriptionStats)),
   ];
 
   /// 关闭日志：六块。
   List<Widget> _offMode(BuildContext context) => [
-    _card(context, const PrivacyModeCard()),
-    _card(context, const OffModeMetricCard()),
-    _card(context, const ResolutionPerfCard()),
-    _card(
-      context,
-      CacheHotspotsCard(onDetail: () => context.push(LogPaths.cache)),
-    ),
-    _card(
-      context,
-      RaceWinnersCard(onDetail: () => context.push(LogPaths.race)),
-    ),
-    _card(
-      context,
-      BootstrapDnsCard(onDetail: () => context.push(LogPaths.bootstrap)),
-    ),
+    const PrivacyModeCard(),
+    const OffModeMetricCard(),
+    const ResolutionPerfCard(),
+    CacheHotspotsCard(onDetail: () => context.push(LogPaths.cache)),
+    RaceWinnersCard(onDetail: () => context.push(LogPaths.race)),
+    BootstrapDnsCard(onDetail: () => context.push(LogPaths.bootstrap)),
   ];
-
-  /// 卡片统一走仪表盘密度作用域：卡片内部要读 `scale` 与大圆角。
-  ///
-  /// 只留横向边距；纵向间距由 [_CardColumn] 的 `spacing` 统一给。
-  Widget _card(BuildContext context, Widget child) => Padding(
-    padding: EdgeInsets.symmetric(
-      horizontal: dashboardMobileSideOf(MediaQuery.sizeOf(context).width),
-    ),
-    child: child,
-  );
 }
 
 /// 卡片列：与首页 `DashboardBoard` 同一套横向边距 + 12dp 纵向间距。
