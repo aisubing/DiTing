@@ -131,7 +131,14 @@ class BackupActions {
     if (picked.error != null) return BackupImportResult.failed(picked.error!);
     final text = picked.text;
     if (text == null) return const BackupImportResult.failed('无法读取所选文件');
+    return importText(text, sourceName: picked.name);
+  }
 
+  /// 合并一段已有的备份文本（WebDAV 恢复走这里，不经文件选择器）。
+  Future<BackupImportResult> importText(
+    String text, {
+    String? sourceName,
+  }) async {
     final db = await _ref.read(activeLogDatabaseProvider.future);
     final result = await _ref.read(backupImporterProvider).import(
       text,
@@ -139,7 +146,7 @@ class BackupActions {
         store: _ref.read(legacyPrefsStoreProvider),
         database: db,
       ),
-      sourceName: picked.name,
+      sourceName: sourceName,
     );
     if (!result.failed && !result.cancelled) _invalidate();
     return result;

@@ -6,6 +6,9 @@
 /// 路由往返。
 library;
 
+import 'dart:async';
+
+import 'package:diting/data/backup/dav_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 访问控制模式：白名单（只放行选中）/ 黑名单（只拦截选中）。
@@ -161,8 +164,7 @@ class DavState {
   );
 }
 
-/// 演示用的连接流程：先转 1.2 秒「连接中」，再按服务器地址里有没有
-/// `fail` 决定成败——让用户能自己造出失败态，而不是只能看运气。
+/// WebDAV 连接状态机；[DavNotifier.test] 发起真实请求。
 class DavNotifier extends Notifier<DavState> {
   @override
   DavState build() => const DavState();
@@ -170,6 +172,11 @@ class DavNotifier extends Notifier<DavState> {
   void update(DavState Function(DavState state) update) =>
       state = update(state);
 
+  /// 真连一次：`PROPFIND` 探测目录，不存在就 `MKCOL` 建。
+  ///
+  /// 上一轮这里是 `await Future.delayed(1.2s)` + 「地址里有没有 fail 字样」——
+  /// 服务器倒着也会显示「连接成功」，用户据此以为云备份可用。现在成败由服务器
+  /// 的真实响应决定，失败时带上状态码与可操作的原因。
   Future<void> test() async {
     if (!state.isConfigured) {
       state = state.copyWith(
@@ -179,18 +186,74 @@ class DavNotifier extends Notifier<DavState> {
       return;
     }
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
-    await Future<void>.delayed(const Duration(milliseconds: 1200));
-    if (state.server.contains('fail')) {
+    final result = await const DavClient().probe(
+      DavCredentials(
+        server: state.server,
+        username: state.username,
+        password: state.password,
+        path: state.path,
+      ),
+    );
+    if (result.succeeded) {
       state = state.copyWith(
-        status: DavStatus.failed,
-        message: '无法连接到服务器：证书校验失败或地址不可达',
+        status: DavStatus.connected,
+        message: result.created ? '目录不存在，已自动创建' : null,
       );
       return;
     }
-    state = state.copyWith(status: DavStatus.connected);
+    state = state.copyWith(
+      status: DavStatus.failed,
+      message: result.error,
+    );
   }
 
   void reset() => state = const DavState();
+
+  /// 云端的备份文件名。固定一个名字 = 「覆盖上一份」，与旧版 WebDAV 表单的语义一致
+  /// （它是同步而不是归档，每台设备只保留最新一份）。
+  static const remoteFileName = 'diting-config.json';
+
+  DavCredentials get credentials => DavCredentials(
+    server: state.server,
+    username: state.username,
+    password: state.password,
+    path: state.path,
+  );
+
+  /// 上传：`PUT` 到 `<path>/diting-config.json`。
+  Future<DavProbeResult> upload(String content) async {
+    state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
+    final result = await const DavClient().putText(
+      credentials,
+      name: remoteFileName,
+      content: content,
+    );
+    state = result.succeeded
+        ? state.copyWith(status: DavStatus.connected, message: '已上传到云端')
+        : state.copyWith(status: DavStatus.failed, message: result.error);
+    return result;
+  }
+
+  /// 下载：`GET` 云端备份；云端没有文件时返回 `null`（不是失败）。
+  Future<String?> download() async {
+    state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
+    try {
+      final text = await const DavClient().getText(
+        credentials,
+        name: remoteFileName,
+      );
+      state = text == null
+          ? state.copyWith(
+              status: DavStatus.connected,
+              message: '云端还没有备份文件',
+            )
+          : state.copyWith(status: DavStatus.connected, message: '已从云端取回备份');
+      return text;
+    } on Object catch (error) {
+      state = state.copyWith(status: DavStatus.failed, message: '$error');
+      return null;
+    }
+  }
 }
 
 final davProvider = NotifierProvider<DavNotifier, DavState>(DavNotifier.new);
