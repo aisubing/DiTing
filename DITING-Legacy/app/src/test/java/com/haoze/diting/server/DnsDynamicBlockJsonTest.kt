@@ -18,7 +18,7 @@ import org.junit.Test
  *
  * These tests pin the JSON shape to the Go struct tags so the key cannot be
  * dropped again. The Go side is authoritative:
- * `Android/tunnel/dns_config.go` declares
+ * `DITING-Legacy/tunnel/dns_config.go` declares
  *
  *     type dynamicBlockConfig struct {
  *         Enabled          bool `json:"enabled"`

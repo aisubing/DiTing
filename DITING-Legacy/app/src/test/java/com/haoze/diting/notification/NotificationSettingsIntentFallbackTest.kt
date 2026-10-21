@@ -23,7 +23,7 @@ class NotificationSettingsIntentFallbackTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/notification/NotificationPermissionHelper.kt"),
             File("app/src/main/java/com/haoze/diting/notification/NotificationPermissionHelper.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/notification/NotificationPermissionHelper.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/notification/NotificationPermissionHelper.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }

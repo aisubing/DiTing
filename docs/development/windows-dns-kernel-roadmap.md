@@ -18,7 +18,7 @@ $$\text{启动内核} \longrightarrow \text{接管系统 DNS} \longrightarrow \t
 
 ## 2. 既有实现分析与技术借鉴
 
-### 2.1 Android Go 内核 (`Android/tunnel`) 深度剖析
+### 2.1 Android Go 内核 (`DITING-Legacy/tunnel`) 深度剖析
 
 #### 可复用与迁移模块
 - **多协议上游转发器 (`resolver_*.go`)**：

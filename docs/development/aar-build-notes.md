@@ -1,10 +1,11 @@
 # Go AAR 构建记录
 
-本文记录 DITING 项目本次 Go 隧道 AAR 的编译过程、构建参数、遇到的问题及解决办法，便于后续重新生成 `Android/app/libs/tunnel.aar`。
+本文记录 DITING 项目本次 Go 隧道 AAR 的编译过程、构建参数、遇到的问题及解决办法，便于后续重新生成 `DITING-Legacy/app/libs/tunnel.aar`。
 
 ## 构建目标
 
-- 输出文件：`Android/app/libs/tunnel.aar`
+- 输出文件：`DITING-Legacy/app/libs/tunnel.aar`（旧版工程内产物；新版从同一源构建后复制到
+  `DITING-Flutter/android/app/libs/tunnel.aar`，两份同名 AAR 内容一致）
 - Android 架构：仅 `arm64-v8a`（ARMv8-A）
 - Android 最低 API：24
 - AAR：启用 ZIP 压缩
@@ -32,7 +33,7 @@ $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 
 ## 构建命令
 
-在项目的 `Android/tunnel` 目录执行：
+在项目的 `DITING-Legacy/tunnel` 目录执行：
 
 ```powershell
 $env:ANDROID_HOME = "D:\Androidsdk"
@@ -102,7 +103,7 @@ jni/arm64-v8a/libgojni.so
 
 ```powershell
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [IO.Compression.ZipFile]::OpenRead("Android\app\libs\tunnel.aar")
+$zip = [IO.Compression.ZipFile]::OpenRead("DITING-Legacy\app\libs\tunnel.aar")
 $zip.Entries | Select-Object FullName, Length, CompressedLength
 $zip.Dispose()
 ```

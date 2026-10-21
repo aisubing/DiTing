@@ -280,7 +280,7 @@ class TrafficIngest(
         const val MAX_BUFFERED_BYTES = 8L * 1024L * 1024L
 
         /// Same effect as `AppTrafficDao.upsertDelta`
-        /// (`Android/.../data/dao/AppTrafficDao.kt:48-56`) — accumulate both
+        /// (`DITING-Legacy/.../data/dao/AppTrafficDao.kt:48-56`) — accumulate both
         /// counters, keep the stored name when the new one is empty, stamp
         /// `updated_at` — expressed as UPDATE + INSERT because `ON CONFLICT DO
         /// UPDATE` requires SQLite 3.24 (API 30) and this app supports API 24.

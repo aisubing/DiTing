@@ -1,4 +1,4 @@
-/// 表单族演示入口（上游没有这一页，是 DITING_flutter 自己的组件展厅）。
+/// 表单族演示入口（上游没有这一页，是 DITING-Flutter 自己的组件展厅）。
 ///
 /// 表单族组件（`FormPage` / `FormRow` / `BatchSection` / `SelectionSheet` /
 /// `NamedUrlForm` / `NestedFormSheet` / `CustomIssuesBanner`）平时分散在规则、

@@ -29,7 +29,7 @@ def get_file_targets() -> List[Dict[str, str]]:
     root = get_root_dir()
     desktop = os.path.join(root, "Desktop")
     frontend = os.path.join(desktop, "frontend")
-    android = os.path.join(root, "Android")
+    android = os.path.join(root, "DITING-Legacy")
     return [
         {"name": "桌面端主程序", "path": os.path.join(desktop, "main.go"), "type": "go"},
         {"name": "Linux 端主程序", "path": os.path.join(desktop, "main_linux.go"), "type": "go"},
@@ -40,7 +40,7 @@ def get_file_targets() -> List[Dict[str, str]]:
         {"name": "Wails 配置", "path": os.path.join(desktop, "wails.json"), "type": "wails"},
         {"name": "前端 package.json", "path": os.path.join(frontend, "package.json"), "type": "pkg"},
         {"name": "前端锁文件", "path": os.path.join(frontend, "package-lock.json"), "type": "pkg-lock"},
-        {"name": "Android 应用配置", "path": os.path.join(android, "app", "build.gradle.kts"), "type": "gradle"},
+        {"name": "旧版 Android 应用配置（DITING-Legacy）", "path": os.path.join(android, "app", "build.gradle.kts"), "type": "gradle"},
         {"name": "README 版本示例", "path": os.path.join(root, "README.md"), "type": "readme"},
     ]
 

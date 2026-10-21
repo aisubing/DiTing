@@ -1,6 +1,6 @@
 /// 概览块里「一行请求」的映射规则：旧库行 → [LogRecentRequest]。
 ///
-/// 逐条转写自 `Android/.../ui/ModernLogDashboardViewModel.kt` 的
+/// 逐条转写自 `DITING-Legacy/.../ui/ModernLogDashboardViewModel.kt` 的
 /// `mergedRequestLogs` / `normalizeHttpOutcome` 与
 /// `ui/dashboard/DashboardLogLabels.kt`，刻意做成不碰数据库的纯函数：这几条判定
 /// （连接行算旁路、覆写不算通过、中文「复写 / 覆写」也算覆写）最容易在重构里

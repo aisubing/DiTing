@@ -2,7 +2,7 @@
 
 谛听（DITING）是一款本地优先的开源 DNS 加速与网络流量过滤工具，提供低延迟解析、规则阻断、防追踪与流量管控。全部处理在设备本地闭环完成，不上传远程数据；支持 Android、Windows、Linux 三端，并提供开发者维护工具箱。
 
-- 📱 **Android**：纯 Kotlin 极速模式、Go 用户态全隧道模式（gVisor netstack）、局域网独立 DNS 服务。
+- 📱 **Android**：两个工程同仓共存 —— `DITING-Flutter`（新版主力，Flutter 架构，持续开发）与 `DITING-Legacy`（旧版 Kotlin 1.4.3 基线，已停止维护，仅作新版实现参考）。均支持极速模式、Go 用户态全隧道模式（gVisor netstack）与局域网独立 DNS 服务。
 - 💻 **Windows**：特权系统服务 + Wails 桌面 GUI + 局域网 Web 控制台，支持物理网卡双栈 DNS 接管与崩溃自愈。
 - 🐧 **Linux**：单二进制 `diting-service` + 内嵌 Web 控制台，systemd 托管，自动适配多种 DNS 后端。
 - 🧰 **维护工具箱**：Python + PyWebView 桌面套件，涵盖压测、代码扫描、Logo 导出、截图、跨端构建与版本同步。
@@ -61,10 +61,10 @@
 
 | 平台 | 模式 | 最低要求 | 说明 |
 |---|---|---|---|
-| **Android** | ⚡ 极速模式 | Android 7.0+ / `arm64-v8a` | 纯 Kotlin 窄路由，仅接管 DNS（53 端口），轻量省电 |
-| **Android** | 🛡️ 普通模式 | Android 10.0+ / `arm64-v8a` | gVisor 全隧道，支持应用分流、HTTPS 检查、出站代理 |
-| **Android** | 🏠 服务器模式 | Android 10.0+ | Go 独立 DNS 服务，监听 `0.0.0.0:1053`，共享给局域网设备 |
-| **Android（Flutter 重写）** | 三模式 | 同左 | 复用同一 Go 引擎（`tunnel.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
+| **Android（`DITING-Legacy`，已停维护）** | ⚡ 极速模式 | Android 7.0+ / `arm64-v8a` | 纯 Kotlin 窄路由，仅接管 DNS（53 端口），轻量省电 |
+| **Android（`DITING-Legacy`，已停维护）** | 🛡️ 普通模式 | Android 10.0+ / `arm64-v8a` | gVisor 全隧道，支持应用分流、HTTPS 检查、出站代理 |
+| **Android（`DITING-Legacy`，已停维护）** | 🏠 服务器模式 | Android 10.0+ | Go 独立 DNS 服务，监听 `0.0.0.0:1053`，共享给局域网设备 |
+| **Android（`DITING-Flutter`，主力）** | 三模式 | 同左 | Flutter 重写，复用同一 Go 引擎（`tunnel.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
 | **Windows** | ⚙️ 特权核心服务 | Windows 10+ 64-bit | 双栈接管物理网卡、本地 53 监听、缓存规则、局域网 DNS、崩溃自愈 |
 | **Windows** | 🖥️ 桌面 GUI | Windows 10+ 64-bit + WebView2 | Wails v2 + Vue 3，免管理员权限管理服务与实时日志 |
 | **Windows** | 🌐 Web 控制台 | 任意主流浏览器 | 访问 15353 端口远程管理 Windows 核心服务 |
@@ -77,12 +77,14 @@
 
 ```
 DITING/
-├── Android/                  # Android 客户端（app + tunnel，构建为 tunnel.aar）
-├── DITING_flutter/           # Android 客户端的 Flutter 重写（兼容 1.4.3 的配置与数据库）
+├── DITING-Flutter/           # ★ 新版 Android 客户端（Flutter 架构，主力开发，兼容 1.4.3 的配置与数据库）
 │   ├── lib/ui/               #   移植自 1.4.3 的设计系统（GPL-3.0）
 │   ├── lib/data/             #   旧版 SharedPreferences（11 个容器）与旧版 SQLite 读写
 │   ├── lib/pages/            #   页面（85 条路由）
 │   └── android/              #   Flutter Android 壳（包名 com.haoze.diting）
+├── DITING-Legacy/            # 旧版 Android 客户端（Kotlin 1.4.3 基线，已停止维护，仅供新版对照实现）
+│   ├── app/                  #   Kotlin / Jetpack Compose 应用
+│   └── tunnel/               #   Go 用户态隧道引擎（构建为 tunnel.aar）
 ├── Desktop/                  # Windows / Linux 工程
 │   ├── cmd/service/          # 特权核心服务（Windows Service / Linux systemd）
 │   ├── internal/             # DNS 内核、平台适配、IPC、鉴权、查询日志
@@ -98,16 +100,22 @@ DITING/
 └── README.md
 ```
 
+> **目录更名说明**：两个 Android 工程曾用名为 `DITING_flutter/`（现 `DITING-Flutter/`）与 `Android/`（现 `DITING-Legacy/`）。
+> 旧版已停止维护，新功能一律进 `DITING-Flutter`；但新版在更新时仍会对照旧版实现（源码注释中的
+> `DITING-Legacy/...` 指针即为此用），因此**旧版工程保留在仓库内，不删除**。
+> `docs/development/Archive/` 下的历史文档保留当年的旧路径，属归档记录，不再同步。
+
+
 ---
 
 ## 构建指南
 
-### 📱 Android（Flutter 重写）
+### 📱 Android（`DITING-Flutter`，新版主力）
 
 要求 Flutter 3.47+、JDK 11+、Android SDK；产物架构为 `arm64-v8a`。
 
 ```bash
-cd DITING_flutter
+cd DITING-Flutter
 flutter pub get
 flutter analyze lib test
 flutter test
@@ -116,20 +124,20 @@ flutter build apk --debug
 
 模拟器（x86_64）联调需多 ABI 的 AAR：`flutter build apk --debug -PtunnelAar=libs/tunnel-debug.aar`
 （该文件不入库），否则 `libgojni.so` 只有 `arm64-v8a`，`System.loadLibrary` 会失败。
-详情见 [DITING_flutter/README.md](DITING_flutter/README.md) 与
+详情见 [DITING-Flutter/README.md](DITING-Flutter/README.md) 与
 [Go AAR 构建记录](docs/development/aar-build-notes.md)。
 
-### 📱 Android（Kotlin 1.4.3 基线）
+### 📱 Android（`DITING-Legacy`，旧版 Kotlin 1.4.3 基线，已停止维护）
 
 ```bash
-cd Android
+cd DITING-Legacy
 ./gradlew :app:assembleDebug --console=plain    # Windows 使用 gradlew.bat
 ./gradlew :app:assembleRelease --console=plain
 ```
 
-亦可运行 `Android/build_apk.bat`：交互式选择编译模式、自动归档，并支持 ADB（含无线调试）部署真机。
+亦可运行 `DITING-Legacy/build_apk.bat`：交互式选择编译模式、自动归档，并支持 ADB（含无线调试）部署真机。
 
-产物：`Android/app/build/outputs/apk/<buildType>/`。
+产物：`DITING-Legacy/app/build/outputs/apk/<buildType>/`。
 
 ### 💻 Windows
 要求 Go 1.25+、Node.js 18+、Wails v2（`go install github.com/wailsapp/wails/v2/cmd/wails@latest`）；打包独立安装包需 NSIS（可选）。
@@ -210,8 +218,8 @@ REM 同步到目标版本（示例）
 
 ## 技术栈
 
-- **Android（Kotlin 基线 1.4.3）**：Kotlin / Jetpack Compose / Material 3 / Coroutines & Flow / Room / DataStore / VpnService / OkHttp / WorkManager
-- **Android（Flutter 重写）**：Flutter / Dart 3 / Riverpod / go_router / sqflite（直接打开 1.4.3 的库）/ 移植的 Material 3 设计系统
+- **Android（`DITING-Legacy`，旧版 Kotlin 基线 1.4.3，已停维护）**：Kotlin / Jetpack Compose / Material 3 / Coroutines & Flow / Room / DataStore / VpnService / OkHttp / WorkManager
+- **Android（`DITING-Flutter`，新版主力）**：Flutter / Dart 3 / Riverpod / go_router / sqflite（直接打开 1.4.3 的库）/ 移植的 Material 3 设计系统
 - **Windows**：Go 1.25+ / Wails v2 / Vue 3 / TypeScript / Vite / Material Web / Win32 API / Windows Service
 - **Linux**：Go 1.25+ / systemd / resolvectl / nmcli / netlink / Vue 3 内嵌控制台
 - **DNS 引擎**：Go / gVisor netstack / miekg/dns / quic-go / Singleflight
@@ -221,7 +229,7 @@ REM 同步到目标版本（示例）
 
 ## 开发文档
 
-- [DITING Flutter 客户端](DITING_flutter/README.md) — 许可与来源、构建与签名、架构约定、旧版数据兼容契约、原生通道、统计口径与已知边界（该工程唯一文档）。
+- [DITING Flutter 客户端（`DITING-Flutter`，新版主力）](DITING-Flutter/README.md) — 许可与来源、构建与签名、架构约定、旧版数据兼容契约、原生通道、统计口径与已知边界（该工程唯一文档）。
 - [Windows DNS 内核架构与开发规划](docs/development/windows-dns-kernel-roadmap.md) — 双进程架构、网卡接管与恢复状态机、IPC 与 Pipeline 设计。
 - [Linux 移植说明](docs/development/linux-port-notes.md) — 平台差异、DNS 接管后端、`DITING_DATA_DIR` 调试与功能差异。
 - [Go AAR 构建记录](docs/development/aar-build-notes.md) — Android `tunnel.aar` 的编译环境、参数与交叉编译细节。

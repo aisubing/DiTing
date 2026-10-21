@@ -4,7 +4,7 @@
 /// this repository is read-only apart from "clear all".
 ///
 /// Every filter clause below is copied verbatim from
-/// `Android/app/src/main/java/com/haoze/diting/data/repository/RequestLogRepository.kt`
+/// `DITING-Legacy/app/src/main/java/com/haoze/diting/data/repository/RequestLogRepository.kt`
 /// (`load()`), including the `IN (...)` lists and the `ORDER BY timestamp DESC
 /// LIMIT n` tail, so the counts on this screen match what 1.4.3 showed.
 library;

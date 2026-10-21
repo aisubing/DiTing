@@ -24,7 +24,7 @@ class RaceModeMessageLocalizationTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/ui/RaceModeSettingsViewModel.kt"),
             File("app/src/main/java/com/haoze/diting/ui/RaceModeSettingsViewModel.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/ui/RaceModeSettingsViewModel.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/ui/RaceModeSettingsViewModel.kt")
         )
         val file = candidates.firstOrNull { it.exists() }
             ?: return ""

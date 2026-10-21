@@ -19,7 +19,7 @@ class DataCleanupCustomBackgroundContractTest {
 
     private fun source(vararg relative: String): String {
         val candidates = relative.map { File(it) } + relative.map { File("app/$it") } +
-            relative.map { File("Android/app/$it") }
+            relative.map { File("DITING-Legacy/app/$it") }
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }
 

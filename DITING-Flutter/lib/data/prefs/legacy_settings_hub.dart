@@ -3,7 +3,7 @@ part of 'legacy_settings.dart';
 /// Keys owned by the app-list / CA screens that the DNS part does not cover.
 ///
 /// Every name below is copied verbatim from
-/// `Android/app/src/main/java/com/haoze/diting/ui/settings/AppRulesSettingsStore.kt`;
+/// `DITING-Legacy/app/src/main/java/com/haoze/diting/ui/settings/AppRulesSettingsStore.kt`;
 /// one renamed key silently resets that setting for an upgraded install.
 ///
 /// All five live in the **global** container (`dns_vpn_prefs`), not in a dataset

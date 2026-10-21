@@ -29,7 +29,7 @@ class AppNotificationChannelsRegistryTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/notification/AppNotificationChannels.kt"),
             File("app/src/main/java/com/haoze/diting/notification/AppNotificationChannels.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/notification/AppNotificationChannels.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/notification/AppNotificationChannels.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }
@@ -38,7 +38,7 @@ class AppNotificationChannelsRegistryTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/core/rule/RuleOperationWorker.kt"),
             File("app/src/main/java/com/haoze/diting/core/rule/RuleOperationWorker.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/core/rule/RuleOperationWorker.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/core/rule/RuleOperationWorker.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }
@@ -121,7 +121,7 @@ class AppNotificationChannelsRegistryTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/ui/LocalizedTextHelper.kt"),
             File("app/src/main/java/com/haoze/diting/ui/LocalizedTextHelper.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/ui/LocalizedTextHelper.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/ui/LocalizedTextHelper.kt")
         )
         val source = candidates.firstOrNull { it.exists() }?.readText().orEmpty()
         if (source.isBlank()) return
@@ -140,7 +140,7 @@ class AppNotificationChannelsRegistryTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/notification/VpnMonitorService.kt"),
             File("app/src/main/java/com/haoze/diting/notification/VpnMonitorService.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/notification/VpnMonitorService.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/notification/VpnMonitorService.kt")
         )
         val source = candidates.firstOrNull { it.exists() }?.readText().orEmpty()
         if (source.isBlank()) return

@@ -1,7 +1,7 @@
 import os
 
 UP = "LearningObjects/DITING-1.4.3/lib/ui"
-MINE = "DITING_flutter/lib/ui"
+MINE = "DITING-Flutter/lib/ui"
 LETTERS = set(chr(c) for c in range(97, 123))
 
 

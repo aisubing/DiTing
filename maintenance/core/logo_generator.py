@@ -28,7 +28,7 @@ except ImportError:
 def get_android_xml_path() -> str:
     current_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
-    return os.path.join(root_dir, "Android", "app", "src", "main", "res", "drawable", "ic_splash_squircle_logo.xml")
+    return os.path.join(root_dir, "DITING-Legacy", "app", "src", "main", "res", "drawable", "ic_splash_squircle_logo.xml")
 
 
 def extract_paths_from_android(xml_path: Optional[str] = None) -> List[Tuple[Optional[str], Optional[str], str]]:

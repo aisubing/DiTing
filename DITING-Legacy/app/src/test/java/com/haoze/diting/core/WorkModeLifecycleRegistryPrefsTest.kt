@@ -24,7 +24,7 @@ class WorkModeLifecycleRegistryPrefsTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/core/WorkModeLifecycleRegistry.kt"),
             File("app/src/main/java/com/haoze/diting/core/WorkModeLifecycleRegistry.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/core/WorkModeLifecycleRegistry.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/core/WorkModeLifecycleRegistry.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }
@@ -79,7 +79,7 @@ class WorkModeLifecycleRegistryPrefsTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/ui/settings/SettingsPreferencesExtensions.kt"),
             File("app/src/main/java/com/haoze/diting/ui/settings/SettingsPreferencesExtensions.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/ui/settings/SettingsPreferencesExtensions.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/ui/settings/SettingsPreferencesExtensions.kt")
         )
         val source = candidates.firstOrNull { it.exists() }?.readText().orEmpty()
         if (source.isBlank()) return

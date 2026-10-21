@@ -1,5 +1,8 @@
 # 谛听 DITING · Flutter 客户端
 
+> 本目录是**新版主力工程**（原名 `DITING_flutter/`，现名 `DITING-Flutter/`）。
+> 旧版 Kotlin 1.4.3 基线已停止维护，位于仓库内 `../DITING-Legacy/`，仅供对照实现。
+
 DITING 1.4.3 的 Flutter 重写。`lib/ui/` 是上游设计体系的逐文件移植，应用层独立编写；
 数据层**直接读写旧版 1.4.3 的 SharedPreferences 与 SQLite**，因此覆盖安装后用户的设置、
 规则、日志与统计保持原值。

@@ -99,7 +99,7 @@ enum CoreState {
 ///
 /// 1.4.3 的仪表盘没有「卡片编排」这个概念（它是一屏固定统计块），本仓保留
 /// 编排能力，但**卡片集换成了旧版真实存在的统计块**：全部来自
-/// `Android/.../ui/dashboard/ModernLogDashboardModeViews.kt`。
+/// `DITING-Legacy/.../ui/dashboard/ModernLogDashboardModeViews.kt`。
 ///
 /// 顺序即「添加卡片」浮层里的展示顺序，与 `AllModeDashboard` 的块顺序一致。
 enum DashboardWidget {

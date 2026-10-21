@@ -24,7 +24,7 @@ class CrashLogManagerStateTest {
         val candidates = listOf(
             java.io.File("src/main/java/com/haoze/diting/crash/CrashLogManager.kt"),
             java.io.File("app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt"),
-            java.io.File("Android/app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt")
+            java.io.File("DITING-Legacy/app/src/main/java/com/haoze/diting/crash/CrashLogManager.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }

@@ -20,7 +20,7 @@ class LogRetentionCrashCountRefreshContractTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/ui/LogRetentionSettingsScreen.kt"),
             File("app/src/main/java/com/haoze/diting/ui/LogRetentionSettingsScreen.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/ui/LogRetentionSettingsScreen.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/ui/LogRetentionSettingsScreen.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }

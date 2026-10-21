@@ -115,7 +115,7 @@ class OutboundProxyConfig {
   /// anything else.
   ///
   /// `port` must be a JSON **number**, not a string: the Go side unmarshals into
-  /// `outboundProxyConfig{Port int}` (`Android/tunnel/flow_outbound.go:29`), and
+  /// `outboundProxyConfig{Port int}` (`DITING-Legacy/tunnel/flow_outbound.go:29`), and
   /// `json.Unmarshal` rejects `"port":"7890"` with
   /// `invalid outbound proxy config: … cannot unmarshal string into Go struct
   /// field …Port of type int`. That error comes back from

@@ -5,7 +5,7 @@ title DITING Flutter APK Build and Install Tool
 :: ============================================================================
 :: DITING Flutter - APK build / install script
 ::
-:: Difference from Android\build_apk.bat:
+:: Difference from DITING-Legacy\build_apk.bat:
 ::   The native project builds via `gradlew assembleXxx`. This is a Flutter
 ::   project, so it MUST go through `flutter build apk`; calling gradlew
 ::   directly would produce an APK with no Dart code inside.
@@ -316,7 +316,7 @@ goto SUCCESS_EXIT
 echo.
 echo ================================================================
 echo [ERROR] Not a Flutter project root (pubspec.yaml not found)!
-echo Cause:  This script must run from DITING_flutter\
+echo Cause:  This script must run from DITING-Flutter\
 echo Action: Place it next to pubspec.yaml and run it there.
 echo ================================================================
 goto ERROR_EXIT

@@ -179,7 +179,7 @@ void main() {
     });
 
     test('port 必须是 JSON 数字，不能带引号', () {
-      // 回归：Go 侧 `outboundProxyConfig.Port int`（`Android/tunnel/flow_outbound.go:29`）
+      // 回归：Go 侧 `outboundProxyConfig.Port int`（`DITING-Legacy/tunnel/flow_outbound.go:29`）
       // 由 `json.Unmarshal` 解析，`"port":"7890"` 会整份配置解析失败，
       // `Engine.configureOutboundProxy` 返回错误后代理静默不生效。1.4.3 的
       // Kotlin 生产者（`OutboundProxyConfig.toNativeJson`）写的是数字。

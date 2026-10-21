@@ -33,7 +33,7 @@ class RewriteCnameDeliveryTest {
         val source = readFile(
             "src/main/java/com/haoze/diting/server/backend/DnsQueryFilter.kt",
             "app/src/main/java/com/haoze/diting/server/backend/DnsQueryFilter.kt",
-            "Android/app/src/main/java/com/haoze/diting/server/backend/DnsQueryFilter.kt"
+            "DITING-Legacy/app/src/main/java/com/haoze/diting/server/backend/DnsQueryFilter.kt"
         )
         if (source.isBlank()) return // different working directory; asserted by the build
 
@@ -51,11 +51,11 @@ class RewriteCnameDeliveryTest {
 
     @Test
     fun goEngineAppliesCnameBeforeTheFilteringSwitch() {
-        // Unit tests run with the module directory (Android/app) as working
+        // Unit tests run with the module directory (DITING-Legacy/app) as working
         // directory, so the Go engine one level up is `../tunnel`.
         val source = readFile(
             "../tunnel/engine_standalone.go",
-            "Android/tunnel/engine_standalone.go",
+            "DITING-Legacy/tunnel/engine_standalone.go",
             "engine_standalone.go"
         )
         if (source.isBlank()) return
@@ -79,7 +79,7 @@ class RewriteCnameDeliveryTest {
         // carries no rewrite rows.
         val engineSource = readFile(
             "../tunnel/engine_config.go",
-            "Android/tunnel/engine_config.go",
+            "DITING-Legacy/tunnel/engine_config.go",
             "engine_config.go"
         )
         if (engineSource.isBlank()) return
@@ -88,7 +88,7 @@ class RewriteCnameDeliveryTest {
         val expressSource = readFile(
             "src/main/java/com/haoze/diting/express/config/ExpressConfigAdapter.kt",
             "app/src/main/java/com/haoze/diting/express/config/ExpressConfigAdapter.kt",
-            "Android/app/src/main/java/com/haoze/diting/express/config/ExpressConfigAdapter.kt"
+            "DITING-Legacy/app/src/main/java/com/haoze/diting/express/config/ExpressConfigAdapter.kt"
         )
         if (expressSource.isBlank()) return
         assertTrue(

@@ -11,7 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 谛听自身的包名（`Android/app/build.gradle.kts` 的 `applicationId`）。
+/// 谛听自身的包名（`DITING-Legacy/app/build.gradle.kts` 的 `applicationId`）。
 ///
 /// 上游用 `context.packageName`；Dart 侧只能写常量，所以取值必须与应用 id 一致，
 /// 否则「不能选择 DITING 自身」这条校验会失效。

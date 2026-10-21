@@ -1,7 +1,7 @@
 /// Dart side of `com.haoze.diting/apps`: the *real* installed-app inventory.
 ///
 /// 1.4.3 enumerated applications through `PackageManager` with
-/// `QUERY_ALL_PACKAGES` (`Android/app/src/main/AndroidManifest.xml`); the
+/// `QUERY_ALL_PACKAGES` (`DITING-Legacy/app/src/main/AndroidManifest.xml`); the
 /// migrated Manifest dropped the permission, so every picker page fell back to
 /// `mockInstalledApps` / `mockPackages` constants. This channel restores the
 /// real list.

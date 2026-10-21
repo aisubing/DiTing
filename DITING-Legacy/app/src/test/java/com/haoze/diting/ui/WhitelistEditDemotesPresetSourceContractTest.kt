@@ -28,7 +28,7 @@ class WhitelistEditDemotesPresetSourceContractTest {
         val candidates = listOf(
             File("src/main/java/com/haoze/diting/ui/WhitelistViewModel.kt"),
             File("app/src/main/java/com/haoze/diting/ui/WhitelistViewModel.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/ui/WhitelistViewModel.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/ui/WhitelistViewModel.kt")
         )
         return candidates.firstOrNull { it.exists() }?.readText().orEmpty()
     }
@@ -91,7 +91,7 @@ class WhitelistEditDemotesPresetSourceContractTest {
         val seeder = listOf(
             File("src/main/java/com/haoze/diting/core/rule/DefaultWhitelistSeeder.kt"),
             File("app/src/main/java/com/haoze/diting/core/rule/DefaultWhitelistSeeder.kt"),
-            File("Android/app/src/main/java/com/haoze/diting/core/rule/DefaultWhitelistSeeder.kt")
+            File("DITING-Legacy/app/src/main/java/com/haoze/diting/core/rule/DefaultWhitelistSeeder.kt")
         ).firstOrNull { it.exists() }?.readText().orEmpty()
         if (seeder.isBlank()) return
 

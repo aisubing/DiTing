@@ -1,7 +1,7 @@
 /// 日志仪表盘**概览块**的真实聚合（首页与 `/logs` 顶部那些统计卡）。
 ///
 /// ## 口径来源
-/// 逐条转写自 `Android/.../ui/ModernLogDashboardViewModel.kt` 的
+/// 逐条转写自 `DITING-Legacy/.../ui/ModernLogDashboardViewModel.kt` 的
 /// `buildDashboardState()`：
 /// - 今日请求 = `dns_log` 当日四档 + `http_request_log` 当日四档；
 /// - 「仅拦截与错误」模式下 DNS 侧的 `passed` / `cached` 归零、HTTPS 侧只保留

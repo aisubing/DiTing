@@ -7,7 +7,7 @@
 ///
 /// `PASSED` / `REWRITTEN` / `BLOCKED` / `ERROR` / `BYPASSED` below are copied
 /// **verbatim** from
-/// `Android/app/src/main/java/com/haoze/diting/data/repository/RequestLogRepository.kt`
+/// `DITING-Legacy/app/src/main/java/com/haoze/diting/data/repository/RequestLogRepository.kt`
 /// lines 56-70. Do not "simplify" them: the `LIKE '%blocked_by=rewrite=%'` and
 /// the `%复写%` / `%覆写%` literals are why a rewritten query is not counted as
 /// passed, and the `TCP ` / `UDP ` prefix exclusions are what keep connection

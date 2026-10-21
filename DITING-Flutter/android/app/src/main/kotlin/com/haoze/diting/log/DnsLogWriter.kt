@@ -11,7 +11,7 @@ import java.io.File
 ///
 /// The payload is the same `logItem` array 1.4.3 consumed in
 /// `GoTunnelLogProcessor`; field meanings are documented in
-/// `Android/tunnel/log_aggregator.go`. Writes go straight through SQLite so the
+/// `DITING-Legacy/tunnel/log_aggregator.go`. Writes go straight through SQLite so the
 /// Flutter side can keep reading the same `dns_log` table with sqflite.
 object DnsLogWriter {
     const val DB_NORMAL = "diting_database"

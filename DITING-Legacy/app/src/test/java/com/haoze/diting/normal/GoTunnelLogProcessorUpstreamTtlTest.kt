@@ -60,7 +60,7 @@ class GoTunnelLogProcessorUpstreamTtlTest {
         // see. Pinned at the source level (the Go toolchain is not run here).
         val candidates = listOf(
             File("../tunnel/log_aggregator.go"),
-            File("Android/tunnel/log_aggregator.go"),
+            File("DITING-Legacy/tunnel/log_aggregator.go"),
             File("../../tunnel/log_aggregator.go")
         )
         val file = candidates.firstOrNull { it.exists() } ?: return

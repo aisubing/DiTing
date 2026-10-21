@@ -4,7 +4,7 @@
 /// equivalent), so this repository is read-only.
 ///
 /// Both aggregate queries are copied verbatim from
-/// `Android/app/src/main/java/com/haoze/diting/data/dao/AppTrafficDao.kt`
+/// `DITING-Legacy/app/src/main/java/com/haoze/diting/data/dao/AppTrafficDao.kt`
 /// (`queryDateRange` / `queryAllHistory`), including the `min(date)` / `max(app_name)`
 /// projections: Room maps those into an `AppTrafficDailyEntity`, so the DTO keeps
 /// the same shape instead of inventing a second one.
