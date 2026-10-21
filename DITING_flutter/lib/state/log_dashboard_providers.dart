@@ -1,10 +1,12 @@
-/// 日志仪表盘的数据层。
+/// 日志仪表盘**下钻页**的数据层（时间范围选择器 + 竞速 / Bootstrap / 订阅拦截）。
 ///
-/// 两类数据刻意分开：
-/// - **概览块**（首页 / 日志页的统计卡）用 [logDashboardProvider] 的固定演示值：
-///   它们的形状要与旧版 `ModernLogDashboardModeViews.kt` 逐块对齐，而真实表的
-///   密度不足以撑满布局（全新安装时几乎全空），演示值让「有数据长什么样」可见；
-/// - **四个下钻页**读真实表：竞速 `dns_race_log`、Bootstrap `bootstrap_log`、
+/// 概览块（首页与 `/logs` 顶部的统计卡）搬到了
+/// `log_dashboard_overview_providers.dart`：它的聚合要一次扫描五张表，与这里的
+/// 单表窗口查询不是同一件事，混在一个文件里只会让两边都读不懂。
+///
+/// 两类数据仍然刻意分开：
+/// - **概览块**读旧库真实表（见概览文件的注释）；
+/// - **四个下钻页**也读真实表：竞速 `dns_race_log`、Bootstrap `bootstrap_log`、
 ///   缓存 `dns_cache`（`dnsCacheProvider`）、订阅拦截 `dns_log` /
 ///   `http_request_log` 的 `blockSubscriptionId` 列。库空 → 空状态，缺列 →
 ///   空状态 + 说明，绝不拿演示值冒充。
@@ -12,68 +14,11 @@ library;
 
 import 'package:diting/data/db/bootstrap_log_repository.dart';
 import 'package:diting/data/db/race_log_repository.dart';
-import 'package:diting/data/mock_log_dashboard.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
-
-// ---------------------------------------------------------------------------
-// 概览块（演示值）
-// ---------------------------------------------------------------------------
-
-/// 一次渲染所需的全部概览数据。
-///
-/// 打包成一个不可变对象而不是十几个 provider：这些数字来自旧版**同一次**
-/// `buildDashboardState()` 扫描，分成十几个 provider 后各自重建，
-/// 「今日请求」与「今日流量结构」就会短暂不一致。
-class LogDashboardSnapshot {
-  const LogDashboardSnapshot({
-    required this.breakdown,
-    required this.race,
-    required this.bootstrap,
-    required this.offMode,
-    required this.recentRequests,
-    required this.cacheHotspots,
-    required this.raceWinners,
-    required this.bootstrapIps,
-    required this.subscriptionBlocks,
-  });
-
-  const LogDashboardSnapshot.mock()
-    : breakdown = mockLogTrafficBreakdown,
-      race = mockLogRaceSummary,
-      bootstrap = mockLogBootstrapSummary,
-      offMode = mockLogOffModeStats,
-      recentRequests = mockRecentRequests,
-      cacheHotspots = mockCacheHotspots,
-      raceWinners = mockRaceWinners,
-      bootstrapIps = mockBootstrapIps,
-      subscriptionBlocks = mockSubscriptionBlocks;
-
-  final LogTrafficBreakdown breakdown;
-  final LogRaceSummary race;
-  final LogBootstrapSummary bootstrap;
-  final LogOffModeStats offMode;
-  final List<LogRecentRequest> recentRequests;
-  final List<LogCacheHotspot> cacheHotspots;
-  final List<LogRaceWinner> raceWinners;
-  final List<LogBootstrapIp> bootstrapIps;
-  final List<LogSubscriptionBlock> subscriptionBlocks;
-
-  /// 「重点记录」四格：重点记录 / 过滤拦截 / 异常失败 / 旁路直连。
-  ///
-  /// 旧版 `FilteredModeDashboard` 里 `重点记录` 的取自 `stats.total`，
-  /// 而 `total` 在 filtered 模式下已经只含拦截与错误（Demo 数据里
-  /// `total` 仍是全部，因此这里按「过滤 + 失败」求和，与卡片语义一致）。
-  int get highlightedTotal => breakdown.blocked + breakdown.error;
-}
-
-/// 概览数据。演示值：形状固定、数值可复现。
-final logDashboardProvider = Provider<LogDashboardSnapshot>(
-  (ref) => const LogDashboardSnapshot.mock(),
-);
 
 // ---------------------------------------------------------------------------
 // 下钻页：时间范围

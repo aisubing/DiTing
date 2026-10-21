@@ -479,6 +479,22 @@ class DitingVpnService : VpnService() {
             "stats" to EngineStats.snapshot(activeEngine),
         )
 
+        /**
+         * Second-resolution TX/RX rates for the dashboard's 实时速率 readout.
+         *
+         * Returns zeros when the tunnel is not running: [TrafficRateMonitor] is
+         * reset on every stop, but a caller racing the stop path could still read
+         * the last tick's numbers, and showing a speed while "已停止" is exactly
+         * the kind of plausible-looking fake this port keeps removing.
+         */
+        fun trafficRates(): Map<String, Any?> {
+            if (!isRunning) {
+                return mapOf("running" to false, "txBps" to 0L, "rxBps" to 0L)
+            }
+            val (tx, rx) = TrafficRateMonitor.snapshot()
+            return mapOf("running" to true, "txBps" to tx, "rxBps" to rx)
+        }
+
         fun startIntent(
             context: Context,
             dnsConfig: String,

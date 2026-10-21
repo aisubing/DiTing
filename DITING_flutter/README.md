@@ -214,8 +214,8 @@ Room 的 `user_version`、触发迁移），打开后设 `PRAGMA foreign_keys = 
 | 通道 | 主要方法 | 用途 |
 |---|---|---|
 | `legacy_prefs` | `readAll` / `put` / `remove` / `versionCode` | 旧版 SharedPreferences（受容器白名单约束） |
-| `vpn` | `prepare` / `start` / `stop` / `status` | 普通模式全隧道 |
-| `express_vpn` | 同上 | 极速模式窄路由 |
+| `vpn` | `prepare` / `start` / `stop` / `status` / `trafficRates` | 普通模式全隧道 |
+| `express_vpn` | 同上（`trafficRates` 明确回 `unsupported`） | 极速模式窄路由 |
 | `dns_server` | `start` / `stop` / `status` / `clearCache` | 服务器模式（`startStandalone`） |
 | `apps` | `listInstalled` / `resolveUids` / `isSelf` | 已安装应用清单 |
 | `https_inspection` | `inspectCa` / `exportCa` / `openCaInstallSettings` | MITM 根证书 |
@@ -228,6 +228,12 @@ Room 的 `user_version`、触发迁移），打开后设 `PRAGMA foreign_keys = 
 `lib/data/` 与 `lib/pages/server/server_platform_probe.dart` 各写了一份；`clearCache` 没有
 bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一个方法名，但 `vpn` 与
 `express_vpn` 两个通道各自会发一次，Dart 侧 `vpn_bridge` 两处都要接。
+
+`trafficRates` 是**独立方法**而不是塞进 `status`：仪表盘每秒轮询一次速率，而 `status` 还要序列化
+引擎的计数器 JSON，共用一个调用会让 1 Hz 的读秒变成每秒一次重活。两个模式对它的回答刻意不同：
+普通模式回 `TrafficRateMonitor.snapshot()`（常驻通知里那个 ↑/↓ 读数同源），极速模式回
+`unsupported = true`——它的窄路由从不注册 `EngineDataPlane.attachTraffic`。**不要**给极速模式
+补一个 `0 B/s`：那是「空闲」，与「没有这个数据源」是两件事。
 
 **降级契约：宁缺勿假。** 通道不存在时页面必须说明并禁用，不得用假数字顶替——测速显示
 「当前设备不支持测速」并禁用按钮，电池优化显示「当前设备不可用」，应用清单 / 证书 / 诊断
@@ -253,14 +259,25 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 命中率分母取 `passed + error`，对齐 Go `dns_cache.go` 的
 `hitRatio = totalHits/(totalHits+totalMisses)`；被规则拦截的行从不查缓存，不进分母。
 `test/dns_log_stats_test.dart` 在**仓储层**钉这套口径（四桶互斥、分母、跨零点、空样本），
-它不覆盖 UI——上面那四格的接线没有任何测试守着。
+`test/real_data_wiring_test.dart` 在**聚合层**钉「两表相加 / 跨零点 / 两个裁剪模式」。
 
-> ⚠️ **首页与 `/logs` 顶部那几格数字目前仍是演示值**（`logDashboardProvider` 取
-> `LogDashboardSnapshot.mock()`）。真实聚合的 `dnsLogDailyStatsProvider` 已实现但**尚无
-> 消费方**——接线时直接替换数据源，口径照上表，不要另起一套。
+**首页与 `/logs` 顶部那几格数字读的就是这套口径**：`logDashboardProvider`
+（`state/log_dashboard_overview_providers.dart`）一次扫描 `dns_log` + `http_request_log`
+两张表，形状照旧版 `buildDashboardState()`。三个模式的裁剪也照旧版：
+
+- `all`：两表全量相加；
+- `blocked_and_errors`：DNS 侧 `passed` / `cached` 归零，HTTPS 只保留非通过行
+  （`it.copy(passed = 0, cached = 0)` + `filter { normalizeHttpOutcome != "passed" }`）；
+- `off`：不读两张日志表的当日统计，只留缓存 / 竞速 / Bootstrap 三项。
+
+命中率在 `blocked_and_errors` 下跟着归零——否则会出现「通过 0、命中率 40%」的自相矛盾。
 
 服务器模式概览里的统计是引擎**会话计数**，与「今日」不是一回事，**界面上应标明「当前会话」**
 （目前几个标签是「总查询量 / 缓存命中 / …」，并未标窗口）。
+
+> ⚠️ 这里曾经有一个 `dnsLogDailyStatsProvider`（只算 `dns_log` 一张表），已随本轮接线删除。
+> 它没有消费方，但「口径相同、少一张表」的入口留在那里，下一个人接线时几乎必然选错——
+> 概览只认 `logDashboardProvider`。
 
 ### 7.2 已知差异——勿「修」
 
@@ -284,15 +301,28 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 
 ### 8.1 仍走演示数据
 
-连接列表、资源更新、首页速率与累计、日志仪表盘概览块与其四格数字、功能中心卡片清单（文案
-常量）、配置资源三表（图标集 / User-Agent / 按需连接）、系统域的免责条款与更新日志、表单族
-与编辑器 / 扫码 / IP 质量、WebDAV 与配置传输、Agent 设置页。
+连接列表、资源更新、功能中心卡片清单（文案常量）、配置资源三表（图标集 / User-Agent /
+按需连接）、系统域的免责条款与更新日志、表单族与编辑器 / 扫码 / IP 质量、WebDAV 与配置传输、
+Agent 设置页。
 
-其中一部分页面已有如实的「演示」标注（服务状态卡页脚、扫码、编辑器、应用更新、表单演示页、
-配置传输与 WebDAV、Agent 设置页等），另一部分**没有**（见 §8.2）。补标注可以，**换成看起来
-像真的假数据不行**；也不要把这些页面写成已完成。
+其中一部分页面已有如实的「演示」标注（扫码、编辑器、应用更新、表单演示页、配置传输与
+WebDAV、Agent 设置页等），另一部分**没有**（见 §8.2）。补标注可以，**换成看起来像真的
+假数据不行**；也不要把这些页面写成已完成。
 
 流量、请求、DNS 日志、订阅、出站代理、CA/HTTPS、网络工具、应用清单已接真实数据源。
+
+**本轮新增接线**（此前是写死的演示值）：
+
+| 位置 | 现在读什么 |
+|---|---|
+| 首页 / `/logs` 概览块与四格 | `dns_log` + `http_request_log` 当日聚合（`logDashboardProvider`） |
+| 流量监控卡的「今日代理流量」 | `app_traffic_daily` 当日行（与 `/traffic` 同一份） |
+| 流量监控卡与 `/traffic` 的「实时速率」 | 原生 `TrafficRateMonitor.snapshot()`（`vpn` 通道 `trafficRates`） |
+| 服务状态卡四行 | 端口（`local_listen_port`）、当前服务商（目录）、`dns_cache` 条数、已测速个数；耗时来自 `dns_latency` 通道真测 |
+| 内核状态点 | `powerProvider` / `serverStatusProvider` 的真实状态机 |
+| 规则控制页的「N 个」与自动更新摘要 | `subscription` 表、`mirror_template` 表、数据集 prefs 的 `subscription_auto_update_*` |
+| 自动更新设置页 | 同上（写入数据集 prefs + `subscription_group.autoUpdateEnabled` 列） |
+| 镜像站模板页 | `mirror_template` 表（增删改全落库） |
 
 ### 8.2 旧版没有后端的界面
 
@@ -323,8 +353,9 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
   已有能力。
 - **极速模式是能力子集**：只做窄路由 DNS 加速，不含应用管控与 HTTPS 检查；不消费
   rewrite/GoUrl/cosmetic，也不执行动态拦截升级（存而不生效）。
-- **流量「实时」档不存在**：引擎会话计数是全局累计、不按应用拆分，所以页面只提供有落库来源
-  的时间窗口，曲线区如实标注为会话示意。
+- **流量「本次会话」档不存在**：引擎会话计数是全局累计、不按应用拆分，所以按应用的排行只提供
+  有落库来源的时间窗口。**「实时速率」不是这一类**：它有原生来源（`TrafficRateMonitor`），
+  只是不按应用拆分、也不跨会话保留；极速模式确实没有（窄路由不挂流量回调），页面要说明。
 - **未迁移的旧版能力**：独立 VPN monitor 前台服务、QS Tile、开机自启、悬浮日志窗、崩溃收集、
   应用内更新安装、运行时本地化词典。
 - **已知未验证**：`getConnectionOwnerUid` 的实参方向是按 Go 侧 `resolveFlowUID` 的实参顺序推导

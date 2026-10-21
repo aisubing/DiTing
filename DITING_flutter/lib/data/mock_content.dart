@@ -1,161 +1,16 @@
 part of 'mock_data.dart';
 
-/// 订阅导入类型。
-enum SubscriptionImportType {
-  remote('订阅地址'),
-  local('本地文件');
-
-  const SubscriptionImportType(this.label);
-
-  final String label;
-}
-
-/// 一条订阅。
-class MockSubscription {
-  const MockSubscription({
-    required this.id,
-    required this.name,
-    required this.url,
-    required this.importType,
-    required this.ruleCount,
-    required this.group,
-    this.enabled = true,
-    this.updatedAt = '2026-10-18 09:24',
-    this.isUpdating = false,
-    this.error,
-  });
-
-  final String id;
-  final String name;
-  final String url;
-  final SubscriptionImportType importType;
-  final int ruleCount;
-  final String group;
-  final bool enabled;
-  final String updatedAt;
-  final bool isUpdating;
-  final String? error;
-}
-
-const mockSubscriptionGroups = <String>['未分组', '广告拦截', '内网加速', '实验'];
-
-const mockSubscriptions = <MockSubscription>[
-  MockSubscription(
-    id: 'sub-1',
-    name: 'AdGuard 基础',
-    url: 'https://rules.example.com/adguard-base.txt',
-    importType: SubscriptionImportType.remote,
-    ruleCount: 48213,
-    group: '广告拦截',
-  ),
-  MockSubscription(
-    id: 'sub-2',
-    name: 'EasyList China',
-    url: 'https://rules.example.com/easylist-cn.txt',
-    importType: SubscriptionImportType.remote,
-    ruleCount: 12870,
-    group: '广告拦截',
-  ),
-  MockSubscription(
-    id: 'sub-3',
-    name: '内网 hosts',
-    url: 'content://com.android.providers.downloads.documents/document/42',
-    importType: SubscriptionImportType.local,
-    ruleCount: 64,
-    group: '内网加速',
-    updatedAt: '2026-10-11 21:02',
-  ),
-  MockSubscription(
-    id: 'sub-4',
-    name: '实验性规则',
-    url: 'https://rules.example.com/experimental.txt',
-    importType: SubscriptionImportType.remote,
-    ruleCount: 731,
-    group: '实验',
-    enabled: false,
-    error: '上次更新失败：HTTP 404',
-  ),
-  MockSubscription(
-    id: 'sub-5',
-    name: '反跟踪合集',
-    url: 'https://rules.example.com/anti-tracking.txt',
-    importType: SubscriptionImportType.remote,
-    ruleCount: 9021,
-    group: '未分组',
-  ),
-];
-
-/// 日志条目。
-class MockLogEntry {
-  const MockLogEntry({
-    required this.time,
-    required this.domain,
-    required this.action,
-    required this.latencyMs,
-    required this.client,
-    this.rule,
-    this.cached = false,
-  });
-
-  final String time;
-  final String domain;
-  final LogAction action;
-  final int latencyMs;
-  final String client;
-  final String? rule;
-  final bool cached;
-}
-
-enum LogAction {
-  allowed('放行'),
-  blocked('拦截'),
-  rewritten('覆写'),
-  cached('缓存'),
-  failed('失败');
-
-  const LogAction(this.label);
-
-  final String label;
-}
-
-const _logDomains = <String>[
-  'api.example.com',
-  'ads.example.com',
-  'cdn.example.com',
-  'tracker.example.net',
-  'login.example.com',
-  'static.example.com',
-  'metrics.example.org',
-  'mail.example.com',
-  'img.example.com',
-  'beacon.example.io',
-];
-
-/// 40 条日志，时间从 12:04:31 递减，覆盖四种处置。
-final mockLogs = <MockLogEntry>[
-  for (var i = 0; i < 40; i++)
-    MockLogEntry(
-      time: _logTimeAt(i),
-      domain: _logDomains[i % _logDomains.length],
-      action: LogAction.values[i % LogAction.values.length],
-      latencyMs: 6 + (i * 17) % 180,
-      client: i % 3 == 0 ? '192.168.1.42' : '本机',
-      rule: i % 4 == 0 ? '||ads.example.com^' : null,
-      cached: i % 5 == 0,
-    ),
-];
-
-String _logTimeAt(int index) {
-  const base = 12 * 3600 + 4 * 60 + 31;
-  final seconds = base - index * 7;
-  final h = (seconds ~/ 3600) % 24;
-  final m = (seconds % 3600) ~/ 60;
-  final s = seconds % 60;
-  String two(int value) => value.toString().padLeft(2, '0');
-  return '${two(h)}:${two(m)}:${two(s)}';
-}
-
 /// 服务统计（服务器模式 / 日志概览共用）。
+///
+/// 只由 `ServiceStatsNotifier.applyNative` 从原生引擎的真实计数器填充。
+///
+/// 这个文件曾经装着一整套演示订阅（5 条 `mockSubscriptions` + 4 个分组名）、
+/// 40 条 `mockLogs` 与 `mockServiceStats`（28471 次查询 / 21930 次命中 / 3h42m）。
+/// 它们在本轮接线后**全部没有消费方**，已删除：真正读订阅的地方走
+/// `subscription` 表（`subscription_providers.dart`），真正读日志的地方走
+/// `dns_log` / `http_request_log`（`log_dashboard_overview_providers.dart`），
+/// 服务统计走引擎计数器。留着这些常量不会让任何页面变好，只会让下一次
+/// 「先补一个演示值」变得顺手——而那正是本轮要修的病。
 class ServiceStats {
   const ServiceStats({
     required this.queries,
@@ -186,11 +41,3 @@ class ServiceStats {
     return '$seconds秒';
   }
 }
-
-const mockServiceStats = ServiceStats(
-  queries: 28471,
-  cacheHits: 21930,
-  blocked: 4218,
-  averageLatencyMs: 14,
-  uptime: Duration(hours: 3, minutes: 42, seconds: 18),
-);

@@ -66,9 +66,6 @@ void main() {
         expectNoRawEnumLiteral(kind.title, 'RuleKind.${kind.name}.title');
         expectNoRawEnumLiteral(kind.summary, 'RuleKind.${kind.name}.summary');
       }
-      for (final action in LogAction.values) {
-        expectNoRawEnumLiteral(action.label, 'LogAction.${action.name}');
-      }
       for (final mode in AppWorkMode.values) {
         expectNoRawEnumLiteral(mode.title, 'AppWorkMode.${mode.name}.title');
         expectNoRawEnumLiteral(mode.badge, 'AppWorkMode.${mode.name}.badge');
@@ -91,9 +88,6 @@ void main() {
       }
       for (final themeMode in AppThemeMode.values) {
         expectNoRawEnumLiteral(themeMode.label, 'AppThemeMode.${themeMode.name}');
-      }
-      for (final importType in SubscriptionImportType.values) {
-        expectNoRawEnumLiteral(importType.label, 'SubscriptionImportType.${importType.name}');
       }
       for (final source in RuleSource.values) {
         expectNoRawEnumLiteral(source.label, 'RuleSource.${source.name}');

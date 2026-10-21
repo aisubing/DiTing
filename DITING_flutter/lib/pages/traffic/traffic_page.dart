@@ -13,14 +13,15 @@
 ///
 /// ## 两档没有数据源，做成禁用项而不是删掉
 /// 旧版 `TrafficTimeRange` 有「本次会话」档、`TrafficSortMode` 有「按实时速率」
-/// 档，两者都需要内核按秒（或按会话）回报速率序列；本仓的按天表只存
-/// 「日期 + 包名 + 上下行累计字节」，没有这一列。旧版这里还有一张
-/// `TrafficGaugeCard` 实时速率卡——本仓同样无源，位置保留但**如实说明**缺什么，
-/// 既不画假曲线也不留一个没有数字的标题。
+/// 档，两者都需要内核按会话回报累计值 / 按秒回报速率序列；本仓的按天表只存
+/// 「日期 + 包名 + 上下行累计字节」，没有这两列。旧版这里还有一张
+/// `TrafficGaugeCard` 实时速率卡——本仓的原生侧**有** `TrafficRateMonitor`，
+/// 因此那一格换成了真实读数（见 `_LiveRateCard`），只有极速模式如实说明缺失。
 library;
 
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/pages/observability/observability_common.dart';
+import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -43,8 +44,20 @@ class TrafficPage extends ConsumerStatefulWidget {
 class _TrafficPageState extends ConsumerState<TrafficPage> {
   final _search = TextEditingController();
 
+  /// 进页面时抓住 notifier 引用：`dispose()` 里不能再 `ref.read`。
+  SpeedSeriesNotifier? _speed;
+
+  @override
+  void initState() {
+    super.initState();
+    // 这一页也显示实时速率，与首页共用同一条序列（引用计数在 provider 里）。
+    _speed = ref.read(speedSeriesProvider.notifier);
+    _speed!.attachPolling();
+  }
+
   @override
   void dispose() {
+    _speed?.detachPolling();
     _search.dispose();
     super.dispose();
   }
@@ -158,7 +171,7 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
           ),
         ),
         const SizedBox(height: 12),
-        _RateUnavailableCard(windowLabel: window.label),
+        _LiveRateCard(windowLabel: window.label),
         const SizedBox(height: 10),
         _AttributionBanner(
           onTap: () => showSheet<void>(

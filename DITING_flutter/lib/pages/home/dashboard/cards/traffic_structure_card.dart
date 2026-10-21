@@ -1,8 +1,9 @@
+import 'package:diting/data/log_dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
-import 'package:diting/state/log_dashboard_providers.dart';
+import 'package:diting/state/log_dashboard_overview_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -129,7 +130,7 @@ class TrafficStructureCard extends StatelessWidget {
   }
 }
 
-/// 从演示快照取数的流量结构卡。
+/// 从真实聚合快照取数的流量结构卡。
 ///
 /// 图例顺序与比率行逐字照抄旧版：
 /// - `all`：通过 / 过滤 / 失败 / 旁路 / 缓存，比率是 竞速成功率 / Bootstrap
@@ -137,6 +138,9 @@ class TrafficStructureCard extends StatelessWidget {
 /// - `filtered`：过滤 / 失败 / 旁路，比率是 竞速成功率 / Bootstrap 成功率 /
 ///   **拦截占比**（旧版在过滤模式里把「拦截率」改名成「拦截占比」，不是笔误，
 ///   因为那一档的分母只剩重点记录）。
+///
+/// 数字来自 `logDashboardProvider`（今日窗口的真实表聚合）。快照未就绪时整卡
+/// 显示空环与破折号，而不是先画一组 0：0% 的环形图会被读成「今天没有流量」。
 class LogTrafficStructureCard extends ConsumerWidget {
   const LogTrafficStructureCard({super.key, required this.mode});
 
@@ -144,14 +148,19 @@ class LogTrafficStructureCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final snapshot = ref.watch(logDashboardProvider);
-    final breakdown = snapshot.breakdown;
+    final snapshot = ref.watch(logDashboardProvider).value;
+    final breakdown = snapshot?.breakdown ?? const LogTrafficBreakdown.empty();
     final colorScheme = context.colorScheme;
     final filtered = mode == TrafficStructureMode.filtered;
+    final race = snapshot?.race ?? const LogRaceSummary.empty();
+    final bootstrap = snapshot?.bootstrap ?? const LogBootstrapSummary.empty();
+    final ready = snapshot != null;
     return TrafficStructureCard(
       mode: mode,
       title: filtered ? '重点流量结构' : '今日流量结构',
-      total: filtered ? snapshot.highlightedTotal : breakdown.total,
+      total: filtered
+          ? (snapshot?.highlightedTotal ?? 0)
+          : breakdown.total,
       segments: filtered
           ? [
               if (breakdown.blocked > 0)
@@ -227,33 +236,37 @@ class LogTrafficStructureCard extends ConsumerWidget {
       rates: [
         TrafficStructureRate(
           label: '竞速成功率',
-          value:
-              '${dashboardPercent(snapshot.race.successRate)} · '
-              '${dashboardCount(snapshot.race.requests)} 次 · '
-              '${dashboardLatency(snapshot.race.averageElapsedMs)}',
-          progress: snapshot.race.successRate,
+          value: ready
+              ? '${dashboardPercent(race.successRate)} · '
+                    '${dashboardCount(race.requests)} 次 · '
+                    '${dashboardLatency(race.averageElapsedMs)}'
+              : '—',
+          progress: race.successRate,
         ),
         TrafficStructureRate(
           label: 'Bootstrap 成功率',
-          value:
-              '${dashboardPercent(snapshot.bootstrap.successRate)} · '
-              '${dashboardCount(snapshot.bootstrap.attempts)} 次 · '
-              '${dashboardLatency(snapshot.bootstrap.averageElapsedMs)}',
-          progress: snapshot.bootstrap.successRate,
+          value: ready
+              ? '${dashboardPercent(bootstrap.successRate)} · '
+                    '${dashboardCount(bootstrap.attempts)} 次 · '
+                    '${dashboardLatency(bootstrap.averageElapsedMs)}'
+              : '—',
+          progress: bootstrap.successRate,
         ),
         TrafficStructureRate(
           label: filtered ? '拦截占比' : '拦截率',
-          value:
-              '${dashboardPercent(breakdown.blockRate)} · '
-              '${dashboardCount(breakdown.blocked)} 次',
+          value: ready
+              ? '${dashboardPercent(breakdown.blockRate)} · '
+                    '${dashboardCount(breakdown.blocked)} 次'
+              : '—',
           progress: breakdown.blockRate,
         ),
         if (!filtered)
           TrafficStructureRate(
             label: '缓存率',
-            value:
-                '${dashboardPercent(breakdown.cacheRate)} · '
-                '${dashboardCount(breakdown.cached)} 次',
+            value: ready
+                ? '${dashboardPercent(breakdown.cacheRate)} · '
+                      '${dashboardCount(breakdown.cached)} 次'
+                : '—',
             progress: breakdown.cacheRate,
           ),
       ],

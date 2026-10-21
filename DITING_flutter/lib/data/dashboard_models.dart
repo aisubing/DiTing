@@ -1,15 +1,17 @@
-/// 仪表盘演示数据与卡片注册表。
+/// 仪表盘模型与卡片注册表。
 ///
-/// 上游这些值全部来自内核 `trafficsProvider` / `connectionsProvider` 等实时流；
-/// 本轮只做 UI，因此用「固定形状 + 缓动」的假数据：形状与真实一致（环形缓冲、
-/// 单调递增的总量、阶段性的连接数），但数值不来自网络。
+/// 上游这些值全部来自内核实时流（`trafficsProvider` / `connectionsProvider`）；
+/// 本仓的对应关系是：
+/// - **速率曲线**由 `state/speed_providers.dart` 每秒向原生侧取一次真实速率
+///   （`TrafficRateMonitor` 的 `txBps` / `rxBps`），本文件只保留采样点模型；
+/// - **累计流量**读旧库 `app_traffic_daily`（见 `state/traffic_providers.dart`）；
+/// - **内核状态**来自 `powerProvider` / `serverStatusProvider` 的真实状态机
+///   （映射见 `state/core_status_providers.dart`）。
 ///
 /// 旧的 FlClash 专属模型（`CurrentProfile` / `OutboundMode` / `MemoryInfo` /
 /// `IntranetInfo` / `ConnectionStats`）已随对应的仪表盘卡片一起删除：1.4.3 没有
 /// 这些界面，留着只会让后继者再长出一页假数据。
 library;
-
-import 'dart:math' as math;
 
 /// 环形缓冲：与上游 `FixedList` 同形（定长、追加、带 revision）。
 ///
@@ -52,43 +54,18 @@ class SpeedSample {
 
   final double up;
   final double down;
+
+  bool get isZero => up == 0 && down == 0;
 }
 
 /// 采样容量：60 点 ≈ 1 分钟（上游 `trafficsProvider` 也是 60）。
 const speedSampleCapacity = 60;
 
-/// 假速率的基准值。故意做成「上行小、下行大」的真实比例。
-const _baseUp = 42 * 1024.0;
-const _baseDown = 1.8 * 1024 * 1024.0;
-
-/// 生成一段演示速率序列。
-///
-/// 用两条不同周期的正弦叠加 + 固定抖动，看起来像真实流量（有起伏但不随机乱跳，
-/// 每次进页面形态一致，方便截图比对）。
-List<SpeedSample> buildMockSpeedSamples({int count = speedSampleCapacity}) {
-  return [
-    for (var i = 0; i < count; i++)
-      SpeedSample(
-        up: _wave(i, period: 17, phase: 0.6, base: _baseUp, swing: 0.7),
-        down: _wave(i, period: 23, phase: 0.0, base: _baseDown, swing: 0.55),
-      ),
-  ];
-}
-
-double _wave(
-  int index, {
-  required int period,
-  required double phase,
-  required double base,
-  required double swing,
-}) {
-  final t = index / period;
-  final slow = 0.5 + 0.5 * math.sin(2 * math.pi * (t + phase));
-  final fast = 0.5 + 0.5 * math.sin(2 * math.pi * (t * 3.7));
-  return base * (1 - swing + swing * (0.7 * slow + 0.3 * fast));
-}
-
 /// 累计流量（字节）。
+///
+/// 只由 `state/traffic_providers.dart` 的 `trafficTotalsProvider` 从旧库
+/// `app_traffic_daily` 的当日行求和得到；`up` 是上行、`down` 是下行，
+/// 与表里的 `tx_bytes` / `rx_bytes` 一一对应。
 class TrafficTotals {
   const TrafficTotals({required this.up, required this.down});
 
@@ -100,15 +77,11 @@ class TrafficTotals {
   double get total => up + down;
 }
 
-/// 演示用的累计流量：约 1.2 GB 下行 / 86 MB 上行。
-const mockTrafficTotals = TrafficTotals(
-  up: 86 * 1024 * 1024.0,
-  down: 1.2 * 1024 * 1024 * 1024.0,
-);
-
 /// 内核状态（上游 `core_status_button.dart`）。
 ///
 /// 服务状态卡靠它判断「内核是否在跑」：未运行时探测按钮禁用、状态点变灰。
+/// 取值由 `state/core_status_providers.dart` 从真实的电源 / 服务器状态映射而来，
+/// 不再是一个固定 `running` 的内存变量。
 enum CoreState {
   running('运行中'),
   stopped('已停止'),
@@ -118,6 +91,8 @@ enum CoreState {
   const CoreState(this.label);
 
   final String label;
+
+  bool get isRunning => this == CoreState.running;
 }
 
 /// 仪表盘可编排卡片。

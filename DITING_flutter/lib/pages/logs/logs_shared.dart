@@ -8,18 +8,9 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/chip_row.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// DNS 记录类型数字 → 展示名（旧版 `dnsTypeName` 逐字照抄，含 `TYPE$n` 兜底）。
-String dnsTypeName(int type) => switch (type) {
-  1 => 'A',
-  28 => 'AAAA',
-  5 => 'CNAME',
-  15 => 'MX',
-  16 => 'TXT',
-  2 => 'NS',
-  12 => 'PTR',
-  255 => 'ANY',
-  _ => 'TYPE$type',
-};
+// `dnsTypeName` 的定义搬到了 `data/dns_type_name.dart`（概览聚合层也要用），
+// 这里重新导出，页面侧的 import 不必跟着改。
+export 'package:diting/data/dns_type_name.dart' show dnsTypeName;
 
 /// 剩余秒数 → `57 分钟` / `3 小时`（旧版 `formatDuration`，三级、不取余）。
 String remainingLabel(int seconds) {

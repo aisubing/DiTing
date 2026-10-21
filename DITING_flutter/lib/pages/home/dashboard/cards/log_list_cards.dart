@@ -1,10 +1,10 @@
-import 'package:diting/data/mock_log_dashboard.dart';
+import 'package:diting/data/log_dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
-import 'package:diting/state/log_dashboard_providers.dart';
+import 'package:diting/state/log_dashboard_overview_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -19,6 +19,19 @@ import 'package:material_ui/material_ui.dart';
 /// 每张卡右下角都不放动作：入口统一在标题行右侧的「详情」，与旧版
 /// `PillLink(text = "详情")` 的位置一致，`DashboardIconButton` 是设计系统里
 /// 现成的对应物。
+///
+/// ## 数字的来源与「还没读到」的表示
+/// 所有数字来自 [logDashboardProvider] 对旧库真实表的聚合（见
+/// `state/log_dashboard_overview_providers.dart`）。快照是 `FutureProvider`，
+/// 首次加载与读取失败时 `value` 为 null：
+/// - 四格数字显示 `—`，而不是 `0`——`0` 会被读成「今天没有请求」，而那是另一
+///   种事实；
+/// - 列表卡显示各自的空态文案（`DashboardLogListCard` 自带）。
+LogDashboardSnapshot? _snapshotOf(WidgetRef ref) =>
+    ref.watch(logDashboardProvider).value;
+
+/// 四格里的一格：快照未就绪时给破折号。
+String _figure(int? value) => value == null ? '—' : dashboardCount(value);
 
 /// 「今日请求 / 通过 / 过滤 / 缓存命中」四格（旧版两行 `MetricCard`）。
 class RequestOverviewCard extends ConsumerWidget {
@@ -29,7 +42,7 @@ class RequestOverviewCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(logDashboardProvider).breakdown;
+    final stats = _snapshotOf(ref)?.breakdown;
     final colorScheme = context.colorScheme;
     return DashboardMetricQuadCard(
       glyph: AppGlyphs.requests,
@@ -38,22 +51,22 @@ class RequestOverviewCard extends ConsumerWidget {
       cells: [
         (
           label: '今日请求',
-          value: dashboardCount(stats.total),
+          value: _figure(stats?.total),
           color: colorScheme.primary,
         ),
         (
           label: '通过',
-          value: dashboardCount(stats.passed),
+          value: _figure(stats?.passed),
           color: colorScheme.primary,
         ),
         (
           label: '过滤',
-          value: dashboardCount(stats.blocked),
+          value: _figure(stats?.blocked),
           color: colorScheme.error,
         ),
         (
           label: '缓存命中',
-          value: dashboardCount(stats.cached),
+          value: _figure(stats?.cached),
           color: colorScheme.tertiary,
         ),
       ],
@@ -70,7 +83,7 @@ class FilteredHighlightCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(logDashboardProvider).breakdown;
+    final stats = _snapshotOf(ref)?.breakdown;
     final colorScheme = context.colorScheme;
     return DashboardMetricQuadCard(
       glyph: AppGlyphs.rules,
@@ -79,22 +92,24 @@ class FilteredHighlightCard extends ConsumerWidget {
       cells: [
         (
           label: '重点记录',
-          value: dashboardCount(stats.blocked + stats.error),
+          value: _figure(
+            stats == null ? null : stats.blocked + stats.error,
+          ),
           color: colorScheme.primary,
         ),
         (
           label: '过滤拦截',
-          value: dashboardCount(stats.blocked),
+          value: _figure(stats?.blocked),
           color: colorScheme.error,
         ),
         (
           label: '异常失败',
-          value: dashboardCount(stats.error),
+          value: _figure(stats?.error),
           color: colorScheme.error,
         ),
         (
           label: '旁路直连',
-          value: dashboardCount(stats.bypassed),
+          value: _figure(stats?.bypassed),
           color: colorScheme.secondary,
         ),
       ],
@@ -110,7 +125,7 @@ class OffModeMetricCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(logDashboardProvider).offMode;
+    final stats = _snapshotOf(ref)?.offMode;
     final colorScheme = context.colorScheme;
     return DashboardMetricQuadCard(
       glyph: AppGlyphs.eyeOff,
@@ -119,22 +134,22 @@ class OffModeMetricCard extends ConsumerWidget {
       cells: [
         (
           label: '有效缓存',
-          value: dashboardCount(stats.cacheEntries),
+          value: _figure(stats?.cacheEntries),
           color: colorScheme.primary,
         ),
         (
           label: '累计缓存命中',
-          value: dashboardCount(stats.cacheHits),
+          value: _figure(stats?.cacheHits),
           color: colorScheme.tertiary,
         ),
         (
           label: '并发竞速请求',
-          value: dashboardCount(stats.raceRequests),
+          value: _figure(stats?.raceRequests),
           color: colorScheme.secondary,
         ),
         (
           label: 'Bootstrap 尝试',
-          value: dashboardCount(stats.bootstrapAttempts),
+          value: _figure(stats?.bootstrapAttempts),
           color: colorScheme.primary,
         ),
       ],
@@ -150,7 +165,7 @@ class RecentRequestsLogCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(logDashboardProvider).recentRequests;
+    final rows = _snapshotOf(ref)?.recentRequests ?? const [];
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.requests,
@@ -181,7 +196,7 @@ class FilteredRecentLogCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final all = ref.watch(logDashboardProvider).recentRequests;
+    final all = _snapshotOf(ref)?.recentRequests ?? const [];
     final colorScheme = context.colorScheme;
     // 只保留拦截 / 失败 / 旁路：这就是「仅拦截与错误」模式会落库的那几条。
     final rows = [
@@ -216,7 +231,7 @@ class CacheHotspotsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(logDashboardProvider).cacheHotspots;
+    final rows = _snapshotOf(ref)?.cacheHotspots ?? const [];
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.layers,
@@ -247,7 +262,7 @@ class RaceWinnersCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(logDashboardProvider).raceWinners;
+    final rows = _snapshotOf(ref)?.raceWinners ?? const [];
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.shuffle,
@@ -275,7 +290,7 @@ class BootstrapDnsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(logDashboardProvider).bootstrapIps;
+    final rows = _snapshotOf(ref)?.bootstrapIps ?? const [];
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.dns,
@@ -305,7 +320,7 @@ class RuleBlocksCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rows = ref.watch(logDashboardProvider).subscriptionBlocks;
+    final rows = _snapshotOf(ref)?.subscriptionBlocks ?? const [];
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.rules,
@@ -359,14 +374,22 @@ class PrivacyModeCard extends StatelessWidget {
   }
 }
 
-/// 解析效能概况（旧版 `解析效能概况` 卡：两条比率行）。
+/// 解析效能概况（旧版 `解析效能概况` 卡：四条比率行）。
+///
+/// 旧版这一卡只有竞速与 Bootstrap 两行；本仓补了 DNS 侧两行（平均延迟 /
+/// 缓存命中率），因为它们来自**同一批** `dns_log` 当日行、同一次扫描，而
+/// 「关闭日志」模式下正需要它们说明「不记明细但解析仍在跑」。
+///
+/// 平均延迟没有计时样本时显示 `—`（不是 `0 ms`）：后者会被读成「解析飞快」。
 class ResolutionPerfCard extends ConsumerWidget {
   const ResolutionPerfCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final snapshot = ref.watch(logDashboardProvider);
+    final snapshot = _snapshotOf(ref);
     final scale = DashboardDensityScope.scaleOf(context);
+    final quality = snapshot?.quality;
+    final latency = quality?.averageLatencyMs;
     return DashboardCard(
       semanticLabel: '解析效能概况',
       child: Column(
@@ -375,25 +398,49 @@ class ResolutionPerfCard extends ConsumerWidget {
           DashboardCardHeader(
             glyph: AppGlyphs.speed,
             title: '解析效能概况',
-            trailing: [const DashboardChip(label: '实时统计')],
+            trailing: [const DashboardChip(label: '今日统计')],
+          ),
+          SizedBox(height: 14 * scale),
+          DashboardRateRow(
+            label: '平均解析耗时',
+            value: quality == null
+                ? '—'
+                : latency == null
+                ? '— · 今日暂无计时样本'
+                : '${dashboardLatency(latency)} · '
+                      '${dashboardCount(quality.latencySamples)} 个样本',
+            // 延迟不是比率，进度条按「越小越好」无法归一，因此给 0 让这一行
+            // 只显示文字（组件在 progress 为 0 时不画条）。
+            progress: 0,
+          ),
+          SizedBox(height: 14 * scale),
+          DashboardRateRow(
+            label: '缓存命中率',
+            value: quality == null
+                ? '—'
+                : '${dashboardPercent(quality.cacheHitRate)} · '
+                      '分母为通过 + 失败',
+            progress: quality?.cacheHitRate ?? 0,
           ),
           SizedBox(height: 14 * scale),
           DashboardRateRow(
             label: '竞速成功率',
-            value:
-                '${dashboardPercent(snapshot.race.successRate)} · '
-                '${dashboardCount(snapshot.race.requests)} 次 · '
-                '${dashboardLatency(snapshot.race.averageElapsedMs)}',
-            progress: snapshot.race.successRate,
+            value: snapshot == null
+                ? '—'
+                : '${dashboardPercent(snapshot.race.successRate)} · '
+                      '${dashboardCount(snapshot.race.requests)} 次 · '
+                      '${dashboardLatency(snapshot.race.averageElapsedMs)}',
+            progress: snapshot?.race.successRate ?? 0,
           ),
           SizedBox(height: 14 * scale),
           DashboardRateRow(
             label: 'Bootstrap 成功率',
-            value:
-                '${dashboardPercent(snapshot.bootstrap.successRate)} · '
-                '${dashboardCount(snapshot.bootstrap.attempts)} 次 · '
-                '${dashboardLatency(snapshot.bootstrap.averageElapsedMs)}',
-            progress: snapshot.bootstrap.successRate,
+            value: snapshot == null
+                ? '—'
+                : '${dashboardPercent(snapshot.bootstrap.successRate)} · '
+                      '${dashboardCount(snapshot.bootstrap.attempts)} 次 · '
+                      '${dashboardLatency(snapshot.bootstrap.averageElapsedMs)}',
+            progress: snapshot?.bootstrap.successRate ?? 0,
           ),
           SizedBox(height: 2 * scale),
         ],

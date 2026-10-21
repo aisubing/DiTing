@@ -47,7 +47,7 @@ Future<T> _viaDatabase<T>(
   return db == null ? empty : build(db);
 }
 
-/// Latest rows for the active mode.
+/// 最新行（当前模式的库）。
 final dnsLogsProvider = FutureProvider<List<DnsLogRecord>>((ref) async {
   ref.watch(dnsLogRevisionProvider);
   return _viaDatabase(
@@ -57,18 +57,10 @@ final dnsLogsProvider = FutureProvider<List<DnsLogRecord>>((ref) async {
   );
 });
 
-/// Today's counters for the dashboard header, read from the same legacy table
-/// the rows come from. The engine's session counters reset on every tunnel
-/// start and stay at zero when normal mode runs without a logging session, so
-/// the persisted table is the authoritative "today" number.
-final dnsLogDailyStatsProvider = FutureProvider<DnsLogDailyStats>((ref) async {
-  ref.watch(dnsLogRevisionProvider);
-  return _viaDatabase(
-    ref,
-    (db) => DnsLogRepository(db).dailyStats(),
-    const DnsLogDailyStats.empty(),
-  );
-});
+// 「今日计数器」曾经有一个 `dnsLogDailyStatsProvider`，只算 `dns_log` 一张表。
+// 概览块需要 DNS + HTTPS 两表相加、还要按日志模式裁剪，因此搬到了
+// `log_dashboard_overview_providers.dart` 的 `logDashboardProvider`。旧 provider
+// 已删除：留一个「口径相同但少一张表」的入口，下一个人接线时几乎必然选错它。
 
 final dnsCacheProvider = FutureProvider<List<DnsCacheRecord>>((ref) async {
   ref.watch(dnsLogRevisionProvider);

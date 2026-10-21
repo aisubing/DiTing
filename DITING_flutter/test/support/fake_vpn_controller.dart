@@ -21,6 +21,10 @@ class FakeVpnController implements VpnController {
   VpnStartRequest? lastRequest;
   VpnStatus statusValue = const VpnStatus(running: false, persisted: false);
 
+  /// 下一次 [trafficRates] 的返回值；测试要验证「速率来自原生」时改它。
+  VpnTrafficRates ratesValue = const VpnTrafficRates.idle();
+  int trafficRatesCalls = 0;
+
   @override
   void Function(bool granted)? onPrepareResult;
 
@@ -49,4 +53,10 @@ class FakeVpnController implements VpnController {
 
   @override
   Future<VpnStatus> status() async => statusValue;
+
+  @override
+  Future<VpnTrafficRates> trafficRates() async {
+    trafficRatesCalls++;
+    return ratesValue;
+  }
 }
