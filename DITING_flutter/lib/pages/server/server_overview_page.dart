@@ -7,6 +7,7 @@ import 'package:diting/state/server_upstream_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -102,7 +103,16 @@ class ServerOverviewPage extends ConsumerWidget {
                       ),
                 onTap: localIpv4.isEmpty
                     ? null
-                    : () => showServerHint(context, '已复制 $localIpv4:$port'),
+                    : () async {
+                        // 真的写剪贴板再提示：只弹「已复制」而不写，用户会拿着
+                        // 空剪贴板去配置另一台设备。
+                        final address = '$localIpv4:$port';
+                        await Clipboard.setData(ClipboardData(text: address));
+                        if (!context.mounted) {
+                          return;
+                        }
+                        showServerHint(context, '已复制 $address');
+                      },
               ),
             ],
           ),
