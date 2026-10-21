@@ -82,12 +82,16 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
         private const val EXPORT_DIR = "exports"
 
         /**
-         * 1.4.3 `AppUpdateDirectories.downloadDirectory(filesDir)`.
+         * 1.4.3 `AppUpdateManager.UPDATE_DIRECTORY`.
          *
          * Data-cleanup 的「清理下载与临时缓存」必须删这个目录：更新安装包留在这里
          * 才不会被系统清掉，删错了地方会让「已清理」变成谎报。
+         *
+         * 这里曾经写成 `"updates"`，而下载目录实际是 `"app-update"`——删了一个
+         * 从不存在的目录，动作照样报「已清理」。1.4.3 犯过同一个错，并用
+         * `AppUpdateDirectories` 把常量收敛到一处来根治。
          */
-        private const val UPDATE_DIR = "updates"
+        private const val UPDATE_DIR = "app-update"
 
         /** Key 1.4.3's `SystemSettingsStore` used for 后台隐藏. */
         private const val HIDE_FROM_RECENTS_KEY = "hide_from_recents_enabled"

@@ -9,6 +9,8 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/backup/dav_client.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/update/app_update_checker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 访问控制模式：白名单（只放行选中）/ 黑名单（只拦截选中）。
@@ -300,50 +302,110 @@ enum UpdateStage {
   bool get isBusy => this == checking || this == downloading;
 }
 
+/// 应用更新的状态机；[UpdateNotifier.check] 发起真实的 GitHub Releases 请求。
 class UpdateState {
-  const UpdateState({this.stage = UpdateStage.idle, this.progress = 0});
+  const UpdateState({
+    this.stage = UpdateStage.idle,
+    this.progress = 0,
+    this.info,
+    this.currentVersion,
+    this.error,
+  });
 
   final UpdateStage stage;
 
   /// 0–1；只在 [UpdateStage.downloading] 时有意义。
   final double progress;
 
-  UpdateState copyWith({UpdateStage? stage, double? progress}) => UpdateState(
+  /// 发现的新版本；只有 [UpdateStage.available] 及之后才有值。
+  final UpdateInfo? info;
+
+  /// 本机版本，用于「当前 x → 最新 y」。
+  final String? currentVersion;
+
+  /// 检查失败的原因；[UpdateStage.idle] 且非空表示上一次检查失败。
+  final String? error;
+
+  UpdateState copyWith({
+    UpdateStage? stage,
+    double? progress,
+    UpdateInfo? info,
+    String? currentVersion,
+    String? error,
+    bool clearError = false,
+    bool clearInfo = false,
+  }) => UpdateState(
     stage: stage ?? this.stage,
     progress: progress ?? this.progress,
+    info: clearInfo ? null : (info ?? this.info),
+    currentVersion: currentVersion ?? this.currentVersion,
+    error: clearError ? null : (error ?? this.error),
   );
 }
 
-/// 检查更新 → 发现新版本 → 下载进度，全程 `Future.delayed` 模拟。
+/// 检查更新走真实 `releases/latest` 请求；不再「永远发现新版本」。
+///
+/// 上一轮 `check()` 是 `await Future.delayed(900ms)` 然后直接置
+/// `UpdateStage.available`——与服务器无关，永远提示有更新，引导用户去下载一个
+/// 不存在的安装包。
 class UpdateNotifier extends Notifier<UpdateState> {
   @override
   UpdateState build() => const UpdateState();
 
-  Future<void> check() async {
-    if (state.stage.isBusy) {
-      return;
-    }
-    state = state.copyWith(stage: UpdateStage.checking, progress: 0);
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    state = state.copyWith(stage: UpdateStage.available);
+  /// 本机版本。
+  ///
+  /// 来自 `app_version_name`（`LegacySettings` 写入的构建版本），
+  /// 读不到时回落到 `1.4.4` —— 与 `app_version_code` 的默认 10404 对应。
+  String get _currentVersion {
+    final raw = ref.read(legacySettingsProvider).rawValue('app_version_name');
+    if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+    return '1.4.4';
   }
 
-  Future<void> download() async {
-    if (state.stage.isBusy) {
+  Future<void> check() async {
+    if (state.stage.isBusy) return;
+    final current = _currentVersion;
+    state = state.copyWith(
+      stage: UpdateStage.checking,
+      progress: 0,
+      currentVersion: current,
+      clearError: true,
+      clearInfo: true,
+    );
+    final result = await ref.read(appUpdateCheckerProvider).check(current);
+    if (result.failed) {
+      // 失败回到 idle 并带上原因：停在「检查中」会让页面永远转圈，
+      // 而伪装成「已是最新」会让用户错过真正的更新。
+      state = state.copyWith(
+        stage: UpdateStage.idle,
+        error: result.error,
+      );
       return;
     }
-    for (var step = 1; step <= 10; step++) {
-      state = state.copyWith(
-        stage: UpdateStage.downloading,
-        progress: step / 10,
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 160));
+    state = result.hasUpdate
+        ? state.copyWith(stage: UpdateStage.available, info: result.info)
+        : state.copyWith(stage: UpdateStage.upToDate, clearInfo: true);
+  }
+
+  /// 下载：原生侧没有接入安装包下载器，这里如实报告未实现。
+  ///
+  /// 不再用假的进度条冒充「下载完成」——那个状态会让用户以为装好了。
+  Future<void> download() async {
+    if (state.stage.isBusy) return;
+    if (state.info == null) {
+      state = state.copyWith(error: '请先检查更新');
+      return;
     }
-    state = state.copyWith(stage: UpdateStage.downloaded);
+    state = state.copyWith(error: '本机尚未接入安装包下载器，请用浏览器打开下载地址');
   }
 
   void reset() => state = const UpdateState();
 }
+
+/// 更新检查器（可在测试里覆盖端点）。
+final appUpdateCheckerProvider = Provider<AppUpdateChecker>(
+  (ref) => const AppUpdateChecker(),
+);
 
 final updateProvider = NotifierProvider<UpdateNotifier, UpdateState>(
   UpdateNotifier.new,

@@ -457,6 +457,49 @@ PROPFIND/404→MKCOL/PUT/GET 与 401 分支。注意它必须 `HttpOverrides.glo
 删掉库里的规则后下载 → 服务端 `GET 200`，对话框报「恢复汇总：新增 19 项」，
 `block_rule` 里 `ads.seed.test` 恢复。
 
+### 8.1.6 检查更新真的查 GitHub
+
+`UpdateNotifier.check()` 上一轮是 `await Future.delayed(900ms)` 然后直接置
+`available`——**永远提示有更新，与服务器无关**。这会引导用户去下载一个不存在的包。
+`download()` 同样是十步假进度条走到「下载完成」。
+
+现在 `lib/data/update/app_update_checker.dart` 照抄 1.4.3 `AppUpdateManager`：
+
+| 项 | 值 |
+|---|---|
+| 端点 | `api.github.com/repos/haoze-evoluling/DITING/releases/latest` |
+| 请求头 | `Accept: application/vnd.github+json` + `User-Agent`（GitHub 对无 UA 请求返回 403） |
+| 版本比较 | 去 `v` 前缀、取 `-` 前、按 `.` 拆整数逐段比（不是字符串比：`1.4.10 > 1.4.9`） |
+| 资产挑选 | 优先 `.apk` 且名字含 `arm64-v8a`，其次任意 `.apk`；挑不到就报错 |
+| 403/404/5xx | 翻成具体原因；403 且响应体含 `rate limit` 时明说「接口限流」 |
+
+三个刻意的「不」：
+
+1. **看不懂的 tag 不算更新**。`latest` / `1.4.x` 这类解析不出整数的版本一律 `false`——
+   宁可「没有更新」，也不要把垃圾 tag 当成新版本提示下载。
+2. **没有 APK 资产就报错**，不猜下载地址。
+3. **下载仍未接入**：`download()` 如实提示「本机尚未接入安装包下载器，请用浏览器打开
+   下载地址」，不再用假进度条冒充「下载完成」。1.4.3 自带 `DownloadManager` 下载器，
+   这部分尚未移植，本文不把它写成已完成。
+
+页脚那句「演示层不发起真实请求」同时删掉，改为真实行为说明；失败时页脚显示失败原因
+（红色），不再显示一句与事实相反的提示。「更新日志」标题改成「历史版本更新日志」——
+它是静态发布历史，真实的最新版本在上方卡片里。
+
+`test/app_update_checker_test.dart`（20 条）起真实 `HttpServer` 覆盖全部解析分支与
+HTTP 状态，含「字符串比较会判错」的 `1.4.10 vs 1.4.9` 用例。
+
+实测（emulator-5554，三种结果都出现过）：
+真实 GitHub → 「检查更新失败：GitHub 接口限流（未认证请求每小时 60 次），请稍后再试…」
+（宿主机 IP 已限流，这恰好证明请求真的发出去了）；
+本地假 release（`--dart-define=DITING_RELEASE_URL=...` + `adb reverse`，tag `v9.9.9`）→
+「可更新到 9.9.9／发现新版本」，按钮变「重新检查 / 下载」；
+同一端点改成 `v1.4.4` → 「已是最新／当前已是最新版本（1.4.4）」。
+
+顺带修掉一个真 bug：`PlatformBridge.UPDATE_DIR` 原为 `"updates"`，而下载目录实际是
+`"app-update"`——「清理下载与临时缓存」一直在删一个不存在的目录却照样报「已清理」。
+1.4.3 犯过同一个错并用 `AppUpdateDirectories` 收敛常量，这里改为 `"app-update"`。
+
 ### 8.2 旧版没有后端的界面
 
 `/connections`、`/resources` 在 1.4.3 里没有对应后端（那一版只有请求日志，没有「活动连接」

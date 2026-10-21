@@ -47,7 +47,6 @@ class AppUpdatePage extends ConsumerWidget {
           const SizedBox(height: 4),
           _UpdateCard(
             update: update,
-            latest: latest,
             hasNewVersion: hasNewVersion,
             onCheck: update.stage.isBusy ? null : notifier.check,
             onDownload: update.stage.isBusy ? null : notifier.download,
@@ -88,7 +87,10 @@ class AppUpdatePage extends ConsumerWidget {
               ),
             ],
           ),
-          const ListHeader(title: '更新日志'),
+          const ListHeader(title: '历史版本更新日志'),
+          // 这里是有意的静态发布历史，不是实时数据：真实的最新版本在上面的卡片里
+          // 由 GitHub Release 决定。标题写明「历史版本」，避免用户把这份常量
+          // 当成「当前可更新到哪一版」。
           for (final entry in mockChangelog)
             _ChangelogCard(entry: entry, isLatest: entry == latest),
           Padding(
@@ -117,17 +119,28 @@ class AppUpdatePage extends ConsumerWidget {
   }
 }
 
-/// 旧版 `updateStatusText` + `downloadActionText` 的文案。
+/// 检查更新状态文案。版本号取**真实检查结果**，读不到时明说「未检查」。
+///
+/// 这里曾经用 `mockChangelog.first.version`——一个写死的版本号，于是「发现 1.4.5
+/// 新版本」这句话与 GitHub 上实际有什么毫无关系。现在版本来自响应体的 `tag_name`，
+/// 失败时直接显示失败原因，而不是装作「已是最新」。
 String statusText(UpdateState state) {
-  final latest = mockChangelog.first.version;
+  final latest = state.info?.version;
+  final current = state.currentVersion;
   return switch (state.stage) {
     UpdateStage.checking => '正在检查 GitHub Release',
-    UpdateStage.available => '发现 $latest 新版本，可下载',
+    UpdateStage.available => [
+      '发现 ${latest ?? '新'}版本',
+      if (current != null) '（当前 $current）',
+    ].join(),
     UpdateStage.downloading =>
-      '正在下载 $latest，${(state.progress * 100).round()}%',
-    UpdateStage.downloaded => '$latest 已下载，点击安装',
-    UpdateStage.upToDate => '当前已是最新版本',
-    UpdateStage.idle => '检查 GitHub Release 中的最新版本',
+      '正在下载 ${latest ?? '安装包'}，${(state.progress * 100).round()}%',
+    UpdateStage.downloaded => '${latest ?? '安装包'} 已下载',
+    UpdateStage.upToDate => [
+      '当前已是最新版本',
+      if (current != null) '（$current）',
+    ].join(),
+    UpdateStage.idle => state.error ?? '检查 GitHub Release 中的最新版本',
   };
 }
 
@@ -135,14 +148,12 @@ String statusText(UpdateState state) {
 class _UpdateCard extends StatelessWidget {
   const _UpdateCard({
     required this.update,
-    required this.latest,
     required this.hasNewVersion,
     required this.onCheck,
     required this.onDownload,
   });
 
   final UpdateState update;
-  final MockChangelogEntry latest;
   final bool hasNewVersion;
   final VoidCallback? onCheck;
   final VoidCallback? onDownload;
@@ -181,7 +192,9 @@ class _UpdateCard extends StatelessWidget {
                     spacing: 2,
                     children: [
                       Text(
-                        hasNewVersion ? '可更新到 ${latest.version}' : '谛听',
+                        hasNewVersion
+                            ? '可更新到 ${update.info?.version ?? '新版本'}'
+                            : '谛听',
                         style: AppTextStyle.title3.of(
                           context,
                           emphasized: true,
@@ -249,9 +262,12 @@ class _UpdateCard extends StatelessWidget {
             ),
             if (update.stage == UpdateStage.idle)
               Text(
-                '演示层不发起真实请求：点「检查更新」会直接返回「发现新版本」，'
-                '下载会走完 10 步进度后停在「下载完成」。',
-                style: context.listCaptionStyle,
+                update.error ??
+                    '「检查更新」会向 GitHub Releases 查询最新版本；'
+                        '发现新版本后需用浏览器打开下载地址安装。',
+                style: context.listCaptionStyle.copyWith(
+                  color: update.error == null ? null : colorScheme.error,
+                ),
               ),
           ],
         ),
