@@ -6,9 +6,9 @@
 /// 一句「演示环境不申请」，而不是给一排点了没反应的授权按钮。
 library;
 
-import 'package:diting/data/mock_config.dart';
+import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/pages/config/config_common.dart';
-import 'package:diting/state/config_providers.dart';
+import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

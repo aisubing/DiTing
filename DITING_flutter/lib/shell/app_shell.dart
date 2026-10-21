@@ -1,7 +1,9 @@
 import 'package:diting/app/theme/layout.dart';
+import 'package:diting/pages/server/server_mode_shell.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +14,11 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// 用 [StatefulShellRoute.indexedStack]，所以每个 branch 有自己的 `Navigator`
 /// 且切 tab 不销毁——`KeepScope` 在这里是多余的，不能重复套。
+///
+/// **服务器模式是例外**：旧版 `DnsMainScreen` 是另一个 Activity，带自己的三 Tab
+/// 浮条（概览 / 上游服务器 / 模式设置）。因此 `workModeProvider == server` 时
+/// 整棵树换成 [ServerModeShell]，六项浮条不出现——把两套导航叠在一起，用户会
+/// 在「上游服务器」页底下看到「日志 / 流量 / 工具」这些与服务器模式无关的 tab。
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -19,6 +26,10 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(workModeProvider);
+    if (mode == AppWorkMode.server) {
+      return const ServerModeShell();
+    }
     final destinations = ref.watch(bottomBarProvider);
     final haptic = ref.watch(hapticProvider);
     final style = ref.watch(bottomBarStyleProvider);
@@ -57,10 +68,7 @@ class AppShell extends ConsumerWidget {
   }
 
   /// 底栏是 branch 的子集视图，因此用户配置的下标要映射回 branch 下标。
-  int _selectedIndex(
-    List<BottomBarDestination> destinations,
-    int branchIndex,
-  ) {
+  int _selectedIndex(List<BottomBarDestination> destinations, int branchIndex) {
     final location = _branchOrder[branchIndex];
     final index = destinations.indexWhere(
       (destination) => destinationLocation(destination) == location,

@@ -1,151 +1,69 @@
-part of 'config_providers.dart';
+/// 配置域的「保留资源」状态：图标集 / User-Agent / 按需连接。
+///
+/// 上一轮这里是 `part of config_providers.dart`，与通用 / 网络 / 覆写 / 策略表 /
+/// 嗅探五族配置共库。那五族属于 FlClash 的内核配置，1.4.3 没有对应界面，已随
+/// 内核配置页一并删除；本库因此独立出来，只保留用户要求保留的三张表。
+///
+/// 一个 notifier 管三组数据而不是三个 notifier：三者操作都是「整表替换」，没有
+/// 交叉逻辑，拆开只会多出三份几乎相同的 boilerplate。
+library;
 
-/// 资源类数据（过滤器 / 追加规则 / 脚本 / 提供者 / 图标集 / UA / 按需）。
-///
-/// 七类数据放在一个 notifier 里：它们的操作都是「整表替换」，且没有交叉逻辑，
-/// 拆开只会多出七份几乎相同的 boilerplate。
-///
-/// 单独放进 part 文件是为了守住单文件 550 行的上限：通用 / 网络 / 覆写 / 策略表 /
-/// 嗅探与这里的资源表互不引用，只是放在同一个库里共享 import。
+import 'package:diting/data/mock_config_resources.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// 资源配置域的整表快照。
+class ConfigResources {
+  const ConfigResources({
+    required this.iconSets,
+    required this.userAgents,
+    required this.selectedUserAgent,
+    required this.ssidRules,
+    required this.onDemand,
+  });
+
+  final List<MockIconSet> iconSets;
+  final List<MockUserAgent> userAgents;
+
+  /// 当前选中的 UA；null 表示「不覆写」（沿用订阅或内核默认）。
+  ///
+  /// 上一轮这一位放在 `generalConfigProvider` 里，而那一族随内核配置删除。
+  /// 一行保留项不值得拖回整套通用配置，因此并入本快照。
+  final String? selectedUserAgent;
+  final List<MockSsidRule> ssidRules;
+  final bool onDemand;
+
+  ConfigResources copyWith({
+    List<MockIconSet>? iconSets,
+    List<MockUserAgent>? userAgents,
+    String? selectedUserAgent,
+    bool clearSelectedUserAgent = false,
+    List<MockSsidRule>? ssidRules,
+    bool? onDemand,
+  }) => ConfigResources(
+    iconSets: iconSets ?? this.iconSets,
+    userAgents: userAgents ?? this.userAgents,
+    selectedUserAgent: clearSelectedUserAgent
+        ? null
+        : (selectedUserAgent ?? this.selectedUserAgent),
+    ssidRules: ssidRules ?? this.ssidRules,
+    onDemand: onDemand ?? this.onDemand,
+  );
+}
+
 class ConfigResourcesNotifier extends Notifier<ConfigResources> {
-  var _sequence = 0;
-
   @override
   ConfigResources build() => const ConfigResources(
-    filters: mockFilters,
-    rules: mockAddedRules,
-    scripts: mockScripts,
-    providers: mockClashProviders,
     iconSets: mockIconSets,
     userAgents: mockUserAgents,
+    selectedUserAgent: null,
     ssidRules: mockSsidRules,
     onDemand: false,
   );
 
-  // —— 过滤器 ——
-
-  bool addFilter(MockFilter filter) {
-    if (state.filters.any((item) => item.label == filter.label)) {
-      return false;
-    }
-    state = state.copyWith(filters: [...state.filters, filter]);
-    return true;
-  }
-
-  bool updateFilter(String label, MockFilter next) {
-    if (label != next.label &&
-        state.filters.any((item) => item.label == next.label)) {
-      return false;
-    }
-    state = state.copyWith(
-      filters: [
-        for (final item in state.filters) item.label == label ? next : item,
-      ],
-    );
-    return true;
-  }
-
-  void removeFilters(Set<String> labels) => state = state.copyWith(
-    filters: [
-      for (final item in state.filters)
-        if (!labels.contains(item.label)) item,
-    ],
-  );
-
-  // —— 追加规则 ——
-
-  void putRule(MockAddedRule rule) {
-    final exists = state.rules.any((item) => item.id == rule.id);
-    state = state.copyWith(
-      rules: exists
-          ? [for (final item in state.rules) item.id == rule.id ? rule : item]
-          : [...state.rules, rule],
-    );
-  }
-
-  MockAddedRule newRule() => MockAddedRule(
-    id: 'ar-user-${_sequence++}',
-    kind: AddedRuleKind.domainSuffix,
-    payload: '',
-    policy: mockRulePolicies.first,
-  );
-
-  void removeRules(Set<String> ids) => state = state.copyWith(
-    rules: [
-      for (final item in state.rules)
-        if (!ids.contains(item.id)) item,
-    ],
-  );
-
-  /// 上移/下移：规则有先后顺序，顺序决定命中优先级。
-  void moveRule(String id, int delta) {
-    final index = state.rules.indexWhere((item) => item.id == id);
-    final target = index + delta;
-    if (index < 0 || target < 0 || target >= state.rules.length) {
-      return;
-    }
-    final next = [...state.rules];
-    final rule = next.removeAt(index);
-    next.insert(target, rule);
-    state = state.copyWith(rules: next);
-  }
-
-  // —— 脚本 ——
-
-  bool putScript(String? originalName, MockScript script) {
-    final clash = state.scripts.any(
-      (item) => item.name == script.name && item.name != originalName,
-    );
-    if (clash) {
-      return false;
-    }
-    state = state.copyWith(
-      scripts: originalName == null
-          ? [...state.scripts, script]
-          : [
-              for (final item in state.scripts)
-                item.name == originalName ? script : item,
-            ],
-    );
-    return true;
-  }
-
-  void removeScript(String name) => state = state.copyWith(
-    scripts: [
-      for (final item in state.scripts)
-        if (item.name != name) item,
-    ],
-  );
-
-  // —— Clash 提供者 ——
-
-  bool putProvider(String? originalName, MockClashProvider provider) {
-    final clash = state.providers.any(
-      (item) => item.name == provider.name && item.name != originalName,
-    );
-    if (clash) {
-      return false;
-    }
-    state = state.copyWith(
-      providers: originalName == null
-          ? [...state.providers, provider]
-          : [
-              for (final item in state.providers)
-                item.name == originalName ? provider : item,
-            ],
-    );
-    return true;
-  }
-
-  void removeProvider(String name) => state = state.copyWith(
-    providers: [
-      for (final item in state.providers)
-        if (item.name != name) item,
-    ],
-  );
-
   // —— 图标集 ——
 
+  /// [originalName] 为空表示新增。图标集按名字被引用，因此重名要就地覆盖而不是
+  /// 追加一份（列表页按名字删改，重名会让「删哪一份」变成不确定）。
   void putIconSet(String? originalName, MockIconSet iconSet) {
     state = state.copyWith(
       iconSets: originalName == null
@@ -166,6 +84,7 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
 
   // —— User-Agent ——
 
+  /// 返回 false 表示空值或重复，调用方给一句提示。
   bool addUserAgent(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty ||
@@ -196,16 +115,30 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
               ? MockUserAgent(value: trimmed, isDefault: item.isDefault)
               : item,
       ],
+      // 改的正好是当前选中的那条时同步切换，否则选中项会指向一个不存在的值。
+      selectedUserAgent: state.selectedUserAgent == original ? trimmed : null,
     );
     return true;
   }
 
   /// 内置 UA 不可删：删掉之后内核回落到默认值，用户会以为「设置没生效」。
-  void removeUserAgent(String value) => state = state.copyWith(
-    userAgents: [
-      for (final item in state.userAgents)
-        if (item.value != value || item.isDefault) item,
-    ],
+  void removeUserAgent(String value) {
+    if (state.userAgents.any((item) => item.value == value && item.isDefault)) {
+      return;
+    }
+    state = state.copyWith(
+      userAgents: [
+        for (final item in state.userAgents)
+          if (item.value != value) item,
+      ],
+      clearSelectedUserAgent: state.selectedUserAgent == value,
+    );
+  }
+
+  /// null 表示「不覆写」。
+  void selectUserAgent(String? value) => state = state.copyWith(
+    selectedUserAgent: value,
+    clearSelectedUserAgent: value == null,
   );
 
   // —— 按需连接 ——
@@ -254,49 +187,6 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
       ],
     );
   }
-}
-
-/// 资源配置域的整表快照。
-class ConfigResources {
-  const ConfigResources({
-    required this.filters,
-    required this.rules,
-    required this.scripts,
-    required this.providers,
-    required this.iconSets,
-    required this.userAgents,
-    required this.ssidRules,
-    required this.onDemand,
-  });
-
-  final List<MockFilter> filters;
-  final List<MockAddedRule> rules;
-  final List<MockScript> scripts;
-  final List<MockClashProvider> providers;
-  final List<MockIconSet> iconSets;
-  final List<MockUserAgent> userAgents;
-  final List<MockSsidRule> ssidRules;
-  final bool onDemand;
-
-  ConfigResources copyWith({
-    List<MockFilter>? filters,
-    List<MockAddedRule>? rules,
-    List<MockScript>? scripts,
-    List<MockClashProvider>? providers,
-    List<MockIconSet>? iconSets,
-    List<MockUserAgent>? userAgents,
-    List<MockSsidRule>? ssidRules,
-    bool? onDemand,
-  }) => ConfigResources(
-    filters: filters ?? this.filters,
-    rules: rules ?? this.rules,
-    scripts: scripts ?? this.scripts,
-    providers: providers ?? this.providers,
-    iconSets: iconSets ?? this.iconSets,
-    userAgents: userAgents ?? this.userAgents,
-    ssidRules: ssidRules ?? this.ssidRules,
-    onDemand: onDemand ?? this.onDemand,
-  );
 }
 
 final configResourcesProvider =

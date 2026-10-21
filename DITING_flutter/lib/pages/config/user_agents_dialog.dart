@@ -37,10 +37,5 @@ Future<void> showUserAgentDialog(
       : notifier.updateUserAgent(existing, value);
   if (!ok) {
     showConfigHint(context, '该 UA 已存在');
-    return;
-  }
-  // 改的正好是当前选中的那条时同步切换，否则选中项会指向一个不存在的值。
-  if (ref.read(generalConfigProvider).userAgent == existing) {
-    ref.read(generalConfigProvider.notifier).setUserAgent(value.trim());
   }
 }

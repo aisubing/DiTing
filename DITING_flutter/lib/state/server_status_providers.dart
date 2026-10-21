@@ -96,7 +96,11 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
   }
 
   Future<void> toggle() async {
-    if (state == ServerStatus.starting || state == ServerStatus.stopping) return;
+    // 「启动中 / 停止中」时忽略点击：这两个中间态各有一个等待原生确认的
+    // Future，重复点击会让第二条命令与第一条交错，最终状态取决于谁先回来。
+    if (state == ServerStatus.starting || state == ServerStatus.stopping) {
+      return;
+    }
     if (state == ServerStatus.running) {
       await _stop();
       return;
@@ -119,15 +123,17 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       final config = buildServerDnsConfig(settings);
       final rules = await _serverRules();
       if (_disposed) return;
-      final result = await ref.read(dnsServerControllerProvider).start(
-        DnsServerStartRequest(
-          port: config.port,
-          dnsConfig: config.encode(),
-          ruleSnapshot: encodeRuleSnapshot(rules),
-          rewriteRules: encodeRewriteRules(rules),
-          adBlockEnabled: config.adBlockEnabled,
-        ),
-      );
+      final result = await ref
+          .read(dnsServerControllerProvider)
+          .start(
+            DnsServerStartRequest(
+              port: config.port,
+              dnsConfig: config.encode(),
+              ruleSnapshot: encodeRuleSnapshot(rules),
+              rewriteRules: encodeRewriteRules(rules),
+              adBlockEnabled: config.adBlockEnabled,
+            ),
+          );
       if (_disposed) return;
       if (!result.started) {
         _fail(result.error ?? 'DNS 服务启动失败');
