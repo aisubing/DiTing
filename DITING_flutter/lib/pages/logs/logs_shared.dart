@@ -5,6 +5,7 @@
 library;
 
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/chip_row.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// DNS 记录类型数字 → 展示名（旧版 `dnsTypeName` 逐字照抄，含 `TYPE$n` 兜底）。
@@ -163,6 +164,12 @@ NullStatus logsEmpty({
 /// 竞速页、Bootstrap 页、订阅拦截页三处都用它：三页的范围档位不同（`7 天` 与
 /// `近 7 天`），但样式与位置必须一致，否则用户在三个页面之间切换会觉得是三个
 /// 不同组件。泛型化而不是各写一份。
+///
+/// **不再自带横向内边距**：三个调用方都把这个选择器放进 `generateSection`，
+/// 而 `generateSection` 已经给卡片列加了 `horizontal: 16`。这里再套一层，chip
+/// 左沿就是 32，而同组的 `ListHeader` 标题在 16——真机上量到的正是
+/// `title x=16 / chip x=32`，标题比 chip 左移半格。样式按 chip 行统一交给
+/// [ChipRow]（定高 32、横向滚动），与白名单/黑名单页那套 UI 对齐。
 class LogStatsRangeSelector<T> extends StatelessWidget {
   const LogStatsRangeSelector({
     super.key,
@@ -179,26 +186,15 @@ class LogStatsRangeSelector<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final option in values)
-            TonalChip(
-              label: labelOf(option),
-              color: option == value
-                  ? colorScheme.primary
-                  : context.raisedSurfaceLevel.colorOf(colorScheme),
-              foregroundColor: option == value
-                  ? colorScheme.onPrimary
-                  : colorScheme.onSurfaceVariant,
-              onPressed: () => onChanged(option),
-            ),
-        ],
-      ),
+    return ChipRow(
+      children: [
+        for (final option in values)
+          FilterPill(
+            label: labelOf(option),
+            selected: option == value,
+            onPressed: () => onChanged(option),
+          ),
+      ],
     );
   }
 }

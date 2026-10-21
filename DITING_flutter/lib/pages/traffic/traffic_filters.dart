@@ -50,41 +50,6 @@ class _SortOption {
   final String? unavailableReason;
 }
 
-/// 一个可选档位气泡。禁用档保留在行里，点击时说明为什么不可用。
-class _OptionChip extends StatelessWidget {
-  const _OptionChip({
-    required this.label,
-    required this.selected,
-    required this.onPressed,
-    this.unavailableReason,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-  final String? unavailableReason;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final disabled = unavailableReason != null;
-    final foreground = disabled
-        ? colorScheme.onSurfaceVariant.withValues(alpha: 0.45)
-        : selected
-        ? colorScheme.onPrimary
-        : colorScheme.onSurfaceVariant;
-    return TonalChip(
-      label: label,
-      color: selected
-          ? colorScheme.primary
-          : context.raisedSurfaceLevel.colorOf(colorScheme),
-      foregroundColor: foreground,
-      // 禁用档也保留点击手势：点了要能弹出「为什么不可用」，而不是毫无反应。
-      onPressed: disabled ? onPressed : (selected ? null : onPressed),
-    );
-  }
-}
-
 /// 筛选条：搜索 + 排序 + 隐藏系统应用（旧版 `TrafficFilterBar.kt`）。
 ///
 /// 搜索放在正文里而不是顶栏：旧版就是正文里的一行 `RuleSearchField`，
@@ -128,15 +93,15 @@ class _TrafficFilterBar extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 6,
+          // 与档位行同一形态（[ChipRow]）：此前这里是 `Wrap`，chip 只有 18dp
+          // 高，和上方那行 32dp 的档位看起来不是同一套控件。
+          child: ChipRow(
             children: [
               for (final option in _sortOptions)
-                _OptionChip(
+                FilterPill(
                   label: option.label,
                   selected: option.sort == sort,
-                  unavailableReason: option.unavailableReason,
+                  disabled: option.unavailableReason != null,
                   onPressed: () => onSortSelected(option),
                 ),
             ],

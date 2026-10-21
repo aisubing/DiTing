@@ -9,6 +9,7 @@ import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/pages/config/config_common.dart';
 import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -57,8 +58,8 @@ class IconSetsConfigPage extends ConsumerWidget {
             glyph: AppGlyphs.iconTile,
           ),
           if (iconSets.isEmpty)
-            SizedBox(
-              height: 300,
+            EmptyStateBox(
+              minHeight: 300,
               child: NullStatus(
                 label: '还没有图标集',
                 description: '添加一组图标后，分组卡片就能显示它们',

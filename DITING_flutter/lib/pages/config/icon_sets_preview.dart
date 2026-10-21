@@ -25,8 +25,8 @@ class _IconSetPreviewSheet extends StatelessWidget {
         padding: EdgeInsets.only(top: 8 + context.contentTopPadding),
         children: [
           if (iconSet.icons.isEmpty)
-            SizedBox(
-              height: 260,
+            EmptyStateBox(
+              minHeight: 260,
               child: NullStatus(
                 label: '这个图标集是空的',
                 description: '编辑图标集，把图标名一行一个填进去',

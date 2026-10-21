@@ -18,6 +18,43 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-21：同一语义两份实现，量出来就是两套尺寸（chip 行 18dp vs 32dp）
+
+- 用户说「白名单页那套选中状态才是准的」——先把那一页量成数字（`x=16, h=32`），再去 grep
+  同语义控件逐个对表；出问题的三处是 `h=18`，其中一处还是 `x=32`。
+- 根因是同一语义两份实现：参照页 `SizedBox(height:32)` + 横向 `ListView`，其余用 `Wrap`。
+  `TonalChip` 没有自定高，`Wrap` 不给交叉轴约束就停在文本行高 18；`ListView` 每项被视口
+  拉满才有 32。`Wrap` 放不下还会换行，把下面的计数头推低。左沿 32 是内边距被两层各加一次
+  （同下条）。
+- 判据：**「某个页面是对的」= 拿到可对表的数字**（`x/h/间距`）。只看截图只能得出「不好看」
+  这种没法验收的结论。
+- 修法：抽 `ChipRow`（定高 32、横向滚动、间距 8、**不含横向内边距**，内边距只由调用方给
+  一次）+ `FilterPill`。命名避开 Material 已有控件——`FilterChip` 重名只报 ambiguous，
+  不报「名字冲突」，得靠 analyze 才发现。
+
+### 2026-10-21：`SingleChildScrollView` 不报 overflow，只把越界内容画在父框外
+
+- 空态按钮只剩一条蓝边、页脚压在按钮位置：`NullStatus` 内部是 `Align +
+  SingleChildScrollView`，被套进 `SizedBox(height: 260..320)`。内容超出时它不报 overflow，
+  只是安静地裁，**越界部分照旧占着布局位置**，压到后面的兄弟节点上。要量「子节点底边 vs
+  父框底边」才看得出来（框到 531 结束，按钮排 539–559）。
+- 判据：**凡内容长度由数据决定的容器，不许给固定高度**。analyze 全绿、单测全过，因为这是
+  「合法但错」的布局。
+- 修法：`EmptyStateBox`（`ConstrainedBox(minHeight:)`）替代全部 `SizedBox(height:)`；放进
+  `ListView` 后父级高度无界，空态自然长高、整页滚动。批量替换前全局 grep `child:
+  NullStatus`，把 `Padding`/`Center`/`SizedBox.expand` 包着的正确写法排除掉。
+
+### 2026-10-21：`Scaffold` 的 `bottomNavigationBar` 与 `body` 里的 navigator 是两层
+
+- 浮层打开后底栏浮条仍画在浮层上、点浮条还能切 tab：`AppShell` 是
+  `Scaffold(bottomNavigationBar: NavigationDock)`，而 `sheetNavigatorOf` 只爬到「第一个不是
+  sheet 的 navigator」，在 `StatefulShellRoute` 下那就是 branch navigator——整个在 `body` 里。
+- 判据：**要盖住底栏的路由必须挂到 shell 之上**，不能靠调绘制顺序。仓库里二级页面早就是
+  `parentNavigatorKey: rootNavigatorKey`，浮层漏了这一步。
+- 修法：`sheetNavigatorOf` 一路爬到最外层 navigator；`showFloatingDialog` 原来直接用
+  `Navigator.of(context)`，同类一并改。验证不能看截图，要**在浮条中心点做命中测试**断言
+  `hitsDock=false`——动画中途截图会骗人。
+
 ### 2026-10-21：同一个职责被两层各做一次，量出来就是两倍
 
 - 日志仪表盘卡片左右各留 32.4dp，首页同款卡片是 16dp：`_CardColumn` 的 `Padding` 与每张卡片外的

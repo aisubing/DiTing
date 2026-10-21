@@ -4,6 +4,8 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/chip_row.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -343,8 +345,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
             ),
           ),
           if (visible.isEmpty)
-            SizedBox(
-              height: 320,
+            EmptyStateBox(
+              minHeight: 320,
               child: NullStatus(
                 label: _query.isEmpty && _sourceFilter == null
                     ? '还没有${kind.title}规则'
@@ -380,6 +382,9 @@ class _RulesPageState extends ConsumerState<RulesPage> {
 }
 
 /// 来源筛选 chip 行：全部 / 用户自定义 / 规则订阅 / 内置预设。
+///
+/// 这一行的形态（定高 32、横向滚动、间距 8、内边距由调用方给 16）就是全站
+/// chip 行的参照实现，现已抽成 [ChipRow] + [FilterPill]，其余页面共用同一份。
 class _SourceChips extends StatelessWidget {
   const _SourceChips({required this.value, required this.onChanged});
 
@@ -388,32 +393,19 @@ class _SourceChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
     final options = <(RuleSourceFilter, String)>[
       (null, '全部'),
       for (final source in RuleSource.values) (source, source.label),
     ];
-    return SizedBox(
-      height: 32,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: options.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final (source, label) = options[index];
-          final selected = source == value;
-          return TonalChip(
+    return ChipRow(
+      children: [
+        for (final (source, label) in options)
+          FilterPill(
             label: label,
-            color: selected
-                ? colorScheme.primary
-                : context.raisedSurfaceLevel.colorOf(colorScheme),
-            foregroundColor: selected
-                ? colorScheme.onPrimary
-                : colorScheme.onSurfaceVariant,
+            selected: source == value,
             onPressed: () => onChanged(source),
-          );
-        },
-      ),
+          ),
+      ],
     );
   }
 }

@@ -7,6 +7,7 @@
 library;
 
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -142,8 +143,8 @@ class _SelectionSheetState<T> extends State<SelectionSheet<T>> {
             ),
           ),
           if (total == 0)
-            SizedBox(
-              height: 260,
+            EmptyStateBox(
+              minHeight: 260,
               child: NullStatus(
                 label: widget.emptyLabel,
                 description: query.isEmpty ? null : '换个关键词再试',

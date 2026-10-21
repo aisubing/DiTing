@@ -7,6 +7,7 @@ import 'package:diting/ui/input.dart';
 import 'package:diting/ui/liquid_glass.dart';
 import 'package:diting/ui/motion.dart';
 import 'package:diting/ui/navigation_dock.dart';
+import 'package:diting/ui/sheet_navigator.dart';
 import 'package:diting/ui/shape.dart';
 import 'package:diting/ui/surface.dart';
 import 'package:diting/ui/typography.dart';
@@ -48,7 +49,10 @@ Future<T?> showFloatingDialog<T>({
   required Widget child,
   bool dismissible = true,
 }) {
-  return Navigator.of(context).push<T>(
+  // 与浮层同一个宿主 navigator：此前用 `Navigator.of(context)`，在底栏页面上
+  // 拿到的是 branch navigator，弹窗的遮罩与卡片都落在 `AppShell` 的
+  // `bottomNavigationBar` 下面，浮条照旧画在弹窗上（与浮层同一类问题）。
+  return sheetNavigatorOf(context).push<T>(
     _AlertRoute<T>(
       barrierColor: context.colorScheme.alertScrim,
       barrierDismissible: dismissible,

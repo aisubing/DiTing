@@ -6,6 +6,7 @@
 library;
 
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -179,8 +180,8 @@ class _ListEditorPageState<T> extends State<ListEditorPage<T>> {
             ),
           ),
           if (indices.isEmpty)
-            SizedBox(
-              height: 300,
+            EmptyStateBox(
+              minHeight: 300,
               child: NullStatus(
                 label: _query.isEmpty ? widget.emptyLabel : '没有匹配的条目',
                 description: _query.isEmpty

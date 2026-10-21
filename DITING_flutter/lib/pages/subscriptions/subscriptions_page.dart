@@ -2,6 +2,8 @@ import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/chip_row.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -216,8 +218,10 @@ class SubscriptionsPage extends ConsumerWidget {
             ),
           ),
           if (entries.isEmpty && !asyncEntries.isLoading)
-            SizedBox(
-              height: 300,
+            // 只给下限，不写死 300：说明有两行、按钮又排在下面，固定高度会把
+            // 它裁掉（真机上「添加订阅」只剩一条蓝边，页脚压在原位置）。
+            EmptyStateBox(
+              minHeight: 300,
               child: NullStatus(
                 label: '还没有订阅',
                 description:
@@ -321,35 +325,22 @@ class _GroupChips extends StatelessWidget {
       (null, '全部'),
       for (final group in groups) (group.id, group.name),
     ];
-    return SizedBox(
-      height: 32,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: options.length + 1,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          if (index == options.length) {
-            return TonalChip(
-              label: '+ 分组',
-              color: context.raisedSurfaceLevel.colorOf(colorScheme),
-              foregroundColor: colorScheme.onSurfaceVariant,
-              onPressed: onManage,
-            );
-          }
-          final (groupId, label) = options[index];
-          final selected = groupId == value;
-          return TonalChip(
+    return ChipRow(
+      children: [
+        for (final (groupId, label) in options)
+          FilterPill(
             label: label,
-            color: selected
-                ? colorScheme.primary
-                : context.raisedSurfaceLevel.colorOf(colorScheme),
-            foregroundColor: selected
-                ? colorScheme.onPrimary
-                : colorScheme.onSurfaceVariant,
+            selected: groupId == value,
             onPressed: () => onSelect(groupId),
-          );
-        },
-      ),
+          ),
+        // 「+ 分组」不是筛选档，是管理入口，因此不参与选中态。
+        TonalChip(
+          label: '+ 分组',
+          color: context.raisedSurfaceLevel.colorOf(colorScheme),
+          foregroundColor: colorScheme.onSurfaceVariant,
+          onPressed: onManage,
+        ),
+      ],
     );
   }
 }

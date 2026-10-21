@@ -6,6 +6,7 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/hub/app_rules_store.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -222,8 +223,8 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
               child: Center(child: CommonCircleLoading()),
             )
           else if (snapshot.value?.error != null)
-            SizedBox(
-              height: 280,
+            EmptyStateBox(
+              minHeight: 280,
               child: NullStatus(
                 label: '读不到应用列表',
                 description: snapshot.value!.error,
