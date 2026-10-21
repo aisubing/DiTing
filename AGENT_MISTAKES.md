@@ -17,6 +17,49 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-21：演示值不是「占位符」，它会让口径漂移变成看不见的
+
+- 用户报「部分数据仍为硬编码」，盘点出**六类**：日志概览整块（`LogDashboardSnapshot.mock()`）、
+  流量监控的累计与速率、服务状态卡的四行目标与耗时、内核状态（`CoreState.running` 常量）、
+  规则控制页的「5 个 / 3 个 / 每 6 小时」、镜像站模板与自动更新设置（纯内存 state，重启即丢）。
+- 三条判据（缺一条就会漏掉一整类）：
+  1. **反向 grep「谁在用这个常量」而不是 grep 常量名**：`mockServiceStats` 有定义、`enum_display_test`
+     还引用着它的枚举，但 `mockServiceStats` 本身零消费方。**零消费方的演示值比在用的更危险**——
+     它看起来像「已实现的能力」，下一个人接线时会顺手拿来用。
+  2. **「空」与「读不到」必须分开**：库空给 `0`（今天真的没有请求），加载中/失败给 `—`。
+     统一成 `0` 会让「还没读到」伪装成「今天没流量」；统一成 `—` 又会让空库看起来像故障。
+  3. **模式裁剪要照抄上游**：`blocked_and_errors` 下旧版是 `it.copy(passed = 0, cached = 0)`；
+     归零后**命中率也必须跟着归零**，否则出现「通过 0、命中率 40%」的自相矛盾。这条是写测试
+     时才发现的，只读 SQL 看不出来——先写断言再回填实现，比反过来快。
+- 两个结构性决定：概览做成**一个** `FutureProvider`（同一次扫描；拆成十几个会让同屏两个数字
+  互相矛盾）；把纯映射抽成 `log_dashboard_rows.dart` 的纯函数，才能用单测钉住「连接行算旁路 /
+  覆写保留文案 / 未知结果原样显示」这类最容易被「简化」掉的判定。
+- 顺带删掉 `dnsLogDailyStatsProvider`：口径相同但**少算 HTTPS 一张表**，且没有消费方。
+  留一个「看起来等价、实际漏一半」的入口，比留一个明显的演示值更容易接错。
+
+### 2026-10-21：`dispose()` 里 `ref.read` 会抛，而且只在拆 widget 时才炸
+
+- 「provider 里起定时器 + 页面持有引用」的写法很自然会在 `dispose()` 里写
+  `ref.read(speedSeriesProvider.notifier).detachPolling()`。Riverpod 3 抛
+  `Bad state: Using "ref" when a widget is about to or has been unmounted`。
+- 判据：**`initState` 里把 notifier 抓进字段**（`_speed = ref.read(...notifier)`），`dispose` 只用
+  字段。`flutter analyze` 完全干净，只有真把 widget 摘下来才复现——所以「analyze 全绿」不能
+  当作接线完成的证据。同类：对可空字段用级联调用（`_speed?..attachPolling()`）也不行，拆成两行。
+- 附带一条：`Timer.periodic` 由 provider 自己管时要用**引用计数**（首页与 `/traffic` 各起一个会把
+  60 点窗口压成 30 秒）；`debugDisableDashboardLiveUpdates` 必须在 `attachPolling()` 里就短路，
+  否则 widget 测试的 `pumpAndSettle` 永远等不到静止。
+
+### 2026-10-21：写进主工作区的文件不会进工作树的提交，`git status` 要分开看
+
+- 本轮在 `.agents/worktrees/fix/real-data-wiring` 里干活，却在主 checkout 的
+  `C:\Users\leehaoze\DITING\AGENT_MISTAKES.md` 里追加了教训。两个 checkout 各有自己的
+  `AGENT_MISTAKES.md`，主工作区那份的改动**既不会进本分支，也不属于本轮**。
+- 判据：**每个编辑目标都走绝对路径，且路径里要带 `.agents/worktrees/<name>`**。收尾要跑两次
+  `git status`（工作树 + 主 checkout），主 checkout 只允许是干净的。发现写错地方先
+  `git checkout -- <file>` 回退主 checkout，再把内容补到工作树，不要两边都留着。
+- 也解释了为什么「改完 `AGENT_MISTAKES.md` 后行数对不上」：数的是主工作区那份 500 行，
+  工作树那份是 628 行（HEAD 自带的历史内容）。
+
 ### 2026-10-21：把「边距」交给两层各自做一次，量出来就是两倍
 
 - 现场：日志仪表盘的卡片左右各留 32.4dp，首页同一批卡片是 16dp。两处都调用
