@@ -6,6 +6,7 @@
 library;
 
 import 'package:diting/data/mock_forms.dart';
+import 'package:diting/pages/system/demo_page_notice.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -111,6 +112,7 @@ class _IpQualityPageState extends ConsumerState<IpQualityPage> {
       ],
       body: PageBody(
         children: [
+          const DemoPageNotice(),
           IpQualitySheet(
             report: mockIpQualityReport,
             stage: state.stage,
@@ -231,10 +233,10 @@ class IpQualitySheet extends StatelessWidget {
         generateSection(
           title: '来源',
           items: [
-            for (final source in report.sources)
-              _SourceRow(source: source),
+            for (final source in report.sources) _SourceRow(source: source),
           ],
-          footer: '各来源对「住宅 / 机房」的判断经常互相矛盾：'
+          footer:
+              '各来源对「住宅 / 机房」的判断经常互相矛盾：'
               '命中数越多越可信，但单一来源的「风险」标签不足以作为结论。',
         ),
         if (stage == IpQualityStage.loading)
@@ -275,7 +277,11 @@ class _TypeBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 4,
         children: [
-          GlyphIcon(type.glyph, size: 14, color: colorScheme.onSecondaryContainer),
+          GlyphIcon(
+            type.glyph,
+            size: 14,
+            color: colorScheme.onSecondaryContainer,
+          ),
           Text(
             type.label,
             style: AppTextStyle.caption1
@@ -310,7 +316,10 @@ class _SourceRow extends StatelessWidget {
       subtitle: Row(
         spacing: 8,
         children: [
-          Text(status.label, style: context.listCaptionStyle.copyWith(color: color)),
+          Text(
+            status.label,
+            style: context.listCaptionStyle.copyWith(color: color),
+          ),
           if (ipType != null)
             Text(
               '判定为${_typeOf(ipType).label}',

@@ -9,6 +9,7 @@ library;
 
 import 'dart:math' as math;
 
+import 'package:diting/pages/system/demo_page_notice.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -20,7 +21,8 @@ class ScanPage extends StatefulWidget {
   State<ScanPage> createState() => _ScanPageState();
 }
 
-class _ScanPageState extends State<ScanPage> with SingleTickerProviderStateMixin {
+class _ScanPageState extends State<ScanPage>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1800),
@@ -125,6 +127,10 @@ class _ScanLayout extends StatelessWidget {
       builder: (context, constraints) {
         return Column(
           children: [
+            // 正文从屏幕 y=0 起排（`extendBodyBehindAppBar`），先让出顶栏高度，
+            // 否则「演示页」标注会被浮着的顶栏压住。
+            SizedBox(height: context.appBarInset),
+            const DemoPageNotice(dark: true),
             Expanded(
               child: Center(
                 child: SizedBox(
@@ -204,9 +210,9 @@ class _ScanLayout extends StatelessWidget {
             Text(
               '演示环境不调用相机：这一屏只验证取景框、扫描线与按钮布局。',
               textAlign: TextAlign.center,
-              style: AppTextStyle.caption1.of(context).copyWith(
-                color: Colors.white.withValues(alpha: 0.4),
-              ),
+              style: AppTextStyle.caption1
+                  .of(context)
+                  .copyWith(color: Colors.white.withValues(alpha: 0.4)),
             ),
             SizedBox(height: 20 + MediaQuery.paddingOf(context).bottom),
           ],
@@ -258,9 +264,9 @@ class _RoundAction extends StatelessWidget {
         ),
         Text(
           label,
-          style: AppTextStyle.caption1.of(context).copyWith(
-            color: Colors.white.withValues(alpha: 0.75),
-          ),
+          style: AppTextStyle.caption1
+              .of(context)
+              .copyWith(color: Colors.white.withValues(alpha: 0.75)),
         ),
       ],
     );
@@ -278,7 +284,8 @@ class _PermissionDenied extends StatelessWidget {
     return SizedBox.expand(
       child: NullStatus(
         label: '相机权限未开启',
-        description: '扫码需要相机权限。请在系统设置里允许「谛听」使用相机，'
+        description:
+            '扫码需要相机权限。请在系统设置里允许「谛听」使用相机，'
             '或改为从相册选择图片。',
         illustration: NullStatusIllustration.camera,
         action: Column(
@@ -291,10 +298,7 @@ class _PermissionDenied extends StatelessWidget {
               size: TonalButtonSize.section,
               onPressed: onRetry,
             ),
-            TextButton(
-              onPressed: onRetry,
-              child: const Text('从相册选择'),
-            ),
+            TextButton(onPressed: onRetry, child: const Text('从相册选择')),
           ],
         ),
       ),

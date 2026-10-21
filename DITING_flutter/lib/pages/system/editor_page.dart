@@ -11,9 +11,12 @@ library;
 
 import 'package:diting/data/mock_forms.dart';
 import 'package:diting/pages/forms/nested_form_sheet.dart';
+import 'package:diting/pages/system/demo_page_notice.dart';
 import 'package:diting/pages/system/yaml_highlighter.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
+
+part 'editor_completion_popup.dart';
 
 /// 代码行的行高；行号栏与正文必须共用同一个值才对齐。
 const _lineHeight = 19.5;
@@ -238,6 +241,7 @@ class _EditorPageState extends State<EditorPage> {
             ),
       child: Column(
         children: [
+          const DemoPageNotice(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -375,102 +379,8 @@ class _LineGutter extends StatelessWidget {
 /// 过去）。演示层把浮层放在编辑器底部：位置差一点，但「哪些候选、按什么顺序、
 /// 点了插什么」这些真正要验证的东西都还在，而定位代码是上游 216 行里最不
 /// 可复用的部分。
-class _CompletionPopup extends StatelessWidget {
-  const _CompletionPopup({
-    required this.items,
-    required this.onSelected,
-    required this.onDismiss,
-  });
-
-  final List<MockCompletion> items;
-  final ValueChanged<MockCompletion> onSelected;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: CommonCard(
-        padding: const EdgeInsets.fromLTRB(4, 6, 4, 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 4, 4),
-              child: Row(
-                children: [
-                  GlyphIcon(
-                    AppGlyphs.sparkle,
-                    size: 14,
-                    color: colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text('补全候选', style: context.listCaptionStyle),
-                  ),
-                  CommonMinIconButtonTheme(
-                    child: IconButton(
-                      tooltip: '收起',
-                      onPressed: onDismiss,
-                      icon: const GlyphIcon(AppGlyphs.close, size: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 168),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (final item in items)
-                      InkWell(
-                        onTap: () => onSelected(item),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
-                          ),
-                          child: Row(
-                            spacing: 10,
-                            children: [
-                              GlyphIcon(
-                                item.isKey
-                                    ? AppGlyphs.key
-                                    : AppGlyphs.textShort,
-                                size: 14,
-                                color: item.isKey
-                                    ? colorScheme.primary
-                                    : colorScheme.onSurfaceVariant,
-                              ),
-                              Expanded(
-                                child: Text(
-                                  item.label,
-                                  style: _codeStyle.copyWith(
-                                    color: colorScheme.onSurface,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                item.detail,
-                                style: context.listCaptionStyle,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+///
+/// 实现见 `editor_completion_popup.dart`（本文件已到 550 行上限）。
 
 /// 底部状态栏：行列统计、保存 / 格式化按钮。
 class _EditorStatusBar extends StatelessWidget {
@@ -542,6 +452,8 @@ class _EditorStatusBar extends StatelessWidget {
 }
 
 /// 页面外壳：演示入口用（`/editor` 路由直接建 `EditorPage`）。
+///
+/// 标注画在 `EditorPage` 正文顶部（见其 `build`），这一层只是历史入口的别名。
 class EditorDemoPage extends StatelessWidget {
   const EditorDemoPage({super.key});
 

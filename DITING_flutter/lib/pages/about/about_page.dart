@@ -1,198 +1,390 @@
+/// 关于页（对齐旧版 `ui/AboutScreen.kt`）。
+///
+/// 结构逐字照抄旧版：Hero（应用名 + 版本徽章 + 运行状态点）→「核心能力」→
+/// 「运行边界」→ 项目卡 → 页尾等宽小字。旧版在极速模式下会**少两条能力**，
+/// 并把运行边界的第一条换成窄路由说明（`getAboutCapabilities` /
+/// `getAboutBoundaries`），这里用同一套过滤逻辑，避免两份文案各自漂移。
+///
+/// 与旧版的两处有意差异：
+/// - 旧版点仓库直接 `ACTION_VIEW` 打开浏览器；本仓不引 `url_launcher`，改为
+///   复制地址 + SnackBar 提示。
+/// - 旧版「使用须知与免责声明」是首启弹窗；本仓弹窗挂在应用层
+///   （`lib/app/initial_agreement.dart`），这里留一个只读回看入口。
+library;
+
+import 'package:diting/pages/system/app_info.dart';
+import 'package:diting/pages/system/disclaimer_page.dart';
+import 'package:diting/state/server_status_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 关于页：图标 + 名称 + 版本 + 三段说明 + 三条信息行。
-///
-/// 上游「关于」是设置树里的三项（版本/许可/第三方），演示层合成一页：这些
-/// 内容只在想确认「这是什么、能不能商用」时才会打开，放在一页里能一次读完，
-/// 分散成三个入口反而要来回跳。
-///
-/// 页首用大图标而不是 Logo 位图：本阶段没有品牌资源，硬塞占位图会显得像
-/// 加载失败；用设计系统自己的 Glyph 至少是「有意为之」的观感。
-class AboutPage extends StatelessWidget {
+/// 一条能力 / 边界：标题 + 说明 + 行首图标。
+class _AboutEntry {
+  const _AboutEntry(this.title, this.description, this.glyph);
+
+  final String title;
+  final String description;
+  final Glyph glyph;
+}
+
+/// 旧版 `aboutCapabilities`：顺序与文案逐字一致。
+const _capabilities = <_AboutEntry>[
+  _AboutEntry('加密上游', '支持 DNS、DoH 与 DoT，并可管理自定义服务商。', AppGlyphs.lock),
+  _AboutEntry('规则与缓存', '以缓存、屏蔽规则、白名单和订阅规则减少重复请求与干扰。', AppGlyphs.rules),
+  _AboutEntry(
+    '可观测性',
+    '通过请求日志、竞速统计、服务商健康和 Bootstrap 数据追踪状态。',
+    AppGlyphs.requests,
+  ),
+  _AboutEntry(
+    '独立引导',
+    '支持 Bootstrap IP，降低解析加密上游域名时对系统 DNS 的依赖。',
+    AppGlyphs.target,
+  ),
+  _AboutEntry('配置流转', '支持自定义服务、规则订阅的导入导出与自动更新。', AppGlyphs.cloudSync),
+  _AboutEntry('快捷控制', '提供系统快捷设置磁贴，方便快速启停 DNS 本地通道。', AppGlyphs.toggle),
+  _AboutEntry('应用管控', '按应用排除 VPN 或阻止联网，灵活控制每个应用的网络访问。', AppGlyphs.block),
+  _AboutEntry(
+    'HTTPS 流量检查',
+    '按应用检查 HTTP(S) 请求并应用域名和 URL 规则，需安装 HTTPS 检查根证书。',
+    AppGlyphs.lockOpen,
+  ),
+];
+
+/// 旧版 `aboutBoundaries`（普通 / 服务器模式）。
+const _boundaries = <_AboutEntry>[
+  _AboutEntry(
+    '默认仅处理 DNS',
+    '默认通过 Android VpnService 建立仅处理 DNS 的本地通道；启用 HTTPS 流量检查或'
+        '禁止联网后，Go 隧道使用 Go 用户态网络栈接管 TCP、UDP、DNS 和 HTTP(S) 流量。',
+    AppGlyphs.vpn,
+  ),
+  _AboutEntry('实际解析表现', '解析速度、稳定性和可用性取决于网络环境、所选上游和本机规则。', AppGlyphs.speed),
+  _AboutEntry(
+    '隐私与本地存储',
+    '缓存、日志、规则与配置保存在设备本机。上游仍会收到必要查询；'
+        '仅 DoH、DoT 加密到上游的 DNS 传输。',
+    AppGlyphs.lock,
+  ),
+];
+
+/// 极速模式把第一条换成窄路由说明（旧版 `getAboutBoundaries` 的 express 分支）。
+const _expressRouteBoundary = _AboutEntry(
+  '极速原生 DNS 窄路由',
+  '通过纯 Kotlin 原生轻量窄路由接管 UDP/TCP 53 端口 DNS 请求；设备常规应用数据'
+      '直连物理网络，不经过 VPN 协议栈，实现零性能损耗与极低功耗。',
+  AppGlyphs.bolt,
+);
+
+/// 旧版只在普通模式出现的两条能力。
+const _normalOnlyCapabilities = {'应用管控', 'HTTPS 流量检查'};
+
+/// 关于页。
+class AboutPage extends ConsumerWidget {
   const AboutPage({super.key});
 
-  /// 与 `pubspec.yaml` 的 `version: 1.0.0+1` 手工对齐；发版时两处同改。
-  static const _version = '1.0.0';
-  static const _repoUrl = 'https://github.com/haoze/diting';
-
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(workModeProvider);
+    final express = mode == AppWorkMode.express;
+    // 旧版 `rememberDnsServiceRunning`：服务器模式看服务器状态，其余看 VPN 电源态。
+    final running = mode == AppWorkMode.server
+        ? ref.watch(serverStatusProvider) == ServerStatus.running
+        : ref.watch(powerProvider) == PowerState.running;
+    final capabilities = express
+        ? [
+            for (final entry in _capabilities)
+              if (!_normalOnlyCapabilities.contains(entry.title)) entry,
+          ]
+        : _capabilities;
+    final boundaries = express
+        ? [_expressRouteBoundary, ..._boundaries.skip(1)]
+        : _boundaries;
     return CommonScaffold(
-      title: '关于',
+      title: '应用信息',
       body: PageBody(
         children: [
-          _Hero(version: _version),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 8,
-              children: const [
-                _Paragraph(
-                  title: '这是什么',
-                  body: '谛听（DITING）是一款本地 DNS 工具：在本机完成域名解析、'
-                      '规则过滤与流量观测，不依赖任何云端账号。它有三种工作模式——'
-                      '普通模式接管全部流量，服务器模式把设备变成局域网 DNS 服务器，'
-                      '极速模式只做窄路由加速。',
-                ),
-                _Paragraph(
-                  title: '视觉体系来源',
-                  body: '界面组件层（lib/ui）整层移植自 DITING 1.4.3：'
-                      '形状、表面色阶、排版、图标、动效时序都沿用同一套设计系统，'
-                      '以保证迁移前后观感一致。页面内容与状态管理是谛听自己的。',
-                ),
-                _Paragraph(
-                  title: '许可',
-                  body: '本项目以 GPL-3.0 发布——因为 lib/ui 来自 GPL-3.0 的 DITING，'
-                      '衍生作品必须沿用同一许可。第三方字体与着色器的来源见 NOTICE.md。',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
+          _Hero(running: running),
+          const SizedBox(height: 4),
           generateSection(
-            title: '信息',
-            items: [
-              ListItem(
-                title: const Text('开源许可'),
-                subtitle: const Text('GPL-3.0-or-later'),
-                leading: const GlyphIcon(AppGlyphs.gavel),
-                trailing: const GlyphIcon(AppGlyphs.openExternal),
-                onTap: () => _toast(context, 'GPL-3.0 全文见仓库根目录 LICENSE'),
-              ),
-              ListItem(
-                title: const Text('第三方组件'),
-                subtitle: const Text('DITING 设计系统 · JetBrains Mono · Twemoji'),
-                leading: const GlyphIcon(AppGlyphs.puzzle),
-                trailing: const GlyphIcon(AppGlyphs.openExternal),
-                onTap: () => _toast(context, '来源清单见仓库根目录 NOTICE.md'),
-              ),
-              ListItem(
-                title: const Text('项目主页'),
-                subtitle: const Text(_repoUrl),
-                leading: const GlyphIcon(AppGlyphs.link),
-                trailing: const GlyphIcon(AppGlyphs.openExternal),
-                onTap: () => _toast(context, '演示阶段不打开浏览器：$_repoUrl'),
-              ),
-            ],
+            title: '核心能力',
+            items: [for (final entry in capabilities) _EntryRow(entry: entry)],
+            footer: express ? '极速模式只做窄路由加速，因此不包含应用管控与 HTTPS 流量检查。' : null,
           ),
-          ListFooter(
-            text: '版本 $_version · 纯 UI 演示：没有网络、没有数据库、没有 VPN 服务，'
-                '所有页面与交互都由本地 mock 状态驱动。',
+          generateSection(
+            title: '运行边界',
+            items: [for (final entry in boundaries) _EntryRow(entry: entry)],
           ),
           const SizedBox(height: 4),
-          Center(
-            child: Text(
-              '© 2026 谛听 DITING',
-              style: AppTextStyle.caption2.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
+          const _ProjectCard(),
+          const SizedBox(height: 14),
+          generateSection(
+            title: '免责条款与合规声明',
+            items: [
+              ListItem.next(
+                leading: const GlyphIcon(AppGlyphs.gavel),
+                title: const Text('使用须知与免责声明'),
+                subtitle: const Text('软件说明、运行机制与免责条款全文'),
+                // 首启已由应用层弹窗强制同意，这里只做回看。
+                widget: const DisclaimerPage(),
               ),
-            ),
+            ],
+            footer: '首次启动时必须同意本声明才能继续使用；此处可随时回看。',
           ),
+          const SizedBox(height: 10),
+          const _Signature(),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 }
 
-/// 页首：大图标 + 名称 + 版本徽章。
+/// 页首：应用名 + 一句定位 + 版本徽章 + 运行状态点。
 class _Hero extends StatelessWidget {
-  const _Hero({required this.version});
+  const _Hero({required this.running});
 
-  final String version;
+  final bool running;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-      child: Column(
-        children: [
-          Container(
-            width: 96,
-            height: 96,
-            alignment: Alignment.center,
-            decoration: ShapeDecoration(
-              shape: AppShape.xxl,
-              color: colorScheme.primary,
-              shadows: [
-                BoxShadow(
-                  color: colorScheme.primary.withValues(alpha: 0.30),
-                  blurRadius: 26,
-                  offset: const Offset(0, 10),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: CommonCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 12,
+          children: [
+            Row(
+              spacing: 12,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: ShapeDecoration(
+                    shape: AppShape.md,
+                    color: colorScheme.primaryContainer,
+                  ),
+                  child: GlyphIcon(
+                    AppGlyphs.dns,
+                    size: 28,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 2,
+                    children: [
+                      Text(
+                        '// LOCAL DNS CONTROL PLANE',
+                        style: AppTextStyle.caption2
+                            .of(context)
+                            .copyWith(
+                              color: colorScheme.primary,
+                              fontFamily: 'JetBrainsMono',
+                            ),
+                      ),
+                      Text(
+                        '谛听 本地解析控制台',
+                        style: AppTextStyle.title2.of(
+                          context,
+                          emphasized: true,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            child: GlyphIcon(
-              AppGlyphs.wifi,
-              size: 48,
-              fill: 1,
-              color: colorScheme.onPrimary,
+            Text(
+              '在 Android 设备本机管理 DNS 查询路径，让解析策略、缓存、规则与上游连接'
+              '处于可控状态。',
+              style: context.listSubtitleStyle,
             ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            '谛听',
-            style: AppTextStyle.largeTitle.of(context, emphasized: true),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'DITING · 本地 DNS 工具',
-            style: AppTextStyle.footnote.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                MetaChip(label: '版本 $appVersionName'),
+                const MetaChip(label: 'Android VpnService'),
+                const MetaChip(label: '本地优先'),
+                _StatusDot(running: running),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          MetaChip(label: '版本 $version'),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 一段说明：小标题 + 正文。
-class _Paragraph extends StatelessWidget {
-  const _Paragraph({required this.title, required this.body});
+/// 运行状态点：运行中主色、未运行错误色（旧版顶栏 `titleTrailing` 的圆点）。
+class _StatusDot extends StatelessWidget {
+  const _StatusDot({required this.running});
 
-  final String title;
-  final String body;
+  final bool running;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = running
+        ? context.colorScheme.primary
+        : context.colorScheme.error;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 6,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: ShapeDecoration(shape: AppShape.circle, color: color),
+        ),
+        Text(
+          running ? '运行中' : '未运行',
+          style: AppTextStyle.caption2.of(context).copyWith(color: color),
+        ),
+      ],
+    );
+  }
+}
+
+/// 一条能力 / 边界。
+class _EntryRow extends StatelessWidget {
+  const _EntryRow({required this.entry});
+
+  final _AboutEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListItem(
+      leading: GlyphIcon(entry.glyph, color: context.colorScheme.primary),
+      title: Text(entry.title),
+      subtitle: Text(entry.description),
+    );
+  }
+}
+
+/// 项目卡：维护者信息 + 可复制的仓库地址。
+class _ProjectCard extends StatelessWidget {
+  const _ProjectCard();
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    return CommonCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 5,
-        children: [
-          Text(
-            title,
-            style: AppTextStyle.headline.of(context, emphasized: true),
-          ),
-          Text(
-            body,
-            style: AppTextStyle.footnote.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              height: 1.5,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: CommonCard(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 12,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 3,
+              children: [
+                Text(
+                  'MAINTAINED BY',
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.primary,
+                        fontFamily: 'JetBrainsMono',
+                      ),
+                ),
+                Text(
+                  'haoze-evolluling',
+                  style: AppTextStyle.title3.of(context, emphasized: true),
+                ),
+                Text('一位集美大学人工智能系大三学子', style: context.listSubtitleStyle),
+              ],
             ),
-          ),
-        ],
+            GestureDetector(
+              onTap: () => _copyRepository(context),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: ShapeDecoration(
+                  shape: AppShape.md,
+                  color: colorScheme.primary.withValues(alpha: 0.10),
+                ),
+                child: Row(
+                  spacing: 10,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: 2,
+                        children: [
+                          Text(
+                            '开源项目仓库',
+                            style: AppTextStyle.subheadline.of(
+                              context,
+                              emphasized: true,
+                            ),
+                          ),
+                          Text(
+                            projectRepositoryUrl.replaceFirst('https://', ''),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.listCaptionStyle,
+                          ),
+                        ],
+                      ),
+                    ),
+                    GlyphIcon(
+                      AppGlyphs.openExternal,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _copyRepository(BuildContext context) async {
+    await Clipboard.setData(const ClipboardData(text: projectRepositoryUrl));
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text('仓库地址已复制：$projectRepositoryUrl'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(milliseconds: 2000),
       ),
     );
   }
 }
 
-void _toast(BuildContext context, String message) {
-  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-    SnackBar(
-      content: Text(message),
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(milliseconds: 1800),
-    ),
-  );
+/// 页尾签名：旧版用等宽字体、居中。
+class _Signature extends StatelessWidget {
+  const _Signature();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        '谛听 / RESOLUTION UNDER YOUR CONTROL',
+        textAlign: TextAlign.center,
+        style: AppTextStyle.caption2
+            .of(context)
+            .copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+              fontFamily: 'JetBrainsMono',
+              letterSpacing: 0.8,
+            ),
+      ),
+    );
+  }
 }

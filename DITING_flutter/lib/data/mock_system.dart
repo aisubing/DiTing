@@ -1,4 +1,4 @@
-/// 系统域演示数据：访问控制应用表 / 免责条款 / 开发者选项 / 更新日志 / 赞助名单。
+/// 系统域演示数据：访问控制应用表 / 免责条款 / 开发者选项 / 更新日志。
 ///
 /// 数据层不依赖 widget 层，所以图标用 `AppGlyphs` 的常量名字符串记录，由页面
 /// 侧的 `glyphByName` 解析（与 `lib/data/mock_data.dart` 同一约定）。
@@ -144,61 +144,66 @@ class MockDisclaimerTerm {
 const mockDisclaimerTerms = <MockDisclaimerTerm>[
   MockDisclaimerTerm(
     title: '一、软件性质',
-    content: '谛听是一款开源的本地域名解析与流量观测工具，不以任何形式提供网络接入服务。'
+    content:
+        '谛听是一款开源的本地域名解析与流量观测工具，不以任何形式提供网络接入服务。'
         '软件本身不含任何服务器、节点或订阅内容，也不代替任何网络服务商。',
   ),
   MockDisclaimerTerm(
     title: '二、使用方式',
-    content: '用户应仅在自有设备与自有网络上使用本软件。将本软件用于任何网络接入、'
+    content:
+        '用户应仅在自有设备与自有网络上使用本软件。将本软件用于任何网络接入、'
         '绕过计费或在未授权网络上运行的行为，均超出软件设计用途。',
   ),
   MockDisclaimerTerm(
     title: '三、责任范围',
-    content: '因使用或无法使用本软件导致的任何直接或间接损失，包括但不限于数据丢失、'
+    content:
+        '因使用或无法使用本软件导致的任何直接或间接损失，包括但不限于数据丢失、'
         '服务中断、设备损坏，作者与贡献者均不承担责任。',
   ),
   MockDisclaimerTerm(
     title: '四、第三方组件',
-    content: '本软件的界面组件层移植自 DITING（GPL-3.0-or-later），'
+    content:
+        '本软件的界面组件层移植自 DITING（GPL-3.0-or-later），'
         '并使用了 JetBrains Mono、Twemoji 等第三方资源。各组件的许可条款见仓库 '
         'NOTICE.md，使用本软件即表示同时接受这些条款。',
   ),
   MockDisclaimerTerm(
     title: '五、无担保',
-    content: '本软件按「现状」提供，不附带任何明示或暗示的担保，'
+    content:
+        '本软件按「现状」提供，不附带任何明示或暗示的担保，'
         '包括但不限于适销性、特定用途适用性与不侵权的担保。',
   ),
   MockDisclaimerTerm(
     title: '六、责任限制',
-    content: '在法律允许的最大范围内，作者不对任何间接、附带、特殊或后果性损害负责，'
+    content:
+        '在法律允许的最大范围内，作者不对任何间接、附带、特殊或后果性损害负责，'
         '即使已被告知此类损害的可能性。',
   ),
   MockDisclaimerTerm(
     title: '七、隐私',
-    content: '本软件默认不收集、不上传任何用户数据。日志与规则仅保存在本地；'
+    content:
+        '本软件默认不收集、不上传任何用户数据。日志与规则仅保存在本地；'
         '若用户主动配置 WebDAV 备份，数据将上传至用户自行指定的服务器。',
   ),
   MockDisclaimerTerm(
     title: '八、许可',
-    content: '本软件以 GPL-3.0-or-later 发布。你可以自由使用、修改与再分发，'
+    content:
+        '本软件以 GPL-3.0-or-later 发布。你可以自由使用、修改与再分发，'
         '但衍生作品必须沿用同一许可并保留原始版权声明。',
   ),
   MockDisclaimerTerm(
     title: '九、条款变更',
-    content: '作者保留随时修改本免责声明的权利。变更后的条款随新版本一同发布，'
+    content:
+        '作者保留随时修改本免责声明的权利。变更后的条款随新版本一同发布，'
         '继续使用即视为接受修改后的条款。',
   ),
   MockDisclaimerTerm(
     title: '十、接受条款',
-    content: '在继续使用本软件前，请确认你已阅读、理解并同意上述全部条款。'
+    content:
+        '在继续使用本软件前，请确认你已阅读、理解并同意上述全部条款。'
         '若不同意，请立即停止使用并卸载本软件。',
   ),
 ];
-
-/// 复述确认时要用户逐字输入的句子。
-///
-/// 太短会被随手复制粘贴蒙混过去，太长则变成打字测试；选一句语义完整的短句。
-const disclaimerRestateStatement = '我已知悉并自行承担使用风险';
 
 /// 开发者模式下的一个实验动作。
 class MockDeveloperAction {
@@ -274,55 +279,8 @@ const mockChangelog = <MockChangelogEntry>[
   MockChangelogEntry(
     version: '1.0.0',
     date: '2026-09-30',
-    items: [
-      '首个公开版本：三种工作模式、规则订阅、观测仪表盘',
-      '完整移植 DITING 1.4.3 设计系统',
-    ],
+    items: ['首个公开版本：三种工作模式、规则订阅、观测仪表盘', '完整移植 DITING 1.4.3 设计系统'],
   ),
-];
-
-/// 赞助档位。
-class MockSponsorTier {
-  const MockSponsorTier({
-    required this.title,
-    required this.amount,
-    required this.perks,
-    required this.glyphName,
-  });
-
-  final String title;
-  final String amount;
-  final List<String> perks;
-  final String glyphName;
-}
-
-const mockSponsorTiers = <MockSponsorTier>[
-  MockSponsorTier(
-    title: '一次性支持',
-    amount: '任意金额',
-    perks: ['名字出现在致谢名单', '不附带任何义务'],
-    glyphName: 'star',
-  ),
-  MockSponsorTier(
-    title: '月度共建',
-    amount: '¥ 30 / 月',
-    perks: ['提前尝鲜新功能', '共建议题投票权', '致谢名单署名'],
-    glyphName: 'sync',
-  ),
-  MockSponsorTier(
-    title: '长期伙伴',
-    amount: '¥ 300 / 月',
-    perks: ['共建议题优先排期', '项目主页展示 Logo', '直接与维护者沟通'],
-    glyphName: 'verified',
-  ),
-];
-
-/// 致谢名单（演示用）。
-const mockContributors = <String>[
-  'June2',
-  'Arue',
-  'DITING 上游作者',
-  '所有提交过 issue 的人',
 ];
 
 /// 恢复备份时可勾选的恢复项。
