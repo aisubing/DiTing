@@ -21,7 +21,19 @@ class LegacyPrefsBridge(private val context: Context) :
     companion object {
         const val CHANNEL = "com.haoze.diting/legacy_prefs"
 
-        /** Containers that exist in 1.4.3; anything else is rejected. */
+        /**
+         * Allowed containers.
+         *
+         * The first eleven exist in 1.4.3 and carry the upgrade-compatibility
+         * contract (same file, same keys). A whitelist means a typo in a
+         * container name fails loudly instead of silently creating a parallel
+         * prefs file that the tunnel services never read.
+         *
+         * `diting_config_resources` is **not** from 1.4.3: it holds this port's
+         * own icon-set / user-agent / on-demand tables, which 1.4.3 had no
+         * equivalent for. It is listed here because it goes through the same
+         * channel; one channel beats two.
+         */
         val CONTAINERS = setOf(
             "dns_vpn_prefs",
             "diting_express_prefs",
@@ -34,6 +46,8 @@ class LegacyPrefsBridge(private val context: Context) :
             "diting_crash_state",
             "network_tools_settings",
             "recognition_members",
+            // 本仓自有（1.4.3 无对应功能），与上面十一个不共享兼容契约。
+            "diting_config_resources",
         )
     }
 

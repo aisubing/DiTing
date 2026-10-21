@@ -16,6 +16,10 @@ import 'package:flutter/services.dart';
 const legacyPrefsChannel = MethodChannel('com.haoze.diting/legacy_prefs');
 
 /// All containers that existed in 1.4.3. Keep in sync with the Kotlin allowlist.
+/// 启动时一次性读入的容器清单，必须与原生 `LegacyPrefsBridge.CONTAINERS` 一致。
+///
+/// 少一个的表现很隐蔽：写入照样成功（文件落在磁盘上），但下次冷启动 `read` 拿不到，
+/// 因为快照里没有这个容器——界面于是显示默认值，看起来像「设置没保存」。
 const legacyPrefContainers = <String>[
   'dns_vpn_prefs',
   'diting_express_prefs',
@@ -28,6 +32,8 @@ const legacyPrefContainers = <String>[
   'diting_crash_state',
   'network_tools_settings',
   'recognition_members',
+  // 本仓自有容器（1.4.3 无对应功能）：图标集 / UA / 按需连接。
+  'diting_config_resources',
 ];
 
 /// Reads and writes the legacy preference containers.
@@ -132,6 +138,9 @@ class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
           })
           .catchError((Object error) {
             // A dropped write is a data-loss bug; keep it visible in logs.
+            // 这条日志曾经是唯一线索：新增的容器不在原生白名单里时，界面照常
+            // 反映「已保存」，磁盘上却没有文件。排查靠的就是这句话，所以它必须
+            // 说清是哪一对 container/key。
             debugPrint('legacy prefs write failed: $container/$key ($error)');
           }),
     );

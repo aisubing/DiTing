@@ -9,6 +9,8 @@
 library;
 
 import 'package:diting/data/mock_config_resources.dart';
+import 'package:diting/data/prefs/config_resource_store.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 资源配置域的整表快照。
@@ -51,21 +53,38 @@ class ConfigResources {
 }
 
 class ConfigResourcesNotifier extends Notifier<ConfigResources> {
+  /// 每次改动后把对应那一组写回 prefs。
+  ///
+  /// 上一轮这三张表只活在内存里：加完图标集、切完按需连接，杀进程就全没了，
+  /// 而界面没有任何提示说「不保存」——用户会以为设置生效了。
+  ///
+  /// 写回时机放在 setter 里而不是 `state` 的监听着，是为了让「哪一组变了」显式
+  /// 可见：一个监听器分不清 `iconSets` 与 `ssidRules` 的差异，会把三组都重写一遍。
+  ConfigResourceStore get _store =>
+      ConfigResourceStore(ref.read(legacyPrefsStoreProvider));
+
   @override
-  ConfigResources build() => const ConfigResources(
-    iconSets: mockIconSets,
-    userAgents: mockUserAgents,
-    selectedUserAgent: null,
-    ssidRules: mockSsidRules,
-    onDemand: false,
-  );
+  ConfigResources build() {
+    final snapshot = ConfigResourceStore(
+      ref.watch(legacyPrefsStoreProvider),
+    ).load();
+    return ConfigResources(
+      iconSets: snapshot.iconSets,
+      userAgents: snapshot.userAgents,
+      selectedUserAgent: snapshot.selectedUserAgent,
+      ssidRules: snapshot.ssidRules,
+      onDemand: snapshot.onDemand,
+    );
+  }
+
+  void _put(ConfigResources next) => state = next;
 
   // —— 图标集 ——
 
   /// [originalName] 为空表示新增。图标集按名字被引用，因此重名要就地覆盖而不是
   /// 追加一份（列表页按名字删改，重名会让「删哪一份」变成不确定）。
   void putIconSet(String? originalName, MockIconSet iconSet) {
-    state = state.copyWith(
+    final next = state.copyWith(
       iconSets: originalName == null
           ? [...state.iconSets, iconSet]
           : [
@@ -73,14 +92,20 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
                 item.name == originalName ? iconSet : item,
             ],
     );
+    _put(next);
+    _store.saveIconSets(next.iconSets);
   }
 
-  void removeIconSet(String name) => state = state.copyWith(
-    iconSets: [
-      for (final item in state.iconSets)
-        if (item.name != name) item,
-    ],
-  );
+  void removeIconSet(String name) {
+    final next = state.copyWith(
+      iconSets: [
+        for (final item in state.iconSets)
+          if (item.name != name) item,
+      ],
+    );
+    _put(next);
+    _store.saveIconSets(next.iconSets);
+  }
 
   // —— User-Agent ——
 
@@ -91,12 +116,14 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
         state.userAgents.any((item) => item.value == trimmed)) {
       return false;
     }
-    state = state.copyWith(
+    final next = state.copyWith(
       userAgents: [
         ...state.userAgents,
         MockUserAgent(value: trimmed),
       ],
     );
+    _put(next);
+    _store.saveUserAgents(next.userAgents);
     return true;
   }
 
@@ -108,7 +135,10 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
         )) {
       return false;
     }
-    state = state.copyWith(
+    // 选中态的判断必须在 `_put` 之前取：之后 `state.selectedUserAgent` 已是新值，
+    // 「原来选中的是不是这一条」就永远问不出来。
+    final selectedWasOriginal = state.selectedUserAgent == original;
+    final next = state.copyWith(
       userAgents: [
         for (final item in state.userAgents)
           item.value == original
@@ -116,8 +146,11 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
               : item,
       ],
       // 改的正好是当前选中的那条时同步切换，否则选中项会指向一个不存在的值。
-      selectedUserAgent: state.selectedUserAgent == original ? trimmed : null,
+      selectedUserAgent: selectedWasOriginal ? trimmed : null,
     );
+    _put(next);
+    _store.saveUserAgents(next.userAgents);
+    if (selectedWasOriginal) _store.saveSelectedUserAgent(trimmed);
     return true;
   }
 
@@ -126,24 +159,38 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
     if (state.userAgents.any((item) => item.value == value && item.isDefault)) {
       return;
     }
-    state = state.copyWith(
+    final selectedWasRemoved = state.selectedUserAgent == value;
+    final next = state.copyWith(
       userAgents: [
         for (final item in state.userAgents)
           if (item.value != value) item,
       ],
-      clearSelectedUserAgent: state.selectedUserAgent == value,
+      clearSelectedUserAgent: selectedWasRemoved,
     );
+    _put(next);
+    _store.saveUserAgents(next.userAgents);
+    // 删掉的正是选中项：选中态必须一起落盘，否则重启后会指向一个不存在的 UA
+    // 而界面显示「已选中」。
+    if (selectedWasRemoved) _store.saveSelectedUserAgent(null);
   }
 
   /// null 表示「不覆写」。
-  void selectUserAgent(String? value) => state = state.copyWith(
-    selectedUserAgent: value,
-    clearSelectedUserAgent: value == null,
-  );
+  void selectUserAgent(String? value) {
+    _put(
+      state.copyWith(
+        selectedUserAgent: value,
+        clearSelectedUserAgent: value == null,
+      ),
+    );
+    _store.saveSelectedUserAgent(value);
+  }
 
   // —— 按需连接 ——
 
-  void setOnDemand(bool value) => state = state.copyWith(onDemand: value);
+  void setOnDemand(bool value) {
+    _put(state.copyWith(onDemand: value));
+    _store.saveOnDemand(value);
+  }
 
   bool putSsid(String? original, MockSsidRule rule) {
     final trimmed = rule.ssid.trim();
@@ -159,7 +206,7 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
       wifi: rule.wifi,
       delayMs: rule.delayMs,
     );
-    state = state.copyWith(
+    final next = state.copyWith(
       ssidRules: original == null
           ? [...state.ssidRules, normalized]
           : [
@@ -167,18 +214,24 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
                 item.ssid == original ? normalized : item,
             ],
     );
+    _put(next);
+    _store.saveSsidRules(next.ssidRules);
     return true;
   }
 
-  void removeSsid(String ssid) => state = state.copyWith(
-    ssidRules: [
-      for (final item in state.ssidRules)
-        if (item.ssid != ssid) item,
-    ],
-  );
+  void removeSsid(String ssid) {
+    final next = state.copyWith(
+      ssidRules: [
+        for (final item in state.ssidRules)
+          if (item.ssid != ssid) item,
+      ],
+    );
+    _put(next);
+    _store.saveSsidRules(next.ssidRules);
+  }
 
   void toggleSsid(String ssid, {bool? cellular, bool? wifi}) {
-    state = state.copyWith(
+    final next = state.copyWith(
       ssidRules: [
         for (final item in state.ssidRules)
           item.ssid == ssid
@@ -186,6 +239,8 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
               : item,
       ],
     );
+    _put(next);
+    _store.saveSsidRules(next.ssidRules);
   }
 }
 
