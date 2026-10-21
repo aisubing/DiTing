@@ -6,6 +6,7 @@ import 'package:diting/pages/hub/bootstrap_settings_page.dart';
 import 'package:diting/pages/hub/ca_certificate_pages.dart';
 import 'package:diting/pages/hub/cache_settings_page.dart';
 import 'package:diting/pages/hub/config_transfer_page.dart';
+import 'package:diting/pages/hub/config_transfer_webdav.dart';
 import 'package:diting/pages/hub/data_cleanup_page.dart';
 import 'package:diting/pages/hub/hidden_features_page.dart';
 import 'package:diting/pages/hub/http_inspection_page.dart';
@@ -50,6 +51,7 @@ abstract final class HubPaths {
   static const logRetention = '/hub/log-retention';
   static const dataCleanup = '/hub/data-cleanup';
   static const configTransfer = '/hub/config-transfer';
+  static const configTransferWebdav = '/hub/config-transfer/webdav';
   static const sponsorList = '/hub/sponsor-list';
   static const coBuilders = '/hub/co-builders';
 
@@ -188,6 +190,11 @@ List<RouteBase> hubRoutes() => [
     path: HubPaths.configTransfer,
     parentNavigatorKey: rootNavigatorKey,
     builder: (context, state) => const ConfigTransferPage(),
+  ),
+  GoRoute(
+    path: HubPaths.configTransferWebdav,
+    parentNavigatorKey: rootNavigatorKey,
+    builder: (context, state) => const ConfigTransferWebdavPage(),
   ),
   GoRoute(
     path: HubPaths.sponsorList,

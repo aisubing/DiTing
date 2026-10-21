@@ -1,12 +1,17 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 备份与迁移（上游 `ConfigTransferScreen`）。
 ///
 /// 统计概览 + 分组勾选 + 导出/导入。演示层不读写文件，导入会弹出一份
 /// 与上游结构相同的「新增 / 跳过 / 更新」明细。
+///
+/// 页尾一组「WebDAV 云同步」：旧版的 WebDAV 是备份页里的一张表单，本仓把它
+/// 拆成独立页面后从这里下钻（`HubPaths.configTransferWebdav`）。
 class ConfigTransferPage extends StatefulWidget {
   const ConfigTransferPage({super.key});
 
@@ -92,7 +97,11 @@ class _ConfigTransferPageState extends State<ConfigTransferPage> {
             items: [
               _checkbox('subscriptions', '网络规则订阅', '订阅源链接、镜像加速与自动更新'),
               _checkbox('domainRules', '自定义屏蔽域名规则', '手动添加的域名屏蔽规则及状态'),
-              _checkbox('rewriteDomain', '自定义复写域名规则', '手动添加的 IPv4 / IPv6 域名覆写规则'),
+              _checkbox(
+                'rewriteDomain',
+                '自定义复写域名规则',
+                '手动添加的 IPv4 / IPv6 域名覆写规则',
+              ),
               _checkbox('rewriteCname', '自定义复写 CNAME 规则', '手动添加的 CNAME 域名覆写规则'),
               _checkbox('addressRules', '自定义屏蔽地址规则', '手动添加的 URL 路径屏蔽规则'),
             ],
@@ -129,8 +138,24 @@ class _ConfigTransferPageState extends State<ConfigTransferPage> {
                 onTap: _import,
               ),
             ],
-            footer: '导出的配置文件包含个人自定义设置，请妥善保管；导入时将合并配置并'
+            footer:
+                '导出的配置文件包含个人自定义设置，请妥善保管；导入时将合并配置并'
                 '自动跳过已存在的条目。',
+          ),
+          generateSection(
+            title: '云端备份',
+            items: [
+              ListItem(
+                leading: const GlyphIcon(AppGlyphs.cloudSync),
+                title: const Text('WebDAV 云同步'),
+                subtitle: const Text('配置 WebDAV 服务器并把备份传到该地址'),
+                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
+                onTap: () => context.push(HubPaths.configTransferWebdav),
+              ),
+            ],
+            footer:
+                'WebDAV 表单搬迁自原「备份与恢复」页；演示层不发起真实网络请求，'
+                '只演示连接状态与表单校验。',
           ),
           const SizedBox(height: 24),
         ],

@@ -58,143 +58,138 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
     final flags = ref.watch(networkToolFlagsProvider);
     final colorScheme = context.colorScheme;
     final result = _result;
-    return CommonScaffold(
-      title: 'Ping',
-      body: PageBody(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: _ToolField(
-              controller: _target,
-              hintText: '域名或 IP（可粘贴完整链接）',
-              glyph: AppGlyphs.target,
+    return PageBody(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: _ToolField(
+            controller: _target,
+            hintText: '输入 IP 或域名',
+            glyph: AppGlyphs.target,
+            enabled: !_running,
+            onSubmitted: (_) => _run(),
+          ),
+        ),
+        // 次数档位与旧版 `PingSection` 的 `countOptions` 一致：只有 4 / 10 两档。
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: SegmentedControl<int>(
+            segments: const [(4, '4 次'), (10, '10 次')],
+            value: _count,
+            onChanged: (count) {
+              if (!_running) {
+                setState(() => _count = count.clamp(1, 20));
+              }
+            },
+          ),
+        ),
+        generateSection(
+          title: '探测选项',
+          items: [
+            _ViaTunnelRow(
+              storageKey: pingViaTunnelKey,
+              title: '通过 Go 隧道解析',
+              subtitle: '域名经运行中的 Go 隧道解析（应用覆写与过滤规则），探测仍走物理网络',
+              value: flags.pingViaTunnel,
               enabled: !_running,
-              onSubmitted: (_) => _run(),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SegmentedControl<int>(
-              segments: const [(4, '4 次'), (10, '10 次'), (20, '20 次')],
-              value: _count,
-              onChanged: (count) {
-                if (!_running) {
-                  setState(() => _count = count.clamp(1, 20));
-                }
-              },
-            ),
-          ),
-          generateSection(
-            title: '探测选项',
-            items: [
-              _ViaTunnelRow(
-                storageKey: pingViaTunnelKey,
-                title: '走隧道探测',
-                subtitle: '关闭时直接测物理链路；开启后由隧道解析目标地址',
-                value: flags.pingViaTunnel,
-                enabled: !_running,
-              ),
-            ],
-          ),
-          _RunButton(
-            glyph: AppGlyphs.send,
-            label: '开始 Ping',
-            runningLabel: '正在探测…',
-            running: _running,
-            onPressed: _run,
-          ),
-          if (_hostError case final error?)
-            _ToolNotice(text: error, isError: true, glyph: AppGlyphs.error),
-          if (result != null) ...[
-            if (result.measuredWithFallback)
-              const _ToolNotice(
-                text: '系统 ICMP 受限，已用 TCP 回退测量。此时的时延是连接建立耗时，'
-                    '不能与 ICMP 往返时延直接比较。',
-                glyph: AppGlyphs.warning,
-              ),
-            if (!result.success)
-              _ToolNotice(
-                text: result.message ?? '探测失败：未收到任何回复',
-                isError: true,
-                glyph: AppGlyphs.error,
-              ),
-            _ToolSection(
-              rows: [
-                KeyValueRow(label: '目标', value: result.target, monospace: true),
-                KeyValueRow(
-                  label: '解析地址',
-                  value: result.resolvedAddress ?? '—',
-                  monospace: true,
-                ),
-                KeyValueRow(
-                  label: '地址族',
-                  value: result.addressFamily ?? '—',
-                ),
-                KeyValueRow(
-                  label: '发送 / 接收',
-                  value: '${result.transmitted} / ${result.received}',
-                  monospace: true,
-                ),
-                KeyValueRow(
-                  label: '丢包率',
-                  value: '${result.lossPercent.toStringAsFixed(1)} %',
-                  monospace: true,
-                ),
-                KeyValueRow(
-                  label: '最小 / 平均 / 最大',
-                  value:
-                      '${_msText(result.minMs)} / ${_msText(result.avgMs)} / '
-                      '${_msText(result.maxMs)}',
-                  monospace: true,
-                ),
-                KeyValueRow(
-                  label: '抖动',
-                  value: _msText(result.jitterMs),
-                  monospace: true,
-                ),
-              ],
-              footer: result.success
-                  ? '抖动按各包时延与均值的平均绝对偏差计算。'
-                  : null,
-            ),
-            if (result.replies.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: CommonCard(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final reply in result.replies)
-                        KeyValueRow(
-                          label: '第 ${reply.sequence} 个包',
-                          value: reply.ok
-                              ? _msText(reply.elapsedMs)
-                              : (reply.error ?? '超时'),
-                          monospace: true,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Text(
-                '本次共发送 ${result.transmitted} 个探测包，'
-                '失败 ${result.transmitted - result.received} 个。',
-                style: context.listCaptionStyle.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
-              ),
             ),
           ],
-          const ListFooter(
-            text: 'Ping 由原生侧执行：优先调用系统 ping 二进制，不可用时回退到'
-                '地址可达性与 TCP 端口握手计时，并会明确标注。',
+        ),
+        _RunButton(
+          glyph: AppGlyphs.send,
+          label: '开始 Ping',
+          runningLabel: '正在探测…',
+          running: _running,
+          onPressed: _run,
+        ),
+        if (_hostError case final error?)
+          _ToolNotice(text: error, isError: true, glyph: AppGlyphs.error),
+        if (result != null) ...[
+          if (result.measuredWithFallback)
+            const _ToolNotice(
+              text:
+                  '系统 ICMP 受限，已用 TCP 回退测量。此时的时延是连接建立耗时，'
+                  '不能与 ICMP 往返时延直接比较。',
+              glyph: AppGlyphs.warning,
+            ),
+          if (!result.success)
+            _ToolNotice(
+              text: result.message ?? '探测失败：未收到任何回复',
+              isError: true,
+              glyph: AppGlyphs.error,
+            ),
+          _ToolSection(
+            rows: [
+              KeyValueRow(label: '目标', value: result.target, monospace: true),
+              KeyValueRow(
+                label: '解析地址',
+                value: result.resolvedAddress ?? '—',
+                monospace: true,
+              ),
+              KeyValueRow(label: '地址族', value: result.addressFamily ?? '—'),
+              KeyValueRow(
+                label: '发送 / 接收',
+                value: '${result.transmitted} / ${result.received}',
+                monospace: true,
+              ),
+              KeyValueRow(
+                label: '丢包率',
+                value: '${result.lossPercent.toStringAsFixed(1)} %',
+                monospace: true,
+              ),
+              KeyValueRow(
+                label: '最小 / 平均 / 最大',
+                value:
+                    '${_msText(result.minMs)} / ${_msText(result.avgMs)} / '
+                    '${_msText(result.maxMs)}',
+                monospace: true,
+              ),
+              KeyValueRow(
+                label: '抖动',
+                value: _msText(result.jitterMs),
+                monospace: true,
+              ),
+            ],
+            footer: result.success ? '抖动按各包时延与均值的平均绝对偏差计算。' : null,
           ),
-          const SizedBox(height: 24),
+          if (result.replies.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: CommonCard(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final reply in result.replies)
+                      KeyValueRow(
+                        label: '第 ${reply.sequence} 个包',
+                        value: reply.ok
+                            ? _msText(reply.elapsedMs)
+                            : (reply.error ?? '超时'),
+                        monospace: true,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text(
+              '本次共发送 ${result.transmitted} 个探测包，'
+              '失败 ${result.transmitted - result.received} 个。',
+              style: context.listCaptionStyle.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         ],
-      ),
+        const ListFooter(
+          text:
+              'Ping 由原生侧执行：优先调用系统 ping 二进制，不可用时回退到'
+              '地址可达性与 TCP 端口握手计时，并会明确标注。',
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 }

@@ -1,35 +1,6 @@
 part of 'traffic_page.dart';
 
-/// 排序 chip：与 DNS 页的 `DnsKeywordChip` 同视觉，但独立定义，避免流量页
-/// 依赖观测域的页面文件（两者只是长得像，不是同一个语义）。
-class _SortChip extends StatelessWidget {
-  const _SortChip({
-    required this.label,
-    required this.selected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return TonalChip(
-      label: label,
-      color: selected
-          ? colorScheme.primary
-          : context.raisedSurfaceLevel.colorOf(colorScheme),
-      foregroundColor: selected
-          ? colorScheme.onPrimary
-          : colorScheme.onSurfaceVariant,
-      onPressed: onPressed,
-    );
-  }
-}
-
-/// 一行应用流量：名称 + 包名 + 占比条 + ── 上下行字节数。
+/// 一行应用流量：名称 + 包名 + 占比条 + 上下行字节数。
 ///
 /// 占比条不用 `LinearProgressIndicator`：那个组件的轨道与指示条颜色由主题
 /// 接管，与卡片底色叠在一起几乎看不见；这里用两个 `DecoratedBox` 自绘，
@@ -139,9 +110,9 @@ class ShareBar extends StatelessWidget {
   }
 }
 
-/// 应用流量详情面板。
-class _AppTrafficSheet extends StatelessWidget {
-  const _AppTrafficSheet({
+/// 单应用流量详情（旧版 `AppTrafficDetailDialog.kt`）。
+class _AppTrafficDetailSheet extends StatelessWidget {
+  const _AppTrafficDetailSheet({
     required this.row,
     required this.total,
     required this.sort,
@@ -251,7 +222,8 @@ class _AppTrafficSheet extends StatelessWidget {
   }
 }
 
-/// 归因说明面板：解释「为什么某个应用算到了这些流量」。
+/// 归因说明面板（旧版 `TrafficAttributionDialog.kt`）：解释「为什么某个应用
+/// 算到了这些流量」，以及为什么这里的数字与内核的没有实时速率。
 class _AttributionSheet extends StatelessWidget {
   const _AttributionSheet();
 
@@ -292,8 +264,10 @@ class _AttributionSheet extends StatelessWidget {
                   const Divider(height: 1),
                   Text('为什么没有实时速率', style: context.listTitleStyle),
                   Text(
-                    '引擎只回报累计字节数，没有按秒、按应用的速率接口；'
-                    '页面上的曲线是示意波形，真实数字看统计卡与排行。',
+                    '实时速率需要内核每秒回报的速率序列；本仓的按天流量表只有'
+                    '「日期 + 包名 + 上下行累计字节」，没有速率列。因此'
+                    '「本次会话」窗口与「按实时速率」排序不可用，页面上也没有'
+                    '速率曲线——页面里出现的每个数字都是真实字节数。',
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
@@ -302,7 +276,17 @@ class _AttributionSheet extends StatelessWidget {
                   Text('记录保留多久', style: context.listTitleStyle),
                   Text(
                     '按天保留，由原生侧的清理策略删除过期行；'
-                    '「全部」档位汇总表里现存的全部日期。',
+                    '「全部历史」档位汇总表里现存的全部日期。',
+                    style: AppTextStyle.subheadline
+                        .of(context)
+                        .copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                  const Divider(height: 1),
+                  Text('系统应用怎么识别', style: context.listTitleStyle),
+                  Text(
+                    '流量表里没有系统应用标记，页面按旧版 SystemAppClassifier 的'
+                    '同一份前缀表识别（android、com.android.*、各厂商预装前缀等）。'
+                    '「隐藏系统应用」开关的状态落在 traffic_stats_hide_system_apps。',
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
@@ -311,7 +295,7 @@ class _AttributionSheet extends StatelessWidget {
               ),
             ),
           ),
-          ListFooter(
+          const ListFooter(
             text:
                 '上游对应 ui/traffic/TrafficAttributionDialog.kt 与 '
                 'AppTrafficDetailDialog.kt；本页数字来自 app_traffic_daily。',

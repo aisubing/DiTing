@@ -10,6 +10,7 @@ class _ToolField extends StatelessWidget {
     required this.hintText,
     required this.glyph,
     this.onSubmitted,
+    this.onChanged,
     this.enabled = true,
   });
 
@@ -17,6 +18,10 @@ class _ToolField extends StatelessWidget {
   final String hintText;
   final Glyph glyph;
   final ValueChanged<String>? onSubmitted;
+
+  /// 需要在输入过程中就同步到 provider 的字段（例如测速域名要落盘）用这个；
+  /// 只在提交时读一次的字段可以省掉。
+  final ValueChanged<String>? onChanged;
   final bool enabled;
 
   @override
@@ -28,6 +33,7 @@ class _ToolField extends StatelessWidget {
         autocorrect: false,
         textInputAction: TextInputAction.go,
         onSubmitted: onSubmitted,
+        onChanged: onChanged,
         decoration: InputDecoration(
           hintText: hintText,
           prefixIcon: GlyphIcon(glyph),

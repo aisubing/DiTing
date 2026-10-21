@@ -1,23 +1,25 @@
-/// 流量统计：窗口概览 + 应用流量排行（读旧库 `app_traffic_daily`）。
+/// 流量统计：时间窗口 + 应用流量排行（读旧库 `app_traffic_daily`）。
 ///
-/// 结构对齐上游 `ui/traffic/`（`docs/refactor/05-traffic-log-system.md` §2.3）：
-/// `TrafficGaugeCard`（总仪表盘）→ 速率曲线 → `AppTrafficRankItem` 排行 →
-/// `AppTrafficDetailDialog`（点行看归因）。
+/// 结构对齐 1.4.3 `normal/ui/AppTrafficStatsScreen.kt`：
+/// 时间窗口切换 → 概览数字 → 实时速率位 → 归因说明入口 → 筛选条
+/// （搜索 / 排序 / 隐藏系统应用）→ `AppTrafficRankItem` 排行 →
+/// `AppTrafficDetailDialog`（点行看归因）→ 空态「暂无流量数据」。
 ///
 /// ## 哪些数字是真的
 /// 排行与三格合计全部来自 `app_traffic_daily`：一包一天一行，窗口由顶部
-/// 分段控件选择，`today` 走 `byDate`，其余走 `dateRange` / `allHistory`
+/// 档位选择，`today` 走 `byDate`，其余走 `dateRange` / `allHistory`
 /// （SQL 与 `AppTrafficDao` 逐字一致，见 `app_traffic_repository.dart`）。
+/// 搜索、排序、隐藏系统应用都在 Dart 侧过滤，见 `_ranked`。
 ///
-/// ## 曲线为什么还留着，以及它标了什么
-/// 1.4.3 的速率曲线是内核每秒回报的会话数据，本仓**没有**这个来源
-/// （引擎 `getStats()` 是全局累计、不按应用拆分，也不给速率序列）。曲线本身
-/// 对「有没有在跑」有直观价值，所以保留，但整块标注为「会话示意」，并且
-/// 只画进程内自采样的**假波形**——不把它伪装成真实测速。
+/// ## 两档没有数据源，做成禁用项而不是删掉
+/// 旧版 `TrafficTimeRange` 有「本次会话」档、`TrafficSortMode` 有「按实时速率」
+/// 档，两者都需要内核按秒（或按会话）回报速率序列；本仓的按天表只存
+/// 「日期 + 包名 + 上下行累计字节」，没有这一列。旧版这里还有一张
+/// `TrafficGaugeCard` 实时速率卡——本仓同样无源，位置保留但**如实说明**缺什么，
+/// 既不画假曲线也不留一个没有数字的标题。
 library;
 
 import 'package:diting/data/db/app_traffic_repository.dart';
-import 'package:diting/data/mock_data.dart';
 import 'package:diting/pages/observability/observability_common.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
@@ -26,27 +28,42 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+part 'traffic_filters.dart';
 part 'traffic_rows.dart';
 
 /// 流量页。
-class TrafficPage extends ConsumerWidget {
+class TrafficPage extends ConsumerStatefulWidget {
   const TrafficPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = context.colorScheme;
+  ConsumerState<TrafficPage> createState() => _TrafficPageState();
+}
+
+class _TrafficPageState extends ConsumerState<TrafficPage> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncSnapshot = ref.watch(trafficSnapshotProvider);
     final window = ref.watch(trafficWindowProvider);
     final sort = ref.watch(trafficSortProvider);
     final search = ref.watch(trafficSearchProvider);
+    final hideSystemApps = ref.watch(trafficHideSystemAppsProvider);
 
     return CommonScaffold(
       title: '流量统计',
-      searchState: AppBarSearchState(
-        onSearch: (value) =>
-            ref.read(trafficSearchProvider.notifier).setQuery(value.trim()),
-      ),
       iconActions: [
+        IconButtonData(
+          glyph: AppGlyphs.broom,
+          tooltip: '清除历史',
+          onPressed: () => _confirmClear(context),
+        ),
         IconButtonData(
           glyph: AppGlyphs.refresh,
           tooltip: '刷新',
@@ -61,18 +78,17 @@ class TrafficPage extends ConsumerWidget {
           ),
         ),
       ],
-      body: _body(context, ref, asyncSnapshot, window, sort, search, colorScheme),
+      body: _body(context, asyncSnapshot, window, sort, search, hideSystemApps),
     );
   }
 
   Widget _body(
     BuildContext context,
-    WidgetRef ref,
     AsyncValue<TrafficSnapshot> asyncSnapshot,
     TrafficWindow window,
     TrafficSort sort,
     String search,
-    ColorScheme colorScheme,
+    bool hideSystemApps,
   ) {
     if (!asyncSnapshot.hasValue && asyncSnapshot.hasError) {
       return ObsFailure(
@@ -86,92 +102,32 @@ class TrafficPage extends ConsumerWidget {
     }
 
     final snapshot = asyncSnapshot.requireValue;
-    final ranking = _ranked(snapshot.rows, sort, search);
+    final visible = _ranked(
+      snapshot.rows,
+      sort,
+      search,
+      hideSystemApps: hideSystemApps,
+    );
+    final hiddenCount =
+        snapshot.rows.length - _ranked(snapshot.rows, sort, search).length;
 
     return PageBody(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: CommonCard(
-            child: StatStrip(
-              stats: [
-                StatItem(
-                  label: '${window.label}下行',
-                  value: obsFormatBytes(snapshot.rxBytes),
-                  color: colorScheme.primary,
-                ),
-                StatItem(
-                  label: '${window.label}上行',
-                  value: obsFormatBytes(snapshot.txBytes),
-                ),
-                StatItem(
-                  label: '应用数',
-                  value: '${snapshot.rows.length}',
-                  unit: '个',
-                ),
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: SegmentedControl<TrafficWindow>(
-            segments: [
-              for (final option in TrafficWindow.values)
-                (option, option.label),
+          child: StatStrip(
+            stats: [
+              StatItem(
+                label: '${window.label}下行',
+                value: obsFormatBytes(snapshot.rxBytes),
+                color: context.colorScheme.primary,
+              ),
+              StatItem(
+                label: '${window.label}上行',
+                value: obsFormatBytes(snapshot.txBytes),
+              ),
+              StatItem(label: '应用数', value: '${visible.length}', unit: '个'),
             ],
-            value: window,
-            onChanged: (option) =>
-                ref.read(trafficWindowProvider.notifier).select(option),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: CommonCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 8,
-              children: [
-                Row(
-                  children: [
-                    GlyphIcon(
-                      AppGlyphs.info,
-                      size: 18,
-                      color: colorScheme.warning,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '会话曲线（示意）',
-                        style: context.listTitleStyle,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '实时速率没有落库来源：引擎只报累计字节数，不提供按应用或按秒的'
-                  '速率序列，因此这张曲线不反映真实网速。真实数字请看上面的'
-                  '「${window.label}下行 / 上行」与下方排行。',
-                  style: AppTextStyle.footnote
-                      .of(context)
-                      .copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-                // 高度必须给死：LineChart 内部是 SizedBox.expand + CustomPaint，
-                // 放进 ListView 后没有固有高度，不约束就会抛无界高度断言。
-                SizedBox(
-                  height: 96,
-                  child: LineChart(
-                    values: mockTrafficSamples,
-                    revision: mockTrafficSamples.length,
-                    capacity: mockTrafficSamples.length,
-                    minScale: 600,
-                    color: colorScheme.onSurfaceVariant,
-                    baselineRatio: 0.78,
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
         Padding(
@@ -180,25 +136,64 @@ class TrafficPage extends ConsumerWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              for (final option in TrafficSort.values)
-                _SortChip(
+              for (final option in _rangeOptions)
+                _OptionChip(
                   label: option.label,
-                  selected: option == sort,
-                  onPressed: () =>
-                      ref.read(trafficSortProvider.notifier).select(option),
+                  selected: option.window == window,
+                  unavailableReason: option.unavailableReason,
+                  onPressed: () {
+                    final target = option.window;
+                    if (target == null) {
+                      _explainUnavailable(
+                        option.label,
+                        option.unavailableReason,
+                      );
+                    } else {
+                      ref.read(trafficWindowProvider.notifier).select(target);
+                    }
+                  },
                 ),
             ],
           ),
         ),
-        if (ranking.isEmpty)
+        const SizedBox(height: 12),
+        _RateUnavailableCard(windowLabel: window.label),
+        const SizedBox(height: 10),
+        _AttributionBanner(
+          onTap: () => showSheet<void>(
+            context: context,
+            builder: (_) => const _AttributionSheet(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        _TrafficFilterBar(
+          searchController: _search,
+          sort: sort,
+          hideSystemApps: hideSystemApps,
+          onSearchChanged: (value) =>
+              ref.read(trafficSearchProvider.notifier).setQuery(value.trim()),
+          onSortSelected: (option) {
+            final target = option.sort;
+            if (target == null) {
+              _explainUnavailable(option.label, option.unavailableReason);
+            } else {
+              ref.read(trafficSortProvider.notifier).select(target);
+            }
+          },
+          onHideSystemAppsChanged: (value) =>
+              ref.read(trafficHideSystemAppsProvider.notifier).setValue(value),
+        ),
+        if (visible.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
             child: NullStatus(
-              label: search.isEmpty ? '这个窗口还没有流量记录' : '没有匹配的应用',
-              description: search.isEmpty
-                  ? '流量按天由原生侧汇总落库；启动隧道并产生流量后，'
-                        '这里会出现各应用的下行 / 上行字节数。'
-                  : '没有应用名或包名包含「$search」。',
+              label: search.isEmpty && !hideSystemApps ? '暂无流量数据' : '没有匹配的应用',
+              description: _emptyDescription(
+                search: search,
+                hideSystemApps: hideSystemApps,
+                hiddenCount: hiddenCount,
+                window: window,
+              ),
               illustration: NullStatusIllustration.data,
             ),
           )
@@ -209,14 +204,14 @@ class TrafficPage extends ConsumerWidget {
                 '占比按${window.label}总字节数（下行 + 上行）计算；'
                 '${_windowLabel(snapshot)}。点按一行查看该应用的上下行明细。',
             items: [
-              for (final row in ranking)
+              for (final row in visible)
                 AppTrafficRow(
                   row: row,
                   total: snapshot.totalBytes,
                   sort: sort,
                   onTap: () => showSheet<void>(
                     context: context,
-                    builder: (_) => _AppTrafficSheet(
+                    builder: (_) => _AppTrafficDetailSheet(
                       row: row,
                       total: snapshot.totalBytes,
                       sort: sort,
@@ -228,13 +223,91 @@ class TrafficPage extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
           child: Text(
-            '共 ${ranking.length} 个应用产生流量 · 合计 '
+            '共 ${visible.length} 个应用产生流量 · 合计 '
             '${obsFormatBytes(snapshot.totalBytes)}',
             style: context.listCaptionStyle,
           ),
         ),
       ],
     );
+  }
+
+  /// 空态说明：区分「真的没有流量」「被搜索过滤掉」「被隐藏系统应用过滤掉」。
+  /// 三者混成一句会让用户以为统计坏了。
+  static String _emptyDescription({
+    required String search,
+    required bool hideSystemApps,
+    required int hiddenCount,
+    required TrafficWindow window,
+  }) {
+    if (search.isNotEmpty) return '没有应用名或包名包含「$search」。';
+    if (hideSystemApps && hiddenCount > 0) {
+      return '本次共有 $hiddenCount 个应用被「隐藏系统应用」过滤掉，'
+          '关闭该开关即可看到。';
+    }
+    if (window == TrafficWindow.all) {
+      return '流量按天由原生侧汇总落库；启动隧道并产生流量后，这里会出现'
+          '各应用的下行 / 上行字节数。';
+    }
+    return '「${window.label}」还没有流量记录。流量按天由原生侧汇总落库，'
+        '换个时间窗口或启动隧道产生流量后再看。';
+  }
+
+  /// 禁用档位的说明。用提示条而不是静默无反应：用户点了一定要得到答案。
+  void _explainUnavailable(String label, String? reason) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text('「$label」不可用：${reason ?? '本仓没有对应的数据来源'}'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// 清除历史：确认框文案逐字照抄旧版
+  /// （`AppTrafficStatsScreen` 的 `showClearConfirmDialog`）。
+  ///
+  /// 用传入的 `context.mounted` 而不是 `State.mounted` 做异步守卫：两者在这里
+  /// 恰好指向同一个 element，但 analyzer 需要与「用哪个 context」配对的那个判断。
+  Future<void> _confirmClear(BuildContext context) async {
+    final confirmed = await showFloatingDialog<bool>(
+      context: context,
+      child: CommonDialog(
+        title: '清除全部流量记录？',
+        destructive: true,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('确认清除'),
+          ),
+        ],
+        child: const Text('此操作将清空所有已持久化的应用历史流量统计，清除后无法恢复。'),
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      final deleted = await ref
+          .read(trafficClearHistoryProvider.notifier)
+          .clear();
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text('已清除 $deleted 条流量记录'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text('清除失败：$error'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   static String _windowLabel(TrafficSnapshot snapshot) {
@@ -246,25 +319,26 @@ class TrafficPage extends ConsumerWidget {
   }
 }
 
-/// 排序 + 关键词过滤。
+/// 排序 + 关键词过滤 + 隐藏系统应用。
 ///
-/// 过滤在 Dart 侧做（不走第二份 SQL）：行数等于「应用数 × 天数」，一个月的
+/// 全部在 Dart 侧做（不走第二份 SQL）：行数等于「应用数 × 天数」，一个月的
 /// 完整历史也就几百行，直接在内存里筛比再发一次查询快，也不会与排行 SQL
 /// 的 `ORDER BY` 产生两套排序口径。
 List<AppTrafficDaily> _ranked(
   List<AppTrafficDaily> rows,
   TrafficSort sort,
-  String search,
-) {
+  String search, {
+  bool hideSystemApps = false,
+}) {
   final query = search.toLowerCase();
-  final filtered = query.isEmpty
-      ? [...rows]
-      : [
-          for (final row in rows)
-            if (row.appName.toLowerCase().contains(query) ||
-                row.packageName.toLowerCase().contains(query))
-              row,
-        ];
+  final filtered = <AppTrafficDaily>[
+    for (final row in rows)
+      if (!(hideSystemApps && isKnownSystemPackagePrefix(row.packageName)) &&
+          (query.isEmpty ||
+              row.appName.toLowerCase().contains(query) ||
+              row.packageName.toLowerCase().contains(query)))
+        row,
+  ];
   filtered.sort((a, b) {
     final result = switch (sort) {
       TrafficSort.total => a.totalBytes.compareTo(b.totalBytes),

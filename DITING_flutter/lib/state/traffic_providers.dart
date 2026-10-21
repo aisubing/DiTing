@@ -21,6 +21,7 @@
 library;
 
 import 'package:diting/data/db/app_traffic_repository.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -74,10 +75,7 @@ class TrafficSnapshot {
     required this.endDate,
   });
 
-  const TrafficSnapshot.empty()
-    : rows = const [],
-      startDate = '',
-      endDate = '';
+  const TrafficSnapshot.empty() : rows = const [], startDate = '', endDate = '';
 
   /// 按总字节降序，与 SQL 的 `ORDER BY` 同序。
   final List<AppTrafficDaily> rows;
@@ -179,10 +177,9 @@ class TrafficSearchNotifier extends Notifier<String> {
   }
 }
 
-final trafficSearchProvider =
-    NotifierProvider<TrafficSearchNotifier, String>(
-      TrafficSearchNotifier.new,
-    );
+final trafficSearchProvider = NotifierProvider<TrafficSearchNotifier, String>(
+  TrafficSearchNotifier.new,
+);
 
 /// 当前窗口的真实数据。
 final trafficSnapshotProvider = FutureProvider<TrafficSnapshot>((ref) async {
@@ -190,3 +187,66 @@ final trafficSnapshotProvider = FutureProvider<TrafficSnapshot>((ref) async {
   final window = ref.watch(trafficWindowProvider);
   return _loadSnapshot(ref, window);
 });
+
+// ---------------------------------------------------------------------------
+// 隐藏系统应用（1.4.3 `SystemSettingsStore.isTrafficStatsHideSystemApps`）
+// ---------------------------------------------------------------------------
+
+/// `traffic_stats_hide_system_apps`，与旧版同名同容器（`dns_vpn_prefs`）。
+const trafficHideSystemAppsKey = 'traffic_stats_hide_system_apps';
+
+/// 隐藏系统应用的开关。默认 `false`（旧版 `SystemSettingsStore` 的默认值）。
+class TrafficHideSystemAppsNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    // 写入口会 `bump()` 这个 revision，读侧跟着它重建才能看到新值。
+    ref.watch(legacySettingsRevisionProvider);
+    final stored = ref
+        .watch(legacyPrefsStoreProvider)
+        .read(LegacySettings.uiContainer, trafficHideSystemAppsKey);
+    return stored is bool ? stored : false;
+  }
+
+  void setValue(bool value) {
+    if (state == value) return;
+    ref
+        .read(legacyPrefsStoreProvider)
+        .putBool(LegacySettings.uiContainer, trafficHideSystemAppsKey, value);
+    ref.read(legacySettingsRevisionProvider.notifier).bump();
+    state = value;
+  }
+}
+
+final trafficHideSystemAppsProvider =
+    NotifierProvider<TrafficHideSystemAppsNotifier, bool>(
+      TrafficHideSystemAppsNotifier.new,
+    );
+
+/// 清除全部历史流量（旧版 `AppTrafficStatsViewModel.clearHistory`）。
+///
+/// 返回删掉的行数，供页面提示。库不存在时返回 0，不抛——全新安装里点
+/// 「清除历史」不该炸。
+class TrafficClearHistoryNotifier extends Notifier<AsyncValue<int?>> {
+  @override
+  AsyncValue<int?> build() => const AsyncValue<int?>.data(null);
+
+  Future<int> clear() async {
+    state = const AsyncValue<int?>.loading();
+    try {
+      final repository = await ref.read(appTrafficRepositoryProvider.future);
+      final deleted = await repository?.clearAll() ?? 0;
+      state = AsyncValue<int?>.data(deleted);
+      // 排行与合计都要重新查：清空后旧行会留在快照里。
+      ref.read(dnsLogRevisionProvider.notifier).bump();
+      return deleted;
+    } catch (error, stack) {
+      state = AsyncValue<int?>.error(error, stack);
+      rethrow;
+    }
+  }
+}
+
+final trafficClearHistoryProvider =
+    NotifierProvider<TrafficClearHistoryNotifier, AsyncValue<int?>>(
+      TrafficClearHistoryNotifier.new,
+    );

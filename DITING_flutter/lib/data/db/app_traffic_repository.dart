@@ -89,6 +89,16 @@ class AppTrafficRepository {
   /// 1.4.3's `TrafficTimeRange.TODAY` selected.
   Future<List<AppTrafficDaily>> today() => byDate(todayKey());
 
+  /// 1.4.3 `AppTrafficDao.clearAll()`：`DELETE FROM app_traffic_daily`。
+  ///
+  /// 这是本仓储唯一的写操作，对应流量页的「清除历史」（旧版
+  /// `AppTrafficStatsViewModel.clearHistory` → `TrafficStatsManager.clearAllTrafficStats`
+  /// + `LogMaintenance.clearAllTrafficStats`）。调用方负责先弹确认框——旧版
+  /// 的确认文案是「此操作将清空所有已持久化的应用历史流量统计，清除后无法恢复。」
+  ///
+  /// 返回删掉的行数，供 UI 报告「已清除 N 条记录」。
+  Future<int> clearAll() => _db.delete('app_traffic_daily');
+
   /// `yyyy-MM-dd` in the local time zone.
   ///
   /// Local, not UTC: `TrafficIngest` derives the row key from
