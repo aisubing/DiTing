@@ -12,8 +12,67 @@
 6. **产物时序**：AAR、jar、exe 只在源码定稿后重建，顺序是改源码 → `gofmt`/`go vet`/`go test` → 构建 → 目标平台编译、单测、启动验证；退出码 0 或单个文件能读都不算完成；`.vue` 改动要跑含 `vue-tsc` 的完整构建。
 7. **仓内优先**：列「需要外部取证」之前先搜源码、测试和仓库注释，作者注释比记忆可靠；判「无法修」之前把平台 API 查完（「模型缺字段」往往意味着「该换判据」）；以「要加 DB 字段或迁移」为由放弃的，必须附上「已排除的替代判据」。
 8. **改动方式**：改代码一律用编辑工具，不要用 `sed -i`、PowerShell `-replace` 或 Python 脚本做文本替换。同类事故已经出了三次：`-replace` 把 `$1`、`$&` 当反向引用、多行替换里 `\r\n` 还会错位，`sed -i` 直接把脚本改出 `SyntaxError`。不能因为某一次没出事就认为这条路安全。文件改坏了别试图修补，`git checkout --` 回基线重做更快。
+9. **测试红线的归因顺序**：`tap` 打不中（下层文字还在、命中测试落到别处）先查有没有全屏遮罩/弹窗，不要先改文案断言；`Expected 0` 与 `Expected 1` 之间要先问「期望值是不是写成了迁就实现」。改测试前必须能用一句话说清「产品行为错在哪」，说不出来就是改测试凑绿。
+10. **全局副作用**：`dart format` / `flutter analyze` / 不带路径的 `git commit` 都是全局操作，会碰到别人的文件与索引；只对自己作用域跑。收尾必查 `git status --short` 里有没有不属于本轮的文件。
 
 ## 事件记录（时间倒序）
+
+### 2026-10-21：全局弹窗挂在 `builder` 里会吃掉所有测试的点击，而报错指向「点不到按钮」
+
+- 现场：给应用补了首启「使用须知与免责声明」弹窗（`InitialAgreementGate` 包在
+  `DitingApp.builder` 的 `child` 外）。`app_shell_test.dart` 里三条毫不相干的用例
+  （电源按钮、底栏切页、浮层弹出）同时变红，失败信息是
+  `Found 0 widgets with text "选择解析服务商"` + 一长串
+  `the finder corresponds to this RenderBox` 命中测试警告——看起来像「浮层坏了」或
+  「文案改了」，实际是**遮罩吃掉了点击**。
+- 判据：下层 widget 树仍在（`find.text` 能找到），但 `tap` 打不中 → 先怀疑有一层
+  全屏 `Stack`/`ModalBarrier` 盖在上面，而不是怀疑控件本身。用
+  `tester.takeException()` 拿不到任何异常（点击失败只是 warning，不是 error）。
+- 修法：测试侧把「同意」态做成默认前置，而不是逐个用例点掉弹窗。为此新增
+  `test/support/test_hooks.dart` 的 `appTestOverrides()`，**所有挂 `DitingApp` 的
+  测试统一用它**；要测弹窗本身的用例传 `skipInitialAgreement: false`。
+  这样新增全局前置只需改一处，不会再出现「漏改的那个文件以点不到的形式失败」。
+- 反例：**不要**把这条前置写成「测试里预置 store 里的 `initial_agreement_accepted`」——
+  store 的实参在 `pumpWidget` 时才 override，来不及；用 provider override 才对。
+
+### 2026-10-21：`dart format` / `flutter analyze` 是全局操作，且 `lib/ui` 冻结后一条格式化 diff 也不能留
+
+- 现场：队友跑 `dart format lib` 一次性改了 150 个文件（含冻结的 `lib/ui`）。虽然全是
+  纯格式化、`flutter analyze` 依然零告警，但 `git diff` 里 `lib/ui` 出现 24 个文件
+  337 增 522 删 —— 审阅者无法分辨这是格式化还是语义改动，等于把「设计系统零改动」
+  这条硬约束变成了口头承诺。
+- 判据：`git diff -w --stat <base> -- lib/ui/` 仍显示非零增删时不能只看一眼「像是换行」
+  就放过；要逐条读 `+`/`-` 行确认。确认是格式化后**整体还原**：
+  `git checkout <base> -- lib/ui/`，不要手工挑。
+- 铁律：只对自己作用域的路径跑 `format` / `analyze`。收尾前跑一次
+  `git status --short lib/ui/ lib/app/theme/`，非空就要问「这处是不是我有意改的」。
+
+### 2026-10-21：`indexWhere(location.startsWith)` 恒返回 0——`/` 是任何路径的前缀
+
+- 现场：`branchIndexOf(String location)` 写成
+  `_branchOrder.indexWhere(location.startsWith)`，而 `_branchOrder[0] == '/'`。
+  `location.startsWith('/')` 对任何绝对路径都为真，于是 `/hub`、`/logs`、`/settings`
+  全部被判成 0 号 branch。这个函数当时**只在测试里被调用**，所以线上不可见；一旦有人
+  拿它做 `goBranch` 的入参，任何非首页位置点一下都会跳回首页。
+- 修法：按**最长前缀**匹配，且前缀后必须紧跟 `/` 或结束（否则 `/logs` 会命中
+  `/logsomething`）。注意队友提出的修法 `indexWhere((it) => location.startsWith(it))`
+  只修了「参数传反」，**没修「`/` 抢先命中」**——照那个改仍然恒返回 0。
+- 教训：`startsWith` 一族做前缀匹配时，永远先问「有没有一个空前缀/根前缀会抢先」。
+  这类错误在被测试单独调用时表现为「断言期望值写成 0」，很容易被误改成迁就实现。
+
+### 2026-10-21：编辑工具的一次换行丢失，靠 `compileDebugKotlin` 才抓到
+
+- 现场：用编辑工具改 Kotlin 时，`val address = InetAddress.getByName(spec.host)` 与
+  下一行 `DatagramSocket().use {` 被合成了一行，变成
+  `InetAddress.getByName(spec.host)        DatagramSocket().use {`。Dart 侧完全正常，
+  `flutter analyze` 也照过，**只有 `./gradlew compileDebugKotlin` 报**
+  `Unresolved reference 'DatagramSocket'` + `Missing return statement`。
+- 铁律：改过 `android/**/*.kt` 就必须跑一次
+  `cd android; .\gradlew.bat compileDebugKotlin --console=plain -q`（失败时去掉 `-q`
+  grep `^e:`）。`flutter analyze` 不覆盖 Kotlin，`flutter build apk` 太慢不适合内循环。
+- 同类：Kotlin 里加通道方法后，Dart 侧的 `implements` 类会报
+  `isn't a valid override`（少一个具名参数），`flutter analyze` 能抓到——所以两侧要
+  **一起改、一起验**，不要先提交一侧。
 
 ### 2026-10-21：输入框只写 `TextEditingController`、不写回 provider，测试全绿但功能是错的
 
