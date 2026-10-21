@@ -117,6 +117,7 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             "isIgnoringBatteryOptimizations" -> result.success(isIgnoringBatteryOptimizations())
             "requestIgnoreBatteryOptimizations" -> requestIgnoreBatteryOptimizations(result)
             "crashLogCount" -> result.success(crashLogCount())
+            "readCrashLogs" -> result.success(readCrashLogs())
             "clearCrashLogs" -> clearCrashLogs(result)
             "exportText" -> exportText(call, result)
             // Data-cleanup actions that touch the file system. Their Dart
@@ -182,10 +183,50 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
     private fun crashDir(): File = File(context.filesDir, CRASH_DIR).apply { mkdirs() }
 
     /** Files in both the Flutter directory and 1.4.3's `crash_logs`. */
-    private fun crashLogCount(): Int {
-        val legacy = File(context.filesDir, LEGACY_CRASH_DIR)
-        return (crashDir().listFiles()?.size ?: 0) + (legacy.listFiles()?.size ?: 0)
+    private fun crashLogCount(): Int = crashFiles().size
+
+    /**
+     * Concatenates every crash report into one text blob.
+     *
+     * The 日志模式 page's 「导出崩溃日志」 previously only showed a SnackBar saying the
+     * native side had to provide file reading. This is that reader: 1.4.3's
+     * `CrashLogManager.generateExportContent` opens the reports and prepends an
+     * index, because a crash report is useless without knowing which file it came
+     * from and when.
+     */
+    private fun readCrashLogs(): String {
+        val files = crashFiles()
+        if (files.isEmpty()) return ""
+        val header = buildString {
+            append("=".repeat(80)).append('\n')
+            append("                 DITING CRASH LOGS EXPORT (${files.size} REPORT(S))\n")
+            append("                 Exported: ").append(timestamp()).append('\n')
+            append("=".repeat(80)).append("\n\n")
+        }
+        val body = files.joinToString("\n\n") { file ->
+            buildString {
+                append("---- ").append(file.name).append(" ----\n")
+                // A report can be large (a native tombstone is hundreds of lines);
+                // `readText` on a truncated read still yields the useful head.
+                append(runCatching { file.readText() }.getOrDefault("(无法读取该文件)"))
+            }
+        }
+        return header + body
     }
+
+    /** Reports from both directories, newest first. */
+    private fun crashFiles(): List<File> {
+        val files = mutableListOf<File>()
+        for (dir in arrayOf(crashDir(), File(context.filesDir, LEGACY_CRASH_DIR))) {
+            if (!dir.exists()) continue
+            dir.listFiles()?.forEach { if (it.isFile) files.add(it) }
+        }
+        return files.sortedByDescending { it.lastModified() }
+    }
+
+    private fun timestamp(): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+            .format(java.util.Date())
 
     /**
      * Deletes the crash records and resets the crash streak counters.

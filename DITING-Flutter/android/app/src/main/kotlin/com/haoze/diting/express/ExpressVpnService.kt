@@ -17,6 +17,7 @@ import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
+import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.RaceLogWriter
 import tunnel.BatchLogCallback
 import tunnel.Engine
@@ -178,6 +179,14 @@ class ExpressVpnService : VpnService() {
 
         isRunning = true
         setPersistedRunning(this, true)
+        // Express keeps its own log file and its own retention window, and has
+        // neither `http_request_log` nor `app_traffic_daily`.
+        LogRetention.start(
+            context = this,
+            databaseName = LOG_DATABASE,
+            prefsName = LOG_PREFS,
+            includeHttpAndTraffic = false,
+        )
         worker = Thread({
             try {
                 goEngine.startFull(pfd.fd.toLong(), SocketProtector { fd ->
@@ -223,6 +232,9 @@ class ExpressVpnService : VpnService() {
         runCatching { tun?.close() }
         tun = null
         worker = null
+        // Same reasoning as the normal-mode service: the sweep belongs to the
+        // tunnel's lifetime, not to the process.
+        LogRetention.stop()
     }
 
     private fun fail(message: String) {
@@ -328,6 +340,12 @@ class ExpressVpnService : VpnService() {
 
     companion object {
         private const val TAG = "ExpressVpnService"
+
+        /// `ExpressRulesDatabase` (version 2, `RuleDataset.EXPRESS`).
+        private const val LOG_DATABASE = "diting_express"
+
+        /// `RuleDataset.EXPRESS.prefsName()`: its retention window is separate.
+        private const val LOG_PREFS = "diting_express_prefs"
 
         const val ACTION_START = "com.haoze.diting.express.START_VPN"
         const val ACTION_STOP = "com.haoze.diting.express.STOP_VPN"

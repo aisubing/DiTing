@@ -129,7 +129,9 @@ class _LogRetentionPageState extends ConsumerState<LogRetentionPage>
                         ref.read(logRetentionProvider.notifier).set(days),
                   ),
               ],
-              footer: '超过所选时间的 DNS 请求日志会自动删除，用于控制本地日志占用。',
+              footer:
+                  '超过所选时间的请求日志由隧道服务每小时清理一次'
+                  '（首次在启动 30 秒后）。关闭日志不会删除已有记录。',
             ),
           generateSection(
             title: '崩溃日志',
@@ -174,11 +176,36 @@ class _LogRetentionPageState extends ConsumerState<LogRetentionPage>
     _ => '已记录 $count 份崩溃日志，点击导出文件',
   };
 
-  void _exportCrashes() {
-    final count = _crashLogCount ?? 0;
+  /// 导出崩溃日志：读真实文件 → 拼成一份文本 → 写到应用外部私有目录。
+  ///
+  /// 上一轮这里只弹一句「导出内容需原生侧提供文件读取」。那是个假入口：按钮
+  /// 可点、提示像成功、文件不存在。现在内容与落盘都走真实通道，并在失败时说明
+  /// 原因，而不是笼统地说「导出成功」。
+  Future<void> _exportCrashes() async {
+    final content = await PlatformBridge().readCrashLogs();
+    if (!mounted) return;
+    if (content.isEmpty) {
+      _toast('没有可导出的崩溃日志');
+      return;
+    }
+    final stamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[^0-9]'), '')
+        .substring(0, 14);
+    final path = await PlatformBridge().exportText(
+      name: 'DITING-crash-logs-$stamp.txt',
+      content: content,
+    );
+    if (!mounted) return;
+    _toast(
+      path == null ? '导出失败：本机没有可写的导出目录' : '已导出到 $path',
+    );
+  }
+
+  void _toast(String message) {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('本机共 $count 份崩溃日志；导出内容需原生侧提供文件读取'),
+        content: Text(message),
         behavior: SnackBarBehavior.floating,
       ),
     );

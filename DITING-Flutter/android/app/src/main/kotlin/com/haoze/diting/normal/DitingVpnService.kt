@@ -14,6 +14,7 @@ import com.haoze.diting.R
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
+import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.log.TrafficRateMonitor
@@ -230,6 +231,15 @@ class DitingVpnService : VpnService() {
         isRunning = true
         setPersistedRunning(this, true)
         startSpeedTicker()
+        // 1.4.3 started the same sweep from the tunnel: the retention window only
+        // matters while logs are being written, and the foreground service is the
+        // only thing guaranteed to outlive the UI.
+        LogRetention.start(
+            context = this,
+            databaseName = LOG_DATABASE,
+            prefsName = LOG_PREFS,
+            includeHttpAndTraffic = true,
+        )
         worker = Thread({
             try {
                 goEngine.startFull(pfd.fd.toLong(), SocketProtector { fd ->
@@ -280,6 +290,10 @@ class DitingVpnService : VpnService() {
         // was never set, and a leaked thread would keep re-notifying.
         stopSpeedTicker()
         TrafficRateMonitor.reset()
+        // The retention sweep belongs to the tunnel's lifetime. Leaving it running
+        // after a stop would keep pruning tables the user is reading from a
+        // stopped app, and the executor thread would outlive the service.
+        LogRetention.stop()
     }
 
     private fun fail(message: String) {
@@ -400,6 +414,12 @@ class DitingVpnService : VpnService() {
 
     companion object {
         private const val TAG = "DitingVpnService"
+
+        /// The normal-mode log file (`AppDatabase`, `RuleDataset.NORMAL`).
+        private const val LOG_DATABASE = "diting_database"
+
+        /// `RuleDataset.NORMAL.prefsName()`: `log_retention_days` is dataset-scoped.
+        private const val LOG_PREFS = "dns_vpn_prefs"
 
         const val ACTION_START = "com.haoze.diting.START_VPN"
         const val ACTION_STOP = "com.haoze.diting.STOP_VPN"

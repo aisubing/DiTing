@@ -355,6 +355,39 @@ WebDAV、Agent 设置页等），另一部分**没有**（见 §8.2）。补标�
 `test/data_cleanup_test.dart` 直接对着内存数据库断言删除结果（14 条），因为这个缺陷在
 Widget 测试里看不见（SnackBar 文案本来就是对的）。
 
+### 8.1.2 日志保留期真的会删数据
+
+同一个毛病的第二种形态：`log_retention_days` 会落盘、日志模式页写着「超过所选时间的 DNS
+请求日志会自动删除」，但**没有任何代码读回这个键**。设置在磁盘上，效果不存在。
+
+现在移植了 1.4.3 的 `LogMaintenance`（`android/.../log/LogRetention.kt`），由两个隧道服务在
+启动时各自调度：
+
+| 项 | 值 | 说明 |
+|---|---|---|
+| 首次延迟 | 30 s | 清扫与隧道握手争磁盘；启动瞬间清理没有收益 |
+| 周期 | 1 h | 旧版 `MAINTENANCE_INTERVAL_MS` |
+| 日志窗口 | `log_retention_days`（数据集容器，1–30，默认 7） | 四张日志表按 `timestamp <` |
+| 流量窗口 | `traffic_stats_retention_days`（全局容器，1–90，默认 30） | `app_traffic_daily` 按 **`date` 字符串**比较 |
+
+三个易错点：
+
+1. **两个窗口必须分开**。用日志窗口去清流量表会把 30 天历史截成 7 天，旧版对此有专门注释。
+2. **`app_traffic_daily.date` 是 `yyyy-MM-dd` 字符串**，拿毫秒时间戳跟它比会把整张表删光。
+3. **极速模式只清四张日志表里的三张**：`ExpressRulesDatabase` 没有 `http_request_log` 与
+   `app_traffic_daily`，所以 `includeHttpAndTraffic = false`。
+
+调度器随隧道结束一起 `stop()`；漏掉会在服务停止后继续删用户正在看的表，线程也会比服务活得久。
+实测：普通模式隧道启动 30 秒后 logcat 出 `pruned 2 rows older than 7 d`，`dns_log` 里 20 天前的
+行消失、当天的行保留，`app_traffic_daily` 里 `2026-01-01` 的行被清而今天的保留。
+
+### 8.1.3 崩溃日志现在可导出
+
+「导出崩溃日志」此前只弹一句「导出内容需原生侧提供文件读取」——按钮可点、提示像成功、
+**文件不存在**。现在 `platform` 通道新增 `readCrashLogs`：原生侧合并两份崩溃目录
+（`crash/` 与 1.4.3 的 `crash_logs/`，按时间倒序，带文件名索引），Dart 侧再经 `exportText`
+落到外部私有目录，成功后提示真实路径。
+
 ### 8.2 旧版没有后端的界面
 
 `/connections`、`/resources` 在 1.4.3 里没有对应后端（那一版只有请求日志，没有「活动连接」

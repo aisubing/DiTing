@@ -88,6 +88,22 @@ class PlatformBridge {
     }
   }
 
+  /// 读取全部崩溃报告的合并文本；没有崩溃时返回空串。
+  ///
+  /// 「导出崩溃日志」此前只弹一句「导出内容需原生侧提供文件读取」——那是个
+  /// 假入口：按钮点了、文件没生成。现在内容由原生侧拼接（含每份报告的文件名
+  /// 与时间索引，旧版 `generateExportContent` 同样先给索引），再经 [exportText]
+  /// 落盘。
+  Future<String> readCrashLogs() async {
+    try {
+      return await _channel.invokeMethod<String>('readCrashLogs') ?? '';
+    } on MissingPluginException {
+      return '';
+    } on PlatformException {
+      return '';
+    }
+  }
+
   /// 清空崩溃日志，返回删除的条数。
   Future<int> clearCrashLogs() async {
     try {
