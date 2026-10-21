@@ -15,6 +15,47 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-21：多人共用一个 git index，不带路径的 `git commit` 会把别人的改动卷进来
+
+- 现场：本 agent 用 `git commit -m … -- <自己的路径>` 提交后，又跑了一次不带路径的
+  `git commit -m …` 想「补一下说明」，结果把别人已暂存的 80 个文件一起提交了，提交
+  信息还写成我自己的模块名。**同一工作区里多个 agent 共享 `.git/index`**，任何不带
+  路径（或 `--only`）的 commit / `--amend` 都会吃下当时索引里的全部内容。
+- 铁律：提交只用 `git commit -- <明确的文件列表>`；`--amend` 同样要带路径。改完用
+  `git show --name-only --format='' HEAD` 回读一遍文件清单，确认范围就是自己那几个
+  文件。发现卷进来了立刻 `git reset --soft HEAD~1` + `git reset`（mixed）把改动退回
+  工作区，再用带路径的 commit 重做——不要试图 `git rebase -i` 去「摘」别人的 hunk。
+- 另一条同源坑：`git commit -- path` 只提交**已跟踪**文件的改动，新建的未跟踪文件会
+  被漏掉（本次漏了 6 个新页面，编译直接断）。提交前先 `git status --porcelain <我的
+  路径>`，把 `??` 的也用 `git add` 显式加进去。
+
+### 2026-10-21：`dart format lib` / `flutter analyze lib` 是全局操作，会改到别人的文件
+
+- 本 agent 跑了一次 `dart format lib`，一次性改写了 115 个文件——绝大部分属于其他
+  并行 agent 的作用域，把他们的 `git diff` 搅成无法审阅的一团。**只对自己作用域的
+  路径跑 format / analyze**（任务描述里给的那串路径），不要图省事跑整棵树。
+- 同理，`flutter analyze lib` 在有其他人半成品改动时会有大量「不是我造成」的 error。
+  判据要落在**自己那组路径**上（`flutter analyze lib/pages/server lib/pages/config …`
+  → `No issues found!`）；整棵树变绿不是我能保证、也不是我该等的验收条件。
+
+### 2026-10-21：`part of` 的库根被删后，剩下的 part 会变成「全员编译失败」
+
+- 删 `lib/data/mock_config.dart`（库根）后，`mock_config_general/network/override/dns`
+  四个 part 全部报 `part_of_non_part`，报错位置却在**库根**上，看起来像是「我删错了」
+  ——实际是那四个 part 文件成了孤儿。删库根必须同时删掉全部 `part` 文件，并且先
+  `grep -rn "mock_config"` 双向确认没有页面还在 import 它们。
+
+### 2026-10-21：浮条（`NavigationDock`）在场的页面不能用 `pumpAndSettle`
+
+- 玻璃层有持续动画，`pumpAndSettle` 直接超时（不是 bug，真机上它就该一直动）。
+  写这类页面的冒烟必须用 `pump()` + `pump(Duration)`。见 `test/support/test_hooks.dart`。
+- 配套坑：`PageBody` 是懒构建 `ListView`，靠后的分组**还没被建**，`find.text('后台稳定性')`
+  必然 `findsNothing`。断言视口外的分组要先 `drag` 把尾部顶上来，否则「找不到」既可能
+  是没写、也可能只是没滚到——两种结论完全相反。
+- 反过来，需要「整页入口同时存在」的目录页（如 `/developer`）就别用懒构建的 `PageBody`：
+  改成 `AppBarClearance` + `SingleChildScrollView` + `Column`，一次性建完。代价可忽略，
+  换来的是无障碍树、截图审核与可达性测试都看得到全部入口。
+
 ### 2026-10-21：`CommonScaffold.body` 不预留顶栏浮位是「零报错」缺陷，必须用源码扫描守住
 
 - `CommonScaffold` 走 `extendBodyBehindAppBar` 语义：正文从屏幕 y=0 起排，顶栏浮在正文
