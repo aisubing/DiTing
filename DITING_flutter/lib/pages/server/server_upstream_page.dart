@@ -46,7 +46,8 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
   @override
   Widget build(BuildContext context) {
     final all = ref.watch(serverUpstreamListProvider);
-    final selectedId = ref.watch(serverSelectedUpstreamProvider).id;
+    final selected = ref.watch(serverSelectedUpstreamProvider);
+    final selectedId = selected.id;
     final visible = [
       for (final upstream in all)
         if (upstream.protocol == _protocol) upstream,
@@ -63,8 +64,19 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
       title: '上游服务器',
       body: PageBody(
         children: [
+          // 上游 `ProviderManagementListContent` 的 activeItemText：「当前用于解析
+          // DNS：(DNS) 阿里云」。放在协议分段之上，因为它描述的是**整页**的当前
+          // 选择，不是当前分段内的选择——切到 DoH 时它仍应显示那家 DNS 上游。
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text(
+              '当前用于解析 DNS：(${_protocolLabel(selected.protocol)}) '
+              '${selected.name}',
+              style: context.listCaptionStyle,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
             child: SegmentedControl<DnsProtocol>(
               segments: const [
                 (DnsProtocol.dns, 'DNS'),
@@ -122,6 +134,14 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
   /// 内置 id 一律带 `preset_` 前缀（上游 `DnsUpstreamServer.PRESETS` 同约定）。
   static bool _isCustom(ServerUpstream upstream) =>
       !upstream.id.startsWith('preset_');
+
+  /// 协议显示名。`DnsProtocol.storageValue` 是 `DNS`/`DOH`/`DOT` 的大写存储值，
+  /// 直接上屏会是「(DOH)」，与旧版 `DnsModeProtocol.label` 的「DoH」不一致。
+  static String _protocolLabel(DnsProtocol protocol) => switch (protocol) {
+    DnsProtocol.dns => 'DNS',
+    DnsProtocol.doh => 'DoH',
+    DnsProtocol.dot => 'DoT',
+  };
 }
 
 class _UpstreamRow extends StatelessWidget {
