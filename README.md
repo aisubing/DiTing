@@ -221,9 +221,7 @@ REM 同步到目标版本（示例）
 
 ## 开发文档
 
-- [Flutter 重写交接文档](DITING_flutter/docs/ui-framework/20-handoff.md) — 已完成范围、冻结约定、统计口径、剩余缺口与验证口径。
-- [UI 全覆盖台账](DITING_flutter/docs/ui-framework/21-ui-coverage-ledger.md) — 逐项对照 1.4.3 的迁移状态，以及数据来源台账（哪些页面仍是演示数据）。
-- [DITING Android 功能图谱](DITING_flutter/docs/refactor/README.md) — 15 章，覆盖内核、规则、UI、测试与迁移策略。
+- [DITING Flutter 客户端](DITING_flutter/README.md) — 许可与来源、构建与签名、架构约定、旧版数据兼容契约、原生通道、统计口径与已知边界（该工程唯一文档）。
 - [Windows DNS 内核架构与开发规划](docs/development/windows-dns-kernel-roadmap.md) — 双进程架构、网卡接管与恢复状态机、IPC 与 Pipeline 设计。
 - [Linux 移植说明](docs/development/linux-port-notes.md) — 平台差异、DNS 接管后端、`DITING_DATA_DIR` 调试与功能差异。
 - [Go AAR 构建记录](docs/development/aar-build-notes.md) — Android `tunnel.aar` 的编译环境、参数与交叉编译细节。

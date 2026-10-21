@@ -17,6 +17,27 @@
 
 ## 事件记录（时间倒序）
 
+### 2026-10-21：写文档时最容易犯的不是「写得少」，而是「把约定写成现状」
+
+- 现场：把 DITING_flutter 的 32 份 Markdown 合并成一份核心文档时，两处把「已实现但没接线」
+  和「旧版有、本仓没有」写成了当前行为，被独立核验抓出：
+  ① 写「日志仪表盘四格来自 `dns_log` 当日聚合」——真实聚合
+  `dnsLogDailyStatsProvider`（`log_providers.dart:64`）**零消费方**，页面实际读
+  `LogDashboardSnapshot.mock()`；文档另一节又如实写着「概览块仍走演示数据」，**自相矛盾**。
+  ② 写「旧版三条一次性迁移标记」——其中两条（`local_listen_port_migrated`、
+  `log_queries_default_off`）只存在于旧版 Kotlin，本仓全无，读者会照着「顺手补一条」，
+  而那正是文档自己禁止的重放。
+- 判据：**任何一句话先问「这是现在的行为，还是我主张的行为」**。规范、口径、命名约定属于
+  「主张」，必须与该行为的**唯一实现位置**（provider/表/通道）一起写，并说明它是否已被消费；
+  删文档合并时尤其危险——原文的「待接线」「本轮暂不」这类限定词会在精简时被顺手删掉。
+- 自查方式：对每句含「全部/都/统一/必须」的断言，去 grep 该行为的消费方；**消费方为零就是
+  「未接线」，不是「已实现」**。文档里同时存在「X 已完成」与「X 仍是演示」两句时，
+  必然有一句是错的。
+- 同源反例：引用类型名也要 grep。本次文档凭空写了 `DnsLogResult` 这个**全仓不存在**的类型
+  （Dart 侧 `dns_log.result` 就是字符串），并据此断言「`switch` 的 `_` 会把 ERROR 渲染成
+  放行」——而两处 `switch` 其实都已显式处理 `ERROR`。旧文档里的符号在合并/精简时会被
+  「记忆」补全成看起来合理的名字，只有 grep 能证伪。
+
 ### 2026-10-21：全局弹窗挂在 `builder` 里会吃掉所有测试的点击，而报错指向「点不到按钮」
 
 - 现场：给应用补了首启「使用须知与免责声明」弹窗（`InitialAgreementGate` 包在
@@ -375,7 +396,7 @@
 
 ### 2026-10-19：`.bat` 里写中文会截断解析器；`set /p` 空 stdin 死循环；直接 `gradlew` 编 Flutter 是空壳
 
-- `.bat` 保持纯 ASCII，中文说明放 `.md`（本项目落在 `android/SIGNING.md`）；改完用「统计 >127 字节数 == 0」自检。把 `chcp 65001` 写进文件救不了，`cmd.exe` 按 OEM 代码页解析脚本，它执行前就已经乱了。
+- `.bat` 保持纯 ASCII，中文说明放 `.md`（本项目落在 `DITING_flutter/README.md` §2）；改完用「统计 >127 字节数 == 0」自检。把 `chcp 65001` 写进文件救不了，`cmd.exe` 按 OEM 代码页解析脚本，它执行前就已经乱了。
 - 所有 `set /p` 重试分支都要设上限，否则无终端场景（管道、CI、重定向）必炸；错误信息里直接给出 `adb install -r <apk>` 这类补救命令，比让用户重试有用。
 - Flutter 的构建入口只能是 `flutter build apk`，直调 Gradle 只编 Android 壳，Dart 代码不会进 APK。迁移脚本先改入口再谈其它，`-PsignDebugWithRelease` 这类 Gradle 参数要原样透传（`flutter build apk --debug -PsignDebugWithRelease=true` 是有效的）。
 - 签名验收靠证书指纹比对，不靠退出码——`--release` 在密钥缺失时会静默回退 debug 签名，构建照样成功。比对 `keytool -list -v` 的 SHA256 与 `apksigner verify --print-certs` 的 SHA-256，并确认 DN 不是 `CN=Android Debug`。
