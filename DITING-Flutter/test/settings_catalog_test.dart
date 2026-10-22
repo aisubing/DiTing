@@ -211,6 +211,8 @@ void main() {
       }
       // 字体是保留项，不挂在 /theme 下（旧版没有此项，避免污染旧版路径空间）。
       expect(SystemPaths.fontFamily, '/font-family');
+      // 字号是「字体设置」下的二级页，同样不污染 /theme 命名空间。
+      expect(SystemPaths.fontSize, '/font-size');
     });
 
     test('日志下钻四条都在 /logs 下', () {

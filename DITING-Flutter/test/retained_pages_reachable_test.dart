@@ -46,6 +46,7 @@ void main() {
     '/config/user-agents',
     '/config/on-demand',
     SystemPaths.fontFamily,
+    SystemPaths.fontSize,
     '/hub/config-transfer/webdav',
   ];
 

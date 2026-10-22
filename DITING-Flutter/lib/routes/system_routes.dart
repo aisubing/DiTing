@@ -1,6 +1,7 @@
 import 'package:diting/pages/appearance/appearance_color_page.dart';
 import 'package:diting/pages/appearance/appearance_shared_pages.dart';
 import 'package:diting/pages/appearance/font_family_page.dart';
+import 'package:diting/pages/appearance/font_size_page.dart';
 import 'package:diting/pages/appearance/settings_parity_pages.dart';
 import 'package:diting/pages/appearance/theme_page.dart';
 import 'package:diting/pages/demo/demo_page.dart';
@@ -40,6 +41,10 @@ abstract final class SystemPaths {
 
   /// 字体族。旧版没有这一项，用户要求保留。
   static const fontFamily = '/font-family';
+
+  /// 字号。字体设置页（[fontFamily]）下的二级页——旧版字号是外观页里的一段
+  /// 滑杆，用户要求收进「字体设置」的二级界面。
+  static const fontSize = '/font-size';
 
   // —— 设置子页 ——
   /// 前后台行为（旧版 `FOREGROUND_BACKGROUND_SETTINGS`）。
@@ -121,6 +126,11 @@ List<RouteBase> systemRoutes() => <RouteBase>[
     path: SystemPaths.fontFamily,
     parentNavigatorKey: rootNavigatorKey,
     builder: (context, state) => const FontFamilyPage(),
+  ),
+  GoRoute(
+    path: SystemPaths.fontSize,
+    parentNavigatorKey: rootNavigatorKey,
+    builder: (context, state) => const FontSizePage(),
   ),
 
   // —— 设置子页 ——

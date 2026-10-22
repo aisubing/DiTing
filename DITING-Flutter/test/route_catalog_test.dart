@@ -119,7 +119,8 @@ final Map<String, String> topLevelRoutes = {
   '首页句子': SystemPaths.homeSentence,
   '通知栏设置': SystemPaths.notification,
   '软件背景': SystemPaths.background,
-  '字体': SystemPaths.fontFamily,
+  '字体设置': SystemPaths.fontFamily,
+  '字号': SystemPaths.fontSize,
   // —— 设置子页 ——
   '前后台行为': SystemPaths.foregroundBackground,
   '语言设置': SystemPaths.language,

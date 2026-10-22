@@ -1,21 +1,28 @@
-/// 字体族选择页（上游 `views/font_family.dart`，194 行）。
+/// 字体设置页（上游 `views/font_family.dart`，194 行）。
 ///
 /// 上游用平台通道读系统字体表，逐帧把每个名字换成它自己的字族——第一帧用
 /// 默认字体渲染、随后逐个切换，因为一次给几十个家庭加载字体卡主线程。演示层
 /// 不接平台通道，改成「进页面时异步加载（`Future.delayed`）+ 骨架」，同样保留
 /// 逐项延迟上字体的效果，但来源换成 `mock_forms.dart` 的静态表。
+///
+/// **这一页是「字体设置」，不是单纯的字体族选择**：字号滑杆从外观设置页搬到了
+/// 这里的二级页（`/font-size`），标题也随之从「字体族」改成「字体设置」。
+/// 外观设置页只剩一个「字体」入口。
 library;
 
 import 'dart:async';
 
 import 'package:diting/data/mock_forms.dart';
+import 'package:diting/routes/system_routes.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
+import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 字体族选择页。
+/// 字体设置页：字号入口 + 字体族选择。
 class FontFamilyPage extends ConsumerStatefulWidget {
   const FontFamilyPage({super.key});
 
@@ -83,14 +90,34 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
   @override
   Widget build(BuildContext context) {
     final selected = ref.watch(selectedFontFamilyProvider);
+    final scale = ref.watch(textScaleProvider);
     final families = _families;
     return CommonScaffold(
-      title: '字体族',
+      title: '字体设置',
       body: families == null
           ? const _FontSkeleton()
           : PageBody(
               dockSpacer: false,
               children: [
+                // 字号入口：滑杆搬进 `/font-size` 二级页，这里只留一行入口，
+                // 副标题直接显示当前档位，不必点进去才知道。
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: CommonCard(
+                    padding: EdgeInsets.zero,
+                    child: ListItem(
+                      title: const Text('字号'),
+                      subtitle: Text('当前 ${(scale * 100).round()}%'),
+                      leading: const GlyphIcon(AppGlyphs.textSize),
+                      trailing: const GlyphIcon(
+                        AppGlyphs.chevronForward,
+                        size: 20,
+                      ),
+                      onTap: () => context.push(SystemPaths.fontSize),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 _PreviewHero(family: selected, label: _labelOf(selected)),
                 const SizedBox(height: 12),
                 generateSection(
