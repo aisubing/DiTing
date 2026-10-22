@@ -1,6 +1,7 @@
 import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/pages/server/server_actions.dart';
+import 'package:diting/pages/server/server_upstream_dialog.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/server_upstream_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -21,6 +22,14 @@ import 'package:material_ui/material_ui.dart';
 /// 上游的「按延迟排序」是 `ProviderManagementListContent` 的附带能力，但服务器
 /// 模式只有一家上游、且没有经过测速存储，硬造一个排序开关等于给用户一个假控件。
 /// 延迟测速属于服务商管理页（`/hub/providers`），本页不重复。
+///
+/// ## 自定义服务商的增删改
+/// 上一轮这一组只列只读，副标题写着「自定义上游在旧版设置页添加，本仓尚未接入
+/// 编辑入口」——旧版 `DnsMainScreen` 的 `onAddUpstream` / `onUpdateUpstream` /
+/// `onDeleteUpstream` 三个回调都在这一屏上，缺的是本仓的实现。现在补上：
+/// 内置项只能选中（由应用维护），自定义项可长按弹出「编辑 / 删除」，右上角
+/// 加号新增。三条落盘语义（id 前缀、IPv6 去括号、删选中项回落）在
+/// [ServerUpstreamActions] 里。
 class ServerUpstreamPage extends ConsumerStatefulWidget {
   const ServerUpstreamPage({super.key});
 
@@ -43,6 +52,77 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     );
   }
 
+  /// 新增（[existing] 为 null）或编辑一条自定义服务商。
+  ///
+  /// 校验失败时对话框自己保留并给出字段级提示，不在这里弹第二个提示——两处都
+  /// 报会让用户看到两个重复的错误。
+  Future<void> _edit(ServerUpstream? existing) async {
+    final result = await showFloatingDialog<ServerUpstream>(
+      context: context,
+      child: UpstreamDialog(initial: existing, protocol: _protocol),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    final actions = ref.read(serverUpstreamActionsProvider);
+    final saved = existing == null
+        ? actions.add(
+            name: result.name,
+            protocol: result.protocol,
+            address: result.address,
+            port: result.port,
+          )
+        : (actions.update(result) ? result : null);
+    if (saved == null) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    // 新增后切到它所在的协议分段，否则刚加完在别的分段里看不见。
+    setState(() => _protocol = saved.protocol);
+    showServerHint(
+      context,
+      existing == null ? '已添加 ${saved.name}' : '已保存 ${saved.name}',
+    );
+  }
+
+  /// 删除一条自定义服务商。
+  ///
+  /// 删除会真的改 `custom_upstreams`；若它正是当前选中项，[ServerUpstreamActions.remove]
+  /// 会把 `selected_upstream_id` 回落到第一个内置项，与旧版一致。
+  Future<void> _delete(ServerUpstream upstream) async {
+    final confirmed = await showFloatingDialog<bool>(
+      context: context,
+      child: CommonDialog(
+        title: '删除 ${upstream.name}？',
+        destructive: true,
+        hasFields: false,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+        child: Text(
+          '${upstream.endpointLabel}\n\n'
+          '如果它正被使用，删除后会回落到第一个内置服务商。',
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    final removed = ref.read(serverUpstreamActionsProvider).remove(upstream.id);
+    if (removed && mounted) {
+      showServerHint(context, '已删除 ${upstream.name}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final all = ref.watch(serverUpstreamListProvider);
@@ -62,6 +142,13 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     ];
     return CommonScaffold(
       title: '上游服务器',
+      actions: [
+        IconButton(
+          tooltip: '添加自定义服务商',
+          onPressed: () => _edit(null),
+          icon: const GlyphIcon(AppGlyphs.addCircle),
+        ),
+      ],
       body: PageBody(
         children: [
           // 上游 `ProviderManagementListContent` 的 activeItemText：「当前用于解析
@@ -108,10 +195,15 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
             title: '自定义 DNS 服务商',
             items: [
               if (customs.isEmpty)
-                const ListItem(
-                  title: Text('暂无自定义服务商'),
-                  subtitle: Text('自定义上游在旧版设置页添加，本仓尚未接入编辑入口'),
-                  leading: GlyphIcon(AppGlyphs.addCircle),
+                ListItem(
+                  title: const Text('暂无自定义服务商'),
+                  subtitle: const Text('点右上角加号添加 DoH / DoT / 明文 DNS 上游'),
+                  leading: const GlyphIcon(AppGlyphs.addCircle),
+                  trailing: const GlyphIcon(
+                    AppGlyphs.chevronForward,
+                    size: 20,
+                  ),
+                  onTap: () => _edit(null),
                 )
               else
                 for (final upstream in customs)
@@ -119,11 +211,19 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
                     upstream: upstream,
                     selected: upstream.id == selectedId,
                     onTap: () => _select(upstream),
+                    onEdit: () => _edit(upstream),
+                    onDelete: () => _delete(upstream),
                   ),
+              if (customs.isNotEmpty)
+                ListItem(
+                  title: const Text('添加自定义服务商'),
+                  leading: const GlyphIcon(AppGlyphs.addCircle),
+                  onTap: () => _edit(null),
+                ),
             ],
             footer:
                 '服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。'
-                '内置服务商由应用维护，只能切换。',
+                '内置服务商由应用维护，只能切换；自定义项长按可编辑或删除。',
           ),
         ],
       ),
@@ -149,11 +249,17 @@ class _UpstreamRow extends StatelessWidget {
     required this.upstream,
     required this.selected,
     required this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   final ServerUpstream upstream;
   final bool selected;
   final VoidCallback onTap;
+
+  /// 自定义项才传；内置项由应用维护，没有编辑/删除入口。
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -168,8 +274,88 @@ class _UpstreamRow extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: selected ? const SelectionCheck() : null,
+      trailing: onEdit == null && onDelete == null
+          ? (selected ? const SelectionCheck() : null)
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 4,
+              children: [
+                if (selected) const SelectionCheck(),
+                _RowMenu(
+                  name: upstream.name,
+                  onEdit: onEdit!,
+                  onDelete: onDelete!,
+                ),
+              ],
+            ),
       onTap: onTap,
+    );
+  }
+}
+
+/// 行尾的「更多」菜单：编辑 / 删除。
+///
+/// 点图标直接弹菜单，而不是依赖 `ContextMenuRegion` 的长按：后者在 `ListItem`
+/// 的 `onTap` 之下，实测点图标会先被整行点击吃掉（只弹「已选择 X」）。
+/// 直接 push [CommonPopupRoute] 与长按走的是同一条路由，视觉一致且点击即可用。
+class _RowMenu extends StatelessWidget {
+  const _RowMenu({
+    required this.name,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final String name;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  void _open(BuildContext context) {
+    final box = context.findRenderObject();
+    final navigator = Navigator.maybeOf(context);
+    final navigatorBox = navigator?.context.findRenderObject();
+    if (box is! RenderBox ||
+        navigator == null ||
+        navigatorBox is! RenderBox ||
+        !box.hasSize) {
+      return;
+    }
+    final point = navigatorBox.globalToLocal(
+      box.localToGlobal(box.size.bottomLeft(Offset.zero)),
+    );
+    navigator.push(
+      CommonPopupRoute<void>(
+        barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        placement: PopupPlacement.belowPoint,
+        elevated: ElevatedSurfaceTheme.isIn(context),
+        anchorOf: () => point & Size.zero,
+        builder: (_) => CommonPopupMenu(
+          items: [
+            CommonPopupMenuItem(
+              label: '编辑 $name',
+              glyph: AppGlyphs.edit,
+              onPressed: onEdit,
+            ),
+            CommonPopupMenuItem(
+              label: '删除 $name',
+              glyph: AppGlyphs.delete,
+              danger: true,
+              onPressed: onDelete,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _open(context),
+      child: const Padding(
+        padding: EdgeInsets.all(8),
+        child: GlyphIcon(AppGlyphs.more, size: 20),
+      ),
     );
   }
 }

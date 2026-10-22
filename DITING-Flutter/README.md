@@ -334,6 +334,7 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 | 应用独立规则的黑/白名单与全阻断 | 规则库 `appScope`（见 §8.3；不再有「尚未接通」占位） |
 | 订阅更新 | 真实下载 + 真实解析 + 真实入库（见 §8.3；`ruleCount` 是入库条数） |
 | `/logs/race` 竞速统计的策略概览与智能选择首选 | `dns_race_log` 的 `strategy` / `fallbackUsed` / `selectedProviderId` 三列聚合（见 §8.1.11） |
+| 服务器模式自定义上游的增删改 | `diting_dns_mode_prefs` 的 `custom_upstreams` / `selected_upstream_id`（见 §8.1.13） |
 
 ### 8.1.1 数据清理是「真删」，不是弹提示
 
@@ -760,6 +761,51 @@ showFloatingDialog(...)` 之后立刻 `dispose()`，`pop` 一调用弹窗的 fut
 `test/auto_update_runner_test.dart`（10 条）钉住到期判定的边界：从未尝试→到期、
 未满间隔→不到期、刚好满间隔→到期、间隔跟随设置（不是写死 24 小时）、
 `nextDueAt` 取最早到期、从未尝试的订阅立即到期。
+
+### 8.1.13 服务器模式自定义上游：补上增删改入口
+
+`/server` 的「上游服务器」页上一轮只做到**列出**：内置项可切换，自定义组的
+空状态写着「自定义上游在旧版设置页添加，本仓尚未接入编辑入口」。这句话本身
+就是缺口自述——旧版 `DnsMainScreen` 的 `onAddUpstream` / `onUpdateUpstream` /
+`onDeleteUpstream` 三个回调都挂在这一屏上，`DnsModeManager` 里对应
+`addCustomUpstream` / `updateCustomUpstream` / `removeCustomUpstream`。
+
+补的是写入侧（`ServerUpstreamActions` + `UpstreamDialog`）：
+
+1. **id 前缀**：新增用 `custom_` 开头（旧版 `"custom_" + UUID`）。读取侧靠
+   `preset_` 前缀区分内置与自定义，自定义项一旦用 `preset_` 开头就会被当成内置、
+   变得不可编辑。
+2. **IPv6 方括号归一**：非 DoH 地址落盘前去掉 `[]`。旧版注释写得很明确——
+   方括号输入**校验时接受**，但存储要裸地址，否则引擎自己再包一层会变成
+   `[[2001:db8::1]]:53`。
+3. **删除当前选中项要回落**：`selected_upstream_id` 指向已删除记录时，服务启动
+   只能靠兜底猜。旧版直接 `selectUpstream(PRESETS.first().id)`，本仓同样回落到
+   第一个内置项。
+4. **序列化只写五个字段**：`id` / `name` / `protocol` / `address` / `port`，与旧版
+   `DnsModePreferences.serializeUpstreams` 逐字一致；多写字段会让降级回 1.4.3 时
+   解析出脏数据。
+
+校验放在数据层（`validateServerUpstream`）而不是对话框里：两套校验迟早会分叉成
+「对话框放过了、写盘时被拒」的静默失败。DoH 必须 `https://` 且能解析出 host；
+其余协议端口 1–65535。
+
+界面入口：右上角加号新增、空状态行也可点；自定义行尾「更多」弹出「编辑 / 删除」，
+删除有二次确认并说明会回落。
+
+实测（emulator-5554，服务器模式 → 上游服务器）：
+
+- 新增 `MyIPv6DNS` / `[2001:db8::1]` / 53 → 列表显示 `DNS · 2001:db8::1:53`
+  （方括号已去掉），落盘 `[{"id":"custom_1792643203674222_1",...,
+  "address":"2001:db8::1","port":53}]`；
+- 点该行选中 → `selected_upstream_id=custom_1792643203674222_1`，顶部标题变为
+  「当前用于解析 DNS：(DNS) MyIPv6DNS」，重启应用后仍保持；
+- 更多 → 编辑：对话框预填原值，改名 `EditedDNS` 保存后列表与顶部标题同步更新，
+  **id 不变**；
+- 更多 → 删除：确认后 `custom_upstreams` 变 `[]`、`selected_upstream_id` 回落
+  `preset_alidns_dns`，界面回到「阿里云 + 暂无自定义服务商」空态。
+
+`test/server_upstream_actions_test.dart`（18 条）钉住上面三条落盘语义、校验规则
+与序列化字段集，并验证选中的自定义上游确实进入 `buildServerDnsConfig`。
 
 ## 9. 提交约定
 中文 Conventional Commits，一个阶段一个提交；提交前 `flutter analyze` 零问题，测试范围按改动

@@ -413,6 +413,13 @@ class LegacySettings {
   String? get serverCustomUpstreamsJson =>
       _stringIn(serverContainer, 'custom_upstreams');
 
+  /// 写 `custom_upstreams`（旧版 `DnsModePreferences.saveCustomUpstreams`）。
+  ///
+  /// 传空列表时写 `[]` 而不是删键：旧版 `serializeUpstreams(emptyList())` 也是
+  /// `"[]"`，两种表示在读侧等价，但删键会让「曾经有自定义项」这个事实消失。
+  void setServerCustomUpstreamsJson(String json) =>
+      _store.putString(serverContainer, 'custom_upstreams', json);
+
   bool get serverCacheEnabled =>
       _boolIn(serverContainer, 'cache_enabled', true);
 
