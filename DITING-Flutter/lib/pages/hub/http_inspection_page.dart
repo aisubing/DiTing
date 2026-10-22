@@ -277,41 +277,10 @@ class HttpInspectionPage extends ConsumerWidget {
     LegacySettings settings,
     Set<String> current,
   ) async {
-    final controller = TextEditingController();
     final value = await showFloatingDialog<String>(
       context: context,
-      child: CommonDialog(
-        title: '添加绕过域名',
-        hasFields: true,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isEmpty) {
-                return;
-              }
-              Navigator.of(context).pop(text);
-            },
-            child: const Text('添加'),
-          ),
-        ],
-        child: TextField(
-          controller: controller,
-          autocorrect: false,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '域名后缀',
-            hintText: 'example.com',
-            helperText: '匹配该后缀及其子域名；不参与 HTTPS 解密',
-          ),
-        ),
-      ),
+      child: const _BypassDomainDialog(),
     );
-    controller.dispose();
     if (value == null) {
       return;
     }
@@ -498,5 +467,62 @@ class _HttpInspectionAppsPageState
       next.add(packageName);
     }
     _write(next);
+  }
+}
+
+/// 绕过域名输入弹窗。
+///
+/// 控制器由弹窗自己持有：写成「调用方 new 一个 controller、`await` 之后立刻
+/// `dispose()`」时，`pop` 一调用 future 就完成，而退场动画还没跑完、`TextField`
+/// 仍挂在树上，dispose 会让它在动画中途重建到已失效的依赖上，实测整屏红
+/// （`'_dependents.isEmpty': is not true`）。
+class _BypassDomainDialog extends StatefulWidget {
+  const _BypassDomainDialog();
+
+  @override
+  State<_BypassDomainDialog> createState() => _BypassDomainDialogState();
+}
+
+class _BypassDomainDialogState extends State<_BypassDomainDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+    Navigator.of(context).pop(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
+      title: '添加绕过域名',
+      hasFields: true,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(onPressed: _submit, child: const Text('添加')),
+      ],
+      child: TextField(
+        controller: _controller,
+        autocorrect: false,
+        autofocus: true,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(
+          labelText: '域名后缀',
+          hintText: 'example.com',
+          helperText: '匹配该后缀及其子域名；不参与 HTTPS 解密',
+        ),
+      ),
+    );
   }
 }

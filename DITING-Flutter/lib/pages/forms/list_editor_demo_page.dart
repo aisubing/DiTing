@@ -36,33 +36,15 @@ class _ListEditorDemoPageState extends State<ListEditorDemoPage> {
   var _servers = [..._seedServers];
 
   Future<void> _add() async {
-    final controller = TextEditingController();
     final name = await showFloatingDialog<String>(
       context: context,
-      child: CommonDialog(
+      child: _TextFieldDialog(
         title: '添加服务器',
-        hasFields: true,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('添加'),
-          ),
-        ],
-        child: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: '名称',
-            hintText: '如「备用 NTP」',
-          ),
-        ),
+        submitLabel: '添加',
+        labelText: '名称',
+        hintText: '如「备用 NTP」',
       ),
     );
-    controller.dispose();
     if (name == null || name.isEmpty || !mounted) {
       return;
     }
@@ -72,30 +54,15 @@ class _ListEditorDemoPageState extends State<ListEditorDemoPage> {
   }
 
   Future<void> _edit(_DemoServer server) async {
-    final controller = TextEditingController(text: server.address);
     final address = await showFloatingDialog<String>(
       context: context,
-      child: CommonDialog(
+      child: _TextFieldDialog(
         title: '编辑地址',
-        hasFields: true,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('保存'),
-          ),
-        ],
-        child: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: '地址'),
-        ),
+        submitLabel: '保存',
+        labelText: '地址',
+        initial: server.address,
       ),
     );
-    controller.dispose();
     if (address == null || address.isEmpty || !mounted) {
       return;
     }
@@ -128,6 +95,67 @@ class _ListEditorDemoPageState extends State<ListEditorDemoPage> {
         ),
       ),
       footer: '排序与删除只改本页状态；离开页面再回来会恢复演示数据。',
+    );
+  }
+}
+
+/// 单行输入弹窗。
+///
+/// 控制器由弹窗自己持有：写成「调用方 new 一个 controller、`await` 之后立刻
+/// `dispose()`」时，`pop` 一调用 future 就完成，而退场动画还没跑完、`TextField`
+/// 仍挂在树上，dispose 会让它在动画中途重建到已失效的依赖上，实测整屏红
+/// （`'_dependents.isEmpty': is not true`）。
+class _TextFieldDialog extends StatefulWidget {
+  const _TextFieldDialog({
+    required this.title,
+    required this.submitLabel,
+    required this.labelText,
+    this.hintText,
+    this.initial = '',
+  });
+
+  final String title;
+  final String submitLabel;
+  final String labelText;
+  final String? hintText;
+  final String initial;
+
+  @override
+  State<_TextFieldDialog> createState() => _TextFieldDialogState();
+}
+
+class _TextFieldDialogState extends State<_TextFieldDialog> {
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
+      title: widget.title,
+      hasFields: true,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: Text(widget.submitLabel),
+        ),
+      ],
+      child: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          labelText: widget.labelText,
+          hintText: widget.hintText,
+        ),
+      ),
     );
   }
 }

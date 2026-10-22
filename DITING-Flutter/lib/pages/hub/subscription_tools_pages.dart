@@ -122,46 +122,68 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
     WidgetRef ref,
     AutoUpdateSettings settings,
   ) async {
-    final controller = TextEditingController(text: '${settings.intervalHours}');
     final value = await showFloatingDialog<int>(
       context: context,
-      child: CommonDialog(
-        title: '自定义更新时间',
-        hasFields: true,
-        child: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: '更新间隔（小时）',
-            helperText: '1–168 小时',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () {
-              final parsed = int.tryParse(controller.text);
-              if (parsed == null ||
-                  parsed <
-                      LegacySettings.minSubscriptionAutoUpdateIntervalHours ||
-                  parsed >
-                      LegacySettings.maxSubscriptionAutoUpdateIntervalHours) {
-                return;
-              }
-              Navigator.of(context).pop(parsed);
-            },
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+      child: _IntervalDialog(initial: settings.intervalHours),
     );
-    controller.dispose();
     if (value != null) {
       ref.read(autoUpdateActionsProvider).setIntervalHours(value);
     }
+  }
+}
+
+/// 自定义更新间隔弹窗；控制器由弹窗自己持有，不在 `await` 之后立刻 dispose
+/// （退场动画期间 `TextField` 仍在树上，提前释放会踩 framework 断言）。
+class _IntervalDialog extends StatefulWidget {
+  const _IntervalDialog({required this.initial});
+
+  final int initial;
+
+  @override
+  State<_IntervalDialog> createState() => _IntervalDialogState();
+}
+
+class _IntervalDialogState extends State<_IntervalDialog> {
+  late final _controller = TextEditingController(text: '${widget.initial}');
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final parsed = int.tryParse(_controller.text);
+    if (parsed == null ||
+        parsed < LegacySettings.minSubscriptionAutoUpdateIntervalHours ||
+        parsed > LegacySettings.maxSubscriptionAutoUpdateIntervalHours) {
+      return;
+    }
+    Navigator.of(context).pop(parsed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
+      title: '自定义更新时间',
+      hasFields: true,
+      child: TextField(
+        controller: _controller,
+        keyboardType: TextInputType.number,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(
+          labelText: '更新间隔（小时）',
+          helperText: '1–168 小时',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(onPressed: _submit, child: const Text('保存')),
+      ],
+    );
   }
 }
 
@@ -305,78 +327,10 @@ class MirrorTemplatesPage extends ConsumerWidget {
     BuildContext context, {
     ({String name, String template})? initial,
   }) {
-    final name = TextEditingController(text: initial?.name ?? '');
-    final template = TextEditingController(text: initial?.template ?? '');
     return showFloatingDialog<({String name, String template})>(
       context: context,
-      child: StatefulBuilder(
-        builder: (context, setDialogState) {
-          final match = RegExp(
-            r'\{(url|scheme|urlEncoded|host|path|pathAndQuery)\}',
-          );
-          final valid =
-              template.text.startsWith('http') && match.hasMatch(template.text);
-          return CommonDialog(
-            title: initial == null ? '添加镜像站模板' : '编辑镜像站模板',
-            hasFields: true,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: 10,
-              children: [
-                TextField(
-                  controller: name,
-                  onChanged: (_) => setDialogState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: '模板名称',
-                    hintText: '例如：GitHub 镜像',
-                  ),
-                ),
-                TextField(
-                  controller: template,
-                  autocorrect: false,
-                  onChanged: (_) => setDialogState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: '模板地址',
-                    hintText: 'https://mirror.example.com/{url}',
-                  ),
-                ),
-                Text(
-                  valid
-                      ? '可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'
-                      : '必须使用 HTTP(S) 并包含至少一个占位符',
-                  style: AppTextStyle.footnote
-                      .of(context)
-                      .copyWith(
-                        color: valid
-                            ? context.colorScheme.onSurfaceVariant
-                            : context.colorScheme.error,
-                      ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: valid && name.text.trim().isNotEmpty
-                    ? () => Navigator.of(context).pop((
-                        name: name.text.trim(),
-                        template: template.text.trim(),
-                      ))
-                    : null,
-                child: const Text('保存'),
-              ),
-            ],
-          );
-        },
-      ),
-    ).whenComplete(() {
-      name.dispose();
-      template.dispose();
-    });
+      child: _TemplateDialog(initial: initial),
+    );
   }
 
   void _showFormatGuide(BuildContext context) {
@@ -406,6 +360,103 @@ class MirrorTemplatesPage extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 镜像站模板编辑弹窗。
+///
+/// 控制器由弹窗自己持有。原来写成调用方 new 两个 controller、`whenComplete`
+/// 里 dispose：`pop` 一调用 future 就完成，退场动画期间 `TextField` 仍在树上，
+/// 提前释放会让它在动画中途重建到已失效的依赖上（实测整屏红）。
+class _TemplateDialog extends StatefulWidget {
+  const _TemplateDialog({this.initial});
+
+  final ({String name, String template})? initial;
+
+  @override
+  State<_TemplateDialog> createState() => _TemplateDialogState();
+}
+
+class _TemplateDialogState extends State<_TemplateDialog> {
+  static final _placeholder = RegExp(
+    r'\{(url|scheme|urlEncoded|host|path|pathAndQuery)\}',
+  );
+
+  late final _name = TextEditingController(text: widget.initial?.name ?? '');
+  late final _template = TextEditingController(
+    text: widget.initial?.template ?? '',
+  );
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _template.dispose();
+    super.dispose();
+  }
+
+  bool get _valid =>
+      _template.text.startsWith('http') && _placeholder.hasMatch(_template.text);
+
+  void _submit() {
+    if (!_valid || _name.text.trim().isEmpty) {
+      return;
+    }
+    Navigator.of(context).pop((
+      name: _name.text.trim(),
+      template: _template.text.trim(),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
+      title: widget.initial == null ? '添加镜像站模板' : '编辑镜像站模板',
+      hasFields: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 10,
+        children: [
+          TextField(
+            controller: _name,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: '模板名称',
+              hintText: '例如：GitHub 镜像',
+            ),
+          ),
+          TextField(
+            controller: _template,
+            autocorrect: false,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: '模板地址',
+              hintText: 'https://mirror.example.com/{url}',
+            ),
+          ),
+          Text(
+            _valid
+                ? '可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'
+                : '必须使用 HTTP(S) 并包含至少一个占位符',
+            style: AppTextStyle.footnote.of(context).copyWith(
+              color: _valid
+                  ? context.colorScheme.onSurfaceVariant
+                  : context.colorScheme.error,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: _valid && _name.text.trim().isNotEmpty ? _submit : null,
+          child: const Text('保存'),
+        ),
+      ],
     );
   }
 }

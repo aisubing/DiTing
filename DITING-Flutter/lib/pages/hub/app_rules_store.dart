@@ -243,10 +243,41 @@ class AppAllowDomainRow extends StatelessWidget {
 /// 避免把一个没被解析的规则串原样写进 `app_allowlist_rules_json`——引擎读到的
 /// 会是一个永远匹配不上的字符串。
 Future<String?> showAppAllowDomainDialog(BuildContext context) async {
-  final controller = TextEditingController();
-  final value = await showFloatingDialog<String>(
+  return showFloatingDialog<String>(
     context: context,
-    child: CommonDialog(
+    child: const _AllowDomainDialog(),
+  );
+}
+
+/// 放行域名输入弹窗；控制器由弹窗自己持有（见 `InputDialog` 的同一套生命周期：
+/// 调用方 `await` 之后立刻 dispose 会在退场动画中途把输入框的依赖弄失效）。
+class _AllowDomainDialog extends StatefulWidget {
+  const _AllowDomainDialog();
+
+  @override
+  State<_AllowDomainDialog> createState() => _AllowDomainDialogState();
+}
+
+class _AllowDomainDialogState extends State<_AllowDomainDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+    Navigator.of(context).pop(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
       title: '添加放行域名',
       hasFields: true,
       actions: [
@@ -254,29 +285,19 @@ Future<String?> showAppAllowDomainDialog(BuildContext context) async {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('取消'),
         ),
-        TextButton(
-          onPressed: () {
-            final text = controller.text.trim();
-            if (text.isEmpty) {
-              return;
-            }
-            Navigator.of(context).pop(text);
-          },
-          child: const Text('添加'),
-        ),
+        TextButton(onPressed: _submit, child: const Text('添加')),
       ],
       child: TextField(
-        controller: controller,
+        controller: _controller,
         autocorrect: false,
         autofocus: true,
+        onSubmitted: (_) => _submit(),
         decoration: const InputDecoration(
           labelText: '域名',
           hintText: 'api.example.com',
           helperText: '只填裸域名；包含子域名，不需要写通配符或 @@ 前缀',
         ),
       ),
-    ),
-  );
-  controller.dispose();
-  return value;
+    );
+  }
 }
