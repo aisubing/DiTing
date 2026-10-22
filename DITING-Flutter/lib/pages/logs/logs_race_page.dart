@@ -1,5 +1,6 @@
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
+import 'package:diting/state/log_race_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -9,14 +10,18 @@ import 'package:material_ui/material_ui.dart';
 /// 竞速统计（1.4.3 `RaceStatsScreen`）。
 ///
 /// 结构照抄旧版：时间范围选择器 → 「概览」组（请求 / 成功 / 失败 / 平均耗时）
-/// → 「胜出服务商」组（每个服务商的胜出次数与平均耗时）。
+/// → 「策略概览」组（每种策略的请求数、成功率、平均耗时；智能选择额外显示
+/// 首选命中率与兜底次数）→ 「胜出服务商」组 → 「智能选择首选」组。
 ///
 /// 数据源是真实表 `dns_race_log`（[raceStatsProvider]，按窗口聚合）。库空时
-/// 「概览」四格是破折号、「胜出服务商」是空状态——不塞演示数字。
+/// 各组都是空状态、概览四格是破折号——不塞演示数字。
 ///
-/// 旧版还有「策略统计」与「智能选择统计」两组，对应的列
-/// （`strategy` / `fallbackUsed` / `selectedProviderId`）在本仓的原生写入侧
-/// 尚未落地，因此**不列**：列出来只会是一张全 0 的表。等写入侧补齐再补这两组。
+/// 四组都能算，是因为原生 [RaceLogWriter] 一直在写策略列：`strategy`、
+/// `fallbackUsed` / `fallbackSuccess`、`selectedProviderId` /
+/// `selectedElapsedMs` 与 `winnerProviderId` 都随 Go 引擎的竞速回调落库。
+/// 上一轮误以为「原生写入侧未落地」而删掉了后两组，实际上那三列从第一次竞速
+/// 就有值；补回的 SQL 逐字照搬旧版 `RaceLogDao.strategyStats` /
+/// `smartSelectionStats`。
 class LogsRacePage extends ConsumerWidget {
   const LogsRacePage({super.key});
 
@@ -118,6 +123,26 @@ class LogsRacePage extends ConsumerWidget {
             ),
           ],
         ),
+        if (snapshot.strategyStats.isNotEmpty)
+          generateSection(
+            title: '策略概览',
+            footer: '缓存命中的请求不触发竞速，因此不进这张表；'
+                '首选命中率 = 首选服务商即胜出且成功的比例。',
+            items: [
+              for (final item in snapshot.strategyStats)
+                ListItem(
+                  leading: GlyphIcon(_strategyGlyph(item.strategy), size: 20),
+                  title: Text(item.label),
+                  subtitle: Text(_strategySubtitle(item), maxLines: 2),
+                  trailing: Text(
+                    '${countOf(item.requests)} 次',
+                    style: AppTextStyle.subheadline
+                        .of(context)
+                        .copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                ),
+            ],
+          ),
         if (snapshot.entries.isEmpty)
           generateSection(
             title: '胜出服务商',
@@ -158,9 +183,53 @@ class LogsRacePage extends ConsumerWidget {
                 ),
             ],
           ),
+        if (snapshot.smartSelections.isNotEmpty)
+          generateSection(
+            title: '智能选择首选',
+            footer: '只有智能选择策略下才有意义；首选命中率统计「首选服务商就是'
+                '胜出者」的比例，兜底救回的查询不计入。',
+            items: [
+              for (final item in snapshot.smartSelections)
+                ListItem(
+                  leading: const GlyphIcon(AppGlyphs.sparkle, size: 20),
+                  title: Text(item.name),
+                  subtitle: Text(
+                    '首选命中 ${percentOf(item.selectedSuccessRate)} · '
+                    '平均首选耗时 ${millisOf(item.averageElapsedMs)}',
+                    maxLines: 2,
+                  ),
+                  trailing: Text(
+                    '${countOf(item.selectedCount)} 次',
+                    style: AppTextStyle.subheadline
+                        .of(context)
+                        .copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }
+
+  /// 策略行的副标题，只对智能选择追加「首选命中率 + 兜底次数」（旧版同形）。
+  static String _strategySubtitle(RaceStrategyDisplay item) {
+    final parts = <String>[
+      '成功 ${percentOf(item.successRate)}',
+      '平均 ${millisOf(item.averageElapsedMs)}',
+    ];
+    if (item.strategy == 'smart_prediction' || item.strategy == 'prediction') {
+      parts.add('首选命中 ${percentOf(item.primaryWinRate)}');
+      parts.add('兜底 ${countOf(item.fallbackUses)} 次');
+    }
+    return parts.join(' · ');
+  }
+
+  static Glyph _strategyGlyph(String strategy) => switch (strategy) {
+    'smart_prediction' || 'prediction' => AppGlyphs.sparkle,
+    'primary_backup' => AppGlyphs.split,
+    'single' => AppGlyphs.dns,
+    _ => AppGlyphs.shuffle,
+  };
 }
 
 /// 三档时间范围由 `logs_shared.dart` 的 `LogStatsRangeSelector` 统一渲染。

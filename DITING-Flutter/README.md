@@ -332,6 +332,7 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 | AI 分析（Agent）全流程 | 厂商配置落盘 + 真实 HTTP 调用厂商接口（见 §8.1.9） |
 | 应用独立规则的黑/白名单与全阻断 | 规则库 `appScope`（见 §8.3；不再有「尚未接通」占位） |
 | 订阅更新 | 真实下载 + 真实解析 + 真实入库（见 §8.3；`ruleCount` 是入库条数） |
+| `/logs/race` 竞速统计的策略概览与智能选择首选 | `dns_race_log` 的 `strategy` / `fallbackUsed` / `selectedProviderId` 三列聚合（见 §8.1.11） |
 
 ### 8.1.1 数据清理是「真删」，不是弹提示
 
@@ -688,6 +689,35 @@ showFloatingDialog(...)` 之后立刻 `dispose()`，`pop` 一调用弹窗的 fut
 让弹窗成为一个 `StatefulWidget`，在它自己的 `dispose()` 里释放（与 `InputDialog` 同一套
 生命周期）。已修的站点：系统提示词、应用放行域名、HTTPS 绕过域名、订阅更新间隔、镜像站模板、
 表单演示页的增改弹窗。
+
+### 8.1.11 竞速统计补齐旧版四组（不再删两组）
+
+1.4.3 的 `RaceStatsScreen` 有四组：概览、策略概览、胜出服务商排行、智能选择首选。
+上一轮只做了首尾两组，并在页面头注释里写「`strategy` / `fallbackUsed` /
+`selectedProviderId` 这三列在本仓原生写入侧尚未落地，因此不列」——**这个判断是错的**。
+原生 `RaceLogWriter.kt` 自始就在写这三列（Go 引擎的 `notifyRaceLog` 回调把它们逐条
+落库），所以「策略概览」与「智能选择首选」本可以算出来，只是被误当成缺数据删掉了。
+
+补回的两条 SQL 逐字移植自旧版 `RaceLogDao.strategyStats` /
+`smartSelectionStats`（`RaceLogRepository`），口径有三处不能省：
+
+1. **`primaryWins` 是「首选即胜出且成功」**，不是「只要成功」。兜底救回的查询
+   （`fallbackUsed = 1`、首选失败换下一个）不算首选命中，否则智能预测的命中率会被
+   高估。
+2. **`selectedSuccesses` 排除兜底**：与旧版一样要求 `fallbackUsed = 0 AND
+   winnerProviderId = selectedProviderId AND success = 1`。
+3. **窗口按 `timestamp` 过滤**，否则「今日」档会混进历史行。
+
+页面按旧版形态渲染：策略行副标题只对智能选择追加「首选命中率 · 兜底次数」；
+其余策略只显示「成功 x% · 平均 x ms」。库缺这几列（旧库 / 残缺库）时这两组留空，
+但「概览」与「胜出服务商」仍正常显示——`raceStatsProvider` 只对这两条聚合的
+`no such column` 容错，不让整页报错。
+
+`test/race_stats_test.dart`（4 条）用内存库钉住上面三个口径与策略显示名的历史别名。
+实测（emulator-5554，注入 5 行覆盖三种策略的竞速数据）：策略概览三行
+「最快响应 / 依次尝试 / 智能选择（首选命中 33.3% · 兜底 2 次）」，智能选择首选
+「阿里云 · 首选命中 33.3% · 平均首选耗时 1277 ms · 3 次」，与 SQL 手算一致；
+删空后回到空态（0 请求、破折号、两组自动隐藏）。
 
 ## 9. 提交约定
 中文 Conventional Commits，一个阶段一个提交；提交前 `flutter analyze` 零问题，测试范围按改动

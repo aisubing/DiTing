@@ -44,6 +44,53 @@ class RaceRankingEntry {
   final int averageLatencyMs;
 }
 
+/// 一种解析策略的聚合（旧版 `RaceStrategyStatRow`）。
+///
+/// `primaryWins` 只在 `smart_prediction` 下有意义：它统计「首选服务商就是胜出者
+/// 且成功」的次数，用来判断智能预测的命中率。其余策略的该值恒为 0，页面不展示。
+class RaceStrategyStatRow {
+  const RaceStrategyStatRow({
+    required this.strategy,
+    required this.requests,
+    required this.successes,
+    required this.failures,
+    required this.averageElapsedMs,
+    required this.fallbackUses,
+    required this.fallbackSuccesses,
+    required this.primaryWins,
+  });
+
+  final String strategy;
+  final int requests;
+  final int successes;
+  final int failures;
+  final double averageElapsedMs;
+  final int fallbackUses;
+  final int fallbackSuccesses;
+  final int primaryWins;
+
+  double get successRate => requests == 0 ? 0 : successes / requests;
+  double get primaryWinRate => requests == 0 ? 0 : primaryWins / requests;
+}
+
+/// 智能选择首选服务商的命中统计（旧版 `SmartSelectionStatRow`）。
+class RaceSmartSelectionRow {
+  const RaceSmartSelectionRow({
+    required this.providerId,
+    required this.selectedCount,
+    required this.selectedSuccesses,
+    required this.averageElapsedMs,
+  });
+
+  final String providerId;
+  final int selectedCount;
+  final int selectedSuccesses;
+  final double averageElapsedMs;
+
+  double get selectedSuccessRate =>
+      selectedCount == 0 ? 0 : selectedSuccesses / selectedCount;
+}
+
 /// Whole-table summary, independent of which provider won.
 class RaceLogSummary {
   const RaceLogSummary({
@@ -122,6 +169,79 @@ class RaceLogRepository {
       failures: (row['failures'] as num?)?.toInt() ?? 0,
       averageLatencyMs: ((row['avgElapsed'] as num?) ?? 0).round(),
     );
+  }
+
+  /// 按策略聚合（旧版 `RaceLogDao.strategyStats`）。
+  ///
+  /// 逐字照搬旧版 SQL：`primaryWins` 的口径是「有 selectedProviderId、胜出者就是
+  /// 它、且成功」，因此它是智能预测命中率的分子，别的策略恒为 0。
+  ///
+  /// [since] 为 null 表示不限下界（「全部」档）。
+  Future<List<RaceStrategyStatRow>> strategyStats({int? since}) async {
+    final rows = await _db.rawQuery(
+      'SELECT strategy, '
+      'COUNT(*) AS requests, '
+      'SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successes, '
+      'SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failures, '
+      'AVG(elapsedMs) AS avgElapsedMs, '
+      'SUM(CASE WHEN fallbackUsed = 1 THEN 1 ELSE 0 END) AS fallbackUses, '
+      'SUM(CASE WHEN fallbackSuccess = 1 THEN 1 ELSE 0 END) AS fallbackSuccesses, '
+      'SUM(CASE WHEN selectedProviderId IS NOT NULL '
+      'AND winnerProviderId = selectedProviderId AND success = 1 '
+      'THEN 1 ELSE 0 END) AS primaryWins '
+      'FROM dns_race_log'
+      '${since == null ? '' : ' WHERE timestamp >= ?'} '
+      'GROUP BY strategy '
+      'ORDER BY strategy',
+      [?since],
+    );
+    return [
+      for (final row in rows)
+        RaceStrategyStatRow(
+          strategy: row['strategy'] as String? ?? '',
+          requests: (row['requests'] as num?)?.toInt() ?? 0,
+          successes: (row['successes'] as num?)?.toInt() ?? 0,
+          failures: (row['failures'] as num?)?.toInt() ?? 0,
+          averageElapsedMs: (row['avgElapsedMs'] as num?)?.toDouble() ?? 0,
+          fallbackUses: (row['fallbackUses'] as num?)?.toInt() ?? 0,
+          fallbackSuccesses: (row['fallbackSuccesses'] as num?)?.toInt() ?? 0,
+          primaryWins: (row['primaryWins'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  /// 智能选择首选服务商统计（旧版 `RaceLogDao.smartSelectionStats`）。
+  ///
+  /// `selectedSuccesses` 只统计「没走兜底、首选即胜出、且成功」的行——与旧版
+  /// SQL 完全一致，改用「只要成功」会把兜底救回来的查询也算成首选命中。
+  Future<List<RaceSmartSelectionRow>> smartSelectionStats({
+    int? since,
+    String strategy = 'smart_prediction',
+  }) async {
+    final rows = await _db.rawQuery(
+      'SELECT selectedProviderId AS providerId, '
+      'COUNT(*) AS selectedCount, '
+      'SUM(CASE WHEN fallbackUsed = 0 AND winnerProviderId = selectedProviderId '
+      'AND success = 1 THEN 1 ELSE 0 END) AS selectedSuccesses, '
+      'AVG(selectedElapsedMs) AS avgSelectedElapsedMs '
+      'FROM dns_race_log '
+      'WHERE selectedProviderId IS NOT NULL AND strategy = ?'
+      '${since == null ? '' : ' AND timestamp >= ?'} '
+      'GROUP BY selectedProviderId '
+      'ORDER BY selectedCount DESC',
+      [strategy, ?since],
+    );
+    return [
+      for (final row in rows)
+        if ((row['providerId'] as String?)?.isNotEmpty == true)
+          RaceSmartSelectionRow(
+            providerId: row['providerId']! as String,
+            selectedCount: (row['selectedCount'] as num?)?.toInt() ?? 0,
+            selectedSuccesses: (row['selectedSuccesses'] as num?)?.toInt() ?? 0,
+            averageElapsedMs:
+                (row['avgSelectedElapsedMs'] as num?)?.toDouble() ?? 0,
+          ),
+    ];
   }
 
   Future<int> clear() => _db.delete('dns_race_log');

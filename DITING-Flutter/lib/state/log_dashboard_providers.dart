@@ -10,15 +10,18 @@
 ///   缓存 `dns_cache`（`dnsCacheProvider`）、订阅拦截 `dns_log` /
 ///   `http_request_log` 的 `blockSubscriptionId` 列。库空 → 空状态，缺列 →
 ///   空状态 + 说明，绝不拿演示值冒充。
+///
+/// 竞速相关（策略概览 / 智能选择首选 / 胜出排行 / 窗口选择）已拆到
+/// `log_race_providers.dart`：那一块模型多、SQL 多，与本文件的 Bootstrap /
+/// 缓存 / 订阅拦截不是同一份职责，也避免本文件逼近 600 行上限。
 library;
 
 import 'package:diting/data/db/bootstrap_log_repository.dart';
-import 'package:diting/data/db/race_log_repository.dart';
-import 'package:diting/data/prefs/legacy_settings_provider.dart';
-import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
+
+
 
 // ---------------------------------------------------------------------------
 // 下钻页：时间范围
@@ -68,22 +71,6 @@ enum SubscriptionStatsRange {
     };
   }
 }
-
-/// 页面上当前选中的竞速窗口。
-class RaceStatsRangeNotifier extends Notifier<LogStatsRange> {
-  @override
-  LogStatsRange build() => LogStatsRange.today;
-
-  void select(LogStatsRange range) {
-    if (state == range) return;
-    state = range;
-  }
-}
-
-final raceStatsRangeProvider =
-    NotifierProvider<RaceStatsRangeNotifier, LogStatsRange>(
-      RaceStatsRangeNotifier.new,
-    );
 
 /// 页面上当前选中的 Bootstrap 窗口。
 class BootstrapStatsRangeNotifier extends Notifier<LogStatsRange> {
@@ -150,85 +137,6 @@ final cacheLastHitProvider = FutureProvider<Map<String, int?>>((ref) async {
   };
 });
 
-// ---------------------------------------------------------------------------
-// 下钻页：竞速（真实表 dns_race_log）
-// ---------------------------------------------------------------------------
-
-/// 竞速统计（按窗口聚合）。
-///
-/// 为什么不用 `raceRankingProvider`：那个 provider 对整张表聚合，而竞速页有
-/// 「今日 / 7 天 / 全部」三档选择器——把它直接摆上去会让选择器点了没反应。
-/// 这里沿用 `RaceLogRepository` 的同一条 SQL，只多一个 `timestamp >= ?`。
-class RaceStatsSnapshot {
-  const RaceStatsSnapshot({required this.summary, required this.entries});
-
-  const RaceStatsSnapshot.empty()
-    : summary = const RaceLogSummary.empty(),
-      entries = const [];
-
-  final RaceLogSummary summary;
-
-  /// 服务商胜出排行，已把 provider id 换成显示名。
-  final List<({String name, int wins, int averageLatencyMs})> entries;
-}
-
-final raceStatsProvider = FutureProvider<RaceStatsSnapshot>((ref) async {
-  ref.watch(dnsLogRevisionProvider);
-  final range = ref.watch(raceStatsRangeProvider);
-  final db = await ref.watch(activeLogDatabaseProvider.future);
-  if (db == null) return const RaceStatsSnapshot.empty();
-  final since = range.startOf(DateTime.now())?.millisecondsSinceEpoch;
-
-  final summaryRows = await db.rawQuery(
-    'SELECT COUNT(*) AS requests, '
-    'COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successes, '
-    'COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS failures, '
-    'AVG(elapsedMs) AS avgElapsed FROM dns_race_log'
-    '${since == null ? '' : ' WHERE timestamp >= ?'}',
-    [?since],
-  );
-  final summaryRow = summaryRows.isEmpty ? null : summaryRows.first;
-  final summary = RaceLogSummary(
-    requests: (summaryRow?['requests'] as num?)?.toInt() ?? 0,
-    successes: (summaryRow?['successes'] as num?)?.toInt() ?? 0,
-    failures: (summaryRow?['failures'] as num?)?.toInt() ?? 0,
-    averageLatencyMs: ((summaryRow?['avgElapsed'] as num?) ?? 0).round(),
-  );
-
-  final rankingRows = await db.rawQuery(
-    'SELECT winnerProviderId AS providerId, COUNT(*) AS wins, '
-    'AVG(CASE WHEN winnerElapsedMs IS NOT NULL THEN winnerElapsedMs END) '
-    'AS avgElapsed FROM dns_race_log '
-    'WHERE success = 1 AND winnerProviderId IS NOT NULL'
-    '${since == null ? '' : ' AND timestamp >= ?'} '
-    'GROUP BY winnerProviderId ORDER BY wins DESC, avgElapsed ASC LIMIT 20',
-    [?since],
-  );
-
-  // 名称解析与 `raceRankingProvider` 用同一份目录（预设 + 用户自定义），
-  // 否则同一服务商在两个页面上会显示成两个名字。
-  final settings = ref.watch(legacySettingsProvider);
-  final names = {
-    for (final provider in [
-      ...defaultDnsProviders,
-      ...parseUserProviders(settings.userProvidersJson),
-    ])
-      provider.id: provider.name,
-  };
-
-  return RaceStatsSnapshot(
-    summary: summary,
-    entries: [
-      for (final row in rankingRows)
-        if ((row['providerId'] as String?)?.isNotEmpty == true)
-          (
-            name: names[row['providerId']] ?? row['providerId']! as String,
-            wins: (row['wins'] as num?)?.toInt() ?? 0,
-            averageLatencyMs: ((row['avgElapsed'] as num?) ?? 0).round(),
-          ),
-    ],
-  );
-});
 
 // ---------------------------------------------------------------------------
 // 下钻页：Bootstrap（真实表 bootstrap_log）
