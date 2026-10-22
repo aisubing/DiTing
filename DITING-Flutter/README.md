@@ -85,6 +85,13 @@ $ANDROID_HOME/build-tools/<ver>/apksigner verify --print-certs \
 签名（debug 包要能覆盖安装已发布的正式版，否则 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。要
 验证「debug 密钥」路径必须显式传 `-PsignDebugWithRelease=false`。
 
+**发布包只打 arm64-v8a**：`android/app/build.gradle.kts` 在 release 的 `jniLibs` 打包层
+排除了 `armeabi-v7a` 与 `x86_64`（不是 `abiFilters` —— 那会被 Flutter 插件按
+`--target-platform` 覆盖）。`flutter build apk --release` 因此从约 60MB 降到约 35MB，产物
+`native-code` 只剩 `arm64-v8a`，功能与外观不变。之所以能这么砍：随包 Go 引擎
+`libs/tunnel.aar` 的 `libgojni.so` 本来就只有 `arm64-v8a`，另两个 ABI 的引擎副本真机加载
+不了。**debug 构建不受影响**（规则只在 `variant.name == "release"` 生效），模拟器仍带 x86_64。
+
 **模拟器（x86_64）联调**必须换多 ABI 的 AAR，否则 `libgojni.so` 只有 `arm64-v8a`、
 `System.loadLibrary` 失败：`flutter build apk --debug -PtunnelAar=libs/tunnel-debug.aar`。
 正式 arm64 包用默认的 `libs/tunnel.aar`，测试 AAR 不入库。

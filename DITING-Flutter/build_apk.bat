@@ -36,7 +36,7 @@ echo             DITING Flutter APK Build and Install Tool
 echo ================================================================
 echo.
 echo   [1] Debug                (Development build, fast, Release key)
-echo   [2] Release              (Release build, R8, Release key)
+echo   [2] Release              (Release build, R8, arm64-only, Release key)
 echo   [3] Debug (Flutter Key)  (Debug build, debug key)
 echo   [4] Split per ABI        (Release, one APK per ABI, smaller)
 echo   [5] Clean                (flutter clean + gradlew clean)

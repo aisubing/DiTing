@@ -111,6 +111,37 @@ android {
     }
 }
 
+// ==============================================================================
+// Release 只打 arm64-v8a，显著缩小安装包（约 60MB → 35MB）
+// ==============================================================================
+// 随包 Go 引擎 `libs/tunnel.aar` 里的 `libgojni.so` **只有 arm64-v8a**（README §2）。
+// 但 `flutter build apk --release` 默认把 libflutter.so / libapp.so 的
+// armeabi-v7a 与 x86_64 副本也一起塞进包，这两个 ABI 的引擎副本真机加载不了、
+// 装上了也用不了，只是白白多出约 25MB。
+//
+// 这里在 release variant 的 jniLibs 打包层排除这两个 ABI 目录。之所以放在
+// androidComponents.onVariants 而不是 defaultConfig.ndk.abiFilters：Flutter 的
+// Gradle 插件会在 variant 阶段把 abiFilters 重置成 `--target-platform` 的平台集
+// （见 FlutterPlugin.configureAbiWithoutSplits），defaultConfig 里的设置会被覆盖；
+// 而 jniLibs 的 excludes 只剔除产物里的目录，不改编译目标，且仅作用于 release。
+//
+// 不影响调试/模拟器：debug 构建不经过这里，仍带 x86_64，模拟器联调照旧
+// （README §2）。如需一个能装 32 位机的包，改用 `--split-per-abi` 单独出 32 位包
+// （但 Go 引擎仍只支持 arm64）。`--split-per-abi` 时保持原行为、不在此剔除，否则
+// 会把 32 位分包的 so 也删空（与 FlutterPlugin.shouldProjectSplitPerAbi 同判据）。
+val splitPerAbi: Boolean =
+    project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
+androidComponents {
+    onVariants { variant ->
+        if (variant.name == "release" && !splitPerAbi) {
+            variant.packaging.jniLibs.excludes.addAll(
+                "**/armeabi-v7a/**",
+                "**/x86_64/**",
+            )
+        }
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
