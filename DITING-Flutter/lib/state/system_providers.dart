@@ -15,6 +15,7 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/backup/dav_client.dart';
+import 'package:diting/data/native/update_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/data/update/app_update_checker.dart';
@@ -216,6 +217,7 @@ class UpdateState {
     this.info,
     this.currentVersion,
     this.error,
+    this.apkPath,
   });
 
   final UpdateStage stage;
@@ -232,20 +234,26 @@ class UpdateState {
   /// 检查失败的原因；[UpdateStage.idle] 且非空表示上一次检查失败。
   final String? error;
 
+  /// 已下载安装包的绝对路径；只有 [UpdateStage.downloaded] 时有值。
+  final String? apkPath;
+
   UpdateState copyWith({
     UpdateStage? stage,
     double? progress,
     UpdateInfo? info,
     String? currentVersion,
     String? error,
+    String? apkPath,
     bool clearError = false,
     bool clearInfo = false,
+    bool clearApkPath = false,
   }) => UpdateState(
     stage: stage ?? this.stage,
     progress: progress ?? this.progress,
     info: clearInfo ? null : (info ?? this.info),
     currentVersion: currentVersion ?? this.currentVersion,
     error: clearError ? null : (error ?? this.error),
+    apkPath: clearApkPath ? null : (apkPath ?? this.apkPath),
   );
 }
 
@@ -277,6 +285,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
       currentVersion: current,
       clearError: true,
       clearInfo: true,
+      clearApkPath: true,
     );
     final result = await ref.read(appUpdateCheckerProvider).check(current);
     if (result.failed) {
@@ -293,16 +302,62 @@ class UpdateNotifier extends Notifier<UpdateState> {
         : state.copyWith(stage: UpdateStage.upToDate, clearInfo: true);
   }
 
-  /// 下载：原生侧没有接入安装包下载器，这里如实报告未实现。
+  /// 真实下载：原生侧把 APK 写进应用私有目录，进度通过通道回推。
   ///
-  /// 不再用假的进度条冒充「下载完成」——那个状态会让用户以为装好了。
+  /// 上一轮这里只回一句「本机尚未接入安装包下载器」——那是诚实的占位，但用户
+  /// 真正需要的是装上新版。现在下载与安装都接上了（见 `UpdateBridge`）。
   Future<void> download() async {
     if (state.stage.isBusy) return;
-    if (state.info == null) {
+    final info = state.info;
+    if (info == null) {
       state = state.copyWith(error: '请先检查更新');
       return;
     }
-    state = state.copyWith(error: '本机尚未接入安装包下载器，请用浏览器打开下载地址');
+    state = state.copyWith(
+      stage: UpdateStage.downloading,
+      progress: 0,
+      clearError: true,
+      clearApkPath: true,
+    );
+    final result = await ref
+        .read(updateBridgeProvider)
+        .download(
+          url: info.downloadUrl,
+          version: info.version,
+          onProgress: (progress) {
+            // 下载期间用户可能已经离开或重新检查：只在仍处于 downloading 时更新。
+            if (state.stage != UpdateStage.downloading) return;
+            state = state.copyWith(progress: progress.fraction ?? 0);
+          },
+        );
+    if (!result.ok) {
+      state = state.copyWith(
+        stage: UpdateStage.available,
+        error: result.error,
+        progress: 0,
+      );
+      return;
+    }
+    state = state.copyWith(
+      stage: UpdateStage.downloaded,
+      progress: 1,
+      apkPath: result.path,
+    );
+  }
+
+  /// 调起系统安装器安装已下载的包。返回是否成功唤起。
+  Future<bool> install() async {
+    final path = state.apkPath;
+    if (path == null) {
+      state = state.copyWith(error: '请先下载更新包');
+      return false;
+    }
+    final ok = await ref.read(updateBridgeProvider).install(path);
+    if (!ok) {
+      state = state.copyWith(error: '无法调起系统安装器，请稍后重试');
+      return false;
+    }
+    return true;
   }
 
   void reset() => state = const UpdateState();
@@ -312,6 +367,9 @@ class UpdateNotifier extends Notifier<UpdateState> {
 final appUpdateCheckerProvider = Provider<AppUpdateChecker>(
   (ref) => const AppUpdateChecker(),
 );
+
+/// 更新下载/安装通道（可在测试里替换为假实现）。
+final updateBridgeProvider = Provider<UpdateBridge>((ref) => UpdateBridge());
 
 final updateProvider = NotifierProvider<UpdateNotifier, UpdateState>(
   UpdateNotifier.new,

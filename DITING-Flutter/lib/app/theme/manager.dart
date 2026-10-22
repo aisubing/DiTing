@@ -12,12 +12,17 @@ class AppThemeSpec {
     required this.brightness,
     this.pureBlack = false,
     this.style = ColorStyle.vivid,
+    this.transparentPage = false,
   });
 
   final Color seedColor;
   final Brightness brightness;
   final bool pureBlack;
   final ColorStyle style;
+
+  /// 开启自定义背景时把页面底色设为透明，让根部的壁纸层透出来
+  /// （1.4.3 `DITINGTheme(transparentBackground)` 同义）。
+  final bool transparentPage;
 
   /// Only used by the settings previews; the app itself always builds both
   /// specs from an [AppThemePair].
@@ -26,11 +31,13 @@ class AppThemeSpec {
     Brightness? brightness,
     bool? pureBlack,
     ColorStyle? style,
+    bool? transparentPage,
   }) => AppThemeSpec(
     seedColor: seedColor ?? this.seedColor,
     brightness: brightness ?? this.brightness,
     pureBlack: pureBlack ?? this.pureBlack,
     style: style ?? this.style,
+    transparentPage: transparentPage ?? this.transparentPage,
   );
 
   @override
@@ -40,10 +47,12 @@ class AppThemeSpec {
           other.seedColor == seedColor &&
           other.brightness == brightness &&
           other.pureBlack == pureBlack &&
-          other.style == style;
+          other.style == style &&
+          other.transparentPage == transparentPage;
 
   @override
-  int get hashCode => Object.hash(seedColor, brightness, pureBlack, style);
+  int get hashCode =>
+      Object.hash(seedColor, brightness, pureBlack, style, transparentPage);
 }
 
 /// Builds the app theme exactly as upstream `lib/manager/theme_manager.dart`
@@ -69,6 +78,7 @@ ThemeData buildAppTheme(
     style: spec.style,
   ).toPureBlack(spec.pureBlack);
   final target = platform ?? defaultTargetPlatform;
+  final transparent = spec.transparentPage;
   return ThemeData(
     useMaterial3: true,
     pageTransitionsTheme: const PageTransitionsTheme(
@@ -85,6 +95,8 @@ ThemeData buildAppTheme(
       backButtonIconBuilder: (_) => const GlyphIcon(AppGlyphs.chevronBack),
       closeButtonIconBuilder: (_) => const GlyphIcon(AppGlyphs.close),
     ),
+    // 透明背景：把页面底色设为透明（卡片/浮层仍是实色），根部壁纸层才能透出。
+    // 与 1.4.3 `DITINGTheme(transparentBackground)` 的效果一致。
     colorScheme: scheme,
     fontFamilyFallback: appFontFamilyFallback(
       platform: target,
@@ -93,7 +105,9 @@ ThemeData buildAppTheme(
     extensions: [
       if (dark) ElevatedColorScheme(scheme.elevated),
     ],
-  ).withAppShapes.withAppSurfaces.withAppTypography;
+  ).withAppShapes.withAppSurfaces.withAppTypography.copyWith(
+    scaffoldBackgroundColor: transparent ? Colors.transparent : null,
+  );
 }
 
 /// Caches the last theme per brightness.
@@ -144,16 +158,21 @@ class AppThemePair {
     required this.seedColor,
     required this.pureBlack,
     this.style = ColorStyle.vivid,
+    this.transparentPage = false,
   });
 
   final Color seedColor;
   final bool pureBlack;
   final ColorStyle style;
 
+  /// 开启自定义背景时为 true：页面底色透明，让根部的壁纸层透出。
+  final bool transparentPage;
+
   AppThemeSpec get lightSpec => AppThemeSpec(
     seedColor: seedColor,
     brightness: Brightness.light,
     style: style,
+    transparentPage: transparentPage,
   );
 
   AppThemeSpec get darkSpec => AppThemeSpec(
@@ -161,5 +180,6 @@ class AppThemePair {
     brightness: Brightness.dark,
     pureBlack: pureBlack,
     style: style,
+    transparentPage: transparentPage,
   );
 }

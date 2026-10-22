@@ -8,6 +8,9 @@
 /// 与 `appearance_shared_pages.dart` 拆开的唯一原因是 550 行上限。
 library;
 
+import 'dart:io';
+
+import 'package:diting/pages/appearance/appearance_inputs.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -77,22 +80,28 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
               ),
             ],
           ),
-          generateSection(
-            title: '自定义文案',
-            footer: '留空则使用默认文案。',
-            items: [
-              _InlineTextRow(
-                title: '运行中',
-                controller: _running,
-                onChanged: notifier.setRunningText,
-              ),
-              _InlineTextRow(
-                title: '已停止',
-                controller: _stopped,
-                onChanged: notifier.setStoppedText,
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: FieldGroupCard(
+              children: [
+                LabeledTextField(
+                  label: 'DNS 服务开启时',
+                  controller: _running,
+                  minLines: 2,
+                  hintText: '留空则使用默认文案',
+                  onChanged: notifier.setRunningText,
+                ),
+                LabeledTextField(
+                  label: 'DNS 服务关闭时',
+                  controller: _stopped,
+                  minLines: 2,
+                  hintText: '留空则使用默认文案',
+                  onChanged: notifier.setStoppedText,
+                ),
+              ],
+            ),
           ),
+          const ListFooter(text: '留空则使用默认文案；文案只影响通知栏，不改变服务行为。'),
           generateSection(
             title: '权限',
             items: [
@@ -115,40 +124,6 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
 ///
 /// 不复用 `ListItem.input`：那个自带点击弹出的对话框，而这里是内联编辑，
 /// 行为完全不同。
-class _InlineTextRow extends StatelessWidget {
-  const _InlineTextRow({
-    required this.title,
-    required this.controller,
-    required this.onChanged,
-  });
-
-  final String title;
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 6,
-        children: [
-          Text(title, style: context.listTitleStyle),
-          TextField(
-            controller: controller,
-            onChanged: onChanged,
-            decoration: const InputDecoration(
-              isDense: true,
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 void _hint(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(
@@ -163,7 +138,7 @@ void _hint(BuildContext context, String message) {
 // 软件背景（旧版软件背景页）
 // ---------------------------------------------------------------------------
 
-/// 软件背景：启用开关 + 添加图片 + 已添加壁纸 + 当前标记。
+/// 软件背景：启用开关 + 添加图片 + 已添加壁纸缩略图网格。
 ///
 /// 选图要走原生 `PickVisualMedia`（通道由 Lead 提供）。通道缺失时这一页仍然可用
 /// ——开关与清单照样读写，只是「添加图片」会给出明确提示，而不是弹出假缩略图。
@@ -179,13 +154,13 @@ class ThemeBackgroundPage extends ConsumerWidget {
       body: PageBody(
         children: [
           generateSection(
-            title: '背景图',
+            title: '自定义背景',
             footer: '壁纸只保存在本机，不随备份导出。',
             items: [
               ListItem.toggle(
                 title: const Text('启用自定义背景'),
                 subtitle: Text(
-                  background.uris.isEmpty ? '先添加一张图片' : '在全部页面下垫一层壁纸',
+                  background.uris.isEmpty ? '请先添加一张图片' : '在全部页面下垫一层壁纸',
                 ),
                 leading: const GlyphIcon(AppGlyphs.photos),
                 value: background.enabled,
@@ -196,41 +171,24 @@ class ThemeBackgroundPage extends ConsumerWidget {
                 subtitle: const Text('从相册选择一张'),
                 leading: const GlyphIcon(AppGlyphs.add),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => _hint(context, '当前设备没有可用的图片选择器'),
+                onTap: () async {
+                  final error = await notifier.pickAndAdd();
+                  if (error != null && context.mounted) _hint(context, error);
+                },
               ),
             ],
           ),
           if (background.uris.isNotEmpty)
             generateSection(
-              title: '已添加（${background.uris.length}）',
+              title: '已添加壁纸',
+              footer: '点一下切换，长按删除。',
               items: [
-                for (final uri in background.uris)
-                  ListItem(
-                    title: Text(_shortName(uri)),
-                    subtitle: Text(
-                      uri == background.currentUri ? '当前使用' : '点一下切换',
-                    ),
-                    leading: GlyphIcon(
-                      uri == background.currentUri
-                          ? AppGlyphs.check
-                          : AppGlyphs.photos,
-                      color: uri == background.currentUri
-                          ? context.colorScheme.primary
-                          : null,
-                    ),
-                    trailing: CommonMinIconButtonTheme(
-                      child: IconButton(
-                        tooltip: '移除',
-                        onPressed: () => notifier.remove(uri),
-                        icon: GlyphIcon(
-                          AppGlyphs.delete,
-                          size: 18,
-                          color: context.colorScheme.error,
-                        ),
-                      ),
-                    ),
-                    onTap: () => notifier.select(uri),
-                  ),
+                _WallpaperGrid(
+                  uris: background.uris,
+                  currentUri: background.currentUri,
+                  onSelect: notifier.select,
+                  onRemove: notifier.remove,
+                ),
               ],
             )
           else
@@ -246,13 +204,165 @@ class ThemeBackgroundPage extends ConsumerWidget {
       ),
     );
   }
+}
 
-  /// 只显示路径最后一段：完整 URI 太长，会把标题挤成一行省略号。
-  String _shortName(String uri) {
-    final trimmed = uri.replaceAll(RegExp(r'/+$'), '');
-    final index = trimmed.lastIndexOf('/');
-    final name = index < 0 ? trimmed : trimmed.substring(index + 1);
-    return name.isEmpty ? uri : name;
+/// 壁纸缩略图网格：每行三张，点选切换、长按删除。
+class _WallpaperGrid extends StatelessWidget {
+  const _WallpaperGrid({
+    required this.uris,
+    required this.currentUri,
+    required this.onSelect,
+    required this.onRemove,
+  });
+
+  final List<String> uris;
+  final String? currentUri;
+  final ValueChanged<String> onSelect;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    // 缩略图接近手机比例（9:16），三列排布。
+    const aspectRatio = 9 / 16;
+    final rows = <Widget>[];
+    for (var i = 0; i < uris.length; i += 3) {
+      final rowUris = uris.sublist(i, (i + 3).clamp(0, uris.length));
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 8,
+          children: [
+            for (final uri in rowUris)
+              Expanded(
+                child: _WallpaperThumbnail(
+                  uri: uri,
+                  aspectRatio: aspectRatio,
+                  selected: uri == currentUri,
+                  onTap: () => onSelect(uri),
+                  onLongPress: () => _confirmRemove(context, uri),
+                ),
+              ),
+            for (var pad = rowUris.length; pad < 3; pad++)
+              const Expanded(child: SizedBox.shrink()),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(spacing: 8, children: rows),
+    );
+  }
+
+  Future<void> _confirmRemove(BuildContext context, String uri) async {
+    final confirmed = await showFloatingDialog<bool>(
+      context: context,
+      child: CommonDialog(
+        title: '删除壁纸',
+        // 最后一个动作是破坏性的：`destructive` 让它在填充底上呈红色，
+        // 与其它确认弹窗一致（手写红字会得到「蓝底红字」的错误配色）。
+        destructive: true,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+        child: const Text('确定删除这张已添加的壁纸吗？'),
+      ),
+    );
+    if (confirmed == true) onRemove(uri);
+  }
+}
+
+/// 单张壁纸缩略图；从原生缓存路径加载，选中时右上角打勾。
+class _WallpaperThumbnail extends StatefulWidget {
+  const _WallpaperThumbnail({
+    required this.uri,
+    required this.aspectRatio,
+    required this.selected,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final String uri;
+  final double aspectRatio;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  State<_WallpaperThumbnail> createState() => _WallpaperThumbnailState();
+}
+
+class _WallpaperThumbnailState extends State<_WallpaperThumbnail> {
+  late Future<String?> _path;
+
+  @override
+  void initState() {
+    super.initState();
+    _path = _resolve();
+  }
+
+  Future<String?> _resolve() async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    return container.read(backgroundBridgeProvider).resolve(widget.uri);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    return GestureDetector(
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: AspectRatio(
+        aspectRatio: widget.aspectRatio,
+        child: ClipRSuperellipse(
+          borderRadius: AppRadius.md,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(color: colorScheme.surfaceContainerHighest),
+              FutureBuilder<String?>(
+                future: _path,
+                builder: (context, snapshot) {
+                  final path = snapshot.data;
+                  if (path == null) return const SizedBox.shrink();
+                  return Image.file(
+                    File(path),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  );
+                },
+              ),
+              if (widget.selected) ...[
+                ColoredBox(color: Colors.black.withValues(alpha: 0.2)),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: ShapeDecoration(
+                      shape: AppShape.circle,
+                      color: colorScheme.primary,
+                    ),
+                    child: GlyphIcon(
+                      AppGlyphs.check,
+                      size: 14,
+                      color: colorScheme.onPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

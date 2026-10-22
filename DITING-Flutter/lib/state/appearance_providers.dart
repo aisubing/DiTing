@@ -78,10 +78,10 @@ final textScaleProvider = NotifierProvider<TextScaleNotifier, double>(
 /// 「DNS 服务详情」那一块，滑杆自然也无从谈起。补这一项时两边要同时到位，
 /// 否则会留下「有滑杆没内容」或「有内容没滑杆」的半截状态。
 enum HomeLayer {
-  powerButton('电源按钮', 'home_power_button_opacity'),
-  providerSelector('服务商选择', 'home_provider_selector_opacity'),
-  modeButton('模式按钮', 'home_mode_button_opacity'),
-  poem('首页句子', 'home_poem_opacity'),
+  powerButton('启动按钮', 'home_power_button_opacity'),
+  providerSelector('解析服务选择框', 'home_provider_selector_opacity'),
+  modeButton('模式切换按钮', 'home_mode_button_opacity'),
+  poem('首页古诗', 'home_poem_opacity'),
   dnsDetail('DNS 服务详情', 'home_dns_detail_opacity');
 
   const HomeLayer(this.label, this.storageKey);

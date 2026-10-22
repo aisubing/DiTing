@@ -453,6 +453,9 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             val file = File(root, name)
             if (file.exists() && file.delete()) removed++
         }
+        // 1.4.3 用上面的单文件缓存；本仓选图后按 URI 存 `background/bg_*.png`
+        // （多张缩略图不必反复解码），清理时同样要清掉，否则设置页仍能显示已删壁纸。
+        removed += deleteContents(File(root, "background"))
         return removed
     }
 

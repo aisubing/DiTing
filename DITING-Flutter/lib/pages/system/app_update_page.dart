@@ -1,16 +1,17 @@
 /// 更新与支持（对齐旧版 `ui/AppUpdateScreen.kt`）。
 ///
-/// 旧版是一张 5 行的设置组：当前版本 / 检查更新 / 关闭启动时检查更新 /
-/// 加入 QQ 群 / （发现新版本时才出现的）下载·安装。本轮结构照抄，但把
-/// **更新日志**留在页尾：本仓的更新是演示流程（`updateProvider` 三个
-/// `Future.delayed`），用户需要一段说明，否则「检查更新」点完只看到阶段徽标变了一下。
+/// 旧版是一张设置组：当前版本 / 检查更新 / 关闭启动时检查更新 / 加入 QQ 群 /
+/// （发现新版本时才出现的）下载·安装。本页结构照抄，并按需求**不再展示历史
+/// 版本更新日志**：更新内容由 GitHub Release 决定，页面只负责「检查 → 下载 →
+/// 安装」这一条真实链路。
+///
+/// 下载与安装走原生 `UpdateBridge`：Dart 写不了应用私有目录、也调不起系统安装器。
 ///
 /// `关闭启动时检查更新` 的语义容易写反：键名是 `disable_*`、默认 true，
 /// 也就是**开关打开 = 不检查**。provider 的 `toggle(bool)` 与键同向，页面直接
 /// 传开关值，不做取反。
 library;
 
-import 'package:diting/data/mock_system.dart';
 import 'package:diting/pages/system/app_info.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/system_providers.dart';
@@ -28,7 +29,6 @@ class AppUpdatePage extends ConsumerWidget {
     final update = ref.watch(updateProvider);
     final notifier = ref.read(updateProvider.notifier);
     final disableStartupCheck = ref.watch(startupUpdateCheckProvider);
-    final latest = mockChangelog.first;
     final hasNewVersion =
         update.stage == UpdateStage.available ||
         update.stage == UpdateStage.downloading ||
@@ -50,21 +50,11 @@ class AppUpdatePage extends ConsumerWidget {
             hasNewVersion: hasNewVersion,
             onCheck: update.stage.isBusy ? null : notifier.check,
             onDownload: update.stage.isBusy ? null : notifier.download,
+            onInstall: () => _install(context, ref),
           ),
           generateSection(
-            title: '更新与支持',
+            title: '设置与支持',
             items: [
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.info),
-                title: const Text('当前版本'),
-                subtitle: const Text(appVersionName),
-              ),
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.refresh),
-                title: const Text('检查更新'),
-                subtitle: Text(statusText(update)),
-                onTap: update.stage.isBusy ? null : notifier.check,
-              ),
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.clock),
                 title: const Text('关闭启动时检查更新'),
@@ -86,44 +76,33 @@ class AppUpdatePage extends ConsumerWidget {
                 ),
               ),
             ],
-          ),
-          const ListHeader(title: '历史版本更新日志'),
-          // 这里是有意的静态发布历史，不是实时数据：真实的最新版本在上面的卡片里
-          // 由 GitHub Release 决定。标题写明「历史版本」，避免用户把这份常量
-          // 当成「当前可更新到哪一版」。
-          for (final entry in mockChangelog)
-            _ChangelogCard(entry: entry, isLatest: entry == latest),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Row(
-              spacing: 8,
-              children: [
-                GlyphIcon(
-                  AppGlyphs.info,
-                  size: 16,
-                  color: context.colorScheme.onSurfaceVariant,
-                ),
-                Expanded(
-                  child: Text(
-                    '更新不会影响你的配置与规则；导入旧配置可在「备份与迁移」里完成。',
-                    style: context.listCaptionStyle,
-                  ),
-                ),
-              ],
-            ),
+            footer: '更新不会影响你的配置与规则；导入旧配置可在「备份与迁移」里完成。',
           ),
           const SizedBox(height: 24),
         ],
       ),
     );
   }
+
+  /// 安装：调起系统安装器；失败时把原因告诉用户（多半是未授予安装权限）。
+  Future<void> _install(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final ok = await ref.read(updateProvider.notifier).install();
+    if (!context.mounted) return;
+    if (!ok) {
+      final reason = ref.read(updateProvider).error ?? '无法调起系统安装器';
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(reason),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 2200),
+        ),
+      );
+    }
+  }
 }
 
 /// 检查更新状态文案。版本号取**真实检查结果**，读不到时明说「未检查」。
-///
-/// 这里曾经用 `mockChangelog.first.version`——一个写死的版本号，于是「发现 1.4.5
-/// 新版本」这句话与 GitHub 上实际有什么毫无关系。现在版本来自响应体的 `tag_name`，
-/// 失败时直接显示失败原因，而不是装作「已是最新」。
 String statusText(UpdateState state) {
   final latest = state.info?.version;
   final current = state.currentVersion;
@@ -135,7 +114,7 @@ String statusText(UpdateState state) {
     ].join(),
     UpdateStage.downloading =>
       '正在下载 ${latest ?? '安装包'}，${(state.progress * 100).round()}%',
-    UpdateStage.downloaded => '${latest ?? '安装包'} 已下载',
+    UpdateStage.downloaded => '${latest ?? '安装包'} 已下载，可安装',
     UpdateStage.upToDate => [
       '当前已是最新版本',
       if (current != null) '（$current）',
@@ -151,12 +130,14 @@ class _UpdateCard extends StatelessWidget {
     required this.hasNewVersion,
     required this.onCheck,
     required this.onDownload,
+    required this.onInstall,
   });
 
   final UpdateState update;
   final bool hasNewVersion;
   final VoidCallback? onCheck;
   final VoidCallback? onDownload;
+  final VoidCallback onInstall;
 
   @override
   Widget build(BuildContext context) {
@@ -248,14 +229,7 @@ class _UpdateCard extends StatelessWidget {
                       label: '安装',
                       glyph: AppGlyphs.check,
                       size: TonalButtonSize.section,
-                      onPressed: () =>
-                          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                            const SnackBar(
-                              content: Text('演示环境不执行安装'),
-                              behavior: SnackBarBehavior.floating,
-                              duration: Duration(milliseconds: 1600),
-                            ),
-                          ),
+                      onPressed: onInstall,
                     ),
                   ),
               ],
@@ -263,10 +237,24 @@ class _UpdateCard extends StatelessWidget {
             if (update.stage == UpdateStage.idle)
               Text(
                 update.error ??
-                    '「检查更新」会向 GitHub Releases 查询最新版本；'
-                        '发现新版本后需用浏览器打开下载地址安装。',
+                    '「检查更新」会向 GitHub Releases 查询最新版本；发现新版本后可'
+                        '直接在本页下载并安装。',
                 style: context.listCaptionStyle.copyWith(
                   color: update.error == null ? null : colorScheme.error,
+                ),
+              ),
+            if (update.stage == UpdateStage.upToDate)
+              Text(
+                statusText(update),
+                style: context.listCaptionStyle.copyWith(
+                  color: colorScheme.success,
+                ),
+              ),
+            if (update.stage == UpdateStage.available && update.error != null)
+              Text(
+                update.error!,
+                style: context.listCaptionStyle.copyWith(
+                  color: colorScheme.error,
                 ),
               ),
           ],
@@ -372,79 +360,6 @@ class _DownloadProgress extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 一条更新日志。
-class _ChangelogCard extends StatelessWidget {
-  const _ChangelogCard({required this.entry, required this.isLatest});
-
-  final MockChangelogEntry entry;
-  final bool isLatest;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      child: CommonCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 8,
-          children: [
-            Row(
-              spacing: 8,
-              children: [
-                Text(
-                  entry.version,
-                  style: AppTextStyle.subheadline
-                      .of(context, emphasized: true)
-                      .copyWith(fontFamily: 'JetBrainsMono'),
-                ),
-                if (isLatest)
-                  TonalChip(
-                    label: '最新',
-                    color: colorScheme.primaryContainer,
-                    foregroundColor: colorScheme.onPrimaryContainer,
-                  ),
-                const Spacer(),
-                Text(entry.date, style: context.listCaptionStyle),
-              ],
-            ),
-            for (final item in entry.items)
-              Row(
-                spacing: 6,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Container(
-                      width: 4,
-                      height: 4,
-                      decoration: ShapeDecoration(
-                        shape: AppShape.circle,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      item,
-                      style: AppTextStyle.footnote
-                          .of(context)
-                          .copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            height: 1.5,
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

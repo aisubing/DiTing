@@ -252,37 +252,6 @@ const mockDeveloperActions = <MockDeveloperAction>[
   ),
 ];
 
-/// 更新日志的一条。
-class MockChangelogEntry {
-  const MockChangelogEntry({
-    required this.version,
-    required this.date,
-    required this.items,
-  });
-
-  final String version;
-  final String date;
-  final List<String> items;
-}
-
-const mockChangelog = <MockChangelogEntry>[
-  MockChangelogEntry(
-    version: '1.1.0',
-    date: '2026-10-19',
-    items: [
-      '主题页支持自定义取色与 tab 切换动画',
-      '新增应用访问控制、备份与恢复',
-      '表单族组件统一为 FormPage / FormRow',
-      '修复纯黑模式下浮条阴影溢出',
-    ],
-  ),
-  MockChangelogEntry(
-    version: '1.0.0',
-    date: '2026-09-30',
-    items: ['首个公开版本：三种工作模式、规则订阅、观测仪表盘', '完整移植 DITING 1.4.3 设计系统'],
-  ),
-];
-
 /// 恢复备份时可勾选的恢复项。
 enum RestoreOption {
   config('配置与设置'),

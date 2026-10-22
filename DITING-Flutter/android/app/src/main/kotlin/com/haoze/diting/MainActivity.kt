@@ -5,7 +5,9 @@ import com.haoze.diting.apps.AppsBridge
 import com.haoze.diting.cert.CaInspectionBridge
 import com.haoze.diting.net.DiagnosticsBridge
 import com.haoze.diting.net.DnsLatencyBridge
+import com.haoze.diting.platform.BackgroundBridge
 import com.haoze.diting.platform.PlatformBridge
+import com.haoze.diting.platform.UpdateBridge
 import com.haoze.diting.proxy.OutboundProxyBridge
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -14,6 +16,7 @@ class MainActivity : FlutterActivity() {
     private var vpnBridge: VpnBridge? = null
     private var expressVpnBridge: ExpressVpnBridge? = null
     private var platformBridge: PlatformBridge? = null
+    private var backgroundBridge: BackgroundBridge? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -38,6 +41,12 @@ class MainActivity : FlutterActivity() {
         // here rather than constructed with `applicationContext` alone.
         DnsLatencyBridge(applicationContext).register(messenger)
         platformBridge = PlatformBridge(this).also { it.register(messenger) }
+        // 「更新与支持」的真实下载与安装：1.4.3 用 `AppUpdateManager` 写私有目录 +
+        // `FileProvider` 调起安装器，两件事都没有 Dart 等价物。
+        UpdateBridge(this).register(messenger)
+        // 「软件背景」的选图与解码：`ACTION_OPEN_DOCUMENT` 需要 Activity 往返，
+        // 大图也要用 `BitmapFactory` 采样，Dart 无法替代。
+        backgroundBridge = BackgroundBridge(this).also { it.register(messenger) }
     }
 
     override fun onResume() {
@@ -56,6 +65,7 @@ class MainActivity : FlutterActivity() {
         // 与 VPN 的 0x5650 / 0x5651 不重叠，所以顺序无关，但仍放在前面，
         // 因为它要读 `data.data`（VPN 那两个只看 resultCode）。
         if (platformBridge?.onActivityResult(requestCode, resultCode, data) == true) return
+        if (backgroundBridge?.onActivityResult(requestCode, resultCode, data) == true) return
         expressVpnBridge?.onActivityResult(requestCode, resultCode)
     }
 }

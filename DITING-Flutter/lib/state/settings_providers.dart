@@ -11,6 +11,7 @@
 ///   读写键与提示；通道缺失时页面照常可点，值照样存下来。
 library;
 
+import 'package:diting/data/native/background_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -343,6 +344,8 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
     } else {
       settings.setCustomBackgroundUri(nextCurrent);
     }
+    // 顺手删掉这张的解码缓存，避免私有目录里越攒越多。
+    ref.read(backgroundBridgeProvider).release(uri);
     _bump(ref);
   }
 
@@ -350,6 +353,19 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
     // 没有「删除键」的 API：写空串在旧版语义里等价于「未设置」
     // （`getCustomBackgroundUri()` 对空串返回 null）。
     settings.setCustomBackgroundUri('');
+  }
+
+  /// 打开系统图片选择器，选中后加入清单并设为当前。
+  ///
+  /// 返回 `null` 表示成功或用户取消（两者都无需提示），返回字符串是失败原因。
+  Future<String?> pickAndAdd() async {
+    final result = await ref.read(backgroundBridgeProvider).pick();
+    if (result.ok) {
+      add(result.uri!);
+      return null;
+    }
+    if (result.cancelled) return null;
+    return '当前设备没有可用的图片选择器';
   }
 }
 
@@ -380,6 +396,11 @@ final customBackgroundProvider =
     NotifierProvider<CustomBackgroundNotifier, CustomBackgroundState>(
       CustomBackgroundNotifier.new,
     );
+
+/// 背景选图通道（可在测试里替换）。
+final backgroundBridgeProvider = Provider<BackgroundBridge>(
+  (ref) => BackgroundBridge(),
+);
 
 // ---------------------------------------------------------------------------
 // 启动更新检查 / 首启须知

@@ -10,6 +10,8 @@
          this app's own packages and every picker falls back to its empty state. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
+    <!-- 应用内更新：下载 APK 后调起系统安装器。1.4.3 同样声明了这一条。 -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:label="谛听"
         android:name="${applicationName}"
@@ -41,6 +43,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- 应用内更新：把 filesDir/app-update 下的 APK 以 content:// 交给系统安装器。
+             authority 与 1.4.3 一致，路径见 res/xml/file_paths.xml。 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         <!-- 1.4.3 full-tunnel service; the Go AAR owns the data plane. -->
         <service
             android:name=".normal.DitingVpnService"

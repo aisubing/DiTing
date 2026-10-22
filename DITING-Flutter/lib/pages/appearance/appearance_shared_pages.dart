@@ -13,6 +13,7 @@ library;
 
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
+import 'package:diting/pages/appearance/appearance_inputs.dart';
 import 'package:diting/pages/appearance/mini_screen.dart';
 import 'package:diting/pages/appearance/preview_choice.dart';
 import 'package:diting/pages/appearance/theme_page.dart';
@@ -130,8 +131,8 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
             footer: '透明度只影响可见度，不影响这些组件的点击区域。',
             items: [
               for (final layer in _interactive)
-                _OpacitySlider(
-                  layer: layer,
+                SliderCardRow(
+                  label: layer.label,
                   value: opacity[layer] ?? 1,
                   onChanged: (value) => notifier.set(layer, value),
                 ),
@@ -141,66 +142,12 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
             title: '文字',
             items: [
               for (final layer in _text)
-                _OpacitySlider(
-                  layer: layer,
+                SliderCardRow(
+                  label: layer.label,
                   value: opacity[layer] ?? 1,
                   onChanged: (value) => notifier.set(layer, value),
                 ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 一条透明度滑杆。
-class _OpacitySlider extends StatelessWidget {
-  const _OpacitySlider({
-    required this.layer,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final HomeLayer layer;
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Row(
-        spacing: 10,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              spacing: 2,
-              children: [
-                Text(layer.label, style: context.listTitleStyle),
-                Text(
-                  '${(value * 100).round()}%',
-                  style: context.listCaptionStyle.copyWith(
-                    fontFamily: 'JetBrainsMono',
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 150,
-            child: Slider(
-              value: value,
-              min: 0.1,
-              max: 1,
-              divisions: 18,
-              label: '${(value * 100).round()}%',
-              onChanged: onChanged,
-            ),
           ),
         ],
       ),
@@ -319,24 +266,28 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
       title: '首页句子',
       body: PageBody(
         children: [
-          generateSection(
-            title: '两句文案',
-            footer: '留空则不显示那一句。句子只在首页电源区下方出现一次。',
-            items: [
-              InlineTextFieldRow(
-                title: '运行中',
-                controller: _running,
-                onChanged: (value) =>
-                    ref.read(homeSentenceProvider.notifier).set(running: value),
-              ),
-              InlineTextFieldRow(
-                title: '已停止',
-                controller: _stopped,
-                onChanged: (value) =>
-                    ref.read(homeSentenceProvider.notifier).set(stopped: value),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: FieldGroupCard(
+              children: [
+                LabeledTextField(
+                  label: 'DNS 服务开启时',
+                  controller: _running,
+                  minLines: 2,
+                  onChanged: (value) =>
+                      ref.read(homeSentenceProvider.notifier).set(running: value),
+                ),
+                LabeledTextField(
+                  label: 'DNS 服务关闭时',
+                  controller: _stopped,
+                  minLines: 2,
+                  onChanged: (value) =>
+                      ref.read(homeSentenceProvider.notifier).set(stopped: value),
+                ),
+              ],
+            ),
           ),
+          const ListFooter(text: '两项均可留空；留空后对应状态下首页不显示句子，句子只在首页电源区下方出现一次。'),
         ],
       ),
     );
@@ -359,46 +310,4 @@ void showSettingHint(BuildContext context, String message) {
       duration: const Duration(milliseconds: 1800),
     ),
   );
-}
-
-/// 「上标签 + 下输入框」的内联编辑行。
-///
-/// 不复用 `ListItem.input`：那个自带点击弹出的对话框，而这里是内联编辑，
-/// 行为完全不同。
-class InlineTextFieldRow extends StatelessWidget {
-  const InlineTextFieldRow({
-    super.key,
-    required this.title,
-    required this.controller,
-    required this.onChanged,
-    this.hintText,
-  });
-
-  final String title;
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-  final String? hintText;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 6,
-        children: [
-          Text(title, style: context.listTitleStyle),
-          TextField(
-            controller: controller,
-            onChanged: onChanged,
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: hintText,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -7,7 +7,9 @@ import 'package:diting/router.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
+import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/background_layer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -83,9 +85,14 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     final palette = ref.watch(paletteProvider);
     final pureBlack = ref.watch(pureBlackProvider);
     final textScale = ref.watch(textScaleProvider);
+    // 软件背景：启用且已选图时，根部垫一张壁纸、页面底色转透明。
+    final background = ref.watch(customBackgroundProvider);
+    final backgroundUri = background.enabled ? background.currentUri : null;
+    final showBackground = backgroundUri != null && backgroundUri.isNotEmpty;
     final pair = AppThemePair(
       seedColor: palette.effectiveSeed,
       pureBlack: pureBlack,
+      transparentPage: showBackground,
     );
 
     return MaterialApp.router(
@@ -123,6 +130,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
         // 在 Activity 里弹一次）：它必须盖住整棵树，包括浮层路由。已同意时
         // `InitialAgreementGate` 直接返回 child，不增加任何布局层级。
         final glass = ref.watch(liquidGlassModeProvider);
+        // 壁纸层包在 AppScopes 之外、ThemeCrossFade 之内：它在 Navigator 之下，
+        // 于是每个页面的透明底色都会透出同一张壁纸；主题切换时随 cross-fade 一起淡出。
+        final content = child ?? const SizedBox.shrink();
         return ThemeCrossFade(
           child: AppSystemUi(
             child: AppScopes(
@@ -133,7 +143,12 @@ class _DitingAppState extends ConsumerState<DitingApp> {
                 child: LiquidGlassHost(
                   enabled: glass.enabled,
                   child: InitialAgreementGate(
-                    child: child ?? const SizedBox.shrink(),
+                    child: showBackground
+                        ? AppBackgroundLayer(
+                            uri: backgroundUri,
+                            child: content,
+                          )
+                        : content,
                   ),
                 ),
               ),

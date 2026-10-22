@@ -26,6 +26,7 @@ library;
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/app/theme/manager.dart';
+import 'package:diting/pages/appearance/appearance_inputs.dart';
 import 'package:diting/pages/appearance/mini_screen.dart';
 import 'package:diting/routes/system_routes.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
@@ -259,45 +260,21 @@ class _MenuRow extends StatelessWidget {
 }
 
 /// 字号滑杆行：直接嵌在「界面显示」组里，不另开二级页。
+///
+/// 用 [SliderCardRow] 承载，与同组其它行共用卡片和分隔线，不再是一段裸滑杆
+/// 直接铺在页面底色上。
 class _TextScaleRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scale = ref.watch(textScaleProvider);
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 2,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              GlyphIcon(
-                AppGlyphs.textSize,
-                size: 20,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              Expanded(child: Text('字号', style: context.listTitleStyle)),
-              Text(
-                '${(scale * 100).round()}%',
-                style: context.listSubtitleStyle.copyWith(
-                  fontFamily: 'JetBrainsMono',
-                ),
-              ),
-            ],
-          ),
-          Slider(
-            value: scale,
-            min: minTextScale,
-            max: maxTextScale,
-            divisions: ((maxTextScale - minTextScale) / 0.1).round(),
-            label: '${(scale * 100).round()}%',
-            onChanged: (value) =>
-                ref.read(textScaleProvider.notifier).set(value),
-          ),
-        ],
-      ),
+    return SliderCardRow(
+      label: '字号',
+      glyph: AppGlyphs.textSize,
+      value: scale,
+      min: minTextScale,
+      max: maxTextScale,
+      divisions: ((maxTextScale - minTextScale) / 0.1).round(),
+      onChanged: (value) => ref.read(textScaleProvider.notifier).set(value),
     );
   }
 }
