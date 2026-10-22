@@ -325,7 +325,8 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 | 服务状态卡四行 | 端口（`local_listen_port`）、当前服务商（目录）、`dns_cache` 条数、已测速个数；耗时来自 `dns_latency` 通道真测 |
 | 内核状态点 | `powerProvider` / `serverStatusProvider` 的真实状态机 |
 | 规则控制页的「N 个」与自动更新摘要 | `subscription` 表、`mirror_template` 表、数据集 prefs 的 `subscription_auto_update_*` |
-| 自动更新设置页 | 同上（写入数据集 prefs + `subscription_group.autoUpdateEnabled` 列） |
+| 自动更新设置页 | 同上（写入数据集 prefs + `subscription_group.autoUpdateEnabled` 列），并显示按 `lastAttemptAt` 推出的下次更新时刻与上次执行结果 |
+| 自动更新的**执行** | 启动/回前台时前台补跑（`AutoUpdateRunner`，见 §8.1.12）；不是只存设置 |
 | 镜像站模板页 | `mirror_template` 表（增删改全落库） |
 | `/hub/data-cleanup` 全部十六个动作 | 真实删除：日志/流量/缓存三表、权重 JSON、规则与订阅事务、四份应用名单、出站代理、CA、下载与背景缓存、引导标记（`DataCleanupService`） |
 | `/hub/config-transfer` 四格统计 | 服务商数（prefs）、订阅数（`subscription` 表）、自定义规则数（规则表 `user` 来源）、名单应用数（四份名单并集） |
@@ -718,6 +719,47 @@ showFloatingDialog(...)` 之后立刻 `dispose()`，`pop` 一调用弹窗的 fut
 「最快响应 / 依次尝试 / 智能选择（首选命中 33.3% · 兜底 2 次）」，智能选择首选
 「阿里云 · 首选命中 33.3% · 平均首选耗时 1277 ms · 3 次」，与 SQL 手算一致；
 删空后回到空态（0 请求、破折号、两组自动隐藏）。
+
+### 8.1.12 订阅自动更新：从「只存设置」到前台补跑
+
+上一轮的自动更新页只把「总开关 + 间隔」写进数据集 prefs、把分组开关写进
+`subscription_group.autoUpdateEnabled`，页脚如实写着「本机尚未接入后台调度器」。
+结果是：**打开开关之后什么都不会发生**——设置是真的，执行是空的。旧版靠
+`SubscriptionAutoUpdateScheduler` 的 WorkManager 周期任务执行，本仓原生侧没有
+移植那个调度器。
+
+本轮补的是执行侧（`lib/state/auto_update_runner.dart`）：
+
+1. **触发点**：应用启动 + 每次回到前台（`AppLifecycleListener.onResume`）。只在启动
+   检查会让长期挂后台的用户永远等不到；只在回前台检查会让首启不跑。
+2. **到期判据**：订阅行的真实 `lastAttemptAt`（成功 / 304 / 失败都会写）与设置的间隔
+   比较。用 `lastAttemptAt` 而不是 `lastUpdated`——一个一直 304 的订阅 `lastUpdated`
+   很久不变，用它会永远判定到期而每次回前台都全量下载；失败过的订阅同理。
+   不额外维护「上次运行」本地变量，避免两条真相打架。
+3. **执行**：复用 `SubscriptionUpdateNotifier.updateAll`，与用户手点「全部更新」是同一条
+   链路（真发包、真解析、真入库、真写 ETag）。手动更新正在跑时本轮让路（对应旧版
+   `BlockedByManualOperation`）。
+4. **可观测**：设置页新增「执行状态」组——「下次预计更新」（按最早到期的那条算）与
+   「上次自动更新」（真实摘要，如「2 个失败（2 个订阅）」）。跳过（未到期 / 已关闭）
+   不刷新「上次更新」，否则「刚检查过」会被误读成「刚更新过」。
+
+**与旧版的真实差距照实写在页脚**：应用被完全关闭期间不会更新（没有后台任务队列）。
+不写「会在后台按此频率更新」这种做不到的承诺。
+
+实测（emulator-5554）：
+
+- 打开开关后「下次预计更新」显示 `10 月 23 日 10:56（22 小时 58 分钟后）`，由库里
+  `lastAttemptAt` 推出，与手算一致；
+- 把 `lastAttemptAt` 清零模拟到期并重启：`lastAttemptAt` 被写成当前时刻、
+  `consecutiveFailureCount` 3→4（种子地址 `sub.seed.test` 不存在，真发包失败），
+  页面显示「上次自动更新：2 个失败（2 个订阅）」；
+- 换成真实可访问的 hosts 订阅后重启：`importState` 从 `ready` 走到 `importing`
+  再到 `ready`，`ruleCount = 71492`，`block_rule` 由 1 行涨到 71493 行，
+  `consecutiveFailureCount` 归零——**七万条规则由自动更新真的下载并入库**。
+
+`test/auto_update_runner_test.dart`（10 条）钉住到期判定的边界：从未尝试→到期、
+未满间隔→不到期、刚好满间隔→到期、间隔跟随设置（不是写死 24 小时）、
+`nextDueAt` 取最早到期、从未尝试的订阅立即到期。
 
 ## 9. 提交约定
 中文 Conventional Commits，一个阶段一个提交；提交前 `flutter analyze` 零问题，测试范围按改动

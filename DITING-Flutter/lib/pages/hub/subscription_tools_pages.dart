@@ -1,7 +1,9 @@
 // ignore_for_file: sort_child_properties_last
 import 'package:diting/data/db/mirror_template_repository.dart';
+import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/auto_update_providers.dart';
+import 'package:diting/state/auto_update_runner.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -19,9 +21,11 @@ import 'package:material_ui/material_ui.dart';
 /// [autoUpdateGroupsProvider]，写入口在 [autoUpdateActionsProvider]。
 ///
 /// ## 关于「后台调度」
-/// 旧版写完设置会调 `SubscriptionAutoUpdateScheduler.sync()` 去重排 WorkManager。
-/// 本仓原生侧没有移植那个调度器，因此 footer 如实说明「设置已保存，后台调度
-/// 需原生侧接入」——不写「会在后台按此频率更新」这种做不到的承诺。
+/// 旧版写完设置会调 `SubscriptionAutoUpdateScheduler.sync()` 去重排 WorkManager
+/// 的周期任务。本仓原生侧没有移植那个调度器，因此执行侧改成了**前台补跑**
+/// （[AutoUpdateRunner]）：启动与每次回到前台时按 `lastAttemptAt` 判断是否到期，
+/// 到期就复用「全部更新」那条真实链路跑一轮。页脚据此如实说明「应用完全退出
+/// 期间不会更新」，并显示下次预计更新时刻与上次执行结果。
 class AutoUpdateSettingsPage extends ConsumerWidget {
   const AutoUpdateSettingsPage({super.key});
 
@@ -30,6 +34,8 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
     final settings = ref.watch(autoUpdateSettingsProvider);
     final groups = ref.watch(autoUpdateGroupsProvider).value;
     final actions = ref.read(autoUpdateActionsProvider);
+    final candidates = ref.watch(autoUpdatableSubscriptionsProvider).value;
+    final lastRun = ref.watch(autoUpdateLastRunProvider);
     final enabled = settings.enabled;
     return CommonScaffold(
       title: '自动更新设置',
@@ -41,7 +47,7 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.refresh),
                 title: const Text('自动更新规则订阅'),
-                subtitle: const Text('记录总开关；后台调度由原生侧执行'),
+                subtitle: const Text('启动应用或回到前台时检查是否到期'),
                 value: enabled,
                 onChanged: actions.setEnabled,
               ),
@@ -82,7 +88,32 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
             ],
             footer:
                 '间隔保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。'
-                '本机尚未接入后台调度器：设置会保存，实际执行需原生侧任务队列。',
+                '本机没有后台任务队列：应用在前台（含启动与切回前台）时才检查到期并执行，'
+                '进程被完全关闭期间不会更新。',
+          ),
+          generateSection(
+            title: '执行状态',
+            items: [
+              ListItem(
+                leading: const GlyphIcon(AppGlyphs.clock),
+                title: const Text('下次预计更新'),
+                subtitle: Text(_nextUpdateText(enabled, settings, candidates)),
+              ),
+              ListItem(
+                leading: GlyphIcon(
+                  lastRun == null ? AppGlyphs.info : AppGlyphs.checkCircle,
+                  size: 20,
+                ),
+                title: const Text('上次自动更新'),
+                subtitle: Text(
+                  lastRun == null
+                      ? '本次会话还没有执行过自动更新'
+                      : '${lastRun.summary ?? ''}'
+                            '（${lastRun.ranCount} 个订阅）',
+                ),
+              ),
+            ],
+            footer: '判据是每条订阅的「上次尝试时间」与上面的间隔；正在手动更新时本轮会让路。',
           ),
           generateSection(
             title: '分组自动更新',
@@ -129,6 +160,51 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
     if (value != null) {
       ref.read(autoUpdateActionsProvider).setIntervalHours(value);
     }
+  }
+
+  /// 「下次预计更新」的一行文案。
+  ///
+  /// 三种情形分开说，都不猜：开关关着 / 还没有候选订阅 / 按最早到期的那条算。
+  /// 到期时刻由 [AutoUpdateRunner.nextDueAt] 用真实 `lastAttemptAt` 推出，
+  /// 不是「现在 + 间隔」这种与库无关的估算。
+  String _nextUpdateText(
+    bool enabled,
+    AutoUpdateSettings settings,
+    List<SubscriptionRecord>? candidates,
+  ) {
+    if (!enabled) {
+      return '自动更新已关闭';
+    }
+    if (candidates == null) {
+      return '正在读取订阅…';
+    }
+    if (candidates.isEmpty) {
+      return '没有可自动更新的订阅（需为远程、已启用、且所在分组已开启）';
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final due = AutoUpdateRunner.nextDueAt(
+      candidates,
+      settings.intervalHours,
+      now,
+    );
+    if (due == null) {
+      return '没有可自动更新的订阅';
+    }
+    if (due <= now) {
+      return '已到期：回到前台时会立即执行';
+    }
+    final when = DateTime.fromMillisecondsSinceEpoch(due);
+    final remaining = due - now;
+    final hours = remaining ~/ 3600000;
+    final minutes = (remaining % 3600000) ~/ 60000;
+    final left = hours > 0 ? '$hours 小时 $minutes 分钟后' : '$minutes 分钟后';
+    return '${_formatMoment(when)}（$left）';
+  }
+
+  static String _formatMoment(DateTime time) {
+    String two(int value) => value.toString().padLeft(2, '0');
+    return '${time.month} 月 ${time.day} 日 '
+        '${two(time.hour)}:${two(time.minute)}';
   }
 }
 

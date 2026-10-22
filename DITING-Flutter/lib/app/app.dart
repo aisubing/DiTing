@@ -6,6 +6,7 @@ import 'package:diting/app/theme/manager.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/auto_update_runner.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +35,47 @@ class _DitingAppState extends ConsumerState<DitingApp> {
   late final GoRouter _router = createRouter(
     initialLocation: widget.initialLocation ?? Routes.home,
   );
+
+  /// 自动更新的前台补跑（旧版由 WorkManager 周期任务驱动，本仓没有该调度器）。
+  ///
+  /// 触发点是「启动」与「回到前台」两处：只在启动检查会让长期挂后台的用户
+  /// 永远等不到更新，只在回前台检查会让首启不跑。`_autoUpdateChecked` 只是
+  /// 防抖，真正的到期判据在 [AutoUpdateRunner] 里按 `lastAttemptAt` 算。
+  AppLifecycleListener? _lifecycle;
+  bool _autoUpdateChecking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(onResume: _maybeRunAutoUpdate);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunAutoUpdate());
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _maybeRunAutoUpdate() async {
+    if (_autoUpdateChecking || !mounted) {
+      return;
+    }
+    _autoUpdateChecking = true;
+    try {
+      final run = await ref.read(autoUpdateRunnerProvider).runIfDue();
+      if (!mounted) {
+        return;
+      }
+      if (run.didRun) {
+        // 有真实执行才写入「上次自动更新」；跳过（未到期 / 关闭）不刷新时间，
+        // 否则页面会把「刚刚检查过」误读成「刚刚更新过」。
+        ref.read(autoUpdateLastRunProvider.notifier).record(run);
+      }
+    } finally {
+      _autoUpdateChecking = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
