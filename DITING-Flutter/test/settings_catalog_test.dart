@@ -1,4 +1,5 @@
 import 'package:diting/app/theme/layout.dart';
+import 'package:diting/data/native/background_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/routes/config_routes.dart';
@@ -18,6 +19,18 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// 之所以需要这一组，是因为本轮改动里最危险的一类错误**不会**被渲染测试抓到：
 /// 键名写错一个字母，设置照样存、界面照样显示，只有升级/降级后才丢设置。
+/// 不触达原生通道的替身：`remove` 会顺手 `release` 解码缓存，走真通道要
+/// 求 Flutter binding（且单测环境没有原生实现），这里只记录调用。
+class _FakeBackgroundBridge extends BackgroundBridge {
+  final List<String> released = [];
+
+  @override
+  Future<bool> release(String uri) async {
+    released.add(uri);
+    return true;
+  }
+}
+
 void main() {
   group('旧版设置键（第三轮新增）', () {
     late LegacyPrefsStore store;
@@ -125,8 +138,16 @@ void main() {
   });
 
   group('设置态 provider（内存 store）', () {
+    // 每个用例前重置，方便用例断言「确实调到了原生通道」。
+    _FakeBackgroundBridge? bridge;
+
     ProviderContainer container() {
-      final c = ProviderContainer();
+      final fake = _FakeBackgroundBridge();
+      bridge = fake;
+      // 背景桥默认会走 MethodChannel；换成替身后这组用例彻底不碰原生。
+      final c = ProviderContainer(
+        overrides: [backgroundBridgeProvider.overrideWithValue(fake)],
+      );
       addTearDown(c.dispose);
       return c;
     }
@@ -183,6 +204,8 @@ void main() {
       state = c.read(customBackgroundProvider);
       expect(state.uris, ['content://1']);
       expect(state.currentUri, 'content://1');
+      // 移除的那张要顺手释放原生解码缓存，否则私有目录里越攒越多。
+      expect(bridge!.released, ['content://2']);
     });
   });
 
