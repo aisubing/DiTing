@@ -305,15 +305,15 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 ### 8.1 仍走演示数据
 
 连接列表、资源更新、功能中心卡片清单（文案常量）、系统域的免责条款与更新日志、
-表单族与编辑器 / 扫码、Agent 设置页。
+表单族与编辑器 / 扫码。
 
-其中一部分页面已有如实的「演示」标注（扫码、编辑器、表单演示页、Agent 设置页等），
+其中一部分页面已有如实的「演示」标注（扫码、编辑器、表单演示页等），
 另一部分**没有**（见 §8.2）。补标注可以，**换成看起来像真的假数据不行**；也不要把这些
 页面写成已完成。
 
 流量、请求、DNS 日志、订阅、出站代理、CA/HTTPS、网络工具、应用清单、数据清理、
 备份与迁移（含 WebDAV 云同步）、应用更新、配置资源三表（图标集 / User-Agent /
-按需连接）、IP 质量检测已接真实数据源。
+按需连接）、IP 质量检测、AI 分析（Agent）已接真实数据源。
 
 **本轮新增接线**（此前是写死的演示值）：
 
@@ -329,6 +329,7 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 | 镜像站模板页 | `mirror_template` 表（增删改全落库） |
 | `/hub/data-cleanup` 全部十六个动作 | 真实删除：日志/流量/缓存三表、权重 JSON、规则与订阅事务、四份应用名单、出站代理、CA、下载与背景缓存、引导标记（`DataCleanupService`） |
 | `/hub/config-transfer` 四格统计 | 服务商数（prefs）、订阅数（`subscription` 表）、自定义规则数（规则表 `user` 来源）、名单应用数（四份名单并集） |
+| AI 分析（Agent）全流程 | 厂商配置落盘 + 真实 HTTP 调用厂商接口（见 §8.1.9） |
 
 ### 8.1.1 数据清理是「真删」，不是弹提示
 
@@ -612,8 +613,49 @@ HTTP 状态，含「字符串比较会判错」的 `1.4.10 vs 1.4.9` 用例。
 - **已知未验证**：`getConnectionOwnerUid` 的实参方向是按 Go 侧 `resolveFlowUID` 的实参顺序推导
   的（Go 把 `id.appIP` 传第一位），模拟器上产出正确包名，arm64 真机未复核。
 
-## 9. 提交约定
+### 8.1.9 AI 分析真的调用厂商接口
 
+`/hub/agent` 上一轮是纯壳子：厂商列表、模型下拉、温度滑杆都在，但「测试连接」「拉取模型」
+只弹一句「已保存」，「开始分析」弹的是写死的示例结论——用户付了 token 钱、拿到的却是常量。
+
+现在整条链路是真的（`lib/data/agent/` + `lib/state/agent_providers.dart`）：
+
+| 环节 | 实现 |
+|---|---|
+| 端点解析 | 逐字移植旧版 `AgentApiClient.kt` 的 `resolveChatCompletionsEndpoint` / `resolveModelsEndpoint`（`/v1` 结尾、`#` 后缀、裸主机三种写法都要兼容） |
+| 密钥存储 | 移植 `KeyObfuscator.kt`（三层 XOR + Base64），落盘的是密文；`agent_api_key` 等四个平铺键同步写入，旧版分析读到的就是界面这一份 |
+| 测试连接 | 真发一次最小 chat 请求，回显模型名与 token 用量 |
+| 拉取模型 | `GET /models`，兼容 `data` / `models` / `result` 三种返回形状 |
+| 域名分析 / 流量分析 | 组 prompt → 真实调用 → 渲染模型返回的正文，附模型名与 token 用量 |
+| 参数与提示词 | 温度与系统提示词落盘到 `agent_api_temperature` / `agent_api_system_prompt`，改完即对下一次分析生效 |
+
+三条不做假的规矩：没配密钥时直接说「未配置密钥」，不发请求；全部情报源/样本为空时让模型
+**明确不要编造**（送检摘要里如实写「无可用样本」）；厂商返回的错误按 401/403/404/429/5xx
+翻译成可操作的中文，而不是把 HTTP 状态码甩给用户。
+
+实测（模拟器 + 本地假 OpenAI 服务）：拉取模型返回两个 chip、测试连接回显 `130 tokens`、
+域名分析把 `example-tracker.com` 原样送进 prompt 并拿回模型正文、流量分析的 prompt 里带着
+`dns_log` 的真实域名行、冷启动后配置与密钥仍在、401 时对话框显示
+「API Key 无效或已过期」。
+
+### 8.1.10 弹窗输入框的控制器必须由弹窗自己持有
+
+这一条是**真崩溃**，不是风格问题：把 `TextEditingController` 建在调用方、`await
+showFloatingDialog(...)` 之后立刻 `dispose()`，`pop` 一调用弹窗的 future 就完成了，而退场
+动画（404 ms）还没跑完、`TextField` 仍在树上挂着这个 controller。实测在模拟器上点「保存」
+直接整屏红：
+
+```
+'package:flutter/src/widgets/framework.dart': Failed assertion: line 6281 pos 12:
+'_dependents.isEmpty': is not true.
+```
+
+只在**输入框获得过焦点**（软键盘弹出过）时触发，所以纯点点点的回归测试会漏掉它。改法统一：
+让弹窗成为一个 `StatefulWidget`，在它自己的 `dispose()` 里释放（与 `InputDialog` 同一套
+生命周期）。已修的站点：系统提示词、应用放行域名、HTTPS 绕过域名、订阅更新间隔、镜像站模板、
+表单演示页的增改弹窗。
+
+## 9. 提交约定
 中文 Conventional Commits，一个阶段一个提交；提交前 `flutter analyze` 零问题，测试范围按改动
 的实际风险决定（高风险改动跑 `flutter test` 全绿），文件行数不超过 600 行。
 `dart format` / `flutter analyze` / 不带路径的 `git commit` 都是全局操作，只对自己作用域的路径

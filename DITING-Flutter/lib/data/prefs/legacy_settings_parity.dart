@@ -214,4 +214,74 @@ extension LegacySettingsParity on LegacySettings {
       LegacySettings.maxSubscriptionAutoUpdateIntervalHours,
     ),
   );
+
+  // --------------------------------------------------------- AI 分析（Agent）
+
+  /// AI 分析的九个键，全部在**全局** `dns_vpn_prefs`（`AgentApiSettingsStore`
+  /// 用的是 `PREFS_NAME`，不是数据集容器）。本仓的 AI 分析是全局能力：日志页、
+  /// 域名页与参数页共用一份配置，所以不能用 `dnsContainer`。
+  ///
+  /// 默认值逐字照抄旧版 `AgentApiConfig`：**开启**、DeepSeek、`deepseek-flash`、
+  /// 温度 0.7、系统提示词为空。
+  bool get agentApiEnabled => _bool(_ui, 'agent_api_enabled', true);
+
+  void setAgentApiEnabled(bool value) =>
+      _store.putBool(_ui, 'agent_api_enabled', value);
+
+  /// 明文 Key。`AgentApiSettingsStore.setAgentApiConfig` 存的就是明文（厂商列表里
+  /// 的 `apiKey` 才是混淆过的），这里保持一致以免两边读出来的不一样。
+  String get agentApiKey => _string(_ui, 'agent_api_key') ?? '';
+
+  void setAgentApiKey(String value) =>
+      _store.putString(_ui, 'agent_api_key', value.trim());
+
+  String get agentApiBaseUrl =>
+      _string(_ui, 'agent_api_base_url')?.trim().isNotEmpty == true
+      ? _string(_ui, 'agent_api_base_url')!.trim()
+      : 'https://api.deepseek.com/v1';
+
+  void setAgentApiBaseUrl(String value) =>
+      _store.putString(_ui, 'agent_api_base_url', value.trim());
+
+  String get agentApiModel {
+    final model = _string(_ui, 'agent_api_model')?.trim();
+    return model == null || model.isEmpty ? 'deepseek-flash' : model;
+  }
+
+  void setAgentApiModel(String value) =>
+      _store.putString(_ui, 'agent_api_model', value.trim());
+
+  /// 旧版把这个键存成**字符串**（`config.temperature.toString()`），不是 float。
+  /// 读的时候两种都认：早期安装里可能存在 float，写死一种会让温度静默回落 0.7。
+  double get agentApiTemperature {
+    final raw = _store.read(_ui, 'agent_api_temperature');
+    if (raw is num) return raw.toDouble();
+    if (raw is String) {
+      final parsed = double.tryParse(raw.trim());
+      if (parsed != null) return parsed;
+    }
+    return 0.7;
+  }
+
+  void setAgentApiTemperature(double value) =>
+      _store.putString(_ui, 'agent_api_temperature', value.toStringAsFixed(1));
+
+  String get agentApiSystemPrompt =>
+      _string(_ui, 'agent_api_system_prompt') ?? '';
+
+  void setAgentApiSystemPrompt(String value) =>
+      _store.putString(_ui, 'agent_api_system_prompt', value);
+
+  /// 厂商列表的 JSON（`agent_ai_providers_json`）。`null` 表示首次启动，需要按
+  /// 旧版 `performInitialMigration` 的规则迁移或播种。
+  String? get agentAiProvidersJson => _string(_ui, 'agent_ai_providers_json');
+
+  void setAgentAiProvidersJson(String value) =>
+      _store.putString(_ui, 'agent_ai_providers_json', value);
+
+  String get agentAiActiveProviderId =>
+      _string(_ui, 'agent_ai_active_provider_id') ?? '';
+
+  void setAgentAiActiveProviderId(String value) =>
+      _store.putString(_ui, 'agent_ai_active_provider_id', value);
 }

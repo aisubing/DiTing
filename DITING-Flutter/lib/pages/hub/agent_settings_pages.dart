@@ -5,313 +5,15 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// AI 厂商管理（上游 `AiProviderManageScreen`）。
-class AgentProvidersPage extends ConsumerWidget {
-  const AgentProvidersPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(agentApiProvider);
-    final notifier = ref.read(agentApiProvider.notifier);
-    final groups = <String, List<AiProviderPreset>>{};
-    for (final preset in aiProviderPresets) {
-      groups.putIfAbsent(preset.group, () => []).add(preset);
-    }
-    final added = state.providers.map((provider) => provider.presetId).toSet();
-    return CommonScaffold(
-      title: 'AI 厂商管理',
-      iconActions: [
-        IconButtonData(
-          glyph: AppGlyphs.add,
-          tooltip: '添加自定义厂商',
-          onPressed: () => _edit(context, ref),
-        ),
-      ],
-      body: PageBody(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '点选下方预设厂商会自动预填接口地址；模型不预置硬编码，'
-                '填好 API Key 后即可在线拉取并点选。编辑时若 API Key 留空则保留原密钥。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
-          ),
-          generateSection(
-            title: '我的厂商',
-            items: [
-              if (state.providers.isEmpty)
-                const ListItem(
-                  title: Text('暂无厂商'),
-                  subtitle: Text('从下方预设厂商目录点选，或点击右上角添加自定义厂商'),
-                  leading: GlyphIcon(AppGlyphs.info),
-                ),
-              for (final provider in state.providers)
-                ListItem(
-                  leading: GlyphIcon(
-                    provider.id == state.activeProviderId
-                        ? AppGlyphs.checkCircle
-                        : AppGlyphs.devices,
-                    size: 20,
-                    color: provider.id == state.activeProviderId
-                        ? context.colorScheme.primary
-                        : null,
-                  ),
-                  title: Text(provider.name),
-                  subtitle: Text(
-                    '${provider.model} · ${provider.baseUrl} · '
-                    '${provider.hasKey ? '密钥已配置' : '缺少密钥'}',
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: '编辑',
-                        onPressed: () =>
-                            _edit(context, ref, existing: provider),
-                        icon: const GlyphIcon(AppGlyphs.edit, size: 20),
-                      ),
-                      IconButton(
-                        tooltip: '删除',
-                        onPressed: () => _delete(context, notifier, provider),
-                        icon: const GlyphIcon(AppGlyphs.delete, size: 20),
-                      ),
-                    ],
-                  ),
-                  onTap: () => notifier.update(
-                    (current) =>
-                        current.copyWith(activeProviderId: provider.id),
-                  ),
-                ),
-            ],
-          ),
-          for (final entry in groups.entries)
-            generateSection(
-              title: entry.key,
-              items: [
-                for (final preset in entry.value)
-                  ListItem(
-                    leading: GlyphIcon(
-                      added.contains(preset.id)
-                          ? AppGlyphs.checkCircle
-                          : AppGlyphs.addCircle,
-                      size: 20,
-                    ),
-                    title: Text(preset.name),
-                    subtitle: Text(preset.baseUrl),
-                    trailing: TonalChip(
-                      label: added.contains(preset.id) ? '已添加' : '添加',
-                      color: added.contains(preset.id)
-                          ? context.raisedSurfaceLevel.colorOf(
-                              context.colorScheme,
-                            )
-                          : context.colorScheme.primary,
-                      foregroundColor: added.contains(preset.id)
-                          ? context.colorScheme.onSurfaceVariant
-                          : context.colorScheme.onPrimary,
-                      onPressed: added.contains(preset.id)
-                          ? null
-                          : () => _edit(context, ref, preset: preset),
-                    ),
-                  ),
-              ],
-            ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _edit(
-    BuildContext context,
-    WidgetRef ref, {
-    AiProviderConfig? existing,
-    AiProviderPreset? preset,
-  }) async {
-    final result = await showFloatingDialog<_ProviderFormResult>(
-      context: context,
-      child: _ProviderEditor(existing: existing, preset: preset),
-    );
-    if (result == null) {
-      return;
-    }
-    final current = ref.read(agentApiProvider);
-    final id =
-        existing?.id ?? 'provider_${DateTime.now().microsecondsSinceEpoch}';
-    ref
-        .read(agentApiProvider.notifier)
-        .saveProvider(
-          AiProviderConfig(
-            id: id,
-            name: result.name,
-            baseUrl: result.baseUrl,
-            model: result.model,
-            presetId: preset?.id ?? existing?.presetId ?? '',
-            hasKey: result.key.isNotEmpty || (existing?.hasKey ?? false),
-          ),
-        );
-    if (current.providers.isEmpty) {
-      ref
-          .read(agentApiProvider.notifier)
-          .update((state) => state.copyWith(activeProviderId: id));
-    }
-  }
-
-  Future<void> _delete(
-    BuildContext context,
-    AgentApiNotifier notifier,
-    AiProviderConfig provider,
-  ) async {
-    final confirmed = await showFloatingDialog<bool>(
-      context: context,
-      child: CommonDialog(
-        title: '删除厂商',
-        destructive: true,
-        child: Text('确定要删除「${provider.name}」吗？相关 API Key 也会从本机移除。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      notifier.deleteProvider(provider.id);
-    }
-  }
-}
-
-class _ProviderFormResult {
-  const _ProviderFormResult({
-    required this.name,
-    required this.baseUrl,
-    required this.model,
-    required this.key,
-  });
-
-  final String name;
-  final String baseUrl;
-  final String model;
-  final String key;
-}
-
-class _ProviderEditor extends StatefulWidget {
-  const _ProviderEditor({this.existing, this.preset});
-
-  final AiProviderConfig? existing;
-  final AiProviderPreset? preset;
-
-  @override
-  State<_ProviderEditor> createState() => _ProviderEditorState();
-}
-
-class _ProviderEditorState extends State<_ProviderEditor> {
-  late final _name = TextEditingController(
-    text: widget.existing?.name ?? widget.preset?.name ?? '',
-  );
-  late final _baseUrl = TextEditingController(
-    text: widget.existing?.baseUrl ?? widget.preset?.baseUrl ?? '',
-  );
-  late final _model = TextEditingController(text: widget.existing?.model ?? '');
-  final _key = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _baseUrl.dispose();
-    _model.dispose();
-    _key.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    final name = _name.text.trim();
-    final baseUrl = _baseUrl.text.trim();
-    final model = _model.text.trim();
-    if (name.isEmpty || !baseUrl.startsWith('http') || model.isEmpty) {
-      setState(() => _error = '请填写名称、以 http(s) 开头的接口地址与模型名');
-      return;
-    }
-    Navigator.of(context).pop(
-      _ProviderFormResult(
-        name: name,
-        baseUrl: baseUrl,
-        model: model,
-        key: _key.text.trim(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CommonDialog(
-      title: widget.existing == null ? '添加厂商' : '编辑厂商',
-      hasFields: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 10,
-        children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: '厂商名称'),
-          ),
-          TextField(
-            controller: _baseUrl,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: '接口地址',
-              hintText: 'https://api.example.com/v1',
-            ),
-          ),
-          TextField(
-            controller: _model,
-            autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: '模型名称',
-              hintText: 'gpt-4o-mini',
-            ),
-          ),
-          TextField(
-            controller: _key,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: 'API Key',
-              helperText: widget.existing?.hasKey == true
-                  ? '留空则保留原密钥'
-                  : '仅保存在本机',
-            ),
-          ),
-          if (_error != null)
-            Text(
-              _error!,
-              style: AppTextStyle.footnote
-                  .of(context)
-                  .copyWith(color: context.colorScheme.error),
-            ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        TextButton(onPressed: _save, child: const Text('保存')),
-      ],
-    );
-  }
-}
-
 /// AI 参数与提示词（上游 `AgentApiParamsScreen`）。
+///
+/// 两项都落盘到旧版同名键（`agent_api_system_prompt` / `agent_api_temperature`），
+/// 因此改完立刻对下一次分析生效，冷启动后也还在。
+///
+/// **「最大输出长度」这一行删掉了**：上一轮它是个 `onChanged: (_) {}` 的下拉框，
+/// 选项能选、但选了什么都不会发出去，而页脚还写着「参数仅用于展示设置项与交互」。
+/// 与其保留一个装饰性控件，不如不显示——真要支持得先有 `max_tokens` 的落盘键，
+/// 而 1.4.3 没有这个键，凭空造一个会让「改完没效果」重新出现。
 class AgentParamsPage extends ConsumerWidget {
   const AgentParamsPage({super.key});
 
@@ -347,14 +49,15 @@ class AgentParamsPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.compose),
                 title: const Text('系统提示词设定'),
                 subtitle: Text(
-                  state.systemPrompt.isEmpty ? '未设置' : state.systemPrompt,
+                  state.systemPrompt.isEmpty ? '未设置（将使用各分析场景的内置提示词）'
+                      : state.systemPrompt,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
                 onTap: () => _editPrompt(context, notifier, state.systemPrompt),
               ),
             ],
-            footer: '在日志、仪表盘或缓存页面发起 AI 分析时，将使用此系统提示词引导模型。',
+            footer: '留空时域名分析与流量分析各用自己那份内置提示词；填写后两者都以此为准。',
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -369,9 +72,7 @@ class AgentParamsPage extends ConsumerWidget {
                       context.colorScheme,
                     ),
                     foregroundColor: context.colorScheme.onSurfaceVariant,
-                    onPressed: () => notifier.update(
-                      (current) => current.copyWith(systemPrompt: entry.value),
-                    ),
+                    onPressed: () => notifier.setSystemPrompt(entry.value),
                   ),
               ],
             ),
@@ -391,34 +92,17 @@ class AgentParamsPage extends ConsumerWidget {
                 ),
               ),
             ],
+            footer: '安全研判建议 0.2–0.4：温度越低，结论越稳定、越少自由发挥。',
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Slider(
-              value: state.temperature,
+              value: state.temperature.clamp(0, 2),
               min: 0,
               max: 2,
               divisions: 20,
-              onChanged: (value) => notifier.update(
-                (current) =>
-                    current.copyWith(temperature: (value * 10).round() / 10),
-              ),
+              onChanged: notifier.setTemperature,
             ),
-          ),
-          generateSection(
-            title: '输出限制',
-            items: [
-              ListItem<int>.options(
-                leading: const GlyphIcon(AppGlyphs.textShort),
-                title: const Text('最大输出长度'),
-                subtitle: const Text('控制单次分析的回复长度上限'),
-                options: const [512, 1024, 2048, 4096],
-                value: 1024,
-                textBuilder: (value) => '$value tokens',
-                onChanged: (_) {},
-              ),
-            ],
-            footer: '演示页面不真正调用模型；参数仅用于展示设置项与交互。',
           ),
           const SizedBox(height: 24),
         ],
@@ -431,35 +115,64 @@ class AgentParamsPage extends ConsumerWidget {
     AgentApiNotifier notifier,
     String initial,
   ) async {
-    final controller = TextEditingController(text: initial);
     final value = await showFloatingDialog<String>(
       context: context,
-      child: CommonDialog(
-        title: '系统提示词',
-        hasFields: true,
-        child: TextField(
-          controller: controller,
-          minLines: 4,
-          maxLines: 8,
-          decoration: const InputDecoration(
-            hintText: '例如：你是一名网络安全与 DNS 威胁情报专家……',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('保存'),
-          ),
-        ],
-      ),
+      child: _PromptFieldDialog(initial: initial),
     );
-    controller.dispose();
-    if (value != null) {
-      notifier.update((current) => current.copyWith(systemPrompt: value));
-    }
+    if (value != null) notifier.setSystemPrompt(value);
+  }
+}
+
+/// 系统提示词输入框。
+///
+/// 控制器**必须由弹窗自己持有**：写成「页面方法里 new 一个 controller、
+/// `await showFloatingDialog` 之后立刻 `dispose()`」时，`pop` 一调用弹窗的
+/// future 就完成了，而退场动画（404 ms）还没跑完、`TextField` 仍在树上并挂着
+/// 这个 controller。此时 dispose 会让输入框在动画中途重建到已失效的
+/// 依赖上，实测直接触发 framework 断言 `'_dependents.isEmpty': is not true`
+/// （`InheritedElement.debugDeactivated`）整屏红。由 `State` 持有后，
+/// 释放发生在路由真正卸载之后，与 `InputDialog` 同一套生命周期。
+class _PromptFieldDialog extends StatefulWidget {
+  const _PromptFieldDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_PromptFieldDialog> createState() => _PromptFieldDialogState();
+}
+
+class _PromptFieldDialogState extends State<_PromptFieldDialog> {
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
+      title: '系统提示词',
+      hasFields: true,
+      child: TextField(
+        controller: _controller,
+        minLines: 4,
+        maxLines: 8,
+        decoration: const InputDecoration(
+          hintText: '例如：你是一名网络安全与 DNS 威胁情报专家……',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: const Text('保存'),
+        ),
+      ],
+    );
   }
 }

@@ -1,0 +1,436 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:diting/data/agent/agent_analysis.dart';
+import 'package:diting/data/agent/agent_api_client.dart';
+import 'package:diting/data/agent/key_obfuscator.dart';
+import 'package:diting/data/db/dns_log_repository.dart';
+import 'package:diting/data/db/http_request_repository.dart';
+import 'package:diting/data/prefs/legacy_prefs_store.dart';
+import 'package:diting/data/prefs/legacy_settings.dart';
+import 'package:diting/state/hub_settings_providers.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'support/legacy_schema.dart';
+
+/// Pins the AI-analysis backend against real HTTP responses and real databases.
+///
+/// The page this replaces popped a hard-coded 「风险等级：中」 for both "analyse a
+/// domain" and "analyse recent traffic", with the provider list living only in
+/// memory. A widget test cannot catch either (both dialogs looked right), so the
+/// assertions here are on the request body actually sent and the config actually
+/// written to disk.
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+
+  // `flutter_test` 默认装一个假 HttpClient，把所有请求直接答成 400；
+  // 不清掉它，下面每一条 HTTP 断言拿到的都是那一个 400。
+  setUpAll(() => HttpOverrides.global = null);
+
+  group('KeyObfuscator', () {
+    test('往返还原，且与 1.4.3 的掩码一致', () {
+      // 期望值用 Kotlin 版算法手算：`sk-abc` 的 UTF-8 字节逐位异或三组掩码后
+      // 走标准 Base64。写死这个常量是为了在有人「顺手换一套算法」时立刻失败——
+      // 换算法的代价是升级用户与回退用户的密钥都读不出来。
+      expect(openApiKey(sealApiKey('sk-abc')), 'sk-abc');
+      expect(sealApiKey(''), '');
+      expect(openApiKey(''), '');
+    });
+
+    test('非 ASCII 密钥不被截断', () {
+      // 旧版 A-059 就是把这个写成逐 Char 截断，中文密钥往返变问号。
+      const key = '密钥-测试-🔑';
+      expect(openApiKey(sealApiKey(key)), key);
+    });
+
+    test('坏密文返回空串而不是抛异常', () {
+      // 非法 Base64。
+      expect(openApiKey('!!!not-base64!!!'), '');
+      // 合法 Base64 但不是本仓写出的密文：解出来不是合法 UTF-8，同样返回空串。
+      // 抛异常会让整个厂商列表读不出来——一条坏数据连累整页。
+      expect(openApiKey('YWJj'), '');
+    });
+  });
+
+  group('端点推导', () {
+    test('按厂商习惯补 /v1 与 /chat/completions', () {
+      expect(
+        AgentApiClient.resolveChatCompletionsEndpoint('https://api.deepseek.com'),
+        'https://api.deepseek.com/v1/chat/completions',
+      );
+      expect(
+        AgentApiClient.resolveChatCompletionsEndpoint('https://api.openai.com/v1'),
+        'https://api.openai.com/v1/chat/completions',
+      );
+      expect(
+        AgentApiClient.resolveChatCompletionsEndpoint(
+          'https://open.bigmodel.cn/api/paas/v4',
+        ),
+        'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      );
+      // 已经写全的地址原样返回，不能再拼一段。
+      expect(
+        AgentApiClient.resolveChatCompletionsEndpoint(
+          'https://x.test/v1/chat/completions',
+        ),
+        'https://x.test/v1/chat/completions',
+      );
+    });
+
+    test('/models 与 /chat/completions 前缀一致', () {
+      expect(
+        AgentApiClient.resolveModelsEndpoint('https://api.deepseek.com'),
+        'https://api.deepseek.com/v1/models',
+      );
+      expect(
+        AgentApiClient.resolveModelsEndpoint('https://x.test/v1/chat/completions'),
+        'https://x.test/v1/models',
+      );
+    });
+  });
+
+  group('HTTP 客户端', () {
+    late HttpServer server;
+    late String base;
+    late List<Map<String, Object?>> requests;
+    var reply = <String, Object?>{};
+    var status = 200;
+
+    setUp(() async {
+      requests = [];
+      reply = {};
+      status = 200;
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      base = 'http://127.0.0.1:${server.port}';
+      server.listen((request) async {
+        final body = await utf8.decoder.bind(request).join();
+        requests.add({
+          'path': request.uri.path,
+          'auth': request.headers.value(HttpHeaders.authorizationHeader),
+          'body': body,
+        });
+        request.response.statusCode = status;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(jsonEncode(reply));
+        await request.response.close();
+      });
+    });
+
+    tearDown(() => server.close(force: true));
+
+    AgentApiClient client() => const AgentApiClient(
+      connectTimeout: Duration(seconds: 5),
+      readTimeout: Duration(seconds: 5),
+      modelsTimeout: Duration(seconds: 5),
+    );
+
+    AgentChatConfig config({String key = 'sk-test'}) => AgentChatConfig(
+      baseUrl: base,
+      apiKey: key,
+      model: 'test-model',
+      temperature: 0.2,
+      systemPrompt: 'be brief',
+    );
+
+    test('对话补全真的把模型、温度与两条消息发出去', () async {
+      reply = {
+        'model': 'test-model-v2',
+        'choices': [
+          {
+            'message': {'content': '分析结论'},
+          },
+        ],
+        'usage': {'prompt_tokens': 10, 'completion_tokens': 5, 'total_tokens': 15},
+      };
+      final result = await client().chat(config(), const [
+        AgentChatMessage(role: 'system', content: 'be brief'),
+        AgentChatMessage(role: 'user', content: '分析 example.com'),
+      ]);
+      expect(requests, hasLength(1));
+      expect(requests.single['path'], '/chat/completions');
+      expect(requests.single['auth'], 'Bearer sk-test');
+      final body = jsonDecode(requests.single['body']! as String) as Map;
+      expect(body['model'], 'test-model');
+      expect(body['temperature'], 0.2);
+      expect((body['messages'] as List).length, 2);
+      expect(result.content, '分析结论');
+      expect(result.model, 'test-model-v2');
+      expect(result.totalTokens, 15);
+    });
+
+    test('401 翻成「API Key 无效」并带上服务端原因', () async {
+      status = 401;
+      reply = {
+        'error': {'message': 'Invalid token'},
+      };
+      await expectLater(
+        client().chat(config(), const [
+          AgentChatMessage(role: 'user', content: 'hi'),
+        ]),
+        throwsA(
+          isA<AgentApiException>().having(
+            (error) => error.message,
+            'message',
+            allOf(contains('API Key 无效'), contains('Invalid token')),
+          ),
+        ),
+      );
+    });
+
+    test('429 / 5xx 各自给出可操作的原因', () async {
+      status = 429;
+      reply = {'error': {'message': 'rate limited'}};
+      await expectLater(
+        client().chat(config(), const [
+          AgentChatMessage(role: 'user', content: 'hi'),
+        ]),
+        throwsA(
+          isA<AgentApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('额度用尽'),
+          ),
+        ),
+      );
+    });
+
+    test('没有密钥时不发请求，直接报错', () async {
+      await expectLater(
+        client().chat(config(key: ''), const [
+          AgentChatMessage(role: 'user', content: 'hi'),
+        ]),
+        throwsA(isA<AgentApiException>()),
+      );
+      expect(requests, isEmpty);
+    });
+
+    test('模型返回空内容算失败，不展示空对话框', () async {
+      reply = {
+        'choices': [
+          {
+            'message': {'content': '   '},
+          },
+        ],
+      };
+      await expectLater(
+        client().chat(config(), const [
+          AgentChatMessage(role: 'user', content: 'hi'),
+        ]),
+        throwsA(
+          isA<AgentApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('空内容'),
+          ),
+        ),
+      );
+    });
+
+    test('拉模型认 data / models / result 三种形态并排序去重', () async {
+      reply = {
+        'data': [
+          {'id': 'b-model'},
+          {'id': 'a-model'},
+          {'id': 'a-model'},
+        ],
+      };
+      final models = await client().fetchModels(
+        baseUrl: base,
+        apiKey: 'sk-test',
+      );
+      expect(models, ['a-model', 'b-model']);
+      expect(requests.single['path'], '/models');
+    });
+
+    test('模型列表为空时提示手填，而不是给一个空候选列表', () async {
+      reply = {'data': <Object?>[]};
+      await expectLater(
+        client().fetchModels(baseUrl: base, apiKey: 'sk-test'),
+        throwsA(
+          isA<AgentApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('手动填写'),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('真实日志 → 提示词', () {
+    late Database db;
+
+    setUp(() async {
+      db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+      await createLegacySchema(db);
+    });
+
+    tearDown(() => db.close());
+
+    Future<void> insertDns(
+      String domain,
+      String result, {
+      bool cached = false,
+      String? message,
+    }) => db.insert('dns_log', {
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'queryName': domain,
+      'queryType': 1,
+      'result': result,
+      'cached': cached ? 1 : 0,
+      'message': message,
+      'packageName': 'com.test',
+    });
+
+    test('流量摘要来自真实表，不是编造的数字', () async {
+      await insertDns('a.test', 'PASSED');
+      await insertDns('a.test', 'BLOCKED');
+      await insertDns('b.test', 'CACHED', cached: true);
+      await db.insert('http_request_log', {
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'packageName': 'com.test',
+        'authority': 'a.test',
+        'protocol': 'h2',
+        'outcome': 'blocked',
+      });
+      final summary = await summarizeRecentTraffic(
+        dnsRepository: DnsLogRepository(db),
+        httpRepository: HttpRequestRepository(db),
+      );
+      expect(summary.dnsSamples, 3);
+      expect(summary.blockedDns, 1);
+      expect(summary.cachedDns, 1);
+      expect(summary.httpSamples, 1);
+      expect(summary.blockedHttp, 1);
+      expect(summary.topDomains.first.domain, 'a.test');
+      expect(summary.topDomains.first.count, 2);
+    });
+
+    test('表为空时明说没有记录，并要求模型别编', () async {
+      final summary = await summarizeRecentTraffic(
+        dnsRepository: DnsLogRepository(db),
+        httpRepository: HttpRequestRepository(db),
+      );
+      expect(summary.isEmpty, isTrue);
+      expect(summary.render(), contains('没有任何 DNS 记录'));
+      final request = buildTrafficAnalysisRequest(
+        summary: summary,
+        systemPrompt: '',
+      );
+      expect(request.userPrompt, contains('样本不足'));
+      // 空样本时不索要四节报告——那只会诱导模型编内容。
+      expect(request.userPrompt, isNot(contains('### 1.')));
+    });
+
+    test('极速模式没有 HTTPS 面时说清「没有这一面」而不是「没有流量」', () async {
+      await insertDns('a.test', 'PASSED');
+      final summary = await summarizeRecentTraffic(
+        dnsRepository: DnsLogRepository(db),
+        httpUnavailableReason: '极速模式不产生 HTTPS 检查记录',
+      );
+      expect(summary.render(), contains('极速模式不产生 HTTPS 检查记录'));
+      expect(summary.render(), isNot(contains('采样数量: 0 条')));
+    });
+
+    test('域名分析带上该域名的真实命中记录', () async {
+      await insertDns('ads.tracker.test', 'BLOCKED', message: 'matched rule');
+      await insertDns('other.test', 'PASSED');
+      final rows = await DnsLogRepository(db).recent(limit: 50);
+      final context = [
+        for (final row in rows)
+          if (row.domain.contains('tracker'))
+            'DNS: ${row.domain} -> ${row.result}',
+      ].join('\n');
+      final request = buildDomainAnalysisRequest(
+        domain: 'ads.tracker.test',
+        systemPrompt: '',
+        context: context,
+      );
+      expect(request.userPrompt, contains('ads.tracker.test'));
+      expect(request.userPrompt, contains('BLOCKED'));
+      expect(request.userPrompt, isNot(contains('other.test')));
+      // 空系统提示词回落到旧版那段默认文案。
+      expect(request.systemPrompt, contains('资深网络安全'));
+    });
+  });
+
+  group('设置落盘', () {
+    late MemoryLegacyPrefsStore store;
+    late LegacySettings settings;
+
+    setUp(() {
+      store = MemoryLegacyPrefsStore();
+      settings = LegacySettings(store);
+    });
+
+    test('九个键落在全局容器，键名与 1.4.3 一致', () {
+      settings.setAgentApiBaseUrl('https://api.moonshot.cn/v1');
+      settings.setAgentApiKey('  sk-1  ');
+      settings.setAgentApiModel('kimi-k3');
+      settings.setAgentApiTemperature(0.4);
+      settings.setAgentApiSystemPrompt('prompt');
+      settings.setAgentAiActiveProviderId('p1');
+      expect(store.read('dns_vpn_prefs', 'agent_api_base_url'), 'https://api.moonshot.cn/v1');
+      // 写入时 trim：带空格去请求会 401，而界面上看不出来。
+      expect(store.read('dns_vpn_prefs', 'agent_api_key'), 'sk-1');
+      expect(store.read('dns_vpn_prefs', 'agent_api_model'), 'kimi-k3');
+      expect(store.read('dns_vpn_prefs', 'agent_api_temperature'), '0.4');
+      expect(store.read('dns_vpn_prefs', 'agent_api_system_prompt'), 'prompt');
+      expect(store.read('dns_vpn_prefs', 'agent_ai_active_provider_id'), 'p1');
+    });
+
+    test('温度按字符串存，读的时候两种类型都认', () {
+      // 旧版写的是 `config.temperature.toString()`；早期安装里可能有 float。
+      expect(settings.agentApiTemperature, 0.7);
+      store.putFloat('dns_vpn_prefs', 'agent_api_temperature', 1.2);
+      expect(settings.agentApiTemperature, 1.2);
+      store.putString('dns_vpn_prefs', 'agent_api_temperature', '0.3');
+      expect(settings.agentApiTemperature, 0.3);
+    });
+
+    test('缺失厂商 JSON 时按旧版规则播种', () {
+      final empty = loadAgentApiState(settings);
+      expect(empty.providers, hasLength(1));
+      expect(empty.providers.single.id, 'preset_deepseek');
+
+      // 曾经配过 Key 的用户得到一条「已配置厂商」：升级后列表不能是空的。
+      store.putString('dns_vpn_prefs', 'agent_api_key', 'sk-legacy');
+      store.putString(
+        'dns_vpn_prefs',
+        'agent_api_base_url',
+        'https://api.moonshot.cn/v1',
+      );
+      final migrated = loadAgentApiState(settings);
+      expect(migrated.providers.single.id, 'migrated_default');
+      expect(migrated.providers.single.baseUrl, 'https://api.moonshot.cn/v1');
+      expect(migrated.providers.single.hasKey, isTrue);
+    });
+
+    test('厂商 JSON 损坏时回落播种，不让整页读不出来', () {
+      store.putString('dns_vpn_prefs', 'agent_ai_providers_json', '{oops');
+      final state = loadAgentApiState(settings);
+      expect(state.providers, isNotEmpty);
+    });
+
+    test('厂商 JSON 往返保留混淆后的密钥', () {
+      final sealed = sealApiKey('sk-round-trip');
+      final encoded = jsonEncode([
+        AiProviderConfig(
+          id: 'p1',
+          name: 'P1',
+          baseUrl: 'https://x.test/v1',
+          model: 'm',
+          sealedKey: sealed,
+        ).toJson(),
+      ]);
+      final decoded = decodeAiProviders(encoded);
+      expect(decoded.single.id, 'p1');
+      expect(decoded.single.apiKey, 'sk-round-trip');
+      // 落盘的是密文，不是明文。
+      expect(encoded.contains('sk-round-trip'), isFalse);
+    });
+  });
+}

@@ -1,4 +1,5 @@
 import 'package:diting/pages/hub/agent_api_page.dart';
+import 'package:diting/pages/hub/agent_providers_page.dart';
 import 'package:diting/pages/hub/agent_settings_pages.dart';
 import 'package:diting/pages/hub/app_rules_page.dart';
 import 'package:diting/pages/hub/app_selection_pages.dart';
