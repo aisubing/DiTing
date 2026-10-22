@@ -12,6 +12,7 @@ import 'dart:async';
 
 import 'package:diting/data/mock_observability.dart';
 import 'package:diting/pages/observability/observability_common.dart';
+import 'package:diting/pages/system/demo_page_notice.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -240,6 +241,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
                         ),
                     ],
                   ),
+                  const DemoPageNotice(),
                 ],
               ),
             ),
