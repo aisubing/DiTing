@@ -138,16 +138,26 @@ class DashboardCardHeader extends StatelessWidget {
               size: glyphSize,
               color: colorScheme.onSurfaceVariant,
             ),
+          // 标题与 [leading] 同处一个贴左的组里：标题再长也只是自己省略，徽标始终
+          // 紧跟在标题右边（FlClash `DashboardCappedRow` 的 start/end 分栏效果）。
+          // 剩下 `Expanded` 撑满，才把 [trailing] 顶到右端。
           Expanded(
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                Flexible(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style,
+                  ),
+                ),
+                ...leading,
+              ],
             ),
           ),
-          ...leading,
-          const Spacer(),
           ...trailing,
           if (chevron)
             GlyphIcon(
