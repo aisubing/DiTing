@@ -11,6 +11,7 @@ part 'app_glyphs_c.dart';
 part 'app_glyphs_d.dart';
 part 'app_glyphs_e.dart';
 part 'app_glyphs_f.dart';
+part 'app_glyphs_g.dart';
 
 abstract final class AppGlyphs {
   // 按项目单文件 ≤550 行规范，字形数据定义拆分至下方各 part 文件
@@ -137,6 +138,13 @@ abstract final class AppGlyphs {
   static const gavel = _g_gavel_;
   static const appsList = _g_appsList_;
   static const iconTile = _g_iconTile_;
+
+  // 站点品牌标识（网络测速卡用）。与 FlClash `assets/images/services/` 同一批
+  // 图形，走同一条 GlyphPath 渲染路径。
+  static const baidu = _g_baidu_;
+  static const douyin = _g_douyin_;
+  static const bilibili = _g_bilibili_;
+  static const neteaseMusic = _g_neteaseMusic_;
   static Glyph sidebar(double progress) => _g_sidebar_(progress);
   static Glyph playPause(double progress) => _g_playPause_(progress);
   static Glyph backFor(TargetPlatform platform) => _g_backFor_(platform);

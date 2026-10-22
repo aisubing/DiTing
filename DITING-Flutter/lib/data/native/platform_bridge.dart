@@ -16,6 +16,7 @@
 /// 服务直接读那份 prefs（与 1.4.3 一致）。加一层通道只会多一次往返。
 library;
 
+import 'package:diting/data/native/process_memory.dart';
 import 'package:flutter/services.dart';
 
 const platformChannelName = 'com.haoze.diting/platform';
@@ -203,6 +204,21 @@ class PlatformBridge {
       return const DocumentOpenResult.unavailable();
     } on PlatformException catch (error) {
       return DocumentOpenResult.failed('无法打开文件选择器：${error.message}');
+    }
+  }
+
+  /// 本进程与整机的内存占用。
+  ///
+  /// 通道缺失时返回 [ProcessMemory.available] 为 false 的空快照——内存卡据此
+  /// 显示「—」。给 0 字节会让「读不到」看起来像「一点都没占」。
+  Future<ProcessMemory> memoryInfo() async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('memoryInfo');
+      return ProcessMemory.fromMap(raw);
+    } on MissingPluginException {
+      return const ProcessMemory();
+    } on PlatformException {
+      return const ProcessMemory();
     }
   }
 }

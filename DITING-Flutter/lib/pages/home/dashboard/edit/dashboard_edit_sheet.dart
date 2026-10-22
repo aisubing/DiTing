@@ -63,7 +63,11 @@ class DashboardEditSheet extends ConsumerWidget {
   }
 
   static Glyph _glyphOf(DashboardWidget widget) => switch (widget) {
-    DashboardWidget.serviceStatus => AppGlyphs.status,
+    DashboardWidget.status => AppGlyphs.status,
+    DashboardWidget.networkSpeed => AppGlyphs.speed,
+    DashboardWidget.siteLatency => AppGlyphs.speed,
+    DashboardWidget.memoryInfo => AppGlyphs.memory,
+    DashboardWidget.intranetIp => AppGlyphs.devices,
     DashboardWidget.trafficMonitor => AppGlyphs.dataUsage,
     DashboardWidget.requestOverview => AppGlyphs.requests,
     DashboardWidget.trafficStructure => AppGlyphs.speed,
@@ -76,7 +80,11 @@ class DashboardEditSheet extends ConsumerWidget {
   };
 
   static String _descriptionOf(DashboardWidget widget) => switch (widget) {
-    DashboardWidget.serviceStatus => '各服务探测结果与延迟',
+    DashboardWidget.status => '内核状态、运行时长、当前服务商与今日查询',
+    DashboardWidget.networkSpeed => '上下行实时速率曲线与今日累计流量',
+    DashboardWidget.siteLatency => '百度、抖音、哔哩哔哩、网易云音乐的实测延迟',
+    DashboardWidget.memoryInfo => '本进程 PSS 与 Java / 原生堆构成',
+    DashboardWidget.intranetIp => '当前局域网地址、监听状态与复制入口',
     DashboardWidget.trafficMonitor => '今日代理流量与实时上下行速率',
     DashboardWidget.requestOverview => '今日请求、通过、过滤与缓存命中',
     DashboardWidget.trafficStructure => '今日流量结构与竞速、拦截、缓存比率',

@@ -1,6 +1,10 @@
 import 'package:diting/data/dashboard_models.dart';
+import 'package:diting/pages/home/dashboard/cards/intranet_ip_card.dart';
 import 'package:diting/pages/home/dashboard/cards/log_list_cards.dart';
-import 'package:diting/pages/home/dashboard/cards/service_status_card.dart';
+import 'package:diting/pages/home/dashboard/cards/memory_card.dart';
+import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
+import 'package:diting/pages/home/dashboard/cards/site_latency_card.dart';
+import 'package:diting/pages/home/dashboard/cards/status_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
@@ -24,6 +28,7 @@ class DashboardCardActions {
     this.onOpenRace,
     this.onOpenBootstrap,
     this.onOpenSubscriptionStats,
+    this.onOpenTraffic,
   });
 
   /// 无入口（编辑态用）：所有卡片都不显示「详情」。
@@ -34,24 +39,34 @@ class DashboardCardActions {
   final VoidCallback? onOpenRace;
   final VoidCallback? onOpenBootstrap;
   final VoidCallback? onOpenSubscriptionStats;
+
+  /// `/traffic`：网络速度与流量监控两张卡的落点。
+  final VoidCallback? onOpenTraffic;
 }
 
 /// 仪表盘卡片注册表。
 ///
-/// 十张卡全部来自 1.4.3 的 `ModernLogDashboardModeViews.kt`：FlClash 时代的
-/// `currentOutbound` / `networkSpeed` / `vpn` / `profiles` / `proxyGroups` /
-/// `connectionStats` / `intranetIp` / `memory` 八张卡没有旧版依据，已随对应
-/// 页面文件一起删除。
+/// 十四张卡分两族：前五张对齐 FlClash 0.9.1 首页仪表盘（状态 / 网络速度 /
+/// 服务状态 / 内存 / 内网 IP），后九张来自 1.4.3 的
+/// `ModernLogDashboardModeViews.kt`。
 Widget buildDashboardCard(
   DashboardWidget widget,
   DashboardCardActions actions,
 ) {
   return switch (widget) {
-    DashboardWidget.serviceStatus => ServiceStatusCard(
+    DashboardWidget.status => StatusCard(onDetail: actions.onOpenRequests),
+    DashboardWidget.networkSpeed => NetworkSpeedCard(
+      onDetail: actions.onOpenTraffic,
+    ),
+    DashboardWidget.siteLatency => SiteLatencyCard(
+      onDetail: actions.onOpenTraffic,
+    ),
+    DashboardWidget.memoryInfo => MemoryCard(onDetail: actions.onOpenRequests),
+    DashboardWidget.intranetIp => IntranetIpCard(
       onDetail: actions.onOpenRequests,
     ),
     DashboardWidget.trafficMonitor => TrafficMonitorCard(
-      onDetail: actions.onOpenRequests,
+      onDetail: actions.onOpenTraffic,
     ),
     DashboardWidget.requestOverview => RequestOverviewCard(
       onDetail: actions.onOpenRequests,

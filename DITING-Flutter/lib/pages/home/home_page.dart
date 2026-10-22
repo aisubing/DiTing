@@ -1,6 +1,5 @@
 import 'package:diting/pages/home/dashboard/dashboard_board.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
-import 'package:diting/pages/home/widgets/home_dns_detail_block.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/pages/home/widgets/home_provider_card.dart';
 import 'package:diting/pages/home/widgets/home_resolution_card.dart';
@@ -19,12 +18,16 @@ import 'package:material_ui/material_ui.dart';
 /// 首页 / 仪表盘。
 ///
 /// 结构对齐 1.4.3 的 `MainScreenContent.kt`（`DnsHomeContent`）：
-/// 电源区 → 首页句子 → 服务商选择 → 解析模式 → **DNS 服务详情** → 可编排卡片区。
+/// 电源区 → 首页句子 → 服务商选择 → 解析模式（含当前解析地址）→ 可编排卡片区。
 ///
-/// 与旧版的两处差异，都是产品决策：
+/// 与旧版的三处差异，都是产品决策：
 /// 1. 旧版首页只有固定块，本仓保留了「卡片编排 + 编辑模式」
-///    （`dashboard_board.dart`），卡片集换成旧版真实存在的统计块；
-/// 2. 旧版没有快捷入口与顶栏菜单——上一轮的 `HomeQuickEntries` 与服务统计条、
+///    （`dashboard_board.dart`）；卡片集前五块照 FlClash 0.9.1 的仪表盘
+///    （状态 / 网络速度 / 网络测速 / 内存 / 内网 IP），其余是 1.4.3 真实存在的
+///    统计块；
+/// 2. 旧版把「DNS 服务详情」画成解析模式按钮**下面**的一段裸文字；这里并进
+///    解析模式卡内（`home_resolution_card.dart`），地址与它所属的模式不再分家；
+/// 3. 旧版没有快捷入口与顶栏菜单——上一轮的 `HomeQuickEntries` 与服务统计条、
 ///    以及「工作模式 / 三步引导 / 代理 / 配置档案 / 外观 / 组件画廊」六项菜单
 ///    已在本轮删除（FlClash 遗留，1.4.3 无对应物）。
 ///
@@ -147,14 +150,6 @@ class _HomePageState extends ConsumerState<HomePage>
                 ),
               ),
               const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Opacity(
-                  opacity: opacity[HomeLayer.dnsDetail] ?? 1,
-                  child: const HomeDnsDetailBlock(),
-                ),
-              ),
-              const SizedBox(height: 12),
             ],
             DashboardBoard(
               actions: DashboardCardActions(
@@ -164,6 +159,7 @@ class _HomePageState extends ConsumerState<HomePage>
                 onOpenBootstrap: () => context.push(LogPaths.bootstrap),
                 onOpenSubscriptionStats: () =>
                     context.push(LogPaths.subscriptionStats),
+                onOpenTraffic: () => context.push(Routes.traffic),
               ),
             ),
             const SizedBox(height: 8),

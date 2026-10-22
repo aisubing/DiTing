@@ -8,9 +8,11 @@
 /// - **内核状态**来自 `powerProvider` / `serverStatusProvider` 的真实状态机
 ///   （映射见 `state/core_status_providers.dart`）。
 ///
-/// 旧的 FlClash 专属模型（`CurrentProfile` / `OutboundMode` / `MemoryInfo` /
-/// `IntranetInfo` / `ConnectionStats`）已随对应的仪表盘卡片一起删除：1.4.3 没有
-/// 这些界面，留着只会让后继者再长出一页假数据。
+/// 旧的 FlClash 专属模型（`CurrentProfile` / `OutboundMode` / `ConnectionStats`）
+/// 已随对应的界面一起删除：1.4.3 没有这些界面，留着只会让后继者再长出一页假
+/// 数据。内存与内网 IP 两块重新回来了，但模型在各自的数据层
+/// （`data/native/process_memory.dart`、`diagnostics_bridge.dart`），不在这里——
+/// 它们各有自己的采样通道，塞进仪表盘模型只会让两处口径互相牵制。
 library;
 
 /// 环形缓冲：与上游 `FixedList` 同形（定长、追加、带 revision）。
@@ -97,13 +99,21 @@ enum CoreState {
 
 /// 仪表盘可编排卡片。
 ///
-/// 1.4.3 的仪表盘没有「卡片编排」这个概念（它是一屏固定统计块），本仓保留
-/// 编排能力，但**卡片集换成了旧版真实存在的统计块**：全部来自
-/// `DITING-Legacy/.../ui/dashboard/ModernLogDashboardModeViews.kt`。
+/// 前半段（[status] / [networkSpeed] / [siteLatency] / [memoryInfo] /
+/// [intranetIp]）对齐 FlClash 0.9.1 首页的仪表盘：状态、网络速度、服务状态、
+/// 内存信息、内网 IP 五块，形状与信息层级照抄 `views/dashboard/widgets/`，
+/// 数据换成本仓的真实来源。其中「服务状态」按用户要求改成了**国内站点测速**
+/// （百度 / 抖音 / 哔哩哔哩 / 网易云音乐），因为那张卡真正要回答的是「现在上网
+/// 顺不顺」，而不是「解析服务商应答多快」。后半段是 1.4.3 的统计块
+/// （`DITING-Legacy/.../ui/dashboard/ModernLogDashboardModeViews.kt`）。
 ///
-/// 顺序即「添加卡片」浮层里的展示顺序，与 `AllModeDashboard` 的块顺序一致。
+/// 顺序即「添加卡片」浮层里的展示顺序，与首页默认顺序一致。
 enum DashboardWidget {
-  serviceStatus('服务状态'),
+  status('状态'),
+  networkSpeed('网络速度'),
+  siteLatency('网络测速'),
+  memoryInfo('内存信息'),
+  intranetIp('内网 IP'),
   trafficMonitor('流量监控'),
   requestOverview('请求概览'),
   trafficStructure('今日流量结构'),
@@ -119,13 +129,18 @@ enum DashboardWidget {
   final String label;
 }
 
-/// 首页默认上屏的四块：服务状态 → 流量 → 请求概览 → 流量结构。
+/// 首页默认上屏的七块。
 ///
-/// 与旧版 `AllModeDashboard` 的前四块一一对应，也是打开首页第一屏能看到的
-/// 内容；其余六块通过编辑模式「添加卡片」加进来。
+/// 前五块是 FlClash 式仪表盘（状态 / 网络速度 / 网络测速 / 内存 / 内网 IP），
+/// 后两块是日志统计。`trafficMonitor` 刻意**不在**默认集里：它显示的「今日
+/// 流量 + 实时速率」与「网络速度」卡是同一份数据，两张一起上屏会让人以为
+/// 有两个不同的计数器。它仍然可以在编辑模式里加回来。
 const defaultDashboardWidgets = <DashboardWidget>[
-  DashboardWidget.serviceStatus,
-  DashboardWidget.trafficMonitor,
+  DashboardWidget.status,
+  DashboardWidget.networkSpeed,
+  DashboardWidget.siteLatency,
+  DashboardWidget.memoryInfo,
+  DashboardWidget.intranetIp,
   DashboardWidget.requestOverview,
   DashboardWidget.trafficStructure,
 ];

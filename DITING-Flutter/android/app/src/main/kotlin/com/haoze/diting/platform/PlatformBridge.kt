@@ -132,6 +132,7 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             "readCrashLogs" -> result.success(readCrashLogs())
             "clearCrashLogs" -> clearCrashLogs(result)
             "exportText" -> exportText(call, result)
+            "memoryInfo" -> result.success(memoryInfo())
             // Data-cleanup actions that touch the file system. Their Dart
             // counterparts (logs / traffic / cache / rules / subscriptions) run
             // through the sqflite layer; these two cannot, because sqflite only
@@ -466,6 +467,50 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             if (ok) removed++
         }
         return removed
+    }
+
+    // ----------------------------------------------------------- 进程内存
+
+    /**
+     * This process's memory plus the device's totals, all in KB.
+     *
+     * Two different quantities are reported, and they must not be added:
+     * - `totalPss` — the whole process PSS, including mmapped code and shared
+     *   pages. This is what "how much of the device does this app use" means.
+     * - `javaHeap` / `nativeHeap` — allocator-level heap usage, answering
+     *   "where is the memory". PSS also counts `.so` / `.dex` mappings, so the
+     *   two heaps never sum to it.
+     *
+     * The `summary.java-heap` / `summary.native-heap` keys of `getMemoryStat`
+     * were the obvious way to split PSS, but on Android 14 they read 0 for this
+     * app (`dumpsys meminfo` reports the same, with the heap landing in
+     * `Unknown`), which produced the self-contradictory 「总占用 339MB、
+     * Java 堆 0B」. Allocator figures are measured on every API level instead.
+     *
+     * The Go engine is an in-process AAR, so its allocations are already inside
+     * the native heap and cannot be reported separately. FlClash splits
+     * 「应用 / 内核」 because its core is a separate process.
+     */
+    private fun memoryInfo(): Map<String, Any> {
+        val self = android.os.Debug.MemoryInfo()
+        val hasSelf = runCatching { android.os.Debug.getMemoryInfo(self) }.isSuccess
+        val totalPss = if (hasSelf) self.totalPss else 0
+        val runtime = Runtime.getRuntime()
+        val javaHeap = runtime.totalMemory() - runtime.freeMemory()
+        val nativeHeap = android.os.Debug.getNativeHeapAllocatedSize()
+        val system = ActivityManager.MemoryInfo()
+        val hasSystem = runCatching {
+            val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            manager.getMemoryInfo(system)
+        }.isSuccess
+        return mapOf(
+            "available" to (hasSelf && totalPss > 0),
+            "totalPss" to totalPss,
+            "javaHeap" to javaHeap / 1024,
+            "nativeHeap" to nativeHeap / 1024,
+            "systemTotal" to if (hasSystem) system.totalMem / 1024 else 0L,
+            "systemAvail" to if (hasSystem) system.availMem / 1024 else 0L,
+        )
     }
 
     // ----------------------------------------------------------- 导出
