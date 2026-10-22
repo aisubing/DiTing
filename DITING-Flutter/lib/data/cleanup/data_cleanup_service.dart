@@ -426,9 +426,9 @@ class DataCleanupService {
     return existed;
   }
 
-  /// 播种标记用的 versionCode；读不到时用当前包版本号（1.4.4 = 10404）。
+  /// 播种标记用的 versionCode；读不到时用当前包版本号（2.0.0 = 20000）。
   int get _versionCodeOrFallback {
     final raw = _prefs.read(LegacySettings.uiContainer, 'app_version_code');
-    return raw is int && raw > 0 ? raw : 10404;
+    return raw is int && raw > 0 ? raw : 20000;
   }
 }

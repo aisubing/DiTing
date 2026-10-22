@@ -269,11 +269,11 @@ class UpdateNotifier extends Notifier<UpdateState> {
   /// 本机版本。
   ///
   /// 来自 `app_version_name`（`LegacySettings` 写入的构建版本），
-  /// 读不到时回落到 `1.4.4` —— 与 `app_version_code` 的默认 10404 对应。
+  /// 读不到时回落到 `2.0.0` —— 与 `app_version_code` 的默认 20000 对应。
   String get _currentVersion {
     final raw = ref.read(legacySettingsProvider).rawValue('app_version_name');
     if (raw is String && raw.trim().isNotEmpty) return raw.trim();
-    return '1.4.4';
+    return '2.0.0';
   }
 
   Future<void> check() async {

@@ -27,7 +27,7 @@ Future<RuleBootstrap> bootstrapRules(
   }
 
   final repository = RuleRepository(db);
-  await _seedPresetIfNeeded(repository, settings, versionCode ?? 10404);
+  await _seedPresetIfNeeded(repository, settings, versionCode ?? 20000);
   try {
     return (repository: repository, rules: await repository.loadAll());
   } on DatabaseException catch (error) {

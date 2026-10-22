@@ -26,6 +26,12 @@ if not exist "pubspec.yaml" goto ERR_NO_FLUTTER
 where flutter >nul 2>&1
 if errorlevel 1 goto ERR_NO_FLUTTER_BIN
 
+:: Read the display version (e.g. "2.0.0") from pubspec.yaml so the versioned
+:: archive name always matches the build, with no second place to edit.
+set "APP_VERSION_NAME=unknown"
+for /f "tokens=2 delims=: " %%A in ('findstr /b "version:" pubspec.yaml') do set "APP_VERSION_NAME=%%A"
+for /f "tokens=1 delims=+" %%B in ("!APP_VERSION_NAME!") do set "APP_VERSION_NAME=%%B"
+
 :: ============================================================================
 :: Step 1: Select build type
 :: ============================================================================
@@ -129,6 +135,13 @@ echo ================================================================
 echo [SUCCESS] %BUILD_TYPE_NAME% build completed!
 echo [INFO] APK: %FOUND_APK%
 for %%F in ("%FOUND_APK%") do echo [INFO] Size: %%~zF bytes
+rem Versioned archive: produced by android\app\build.gradle.kts's
+rem copy*ApkWithVersion after assemble, e.g. DITING-release-v2.0.0.apk
+rem (not produced for --split-per-abi).
+if not "%BUILD_TYPE_NAME%"=="Release (per-ABI)" (
+    set "VERSIONED_APK=%CD%\build\app\outputs\apk\versioned\%BUILD_TYPE%\DITING-%BUILD_TYPE%-v%APP_VERSION_NAME%.apk"
+    if exist "!VERSIONED_APK!" echo [INFO] Versioned APK: !VERSIONED_APK!
+)
 echo ================================================================
 echo.
 

@@ -1,6 +1,6 @@
 /// 关于页 / 更新页 / 赞助页共用的应用标识、外部地址与「复制并提示」动作。
 ///
-/// 版本号与 `pubspec.yaml` 的 `version: 1.4.4+10404` 手工对齐：旧版读
+/// 版本号与 `pubspec.yaml` 的 `version: 2.0.0+20000` 手工对齐：旧版读
 /// `BuildConfig.VERSION_NAME`，Flutter 侧没有 package_info 依赖，只能手写；
 /// 发版时两处同改。上一轮这里还写着 `1.0.0`，关于页因此一直显示一个不存在的版本。
 ///
@@ -13,7 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 展示用版本名（不含 build 号）。
-const appVersionName = '1.4.4';
+const appVersionName = '2.0.0';
 
 /// 旧版 `AboutScreen.PROJECT_REPOSITORY_URL`。
 const projectRepositoryUrl = 'https://github.com/haoze-evolluling/DITING';

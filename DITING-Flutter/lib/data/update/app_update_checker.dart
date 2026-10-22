@@ -54,7 +54,7 @@ class UpdateCheckResult {
 
   final UpdateInfo? info;
 
-  /// 本机版本，用于「当前 1.4.4 → 最新 1.4.5」的展示。
+  /// 本机版本，用于「当前 2.0.0 → 最新 2.0.1」的展示。
   final String? currentVersion;
 
   final String? error;

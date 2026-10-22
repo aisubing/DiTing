@@ -1,9 +1,9 @@
 name: diting
 description: "谛听 DITING — Android 客户端（Flutter 重写，兼容 1.4.3 数据）。"
 publish_to: 'none'
-# 旧版最新为 1.4.3 / versionCode 10403；本版按 major*10000+minor*100+patch 递增，
-# 保证 upgrade 安装时不会被系统判为降级。
-version: 1.4.4+10404
+# versionCode 按 major*10000+minor*100+patch 递增（2.0.0 = 20000），
+# 保证 upgrade 安装时不会被系统判为降级。旧版线止于 1.4.3 / 10403、1.4.4 / 10404。
+version: 2.0.0+20000
 
 environment:
   sdk: ^3.13.5

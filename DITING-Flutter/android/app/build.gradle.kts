@@ -148,6 +148,42 @@ kotlin {
     }
 }
 
+// ==============================================================================
+// 版本化产物命名（对齐 DITING-Legacy 的 copy${BuildType}ApkWithVersion）
+// ==============================================================================
+// Flutter 产出的包名固定是 `app-<buildType>.apk`，多次发版后会互相覆盖，也不
+// 知道手上这个是哪个版本。这里在 assemble 之后复制一份到
+// `build/outputs/apk/versioned/<buildType>/DITING-<buildType>-v<versionName>.apk`，
+// 与旧版归档习惯一致（例如 DITING-release-v2.0.0.apk）。
+//
+// 版本号取自 pubspec.yaml，不在 Gradle 里再写一遍，免得两处漂移。`--split-per-abi`
+// 时 Flutter 会产出带 ABI 后缀的多个包，本任务只处理不分包的基础包（已在外层
+// 用 splitPerAbi 跳过）。
+val apkVersionName: String = project.findProperty("ditingApkVersionName")?.toString()
+    ?: run {
+        val pubspec = rootProject.file("../pubspec.yaml")
+        val match = Regex("^version:\\s*([^+\\s]+)", RegexOption.MULTILINE)
+            .find(pubspec.readText())
+        match?.groupValues?.get(1) ?: "unknown"
+    }
+if (!splitPerAbi) {
+    listOf("debug", "release").forEach { buildType ->
+        val capitalized = buildType.replaceFirstChar { it.uppercase() }
+        val copyTask = tasks.register<Copy>("copy${capitalized}ApkWithVersion") {
+            from(layout.buildDirectory.dir("outputs/apk/$buildType")) {
+                include("app-$buildType.apk")
+            }
+            rename { "DITING-$buildType-v$apkVersionName.apk" }
+            into(layout.buildDirectory.dir("outputs/apk/versioned/$buildType"))
+        }
+        tasks.configureEach {
+            if (name == "assemble$capitalized") {
+                finalizedBy(copyTask)
+            }
+        }
+    }
+}
+
 dependencies {
     // Go userspace tunnel (gomobile AAR) reused unchanged from 1.4.3.
     // Local x86_64 emulators need an amd64 build; pass
