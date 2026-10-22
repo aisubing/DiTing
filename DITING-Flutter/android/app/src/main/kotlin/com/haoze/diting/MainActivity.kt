@@ -7,6 +7,7 @@ import com.haoze.diting.net.DiagnosticsBridge
 import com.haoze.diting.net.DnsLatencyBridge
 import com.haoze.diting.platform.BackgroundBridge
 import com.haoze.diting.platform.PlatformBridge
+import com.haoze.diting.platform.RecognitionAvatarBridge
 import com.haoze.diting.platform.UpdateBridge
 import com.haoze.diting.proxy.OutboundProxyBridge
 import io.flutter.embedding.android.FlutterActivity
@@ -47,6 +48,9 @@ class MainActivity : FlutterActivity() {
         // 「软件背景」的选图与解码：`ACTION_OPEN_DOCUMENT` 需要 Activity 往返，
         // 大图也要用 `BitmapFactory` 采样，Dart 无法替代。
         backgroundBridge = BackgroundBridge(this).also { it.register(messenger) }
+        // 名单头像的磁盘缓存：头像不随 APK 发布，联网取回后必须落盘，
+        // 否则每次冷启动都要重下十几张图。Dart 侧没有 path_provider。
+        RecognitionAvatarBridge(applicationContext).register(messenger)
     }
 
     override fun onResume() {
