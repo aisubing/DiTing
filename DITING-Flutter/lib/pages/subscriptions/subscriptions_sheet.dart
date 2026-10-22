@@ -136,7 +136,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
             ListFooter(
               text:
                   '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定）。'
-                  '保存后会立即下载一次正文并统计行数；规则解析与入库将在后续版本接入。',
+                  '保存后会立即下载一次正文，解析成规则并写入规则库。',
             ),
             SizedBox(height: NavigationDock.insetOf(context)),
           ],

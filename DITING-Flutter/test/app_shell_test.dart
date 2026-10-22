@@ -117,8 +117,9 @@ void main() {
     expect(find.text('AdGuard 基础'), findsNothing);
     expect(find.text('EasyList China'), findsNothing);
     expect(find.text('还没有订阅'), findsOneWidget);
-    // 边界说明必须始终可见：本轮只下载正文与统计行数，不入规则表。
-    expect(find.textContaining('规则解析与入库将在后续版本接入'), findsWidgets);
+    // 解析链已移植：文案必须改成「解析并写入规则库」，不能还挂着旧免责说明。
+    expect(find.textContaining('解析并写入规则库'), findsWidgets);
+    expect(find.textContaining('后续版本接入'), findsNothing);
   });
 
   testWidgets('每个路由都能构建', (tester) async {

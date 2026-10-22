@@ -1,14 +1,10 @@
 /// 订阅内容的真实网络下载（`dart:io HttpClient`，不引入 pub 依赖）。
 ///
-/// 行为转写自 1.4.3 `core/rule/SubscriptionDownloader.kt` 的下载层，并**去掉**
-/// 规则解析与入库：解析链（`AdGuardRuleParser` 371 行 + `HostsAndDnsmasqParser`
-/// 156 行）本轮没有移植，因此这里只负责「把正文拉下来、数行数、拿校验符」。
-///
-/// ## 本轮边界（必须如实告知用户）
-/// 下载到的正文**不会**写进 `block_rule` / `allow_rule` / `rewrite_rule`。写入
-/// `subscription.ruleCount` 的是 [countEffectiveRuleLines] 的**词法行数**，是
-/// 真实规则条数的上界。UI 文案必须写「已下载 N 行，规则解析与入库将在后续版本
-/// 接入」，不能写成「已导入 N 条规则」，否则用户会以为拦截已生效。
+/// 行为转写自 1.4.3 `core/rule/SubscriptionDownloader.kt` 的下载层。**下载与
+/// 解析/入库是分开的两层**：这里只负责「把正文拉下来、拿校验符」，正文原样放进
+/// [SubscriptionFetchResult.content]，由 `lib/data/rules/` 的解析器与
+/// `RuleImporter` 负责分类、去重、写表。把两件事混在一个类里会让下载层难以在
+/// 测试里替换（页面与测试都靠 [SubscriptionFetcher] 注入假实现）。
 ///
 /// ## 超时与重定向
 /// 连接 30s、读取 60s，与 `SubscriptionDownloader` 构造的 `OkHttpClient` 一致。
@@ -33,6 +29,7 @@ class SubscriptionFetchResult {
     this.error,
     this.requestedUrl,
     this.usedMirror = false,
+    this.content,
   });
 
   const SubscriptionFetchResult.notModified({
@@ -43,7 +40,8 @@ class SubscriptionFetchResult {
   }) : outcome = SubscriptionFetchOutcome.notModified,
        lineCount = 0,
        byteLength = 0,
-       error = null;
+       error = null,
+       content = null;
 
   const SubscriptionFetchResult.failed(
     String message, {
@@ -54,7 +52,8 @@ class SubscriptionFetchResult {
        byteLength = 0,
        etag = null,
        lastModified = null,
-       error = message;
+       error = message,
+       content = null;
 
   final SubscriptionFetchOutcome outcome;
 
@@ -72,6 +71,12 @@ class SubscriptionFetchResult {
 
   /// 本次是否走了镜像模板。
   final bool usedMirror;
+
+  /// 下载到的正文（仅 `content` 结果有值）。
+  ///
+  /// 必须保留：规则解析与入库都在下载之后进行，丢掉正文就只能数行数——上一轮
+  /// 就是这样，订阅永远不产生实际拦截。
+  final String? content;
 
   bool get isSuccess => outcome == SubscriptionFetchOutcome.content;
   bool get isNotModified => outcome == SubscriptionFetchOutcome.notModified;
@@ -284,6 +289,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
       lastModified: lastModified,
       requestedUrl: requestedUrl,
       usedMirror: usedMirror,
+      content: content,
     );
   }
 

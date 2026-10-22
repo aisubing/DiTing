@@ -331,6 +331,7 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 | `/hub/config-transfer` 四格统计 | 服务商数（prefs）、订阅数（`subscription` 表）、自定义规则数（规则表 `user` 来源）、名单应用数（四份名单并集） |
 | AI 分析（Agent）全流程 | 厂商配置落盘 + 真实 HTTP 调用厂商接口（见 §8.1.9） |
 | 应用独立规则的黑/白名单与全阻断 | 规则库 `appScope`（见 §8.3；不再有「尚未接通」占位） |
+| 订阅更新 | 真实下载 + 真实解析 + 真实入库（见 §8.3；`ruleCount` 是入库条数） |
 
 ### 8.1.1 数据清理是「真删」，不是弹提示
 
@@ -600,8 +601,26 @@ HTTP 状态，含「字符串比较会判错」的 `1.4.10 vs 1.4.9` 用例。
 
 ### 8.3 能力缺口（不是 bug）
 
-- **订阅**：更新是真实 HTTP 下载，但订阅正文**尚未写入规则表**（解析链未移植），所以
-  `ruleCount` 是词法行数而非生效规则数，卡片与页脚必须如实标注——改成「规则已更新」是谎报。
+- **订阅已全接通**：更新是真实 HTTP 下载 + 真实解析 + 真实入库，`ruleCount` 是**已入库
+  规则条数**（不再有「词法行数」口径）。
+  - 解析器 `lib/data/rules/`（`rule_parser` / `adblock_line_parser` / `hosts_parser` /
+    `rule_domain_utils`）逐条移植 1.4.3 的 `AdGuardRuleParser` 一族：AdGuard/ABP 域名与
+    `$` 修饰符、`$dnsrewrite=`、`$badfilter`（两趟扫描，与出现顺序无关）、hosts 一行多域名、
+    dnsmasq `address=/` `server=/`、元素隐藏分隔符（`#$@#` 必须先于 `#$#` 识别）。
+  - 入库器 `RuleImporter` 按 `sub_<id>` 来源写 `block_rule` / `allow_rule` / `rewrite_rule` /
+    `go_url_rule` 及其 `*_source` 表；重复导入按 `(pattern, important, appScope,
+    appInverted, dnsType, isRegex)` 查重复用既有行——**设备上的老库没有那组唯一索引**
+    （`sqlite_master` 里只有 source 表的主键索引），只靠 `OnConflictStrategy.IGNORE`
+    会让每次更新追加一整份副本。
+  - 更新前先删该订阅的旧来源行再导新的：订阅内容是「当前全量」，增量追加会让上一版已
+    移除的域名永远留着。删来源行而不是删规则行，用户手加或别的订阅引用的同一 pattern
+    不受影响；无来源引用的孤儿规则行会被清掉。
+  - 订阅总开关同时置 `*_source.enabled`：规则生效条件是「规则行启用 && 至少一个来源行
+    启用」，只改 `subscription.enabled` 会让关掉的订阅继续拦截。
+  - **元素隐藏（cosmetic）规则解析但不入库**：Go 引擎没有注入通道，写进表只会让条数虚高。
+    `RuleImportSummary.notAppliedCount` 单独计数，UI 如实说明。
+  - `go_url_rule` 没有 `appScope` 列（旧版实体也没有），带 `$app=` 的 URL 规则会被跳过而
+    不是退化成全局 URL 拦截。
 - **应用独立规则已全接通**（不再有只读说明位）：应用清单、网络层放行域名、DNS 专属黑/白名单、
   「默认拦截全部外联」都是真实读写 + 落库。
   - 网络层放行域名 → `app_allowlist_rules_json`，引擎侧 `Engine.setAppAllowlist`。

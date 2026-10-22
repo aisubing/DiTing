@@ -1,19 +1,21 @@
 /// 订阅域的真实数据源：读旧库 `subscription` / `subscription_group`，更新走真实
-/// HTTP 下载。
+/// HTTP 下载 + 真实规则解析与入库。
 ///
 /// 与演示版的三个关键差别：
 /// 1. 列表来自 `diting_database`（普通/服务器）或 `diting_express`（极速）里
 ///    1.4.3 的 Room 表，不再有 `mockSubscriptions` 播种；
 /// 2. 更新是**真发包**（[HttpSubscriptionFetcher]），304 / HTTP 错误 / 超时
 ///    分别落成 `ready` / `failed` 三种状态；
-/// 3. `ruleCount` 是**词法行数**而不是已导入规则数——解析链本轮未移植，UI 必须
-///    如实标注（见 [SubscriptionEntry.ruleCountIsLexicalOnly]）。
+/// 3. 正文下载后经 `lib/data/rules/` 解析成 block/allow/rewrite 并按
+///    `sub_<id>` 来源写进规则表，`ruleCount` 是**真实入库条数**。
 library;
 
 import 'package:diting/data/db/legacy_database.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
+import 'package:diting/data/rules/rule_importer.dart';
+import 'package:diting/data/rules/rule_parser.dart';
 import 'package:diting/data/subscriptions/subscription_fetcher.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -51,6 +53,12 @@ final subscriptionFetcherProvider = Provider<SubscriptionFetcher>(
   (ref) => HttpSubscriptionFetcher(),
 );
 
+/// 规则入库器：与订阅仓库共用同一个库句柄。库不存在时为 null。
+final ruleImporterProvider = FutureProvider<RuleImporter?>((ref) async {
+  final db = await ref.watch(subscriptionDatabaseProvider.future);
+  return db == null ? null : RuleImporter(db);
+});
+
 /// 订阅仓库：没有旧库时返回 null，调用方据此渲染空状态。
 final subscriptionRepositoryProvider = FutureProvider<SubscriptionRepository?>((
   ref,
@@ -87,12 +95,12 @@ class SubscriptionEntry {
   int get lastUpdated => record.lastUpdated;
   int get lastAttemptAt => record.lastAttemptAt;
 
-  /// 本轮 `ruleCount` 只统计「非空、非注释」的行，**不是**已入库规则数。
+  /// `ruleCount` 现在是**真实入库条数**（解析后写进 `block_rule` /
+  /// `allow_rule` / `rewrite_rule` / `go_url_rule` 的行数）。
   ///
-  /// 解析链（`AdGuardRuleParser` / `CategorizedRuleStreamImporter`）尚未移植，
-  /// 订阅正文没有写进 `block_rule` / `allow_rule`。常量 `true` 让每个调用点都
-  /// 必须显式处理这个边界，避免有人把数字当「已生效规则数」展示。
-  bool get ruleCountIsLexicalOnly => true;
+  /// 恒为 `false`：解析链已移植，不再需要「词法行数」的免责说明。保留这个 getter
+  /// 是为了让仍按旧口径写文案的调用点被编译器/测试盯住，而不是让它们悄悄说错话。
+  bool get ruleCountIsLexicalOnly => false;
 
   bool get isRemote => record.isRemote;
   bool get isFailed => record.importState == SubscriptionImportState.failed;
@@ -309,9 +317,21 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
           lastModified: result.lastModified ?? entry.record.httpLastModified,
         );
       case SubscriptionFetchOutcome.content:
+        // 解析 + 入库。条数用**真实写入条数**，不是词法行数。
+        final imported = await _importContent(entry, result.content ?? '');
+        if (imported == null) {
+          // 库不可用：正文下载成功但落不了盘，必须报失败，不能显示「已更新」
+          // 而库里一条规则都没有。
+          await repository.markUpdateFailed(
+            entry.id,
+            error: '规则库不可用，下载的规则无法入库',
+            attemptedAt: now,
+          );
+          return const SubscriptionFetchResult.failed('规则库不可用，下载的规则无法入库');
+        }
         await repository.markImported(
           entry.id,
-          ruleCount: result.lineCount,
+          ruleCount: imported.insertedCount,
           lastUpdated: now,
           etag: result.etag,
           lastModified: result.lastModified,
@@ -324,6 +344,33 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
         );
     }
     return result;
+  }
+
+  /// 解析正文并写规则表；返回 null 表示规则库不可用。
+  ///
+  /// 先删该订阅的旧规则再导新的：订阅内容是「当前全量」，增量追加会让上一版
+  /// 已经移除的域名永远留在库里。删除只动 `sub_<id>` 来源行，用户手加或别的
+  /// 订阅引用的同一 pattern 不受影响。
+  Future<RuleImportSummary?> _importContent(
+    SubscriptionEntry entry,
+    String content,
+  ) async {
+    final importer = await ref.read(ruleImporterProvider.future);
+    if (importer == null) {
+      return null;
+    }
+    final source = subscriptionSourceTag(entry.id);
+    final parsed = parseCategorized(content);
+    await importer.removeRulesBySource(source);
+    if (parsed.isEmpty) {
+      return const RuleImportSummary();
+    }
+    return importer.import(
+      parsed,
+      source: source,
+      kind: entry.kind.storageValue,
+      enabled: entry.enabled,
+    );
   }
 
   static String _summarize(List<SubscriptionFetchResult> results) {
@@ -424,9 +471,16 @@ class SubscriptionActions {
     return AddSubscriptionOk(id);
   }
 
+  /// 订阅总开关。
+  ///
+  /// 除了写 `subscription.enabled`，还要把该订阅的**来源行**一起置 0/1：
+  /// 规则是否生效取决于「规则行启用 && 至少一个来源行启用」，只改订阅行会让
+  /// 关掉的订阅继续拦截（规则行仍然是 1）。
   Future<void> setEnabled(int id, bool enabled) async {
     await (await _ref.read(subscriptionRepositoryProvider.future))
         ?.setEnabled(id, enabled);
+    await (await _ref.read(ruleImporterProvider.future))
+        ?.setSourceEnabled(subscriptionSourceTag(id), enabled);
   }
 
   Future<void> rename(int id, String name) async {
@@ -438,7 +492,13 @@ class SubscriptionActions {
         ?.setName(id, trimmed);
   }
 
+  /// 删除订阅，并清掉它贡献的规则。
+  ///
+  /// 顺序是先删规则再删订阅行：反过来的话，若第二步失败就留下一批没有主的规则
+  /// 继续拦截，用户会看到「订阅已删除但域名还是打不开」。
   Future<void> remove(int id) async {
+    await (await _ref.read(ruleImporterProvider.future))
+        ?.removeRulesBySource(subscriptionSourceTag(id));
     await (await _ref.read(subscriptionRepositoryProvider.future))
         ?.deleteById(id);
   }

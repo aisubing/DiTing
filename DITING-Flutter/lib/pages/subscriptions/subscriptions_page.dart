@@ -17,11 +17,11 @@ part 'subscriptions_sheet.dart';
 /// 某一组，顶部一行 chip 比逐张卡片阅读快得多。分组数据来自 1.4.3 的
 /// `subscription_group` 表（`addedAt ASC, name COLLATE NOCASE ASC`）。
 ///
-/// ## 本轮边界（必须让用户看见）
-/// 更新是真实 HTTP 下载，但订阅正文**没有**写进 `block_rule` / `allow_rule`：
-/// 规则解析链（`AdGuardRuleParser` 等）本轮未移植。因此卡片上显示的是「已下载
-/// N 行」而不是「N 条规则生效」，页面底部固定一条说明。不要把这条文案删掉换成
-/// 「规则已更新」，那是谎报。
+/// ## 数据口径
+/// 更新是真实 HTTP 下载，正文随后经 `lib/data/rules/` 解析成 block / allow /
+/// rewrite 并按 `sub_<id>` 来源写进规则表，所以卡片上的数字是**真实入库条数**
+/// （可以当「N 条规则生效」）。解析出来但本仓不入库的只有元素隐藏（cosmetic）
+/// 规则——引擎没有注入通道，这部分在更新结果里单独说明，不计入条数。
 class SubscriptionsPage extends ConsumerWidget {
   const SubscriptionsPage({super.key});
 
@@ -80,7 +80,7 @@ class SubscriptionsPage extends ConsumerWidget {
         ],
         child: Text(
           '删除「${entry.name}」后不可撤销。\n\n'
-          '本轮订阅正文尚未写入规则表，因此删除只影响这一条订阅记录本身。',
+          '删除会同时移除这条订阅贡献的全部规则（来源标签 sub_<id>）。',
         ),
       ),
     );
@@ -156,7 +156,7 @@ class SubscriptionsPage extends ConsumerWidget {
                     value: '$enabledCount',
                     color: colorScheme.success,
                   ),
-                  StatItem(label: '已下载行数', value: _formatCount(lineCount)),
+                  StatItem(label: '已入库规则', value: _formatCount(lineCount)),
                   if (failedCount > 0)
                     StatItem(
                       label: '异常',
@@ -225,8 +225,8 @@ class SubscriptionsPage extends ConsumerWidget {
               child: NullStatus(
                 label: '还没有订阅',
                 description:
-                    '订阅可以批量维护规则；本轮只下载正文并统计行数，'
-                    '规则解析与入库将在后续版本接入',
+                    '订阅可以批量维护规则；更新会下载正文、解析并写入规则库，'
+                    '拦截随之生效。',
                 illustration: NullStatusIllustration.rules,
                 action: FilledButton(
                   onPressed: () => showSheet<void>(
@@ -265,8 +265,8 @@ class SubscriptionsPage extends ConsumerWidget {
             padding: EdgeInsets.fromLTRB(0, 8, 0, 0),
             child: ListFooter(
               text:
-                  '本轮订阅更新只做真实下载与行数统计：正文不会写入拦截/放行规则表，'
-                  '因此更新后拦截行为不会改变。规则解析与入库将在后续版本接入。',
+                  '更新会下载正文、解析成黑/白名单与覆写规则并写入规则库，'
+                  '同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。',
             ),
           ),
           SizedBox(height: NavigationDock.insetOf(context)),

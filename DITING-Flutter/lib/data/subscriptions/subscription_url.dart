@@ -103,14 +103,13 @@ String extractNameFromUrl(String url) {
   return uri.host.isNotEmpty ? uri.host : url;
 }
 
-/// 订阅内容的「有效行」条数。
+/// 订阅内容的「有效行」词法计数（非空、非注释行）。
 ///
-/// **已知近似（本轮边界）**：1.4.3 的条数来自 `AdGuardRuleParser` +
-/// `CategorizedRuleStreamImporter.countRules`，按 block/allow/rewrite 三类解析
-/// 后求和，会丢掉注释、空行、`$badfilter` 与类型不匹配的行。本轮的解析链
-/// 尚未移植，因此这里只做**词法级**统计：非空、非注释（`!`、`#`、`//`）的行。
-/// 结果是 `ruleCount` 的上界，可能比旧版多算。UI 上必须如实标注「已下载 N 行，
-/// 规则解析与入库将在后续版本接入」，不能当作「已导入 N 条规则」展示。
+/// **注意口径**：这只是下载层的粗略计数（[SubscriptionFetchResult.lineCount]），
+/// **不是**生效规则数。真正的规则条数来自解析 + 入库后的
+/// `RuleImportSummary.insertedCount`（见 `lib/data/rules/`），那是 UI 唯一可以当
+/// 「已入库 N 条规则」展示的数字。两者可能差很多：`$badfilter`、类型不匹配、
+/// 重复行、元素隐藏规则都会被这里的词法计数算进去，却不会入库。
 int countEffectiveRuleLines(String content) {
   var count = 0;
   for (final rawLine in content.split('\n')) {

@@ -150,10 +150,9 @@ class _SubscriptionCard extends StatelessWidget {
                       borderRadius: AppRadius.full,
                     ),
                   if (entry.isRemote)
-                    // 边界必须写在卡片上，不能只写在页脚：用户看的是这一行。
                     Text(
-                      '已下载 ${_formatCount(entry.ruleCount)} 行；'
-                      '规则解析与入库将在后续版本接入，拦截行为暂不受影响。',
+                      '已入库 ${_formatCount(entry.ruleCount)} 条规则；'
+                      '更新会重新解析并替换该订阅贡献的规则。',
                       style: context.listCaptionStyle,
                     ),
                 ],
@@ -165,9 +164,9 @@ class _SubscriptionCard extends StatelessWidget {
     );
   }
 
-  /// 行数标签刻意用「行」而不是「条规则」：本轮统计是词法行数。
+  /// 真实入库条数（解析后写进规则表的行数）。
   static String _lineCountLabel(SubscriptionEntry entry) =>
-      '${_formatCount(entry.ruleCount)} 行';
+      '${_formatCount(entry.ruleCount)} 条';
 
   static String _updatedLabel(SubscriptionEntry entry) {
     if (entry.lastUpdated <= 0) {
