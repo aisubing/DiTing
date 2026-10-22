@@ -298,4 +298,92 @@ c.example
       expect(entries.first.group, '分类A');
     });
   });
+
+  group('应用作用域', () {
+    Future<int> insertScoped(
+      String pattern,
+      String? appScope, {
+      bool important = false,
+    }) async {
+      final id = await db.insert('block_rule', {
+        'pattern': pattern,
+        'rawLine': pattern,
+        'addedAt': 1,
+        'enabled': 1,
+        'important': important ? 1 : 0,
+        'appScope': appScope,
+        'appInverted': 0,
+        'isWildcard': 0,
+        'isRegex': 0,
+      });
+      await db.insert('block_rule_source', {
+        'ruleId': id,
+        'source': 'useradd',
+        'enabled': 1,
+      });
+      return id;
+    }
+
+    test('loadKind 保留 appScope 与 appInverted', () async {
+      await insertScoped('scoped.example', 'com.foo');
+      await insertBlock('global.example');
+
+      final rules = await RuleRepository(db).loadKind(RuleKind.block);
+      final byPattern = {for (final rule in rules) rule.pattern: rule};
+
+      expect(byPattern['scoped.example']!.appScope, 'com.foo');
+      expect(byPattern['global.example']!.appScope, isNull);
+    });
+
+    test('loadForApp 只取该应用作用域的规则（含 | 多包名与子串）', () async {
+      await insertScoped('a.example', 'com.foo');
+      await insertScoped('b.example', 'com.foo|com.bar');
+      await insertScoped('c.example', 'com.baz|com.foo');
+      await insertScoped('other.example', 'com.qux');
+      await insertBlock('global.example');
+
+      final rules = await RuleRepository(db).loadForApp('com.foo');
+      final patterns = rules.map((r) => r.pattern).toSet();
+
+      expect(patterns, containsAll(['a.example', 'b.example', 'c.example']));
+      expect(patterns, isNot(contains('other.example')));
+      expect(patterns, isNot(contains('global.example')));
+    });
+
+    test('addForApp 写入 appScope，重复添加返回 null 但复用已有行', () async {
+      final repo = RuleRepository(db);
+      final created = await repo.addForApp(
+        RuleKind.block,
+        'ads.example',
+        'com.foo',
+      );
+      expect(created, isNotNull);
+      expect(created!.appScope, 'com.foo');
+
+      final again = await repo.addForApp(
+        RuleKind.block,
+        'ads.example',
+        'com.foo',
+      );
+      expect(again, isNull);
+      final rows = await db.query('block_rule');
+      expect(rows, hasLength(1));
+      expect(rows.single['appScope'], 'com.foo');
+    });
+
+    test('setFullBlock 注入/移除 *\$app=<pkg> 且 hasFullBlock 同步', () async {
+      final repo = RuleRepository(db);
+      expect(await repo.hasFullBlock('com.foo'), isFalse);
+
+      expect(await repo.setFullBlock('com.foo', true), isTrue);
+      expect(await repo.hasFullBlock('com.foo'), isTrue);
+      final row = (await db.query('block_rule')).single;
+      expect(row['pattern'], '*');
+      expect(row['appScope'], 'com.foo');
+
+      expect(await repo.setFullBlock('com.foo', false), isFalse);
+      expect(await repo.hasFullBlock('com.foo'), isFalse);
+      expect(await db.query('block_rule'), isEmpty);
+    });
+  });
 }

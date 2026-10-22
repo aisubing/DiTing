@@ -7,14 +7,15 @@
 /// - **网络层放行域名**（白名单隔离）：`app_allowlist_rules_json`，一个
 ///   `Map<包名, Set<域名>>`，引擎侧走 `Engine.setAppAllowlist`；本文件只碰这一份。
 /// - **DNS 专属黑/白名单**：1.4.3 存在 Room 的 `block_rule` / `allow_rule` 里，
-///   靠 `appScope` 列区分应用。当前 `RuleRepository` 的读写 SQL 只覆盖
-///   `appScope IS NULL` 的全局规则，没有按应用过滤的接口；新增一套按 `appScope`
-///   的 SQL 属于数据层改动，不在本任务范围。见页面上的说明与交付报告。
-/// - **默认拦截全部外联**：上游是往 `block_rule` 注入 `*$app=<包名>`（同样带
-///   `appScope`），因此同样未接。它在 UI 上留一个「未接库」的说明位，而不是一个
-///   点了没用的开关。
+///   靠 `appScope` 列区分应用。现在 `RuleRepository` 已补上按应用读写
+///   （`loadForApp` / `addForApp` / `setFullBlock`），页面用
+///   `appScopedRulesProvider` 读、`AppScopedRulesController` 写；规则随快照的
+///   `appRules[pkg]` 下发，不会泄露成全局拦截。
+/// - **默认拦截全部外联**：上游是往 `block_rule` 注入 `*$app=<包名>`（`setFullBlock`），
+///   由「外联与隔离模式」里的开关真实读写。
 library;
 
+import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/installed_apps_providers.dart';
@@ -237,11 +238,6 @@ class AppAllowDomainRow extends StatelessWidget {
 }
 
 /// 「添加放行域名」对话框，返回清洗后的域名或 null。
-///
-/// 1.4.3 用 `AdGuardRuleParser.parseAllowLine` 解析输入（接受 `@@||x^` 这类写
-/// 法）；该解析链本轮未移植，所以这里只做最小清洗并**明确告诉用户**要填裸域名，
-/// 避免把一个没被解析的规则串原样写进 `app_allowlist_rules_json`——引擎读到的
-/// 会是一个永远匹配不上的字符串。
 Future<String?> showAppAllowDomainDialog(BuildContext context) async {
   return showFloatingDialog<String>(
     context: context,
@@ -297,6 +293,138 @@ class _AllowDomainDialogState extends State<_AllowDomainDialog> {
           hintText: 'api.example.com',
           helperText: '只填裸域名；包含子域名，不需要写通配符或 @@ 前缀',
         ),
+      ),
+    );
+  }
+}
+
+/// 一条按应用生效的 DNS 规则（黑/白名单）行。
+class AppScopedRuleRow extends StatelessWidget {
+  const AppScopedRuleRow({
+    super.key,
+    required this.rule,
+    required this.onToggle,
+    required this.onDelete,
+  });
+
+  final MockRule rule;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAllow = rule.kind == RuleKind.allow;
+    return ListItem(
+      leading: GlyphIcon(
+        isAllow ? AppGlyphs.verified : AppGlyphs.block,
+        size: 20,
+        color: isAllow ? context.colorScheme.primary : context.colorScheme.error,
+      ),
+      title: Text(rule.pattern, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(isAllow ? '白名单（放行）' : '黑名单（拦截）'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (rule.important) const MetaChip(label: '重要'),
+          IconButton(
+            tooltip: rule.enabled ? '停用' : '启用',
+            onPressed: () => onToggle(!rule.enabled),
+            icon: GlyphIcon(
+              rule.enabled ? AppGlyphs.check : AppGlyphs.close,
+              size: 20,
+            ),
+          ),
+          IconButton(
+            tooltip: '删除',
+            onPressed: onDelete,
+            icon: const GlyphIcon(AppGlyphs.delete, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「添加 DNS 规则」对话框的返回值：类型 + 清洗后的域名。
+typedef AppScopedRuleInput = ({RuleKind kind, String pattern});
+
+/// 「添加 DNS 专属规则」对话框：选黑/白名单 + 填裸域名。
+///
+/// 与放行域名对话框同一套输入清洗：只接受裸域名，避免把 `@@||x^` 这类未解析的
+/// 规则串原样写进 `block_rule` / `allow_rule`（引擎读到的会是一个永远匹配不上的
+/// 字符串）。控制器由弹窗自己持有（见 `InputDialog` 的生命周期约定）。
+Future<AppScopedRuleInput?> showAppScopedRuleDialog(
+  BuildContext context,
+  String packageName,
+) async {
+  return showFloatingDialog<AppScopedRuleInput>(
+    context: context,
+    child: const _ScopedRuleDialog(),
+  );
+}
+
+class _ScopedRuleDialog extends StatefulWidget {
+  const _ScopedRuleDialog();
+
+  @override
+  State<_ScopedRuleDialog> createState() => _ScopedRuleDialogState();
+}
+
+class _ScopedRuleDialogState extends State<_ScopedRuleDialog> {
+  final _controller = TextEditingController();
+  var _kind = RuleKind.block;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final pattern = _controller.text.trim();
+    if (pattern.isEmpty) {
+      return;
+    }
+    Navigator.of(context).pop((kind: _kind, pattern: pattern));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CommonDialog(
+      title: '添加 DNS 规则',
+      hasFields: true,
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        TextButton(onPressed: _submit, child: const Text('添加')),
+      ],
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SegmentedControl<RuleKind>(
+            segments: const [
+              (RuleKind.block, '黑名单'),
+              (RuleKind.allow, '白名单'),
+            ],
+            value: _kind,
+            onChanged: (value) => setState(() => _kind = value),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            autocorrect: false,
+            autofocus: true,
+            onSubmitted: (_) => _submit(),
+            decoration: const InputDecoration(
+              labelText: '域名',
+              hintText: 'ads.example.com',
+              helperText: '只填裸域名；仅对本应用生效',
+            ),
+          ),
+        ],
       ),
     );
   }

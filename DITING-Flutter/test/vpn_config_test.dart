@@ -191,5 +191,62 @@ void main() {
     test('无覆写时返回空串，避免 Go 侧解析空对象', () {
       expect(encodeRewriteRules(const {}), '');
     });
+
+    test('应用作用域规则进 appRules，不进全局数组', () {
+      final rules = {
+        RuleKind.block: [
+          const MockRule(
+            id: '1',
+            pattern: 'ads.example.com',
+            kind: RuleKind.block,
+            source: RuleSource.user,
+            appScope: 'com.foo|com.bar',
+          ),
+          const MockRule(
+            id: '2',
+            pattern: 'important.example.com',
+            kind: RuleKind.block,
+            source: RuleSource.user,
+            important: true,
+            appScope: 'com.foo',
+          ),
+        ],
+      };
+
+      final snapshot = buildRuleSnapshot(rules);
+      expect(snapshot['globalBlock'], isEmpty);
+      expect(snapshot['globalImportant'], isEmpty);
+
+      final appRules = snapshot['appRules'] as Map<String, Object?>;
+      final foo = appRules['com.foo'] as Map<String, Object?>;
+      expect(foo['block'], ['ads.example.com']);
+      expect(foo['important'], ['important.example.com']);
+      final bar = appRules['com.bar'] as Map<String, Object?>;
+      expect(bar['block'], ['ads.example.com']);
+    });
+
+    test('应用放行域名与作用域拦截在同一包下合并', () {
+      final rules = {
+        RuleKind.block: [
+          const MockRule(
+            id: '1',
+            pattern: 'ads.example.com',
+            kind: RuleKind.block,
+            source: RuleSource.user,
+            appScope: 'com.foo',
+          ),
+        ],
+      };
+      final snapshot = buildRuleSnapshot(
+        rules,
+        appAllowlist: {
+          'com.foo': {'cdn.example.com'},
+        },
+      );
+      final appRules = snapshot['appRules'] as Map<String, Object?>;
+      final foo = appRules['com.foo'] as Map<String, Object?>;
+      expect(foo['allow'], ['cdn.example.com']);
+      expect(foo['block'], ['ads.example.com']);
+    });
   });
 }

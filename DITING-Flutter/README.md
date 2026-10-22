@@ -330,6 +330,7 @@ bridge 封装，只在探针里裸调。反向通道只有 `onPrepareResult` 一
 | `/hub/data-cleanup` 全部十六个动作 | 真实删除：日志/流量/缓存三表、权重 JSON、规则与订阅事务、四份应用名单、出站代理、CA、下载与背景缓存、引导标记（`DataCleanupService`） |
 | `/hub/config-transfer` 四格统计 | 服务商数（prefs）、订阅数（`subscription` 表）、自定义规则数（规则表 `user` 来源）、名单应用数（四份名单并集） |
 | AI 分析（Agent）全流程 | 厂商配置落盘 + 真实 HTTP 调用厂商接口（见 §8.1.9） |
+| 应用独立规则的黑/白名单与全阻断 | 规则库 `appScope`（见 §8.3；不再有「尚未接通」占位） |
 
 ### 8.1.1 数据清理是「真删」，不是弹提示
 
@@ -601,8 +602,17 @@ HTTP 状态，含「字符串比较会判错」的 `1.4.10 vs 1.4.9` 用例。
 
 - **订阅**：更新是真实 HTTP 下载，但订阅正文**尚未写入规则表**（解析链未移植），所以
   `ruleCount` 是词法行数而非生效规则数，卡片与页脚必须如实标注——改成「规则已更新」是谎报。
-- **应用独立规则**：应用清单与放行域名已通，DNS 专属黑白名单与「默认拦截全部外联」仍是只读
-  说明位（`block_rule.app_scope` 有列，仓储无按应用读写接口）。
+- **应用独立规则已全接通**（不再有只读说明位）：应用清单、网络层放行域名、DNS 专属黑/白名单、
+  「默认拦截全部外联」都是真实读写 + 落库。
+  - 网络层放行域名 → `app_allowlist_rules_json`，引擎侧 `Engine.setAppAllowlist`。
+  - DNS 专属黑/白名单 → `block_rule` / `allow_rule` 的 `appScope` 列
+    （`RuleRepository.loadForApp` / `addForApp`）。
+  - 默认拦截全部外联 → 注入/删除 `pattern='*'` 且 `appScope=<pkg>` 的 `block_rule` 行
+    （`setFullBlock`），等价旧版 `*$app=<pkg>`。
+  - **关键语义**：`appScope` 非空的规则必须进快照的 `appRules[pkg].block/important`，
+    不能进 `globalBlock`（否则单应用拦截被放大成全局拦截）。`buildRuleSnapshot` 已分流，
+    `RulesNotifier` 也把这类规则过滤出全局规则页，避免同一行出现在两个页面。
+  - 快照只在隧道启动时下发，所以页面提示「启动 DNS VPN 后生效」。
 - **`http_request_log` 常为 0 行**：只在 MITM 真正拦到流量时才产生，需要用户先装并信任 CA。
   `blockSubscriptionId` 写 NULL（旧版用 Kotlin 规则缓存反查，本移植没有那套缓存）——填错比
   留空更坏。

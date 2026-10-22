@@ -123,6 +123,8 @@ class MockRule {
     this.group,
     this.subscriptionName,
     this.target,
+    this.appScope,
+    this.appInverted = false,
   });
 
   final String id;
@@ -137,6 +139,18 @@ class MockRule {
   /// 覆写规则的目标值（IPv4 / IPv6 / CNAME）。
   final String? target;
 
+  /// 应用作用域：`block_rule` / `allow_rule` 的 `appScope` 列，`|` 分隔的包名
+  /// 列表。为空表示这是一条**全局**规则。
+  ///
+  /// 这个字段必须一路传到引擎：1.4.3 把带 `appScope` 的规则写进规则快照的
+  /// `appRules[pkg].block/important`，**而不是** `globalBlock`。若在读取时丢掉
+  /// 它，一条本该只拦某个 app 的规则会变成拦所有 app——这既是功能缺失，也是
+  /// 把用户配置放大成全局拦截的危险默认。
+  final String? appScope;
+
+  /// `~` 取反的应用排除规则（`appInverted`）；`appScope` 里的包名从拦截中排除。
+  final bool appInverted;
+
   MockRule copyWith({bool? enabled, bool? important}) {
     return MockRule(
       id: id,
@@ -148,6 +162,8 @@ class MockRule {
       group: group,
       subscriptionName: subscriptionName,
       target: target,
+      appScope: appScope,
+      appInverted: appInverted,
     );
   }
 }

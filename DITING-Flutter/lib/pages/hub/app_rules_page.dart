@@ -2,8 +2,10 @@
 import 'dart:async';
 
 import 'package:diting/data/native/apps_bridge.dart';
+import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/hub/app_rules_store.dart';
+import 'package:diting/state/app_rules_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/empty_state.dart';
@@ -16,10 +18,10 @@ import 'package:material_ui/material_ui.dart';
 /// 列表页：总开关、搜索、已配置应用；点进某个应用后在同一路由内切换到详情面板
 /// （上游也是 `BackHandler` 返回列表，而不是新路由）。
 ///
-/// 数据源与持久化见 `app_rules_store.dart` 的文件头：网络层放行域名已接
-/// `app_allowlist_rules_json`；DNS 专属黑白名单与「默认拦截全部外联」仍在 Room 的
-/// `appScope` 列上，`RuleRepository` 尚无按应用读写的接口，因此面板里如实说明
-/// 「未接库」，而不是留一个点了没反应的开关。
+/// 数据源与持久化见 `app_rules_store.dart` 的文件头：网络层放行域名接
+/// `app_allowlist_rules_json`；DNS 专属黑白名单与「默认拦截全部外联」接规则库的
+/// `appScope` 列（`appScopedRulesProvider` 读、`AppScopedRulesController` 写），
+/// 规则随快照的 `appRules[pkg]` 下发。
 class AppRulesPage extends ConsumerStatefulWidget {
   const AppRulesPage({super.key});
 
@@ -121,7 +123,6 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           : _buildDetail(context, draft, app),
     );
   }
-
   Widget _buildList(
     BuildContext context,
     AppRulesDraft draft,
@@ -206,9 +207,9 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
               ),
             ],
             footer:
-                '为指定应用深度定制网络与解析控制。以下是软件网络层的白名单隔离'
-                '（只放行列出的域名）；DNS 专属黑白名单与「默认拦截全部外联」'
-                '需要按应用读写规则库，本轮尚未接通，配置入口暂为只读说明。',
+                '为指定应用深度定制网络与解析控制：网络层白名单隔离（只放行列出的域名）、'
+                'DNS 专属黑/白名单与「默认拦截全部外联」。进入某个应用可分别配置，'
+                '保存后启动 DNS VPN 时下发。',
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -275,6 +276,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     InstalledApp app,
   ) {
     final domains = draft.domainsOf(app.packageName);
+    final rules = ref.watch(appScopedRulesProvider(app.packageName));
     return CommonScaffold(
       title: app.label,
       iconActions: [
@@ -328,28 +330,36 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           ),
           generateSection(
             title: 'DNS 专属黑/白名单',
-            items: const [
-              ListItem(
-                title: Text('尚未接通'),
-                subtitle: Text(
-                  '1.4.3 把它存在规则库的 appScope 列，当前规则仓储没有按应用读写的接口，'
-                  '本轮不改数据层，因此这里只作说明。',
-                ),
-                leading: GlyphIcon(AppGlyphs.info),
+            actions: [
+              IconButtonData(
+                glyph: AppGlyphs.add,
+                tooltip: '添加 DNS 规则',
+                onPressed: () => _addScopedRule(app),
               ),
             ],
+            items: [
+              ..._buildScopedRuleItems(app),
+            ],
+            footer:
+                '这些规则写入规则库的 block_rule / allow_rule，带 appScope 只对本应用生效，'
+                '并随规则快照的 appRules 下发，不会扩大成全局拦截。',
           ),
           generateSection(
             title: '外联与隔离模式',
-            items: const [
-              ListItem(
-                title: Text('默认拦截全部外联'),
-                subtitle: Text(
-                  '1.4.3 通过注入 *\$app=<包名> 的拦截规则实现，同样依赖 appScope，'
-                  '尚未接通。',
-                ),
-                leading: GlyphIcon(AppGlyphs.wifiOff),
+            items: [
+              ListItem.toggle(
+                leading: const GlyphIcon(AppGlyphs.wifiOff),
+                title: const Text('默认拦截全部外联'),
+                subtitle: const Text('开启后阻断该应用的所有网络连接，仅放行白名单'),
+                value: rules.value?.fullBlock ?? false,
+                onChanged: (value) => _toggleFullBlock(app, value),
               ),
+              if (rules.value?.fullBlock ?? false)
+                const ListItem(
+                  leading: GlyphIcon(AppGlyphs.info),
+                  title: Text('已开启全阻断模式'),
+                  subtitle: Text('请确保已添加必要的放行白名单，否则应用可能无法联网。'),
+                ),
             ],
           ),
           const SizedBox(height: 24),
@@ -389,5 +399,120 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
       return;
     }
     setState(() => draft.addDomain(packageName, domain));
+  }
+
+  /// DNS 专属黑/白名单的行。规则库不可用时显示错误，而不是「没规则」。
+  List<Widget> _buildScopedRuleItems(InstalledApp app) {
+    final rules = ref.watch(appScopedRulesProvider(app.packageName));
+    if (rules.isLoading) {
+      return const [
+        ListItem(
+          leading: GlyphIcon(AppGlyphs.info),
+          title: Text('正在读取规则库'),
+          subtitle: Text('稍候'),
+        ),
+      ];
+    }
+    final value = rules.value;
+    if (value == null || !value.available) {
+      return [
+        ListItem(
+          leading: const GlyphIcon(AppGlyphs.info),
+          title: const Text('读不到规则库'),
+          subtitle: Text(value?.error ?? '当前环境无法读写规则库'),
+        ),
+      ];
+    }
+    if (value.block.isEmpty && value.allow.isEmpty) {
+      return const [
+        ListItem(
+          leading: GlyphIcon(AppGlyphs.info),
+          title: Text('未配置 DNS 专属规则'),
+          subtitle: Text('添加后仅对本应用生效，不影响其他应用'),
+        ),
+      ];
+    }
+    return [
+      for (final rule in [...value.block, ...value.allow])
+        AppScopedRuleRow(
+          rule: rule,
+          onToggle: (enabled) => _toggleScopedRule(app, rule, enabled),
+          onDelete: () => _deleteScopedRule(app, rule),
+        ),
+    ];
+  }
+
+  Future<void> _addScopedRule(InstalledApp app) async {
+    final result = await showAppScopedRuleDialog(context, app.packageName);
+    if (result == null || !mounted) {
+      return;
+    }
+    final controller = ref.read(appScopedRulesControllerProvider);
+    final ok = await controller.addRule(
+      app.packageName,
+      result.kind,
+      result.pattern,
+    );
+    if (!mounted) {
+      return;
+    }
+    if (!ok) {
+      _tip('规则已存在或规则库不可用');
+      return;
+    }
+    _tip('已添加${result.kind == RuleKind.allow ? '白名单' : '黑名单'}规则');
+  }
+
+  Future<void> _toggleScopedRule(
+    InstalledApp app,
+    MockRule rule,
+    bool enabled,
+  ) async {
+    await ref
+        .read(appScopedRulesControllerProvider)
+        .toggle(app.packageName, rule, enabled);
+  }
+
+  Future<void> _deleteScopedRule(InstalledApp app, MockRule rule) async {
+    final confirmed = await showFloatingDialog<bool>(
+      context: context,
+      child: CommonDialog(
+        title: '删除这条规则？',
+        destructive: true,
+        child: Text(rule.pattern),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
+    await ref
+        .read(appScopedRulesControllerProvider)
+        .delete(app.packageName, rule);
+  }
+
+  Future<void> _toggleFullBlock(InstalledApp app, bool enabled) async {
+    final next = await ref
+        .read(appScopedRulesControllerProvider)
+        .setFullBlock(app.packageName, enabled);
+    if (!mounted) {
+      return;
+    }
+    _tip(next ? '已开启全外联拦截模式' : '已关闭全外联拦截模式');
+  }
+
+  void _tip(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 }

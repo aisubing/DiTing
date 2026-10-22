@@ -40,8 +40,16 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   @override
   Map<RuleKind, List<MockRule>> build() {
     final initial = ref.watch(initialRulesProvider);
+    // 全局规则表只展示 appScope 为空的规则。带 appScope 的规则属于「应用独立
+    // 规则」页，若在这里也列出来，用户会在「黑名单」里看到一条只对某个 app
+    // 生效的规则，误以为是全局拦截，删除/停用还会同时改掉应用规则。快照侧
+    // `buildRuleSnapshot` 已经把这类规则分流进 appRules，这里同步分流。
     return {
-      for (final kind in RuleKind.values) kind: [...?initial[kind]],
+      for (final kind in RuleKind.values)
+        kind: [
+          for (final rule in initial[kind] ?? const <MockRule>[])
+            if (rule.appScope == null) rule,
+        ],
     };
   }
 
