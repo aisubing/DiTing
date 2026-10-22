@@ -273,6 +273,11 @@ class _FloatingBarItemState extends State<_FloatingBarItem> {
     }
     final content = _LensTint(
       part: widget.part,
+      // 没有选中项时镜片停在 0 号位不动，若照常按镜片位置着色，0 号项会被染成
+      // 主色「假装选中」——命中「当前页不在底栏里」的情形。关掉着色，整条底栏
+      // 保持中性灰，用户看得到「当前不在任何 tab 上」。按压时抬起的 inside 副本
+      // 仍着色，拖动手感不受影响。
+      active: widget.selected || widget.part == _LensPart.inside,
       lens: widget.lens,
       lensWidth: widget.lensWidth,
       jelly: widget.jelly,

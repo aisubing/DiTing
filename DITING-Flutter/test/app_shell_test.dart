@@ -205,6 +205,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(SettingsPage), findsOneWidget);
     });
+
+    // 回归：落在底栏之外的页（流量统计不在用户这四项里）时，底栏必须报告
+    // 「没有任何一项被选中」（selectedIndex = -1）。旧实现兜底成 0，把「首页」
+    // 点亮；镜片停在 0 号位还会把它染成主色，读作已经在首页。
+    testWidgets('当前页不在底栏里时底栏不点亮任何一项', (tester) async {
+      await pumpApp(tester, initialLocation: Routes.traffic, dock: userDock);
+      final dock = tester.widget<NavigationDock>(find.byType(NavigationDock));
+      expect(dock.selectedIndex, -1);
+    });
   });
 }
 

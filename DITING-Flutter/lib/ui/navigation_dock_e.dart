@@ -9,6 +9,7 @@ part of 'navigation_dock.dart';
 class _LensTint extends SingleChildRenderObjectWidget {
   const _LensTint({
     required this.part,
+    this.active = true,
     required this.lens,
     required this.lensWidth,
     required this.jelly,
@@ -21,6 +22,10 @@ class _LensTint extends SingleChildRenderObjectWidget {
   });
 
   final _LensPart part;
+
+  /// 是否按镜片位置着色。当前页不在底栏里（没有选中项）时传 false，避免
+  /// 停在 0 号位的镜片把 0 号项染成主色、读作「已选中」。
+  final bool active;
   final _Spring lens;
   final double lensWidth;
   final ValueListenable<double> jelly;
@@ -34,6 +39,7 @@ class _LensTint extends SingleChildRenderObjectWidget {
   RenderObject createRenderObject(BuildContext context) {
     return _RenderLensTint(
       part: part,
+      active: active,
       lens: lens,
       lensWidth: lensWidth,
       jelly: jelly,
@@ -49,6 +55,7 @@ class _LensTint extends SingleChildRenderObjectWidget {
   void updateRenderObject(BuildContext context, _RenderLensTint renderObject) {
     renderObject
       ..part = part
+      ..active = active
       ..lens = lens
       ..lensWidth = lensWidth
       ..jelly = jelly
@@ -63,6 +70,7 @@ class _LensTint extends SingleChildRenderObjectWidget {
 class _RenderLensTint extends RenderProxyBox {
   _RenderLensTint({
     required _LensPart part,
+    required bool active,
     required _Spring lens,
     required double lensWidth,
     required ValueListenable<double> jelly,
@@ -72,6 +80,7 @@ class _RenderLensTint extends RenderProxyBox {
     required Color color,
     required TextDirection textDirection,
   }) : _part = part,
+       _active = active,
        _lens = lens,
        _lensWidth = lensWidth,
        _jelly = jelly,
@@ -93,6 +102,15 @@ class _RenderLensTint extends RenderProxyBox {
       return;
     }
     _part = value;
+    markNeedsPaint();
+  }
+
+  bool _active;
+  set active(bool value) {
+    if (value == _active) {
+      return;
+    }
+    _active = value;
     markNeedsPaint();
   }
 
@@ -276,6 +294,21 @@ class _RenderLensTint extends RenderProxyBox {
   @override
   void paint(PaintingContext context, Offset offset) {
     if (child == null) {
+      return;
+    }
+    // 没有选中项时不按镜片着色：镜片停在 0 号位不动，照常着色会把 0 号项染成
+    // 主色、读作「已选中」。直接当普通素材画一遍即可。
+    if (!_active) {
+      _outside.layer = null;
+      _inside.layer = null;
+      _tint.layer = null;
+      _insideMotion.layer = null;
+      final rest = _motion(1);
+      if (_part != _LensPart.inside) {
+        _paintMoved(context, offset, rest, _outsideMotion);
+      } else {
+        _outsideMotion.layer = null;
+      }
       return;
     }
     final rest = _motion(1);
