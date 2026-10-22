@@ -20,15 +20,16 @@ import 'package:material_ui/material_ui.dart';
 /// - 选中即写入 `diting_dns_mode_prefs/selected_upstream_id`，服务重启后生效。
 ///
 /// 上游的「按延迟排序」是 `ProviderManagementListContent` 的附带能力，但服务器
-/// 模式只有一家上游、且没有经过测速存储，硬造一个排序开关等于给用户一个假控件。
-/// 延迟测速属于服务商管理页（`/hub/providers`），本页不重复。
+/// 模式只有一家上游、且本页没有测速存储，硬造一个排序开关等于给用户一个假控件。
+/// 真实测速入口在首页「服务状态」卡片的刷新（原生 `dns_latency` 通道）与网络工具
+/// 页的「测速」页签，本页不重复。
 ///
 /// ## 自定义服务商的增删改
 /// 上一轮这一组只列只读，副标题写着「自定义上游在旧版设置页添加，本仓尚未接入
 /// 编辑入口」——旧版 `DnsMainScreen` 的 `onAddUpstream` / `onUpdateUpstream` /
 /// `onDeleteUpstream` 三个回调都在这一屏上，缺的是本仓的实现。现在补上：
 /// 内置项只能选中（由应用维护），自定义项可长按弹出「编辑 / 删除」，右上角
-/// 加号新增。三条落盘语义（id 前缀、IPv6 去括号、删选中项回落）在
+/// 加号新增、行尾「更多」出编辑/删除。三条落盘语义（id 前缀、IPv6 去括号、删选中项回落）在
 /// [ServerUpstreamActions] 里。
 class ServerUpstreamPage extends ConsumerStatefulWidget {
   const ServerUpstreamPage({super.key});
