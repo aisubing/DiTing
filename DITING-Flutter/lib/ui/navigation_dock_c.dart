@@ -56,6 +56,12 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
 
   int get _selectedIndex => widget.selectedIndex.clamp(0, _lastIndex);
 
+  /// 当前页不在底栏里（例如用户把「流量统计」从底栏删掉后从首页卡片进来）。
+  /// 此时 `AppShell` 传 -1：底栏不点亮任何项，镜片也不画；点任意一项都提交，
+  /// 不会被「点的是已选中项」的判断吞掉。
+  bool get _hasSelection =>
+      widget.destinations.isNotEmpty && widget.selectedIndex >= 0;
+
   ({double pitch, double lens, double inset}) get _layout => _dockLayout(
     context.size!.width - _barPadding * 2,
     widget.destinations.length,
@@ -458,7 +464,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                             Expanded(
                               child: _FloatingBarItem(
                                 destination: destination,
-                                selected: index == _selectedIndex,
+                                selected: _hasSelection && index == _selectedIndex,
                                 index: index,
                                 part: part,
                                 lens: _lens,
@@ -479,11 +485,11 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                       ),
                     );
                     final lensed =
-                        glass && _lifted && widget.destinations.isNotEmpty;
+                        glass && _lifted && _hasSelection;
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        if (widget.destinations.isNotEmpty)
+                        if (_hasSelection)
                           AnimatedBuilder(
                             animation: _motion,
                             builder: (_, _) => _Lens(
@@ -492,7 +498,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                               glass: glass,
                             ),
                           ),
-                        if (widget.destinations.isNotEmpty)
+                        if (_hasSelection)
                           AnimatedBuilder(
                             animation: _hoverMotion,
                             builder: (_, _) => _HoverHighlight(
@@ -504,7 +510,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                               opacity: _hoverShow.value,
                             ),
                           ),
-                        if (glass && widget.destinations.isNotEmpty)
+                        if (glass && _hasSelection)
                           AnimatedBuilder(
                             animation: _motion,
                             builder: (_, _) =>

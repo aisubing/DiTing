@@ -159,7 +159,7 @@ class _HomePageState extends ConsumerState<HomePage>
                 onOpenBootstrap: () => context.push(LogPaths.bootstrap),
                 onOpenSubscriptionStats: () =>
                     context.push(LogPaths.subscriptionStats),
-                onOpenTraffic: () => context.push(Routes.traffic),
+                onOpenTraffic: () => openLocation(context, Routes.traffic),
               ),
             ),
             const SizedBox(height: 8),

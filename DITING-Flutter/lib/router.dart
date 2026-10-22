@@ -14,6 +14,7 @@ import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/shell/app_shell.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 /// 路由表。
@@ -89,6 +90,56 @@ int branchIndexOf(String location) {
     }
   }
   return bestIndex;
+}
+
+/// branch 下标 → 该 branch 的根路径。
+///
+/// 供壳层把 `navigationShell.currentIndex` 反查成位置用。之前 `app_shell.dart`
+/// 自己抄了一份 `_branchOrder`，两份顺序一旦有偏差，`goBranch` 的下标就会整体
+/// 错位而且看不出来（见 `branchIndexOf` 注释）。现在只保留这一份。
+String branchLocationOf(int index) =>
+    index >= 0 && index < _branchOrder.length ? _branchOrder[index] : Routes.home;
+
+/// 这个位置本身是不是某个底栏 tab 的根（`/`、`/hub`、`/logs`、`/traffic`、
+/// `/tools`、`/settings`）。
+///
+/// 用来区分「跳到另一个 tab」与「打开一个二级页」：两者在跳转 API 上不能混用，
+/// 见 [goToBranch]。
+bool isBranchRoot(String location) {
+  for (final root in _branchOrder) {
+    if (root == location) return true;
+  }
+  return false;
+}
+
+/// 跳到 [location] 所在的底栏 tab（而不是把它 push 成一张独立页面）。
+///
+/// 为什么不直接 `context.push('/traffic')`：`/traffic` 等路径是
+/// `StatefulShellBranch` 的根，push 它会在当前 branch 之上再叠一个页面，而这个
+/// 页面里**同样画着一条底栏**。那条底栏不在 `StatefulShellRoute` 之内，点它切
+/// 不动 branch——用户被卡在复制出来的这一页上，只能按返回键退出，这正是
+/// 「底栏点了没反应 / 跳到错误页」的同一类问题。
+///
+/// 命中 shell 时返回 true（调用方不要再 push）；不在 shell 里（罕见，例如引导
+/// 期无壳）返回 false，调用方才回退到普通 push。
+bool goToBranch(BuildContext context, String location) {
+  final shell = StatefulNavigationShell.maybeOf(context);
+  if (shell == null) {
+    return false;
+  }
+  shell.goBranch(branchIndexOf(location));
+  return true;
+}
+
+/// 打开 [location]：目标是底栏 tab 就切 tab，否则正常 push 一张二级页。
+///
+/// 首页卡片、功能中心卡片这类「可能指向 tab、也可能指向二级页」的入口统一走
+/// 这里，免得每个调用点各自判断，漏掉一处就又复制出一条无法切换的底栏。
+void openLocation(BuildContext context, String location) {
+  if (isBranchRoot(location) && goToBranch(context, location)) {
+    return;
+  }
+  context.push(location);
 }
 
 GoRouter createRouter({String initialLocation = Routes.home}) {

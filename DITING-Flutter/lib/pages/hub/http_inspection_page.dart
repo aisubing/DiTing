@@ -1,5 +1,6 @@
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/router.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -156,7 +157,7 @@ class HttpInspectionPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.logs),
                 title: const Text('请求日志'),
                 subtitle: const Text('查看解密明细与自动旁路记录'),
-                onTap: () => context.push('/logs'),
+                onTap: () => openLocation(context, '/logs'),
               ),
             ],
           ),

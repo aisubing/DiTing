@@ -148,7 +148,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// `Padding`。上一轮两处各包了一层同样的 `dashboardMobileSideOf`，真机上叠成
   /// 32dp（首页同一张卡是 16dp），也就是「日志页左右空隙比别处大一倍」。
   List<Widget> _allMode(BuildContext context) => [
-    TrafficMonitorCard(onDetail: () => context.push(Routes.traffic)),
+    TrafficMonitorCard(onDetail: () => openLocation(context, Routes.traffic)),
     const RequestOverviewCard(title: '请求概览'),
     const LogTrafficStructureCard(mode: TrafficStructureMode.all),
     RecentRequestsLogCard(

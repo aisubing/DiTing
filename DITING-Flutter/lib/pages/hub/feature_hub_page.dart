@@ -1,9 +1,9 @@
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/router.dart';
 import 'package:diting/state/feature_hub_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// 功能中心：按上游 `FeatureHubScreen.kt` 的 7 类 28 卡、2 列网格迁移。
@@ -121,7 +121,7 @@ class _FeatureCardState extends ConsumerState<_FeatureCard> {
       MediaQuery.textScalerOf(context).scale(_CardGrid._cardHeight) /
       _CardGrid._cardHeight;
 
-  void _open() => context.push(widget.card.route);
+  void _open() => openLocation(context, widget.card.route);
 
   void _longPress() {
     final route = widget.card.longPressRoute;
@@ -129,7 +129,7 @@ class _FeatureCardState extends ConsumerState<_FeatureCard> {
       return;
     }
     ref.read(logLongPressHintProvider.notifier).acknowledge();
-    context.push(route);
+    openLocation(context, route);
   }
 
   @override

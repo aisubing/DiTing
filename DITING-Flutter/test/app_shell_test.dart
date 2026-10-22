@@ -2,8 +2,13 @@ import 'package:diting/app/app.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/pages/hub/feature_hub_page.dart';
+import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
+import 'package:diting/pages/settings/settings_page.dart';
+import 'package:diting/pages/tools/tools_page.dart';
+import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -28,6 +33,7 @@ void main() {
     WidgetTester tester, {
     String? initialLocation,
     FakeVpnController? vpn,
+    List<BottomBarDestination>? dock,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -37,6 +43,7 @@ void main() {
         overrides: [
           ...appTestOverrides(),
           if (vpn != null) vpnControllerProvider.overrideWithValue(vpn),
+          if (dock != null) bottomBarProvider.overrideWith(() => _Dock(dock)),
         ],
         child: DitingApp(initialLocation: initialLocation),
       ),
@@ -128,6 +135,87 @@ void main() {
       expect(tester.takeException(), isNull, reason: '路由 $route 构建抛异常');
     }
   });
+
+  group('底栏点击落到正确的 tab', () {
+    // 回归：底栏回调给的是 destinations 下标，`goBranch` 要的是 branch 下标。
+    // 两者顺序不同（branch 固定六项，底栏是它的子集），直接透传会让「网络工具」
+    // 打开日志仪表盘、「设置」打开流量统计。用户现场配的就是这四项，因此这里
+    // 用同一套顺序覆盖——默认的「首页 / 功能中心 / 日志仪表盘」恰好顺序对齐，
+    // 反而照不出错位。
+    const userDock = [
+      BottomBarDestination.home,
+      BottomBarDestination.featureHub,
+      BottomBarDestination.networkTools,
+      BottomBarDestination.settings,
+    ];
+
+    testWidgets('四个底栏项各自打开自己的页面', (tester) async {
+      await pumpApp(tester, dock: userDock);
+      const expectations = {
+        '功能中心': FeatureHubPage,
+        '网络工具': ToolsPage,
+        '设置': SettingsPage,
+      };
+      for (final entry in expectations.entries) {
+        await tester.tap(find.text(entry.key).last);
+        await tester.pumpAndSettle();
+        expect(
+          find.byType(entry.value),
+          findsOneWidget,
+          reason: '点「${entry.key}」应打开 ${entry.value}',
+        );
+      }
+    });
+
+    // 回归：功能中心里「应用流量统计」「网络诊断」「其他设置」指向的是别的
+    // tab 的根路径。push 这些路径会复制一份带底栏的壳，那条底栏切不动 branch，
+    // 用户被卡住——必须走 `goBranch`。
+    testWidgets('功能中心里指向其它 tab 的卡片切 tab 而不是叠页', (tester) async {
+      await pumpApp(tester, initialLocation: Routes.hub, dock: userDock);
+      final shellsBefore = find.byType(Scaffold).evaluate().length;
+      final card = find.text('应用流量统计');
+      // 手动拖到正文中部：`ensureVisible` 会把目标顶到标题栏底下，点它会打偏。
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -420));
+      await tester.pumpAndSettle();
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+      expect(find.byType(TrafficPage), findsOneWidget);
+      // 换 tab 不新增页面栈：壳的数量不变，也没有多出一条返回键的二级页。
+      expect(find.byType(Scaffold).evaluate().length, shellsBefore);
+      expect(find.byType(BackButton), findsNothing);
+      // 再点底栏「首页」必须真的回得去（旧实现会留在复制出来的那一页上）。
+      await tester.tap(find.text('首页').last);
+      await tester.pumpAndSettle();
+      expect(find.text('谛听 · 普通'), findsOneWidget);
+    });
+
+    testWidgets('首页网络速度卡进入流量统计后可切回其它 tab', (tester) async {
+      await pumpApp(tester, dock: userDock);
+      final detail = find.descendant(
+        of: find.byType(NetworkSpeedCard),
+        matching: find.byTooltip('详情'),
+      );
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
+      await tester.pumpAndSettle();
+      await tester.tap(detail);
+      await tester.pumpAndSettle();
+      expect(find.byType(TrafficPage), findsOneWidget);
+      expect(find.byType(BackButton), findsNothing);
+      await tester.tap(find.text('设置').last);
+      await tester.pumpAndSettle();
+      expect(find.byType(SettingsPage), findsOneWidget);
+    });
+  });
+}
+
+/// 测试用的底栏配置：只换首页列表，不落盘。
+class _Dock extends BottomBarNotifier {
+  _Dock(this._dock);
+
+  final List<BottomBarDestination> _dock;
+
+  @override
+  List<BottomBarDestination> build() => _dock;
 }
 
 /// 冒烟用的路由清单。

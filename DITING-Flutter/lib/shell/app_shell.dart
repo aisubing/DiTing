@@ -37,15 +37,20 @@ class AppShell extends ConsumerWidget {
     final selected = _selectedIndex(destinations, navigationShell.currentIndex);
 
     void onSelected(int index) {
-      if (index == selected) {
-        // 重复点当前 tab 回首页（上游行为：回第 0 页）。
-        navigationShell.goBranch(index, initialLocation: true);
+      // 底栏回调给的是 **destinations 下标**，`goBranch` 要的是 **branch 下标**，
+      // 两者不是同一套：branch 固定六项（home/hub/logs/traffic/tools/settings），
+      // 底栏只是它的 2–4 项子集。直接透传会让「网络工具」（底栏第 3 项 = 下标 2）
+      // 落到 2 号 branch（日志仪表盘）、「设置」（下标 3）落到流量统计。
+      final branch = branchIndexOf(destinationLocation(destinations[index]));
+      if (branch == navigationShell.currentIndex) {
+        // 重复点当前 tab 回首页（上游行为：回该 branch 的第 0 页）。
+        navigationShell.goBranch(branch, initialLocation: true);
         return;
       }
       if (haptic) {
         HapticFeedback.selectionClick();
       }
-      navigationShell.goBranch(index);
+      navigationShell.goBranch(branch);
     }
 
     return Scaffold(
@@ -67,25 +72,21 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  /// 底栏是 branch 的子集视图，因此用户配置的下标要映射回 branch 下标。
+  /// 底栏是 branch 的子集视图，因此 branch 下标要先换成位置，再回查底栏下标。
+  ///
+  /// 找不到时返回 **-1**，不要兜底成 0。落在底栏之外的 branch（用户把「流量
+  /// 统计」从底栏里删了，却又从首页卡片或功能中心进了 `/traffic`）如果兜底成
+  /// 0，底栏会把「首页」点亮；而点击回调拿 `index != selectedIndex` 判重，点
+  /// 「首页」等于点自己，什么也不发生——用户被卡在这一页，只能靠系统返回键。
+  /// 返回 -1 让底栏不点亮任何项，点哪一项都是真正的切换。
   int _selectedIndex(List<BottomBarDestination> destinations, int branchIndex) {
-    final location = _branchOrder[branchIndex];
+    final location = branchLocationOf(branchIndex);
     final index = destinations.indexWhere(
       (destination) => destinationLocation(destination) == location,
     );
-    return index < 0 ? 0 : index;
+    return index;
   }
 }
-
-/// branch 下标 → 路由，与 [createRouter] 的 branch 顺序一一对应。
-const _branchOrder = <String>[
-  Routes.home,
-  Routes.hub,
-  Routes.logs,
-  Routes.traffic,
-  Routes.tools,
-  Routes.settings,
-];
 
 /// 底栏项 → 路由。
 String destinationLocation(BottomBarDestination destination) =>
@@ -212,7 +213,10 @@ class _FallbackBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NavigationBar(
-      selectedIndex: selectedIndex,
+      // `NavigationBar` 要求 0 ≤ selectedIndex < length，而落在底栏之外的 branch
+      // 传进来的是 -1。这里退回 0 只是为了让断言过——该形态下每次点击都会回调
+      // `onDestinationSelected`，不存在浮条那种「点已选中项被吞掉」的问题。
+      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
       onDestinationSelected: onSelected,
       destinations: [
         for (final destination in destinations)
