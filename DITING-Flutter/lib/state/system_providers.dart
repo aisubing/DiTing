@@ -10,6 +10,7 @@ import 'dart:async';
 
 import 'package:diting/data/backup/dav_client.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/data/update/app_update_checker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -413,6 +414,7 @@ final updateProvider = NotifierProvider<UpdateNotifier, UpdateState>(
 
 /// IP 质量检测阶段。
 enum IpQualityStage {
+  idle('未检测'),
   loading('检测中'),
   loaded('检测完成'),
   failed('检测失败');
@@ -422,20 +424,66 @@ enum IpQualityStage {
   final String label;
 }
 
-/// 当前 IP 质量浮层要显示的地址与阶段；每次打开浮层重新检测一次。
-class IpQualityNotifier extends Notifier<({String ip, IpQualityStage stage})> {
-  @override
-  ({String ip, IpQualityStage stage}) build() =>
-      (ip: '203.0.113.24', stage: IpQualityStage.loaded);
+/// 当前 IP 质量检测的状态。
+class IpQualityState {
+  const IpQualityState({
+    this.stage = IpQualityStage.idle,
+    this.report,
+    this.error,
+  });
 
-  Future<void> detect(String ip) async {
-    state = (ip: ip, stage: IpQualityStage.loading);
-    await Future<void>.delayed(const Duration(milliseconds: 1000));
-    state = (ip: ip, stage: IpQualityStage.loaded);
+  final IpQualityStage stage;
+
+  /// 最近一次成功的报告；失败时保留上一份，便于对照。
+  final IpQualityReport? report;
+
+  /// 失败原因。
+  final String? error;
+
+  IpQualityState copyWith({
+    IpQualityStage? stage,
+    IpQualityReport? report,
+    String? error,
+    bool clearError = false,
+  }) => IpQualityState(
+    stage: stage ?? this.stage,
+    report: report ?? this.report,
+    error: clearError ? null : (error ?? this.error),
+  );
+}
+
+/// 当前 IP 质量浮层要显示的地址与阶段；每次打开浮层重新检测一次。
+/// IP 质量检测：真查出口 IP 与三个公开情报源。
+///
+/// 上一轮 `detect()` 只有 `await Future.delayed(1000ms)`，报告本身是写死的
+/// `mockIpQualityReport`——点「重新检测」只有转圈在动，数字与结论从不变化。
+class IpQualityNotifier extends Notifier<IpQualityState> {
+  @override
+  IpQualityState build() => const IpQualityState();
+
+  Future<void> detect() async {
+    if (state.stage == IpQualityStage.loading) return;
+    state = state.copyWith(stage: IpQualityStage.loading, clearError: true);
+    final outcome = await ref.read(ipQualityCheckerProvider).detect();
+    state = switch (outcome) {
+      IpQualitySuccess(:final report) => state.copyWith(
+        stage: IpQualityStage.loaded,
+        report: report,
+        clearError: true,
+      ),
+      IpQualityError(:final failure) => state.copyWith(
+        stage: IpQualityStage.failed,
+        error: failure.message,
+      ),
+    };
   }
 }
 
-final ipQualityProvider =
-    NotifierProvider<IpQualityNotifier, ({String ip, IpQualityStage stage})>(
-      IpQualityNotifier.new,
-    );
+/// IP 质量检测器（测试里可替换端点）。
+final ipQualityCheckerProvider = Provider<IpQualityChecker>(
+  (ref) => const IpQualityChecker(),
+);
+
+final ipQualityProvider = NotifierProvider<IpQualityNotifier, IpQualityState>(
+  IpQualityNotifier.new,
+);

@@ -102,7 +102,7 @@ class DeveloperPage extends ConsumerWidget {
                   _Entry(
                     glyph: AppGlyphs.target,
                     title: 'IP 质量',
-                    subtitle: '出口地址的归属地、运营商与风险评分（演示数据）',
+                    subtitle: '实测出口地址与三个公开情报源的类型判断',
                     route: SystemPaths.ipQuality,
                   ),
                 ],
@@ -137,7 +137,7 @@ class DeveloperPage extends ConsumerWidget {
                   _Entry(
                     glyph: AppGlyphs.cloudSync,
                     title: 'WebDAV 云同步',
-                    subtitle: '把备份上传到自建的 WebDAV 服务（演示层不发真实请求）',
+                    subtitle: '把备份真实上传到自建的 WebDAV 服务',
                     // 旧版的 WebDAV 只是备份页里的一张表单；本轮它成了「备份与迁移」
                     // 页尾的子页，这里直接指向那张表单——落在一层目录上再让用户自己
                     // 找第二层，等于把入口做丢。

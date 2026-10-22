@@ -5,8 +5,7 @@
 /// 本身抽成 `IpQualitySheet`，两种入口共用一份——浮层与整页的差别只在容器。
 library;
 
-import 'package:diting/data/mock_forms.dart';
-import 'package:diting/pages/system/demo_page_notice.dart';
+import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -88,11 +87,9 @@ class _IpQualityPageState extends ConsumerState<IpQualityPage> {
   @override
   void initState() {
     super.initState();
-    // 进页面就重测一次：IP 可能已经变了，而不重测的话用户看到的是上次结果。
+    // 进页面就重测一次：出口 IP 可能已经变了，不重测的话用户看到的是上次结果。
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(ipQualityProvider.notifier).detect(mockIpQualityReport.ip);
-      }
+      if (mounted) ref.read(ipQualityProvider.notifier).detect();
     });
   }
 
@@ -106,18 +103,16 @@ class _IpQualityPageState extends ConsumerState<IpQualityPage> {
           glyph: AppGlyphs.refresh,
           tooltip: '重新检测',
           isLoading: state.stage == IpQualityStage.loading,
-          onPressed: () =>
-              ref.read(ipQualityProvider.notifier).detect(state.ip),
+          onPressed: () => ref.read(ipQualityProvider.notifier).detect(),
         ),
       ],
       body: PageBody(
         children: [
-          const DemoPageNotice(),
           IpQualitySheet(
-            report: mockIpQualityReport,
+            report: state.report,
             stage: state.stage,
-            onRetry: () =>
-                ref.read(ipQualityProvider.notifier).detect(state.ip),
+            error: state.error,
+            onRetry: () => ref.read(ipQualityProvider.notifier).detect(),
           ),
         ],
       ),
@@ -134,18 +129,31 @@ class IpQualitySheet extends StatelessWidget {
     super.key,
     required this.report,
     required this.stage,
+    this.error,
     this.onRetry,
   });
 
-  final MockIpQualityReport report;
+  /// 真实检测结果；`null` 表示还没成功检测过。
+  final IpQualityReport? report;
   final IpQualityStage stage;
+  final String? error;
   final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final type = _typeOf(report.ipType);
-    final level = _levelOf(report.level);
+    if (report == null) {
+      // 没有报告时按阶段说话：检测中转圈、失败给原因与重试、未检测给提示。
+      // 不再像上一轮那样先把一份写死的「样例报告」摆在页面上。
+      return _EmptyReport(
+        stage: stage,
+        error: error,
+        onRetry: onRetry,
+      );
+    }
+    final current = report!;
+    final type = _typeOf(current.ipType);
+    final level = _levelOf(current.level);
     final levelColor = switch (level) {
       IpQualityLevel.good => colorScheme.success,
       IpQualityLevel.normal => colorScheme.onSurfaceVariant,
@@ -173,7 +181,7 @@ class IpQualitySheet extends StatelessWidget {
                         children: [
                           Text('当前出口地址', style: context.listCaptionStyle),
                           Text(
-                            report.ip,
+                            current.ip,
                             style: AppTextStyle.title2
                                 .of(context, emphasized: true)
                                 .copyWith(fontFamily: 'JetBrainsMono'),
@@ -206,13 +214,24 @@ class IpQualitySheet extends StatelessWidget {
                   spacing: 8,
                   children: [
                     _TypeBadge(type: type),
-                    MetaChip(label: report.asn),
-                    const Spacer(),
-                    Text(
-                      report.organization,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.listCaptionStyle,
+                    // ASN 由响应决定长度（`AS15169` 与空串都可能），给它一个上限并
+                    // 允许省略：`MetaChip` 本身不省略，真机上 `AS9808` 加长机构名
+                    // 会直接把整行撑出卡片（`RIGHT OVERFLOWED BY 51 PIXELS`）。
+                    if (current.asn.isNotEmpty)
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 120),
+                        child: MetaChip(label: current.asn),
+                      ),
+                    // 机构名必须 `Expanded`：`Spacer` 只能分配**剩余**空间，而
+                    // 未约束的 `Text` 会先按自身宽度占位，`Row` 于是溢出。
+                    Expanded(
+                      child: Text(
+                        current.organization,
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.listCaptionStyle,
+                      ),
                     ),
                   ],
                 ),
@@ -233,7 +252,7 @@ class IpQualitySheet extends StatelessWidget {
         generateSection(
           title: '来源',
           items: [
-            for (final source in report.sources) _SourceRow(source: source),
+            for (final source in current.sources) _SourceRow(source: source),
           ],
           footer:
               '各来源对「住宅 / 机房」的判断经常互相矛盾：'
@@ -242,7 +261,7 @@ class IpQualitySheet extends StatelessWidget {
         if (stage == IpQualityStage.loading)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: Text('正在向 5 个来源查询…', style: context.listCaptionStyle),
+            child: Text('正在查询出口 IP 与 3 个情报源…', style: context.listCaptionStyle),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -251,6 +270,85 @@ class IpQualitySheet extends StatelessWidget {
             glyph: AppGlyphs.refresh,
             size: TonalButtonSize.section,
             onPressed: stage == IpQualityStage.loading ? null : onRetry,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 还没有报告时的样子：按阶段说话，不摆一份写死的样例。
+///
+/// 上一轮页面一进来就渲染 `mockIpQualityReport`（`203.0.113.24` / `AS64500` /
+/// 「风险」），看起来像检测结果，其实是常量。现在没有真实数据就明说没有。
+class _EmptyReport extends StatelessWidget {
+  const _EmptyReport({required this.stage, this.error, this.onRetry});
+
+  final IpQualityStage stage;
+  final String? error;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    final loading = stage == IpQualityStage.loading;
+    final failed = stage == IpQualityStage.failed;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: 8,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: CommonCard(
+            padding: const EdgeInsets.all(16),
+            isError: failed,
+            child: Row(
+              spacing: 12,
+              children: [
+                if (loading)
+                  const CommonCircleLoading()
+                else
+                  GlyphIcon(
+                    failed ? AppGlyphs.error : AppGlyphs.cloudSync,
+                    size: 22,
+                    color: failed
+                        ? colorScheme.error
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 4,
+                    children: [
+                      Text(
+                        loading
+                            ? '正在检测'
+                            : (failed ? '检测失败' : '尚未检测'),
+                        style: context.listTitleStyle,
+                      ),
+                      Text(
+                        error ??
+                            (loading
+                                ? '正在获取出口 IP 并查询情报源，请稍候'
+                                : '点下方按钮开始检测当前出口 IP 的质量'),
+                        style: context.listCaptionStyle.copyWith(
+                          color: failed ? colorScheme.error : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: TonalButton(
+            label: loading ? '检测中…' : '开始检测',
+            glyph: AppGlyphs.refresh,
+            size: TonalButtonSize.section,
+            onPressed: loading ? null : onRetry,
           ),
         ),
       ],
@@ -298,7 +396,7 @@ class _TypeBadge extends StatelessWidget {
 class _SourceRow extends StatelessWidget {
   const _SourceRow({required this.source});
 
-  final MockIpQualitySource source;
+  final IpSourceResult source;
 
   @override
   Widget build(BuildContext context) {
@@ -307,24 +405,26 @@ class _SourceRow extends StatelessWidget {
     final color = status.isError ? colorScheme.error : colorScheme.success;
     final ipType = source.ipType;
     final latency = source.latencyMs;
+    final detail = source.detail;
     return ListItem(
       leading: GlyphIcon(
         status.isError ? AppGlyphs.warning : AppGlyphs.checkCircle,
         color: color,
       ),
       title: Text(source.name),
-      subtitle: Row(
+      // `Wrap` 而不是 `Row`：一条来源最多有四段文字（状态/判定/延迟/失败原因），
+      // 窄屏加上大字号会超出卡片宽度。`Row` 溢出时只是印一句调试条纹，用户看到的是
+      // 一行字被截断；`Wrap` 会换行，信息不会丢。
+      subtitle: Wrap(
         spacing: 8,
+        runSpacing: 2,
         children: [
           Text(
             status.label,
             style: context.listCaptionStyle.copyWith(color: color),
           ),
           if (ipType != null)
-            Text(
-              '判定为${_typeOf(ipType).label}',
-              style: context.listCaptionStyle,
-            ),
+            Text('判定为${_typeOf(ipType).label}', style: context.listCaptionStyle),
           if (latency != null)
             Text(
               '${latency}ms',
@@ -332,6 +432,9 @@ class _SourceRow extends StatelessWidget {
                 fontFamily: 'JetBrainsMono',
               ),
             ),
+          // 失败原因必须显示：只写「失败」用户无从判断是限流、地址错还是网络问题。
+          if (detail != null && detail.isNotEmpty)
+            Text(detail, style: context.listCaptionStyle),
         ],
       ),
       trailing: status.isError
