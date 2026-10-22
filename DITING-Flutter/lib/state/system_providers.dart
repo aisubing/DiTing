@@ -1,9 +1,15 @@
-/// 演示用状态：系统域（访问控制 / 备份 / 免责声明 / 开发者 / 更新）。
+/// 系统域状态：免责声明 / 开发者模式 / WebDAV 连接 / 应用更新 / IP 质量。
 ///
-/// 全部纯内存，不落盘、不联网：本阶段只做 UI，所有「连接中 → 成功」之类的
-/// 过程都用 `Future.delayed` 模拟。放在独立文件而不是塞进页面，是因为访问
-/// 控制的选择结果要被设置页与演示页共用，页面内部 `setState` 活不过一次
-/// 路由往返。
+/// 这里已经是真实实现，不再是「全内存模拟」：
+/// - **应用更新**走 GitHub `releases/latest` 真实请求（`AppUpdateChecker`）；
+/// - **IP 质量**先取出口 IP 再并发查三个公开情报源（`IpQualityChecker`）；
+/// - **WebDAV** 的连接/上传/下载由真实 `dav_client.dart` 完成，本文件只保存
+///   连接状态机。
+///
+/// 曾经的 `AccessControl*`（访问控制白/黑名单草稿）在本轮删除：它只有内存状态、
+/// 没有任何页面读它，也没有落盘——是「看起来像功能」的死代码。真正的应用访问
+/// 控制在 `app_selection_pages.dart`（落 `dns_vpn_prefs`）与 `app_rules_page`
+/// （落规则库 `appScope`），它们才是引擎真正消费的那份数据。
 library;
 
 import 'dart:async';
@@ -13,107 +19,6 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/data/update/app_update_checker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-/// 访问控制模式：白名单（只放行选中）/ 黑名单（只拦截选中）。
-enum AccessMode {
-  whitelist('白名单模式'),
-  blacklist('黑名单模式');
-
-  const AccessMode(this.label);
-
-  final String label;
-}
-
-/// 访问控制列表的排序方式。
-enum AccessSort {
-  none('默认'),
-  name('按名称'),
-  time('按时间');
-
-  const AccessSort(this.label);
-
-  final String label;
-}
-
-/// 访问控制的全部可编辑项。
-///
-/// 用一个不可变记录而不是多个 provider：这些字段在「保存」时要一起提交，
-/// 拆开会让「哪些改动算 dirty」变成一个跨 provider 的比较问题。
-class AccessControlState {
-  const AccessControlState({
-    this.enabled = false,
-    this.mode = AccessMode.whitelist,
-    this.sort = AccessSort.none,
-    this.showSystemApps = false,
-    this.showNonInternetApps = false,
-    this.selected = const {},
-  });
-
-  final bool enabled;
-  final AccessMode mode;
-  final AccessSort sort;
-
-  /// 是否把系统应用列出来（上游是「过滤系统应用」的反向开关）。
-  final bool showSystemApps;
-  final bool showNonInternetApps;
-
-  /// 选中的应用包名。
-  final Set<String> selected;
-
-  AccessControlState copyWith({
-    bool? enabled,
-    AccessMode? mode,
-    AccessSort? sort,
-    bool? showSystemApps,
-    bool? showNonInternetApps,
-    Set<String>? selected,
-  }) => AccessControlState(
-    enabled: enabled ?? this.enabled,
-    mode: mode ?? this.mode,
-    sort: sort ?? this.sort,
-    showSystemApps: showSystemApps ?? this.showSystemApps,
-    showNonInternetApps: showNonInternetApps ?? this.showNonInternetApps,
-    selected: selected ?? this.selected,
-  );
-}
-
-/// 访问控制草稿；`saved` 是上次保存的快照，两者不等即为 dirty。
-class AccessControlNotifier extends Notifier<AccessControlState> {
-  @override
-  AccessControlState build() => const AccessControlState();
-
-  void update(AccessControlState Function(AccessControlState state) update) =>
-      state = update(state);
-
-  void toggle(String packageName) {
-    final next = {...state.selected};
-    if (!next.remove(packageName)) {
-      next.add(packageName);
-    }
-    state = state.copyWith(selected: next);
-  }
-
-  /// 全选 / 反选只作用于传入的候选集（即「当前可见」），与规则页同一口径。
-  void selectAll(Iterable<String> packageNames) =>
-      state = state.copyWith(selected: {...packageNames});
-
-  void invert(Iterable<String> packageNames) {
-    final next = {...state.selected};
-    for (final packageName in packageNames) {
-      if (!next.remove(packageName)) {
-        next.add(packageName);
-      }
-    }
-    state = state.copyWith(selected: next);
-  }
-
-  void reset() => state = const AccessControlState();
-}
-
-final accessControlProvider =
-    NotifierProvider<AccessControlNotifier, AccessControlState>(
-      AccessControlNotifier.new,
-    );
 
 /// WebDAV 连接状态机。
 enum DavStatus {
