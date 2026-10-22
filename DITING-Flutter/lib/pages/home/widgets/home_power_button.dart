@@ -5,31 +5,23 @@ import 'package:diting/ui/ui.dart';
 import 'package:material_new_shapes/material_new_shapes.dart';
 import 'package:material_ui/material_ui.dart';
 
-const _morphDuration = Duration(milliseconds: 450);
-const _stateDuration = Duration(milliseconds: 150);
-
-/// 圆 ↔ 九边饼干形（M3 Expressive 的「正在运行」形态）。
-final _startMorph = Morph(MaterialShapes.circle, MaterialShapes.cookie9Sided);
-
-Path _morphPath(double progress) => _startMorph.toPath(
-  progress: progress,
-  rotationPivotX: 0.5,
-  rotationPivotY: 0.5,
-);
-
-/// 形变时整颗一起转 1/9 圈，让九条边对上圆心，像 M3 加载器那样顺。
-double _morphTurn(double progress) => progress * 2 * math.pi / 9;
-
 /// 首页电源按钮：停止 / 启动中 / 运行 / 停止中 四态。
 ///
-/// 形状取自 FlClash `widgets/current_outbound.dart` 的 `_StartToggle`：**停止态
-/// 是正圆 + 播放三角，运行态长成九边饼干 + 暂停双杠**，中间用 `easeOutBack`
-/// 450ms 做形变（`Morph` 逐条曲线插值，不是缩放/裁剪，边界不会抖）。运行态
-/// 额外投一层主色柔光，替代原先三层同心 halo——光落在图形本身上，比同心圆更
-/// 贴合按钮轮廓，也少两层随尺寸变化的容器。
+/// 上游 `PowerToggleButton.kt` 是「glow + halo + 圆钮 + 文案」四层同步 250ms
+/// 变色/变尺寸；这里保留同一结构，用动画驱动，视觉层次与上游一致：运行态是
+/// 主色实心、停止态是表面色描边。
 ///
-/// 视觉只表达「能不能点」（[PowerState]、[Semantics.value]）；文案不再可见：
-/// 圆钮里已经用播放/暂停两个符号说明了点击后的结果，再写一行字是重复。
+/// **形状变化只发生在运行态**：停止时三颗都是正圆（旧版原样），启动后内圈圆钮
+/// 与外面两层光晕一起长成九边饼干（`MaterialShapes.cookie9Sided`，FlClash
+/// `current_outbound.dart` 的 `_StartToggle` 用的同一形状，光晕跟着内圈一起变形
+/// 才不会出现「里外不同款」）。尺寸、配色、投影、图标与 250ms 时长仍是旧版那
+/// 一套；只有形状走 `easeOutBack` 并随形变整体转 1/9 圈对齐圆心。
+///
+/// **圆钮下面不再写字**：停止态原先压一行「开启」，与圆钮里的播放三角重复表达
+/// 同一件事，而且在 124dp 圆钮下那行小字既不参与点击（命中区仍是圆钮），又把
+/// 按钮的视觉重心拉低——首页首屏最醒目的一块反而显得松散。状态改由
+/// [Semantics.value]（无障碍朗读）与运行/停止两态的配色区分；`label` 参数保留
+/// 下来喂语义，不做可见文案。
 class HomePowerButton extends StatelessWidget {
   const HomePowerButton({
     super.key,
@@ -46,14 +38,11 @@ class HomePowerButton extends StatelessWidget {
   final String stoppedLabel;
   final String busyLabel;
 
-  /// 圆钮 / 饼干形共用的方形边长：够大保证首屏命中区，又不会压住下方文案。
-  static const _size = 132.0;
-
   @override
   Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    final running = state.isRunning;
     final busy = state.isBusy;
-    // 启动中也朝「运行」形变：用户点下去看到按钮正在变成运行态，而不是原地不动。
-    final active = state.isRunning || state == PowerState.starting;
     final label = switch (state) {
       PowerState.starting || PowerState.stopping => busyLabel,
       PowerState.running => runningLabel,
@@ -64,14 +53,15 @@ class HomePowerButton extends StatelessWidget {
       label: label,
       value: state.label,
       child: Center(
-        child: Padding(
-          // 柔光要溢出按钮本体，给四周留出投影空间，避免被父级裁掉。
-          padding: const EdgeInsets.all(12),
-          child: _MorphToggle(
-            size: _size,
-            active: active,
+        // 圆钮本身只占 240 方框中间那一圈；去掉圆钮下方的文案后，方框高度可以
+        // 收紧到 halo 的直径，否则首屏会留出一段没有内容的空白。
+        child: SizedBox(
+          width: 240,
+          height: 176,
+          child: _PowerVisual(
+            running: running,
             busy: busy,
-            tooltip: label,
+            foreground: running ? colorScheme.onPrimary : colorScheme.primary,
             onPressed: busy ? null : onPressed,
           ),
         ),
@@ -80,51 +70,48 @@ class HomePowerButton extends StatelessWidget {
   }
 }
 
-class _MorphToggle extends StatefulWidget {
-  const _MorphToggle({
-    required this.size,
-    required this.active,
+/// 三颗同心图形：外光晕 / 内光晕 / 圆钮本体。共用同一个控制器。
+///
+/// 尺寸与颜色按 [AnimationController.value] 线性插值（旧版 250ms 的观感不变）；
+/// 形状按同一条曲线的 `easeOutBack` 版本插值，圆→饼干会先冲过头再收回，和 M3
+/// Expressive 的形变一致。两条曲线同源，不会出现「颜色到了形状没到」。
+class _PowerVisual extends StatefulWidget {
+  const _PowerVisual({
+    required this.running,
     required this.busy,
-    required this.tooltip,
+    required this.foreground,
     required this.onPressed,
   });
 
-  final double size;
-  final bool active;
+  final bool running;
   final bool busy;
-  final String tooltip;
+  final Color foreground;
   final VoidCallback? onPressed;
 
   @override
-  State<_MorphToggle> createState() => _MorphToggleState();
+  State<_PowerVisual> createState() => _PowerVisualState();
 }
 
-class _MorphToggleState extends State<_MorphToggle>
+class _PowerVisualState extends State<_PowerVisual>
     with SingleTickerProviderStateMixin {
+  static const _duration = Duration(milliseconds: 250);
+
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: _morphDuration,
-    value: widget.active ? 1 : 0,
+    duration: _duration,
+    value: widget.running ? 1 : 0,
   );
-  late final Animation<double> _progress = CurvedAnimation(
+  late final Animation<double> _morph = CurvedAnimation(
     parent: _controller,
     curve: Curves.easeOutBack,
     reverseCurve: Curves.easeInCubic,
   );
-  var _hovered = false;
-  var _focused = false;
-
-  double get _overlay => _focused
-      ? 0.1
-      : _hovered
-      ? 0.08
-      : 0;
 
   @override
-  void didUpdateWidget(_MorphToggle oldWidget) {
+  void didUpdateWidget(_PowerVisual oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active) {
-      widget.active ? _controller.forward() : _controller.reverse();
+    if (oldWidget.running != widget.running) {
+      widget.running ? _controller.forward() : _controller.reverse();
     }
   }
 
@@ -134,118 +121,149 @@ class _MorphToggleState extends State<_MorphToggle>
     super.dispose();
   }
 
+  double _lerp(double start, double end, double amount) =>
+      start + (end - start) * amount;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final fill = colorScheme.primary;
-    final ink = colorScheme.onPrimary;
-    final stateDuration = context.motionDuration(_stateDuration);
-    return Tooltip(
-      message: widget.tooltip,
-      child: InkResponse(
-        onTap: widget.onPressed,
-        onHover: (value) => setState(() => _hovered = value),
-        onFocusChange: (value) => setState(() => _focused = value),
-        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
-        splashFactory: NoSplash.splashFactory,
-        child: ElasticPress(
-          enabled: widget.onPressed != null,
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(end: _overlay),
-            duration: stateDuration,
-            builder: (_, overlay, child) => AnimatedBuilder(
-              animation: _progress,
-              builder: (_, child) => CustomPaint(
-                painter: _MorphPainter(
-                  progress: _progress.value,
-                  color: Color.alphaBlend(
-                    ink.withValues(alpha: overlay),
-                    fill,
-                  ),
-                  shadow: colorScheme.primary.withValues(alpha: 0.3),
+    final primary = colorScheme.primary;
+    final stoppedFill = colorScheme.surfaceContainerHigh;
+    final runningShadow = BoxShadow(
+      color: primary.withValues(alpha: 0.32),
+      blurRadius: 28,
+      offset: const Offset(0, 8),
+    );
+    final stoppedShadow = BoxShadow(
+      color: Colors.black.withValues(alpha: 0.10),
+      blurRadius: 12,
+      offset: const Offset(0, 8),
+    );
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final amount = _controller.value;
+        final shape = _MorphBorder(_morph.value);
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // 外光晕：只在运行态出现，比按钮大一圈、透明度很低。
+            _Halo(
+              shape: shape,
+              size: _lerp(148, 172, amount),
+              color: primary.withValues(alpha: _lerp(0, 0.10, amount)),
+            ),
+            _Halo(
+              shape: shape,
+              size: _lerp(124, 148, amount),
+              color: primary.withValues(alpha: _lerp(0.06, 0.16, amount)),
+            ),
+            SizedBox.square(
+              dimension: _lerp(92, 100, amount),
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: shape,
+                  color: Color.lerp(stoppedFill, primary, amount),
+                  shadows: [
+                    BoxShadow.lerp(stoppedShadow, runningShadow, amount)!,
+                  ],
                 ),
-                child: child,
-              ),
-              child: child,
-            ),
-            child: SizedBox.square(
-              dimension: widget.size,
-              child: Center(
-                child: widget.busy
-                    ? CommonCircleLoading(
-                        size: widget.size * 0.34,
-                        color: ink,
-                      )
-                    : TweenAnimationBuilder<double>(
-                        tween: Tween(end: widget.active ? 1 : 0),
-                        duration: _morphDuration,
-                        curve: Curves.easeOutBack,
-                        builder: (_, progress, _) => GlyphIcon(
-                          AppGlyphs.playPause(progress),
-                          size: widget.size * 0.34,
-                          color: ink,
-                          fill: 1,
-                        ),
-                      ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  shape: shape,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: widget.onPressed,
+                    customBorder: shape,
+                    child: Center(child: child),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          ],
+        );
+      },
+      child: widget.busy
+          ? CommonCircleLoading(size: 42, color: widget.foreground)
+          : GlyphIcon(
+              widget.running ? AppGlyphs.bolt : AppGlyphs.playPause(0),
+              size: 42,
+              fill: 1,
+              color: widget.foreground,
+            ),
+    );
+  }
+}
+
+/// 一圈光晕：只画形状和颜色，尺寸由父级按帧给定。
+class _Halo extends StatelessWidget {
+  const _Halo({required this.shape, required this.size, required this.color});
+
+  final ShapeBorder shape;
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: size,
+      child: DecoratedBox(
+        decoration: ShapeDecoration(shape: shape, color: color),
       ),
     );
   }
 }
 
-/// 填色 + 沿轮廓的柔光；形状由 [progress] 在正圆与九边饼干之间插值得出。
-class _MorphPainter extends CustomPainter {
-  const _MorphPainter({
-    required this.progress,
-    required this.color,
-    required this.shadow,
-  });
-
-  static const _shadowOffset = Offset(0, 6);
-  static const _shadowBlur = 14.0;
+/// 圆 ↔ 九边饼干的可插值 [ShapeBorder]。
+///
+/// 形状本身由 [Morph] 逐条曲线插值（不是缩放或裁剪，边界不会抖），再整体转到
+/// 圆心、转 1/9 圈并缩放到目标矩形。`ShapeDecoration` 与 `Material` 的裁剪都
+/// 走 [getOuterPath]，所以填色、投影、水波纹会跟着同一轮廓，不会出现「色块是
+/// 饼干、波纹还是圆」。
+class _MorphBorder extends ShapeBorder {
+  const _MorphBorder(this.progress);
 
   final double progress;
-  final Color color;
-  final Color shadow;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final path = _morphPath(progress);
-    canvas
-      ..save()
-      ..translate(size.width / 2, size.height / 2)
-      ..rotate(_morphTurn(progress))
-      ..scale(size.width, size.height)
-      ..translate(-0.5, -0.5);
-    if (shadow.a > 0) {
-      canvas
-        ..save()
-        ..translate(
-          _shadowOffset.dx / size.width,
-          _shadowOffset.dy / size.height,
-        )
-        ..drawPath(
-          path,
-          Paint()
-            ..color = shadow
-            ..maskFilter = MaskFilter.blur(
-              BlurStyle.normal,
-              _shadowBlur / 2 / size.width,
-            ),
-        )
-        ..restore();
-    }
-    canvas
-      ..drawPath(path, Paint()..color = color)
-      ..restore();
+  EdgeInsetsGeometry get dimensions => EdgeInsets.zero;
+
+  @override
+  ShapeBorder scale(double t) => _MorphBorder(progress);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    final transform = Matrix4.translationValues(
+      rect.center.dx,
+      rect.center.dy,
+      0,
+    )
+      ..rotateZ(progress * 2 * math.pi / 9)
+      ..scaleByDouble(rect.width, rect.height, 1, 1)
+      ..translateByDouble(-0.5, -0.5, 0, 1);
+    return _morphPath(progress).transform(transform.storage);
   }
 
   @override
-  bool shouldRepaint(_MorphPainter oldDelegate) =>
-      oldDelegate.progress != progress ||
-      oldDelegate.color != color ||
-      oldDelegate.shadow != shadow;
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      getOuterPath(rect, textDirection: textDirection);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {}
+
+  @override
+  bool operator ==(Object other) =>
+      other is _MorphBorder && other.progress == progress;
+
+  @override
+  int get hashCode => progress.hashCode;
 }
+
+/// 只建一次的形变表：`Morph` 构造时要做曲线配对，别放进每帧的绘制路径。
+final _morph = Morph(MaterialShapes.circle, MaterialShapes.cookie9Sided);
+
+Path _morphPath(double progress) => _morph.toPath(
+  progress: progress,
+  rotationPivotX: 0.5,
+  rotationPivotY: 0.5,
+);
