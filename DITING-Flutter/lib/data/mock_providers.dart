@@ -33,56 +33,6 @@ class MockProvider {
   final bool isEnabled;
 }
 
-const mockProviders = <MockProvider>[
-  MockProvider(
-    id: 'ali',
-    name: '阿里公共 DNS',
-    protocol: ProviderProtocol.doh,
-    address: 'https://dns.alidns.com/dns-query',
-    latencyMs: 12,
-    isPreset: true,
-  ),
-  MockProvider(
-    id: 'tencent',
-    name: '腾讯 DNSPod',
-    protocol: ProviderProtocol.doh,
-    address: 'https://doh.pub/dns-query',
-    latencyMs: 18,
-    isPreset: true,
-  ),
-  MockProvider(
-    id: 'dnspod-dot',
-    name: 'DNSPod DoT',
-    protocol: ProviderProtocol.dot,
-    address: 'dot.pub:853',
-    latencyMs: 24,
-    isPreset: true,
-  ),
-  MockProvider(
-    id: 'cloudflare',
-    name: 'Cloudflare',
-    protocol: ProviderProtocol.doh,
-    address: 'https://cloudflare-dns.com/dns-query',
-    latencyMs: 96,
-    isPreset: true,
-  ),
-  MockProvider(
-    id: 'google',
-    name: 'Google Public DNS',
-    protocol: ProviderProtocol.doh,
-    address: 'https://dns.google/dns-query',
-    latencyMs: 142,
-    isPreset: true,
-  ),
-  MockProvider(
-    id: 'local',
-    name: '本地递归（dnsmasq）',
-    protocol: ProviderProtocol.dns,
-    address: '192.168.1.1:53',
-    latencyMs: 6,
-  ),
-];
-
 enum RuleKind {
   block('黑名单', '拦截匹配的域名', 'rules'),
   allow('白名单', '放行匹配的域名', 'checkCircle'),
