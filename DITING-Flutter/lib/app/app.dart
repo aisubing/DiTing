@@ -7,6 +7,7 @@ import 'package:diting/router.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
+import 'package:diting/state/on_demand_runner.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/background_layer.dart';
@@ -42,8 +43,27 @@ class _DitingAppState extends ConsumerState<DitingApp> {
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(onResume: _maybeRunAutoUpdate);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunAutoUpdate());
+    _lifecycle = AppLifecycleListener(onResume: _onResume);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeRunAutoUpdate();
+      _maybeApplyOnDemand();
+    });
+  }
+
+  void _onResume() {
+    _maybeRunAutoUpdate();
+    _maybeApplyOnDemand();
+  }
+
+  /// Applies the on-demand whitelist to the tunnel. The platform reports the joined SSID only on
+  /// request, so start and resume are the two moments where the answer can have changed.
+  Future<void> _maybeApplyOnDemand() async {
+    if (!mounted) return;
+    try {
+      await ref.read(onDemandRunnerProvider).apply();
+    } catch (_) {
+      // A missing channel on desktop simply means there is no tunnel to switch.
+    }
   }
 
   @override

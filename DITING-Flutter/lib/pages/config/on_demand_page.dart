@@ -6,6 +6,7 @@ import 'package:diting/pages/config/config_common.dart';
 import 'package:diting/pages/config/on_demand_capabilities.dart';
 import 'package:diting/pages/server/server_platform_probe.dart';
 import 'package:diting/state/config_providers_resources.dart';
+import 'package:diting/state/on_demand_runner.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +27,11 @@ class OnDemandConfigPage extends ConsumerWidget {
       title: '按需连接',
       iconActions: [
         IconButtonData(
+          glyph: AppGlyphs.refresh,
+          tooltip: '立即应用',
+          onPressed: () => _applyNow(context, ref),
+        ),
+        IconButtonData(
           glyph: AppGlyphs.add,
           tooltip: '添加 SSID',
           onPressed: () => showSsidForm(context, ref),
@@ -44,7 +50,7 @@ class OnDemandConfigPage extends ConsumerWidget {
                       : '关闭时 VPN 始终在线，不随网络切换',
                 ),
                 value: resources.onDemand,
-                onChanged: notifier.setOnDemand,
+                onChanged: (value) => _setEnabled(context, ref, value),
               ),
             ],
             footer:
@@ -127,6 +133,31 @@ String _decisionSummary(SsidDecision decision) => switch (decision.state) {
     '已匹配 ${decision.rule?.ssid ?? ''}，VPN 会自动启动',
   SsidMatchState.unmatched => '当前 Wi-Fi 不在白名单，VPN 保持断开',
 };
+
+/// Turns the switch on and immediately applies it: flipping the toggle alone only wrote a
+/// preference, so the tunnel state never followed the whitelist until the next restart.
+Future<void> _setEnabled(
+  BuildContext context,
+  WidgetRef ref,
+  bool value,
+) async {
+  ref.read(configResourcesProvider.notifier).setOnDemand(value);
+  if (!value) {
+    showConfigHint(context, '按需连接已关闭，VPN 不再随网络切换');
+    return;
+  }
+  final outcome = await ref.read(onDemandRunnerProvider).apply();
+  if (!context.mounted) return;
+  showConfigHint(context, outcome.label);
+}
+
+/// Re-evaluates the whitelist against the current network; the page has no network callback, so
+/// this is how a user applies it after switching Wi-Fi.
+Future<void> _applyNow(BuildContext context, WidgetRef ref) async {
+  final outcome = await ref.read(onDemandRunnerProvider).apply();
+  if (!context.mounted) return;
+  showConfigHint(context, outcome.label);
+}
 
 /// What the whitelist decides for the network the device is on now. The card exists because a
 /// list alone never tells the user whether the tunnel would start.

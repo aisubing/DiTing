@@ -361,8 +361,10 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
         @Suppress("DEPRECATION")
         val ssid = info.ssid
         if (ssid.isNullOrBlank()) return ""
-        // Android quotes SSIDs, and an unassociated network reports the sentinel `<unknown ssid>`.
-        val unquoted = ssid.removeSurrounding("\"").trim()
+        // Android quotes SSIDs, and some builds (emulators) escape them a second time, so strip
+        // every surrounding quote instead of exactly one pair; an unassociated network reports the
+        // sentinel `<unknown ssid>`.
+        val unquoted = ssid.trim().trim('"').trim()
         if (unquoted == WifiManager.UNKNOWN_SSID) return ""
         return unquoted
     }

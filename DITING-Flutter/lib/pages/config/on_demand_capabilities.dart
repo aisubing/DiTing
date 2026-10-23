@@ -27,9 +27,14 @@ String describeSsid(String? ssid) => switch (ssid) {
   final name => '当前连接：$name',
 };
 
+/// Reads the joined Wi-Fi name; injected so tests can answer without a platform channel.
+final currentSsidReaderProvider = Provider<Future<String?> Function()>(
+  (ref) => readCurrentSsid,
+);
+
 /// Current Wi-Fi name; a page open re-reads it, since the network can change in between.
 final currentSsidProvider = FutureProvider<String?>(
-  (ref) => readCurrentSsid(),
+  (ref) => ref.watch(currentSsidReaderProvider)(),
 );
 
 /// Battery-optimization allowlist state; watching it is what makes the row show a real value.
@@ -37,10 +42,8 @@ final batteryOptimizationProvider = FutureProvider<BatteryOptimizationState>(
   (ref) => readBatteryOptimization(),
 );
 
-/// The `currentSsid` method on the legacy `platform` channel. TODO(android): implement
-/// `currentSsid` in `android/.../platform/PlatformBridge.kt` together with
-/// `ACCESS_FINE_LOCATION`/`NEARBY_WIFI_DEVICES` handling; until then this resolves to null and the
-/// page reports the capability as missing.
+/// The `currentSsid` method on the legacy `platform` channel: null means the name cannot be read
+/// (no location permission, or a build without the channel), `''` means the device is not on Wi-Fi.
 Future<String?> readCurrentSsid() async {
   try {
     return await _platformChannel.invokeMethod<String>('currentSsid');
