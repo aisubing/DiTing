@@ -78,6 +78,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     final palette = ref.watch(paletteProvider);
     final pureBlack = ref.watch(pureBlackProvider);
     final textScale = ref.watch(textScaleProvider);
+    // Font family: `null` follows the platform, otherwise `ThemeData.fontFamily` overrides the whole
+    // text theme.
+    final fontFamily = ref.watch(selectedFontFamilyProvider);
     // Custom background: a wallpaper behind the root, pages go transparent.
     final background = ref.watch(customBackgroundProvider);
     final backgroundUri = background.enabled ? background.currentUri : null;
@@ -86,6 +89,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       seedColor: palette.effectiveSeed,
       pureBlack: pureBlack,
       transparentPage: showBackground,
+      fontFamily: fontFamily,
     );
 
     return MaterialApp.router(

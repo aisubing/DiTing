@@ -41,9 +41,12 @@ final paletteProvider = NotifierProvider<PaletteNotifier, AppPalette>(
 
 class PureBlackNotifier extends Notifier<bool> {
   @override
-  bool build() => false;
+  bool build() => _settings(ref).pureBlackEnabled;
 
-  void toggle(bool value) => state = value;
+  void toggle(bool value) {
+    state = value;
+    _settings(ref).setPureBlackEnabled(value);
+  }
 }
 
 final pureBlackProvider = NotifierProvider<PureBlackNotifier, bool>(
@@ -53,9 +56,12 @@ final pureBlackProvider = NotifierProvider<PureBlackNotifier, bool>(
 /// Raw user text scale, before [clampTextScale].
 class TextScaleNotifier extends Notifier<double> {
   @override
-  double build() => 1;
+  double build() => clampTextScale(_settings(ref).textScale);
 
-  void set(double value) => state = clampTextScale(value);
+  void set(double value) {
+    state = clampTextScale(value);
+    _settings(ref).setTextScale(state);
+  }
 }
 
 final textScaleProvider = NotifierProvider<TextScaleNotifier, double>(

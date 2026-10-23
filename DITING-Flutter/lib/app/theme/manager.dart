@@ -12,12 +12,17 @@ class AppThemeSpec {
     this.pureBlack = false,
     this.style = ColorStyle.vivid,
     this.transparentPage = false,
+    this.fontFamily,
   });
 
   final Color seedColor;
   final Brightness brightness;
   final bool pureBlack;
   final ColorStyle style;
+
+  /// Overrides `ThemeData.fontFamily` (`.withAppTypography` rewrites sizes but keeps the family);
+  /// null keeps the platform default from `appFontFamilyFallback`.
+  final String? fontFamily;
 
   /// Makes the page background transparent so the wallpaper shows through; same as upstream
   /// `DITINGTheme(transparentBackground)`.
@@ -30,12 +35,14 @@ class AppThemeSpec {
     bool? pureBlack,
     ColorStyle? style,
     bool? transparentPage,
+    String? fontFamily,
   }) => AppThemeSpec(
     seedColor: seedColor ?? this.seedColor,
     brightness: brightness ?? this.brightness,
     pureBlack: pureBlack ?? this.pureBlack,
     style: style ?? this.style,
     transparentPage: transparentPage ?? this.transparentPage,
+    fontFamily: fontFamily ?? this.fontFamily,
   );
 
   @override
@@ -46,11 +53,18 @@ class AppThemeSpec {
           other.brightness == brightness &&
           other.pureBlack == pureBlack &&
           other.style == style &&
-          other.transparentPage == transparentPage;
+          other.transparentPage == transparentPage &&
+          other.fontFamily == fontFamily;
 
   @override
-  int get hashCode =>
-      Object.hash(seedColor, brightness, pureBlack, style, transparentPage);
+  int get hashCode => Object.hash(
+    seedColor,
+    brightness,
+    pureBlack,
+    style,
+    transparentPage,
+    fontFamily,
+  );
 }
 
 /// Builds the theme as upstream `theme_manager.dart`: seeded scheme, `.toPureBlack` (dark only),
@@ -89,6 +103,7 @@ ThemeData buildAppTheme(
     ),
     // Transparent page background only; cards and sheets stay opaque.
     colorScheme: scheme,
+    fontFamily: spec.fontFamily,
     fontFamilyFallback: appFontFamilyFallback(
       platform: target,
       locales: locales,
@@ -145,6 +160,7 @@ class AppThemePair {
     required this.pureBlack,
     this.style = ColorStyle.vivid,
     this.transparentPage = false,
+    this.fontFamily,
   });
 
   final Color seedColor;
@@ -154,11 +170,15 @@ class AppThemePair {
   /// True when a custom background is on: page background is transparent.
   final bool transparentPage;
 
+  /// Font family chosen on `/font-family`; null keeps the platform default.
+  final String? fontFamily;
+
   AppThemeSpec get lightSpec => AppThemeSpec(
     seedColor: seedColor,
     brightness: Brightness.light,
     style: style,
     transparentPage: transparentPage,
+    fontFamily: fontFamily,
   );
 
   AppThemeSpec get darkSpec => AppThemeSpec(
@@ -167,5 +187,6 @@ class AppThemePair {
     pureBlack: pureBlack,
     style: style,
     transparentPage: transparentPage,
+    fontFamily: fontFamily,
   );
 }

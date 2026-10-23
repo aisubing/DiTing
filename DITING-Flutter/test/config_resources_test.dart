@@ -8,7 +8,7 @@ import 'package:diting/state/config_providers_resources.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pins the three config-resource tables, which used to live in memory and reverted on restart
+/// Pins the two config-resource tables, which used to live in memory and reverted on restart
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -25,9 +25,8 @@ void main() {
   }
 
   group('空 store 上回落到初始值', () {
-    test('三组都是演示初始值', () {
+    test('两组都是演示初始值', () {
       final state = container().read(configResourcesProvider);
-      expect(state.iconSets, hasLength(mockIconSets.length));
       expect(state.userAgents, hasLength(mockUserAgents.length));
       expect(state.ssidRules, hasLength(mockSsidRules.length));
       expect(state.selectedUserAgent, isNull);
@@ -36,40 +35,6 @@ void main() {
   });
 
   group('写入后能在新容器里读回', () {
-    test('图标集', () {
-      container().read(configResourcesProvider.notifier).putIconSet(
-        null,
-        const MockIconSet(
-          name: '我的图标',
-          url: 'https://x.test/i.json',
-          icons: ['a', 'b'],
-          fromUrl: false,
-        ),
-      );
-
-      final reopened = container().read(configResourcesProvider);
-      final added = reopened.iconSets.firstWhere((s) => s.name == '我的图标');
-      expect(added.url, 'https://x.test/i.json');
-      expect(added.icons, ['a', 'b']);
-      expect(added.fromUrl, isFalse);
-    });
-
-    test('删除图标集后不会复活', () {
-      final first = container();
-      first.read(configResourcesProvider.notifier).removeIconSet('地区旗帜');
-      expect(
-        first.read(configResourcesProvider).iconSets.map((s) => s.name),
-        isNot(contains('地区旗帜')),
-      );
-
-      final reopened = container().read(configResourcesProvider);
-      expect(reopened.iconSets.map((s) => s.name), isNot(contains('地区旗帜')));
-      expect(
-        reopened.iconSets,
-        hasLength(mockIconSets.length - 1),
-      );
-    });
-
     test('User-Agent 与选中项', () {
       final notifier = container().read(configResourcesProvider.notifier);
       expect(notifier.addUserAgent('MyAgent/1.0'), isTrue);
@@ -151,14 +116,14 @@ void main() {
     test('坏 JSON 回落到初始值而不是崩溃', () {
       store.putString(
         ConfigResourceStore.container,
-        'icon_sets_json',
+        'user_agents_json',
         '{not json',
       );
       final state = container().read(configResourcesProvider);
-      expect(state.iconSets, hasLength(mockIconSets.length));
+      expect(state.userAgents, hasLength(mockUserAgents.length));
     });
 
-    test('一组坏掉不牵连另外两组', () {
+    test('一组坏掉不牵连另外一组', () {
       store.putString(
         ConfigResourceStore.container,
         'user_agents_json',

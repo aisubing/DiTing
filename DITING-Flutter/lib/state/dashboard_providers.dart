@@ -5,11 +5,14 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/dashboard_models.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
 /// Tests must set it to false: an endless periodic rebuild keeps a frame scheduled and
 /// `pumpAndSettle` times out.
@@ -158,7 +161,8 @@ final coreStateProvider = Provider<CoreState>((ref) {
   };
 });
 
-/// Dashboard card layout (add, remove, reorder in edit mode).
+/// Dashboard card layout (add, remove, reorder in edit mode), persisted by `DashboardWidget.name`
+/// so an app upgrade keeps the board while an unknown name is simply skipped.
 final dashboardWidgetsProvider =
     NotifierProvider<DashboardWidgetsNotifier, List<DashboardWidget>>(
       DashboardWidgetsNotifier.new,
@@ -166,17 +170,27 @@ final dashboardWidgetsProvider =
 
 class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
   @override
-  List<DashboardWidget> build() => defaultDashboardWidgets;
+  List<DashboardWidget> build() {
+    final stored = _settings(ref).dashboardWidgetOrder;
+    if (stored == null) {
+      return defaultDashboardWidgets;
+    }
+    final byName = {
+      for (final widget in DashboardWidget.values) widget.name: widget,
+    };
+    // Unknown names (a card removed in a later version) are skipped, not restored.
+    return [for (final name in stored) ?byName[name]];
+  }
 
   void add(DashboardWidget widget) {
     if (state.contains(widget)) {
       return;
     }
-    state = [...state, widget];
+    _commit([...state, widget]);
   }
 
   void remove(DashboardWidget widget) {
-    state = state.where((item) => item != widget).toList();
+    _commit(state.where((item) => item != widget).toList());
   }
 
   void toggle(DashboardWidget widget) {
@@ -194,15 +208,24 @@ class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
     }
     final next = [...state];
     next.insert(newIndex, next.removeAt(oldIndex));
-    state = next;
+    _commit(next);
   }
 
-  void reset() => state = defaultDashboardWidgets;
+  void reset() => _commit(defaultDashboardWidgets);
 
   List<DashboardWidget> get available => [
     for (final widget in DashboardWidget.values)
       if (!state.contains(widget)) widget,
   ];
+
+  /// Updates the provider and the store together. An emptied board is a real choice, so it is
+  /// written as `[]` instead of being removed; only a missing key restores the defaults.
+  void _commit(List<DashboardWidget> next) {
+    state = next;
+    _settings(ref).setDashboardWidgetOrder([
+      for (final widget in next) widget.name,
+    ]);
+  }
 }
 
 /// Edit mode switch; not persisted, leaving the page ends editing.

@@ -1,17 +1,15 @@
 import 'package:diting/pages/config/custom_resources_page.dart';
-import 'package:diting/pages/config/icon_sets_page.dart';
 import 'package:diting/pages/config/on_demand_page.dart';
 import 'package:diting/pages/config/user_agents_page.dart';
 import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
-/// Custom resources routes: icon sets, User-Agent and on-demand, all reached
-/// through `/config/custom-resources` from the developer page.
+/// Custom resource routes: User-Agent and on-demand, both reached through
+/// `/config/custom-resources` from the developer page.
 abstract final class ConfigPaths {
-  /// Entry page listing the three resource tables.
+  /// Entry page listing the two resource tables.
   static const customResources = '/config/custom-resources';
-  static const iconSets = '/config/icon-sets';
   static const userAgents = '/config/user-agents';
   static const onDemand = '/config/on-demand';
 }
@@ -23,12 +21,6 @@ List<RouteBase> configRoutes() => [
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const CustomResourcesConfigPage()),
-  ),
-  GoRoute(
-    path: ConfigPaths.iconSets,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const IconSetsConfigPage()),
   ),
   GoRoute(
     path: ConfigPaths.userAgents,

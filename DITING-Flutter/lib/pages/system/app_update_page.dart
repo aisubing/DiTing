@@ -59,11 +59,7 @@ class AppUpdatePage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.account),
                 title: const Text('加入 QQ 群'),
                 subtitle: const Text('交流群：$qqGroupNumber'),
-                onTap: () => copyToClipboard(
-                  context,
-                  qqGroupNumber,
-                  '群号已复制：$qqGroupNumber',
-                ),
+                onTap: () => joinQqGroup(context),
               ),
             ],
             footer: '更新不会影响你的配置与规则；导入旧配置可在「备份与迁移」里完成。',

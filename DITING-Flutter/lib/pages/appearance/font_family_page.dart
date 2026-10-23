@@ -1,7 +1,9 @@
 /// Font settings page (upstream `views/font_family.dart`).
+///
+/// The list is the bundle's own `mockFontFamilies`, so it is available synchronously: there is no
+/// system-font enumeration API on Android without a native channel, and pretending to scan for one
+/// with a delay is what this page used to do.
 library;
-
-import 'dart:async';
 
 import 'package:diting/data/mock_forms.dart';
 import 'package:diting/routes/system_routes.dart';
@@ -13,132 +15,63 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-class FontFamilyPage extends ConsumerStatefulWidget {
+class FontFamilyPage extends ConsumerWidget {
   const FontFamilyPage({super.key});
 
   @override
-  ConsumerState<FontFamilyPage> createState() => _FontFamilyPageState();
-}
-
-class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
-  /// `null` means still loading; an empty list means no fonts are available.
-  List<MockFontFamily>? _families;
-
-  /// Items already rendered in their own family, released one at a time.
-  final _shown = <String>{};
-
-  Timer? _ticker;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_load());
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    if (!mounted) {
-      return;
-    }
-    setState(() => _families = mockFontFamilies);
-    _revealNext();
-  }
-
-  /// Releases one item every 90 ms and stops once all are released.
-  void _revealNext() {
-    _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(milliseconds: 90), (timer) {
-      final families = _families;
-      if (!mounted || families == null) {
-        timer.cancel();
-        return;
-      }
-      final next = families.firstWhere(
-        (family) => !_shown.contains(family.label),
-        orElse: () => _noMore,
-      );
-      if (identical(next, _noMore)) {
-        timer.cancel();
-        return;
-      }
-      setState(() => _shown.add(next.label));
-    });
-  }
-
-  static final _noMore = MockFontFamily(
-    family: null,
-    label: '',
-    description: '',
-  );
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final selected = ref.watch(selectedFontFamilyProvider);
     final scale = ref.watch(textScaleProvider);
-    final families = _families;
     return CommonScaffold(
       title: '字体设置',
-      body: families == null
-          ? const _FontSkeleton()
-          : PageBody(
-              dockSpacer: false,
-              children: [
-                // Font size entry: the slider lives in `/font-size`, so the
-                // subtitle shows the current scale here.
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: CommonCard(
-                    padding: EdgeInsets.zero,
-                    child: ListItem(
-                      title: const Text('字号'),
-                      subtitle: Text('当前 ${(scale * 100).round()}%'),
-                      leading: const GlyphIcon(AppGlyphs.textSize),
-                      trailing: const GlyphIcon(
-                        AppGlyphs.chevronForward,
-                        size: 20,
-                      ),
-                      onTap: () => context.push(SystemPaths.fontSize),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _PreviewHero(family: selected, label: _labelOf(selected)),
-                const SizedBox(height: 12),
-                generateSection(
-                  title: '可选字体',
-                  items: [
-                    for (final family in families)
-                      _FontRow(
-                        family: family,
-                        selected: family.family == selected,
-                        preview: _shown.contains(family.label),
-                        onTap: () => ref
-                            .read(selectedFontFamilyProvider.notifier)
-                            .select(family.family),
-                      ),
-                  ],
-                  footer:
-                      '本仓只打包了 JetBrains Mono 与 Twemoji；'
-                      '其余是系统常见字体，选中未安装的字族会静默回退到系统默认。',
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    '字体的「预览」一栏会先按默认字体渲染，再逐项换成各自字族，'
-                    '这是上游为了不卡住首帧而做的分帧加载；这里用 90ms 的定时代替。',
-                    style: context.listCaptionStyle,
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+      body: PageBody(
+        dockSpacer: false,
+        children: [
+          // Font size entry: the slider lives in `/font-size`, so the
+          // subtitle shows the current scale here.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: CommonCard(
+              padding: EdgeInsets.zero,
+              child: ListItem(
+                title: const Text('字号'),
+                subtitle: Text('当前 ${(scale * 100).round()}%'),
+                leading: const GlyphIcon(AppGlyphs.textSize),
+                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+                onTap: () => context.push(SystemPaths.fontSize),
+              ),
             ),
+          ),
+          const SizedBox(height: 12),
+          _PreviewHero(family: selected, label: _labelOf(selected)),
+          const SizedBox(height: 12),
+          generateSection(
+            title: '可选字体',
+            items: [
+              for (final family in mockFontFamilies)
+                _FontRow(
+                  family: family,
+                  selected: family.family == selected,
+                  onTap: () => ref
+                      .read(selectedFontFamilyProvider.notifier)
+                      .select(family.family),
+                ),
+            ],
+            footer:
+                '本仓只打包了 JetBrains Mono 与 Twemoji；'
+                '其余是系统常见字体，选中未安装的字族会静默回退到系统默认。',
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              '选择只影响本机显示，不改动服务端规则。',
+              style: context.listCaptionStyle,
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
@@ -152,31 +85,6 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
       }
     }
     return family;
-  }
-}
-
-class _FontSkeleton extends StatelessWidget {
-  const _FontSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.fromLTRB(16, 12 + context.contentTopPadding, 16, 24),
-      children: [
-        const SkeletonPill(width: double.infinity, height: 96),
-        const SizedBox(height: 20),
-        for (var i = 0; i < 6; i++) ...[
-          Row(
-            spacing: 12,
-            children: [
-              const SkeletonPill(width: 34, height: 34),
-              Expanded(child: SkeletonText(width: 60 + i * 24.0)),
-            ],
-          ),
-          const SizedBox(height: 22),
-        ],
-      ],
-    );
   }
 }
 
@@ -242,14 +150,11 @@ class _FontRow extends StatelessWidget {
   const _FontRow({
     required this.family,
     required this.selected,
-    required this.preview,
     required this.onTap,
   });
 
   final MockFontFamily family;
   final bool selected;
-
-  final bool preview;
 
   final VoidCallback onTap;
 
@@ -272,15 +177,12 @@ class _FontRow extends StatelessWidget {
           style: AppTextStyle.subheadline
               .of(context, emphasized: true)
               .copyWith(
-                fontFamily: preview ? family.family : null,
+                fontFamily: family.family,
                 color: colorScheme.onSurfaceVariant,
               ),
         ),
       ),
-      title: Text(
-        family.label,
-        style: preview ? TextStyle(fontFamily: family.family) : null,
-      ),
+      title: Text(family.label, style: TextStyle(fontFamily: family.family)),
       subtitle: Text(family.description),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

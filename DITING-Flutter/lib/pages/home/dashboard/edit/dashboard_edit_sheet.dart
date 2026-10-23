@@ -53,7 +53,7 @@ class DashboardEditSheet extends ConsumerWidget {
                       Navigator.of(context).maybePop();
                     },
                   ),
-                const ListFooter(text: '卡片顺序可在编辑模式下拖拽调整；本演示不持久化。'),
+                const ListFooter(text: '卡片顺序可在编辑模式下拖拽调整。'),
               ],
             ),
     );
@@ -94,13 +94,3 @@ class DashboardEditSheet extends ConsumerWidget {
   };
 }
 
-/// Edit-mode hint. Exiting asks no confirmation, matching upstream; a SnackBar explains the
-/// gestures once.
-class DashboardEditingHint extends StatelessWidget {
-  const DashboardEditingHint({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox.shrink();
-  }
-}

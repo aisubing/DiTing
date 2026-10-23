@@ -1,67 +1,6 @@
 /// Kept-resource demo data. Initial values only; mutable copies live in
 /// `lib/state/config_providers_resources.dart`.
 library;
-
-class MockIconSet {
-  const MockIconSet({
-    required this.name,
-    required this.url,
-    required this.icons,
-    this.fromUrl = true,
-  });
-
-  final String name;
-  final String url;
-
-  final List<String> icons;
-  final bool fromUrl;
-}
-
-const mockIconSets = <MockIconSet>[
-  MockIconSet(
-    name: 'DITING 官方图标',
-    url: 'https://icons.example.com/DITING.json',
-    icons: [
-      'clash',
-      'direct',
-      'reject',
-      'auto',
-      'cn',
-      'hk',
-      'jp',
-      'sg',
-      'us',
-      'uk',
-      'tw',
-      'kr',
-      'streaming',
-      'telegram',
-      'github',
-    ],
-  ),
-  MockIconSet(
-    name: '地区旗帜',
-    url: 'https://icons.example.com/flags.json',
-    icons: [
-      'flag-cn',
-      'flag-hk',
-      'flag-jp',
-      'flag-sg',
-      'flag-us',
-      'flag-uk',
-      'flag-tw',
-      'flag-kr',
-      'flag-de',
-    ],
-  ),
-  MockIconSet(
-    name: '自建补充',
-    url: 'https://icons.example.com/custom.json',
-    fromUrl: false,
-    icons: ['home', 'office', 'nas', 'router', 'printer'],
-  ),
-];
-
 class MockUserAgent {
   const MockUserAgent({required this.value, this.isDefault = false});
 

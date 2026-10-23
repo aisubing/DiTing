@@ -26,12 +26,6 @@ class CustomResourcesConfigPage extends StatelessWidget {
             title: '资源',
             items: [
               ConfigEntryRow(
-                glyph: AppGlyphs.photos,
-                title: '图标集',
-                subtitle: '分组卡片用的图标映射',
-                onPressed: () => context.push(ConfigPaths.iconSets),
-              ),
-              ConfigEntryRow(
                 glyph: AppGlyphs.account,
                 title: 'User-Agent',
                 subtitle: '订阅下载与测速请求携带的 UA',

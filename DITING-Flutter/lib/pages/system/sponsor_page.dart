@@ -31,10 +31,10 @@ class SponsorPage extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 trailing: const GlyphIcon(AppGlyphs.openExternal, size: 20),
-                onTap: () => copyToClipboard(
+                onTap: () => openLinkOrCopy(
                   context,
                   sponsorReadmeUrl,
-                  'README 地址已复制，可在浏览器中打开',
+                  '未能打开浏览器，README 地址已复制',
                 ),
               ),
             ],

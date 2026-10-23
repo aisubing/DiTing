@@ -8,7 +8,6 @@ import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -296,7 +295,11 @@ class _ProjectCard extends StatelessWidget {
               ],
             ),
             GestureDetector(
-              onTap: () => _copyRepository(context),
+              onTap: () => openLinkOrCopy(
+                context,
+                projectRepositoryUrl,
+                '未能打开浏览器，仓库地址已复制：$projectRepositoryUrl',
+              ),
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: ShapeDecoration(
@@ -342,17 +345,6 @@ class _ProjectCard extends StatelessWidget {
     );
   }
 
-  Future<void> _copyRepository(BuildContext context) async {
-    await Clipboard.setData(const ClipboardData(text: projectRepositoryUrl));
-    if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('仓库地址已复制：$projectRepositoryUrl'),
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(milliseconds: 2000),
-      ),
-    );
-  }
 }
 
 class _Signature extends StatelessWidget {

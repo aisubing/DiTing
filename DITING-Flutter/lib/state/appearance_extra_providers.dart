@@ -106,32 +106,20 @@ final liquidGlassModeProvider =
       LiquidGlassModeNotifier.new,
     );
 
-/// Selected font family; null means the system default.
+/// Selected font family; null means the system default. Persisted, and applied app-wide in
+/// `lib/app/theme/manager.dart`.
 class FontFamilyNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() => _settings(ref).fontFamily;
 
-  void select(String? family) => state = family;
+  void select(String? family) {
+    state = family;
+    _settings(ref).setFontFamily(family);
+  }
 }
 
 final selectedFontFamilyProvider =
     NotifierProvider<FontFamilyNotifier, String?>(FontFamilyNotifier.new);
-
-/// Custom primary color; it only seeds the preview palette, app-wide `ThemeData` still follows
-/// `AppPalette`.
-class CustomPrimaryColorNotifier extends Notifier<Color?> {
-  @override
-  Color? build() => null;
-
-  void select(Color color) => state = color;
-
-  void clear() => state = null;
-}
-
-final customPrimaryColorProvider =
-    NotifierProvider<CustomPrimaryColorNotifier, Color?>(
-      CustomPrimaryColorNotifier.new,
-    );
 
 /// Brightness the theme preview page compares: light / dark.
 enum PreviewBrightness {

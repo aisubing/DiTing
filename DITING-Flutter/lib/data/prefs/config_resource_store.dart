@@ -1,5 +1,4 @@
-/// Icon sets, user agents and on-demand SSID rules as whole JSON blobs, in a container of their
-/// own.
+/// User agents and on-demand SSID rules as whole JSON blobs, in a container of their own.
 library;
 
 import 'dart:convert';
@@ -14,7 +13,6 @@ class ConfigResourceStore {
   /// Deliberately not one of the legacy container names.
   static const container = 'diting_config_resources';
 
-  static const _iconSetsKey = 'icon_sets_json';
   static const _userAgentsKey = 'user_agents_json';
   static const _selectedUaKey = 'selected_user_agent';
   static const _ssidRulesKey = 'ssid_rules_json';
@@ -24,13 +22,11 @@ class ConfigResourceStore {
 
   /// Each group falls back to its defaults independently, so one corrupt blob resets nothing else.
   ConfigResourceSnapshot load() {
-    final iconSets = _decodeList(_iconSetsKey, _iconSetFromMap);
     final userAgents = _decodeList(_userAgentsKey, _userAgentFromMap);
     final ssidRules = _decodeList(_ssidRulesKey, _ssidFromMap);
     final rawSelected = _store.read(container, _selectedUaKey);
     final selected = rawSelected is String ? rawSelected : null;
     return ConfigResourceSnapshot(
-      iconSets: iconSets ?? mockIconSets,
       userAgents: userAgents ?? mockUserAgents,
       // An empty string means "no override" was chosen, a missing key was never set. Both read as
       // null.
@@ -39,20 +35,6 @@ class ConfigResourceStore {
       onDemand: _store.read(container, _onDemandKey) == true,
     );
   }
-
-  void saveIconSets(List<MockIconSet> sets) => _store.putString(
-    container,
-    _iconSetsKey,
-    jsonEncode([
-      for (final set in sets)
-        {
-          'name': set.name,
-          'url': set.url,
-          'icons': set.icons,
-          'fromUrl': set.fromUrl,
-        },
-    ]),
-  );
 
   void saveUserAgents(List<MockUserAgent> agents) => _store.putString(
     container,
@@ -115,21 +97,6 @@ class ConfigResourceStore {
     return result;
   }
 
-  MockIconSet? _iconSetFromMap(Map<String, Object?> map) {
-    final name = map['name'];
-    final url = map['url'];
-    if (name is! String || name.trim().isEmpty) return null;
-    final icons = map['icons'];
-    return MockIconSet(
-      name: name,
-      url: url is String ? url : '',
-      icons: icons is List
-          ? [for (final icon in icons) if (icon is String) icon]
-          : const [],
-      fromUrl: map['fromUrl'] != false,
-    );
-  }
-
   MockUserAgent? _userAgentFromMap(Map<String, Object?> map) {
     final value = map['value'];
     if (value is! String || value.trim().isEmpty) return null;
@@ -151,14 +118,12 @@ class ConfigResourceStore {
 
 class ConfigResourceSnapshot {
   const ConfigResourceSnapshot({
-    required this.iconSets,
     required this.userAgents,
     required this.selectedUserAgent,
     required this.ssidRules,
     required this.onDemand,
   });
 
-  final List<MockIconSet> iconSets;
   final List<MockUserAgent> userAgents;
   final String? selectedUserAgent;
   final List<MockSsidRule> ssidRules;
