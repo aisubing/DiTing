@@ -55,6 +55,14 @@ class DitingDnsServerService : Service() {
             Log.i(TAG, "server already running; ignoring duplicate start")
             return START_NOT_STICKY
         }
+        // Persisted so a reboot can rebuild the same intent; the extras themselves die with it.
+        rememberStartConfig(
+            port = intent.getIntExtra(EXTRA_PORT, DEFAULT_PORT),
+            dnsConfig = dnsConfig,
+            ruleSnapshot = intent.getStringExtra(EXTRA_RULE_SNAPSHOT).orEmpty(),
+            rewriteRules = intent.getStringExtra(EXTRA_REWRITE_RULES).orEmpty(),
+            adBlockEnabled = intent.getBooleanExtra(EXTRA_AD_BLOCK_ENABLED, false),
+        )
         startEngine(
             port = intent.getIntExtra(EXTRA_PORT, DEFAULT_PORT),
             dnsConfig = dnsConfig,
@@ -199,6 +207,24 @@ class DitingDnsServerService : Service() {
         super.onDestroy()
     }
 
+    /// Stores the running configuration so `DnsModeBootReceiver` can restart the service with the
+    /// same settings; only the boolean flag survived a reboot before, so the restart had no config.
+    private fun rememberStartConfig(
+        port: Int,
+        dnsConfig: String,
+        ruleSnapshot: String,
+        rewriteRules: String,
+        adBlockEnabled: Boolean,
+    ) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putInt(KEY_LOCAL_PORT, port)
+            .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
+            .putString(KEY_LAST_RULE_SNAPSHOT, ruleSnapshot)
+            .putString(KEY_LAST_REWRITE_RULES, rewriteRules)
+            .putBoolean(KEY_LAST_AD_BLOCK_ENABLED, adBlockEnabled)
+            .apply()
+    }
+
     private fun acquireLocks() {
         runCatching {
             if (wakeLock == null) {
@@ -309,6 +335,12 @@ class DitingDnsServerService : Service() {
         private const val KEY_LOCAL_PORT = "local_listen_port"
         private const val KEY_LOG_QUERIES = "log_queries"
 
+        // Last start configuration, replayed by DnsModeBootReceiver after a reboot.
+        private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
+        private const val KEY_LAST_RULE_SNAPSHOT = "last_rule_snapshot"
+        private const val KEY_LAST_REWRITE_RULES = "last_rewrite_rules"
+        private const val KEY_LAST_AD_BLOCK_ENABLED = "last_ad_block_enabled"
+
         const val ACTION_START = "com.haoze.diting.server.START"
         const val ACTION_STOP = "com.haoze.diting.server.STOP"
 
@@ -368,5 +400,21 @@ class DitingDnsServerService : Service() {
 
         fun stopIntent(context: Context): Intent =
             Intent(context, DitingDnsServerService::class.java).setAction(ACTION_STOP)
+
+        /// Rebuilds the last start intent from preferences; null when none was ever stored,
+        /// which means the service ran in a build without config persistence.
+        fun restoreIntent(context: Context): Intent? {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val dnsConfig = prefs.getString(KEY_LAST_DNS_CONFIG, null)
+            if (dnsConfig.isNullOrBlank()) return null
+            return startIntent(
+                context = context,
+                port = prefs.getInt(KEY_LOCAL_PORT, DEFAULT_PORT),
+                dnsConfig = dnsConfig,
+                ruleSnapshot = prefs.getString(KEY_LAST_RULE_SNAPSHOT, null).orEmpty(),
+                rewriteRules = prefs.getString(KEY_LAST_REWRITE_RULES, null).orEmpty(),
+                adBlockEnabled = prefs.getBoolean(KEY_LAST_AD_BLOCK_ENABLED, false),
+            )
+        }
     }
 }

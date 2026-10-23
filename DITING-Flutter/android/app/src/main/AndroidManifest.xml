@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -11,6 +12,19 @@
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
     <!-- In-app update: hands the downloaded APK to the system installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- On-demand connection reads the joined Wi-Fi name to match its SSID whitelist.
+         Android 10+ only returns a real SSID to an app holding a location permission, and
+         Android 13+ lets NEARBY_WIFI_DEVICES satisfy that instead of precise location. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="tiramisu" />
+    <!-- Server mode restarts its LAN DNS service after a reboot (see the receiver below). -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Without this declaration the battery-optimization dialog is filtered out and the
+         request silently lands on the app info screen instead. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <application
         android:label="谛听"
         android:name="${applicationName}"
@@ -85,6 +99,16 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="dns_server" />
         </service>
+        <!-- Restores the LAN DNS server after a reboot or an in-app update. -->
+        <receiver
+            android:name=".server.DnsModeBootReceiver"
+            android:exported="false"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Package visibility for ACTION_PROCESS_TEXT, which the Flutter engine's
          ProcessTextPlugin queries. See https://developer.android.com/training/package-visibility -->
