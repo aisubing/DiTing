@@ -157,8 +157,14 @@ function shot(name) {
   return file;
 }
 
-/** Turns "looks wrong" into reviewable numbers. */
-function audit(p, label) {
+/**
+ * Turns "looks wrong" into reviewable numbers.
+ *
+ * `scrolled` dumps describe a list already moved to its end: rows legitimately
+ * travel under the floating header there (`extendBodyBehindAppBar`), so the
+ * "content painted into the app bar" rule only applies to a page at rest.
+ */
+function audit(p, label, { scrolled = false } = {}) {
   const f = [];
   if (p.error) return [`${label}: 探针失败 ${p.error}`];
   const { w: SW, h: SH, dpr: DPR } = p.screen;
@@ -181,7 +187,7 @@ function audit(p, label) {
   for (const d of p.diag || []) f.push(`${label}: 渲染异常 ${d}`);
   for (const t of painted) {
     if (t.clip) f.push(`${label}: 文本超出右边界 需${t.w}dp 可用${(SW - t.x).toFixed(1)}dp: 「${t.s}」`);
-    if (t.y < barBottom - 2 && !inDock(t) && !t.bar && t.y + t.h > pad.top)
+    if (!scrolled && t.y < barBottom - 2 && !inDock(t) && !t.bar && t.y + t.h > pad.top)
       f.push(`${label}: 内容画进顶栏区(y=${t.y} < 栏底 ${barBottom.toFixed(1)}): 「${t.s}」`);
     // System gesture bar: only body text painted into the bar padding counts,
     // wrapped lines from scrolling do not.
@@ -245,7 +251,9 @@ function audit(p, label) {
   const gapBelow = first ? bodyBottom - lastInArea : 0;
   const centered =
     first && (gapBelow < 60 || (gapAbove > 60 && gapAbove / gapBelow < 2.5));
-  if (first && !centered) {
+  // A page scrolled to its end has no "top of content" to judge: the first
+  // visible row is simply wherever the scroll stopped.
+  if (first && !centered && !scrolled) {
     const gap = first.y - barBottom;
     // A block (card header / card) hugging the bar bottom is fine: it carries its
     // own padding, so text never sits on the bar.
@@ -328,8 +336,10 @@ function audit(p, label) {
   }
   if (maxGap > 90) f.push(`${label}: 纵向留白 ${maxGap.toFixed(0)}dp（${gapAt}）`);
   // Dock occlusion: content text falling inside the floating bar rect (the bar's
-  // own labels excluded).
-  if (dock) {
+  // own labels excluded). Same scope as the header rule: with `extendBody` the
+  // list scrolls under the floating bar, so rows sitting beneath it at rest are
+  // the normal overlay state; only the end of the list has to clear it.
+  if (dock && scrolled) {
     for (const t of painted) {
       if (!inDock(t) && !t.bar && t.y + t.h > dock.y + 2 && t.y < dock.y + dock.h)
         f.push(`${label}: 文本被底栏盖住: 「${t.s}」`);
@@ -402,7 +412,7 @@ async function capture(loc, move = true, suffix = '') {
 }
 
 async function swipeUp() {
-  const { w, h } = adb('shell', 'wm', 'size').toString().match(/(\d+)x(\d+)/).slice(1).map(Number);
+  const [w, h] = adb('shell', 'wm', 'size').toString().match(/(\d+)x(\d+)/).slice(1).map(Number);
   adb('shell', 'input', 'swipe', String(w / 2), String(h * 0.75), String(w / 2), String(h * 0.3), '260');
   await sleep(500);
 }
@@ -467,14 +477,22 @@ async function main() {
     // Scroll to the list end before auditing: dock and gesture-bar padding only
     // show up on the last screen.
     await gotoRoute(a1);
-    for (let i = 0; i < 8; i++) {
-      const before = await probe();
+    // Swipe until two rounds in a row move nothing. One swipe covers 45% of the
+    // screen, so a long page needs several, and a single unchanged pair is not
+    // enough to call it the end: the frame right after a fling still reports the
+    // pre-fling offsets.
+    let previous = await probe();
+    let still = 0;
+    for (let i = 0; i < 30; i++) {
       await swipeUp();
-      if (layoutShift(before, await probe()) < 2) break;
+      const current = await probe();
+      still = layoutShift(previous, current) < 2 ? still + 1 : 0;
+      previous = current;
+      if (still >= 2) break;
     }
     const p = await capture(a1, false, '_tail');
     fs.writeFileSync(path.join(OUT, `${slug(a1)}_tail.json`), JSON.stringify(p, null, 1));
-    const f = audit(p, `${a1} 滚到底`);
+    const f = audit(p, `${a1} 滚到底`, { scrolled: true });
     console.log(f.length ? f.join('\n') : `${a1} 滚到底: OK`);
   } else if (cmd === 'all') {
     const routes = fs
