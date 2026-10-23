@@ -3,7 +3,9 @@ library;
 
 import 'dart:io';
 
+import 'package:diting/data/native/permissions_bridge.dart';
 import 'package:diting/pages/appearance/appearance_inputs.dart';
+import 'package:diting/state/permission_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -95,10 +97,14 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
             items: [
               ListItem(
                 title: const Text('系统通知权限'),
-                subtitle: const Text('在系统设置里允许或关闭本应用的通知'),
+                subtitle: const Text('打开系统的通知设置页'),
                 leading: const GlyphIcon(AppGlyphs.lock),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => _hint(context, '请在系统设置 → 应用 → 谛听 → 通知里调整'),
+                // Opening the page directly beats a hint: the hint only told people what
+                // to do and left them to find it in Settings.
+                onTap: () => ref
+                    .read(permissionStatesProvider.notifier)
+                    .openSystemSettings(AppPermission.notification),
               ),
             ],
           ),
@@ -397,10 +403,14 @@ class SettingsBackgroundPage extends ConsumerWidget {
             items: [
               ListItem(
                 title: const Text('忽略电池优化'),
-                subtitle: const Text('跳转系统设置，把本应用加入白名单'),
+                subtitle: const Text('请求把本应用加入系统白名单'),
                 leading: const GlyphIcon(AppGlyphs.bolt),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => _hint(context, '请在系统设置 → 电池 → 电池优化里把谛听设为不优化'),
+                // Asks the system instead of describing the screen path; the request shows the
+                // "always run in background" dialog when the ROM allows it.
+                onTap: () => ref
+                    .read(permissionStatesProvider.notifier)
+                    .request(AppPermission.batteryOptimization),
               ),
             ],
           ),
