@@ -15,4 +15,9 @@
     <files-path
         name="crash_export_private"
         path="downloads/" />
+    <!-- Staging copy of the MITM root CA, handed to the system certificate
+         installer as a content:// URI: it cannot read app-private paths. -->
+    <cache-path
+        name="ca_export"
+        path="ca-export/" />
 </paths>

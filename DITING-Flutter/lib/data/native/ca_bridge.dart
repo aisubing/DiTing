@@ -47,17 +47,74 @@ class CaCertificateState {
       );
 }
 
+/// What [CaCertificateService.install] managed to show.
+enum CaInstallTarget {
+  /// The system certificate installer accepted the staged file.
+  installer,
+
+  /// No installer activity: the security settings screen was opened instead, so the user has to
+  /// pick the file from Download themselves.
+  settings,
+
+  /// Nothing could be opened.
+  none,
+}
+
+class CaInstallResult {
+  const CaInstallResult({required this.target, this.path, this.error});
+
+  const CaInstallResult.none(String this.error)
+    : target = CaInstallTarget.none,
+      path = null;
+
+  final CaInstallTarget target;
+
+  /// Absolute path of the staged `.crt`, so the UI can tell the user where it is.
+  final String? path;
+
+  final String? error;
+
+  bool get launched => target != CaInstallTarget.none;
+
+  static CaInstallResult fromMap(Map<Object?, Object?> map) => CaInstallResult(
+    target: switch (map['mode']) {
+      'installer' => CaInstallTarget.installer,
+      'settings' => CaInstallTarget.settings,
+      _ => CaInstallTarget.none,
+    },
+    path: map['path'] as String?,
+    error: map['error'] as String?,
+  );
+}
+
+class CaSaveResult {
+  const CaSaveResult({required this.saved, this.name, this.error});
+
+  final bool saved;
+
+  /// `Download/…` when MediaStore wrote it, otherwise an absolute app-private path.
+  final String? name;
+
+  final String? error;
+
+  static CaSaveResult fromMap(Map<Object?, Object?> map) => CaSaveResult(
+    saved: map['saved'] == true,
+    name: map['name'] as String?,
+    error: map['error'] as String?,
+  );
+}
+
 abstract class CaCertificateService {
   /// Reads, and lazily generates, the CA; [regenerate] deletes `ca.crt`, `ca.key` and
   /// `mitm_blacklist.txt`, invalidating every certificate the device trusted.
   Future<CaCertificateState> inspect({bool regenerate = false});
 
-  /// Writes the PEM to [uri] through `ContentResolver.openOutputStream`, so no storage permission
-  /// is needed.
-  Future<void> exportTo(String uri);
+  /// Hands the CA to the system certificate installer. Android offers no silent install, so this
+  /// is the furthest an app can go on its own.
+  Future<CaInstallResult> install();
 
-  /// Opens the system "install CA certificate" screen. Android offers no silent install.
-  Future<bool> openInstallSettings();
+  /// Copies the CA into the shared Download folder for manual installation later.
+  Future<CaSaveResult> saveToDownloads();
 }
 
 class MethodChannelCaCertificateService implements CaCertificateService {
@@ -77,12 +134,20 @@ class MethodChannelCaCertificateService implements CaCertificateService {
   }
 
   @override
-  Future<void> exportTo(String uri) =>
-      _channel.invokeMethod<void>('exportCa', {'uri': uri});
+  Future<CaInstallResult> install() async {
+    final raw = await _channel.invokeMethod<Object?>('installCa');
+    return CaInstallResult.fromMap(
+      raw is Map ? Map<Object?, Object?>.from(raw) : const {},
+    );
+  }
 
   @override
-  Future<bool> openInstallSettings() async =>
-      await _channel.invokeMethod<bool>('openCaInstallSettings') ?? false;
+  Future<CaSaveResult> saveToDownloads() async {
+    final raw = await _channel.invokeMethod<Object?>('saveCa');
+    return CaSaveResult.fromMap(
+      raw is Map ? Map<Object?, Object?>.from(raw) : const {},
+    );
+  }
 }
 
 class UnavailableCaCertificateService implements CaCertificateService {
@@ -93,8 +158,10 @@ class UnavailableCaCertificateService implements CaCertificateService {
       const CaCertificateState.missing();
 
   @override
-  Future<void> exportTo(String uri) async {}
+  Future<CaInstallResult> install() async =>
+      const CaInstallResult.none('证书通道不可用');
 
   @override
-  Future<bool> openInstallSettings() async => false;
+  Future<CaSaveResult> saveToDownloads() async =>
+      const CaSaveResult(saved: false, error: '证书通道不可用');
 }

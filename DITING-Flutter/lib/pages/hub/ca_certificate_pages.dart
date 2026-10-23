@@ -79,7 +79,7 @@ class CaCertificatePage extends ConsumerWidget {
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.upload),
                 title: const Text('安装根证书'),
-                subtitle: const Text('导出证书文件并前往系统设置安装'),
+                subtitle: const Text('交给系统安装器；Android 11 起还需在设置里手动确认'),
                 trailing: Text(
                   state.installed ? '已安装' : '未安装',
                   style: AppTextStyle.footnote
@@ -87,6 +87,12 @@ class CaCertificatePage extends ConsumerWidget {
                       .copyWith(color: context.colorScheme.onSurfaceVariant),
                 ),
                 onTap: () => _install(context, ref, state),
+              ),
+              ListItem(
+                leading: const GlyphIcon(AppGlyphs.export),
+                title: const Text('保存证书到下载目录'),
+                subtitle: const Text('下载目录里的 .crt 可在系统设置里手动安装'),
+                onTap: () => _saveToDownloads(context, ref),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.key),
@@ -129,16 +135,15 @@ class CaCertificatePage extends ConsumerWidget {
     );
   }
 
-  /// Hands the user the PEM, then opens the system installer. `exportTo(uri)` needs a
-  /// `content://` URI from a system picker and this repo must not add that dependency, so
-  /// the PEM is shown as copyable text instead.
+  /// Hands the staged PEM to the system certificate installer through the bridge. Android has no
+  /// silent install, and since Android 11 the installer only points back at the settings screen, so
+  /// the .crt is also dropped into Download first: that file is what the manual path needs.
   Future<void> _install(
     BuildContext context,
     WidgetRef ref,
     CaCertificateState state,
   ) async {
-    final pem = state.pem;
-    if (!state.available || pem == null) {
+    if (!state.available || state.pem == null) {
       _toast(context, '还没有可用证书，请先点「重新生成根证书」');
       return;
     }
@@ -148,8 +153,9 @@ class CaCertificatePage extends ConsumerWidget {
         title: '安装根证书',
         child: const Text(
           'Android 只允许用户手动把根证书装进「CA 证书」一栏，应用无法静默写入'
-          '系统信任存储。\n\n下一步会显示证书的 PEM 文本（可复制），随后尝试打开'
-          '系统的证书安装界面。',
+          '系统信任存储。\n\n点「继续」会先保存一份证书文件到下载目录，再尝试打开'
+          '系统安装器；若安装器只提示去设置，请用该文件在「设置 → 安全 → 加密与凭据 '
+          '→ 安装证书 → CA 证书」里手动选中它。',
         ),
         actions: [
           TextButton(
@@ -166,23 +172,40 @@ class CaCertificatePage extends ConsumerWidget {
     if (confirmed != true || !context.mounted) {
       return;
     }
-    await _showPem(context, pem);
+    final notifier = ref.read(caCertificateStateProvider.notifier);
+    final saved = await notifier.saveToDownloads();
     if (!context.mounted) {
       return;
     }
-    final opened = await ref
+    final result = await notifier.install();
+    if (!context.mounted) {
+      return;
+    }
+    final hint = saved.saved
+        ? '证书已存到 ${saved.name ?? '下载目录'}。'
+        : '证书文件保存失败（${saved.error ?? '未知原因'}）。';
+    _toast(context, '${switch (result.target) {
+      CaInstallTarget.installer => '已打开系统证书安装界面。',
+      CaInstallTarget.settings => '系统没有证书安装器，已打开安全设置。',
+      CaInstallTarget.none => result.error ?? '无法打开证书安装界面。',
+    }}$hint若界面只提示前往设置，请在「加密与凭据 → 安装证书 → CA 证书」里手动选中它。');
+    await notifier.refresh();
+  }
+
+  /// Fallback for ROMs without a certificate installer: writes the PEM where the user can pick it.
+  Future<void> _saveToDownloads(BuildContext context, WidgetRef ref) async {
+    final result = await ref
         .read(caCertificateStateProvider.notifier)
-        .openInstallSettings();
+        .saveToDownloads();
     if (!context.mounted) {
       return;
     }
     _toast(
       context,
-      opened
-          ? '已在系统设置中打开安装界面；回到本页会重新检查状态'
-          : '无法打开系统证书安装界面，请手动前往「设置 → 安全 → 加密与凭据」',
+      result.saved
+          ? '已保存到 ${result.name ?? '下载目录'}，可在「加密与凭据 → 安装证书」里选中它'
+          : result.error ?? '无法写入下载目录',
     );
-    await ref.read(caCertificateStateProvider.notifier).refresh();
   }
 
   Future<void> _regenerate(BuildContext context, WidgetRef ref) async {
@@ -317,13 +340,27 @@ class CaCertificateGuidePage extends StatelessWidget {
           generateSection(
             title: '安装步骤',
             items: const [
-              _GuideItem('1. 在「CA 证书设置」里点「安装根证书」，或先「查看证书内容」把 PEM 复制出去。'),
+              _GuideItem('1. 在「CA 证书设置」里点「安装根证书」，应用会把证书文件存进下载目录，再交给系统安装器。'),
               _GuideItem(
-                '2. 系统会跳到证书安装界面；若没有跳转，'
-                '前往「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」。',
+                '2. Android 11 起系统安装器通常只提示前往设置，这是平台限制，不是应用故障。'
+                '请从「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」里选中下载目录里的那个 .crt 文件。',
               ),
-              _GuideItem('3. 选择刚才导出的 .crt 文件，确认时系统会要求屏幕锁或指纹。'),
-              _GuideItem('4. 回到本页，状态应变成「已验证」。没变就下拉重新检查。'),
+              _GuideItem('3. 安装时系统会要求屏幕锁或指纹；设备没有锁屏时无法安装，需先设一个 PIN。'),
+              _GuideItem('4. 回到本页，状态应变成「已验证」；没变就退出重进该页重新检查。'),
+            ],
+          ),
+          generateSection(
+            title: '哪些应用能被检查',
+            items: const [
+              _GuideItem(
+                '系统只信任「用户」证书区的根证书，而 targetSdk 24（Android 7.0）及以上的应用'
+                '默认不信任用户证书。只有自带网络安全配置允许用户 CA 的应用，'
+                '其 HTTPS 才能被解密并看到明文。',
+              ),
+              _GuideWarning(
+                '其余应用的 HTTPS 请求会被记录为「失败 / client_tls」，这是应用的证书绑定'
+                '或系统策略导致的，属于预期行为；这类应用应加入绕过规则。',
+              ),
             ],
           ),
           generateSection(

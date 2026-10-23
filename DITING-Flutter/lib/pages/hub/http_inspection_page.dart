@@ -1,4 +1,5 @@
 import 'package:diting/data/native/apps_bridge.dart';
+import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
@@ -47,7 +48,7 @@ class HttpInspectionPage extends ConsumerWidget {
                 value: enabled,
                 onChanged: caReady
                     ? (value) => _setEnabled(context, ref, settings, value)
-                    : null,
+                    : (_) => _explainCaMissing(context, ca),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.appsList),
@@ -59,9 +60,11 @@ class HttpInspectionPage extends ConsumerWidget {
                       ? '未选择任何应用'
                       : '已选择 ${apps.length} 个应用',
                 ),
+                // A dead row reads as "the app is broken"; explain the missing certificate
+                // instead and offer the one screen that fixes it.
                 onTap: caReady
                     ? () => context.push('/hub/https-inspection/apps')
-                    : null,
+                    : () => _explainCaMissing(context, ca),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.verified),
@@ -202,6 +205,40 @@ class HttpInspectionPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Tapping a gated row while the CA is unready used to do nothing at all.
+  static Future<void> _explainCaMissing(
+    BuildContext context,
+    CaCertificateState? state,
+  ) async {
+    final opened = await showFloatingDialog<bool>(
+      context: context,
+      child: CommonDialog(
+        title: '需要先安装根证书',
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('稍后'),
+          ),
+          if (state != null)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('前往安装'),
+            ),
+        ],
+        child: Text(
+          state == null
+              ? '正在读取根证书状态，请稍后再试。'
+              : 'HTTPS 检查要把解密后的明文交回应用，必须由系统的根证书信任链认可谛听的'
+                    '根证书。当前是「${_caProblem(state.available, state.installed)}」，'
+                    '所以还不能选择目标应用。\n\n去 CA 证书页生成并安装证书？',
+        ),
+      ),
+    );
+    if (opened == true && context.mounted) {
+      context.push('/hub/https-inspection/ca');
+    }
   }
 
   /// "Certificate exists but is not installed" and "not generated yet" need different copy:

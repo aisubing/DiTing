@@ -51,25 +51,30 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     return state;
   }
 
-  /// Writes the PEM to a URI from the system save-file picker.
-  Future<void> exportTo(String uri) async {
+  /// Hands the CA to the system installer; the failure text is what the page shows.
+  Future<CaInstallResult> install() async {
     try {
-      await ref.read(caCertificateServiceProvider).exportTo(uri);
+      return await ref.read(caCertificateServiceProvider).install();
     } on MissingPluginException {
-      // Nothing to report: no picker, no channel, no export.
-    } on PlatformException {
-      // The reason surfaces via `inspect()`'s `error`; swallowing keeps the page from throwing.
+      return const CaInstallResult.none('证书通道不可用');
+    } on PlatformException catch (error) {
+      return CaInstallResult.none(
+        (error.message ?? '').trim().isEmpty ? '无法调起证书安装界面' : error.message!,
+      );
     }
   }
 
-  /// Opens Android's "install a certificate" screen; false if it refused to launch.
-  Future<bool> openInstallSettings() async {
+  /// Copies the CA into Download; needed when the system installer is missing.
+  Future<CaSaveResult> saveToDownloads() async {
     try {
-      return await ref.read(caCertificateServiceProvider).openInstallSettings();
+      return await ref.read(caCertificateServiceProvider).saveToDownloads();
     } on MissingPluginException {
-      return false;
-    } on PlatformException {
-      return false;
+      return const CaSaveResult(saved: false, error: '证书通道不可用');
+    } on PlatformException catch (error) {
+      return CaSaveResult(
+        saved: false,
+        error: (error.message ?? '').trim().isEmpty ? '无法写入下载目录' : error.message,
+      );
     }
   }
 
