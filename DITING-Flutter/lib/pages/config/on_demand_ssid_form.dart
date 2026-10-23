@@ -126,7 +126,7 @@ class _SsidFormSheetState extends ConsumerState<_SsidFormSheet> {
                 ),
               ],
             ),
-            SizedBox(height: NavigationDock.insetOf(context)),
+            const DockSpacer(),
           ],
         ),
       ),

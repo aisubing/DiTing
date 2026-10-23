@@ -36,16 +36,20 @@ class _ServerModeShellState extends State<ServerModeShell> {
       // As in the main shell, the body supplies its own bottom padding via `DockSpacer` and
       // the bar floats above it.
       extendBody: true,
-      body: IndexedStack(
-        index: _index,
-        children: [
-          ServerOverviewPage(
-            onOpenUpstreams: () => _select(1),
-            onOpenSettings: () => _select(2),
-          ),
-          const ServerUpstreamPage(),
-          const ServerSettingsPage(),
-        ],
+      body: DockInsetScope(
+        // Pages pushed over this shell sit above the scope and keep the plain gap.
+        inset: NavigationDock.insetOf(context),
+        child: IndexedStack(
+          index: _index,
+          children: [
+            ServerOverviewPage(
+              onOpenUpstreams: () => _select(1),
+              onOpenSettings: () => _select(2),
+            ),
+            const ServerUpstreamPage(),
+            const ServerSettingsPage(),
+          ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
         top: false,

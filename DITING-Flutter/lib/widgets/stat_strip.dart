@@ -200,7 +200,9 @@ class SectionBlock extends StatelessWidget {
   }
 }
 
-/// Bottom spacer that clears the floating dock; appended to scrollable pages.
+/// Bottom spacer that clears whatever bar the shell draws; appended to scrollable pages. Ask
+/// [DockInsetScope] rather than [NavigationDock] directly: pages pushed over the shell have no bar,
+/// and reserving dock-sized space there only shows as dead white at the end of the list.
 class DockSpacer extends StatelessWidget {
   const DockSpacer({super.key, this.extra = 0});
 
@@ -208,7 +210,7 @@ class DockSpacer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(height: NavigationDock.insetOf(context) + extra);
+    return SizedBox(height: DockInsetScope.of(context) + extra);
   }
 }
 

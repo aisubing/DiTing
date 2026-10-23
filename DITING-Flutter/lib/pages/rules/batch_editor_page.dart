@@ -259,7 +259,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                 ),
               ),
             ),
-          SizedBox(height: NavigationDock.insetOf(context)),
+          const DockSpacer(),
         ],
       ),
     );

@@ -45,13 +45,23 @@ class AppShell extends ConsumerWidget {
       navigationShell.goBranch(branch);
     }
 
+    final fallback = destinations.isEmpty ||
+        _wantsFallbackBar(context, destinations, style);
     return Scaffold(
       // Content adds its own bottom padding (`DockSpacer`); the dock floats over it.
       extendBody: true,
-      body: _TabTransitionHost(
-        transition: transition,
-        branchIndex: navigationShell.currentIndex,
-        child: navigationShell,
+      body: DockInsetScope(
+        // Pages pushed over this shell sit above the scope and get the plain gap instead.
+        inset: destinations.isEmpty
+            ? DockInsetScope.pageBottomGap
+            : fallback
+            ? _FallbackBar.insetOf(context)
+            : NavigationDock.insetOf(context),
+        child: _TabTransitionHost(
+          transition: transition,
+          branchIndex: navigationShell.currentIndex,
+          child: navigationShell,
+        ),
       ),
       bottomNavigationBar: destinations.isEmpty
           ? null
@@ -102,7 +112,6 @@ class _Dock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ViewScope.isMobileOf(context);
     final items = [
       for (final destination in destinations)
         NavigationDockDestination(
@@ -110,10 +119,7 @@ class _Dock extends StatelessWidget {
           label: destination.label,
         ),
     ];
-    // The plain bar is meant for many items, so it wins over the floating dock.
-    final wantFallback = style == BottomBarStyle.docked;
-    // The floating dock holds at most 5 items; beyond that use the Material bar.
-    if (wantFallback || !isMobile || items.length > maxDockDestinations) {
+    if (_wantsFallbackBar(context, destinations, style)) {
       return _FallbackBar(
         destinations: destinations,
         selectedIndex: selectedIndex,
@@ -133,10 +139,23 @@ class _Dock extends StatelessWidget {
   }
 }
 
-/// Tab switch animation. `indexedStack` only changes the index, so keying by [branchIndex] remounts
-/// the subtree and replays the entry. Not a true cross-fade on purpose: keeping both trees alive
-/// would turn a one-frame switch into a stutter.
-class _TabTransitionHost extends StatelessWidget {
+/// Whether the plain `NavigationBar` replaces the floating dock. It is meant for many items, so it
+/// also wins when the style asks for it: the widget and the inset scope must agree on this.
+bool _wantsFallbackBar(
+  BuildContext context,
+  List<BottomBarDestination> destinations,
+  BottomBarStyle style,
+) {
+  return style == BottomBarStyle.docked ||
+      !ViewScope.isMobileOf(context, listen: false) ||
+      destinations.length > maxDockDestinations;
+}
+
+/// Tab switch animation. `indexedStack` only changes the index, so this widget replays the entry
+/// itself: one controller outlives the switch, and only its value restarts. Keying the builder by
+/// branch index instead would remount the whole shell on every tab switch, re-running each page's
+/// first build and dropping scroll positions.
+class _TabTransitionHost extends StatefulWidget {
   const _TabTransitionHost({
     required this.transition,
     required this.branchIndex,
@@ -147,32 +166,65 @@ class _TabTransitionHost extends StatelessWidget {
   final int branchIndex;
   final Widget child;
 
+  @override
+  State<_TabTransitionHost> createState() => _TabTransitionHostState();
+}
+
+class _TabTransitionHostState extends State<_TabTransitionHost>
+    with SingleTickerProviderStateMixin {
   static const _duration = Duration(milliseconds: 220);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _duration,
+    // The first mount has nothing to animate away from.
+    value: 1,
+  );
+
+  late final Animation<double> _amount = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void didUpdateWidget(_TabTransitionHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.branchIndex != widget.branchIndex &&
+        widget.transition != TabTransition.none) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // With animations off, wrap nothing: even a `KeyedSubtree` would rebuild it.
-    if (transition == TabTransition.none) {
-      return child;
+    // With animations off, wrap nothing: an `AnimatedBuilder` would still rebuild the subtree.
+    if (widget.transition == TabTransition.none) {
+      return widget.child;
     }
-    return TweenAnimationBuilder<double>(
-      key: ValueKey(branchIndex),
-      tween: Tween(begin: 0, end: 1),
-      duration: _duration,
-      curve: Curves.easeOutCubic,
-      builder: (context, amount, child) => switch (transition) {
-        TabTransition.fade => Opacity(opacity: amount, child: child),
-        TabTransition.slide => FractionalTranslation(
-          translation: Offset(0.04 * (1 - amount), 0),
-          child: Opacity(opacity: amount, child: child),
-        ),
-        TabTransition.scale => Transform.scale(
-          scale: 0.96 + 0.04 * amount,
-          child: Opacity(opacity: amount, child: child),
-        ),
-        TabTransition.none => child!,
+    return AnimatedBuilder(
+      animation: _amount,
+      child: widget.child,
+      builder: (context, child) {
+        final amount = _amount.value;
+        return switch (widget.transition) {
+          TabTransition.fade => Opacity(opacity: amount, child: child),
+          TabTransition.slide => FractionalTranslation(
+            translation: Offset(0.04 * (1 - amount), 0),
+            child: Opacity(opacity: amount, child: child),
+          ),
+          TabTransition.scale => Transform.scale(
+            scale: 0.96 + 0.04 * amount,
+            child: Opacity(opacity: amount, child: child),
+          ),
+          TabTransition.none => child!,
+        };
       },
-      child: child,
     );
   }
 }
@@ -187,6 +239,17 @@ class _FallbackBar extends StatelessWidget {
   final List<BottomBarDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
+
+  /// Room the plain bar takes below content: its own height plus the same clearance the floating
+  /// dock leaves above itself. `NavigationBar` sits flush against the edge inside its own
+  /// `SafeArea`, so there is no floating margin to add here.
+  static double insetOf(BuildContext context) {
+    final height =
+        Theme.of(context).navigationBarTheme.height ??
+        const NavigationBarThemeData().height ??
+        80;
+    return height + dockContentGap;
+  }
 
   @override
   Widget build(BuildContext context) {

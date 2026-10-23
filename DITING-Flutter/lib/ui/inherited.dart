@@ -91,6 +91,31 @@ class FloatingBarScope extends InheritedWidget {
   }
 }
 
+/// The room a page must leave at its bottom for the shell's bar. Only the shells that draw a bar
+/// publish it, so pages pushed over the shell (which have no bar) fall back to a plain gap instead
+/// of reserving dock-sized space they would only show as dead white.
+class DockInsetScope extends InheritedWidget {
+  /// Clearance used where no bar floats over the page; matches `dockContentGap` so every page
+  /// ends its content the same distance from the bottom edge.
+  static const double pageBottomGap = 16;
+
+  final double inset;
+
+  const DockInsetScope({super.key, required this.inset, required super.child});
+
+  static double of(BuildContext context) {
+    return context
+            .dependOnInheritedWidgetOfExactType<DockInsetScope>()
+            ?.inset ??
+        pageBottomGap;
+  }
+
+  @override
+  bool updateShouldNotify(DockInsetScope oldWidget) {
+    return inset != oldWidget.inset;
+  }
+}
+
 class ItemPositionProvider extends InheritedWidget {
   final ItemPosition position;
 

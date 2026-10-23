@@ -3,6 +3,7 @@ import 'package:diting/router.dart';
 import 'package:diting/state/feature_hub_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -24,9 +25,7 @@ class FeatureHubPage extends ConsumerWidget {
           SliverToBoxAdapter(child: SizedBox(height: context.appBarInset)),
           for (final category in categories)
             SliverToBoxAdapter(child: _CategorySection(category: category)),
-          SliverToBoxAdapter(
-            child: SizedBox(height: NavigationDock.insetOf(context)),
-          ),
+          const SliverToBoxAdapter(child: DockSpacer()),
         ],
       ),
     );

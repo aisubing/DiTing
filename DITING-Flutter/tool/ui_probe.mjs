@@ -363,17 +363,41 @@ function layoutShift(a, b) {
   return d;
 }
 
+function textSignature(p, withY) {
+  return JSON.stringify((p.texts || []).map((t) => (withY ? [t.s, t.y] : t.s)));
+}
+
+/**
+ * Poll until the tree is actually still.
+ *
+ * `ext.diting.go` resolves before the target route builds, so the first probes
+ * after a jump still describe the *outgoing* page mid-transition: the tab
+ * animation sits at `amount ~ 0`, which paints it fully transparent and shifted
+ * by 4% of the width. Screenshotting then yields a blank frame and rects that
+ * look like the cards stick out of the screen. Waiting for two consecutive
+ * identical probes (labels *and* y) plus a route change since `before` avoids
+ * both false positives.
+ */
+async function settle(before = null) {
+  let last = await probe();
+  for (let i = 0; i < 24; i++) {
+    await sleep(250);
+    const cur = await probe();
+    const still = textSignature(cur, true) === textSignature(last, true);
+    const moved = !before || textSignature(cur, false) !== textSignature(before, false);
+    if (still && moved) return cur;
+    last = cur;
+  }
+  return last;
+}
+
 /** Navigate and capture, so screenshot and rects come from the same still frame. */
 async function capture(loc, move = true, suffix = '') {
+  const before = await probe();
   if (move) await gotoRoute(loc);
   const s = slug(loc) + suffix;
-  let p = await probe();
+  const p = await settle(before);
   shot(s);
-  const again = await probe();
-  if (layoutShift(p, again) > 2) {
-    p = again;
-    shot(s);
-  }
   return p;
 }
 
