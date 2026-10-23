@@ -27,6 +27,16 @@ const double _barHeight = 62;
 const double _barPadding = 4;
 const double _edgeMargin = 21;
 const double _shadowRoom = 8;
+
+/// The quiet space [NavigationDock.insetOf] reserves between the last line of
+/// scrolling content and the top of the floating bar.
+///
+/// Without it the content's foot stops level with the bar's glass, which on a
+/// tall device reads as "the last card is cut off by the bottom bar" — the
+/// shadow spread eats the little room [_shadowRoom] leaves. This is a page
+/// concern, so it lives in the inset rather than in the bar's own footprint:
+/// the bar still floats exactly where it did, only the content stops earlier.
+const double dockContentGap = 16;
 const double _hitSlop = 8;
 const double _maxItemExtent = 86;
 const double _minLensWidth = 84;

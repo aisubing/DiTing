@@ -78,8 +78,10 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(NavigationDock), findsOneWidget);
-    // 62dp 浮条 + 21dp 边距（MediaQuery 底部安全区为 0）。
+    // 62dp 浮条 + 21dp 边距（MediaQuery 底部安全区为 0）+ 16dp 净空：净空是
+    // 这一版加的，没有它正文末尾会贴到浮条的玻璃上，看起来像被底栏遮住。
     expect(inset, greaterThan(62));
+    expect(inset, closeTo(62 + 21 + dockContentGap, 0.01));
   });
 
   testWidgets('NullStatus 空状态', (tester) async {

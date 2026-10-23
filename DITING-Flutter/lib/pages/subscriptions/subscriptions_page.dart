@@ -269,7 +269,8 @@ class SubscriptionsPage extends ConsumerWidget {
                   '同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。',
             ),
           ),
-          SizedBox(height: NavigationDock.insetOf(context)),
+          // 底部留白由 `PageBody` 自己补的 `DockSpacer` 负责，这里不再加一份
+          // ——加两份会在列表末尾留下约 2 倍浮条高度的空白。
         ],
       ),
     );

@@ -187,9 +187,10 @@ class NavigationDock extends StatelessWidget {
   static double _bottomMarginOf(BuildContext context) =>
       math.max(_edgeMargin, MediaQuery.paddingOf(context).bottom);
 
-  /// The room content scrolling under the dock leaves at its foot.
+  /// The room content scrolling under the dock leaves at its foot: the bar
+  /// itself, the margin below it, plus the quiet gap above the floating bar.
   static double insetOf(BuildContext context) =>
-      heightOf(context) + _bottomMarginOf(context);
+      heightOf(context) + _bottomMarginOf(context) + dockContentGap;
 
   @override
   Widget build(BuildContext context) {
