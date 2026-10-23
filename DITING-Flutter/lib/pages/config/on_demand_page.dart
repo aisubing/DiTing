@@ -55,7 +55,8 @@ class OnDemandConfigPage extends ConsumerWidget {
             ],
             footer:
                 '开启后，只有连上白名单里的 SSID 时才会自动启动 VPN；'
-                '其余网络保持断开，省电也更可控。',
+                '其余网络保持断开，省电也更可控。判定在应用启动、'
+                '回到前台或点右上角「立即应用」时进行。',
           ),
           if (resources.onDemand) _DecisionCard(decision: decision),
           if (resources.onDemand)
