@@ -9,6 +9,7 @@ import 'package:diting/data/cleanup/data_cleanup_service.dart';
 import 'package:diting/data/db/legacy_database.dart';
 import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
@@ -30,6 +31,7 @@ final dataCleanupServiceProvider = Provider<DataCleanupService>((ref) {
     platform: ref.watch(platformBridgeProvider),
     outboundProxy: ref.watch(outboundProxyStoreProvider),
     caCertificate: ref.watch(caCertificateServiceProvider),
+    appVersionCode: ref.watch(appVersionProvider).code,
     openDatabase: LegacyDatabase.open,
   );
 });

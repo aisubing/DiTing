@@ -13,6 +13,7 @@
 library;
 
 import 'package:diting/pages/system/app_info.dart';
+import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -46,6 +47,7 @@ class AppUpdatePage extends ConsumerWidget {
         children: [
           const SizedBox(height: 4),
           _UpdateCard(
+            currentVersion: ref.watch(appVersionProvider).name,
             update: update,
             hasNewVersion: hasNewVersion,
             onCheck: update.stage.isBusy ? null : notifier.check,
@@ -126,12 +128,16 @@ String statusText(UpdateState state) {
 /// 页首版本卡：当前版本 + 阶段徽标 + 检查 / 下载 / 安装按钮。
 class _UpdateCard extends StatelessWidget {
   const _UpdateCard({
+    required this.currentVersion,
     required this.update,
     required this.hasNewVersion,
     required this.onCheck,
     required this.onDownload,
     required this.onInstall,
   });
+
+  /// 展示用版本名，取自 `pubspec.yaml`。
+  final String currentVersion;
 
   final UpdateState update;
   final bool hasNewVersion;
@@ -182,7 +188,7 @@ class _UpdateCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '当前版本 $appVersionName',
+                        '当前版本 $currentVersion',
                         style: context.listSubtitleStyle.copyWith(
                           fontFamily: 'JetBrainsMono',
                         ),

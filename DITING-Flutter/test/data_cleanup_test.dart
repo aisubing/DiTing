@@ -26,6 +26,9 @@ void main() {
   late Database main;
   late MemoryLegacyPrefsStore prefs;
 
+  /// 播种标记用的版本号。真实值来自 `pubspec.yaml`，单测只需要一个稳定值。
+  const seedVersionCode = 20001;
+
   /// Minimal slice of the 1.4.3 schema that the cleanup touches.
   Future<void> createSchema(Database db, {bool withRuntime = true}) async {
     if (withRuntime) {
@@ -105,6 +108,7 @@ void main() {
     prefs: prefs,
     platform: PlatformBridge(),
     outboundProxy: MemoryOutboundProxyStore(),
+    appVersionCode: seedVersionCode,
     openDatabase: (fileName) async =>
         fileName == LegacyDatabase.mainFile ? main : null,
     // 预设白名单资产在单测里不存在；空表意味着「跳过播种」而不是清空。
@@ -324,6 +328,7 @@ void main() {
         prefs: MemoryLegacyPrefsStore(),
         platform: PlatformBridge(),
         outboundProxy: MemoryOutboundProxyStore(),
+        appVersionCode: seedVersionCode,
         openDatabase: (fileName) async => null,
         loadPresetAsset: () async => '',
       );

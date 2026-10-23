@@ -17,9 +17,13 @@ typedef RuleBootstrap = ({
 /// 1.4.3 re-seeds the preset when the versionCode or preset schema changes; the
 /// same gate is kept here so an upgrade does not silently drop the passthrough
 /// hosts that keep Play services reachable.
+///
+/// [versionCode] 必传：它决定播种门槛（见 [_seedPresetIfNeeded]）。上一轮这里
+/// 有 `?? 20001` 的回落，等于把版本号又写死了一份；调用方从 `pubspec.yaml`
+/// 读到的值（见 `appVersion`）直接传进来即可。
 Future<RuleBootstrap> bootstrapRules(
   LegacySettings settings, {
-  int? versionCode,
+  required int versionCode,
 }) async {
   final db = await LegacyDatabase.open(LegacyDatabase.mainFile);
   if (db == null) {
@@ -27,7 +31,7 @@ Future<RuleBootstrap> bootstrapRules(
   }
 
   final repository = RuleRepository(db);
-  await _seedPresetIfNeeded(repository, settings, versionCode ?? 20001);
+  await _seedPresetIfNeeded(repository, settings, versionCode);
   try {
     return (repository: repository, rules: await repository.loadAll());
   } on DatabaseException catch (error) {

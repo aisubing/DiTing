@@ -14,6 +14,7 @@ library;
 
 import 'package:diting/pages/system/app_info.dart';
 import 'package:diting/pages/system/disclaimer_page.dart';
+import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -108,7 +109,10 @@ class AboutPage extends ConsumerWidget {
       title: '应用信息',
       body: PageBody(
         children: [
-          _Hero(running: running),
+          _Hero(
+            version: ref.watch(appVersionProvider).name,
+            running: running,
+          ),
           const SizedBox(height: 4),
           generateSection(
             title: '核心能力',
@@ -146,7 +150,10 @@ class AboutPage extends ConsumerWidget {
 
 /// 页首：应用名 + 一句定位 + 版本徽章 + 运行状态点。
 class _Hero extends StatelessWidget {
-  const _Hero({required this.running});
+  const _Hero({required this.version, required this.running});
+
+  /// 展示用版本名，取自 `pubspec.yaml`（见 [appVersionProvider]）。
+  final String version;
 
   final bool running;
 
@@ -214,7 +221,7 @@ class _Hero extends StatelessWidget {
               runSpacing: 6,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                MetaChip(label: '版本 $appVersionName'),
+                MetaChip(label: '版本 $version'),
                 const MetaChip(label: 'Android VpnService'),
                 const MetaChip(label: '本地优先'),
                 _StatusDot(running: running),

@@ -16,9 +16,9 @@ import 'dart:async';
 
 import 'package:diting/data/backup/dav_client.dart';
 import 'package:diting/data/native/update_bridge.dart';
-import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/data/update/app_update_checker.dart';
+import 'package:diting/state/app_version_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// WebDAV 连接状态机。
@@ -266,15 +266,12 @@ class UpdateNotifier extends Notifier<UpdateState> {
   @override
   UpdateState build() => const UpdateState();
 
-  /// 本机版本。
+  /// 本机版本，取自 `pubspec.yaml`（见 [appVersionProvider]）。
   ///
-  /// 来自 `app_version_name`（`LegacySettings` 写入的构建版本），
-  /// 读不到时回落到 `2.0.1` —— 与 `app_version_code` 的默认 20001 对应。
-  String get _currentVersion {
-    final raw = ref.read(legacySettingsProvider).rawValue('app_version_name');
-    if (raw is String && raw.trim().isNotEmpty) return raw.trim();
-    return '2.0.1';
-  }
+  /// 上一轮先读 prefs 的 `app_version_name`、读不到回落 `'2.0.1'`：这个键没有任何
+  /// 代码写入，回落值又得跟着发版手改，于是「改了 pubspec、更新检查仍按旧版本比较」。
+  /// 现在只剩一处来源。
+  String get _currentVersion => ref.read(appVersionProvider).name;
 
   Future<void> check() async {
     if (state.stage.isBusy) return;

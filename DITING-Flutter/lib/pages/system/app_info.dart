@@ -1,8 +1,9 @@
 /// 关于页 / 更新页 / 赞助页共用的应用标识、外部地址与「复制并提示」动作。
 ///
-/// 版本号与 `pubspec.yaml` 的 `version: 2.0.1+20001` 手工对齐：旧版读
-/// `BuildConfig.VERSION_NAME`，Flutter 侧没有 package_info 依赖，只能手写；
-/// 发版时两处同改。上一轮这里还写着 `1.0.0`，关于页因此一直显示一个不存在的版本。
+/// 版本号不在这里：唯一真源是 `pubspec.yaml` 的 `version:`，读取见
+/// `appVersionProvider`（`lib/state/app_version_provider.dart`）。发版只改
+/// pubspec 即可同步关于页、更新页、预设播种与清理动作里的版本；上一轮这里手写的
+/// `appVersionName` 常量正是「改了 pubspec、界面还显示旧版本」的来源。
 ///
 /// 「复制并提示」也放在这里：旧版这三处都是 `ACTION_VIEW` 直接开浏览器 / QQ，
 /// 本仓不引 `url_launcher`（设计冻结：页面不新增能力依赖），统一改为写剪贴板
@@ -11,9 +12,6 @@ library;
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-
-/// 展示用版本名（不含 build 号）。
-const appVersionName = '2.0.1';
 
 /// 旧版 `AboutScreen.PROJECT_REPOSITORY_URL`。
 const projectRepositoryUrl = 'https://github.com/haoze-evolluling/DITING';

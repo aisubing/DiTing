@@ -2,6 +2,7 @@ package com.haoze.diting
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -56,8 +57,11 @@ class LegacyPrefsBridge(private val context: Context) :
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method == "versionCode") {
-            result.success(versionCode())
+        // 版本号的唯一来源：`pubspec.yaml` 的 `version:` 由 Flutter 的 Gradle 插件
+        // 写进包信息，Dart 侧再从这里读回，界面上就不会出现「改了 pubspec、关于页
+        // 还显示旧版本」。
+        if (call.method == "versionInfo") {
+            result.success(versionInfo())
             return
         }
         val container = call.argument<String>("container")
@@ -82,15 +86,20 @@ class LegacyPrefsBridge(private val context: Context) :
         }
     }
 
-    /** Used for the version-gated preset whitelist seed, same as 1.4.3. */
-    private fun versionCode(): Long {
+    /** 包信息里的版本号：`name` 来自 `flutter.versionName`，`code` 来自 `flutter.versionCode`。 */
+    private fun versionInfo(): Map<String, Any> {
+        @Suppress("DEPRECATION")
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             info.longVersionCode
         } else {
             @Suppress("DEPRECATION")
             info.versionCode.toLong()
         }
+        return mapOf(
+            "name" to (info.versionName ?: ""),
+            "code" to code,
+        )
     }
 
     private fun put(call: MethodCall, prefs: SharedPreferences, result: MethodChannel.Result) {

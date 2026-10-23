@@ -84,7 +84,7 @@ class AppUpdateChecker {
   final String releaseUrl;
   final Duration timeout;
 
-  /// 查最新版本。[currentVersion] 是本机版本（来自 `app_version_name`）。
+  /// 查最新版本。[currentVersion] 是本机版本（来自 `appVersionProvider`）。
   Future<UpdateCheckResult> check(String currentVersion) async {
     final client = HttpClient()..connectionTimeout = timeout;
     try {

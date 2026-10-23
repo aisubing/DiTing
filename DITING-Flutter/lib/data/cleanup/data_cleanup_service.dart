@@ -50,11 +50,13 @@ class DataCleanupService {
     required PlatformBridge platform,
     required OutboundProxyStore outboundProxy,
     required Future<Database?> Function(String fileName) openDatabase,
+    required int appVersionCode,
     CaCertificateService? caCertificate,
     Future<String> Function()? loadPresetAsset,
   }) : _prefs = prefs,
        _platform = platform,
        _outboundProxy = outboundProxy,
+       _appVersionCode = appVersionCode,
        _ca = caCertificate ?? const UnavailableCaCertificateService(),
        _loadPresetAsset = loadPresetAsset,
        _databases = CleanupDatabases(openDatabase);
@@ -62,6 +64,13 @@ class DataCleanupService {
   final LegacyPrefsStore _prefs;
   final PlatformBridge _platform;
   final OutboundProxyStore _outboundProxy;
+
+  /// 播种标记用的 versionCode，与启动时的 [bootstrapRules] 同源（`pubspec.yaml`）。
+  ///
+  /// 必须和启动播种用的是同一个值：清理后重新播种写下的标记若比启动门槛低，
+  /// 下次启动会再播一遍；比它高，则升级后该补的播种永远不补。
+  final int _appVersionCode;
+
   final CaCertificateService _ca;
   final Future<String> Function()? _loadPresetAsset;
   final CleanupDatabases _databases;
@@ -426,9 +435,9 @@ class DataCleanupService {
     return existed;
   }
 
-  /// 播种标记用的 versionCode；读不到时用当前包版本号（2.0.1 = 20001）。
+  /// 播种标记用的 versionCode；prefs 里记录的安装版本优先，读不到就用当前包版本。
   int get _versionCodeOrFallback {
     final raw = _prefs.read(LegacySettings.uiContainer, 'app_version_code');
-    return raw is int && raw > 0 ? raw : 20001;
+    return raw is int && raw > 0 ? raw : _appVersionCode;
   }
 }

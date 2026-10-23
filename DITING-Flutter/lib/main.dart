@@ -2,6 +2,7 @@ import 'package:diting/app/app.dart';
 import 'package:diting/app/debug_probe.dart';
 import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
+import 'package:diting/data/native/app_version.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
@@ -9,6 +10,7 @@ import 'package:diting/data/native/dns_latency_bridge.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/diagnostics_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
@@ -32,14 +34,15 @@ Future<void> main() async {
   installDebugProbe();
   final store = await loadLegacyPrefsStore();
   final settings = LegacySettings(store);
-  final rules = await bootstrapRules(
-    settings,
-    versionCode: await readAppVersionCode(),
-  );
+  // 版本只有一处来源：`pubspec.yaml`。读回来的值同时喂给预设播种、清理动作与
+  // 页面显示，发版只改 pubspec 即可。
+  final version = await loadAppVersion();
+  final rules = await bootstrapRules(settings, versionCode: version.code);
   runApp(
     ProviderScope(
       overrides: [
         legacyPrefsStoreProvider.overrideWithValue(store),
+        appVersionProvider.overrideWithValue(version),
         ruleRepositoryProvider.overrideWithValue(rules.repository),
         initialRulesProvider.overrideWithValue(rules.rules),
         // 真实应用清单（PackageManager + QUERY_ALL_PACKAGES）。四个选择页共用。
