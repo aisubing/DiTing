@@ -68,7 +68,10 @@ class FloatingHeader extends StatelessWidget {
     required this.child,
   });
 
-  static const _alpha = 0.9;
+  /// Nearly opaque: the scrim only has to suggest glass, and at 0.9 the
+  /// rows scrolling under a floating header stayed legible enough to read as
+  /// overlapping text instead of a translucent bar.
+  static const _alpha = 0.96;
   static const _fadeSteps = 8;
 
   final Color backgroundColor;
