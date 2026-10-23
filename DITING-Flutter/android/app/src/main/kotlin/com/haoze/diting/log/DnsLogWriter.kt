@@ -7,12 +7,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/// Persists the Go engine's batch DNS log JSON into the legacy Room table.
-///
-/// The payload is the same `logItem` array 1.4.3 consumed in
-/// `GoTunnelLogProcessor`; field meanings are documented in
-/// `DITING-Legacy/tunnel/log_aggregator.go`. Writes go straight through SQLite so the
-/// Flutter side can keep reading the same `dns_log` table with sqflite.
+/// Persists the engine's batch DNS log JSON straight into the `dns_log` table,
+/// which the Flutter side also reads through sqflite.
 object DnsLogWriter {
     const val DB_NORMAL = "diting_database"
     const val DB_EXPRESS = "diting_express"
@@ -62,8 +58,8 @@ object DnsLogWriter {
     private fun open(context: Context, databaseName: String): SQLiteDatabase? {
         val path = context.getDatabasePath(databaseName)
         if (!File(path.path).exists()) {
-            // Fresh installs have no legacy database yet; the Dart layer will
-            // create it through its own migrations before logs are displayed.
+            // No database yet on a fresh install; the Dart side creates the
+            // schema later, so skip instead of writing.
             return null
         }
         return runCatching {

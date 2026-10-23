@@ -1,19 +1,13 @@
 part of 'backup_importer.dart';
 
-/// 服务商、Bootstrap、缓存、出站代理、应用名单与两类设置分组的合并。
-///
-/// 这些分组全部落在 prefs 上（不碰规则库），因此全新安装、规则库缺失时也能
-/// 恢复——导入失败清单里只有规则与订阅类分组才该出现。
+/// Merges the prefs-backed groups; never touches the rule database.
 extension _BackupImportPrefs on BackupImporter {
-  /// 服务商：按名字去重，同名不同配置时更新。
-  ///
-  /// 1.4.3 的服务商没有 id，2.0 的 `readUserProviders` 会丢弃没有 id 的条目，
-  /// 所以旧备份（以及缺少 id 的第三方文件）在写入前补一个稳定的 id。
+  /// Dedupe by name; same name with changed config is updated.
   BackupGroupOutcome _importProviders(
     Object? value,
     BackupImportTarget target,
   ) {
-    // 1.4.3 的 `providers` 是纯数组；2.0 的 `{items, selection}` 也要接受。
+    // Accept both the legacy array and the newer `{items, selection}` form.
     final List<Object?> incoming;
     if (value is List) {
       incoming = value;
@@ -47,8 +41,7 @@ extension _BackupImportPrefs on BackupImporter {
         skipped++;
       } else {
         final index = existing.indexOf(current);
-        // 本机已有一条同名服务商时保留它的 id：界面上的选择、各模式的候选
-        // 列表都引用 id，换掉 id 等于把用户当前的解析链路拆掉。
+        // Keep the local id: UI selections and candidate lists reference it.
         existing[index] = _keepId(normalized, current);
         byName[name] = existing[index];
         updated++;
@@ -69,7 +62,7 @@ extension _BackupImportPrefs on BackupImporter {
     );
   }
 
-  /// 补齐 `id`：没有就按名字生成，保证同一份备份反复导入不会产生重复行。
+  /// Fill in a missing id from the name so re-imports stay idempotent.
   Map<Object?, Object?> _withId(Map<Object?, Object?> provider, String name) {
     final id = provider['id'];
     if (id is String && id.trim().isNotEmpty) return provider;
@@ -114,11 +107,10 @@ extension _BackupImportPrefs on BackupImporter {
     return name is String ? name.trim() : '';
   }
 
-  /// 只比较「配置内容」，不含 `id`。
+  /// Compare config content only, excluding `id`.
   ///
-  /// id 是本机生成的（旧备份根本没有 id，导入时补的是 `user_*` 占位），把
-  /// 它算进相等判断会让同一份备份每导入一次都被判成「更新」，用户看到的是
-  /// 永远消不掉的「更新 N 项」。
+  /// Ids are generated locally, so including them would mark every re-import
+  /// as an update that never clears.
   String _encodeConfig(Object? value) {
     if (value is Map) {
       final stripped = {
@@ -130,7 +122,7 @@ extension _BackupImportPrefs on BackupImporter {
     return _encode(value);
   }
 
-  /// 稳定的字符串形式，用来判断「是否完全相同」。
+  /// Stable string form used to test for exact equality.
   String _encode(Object? value) {
     if (value is Map) {
       final keys = value.keys.map((key) => '$key').toList()..sort();
@@ -142,10 +134,7 @@ extension _BackupImportPrefs on BackupImporter {
     return '$value';
   }
 
-  /// 服务商选择状态：首选服务商、解析模式、各模式候选列表、主页可见性。
-  ///
-  /// 这些值在 1.4.3 里是各自独立的顶层字段，2.0 的旧备份根本不带它们，导入
-  /// 后用户会发现「服务商都恢复了，但当前还是旧的那个」。
+  /// Provider selection state: primary, mode, per-mode candidates, visibility.
   void _applyProviderSelection(Object? value, BackupImportTarget target) {
     if (value is! Map) return;
     final settings = target.settings;
@@ -216,7 +205,7 @@ extension _BackupImportPrefs on BackupImporter {
     void Function(List<String> ids) write,
   ) {
     if (refs is! List) return;
-    // 空列表是有意义的（用户可能清空了候选），所以照写不误。
+    // An empty list is meaningful (the user may have cleared candidates).
     write(_idsOf(refs, catalog).toList());
   }
 
@@ -231,11 +220,10 @@ extension _BackupImportPrefs on BackupImporter {
     return ids;
   }
 
-  /// 把引用解析成本机存在的 id。
+  /// Resolve a reference to an id that exists locally.
   ///
-  /// 顺序照抄 1.4.3 `ProviderConfigImporter.resolveProviderRef`：先看 id 命中，
-  /// 再按 (名称, 协议) 回退——旧备份里的 id 在 2.0 可能已经不存在（预设集合
-  /// 改过），只认 id 会让整条选择链断掉。
+  /// Try the id first, then fall back to (name, protocol): ids from old backups
+  /// may no longer exist, and accepting only ids would break the chain.
   String? _resolveProviderId(Map ref, Map<String, String> catalog) {
     final id = ref['id'];
     if (id is String && id.isNotEmpty && catalog.containsKey(id)) return id;
@@ -249,7 +237,7 @@ extension _BackupImportPrefs on BackupImporter {
     return id is String && id.isNotEmpty ? id : null;
   }
 
-  /// id → id 与 (名称, 协议) → id 两张表。
+  /// Two lookup tables: id -> id and (name, protocol) -> id.
   Map<String, String> _providerNameIndex(LegacySettings settings) {
     final index = <String, String>{};
     void add(String id, String name, String protocol) {
@@ -308,7 +296,7 @@ extension _BackupImportPrefs on BackupImporter {
 
     final custom = value['custom'];
     if (custom != null) {
-      // 原样写回它自己的 JSON 编码：这一项本来就是「用户自定义节点的原始文本」。
+      // Write back the encoded JSON: this entry is the raw custom node text.
       final encoded = jsonEncode(custom);
       if (settings.bootstrapCustomJson == encoded) {
         skipped++;
@@ -327,17 +315,16 @@ extension _BackupImportPrefs on BackupImporter {
     );
   }
 
-  /// 缓存策略：整组原子写入。
+  /// Cache policy, written as one atomic group.
   ///
-  /// 用 `applyCachePreset` 而不是逐个 setter：九个键必须一起落盘，否则引擎可能
-  /// 读到「新模式 + 旧 TTL」的组合（`DnsCacheSettingsStore` 就是为这个原因把九
-  /// 个键放在一次提交里）。
+  /// Use `applyCachePreset` rather than separate setters so the engine never
+  /// sees a new mode with an old TTL.
   BackupGroupOutcome _importCache(Object? value, BackupImportTarget target) {
     if (value is! Map) {
       throw const BackupFormatException('缓存分组应为对象');
     }
     final settings = target.settings;
-    // 备份里缺的键回落到本机当前值，保证写出去的九项是一致的。
+    // Missing keys fall back to local values so all nine stay consistent.
     final enabled = value['enabled'];
     final mode = value['mode'];
     final preset = value['preset'];
@@ -392,15 +379,15 @@ extension _BackupImportPrefs on BackupImporter {
     );
     return const BackupGroupOutcome(
       group: BackupGroup.cache,
-      // 九项一起算一条策略：报「9 项」会让汇总看起来像导入了九条规则。
+      // The nine keys are one policy; reporting 9 would look like nine rules.
       added: 1,
     );
   }
 
-  /// 出站代理：备份不含凭据，所以只能恢复「非凭据」的那几项。
+  /// Outbound proxy: backups carry no credentials, only non-secret fields.
   ///
-  /// 恢复的开关若为真但本机没有凭据，代理会连不上。这里**不**自动把它打开：
-  /// 报「已更新」而实际连不上，比明确跳过更糟。
+  /// Never auto-enable: a restored on-switch would fail to connect without
+  /// local credentials, and a false "updated" is worse than an explicit skip.
   BackupGroupOutcome _importOutbound(Object? value, BackupImportTarget target) {
     if (value is! Map) {
       throw const BackupFormatException('出站代理分组应为对象');
@@ -410,8 +397,8 @@ extension _BackupImportPrefs on BackupImporter {
     for (final entry in const {
       'protocol': 'outbound_proxy_protocol',
       'host': 'outbound_proxy_host',
-      // 1.4.3 与原生 `OutboundProxyBridge.KEY_APP` 都用 `outbound_proxy_app`；
-      // 早期 2.0 写成了 `outbound_proxy_app_package`，读回来永远是空。
+      // Legacy and the native bridge both use `outbound_proxy_app`; an early
+      // 2.0 build wrote `outbound_proxy_app_package`, which always read empty.
       'proxyAppPackage': 'outbound_proxy_app',
     }.entries) {
       final raw = value[entry.key];
@@ -446,7 +433,7 @@ extension _BackupImportPrefs on BackupImporter {
     }
     return BackupGroupOutcome(
       group: BackupGroup.outbound,
-      // 账号密码不在备份里，所以「新增」只覆盖地址类字段。
+      // No credentials in backups, so "added" covers address fields only.
       added: restored,
       skipped: skipped,
     );

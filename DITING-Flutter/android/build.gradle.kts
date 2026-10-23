@@ -1,7 +1,7 @@
 allprojects {
     repositories {
-        // Maven Central answers 403 on this network; the mirror is the same
-        // artifact set and is already used by the 1.4.3 Android project.
+        // Maven Central answers 403 on this network; the mirror carries the
+        // same artifacts.
         maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
         google()
         mavenCentral()

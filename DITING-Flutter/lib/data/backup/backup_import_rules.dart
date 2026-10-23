@@ -1,9 +1,7 @@
 part of 'backup_importer.dart';
 
-/// 订阅与四类规则（域名、覆写、地址）的合并。
-///
-/// 这些分组都直接写规则库：库打不开时只能如实报失败，而不是静默跳过——
-/// 用户看到的「本机还没有规则库，无法导入订阅」就是这一层抛出来的。
+/// Merge of subscription and rule groups; a missing rule database is
+/// reported as a failure, never silently skipped.
 extension _BackupImportRules on BackupImporter {
   Future<BackupGroupOutcome> _importSubscriptions(
     Object? value,
@@ -75,9 +73,8 @@ extension _BackupImportRules on BackupImporter {
             ),
             kind: kind,
             enabled: item['enabled'] != false,
-            // 导入的是「订阅地址」而不是它的内容：规则条数与导入时间必须从零
-            // 开始，否则界面会显示一个本机并不存在的规则数，且订阅会一直停在
-            // 「已是最新」而永不真正下载一次。
+            // Importing the URL, not its contents: start from a zero count and
+            // never-touched timestamps so the first refresh actually downloads.
             ruleCount: 0,
             lastUpdated: 0,
             addedAt: now,
@@ -101,10 +98,8 @@ extension _BackupImportRules on BackupImporter {
     );
   }
 
-  /// 镜像模板：按 name 去重，已存在即跳过（同 1.4.3 `RuleConfigImporter`）。
-  ///
-  /// 直接写表而不是绕 `SubscriptionRepository`：那张表没有增量写入口，
-  /// 而 `mirror_template.name` 上有唯一索引，`ignore` 冲突即可完成去重。
+  /// Mirror templates, deduped by name. Inserted directly because the table has
+  /// no incremental write path and a unique index on `name` handles the conflict.
   Future<void> _importMirrorTemplates(Database db, Object? value) async {
     if (value is! List) return;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -123,17 +118,13 @@ extension _BackupImportRules on BackupImporter {
   }
 }
 
-/// 域名规则、覆写规则与地址规则的合并。
+/// Merge of domain, rewrite and address rule groups.
 extension _BackupImportRuleTables on BackupImporter {
-  /// 域名规则：黑白名单混在同一组里，用每条规则的 `kind` 分流。
+  /// Domain rules: block and allow share one list, split by `kind`.
   ///
-  /// 按 `pattern` 去重，已存在即跳过（内容不同也不覆盖）：同一条 domain 在本机
-  /// 可能被用户手工调整过 `important`/`appScope`，备份里的旧副本不该把这些改动
-  /// 冲掉。旧版 `RuleConfigImporter` 同样只做「新增」。
-  ///
-  /// 但**新增时必须保留原字段**：早期 2.0 走 `RuleRepository.add()`，把
-  /// `appScope`（只对某个 App 生效）、`appInverted`、`important` 和
-  /// `rawLine` 全丢了，于是「只屏蔽某个 App」的规则恢复后变成全局屏蔽。
+  /// Dedupe by `pattern` and never overwrite an existing row, since the user may
+  /// have adjusted `important`/`appScope` locally. New rows must keep every
+  /// original field, or per-app rules degrade into global blocks.
   Future<BackupGroupOutcome> _importRules(
     Object? value,
     BackupImportTarget target,
@@ -184,8 +175,7 @@ extension _BackupImportRuleTables on BackupImporter {
     return BackupGroupOutcome(group: group, added: added, skipped: skipped);
   }
 
-  /// 去重键：与 1.4.3 `block_rule`/`allow_rule` 的唯一索引
-  /// `(pattern, important, appScope, appInverted, dnsType, isRegex)` 对齐。
+  /// Dedupe key matching the unique indexes on the block/allow rule tables.
   String _ruleKey(String pattern, bool important, String? appScope) =>
       '$pattern\u0000${important ? 1 : 0}\u0000${appScope ?? ''}';
 
@@ -195,7 +185,7 @@ extension _BackupImportRuleTables on BackupImporter {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  /// 直接写表 + `useradd` 来源，保留备份里的原始字段。
+  /// Insert directly with a `useradd` source, keeping the backup's original fields.
   Future<void> _insertDomainRule(
     Database db,
     String table,
@@ -218,7 +208,7 @@ extension _BackupImportRuleTables on BackupImporter {
       'isRegex': 0,
       'dnsType': null,
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
-    // whereArgs 不接受 null，appScope 为空时必须写成 `IS NULL`。
+    // whereArgs rejects null, so an empty appScope must use `IS NULL`.
     final rows = await db.query(
       table,
       columns: ['id'],
@@ -240,7 +230,7 @@ extension _BackupImportRuleTables on BackupImporter {
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
-  /// 覆写规则：本机同 pattern + targetType 不同目标值时**更新**（见文件头）。
+  /// Rewrite rules: same pattern and targetType with a different value is updated.
   Future<BackupGroupOutcome> _importRewrite(
     Object? value,
     BackupImportTarget target,
@@ -330,7 +320,7 @@ extension _BackupImportRuleTables on BackupImporter {
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
   }
 
-  /// 地址（URL/CNAME）规则：按 `pattern` + `kind` 去重，只新增。
+  /// Address (URL/CNAME) rules: dedupe by `pattern` + `kind`, insert only.
   Future<BackupGroupOutcome> _importAddressRules(
     Object? value,
     BackupImportTarget target,

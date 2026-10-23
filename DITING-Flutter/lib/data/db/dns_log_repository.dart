@@ -1,7 +1,7 @@
 /// Read/delete access to the legacy `dns_log` table.
 ///
-/// Rows are written by the native services through [DnsLogWriter], so this
-/// repository is deliberately read-only apart from "clear all".
+/// Rows are written natively through [DnsLogWriter], so this repository only
+/// reads apart from clearing the table.
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -40,13 +40,12 @@ class DnsLogRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// Today's counters, computed the same way as the legacy
-  /// `DnsLogRepository.dailyStats`: PASSED/REWRITTEN count as passed, cached
-  /// rows are counted separately, BLOCKED and ERROR keep their own buckets.
-  ///
-  /// `message` carries `elapsed=NNms` (see [DnsLogWriter]), so the average
-  /// latency of the same day comes from the same scan instead of a second
-  /// query — the header must never mix "today's rows" with "last 200 rows'.
+    /// Today's counters: PASSED and REWRITTEN count as passed, cached rows are
+    /// counted separately, BLOCKED and ERROR keep their own buckets.
+    ///
+    /// Latency comes from the same scan, because `message` carries
+    /// `elapsed=NNms`; the header must never mix today's rows with the recent
+    /// list.
   Future<DnsLogDailyStats> dailyStats({DateTime? since}) async {
     final start = (since ?? _startOfToday()).millisecondsSinceEpoch;
     final rows = await _db.query(
@@ -90,10 +89,9 @@ class DnsLogRepository {
     );
   }
 
-  /// `elapsed=123ms` inside the persisted `message` column, or null when the
-  /// row carries no timing. `DnsLogWriter` only writes the token when the
-  /// engine reports `r > 0`, so sub-millisecond blocked queries drop out
-  /// instead of being recorded as `0ms`.
+    /// Reads `elapsed=123ms` out of the persisted `message`, or null when there
+    /// is no timing. The writer only emits the token for positive durations, so
+    /// sub-millisecond queries drop out instead of counting as `0ms`.
   static int? elapsedMsOf(String? message) {
     if (message == null || message.isEmpty) return null;
     final match = _elapsedPattern.firstMatch(message);
@@ -121,7 +119,7 @@ class DnsLogRepository {
   );
 }
 
-/// Today's aggregates shown on the dashboard header.
+  /// Today's aggregates shown on the dashboard header.
 class DnsLogDailyStats {
   const DnsLogDailyStats({
     required this.total,
@@ -148,22 +146,21 @@ class DnsLogDailyStats {
   final int error;
   final int cached;
 
-  /// Mean `elapsed=` over today's timed rows; blocked-by-rule rows have no
-  /// timing, so they must not drag the average towards zero.
+    /// Mean `elapsed=` over timed rows only; rule-blocked rows have no timing
+    /// and must not drag the average down.
   final int averageLatencyMs;
 
-  /// How many rows contributed to [averageLatencyMs]. Zero means "no data",
-  /// which the header renders as a dash instead of `0ms`.
+    /// Number of rows behind [averageLatencyMs]. Zero means no data, which the
+    /// header renders as a dash rather than `0ms`.
   final int latencySamples;
 
-  /// Denominator mirrors the Go engine's `hitRatio` = hits/(hits+misses):
-  /// the resolver is consulted for PASSED rows (hit or miss) and for ERROR
-  /// rows (the cache lookup happens before the upstream call fails), while
-  /// rule-blocked rows never touch the cache. Using [passed] alone would
-  /// drop every failed upstream query from the denominator and read high.
-  ///
-  /// Known approximation: a stale-while-revalidate reply is logged with
-  /// `cached=1` but the engine counts it in `staleHits`, not `totalHits`.
+    /// Mirrors the engine's `hitRatio` = hits/(hits+misses). The denominator is
+    /// [passed] plus error rows, since the cache lookup happens before the
+    /// upstream call fails while rule-blocked rows never reach the cache;
+    /// using [passed] alone would read high.
+    ///
+    /// Known approximation: a stale-while-revalidate reply is logged with
+    /// `cached=1` but the engine counts it as a stale hit, not a normal one.
   double get cacheHitRate {
     final lookups = passed + error;
     return lookups == 0 ? 0 : cached / lookups;

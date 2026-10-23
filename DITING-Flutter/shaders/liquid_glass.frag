@@ -4,22 +4,18 @@
 
 precision highp float;
 
-// The texture's size; the order of the rest is the order in which
-// _LiquidGlassLayer in lib/ui/liquid_glass.dart writes them.
+// Uniform order must match what _LiquidGlassLayer writes in lib/ui/liquid_glass.dart.
+// Texture size.
 uniform vec2 uSize;
-// Glass coordinates, in dp from its top left, of FlutterFragCoord: an origin,
-// then a scale per unit.
+// Glass coords (dp from top left) of FlutterFragCoord: origin, then scale per unit.
 uniform vec4 uFrame;
-// Glass coordinates of the texture's pixels, as uFrame.
+// Glass coords of the texture's pixels.
 uniform vec4 uSample;
-// The first and last pixel centers the pane may read, as a capture holds the
-// backdrops of other panes beside its own.
+// First and last readable pixel centers; a capture also holds other panes.
 uniform vec4 uClamp;
-// Dp per device pixel, and the frost sigma in its own pixels the texture
-// already holds, as a capture is blurred before any pane reads it.
+// Dp per device pixel, and the frost sigma already baked into the texture.
 uniform vec2 uTexels;
-// As uSample and uClamp, for a capture blurred by the style's haze, and the
-// share of the backdrop seen through it.
+// As uSample/uClamp for the haze-blurred capture, plus the haze share.
 uniform vec4 uHazeSample;
 uniform vec4 uHazeClamp;
 uniform float uHaze;
@@ -27,40 +23,28 @@ uniform float uHaze;
 uniform vec4 uShape;
 // Corner radii: top left, top right, bottom right, bottom left.
 uniform vec4 uCorners;
-// The superellipse corners the pane is clipped to, three to a corner in the
-// order of uCorners: n, J and the arc's radius for the octant along the top or
-// bottom, the same for the one along the side, then both arcs' centers. A
-// sharp corner has n 0.
+// Clip superellipse per corner, 3 values each in uCorners order (n, J, arc radius
+// for the top/bottom octant then the side octant, then both arc centers). n 0 = sharp.
 uniform vec4 uCurves[12];
-// Refraction depth at the rim, saturation, brightness. A negative depth makes
-// a raised lens, which bends outward on UIKit's profile.
+// Rim refraction depth, saturation, brightness. Negative depth = raised lens.
 uniform vec3 uOptics;
 // Straight alpha.
 uniform vec4 uTint;
-// Highlight along the top and bottom of the rim, the dp it fades over, how
-// much a lens's rounded ends darken.
+// Rim highlight top/bottom, its fade distance in dp, end darkening.
 uniform vec3 uLight;
-// Glow center, glow strength, how far the tint thickens over content much
-// darker than it, or when negative much lighter.
+// Glow center, strength, tint thickening over darker (negative: lighter) content.
 uniform vec4 uGlow;
-// How far the glow reaches, and the share of it spread over the whole pane.
+// Glow reach in dp, and its share spread over the whole pane.
 uniform vec2 uGlowSpread;
-// How much the dark line around the rim darkens the backdrop, how far apart in
-// dp the color channels part along the rim, and the frost sigma the rim adds
-// at its edge, easing off across the bevel.
+// Rim line darkening, chromatic split distance in dp, and the edge frost sigma.
 uniform vec3 uEdge;
-// The highlight's share in a faint tail kRimTail long, how far its fall
-// round rounded ends goes from the tab bar's to iOS 27 controls', and its
-// share added as light rather than screened; then the line at the sides.
+// Highlight share in a kRimTail-long tail, end falloff, added as light not screen.
 uniform vec4 uRim;
-// Above 0.5 the pane takes the outline of uProfile in place of its corners.
+// Above 0.5, uProfile replaces the corner shape.
 uniform float uOutlined;
-// The outline's distance from the center along 64 even turns, the first
-// toward +x and the rest toward +y, four to a vector.
+// Outline distance from center at 64 even turns, 4 per vector, first toward +x.
 uniform vec4 uProfile[16];
-// A menu's highlight (LiquidGlassRim): light added at eight turns from the
-// vertical through the center, rising from 0 to a right angle, and across
-// bands inward from the rim, where each ends in dp and its share.
+// Menu highlight (LiquidGlassRim): per-turn light, then per-band ends and shares.
 uniform vec4 uShineTurns[2];
 uniform vec4 uShineLit[2];
 uniform vec4 uShineEnds[3];
@@ -72,31 +56,26 @@ out vec4 fragColor;
 const vec3 kLuma = vec3(0.2126, 0.7152, 0.0722);
 const float kTau = 6.28318530718;
 const float kTurns = 64.0;
-// Fewer taps leave a swirl over sharp text; 64 leave a faint one at 3x, too
-// fine to see. A count taken from a uniform costs as much as 96 constant taps,
-// so a narrower frost takes a constant count of its own, its taps no further
-// apart than 64 leave those of the widest.
+// Below ~64 taps a swirl shows over sharp text; a uniform-derived count costs as
+// much as 96 constant taps, so narrower frosts use their own constant.
 const int kFrostTaps = 64;
 const float kGoldenAngle = 2.39996322973;
-// 1.2 times the engine's kernel reach of (sigma - 0.5) * sqrt(3) pixels, which
-// on a Vogel disc fits its blur best.
+// 1.2x the engine reach (sigma - 0.5) * sqrt(3), fitted to a Vogel disc.
 const float kFrostReach = 2.07846096908;
-// Measured on iOS 27: the width of the dark line in dp and the most it takes
-// off a channel of the backdrop.
+// Measured on iOS 27: dark line width in dp and its max channel take-off.
 const float kLine = 0.67;
 const float kLineCap = 0.298;
-// The most the engine's superellipse corner lies inside a circular one, as a
-// share of the radius, with room to spare over the 1.8% it reaches.
+// Max gap between the engine's superellipse corner and a circular one, as a
+// share of the radius (the engine reaches 1.8%).
 const float kCornerGap = 0.03;
 // How far in dp a lens's ends darken in from the rim.
 const float kEndShade = 3.0;
-// How far in dp from the rim the color channels part, and where they start
-// to close: iOS parts them nearly as far across a lens's band as at its rim.
+// Chromatic split reach in dp from the rim, and where it starts closing.
 const float kPartReach = 10.0;
 const float kPartHold = 7.0;
 // Measured on iOS 27 controls: how far in dp the highlight's tail reaches.
 const float kRimTail = 4.5;
-// A frost this wide in dp reads the backdrop's luma once, as a haze does.
+// At this frost width (dp) the backdrop luma is read once, like a haze.
 const float kSteadyFrost = 8.0;
 
 vec4 texel(vec2 pixel) {
@@ -146,8 +125,7 @@ vec4 frostDisc64(vec2 center, vec2 reach, float falloff) {
   FROST_DISC(kFrostTaps)
 }
 
-// The engine's Gaussian of a frost sigma in device pixels, past what the
-// texture holds, read on a Vogel disc.
+// Engine Gaussian for a frost sigma in device pixels beyond the texture.
 vec4 sampleFrosted(vec2 point, float frost) {
   vec2 sigma = frost / uSample.zw;
   sigma = sqrt(max(sigma * sigma - uTexels.y * uTexels.y, vec2(0.0)));
@@ -168,9 +146,8 @@ vec4 sampleFrosted(vec2 point, float frost) {
   return frostDisc64(center, reach, falloff);
 }
 
-// Its taps sit a frost sigma apart, so that a glyph passing under one point
-// does not flicker the tint; a haze or a wide frost is blurred enough to read
-// once.
+// Taps sit a frost sigma apart so a glyph passing under one point cannot flicker
+// the tint; a haze or a wide frost is blurred enough to read once.
 vec4 sampleBehind(vec2 point) {
   if (uHaze > 0.0) {
     return sampleHaze(point);
@@ -198,10 +175,9 @@ vec2 roundedBoxNormal(vec2 p, vec2 halfSize, float radius) {
   return n * vec2(p.x < 0.0 ? -1.0 : 1.0, p.y < 0.0 ? -1.0 : 1.0);
 }
 
-// How far inside one octant of the engine's rounded superellipse a point lies,
-// in the octant's frame (impeller/geometry/round_superellipse_param.cc): a
-// superellipse of half side a up to J, then a circular arc. Close to exact
-// only within a few dp of the curve.
+// Inset inside one octant of the engine's rounded superellipse, in the octant's
+// frame (impeller/geometry/round_superellipse_param.cc): superellipse of half
+// side a up to J, then a circular arc. Exact only within a few dp of the curve.
 float octantInset(vec2 point, float a, vec4 curve, vec2 center) {
   vec2 fromCenter = point - center;
   vec2 toJoint = curve.yz - center;
@@ -216,9 +192,8 @@ float octantInset(vec2 point, float a, vec4 curve, vec2 center) {
   return a * (1.0 - norm) / max(length(slope), 1e-4);
 }
 
-// A corner's quadrant lies about the pane's center, as the engine lays it when
-// all corners are alike, and its octants part along the diagonal through where
-// their arcs meet, half the difference of the sides off center.
+// Picks the corner's octant as the engine lays it out when all corners are alike;
+// octants part along the diagonal through where their arcs meet.
 float cornerInset(vec2 p, vec2 halfSize) {
   vec2 side = step(0.0, p);
   vec4 along = mix(
@@ -247,8 +222,7 @@ float cornerInset(vec2 p, vec2 halfSize) {
   return octantInset(vec2(q.y, q.x - c), halfSize.y, across, centers.zw);
 }
 
-// Adds one sample of the profile to the radius at turn u and its slope, by
-// the Catmull-Rom (Keys) kernel, which crosses the samples smoothly.
+// Accumulates one profile sample at turn u and its slope, Catmull-Rom (Keys).
 void addTurn(float u, float index, float radius, inout vec2 sum) {
   float x = u - index;
   x -= kTurns * floor(x / kTurns + 0.5);
@@ -262,9 +236,8 @@ void addTurn(float u, float index, float radius, inout vec2 sum) {
   sum += radius * vec2(weight.x, weight.y * sign(x));
 }
 
-// The distance inward from a star-shaped outline and its outward normal,
-// both taken at the outline where the point's direction from the center
-// meets it, so they hold steady all the way in.
+// Distance inward from a star-shaped outline and its outward normal, taken where
+// the point's direction from the center meets the outline so both stay steady.
 void outlineGeometry(vec2 p, out float inset, out vec2 normal) {
   float len = max(length(p), 1e-3);
   float turn = atan(p.y, p.x) / kTau;
@@ -303,8 +276,7 @@ float shineAcross(float a, float b) {
   return sum / max(b - a, 1e-4);
 }
 
-// The highlight's brightness a turn from the vertical, as the sweep the
-// fallback draws it with lays it out.
+// Highlight brightness a turn from vertical, laid out as the fallback sweep does.
 float shineAround(float turn) {
   vec4 startTurns = uShineTurns[0];
   vec4 lastTurns = uShineTurns[1];
@@ -331,11 +303,10 @@ void main() {
   vec2 centered = point - halfSize;
   float inset;
   vec2 normal;
-  // The inset of the line and the highlight. A pane is clipped to the engine's
-  // superellipse, up to half a dp inside its circular corners where a long side
-  // runs into them, and they keep to it; the optics read deeper than its inset
-  // holds true, so they keep the circles. Only the band the line and the
-  // highlight can reach works it out.
+  // Inset shared by the line and the highlight. The pane is clipped to the
+  // engine's superellipse, which sits up to half a dp inside its circular corners;
+  // the optics read deeper than that inset holds, so they keep the circles. Only
+  // the band the line and highlight can reach is computed.
   float edge;
   if (uOutlined > 0.5) {
     outlineGeometry(centered, inset, normal);
@@ -368,16 +339,13 @@ void main() {
   float rise = 1.0 - clamp(inset / bevel, 0.0, 1.0);
   vec2 shift;
   if (lens) {
-    // As measured on iOS 27, the raised lens reads outward along its normal
-    // all around, by nothing at the rim and its full depth a bevel in, so its
-    // outer band draws out what lies right under the rim; the depth then eases
-    // off toward the middle.
+    // On iOS 27 a raised lens reads outward along its normal: nothing at the rim,
+    // full depth a bevel in, easing off toward the middle.
     shift = normal * -uOptics.x * smoothstep(0.0, bevel, inset)
         * (1.0 - smoothstep(bevel, halfMinor, inset));
   } else {
-    // A bevel of circular profile, fitted to small panes: flat where it meets
-    // the face and steepening toward the rim, which reads from so far inside
-    // that its outermost band shows the content squeezed and mirrored.
+    // Circular bevel profile for small panes: flat at the face, steepening toward
+    // the rim so the outermost band shows content squeezed and mirrored.
     float depth = min(uOptics.x, halfMinor) * (1.0 - sqrt(1.0 - rise * rise));
     shift = -normal * depth;
   }
@@ -385,11 +353,9 @@ void main() {
   float frost = uShape.w + uEdge.z * rise * rise;
   vec4 base = sampleFrosted(point + shift, frost);
   if (uEdge.y > 0.0 && inset < kPartReach) {
-    // iOS 27 parts red from blue along the normal's mirror image, across it
-    // at the sides and along it at the corners. Along the top and bottom the
-    // parting narrows from the rim to what it holds around the ends. Over
-    // clear glass a channel shows past the others, so the cover is the widest
-    // of them.
+    // iOS 27 splits red from blue along the normal's mirror image: across it at
+    // the sides, along it at the corners. The cover is the widest channel since
+    // over clear glass one channel shows past the others.
     vec2 part = normal.yx * 0.5 * uEdge.y
         * (0.6 + 0.4 * abs(normal.y) * max(1.0 - inset / kPartHold, 0.0))
         * (1.0 - smoothstep(kPartHold, kPartReach, inset));
@@ -423,12 +389,11 @@ void main() {
   float coverage = alpha * (1.0 - cover) + cover;
   vec3 glass = color * alpha * (1.0 - cover) + uTint.rgb * cover;
 
-  // iOS lights the top and bottom of its glass, just inside the line, and on
-  // its tab bar fades that around the rounded ends with the normal's upward
-  // part squared, out only at their tips; its controls dim far faster. All
-  // screened toward white, a pale tint would clip into a flat white ring.
-  // The tail reads the circular inset, as it reaches past where the edge's is
-  // worked out, and moves too slowly for the difference to show.
+  // iOS lights the top and bottom just inside the line; the tab bar fades it
+  // around the rounded ends, squaring the normal's upward part. All screened
+  // toward white, so a pale tint would clip into a flat white ring. The tail
+  // reads the circular inset: it reaches past the edge inset and moves too slowly
+  // for the difference to show.
   float within = max(edge - kLine, 0.0);
   float facing;
   if (lens) {
@@ -444,11 +409,9 @@ void main() {
   float shine = min(uLight.x * facing * mix(band, tail, uRim.x), 1.0);
   glass += (vec3(coverage) - (1.0 - uRim.z) * glass) * shine;
 
-  // iOS 27 outlines its glass with a dark line, which UIKit draws just outside
-  // the bounds, over the backdrop, where the pane cannot draw, so it takes the
-  // outermost pixels here. iOS draws it darkest at the sides; the dock keeps
-  // it as faint all around as along the top, as its darker sides read as
-  // brackets.
+  // iOS 27 draws its outline just outside the bounds, where the pane cannot draw,
+  // so the outermost pixels are used here. The dock keeps the line as faint all
+  // around as along the top, since darker sides read as brackets.
   float line = clamp((kLine - edge) / uTexels.x + 0.5, 0.0, 1.0);
   float across = abs(normal.x);
   float darken = mix(uEdge.x, uRim.w, across * across * across);
@@ -464,8 +427,7 @@ void main() {
   glass += uGlow.z * coverage
       * mix(exp(-dot(toGlow, toGlow) / reach), 1.0, uGlowSpread.y);
 
-  // A pixel the rim crosses takes the bands it covers, as the rasterizer
-  // weighs the rest by its coverage.
+  // A pixel the rim crosses takes the bands it covers, weighted by coverage.
   if (uShineLit[0].x > 0.0 && edge < uShineEnds[2].w + uTexels.x) {
     float turn = atan(abs(centered.x), abs(centered.y));
     float pixel = 0.5 * uTexels.x;

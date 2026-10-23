@@ -1,8 +1,8 @@
 name: diting
 description: "谛听 DITING — Android 客户端（Flutter 重写，兼容 1.4.3 数据）。"
 publish_to: 'none'
-# versionCode 按 major*10000+minor*100+patch 递增（2.0.1 = 20001），
-# 保证 upgrade 安装时不会被系统判为降级。旧版线止于 1.4.3 / 10403、1.4.4 / 10404。
+# versionCode is major*10000 + minor*100 + patch (2.0.1 = 20001) so upgrades are
+# never treated as downgrades.
 version: 2.0.1+20001
 
 environment:
@@ -12,20 +12,20 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # —— 与 DITING 1.4.3 pubspec.lock 对齐的锁定版本，保证移植组件 API 不漂移 ——
-  material_ui: 1.5.0                     # Flutter 官方拆出的 Material3 库（superellipse/Easing）
-  material_color_utilities: 0.13.0       # HCT / DynamicColor 取色
-  material_new_shapes: 1.0.0             # RoundedPolygon 空状态插画
+  # Pinned to the versions used by the original app.
+  material_ui: 1.5.0                     # Material3 widgets (superellipse, Easing)
+  material_color_utilities: 0.13.0       # HCT / DynamicColor
+  material_new_shapes: 1.0.0             # RoundedPolygon for empty-state art
   animations: 3.0.0                      # FadeThrough / OpenContainer
-  path_parsing: 1.1.0                    # Glyph SVG path 解析
-  emoji_regex: 0.0.5                     # EmojiText 分组
+  path_parsing: 1.1.0                    # Parses Glyph SVG paths
+  emoji_regex: 0.0.5                     # Groups graphemes for EmojiText
   collection: ^1.19.1
 
-  # —— 演示状态与路由（迁移文档 D3 选型）——
+  # State management and routing.
   flutter_riverpod: 3.4.3
   go_router: ^16.0.0
 
-  # —— 旧版数据兼容：直接打开 1.4.3 的 SQLite 文件 ——
+  # Reads the legacy SQLite database directly.
   sqflite: ^2.4.2
   path: ^1.9.1
 
@@ -42,9 +42,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/https_passthrough.txt
-    # 赞助页的两张真实收款码（来自仓库 docs/assets）。名单与头像不打包：
-    # 它们由云端 recognition_members.json + avatars/ 下发，见
-    # docs/development/recognition-members.md。
+    # Payment QR codes for the sponsor page. The member list and avatars are not
+    # bundled; they are fetched as recognition_members.json plus avatars/.
     - assets/pay/
   shaders:
     - shaders/liquid_glass.frag

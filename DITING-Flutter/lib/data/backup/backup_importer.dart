@@ -1,34 +1,8 @@
-/// 备份导入：解析、校验并合并一份备份文件。
+/// Backup import: parse, validate and merge a backup file.
 ///
-/// ## 两种格式
-///
-/// | 来源 | 形状 |
-/// |---|---|
-/// | 2.0 | `{format: 'diting-backup', version, data: {...}}` |
-/// | 1.4.3 | 平铺根节点 + `formatVersion: 10` |
-///
-/// 1.4.3 的 `ConfigTransferParser` 只认平铺键，读不到就当默认值，所以把新版
-/// 备份导回旧版时界面显示「内容为空」；反过来新版早期版本只认 `format` 魔数，
-/// 导入旧备份直接报「这不是谛听的备份文件」。两种入口在这里统一：
-/// [LegacyBackupReader] 把旧格式翻译成同样的 `data`，之后走同一套合并逻辑。
-///
-/// ## 合并语义（照抄 1.4.3 `ConfigImporter` 的分档）
-///
-/// | 情形 | 结果 |
-/// |---|---|
-/// | 本机没有该条目 | **新增** |
-/// | 本机已有完全相同 | **跳过** |
-/// | 本机已有但内容不同 | **更新**（规则类）/ **跳过**（设置类） |
-///
-/// 设置项（外观、系统、缓存策略）本机已存在时**一律跳过**而不是覆盖：用户导入
-/// 备份通常是想恢复规则与订阅，把当前的界面主题顺手改回去是意外行为。
-/// 规则类相反——同名但目标不同的覆写规则必须更新，否则导入等于没导。
-///
-/// ## 为什么逐组记账而不是只报总数
-///
-/// 「导入完成」这句话在上一轮是写死的假文案（页面上永远显示「新增 9 项，跳过
-/// 3 项」）。用户据此以为恢复成功了。真实结果必须能说清「哪一组新增了几条」，
-/// 尤其是**部分失败**时——静默的部分成功比整份失败更难排查。
+/// Accepts both this app's `{format, version, data}` form and the legacy flat
+/// root translated by [LegacyBackupReader]. Missing entries are added, identical
+/// ones skipped, and differing ones updated for rules but skipped for settings.
 library;
 
 import 'dart:convert';
@@ -51,7 +25,6 @@ part 'backup_import_prefs.dart';
 part 'backup_import_rules.dart';
 part 'backup_import_settings.dart';
 
-/// 一个分组的导入结果。
 class BackupGroupOutcome {
   const BackupGroupOutcome({
     required this.group,
@@ -66,7 +39,7 @@ class BackupGroupOutcome {
   final int skipped;
   final int updated;
 
-  /// 该组整体失败的原因；非空时三个计数都无意义。
+  /// Why the whole group failed; when set, the counters are meaningless.
   final String? error;
 
   bool get failed => error != null;
@@ -74,7 +47,6 @@ class BackupGroupOutcome {
   bool get isNoop => !failed && added == 0 && updated == 0;
 }
 
-/// 一次导入的完整结果。
 class BackupImportResult {
   const BackupImportResult({
     required this.occurredAt,
@@ -86,7 +58,7 @@ class BackupImportResult {
     this.legacyFormat = false,
   });
 
-  /// 用户取消选择文件：不是失败，什么都不该提示「已导入」。
+  /// The user cancelled file selection; this is not a failure.
   const BackupImportResult.cancelled()
     : outcomes = const [],
       sourceName = null,
@@ -96,7 +68,7 @@ class BackupImportResult {
       subscriptionCount = 0,
       legacyFormat = false;
 
-  /// 整份文件无法解析（不是备份文件 / 版本过新 / JSON 损坏）。
+  /// The whole file could not be parsed (not a backup, too new, bad JSON).
   const BackupImportResult.failed(String this.fatalError)
     : outcomes = const [],
       sourceName = null,
@@ -110,13 +82,13 @@ class BackupImportResult {
   final String? sourceName;
   final bool cancelled;
 
-  /// 整份失败的原因；非空时 [outcomes] 为空。
+  /// Why the whole file failed; when set, [outcomes] is empty.
   final String? fatalError;
 
-  /// 本次导入涉及的订阅数（用于提示「请进入订阅管理执行规则更新」）。
+  /// Number of subscriptions touched, used to prompt a rule refresh.
   final int subscriptionCount;
 
-  /// 文件是 1.4.3 的平铺格式（导入成功后提示里可以说明这一点）。
+  /// The file used the legacy flat format; the success message can say so.
   final bool legacyFormat;
 
   bool get failed => fatalError != null;
@@ -125,7 +97,7 @@ class BackupImportResult {
   int get skipped => outcomes.fold(0, (sum, item) => sum + item.skipped);
   int get updated => outcomes.fold(0, (sum, item) => sum + item.updated);
 
-  /// 有内容变化的分组（用于汇总里只列真正动过的组）。
+  /// Groups that actually changed, for the summary.
   List<BackupGroupOutcome> get changed => [
     for (final outcome in outcomes)
       if (outcome.added + outcome.updated > 0) outcome,
@@ -137,13 +109,12 @@ class BackupImportResult {
   ];
 }
 
-/// 导入目标：一个已打开的规则库 + prefs 写入视图。
 class BackupImportTarget {
   const BackupImportTarget({required this.store, required this.database});
 
   final LegacyPrefsStore store;
 
-  /// `null` 表示全新安装（规则/订阅无法写入，相关分组会如实报失败）。
+  /// Null on a fresh install; rule and subscription groups then report failure.
   final Database? database;
 
   LegacySettings get settings => LegacySettings(store);

@@ -10,23 +10,11 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-/// Persists the Go engine's MITM request events into `http_request_log`.
+/// Persists the engine's MITM request events into `http_request_log`.
 ///
-/// Source: `HttpLogCallback.onHttpEvent(packageName, authority, protocol,
-/// outcome, matchedRule)` — emitted from `engine_mitm.go`'s `logHTTPEvent`, i.e.
-/// only while stack MITM is active. Both `blocked` and `allowed` requests arrive
-/// here, so this table is the only place the request timeline exists.
-///
-/// `outcome` is stored verbatim, never normalised. The Go side emits
-/// `allowed` / `rewritten` / `blocked` / `passthrough` / `invalid` /
-/// `handshake_failed` / `upstream_failed` / `decryption_failed` / `error`
-/// (`mitm_handler.go`, `mitm_local_relay.go`, `mitm_relay.go`), and the Dart
-/// reader decides grouping by comparing these strings. Mapping them into an
-/// enum here would silently drop any value the engine adds later.
-///
-/// Batching follows 1.4.3 `HttpRequestLogger`: 10 rows or 500ms, whichever comes
-/// first. The callback runs on the TLS relay path, so a synchronous insert (and
-/// its WAL fsync) would add latency to every intercepted request.
+/// The callback runs on the TLS relay path, so rows are batched (10 rows or
+/// 500ms) instead of written synchronously with a WAL fsync per request.
+/// `outcome` is stored verbatim because the Dart reader groups by these strings.
 class HttpRequestLogWriter(
     private val context: Context,
     private val databaseName: String,
@@ -39,15 +27,14 @@ class HttpRequestLogWriter(
     private val lock = Any()
     private val pending = ArrayList<Row>(BATCH_SIZE)
 
-    /// Whether a delayed flush is already queued, so ten trickling events still
-    /// produce one write instead of ten.
+    /// Guards against queueing a second timer while one flush is pending.
     private val flushScheduled = AtomicBoolean(false)
 
     @Volatile
     private var closed = false
 
-    /// `HttpRequestLogger.log` applied the DNS log mode to HTTP rows too, so the
-    /// "off" and "blocked_and_errors" settings keep their meaning here.
+    /// The DNS log mode also governs HTTP rows, so "off" and
+    /// "blocked_and_errors" keep their meaning here.
     fun onEvent(
         packageName: String,
         authority: String,
@@ -76,24 +63,21 @@ class HttpRequestLogWriter(
     }
 
     /// Writes the tail and stops the executor; called from every stop path.
-    ///
-    /// `closed` gates only the entry points (`onEvent`, `submitFlush`,
-    /// `scheduleDelayedFlush`), never [writeBatch]: the final flush below runs
-    /// after `closed` is already set, and guarding the writer on it would discard
-    /// exactly the rows this method exists to save.
+    /// `closed` gates only the entry points, never writeBatch: the final flush
+    /// runs after it is set and must not be skipped.
     fun close() {
         if (closed) return
         closed = true
         runCatching {
             // Explicit Runnable: `submit { }` is ambiguous between the Runnable
-            // and Callable overloads on a Java interface.
+            // and Callable overloads here.
             executor.submit(Runnable { writeBatch() }).get(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         }.onFailure { Log.w(TAG, "Final HTTP log flush did not complete", it) }
         executor.shutdown()
         runCatching { executor.awaitTermination(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
     }
 
-    /// Batch-threshold path: hand the buffer to the writer thread immediately.
+    /// Hands the buffer to the writer thread as soon as it is full.
     private fun submitFlush() {
         if (closed) return
         try {
@@ -103,8 +87,8 @@ class HttpRequestLogWriter(
         }
     }
 
-    /// Debounced path: arm one 500ms timer for the first row of a burst and reuse
-    /// it for the rest, so a trickle of ten events is one write, not ten.
+    /// Arms one 500ms timer for the first row of a burst and reuses it for the
+    /// rest, so a trickle of ten events is one write instead of ten.
     private fun scheduleDelayedFlush() {
         if (closed || !flushScheduled.compareAndSet(false, true)) return
         try {
@@ -122,9 +106,8 @@ class HttpRequestLogWriter(
     }
 
     private fun writeBatch() {
-        // Returned from the block rather than assigned to a captured `val`: the
-        // assignment-in-lambda form depends on `synchronized`'s callsInPlace
-        // contract, and this reads the same either way.
+        // Returned from the block instead of assigned to a captured `val`: the
+        // assignment form depends on synchronized's callsInPlace contract.
         val batch = synchronized(lock) {
             if (pending.isEmpty()) return
             val copy = ArrayList(pending)
@@ -133,16 +116,13 @@ class HttpRequestLogWriter(
         }
 
         val db = LegacyDb.open(context, databaseName) ?: run {
-            // Missing file = fresh install (the Dart layer creates the schema) or
-            // a database that never had this table. Retrying cannot help and would
-            // grow the buffer forever, so drop the batch.
+            // No database yet (fresh install) or it never had this table; retrying
+            // cannot help and would grow the buffer, so drop the batch.
             Log.w(TAG, "$databaseName not openable; dropping ${batch.size} HTTP rows")
             return
         }
         try {
-            // `http_request_log` only exists in `diting_database`
-            // (ExpressRulesDatabase excludes the entity), so guard anyway: an
-            // INSERT into a missing table would throw per batch forever.
+            // Guard anyway: an INSERT into a missing table would throw per batch.
             if (!LegacyDb.hasTable(db, TABLE)) {
                 Log.w(TAG, "$databaseName has no $TABLE; dropping ${batch.size} HTTP rows")
                 return
@@ -164,22 +144,19 @@ class HttpRequestLogWriter(
         }
     }
 
-    /// Retention: keeps a failed batch instead of losing it, matching
-    /// `HttpRequestLogger.flushLocked`'s "keep the batch for the next retry".
+    /// Keeps a failed batch for the next attempt instead of dropping it.
     private fun requeue(batch: List<Row>) {
         synchronized(lock) {
             if (closed) return
-            // Prepend so ordering stays chronological, like 1.4.3 did with
-            // `pending.addAll(0, batch)`.
+            // Prepend so the buffer stays chronological.
             pending.addAll(0, batch)
-            // A permanently failing write must not grow this list for the whole
-            // session: past the cap the oldest rows go first, which is the same
-            // data the retention policy would have trimmed.
+            // A permanently failing write must not grow the buffer without bound;
+            // the oldest rows are the ones retention would have trimmed anyway.
             while (pending.size > MAX_PENDING_ROWS) {
                 pending.removeAt(0)
             }
         }
-        // No new event may arrive to reach BATCH_SIZE, so re-arm the timer.
+        // No later event may arrive to hit BATCH_SIZE, so re-arm the timer.
         scheduleDelayedFlush()
     }
 
@@ -191,11 +168,8 @@ class HttpRequestLogWriter(
         val outcome: String,
         val matchedRule: String?,
     ) {
-        /// `blockSubscriptionId` is left NULL: 1.4.3 resolved it by re-evaluating
-        /// the authority against the live rule snapshot
-        /// (`GoTunnelLogProcessor.resolveHttpBlockSubscriptionId`), which needs
-        /// the Kotlin rule cache this port does not have. The Dart layer shows
-        /// the subscription as unknown rather than wrong.
+        /// `blockSubscriptionId` is left NULL: resolving it needs the rule snapshot
+        /// this port does not keep, so Dart shows it as unknown.
         fun toValues(): ContentValues = ContentValues().apply {
             put("timestamp", timestamp)
             put("packageName", packageName)
@@ -214,11 +188,10 @@ class HttpRequestLogWriter(
         const val FLUSH_INTERVAL_MS = 500L
         const val CLOSE_TIMEOUT_MS = 500L
 
-        /// Safety valve for a write path that keeps failing.
+        /// Cap for the retry buffer when writes keep failing.
         const val MAX_PENDING_ROWS = 500
 
-        /// Outcomes that mean "request went through untouched"; they are the
-        /// rows `blocked_and_errors` hides.
+        /// Outcomes hidden by the `blocked_and_errors` log mode.
         val PASS_THROUGH_OUTCOMES = setOf("allowed", "passthrough")
     }
 }

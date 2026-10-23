@@ -1,13 +1,10 @@
-/// 首次启动的「使用须知与免责声明」。
+/// First-launch terms and disclaimer.
 ///
-/// 1.4.3 在 `MainActivity` 里用 `InitialAgreementDialog` 弹一次，确认后写
-/// `initial_agreement_accepted`（`dns_vpn_prefs`）。上一轮 Flutter 版把它做成
-/// 一个独立路由页 `/disclaimer`：既没有「首次启动」这个时机（用户得自己找到
-/// 那一行才会看到），也没有写那个键，于是免责声明的展示成了纯装饰。
-///
-/// 本轮改回弹窗：`DitingApp` 在 `builder` 里包一层 [InitialAgreementGate]，
-/// 未确认就盖一层遮罩 + 对话框。文案逐字照抄 `ui/MainActivityDialogs.kt` 的
-/// `InitialAgreementDialog`——它是用户实际同意过的法律文本，不能改写。
+/// Upstream 1.4.3 showed `InitialAgreementDialog` once from `MainActivity` and
+/// stored `initial_agreement_accepted`. [InitialAgreementGate] is mounted in
+/// `DitingApp.builder` so it also covers overlay routes. The wording is copied
+/// verbatim from `ui/MainActivityDialogs.kt`: it is the legal text users
+/// actually agreed to.
 library;
 
 import 'dart:ui' show ImageFilter;
@@ -17,10 +14,10 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 首次启动的须知门。
+/// Gates the app behind the first-launch agreement.
 ///
-/// 已同意时直接返回 [child]，零额外布局层级——门在同意后必须完全消失，否则
-/// 每个页面都会多一层 `Stack`，命中测试与滚动行为都会跟着变。
+/// Returns [child] untouched once accepted, so the gate adds no extra layout
+/// level afterwards.
 class InitialAgreementGate extends ConsumerStatefulWidget {
   const InitialAgreementGate({super.key, required this.child});
 
@@ -32,7 +29,7 @@ class InitialAgreementGate extends ConsumerStatefulWidget {
 }
 
 class _InitialAgreementGateState extends ConsumerState<InitialAgreementGate> {
-  /// 用户点了「不同意」。只在本次运行内有效，下次启动重新询问。
+  /// Set when the user declines; scoped to this run, asked again next launch.
   var _declined = false;
 
   @override
@@ -43,7 +40,7 @@ class _InitialAgreementGateState extends ConsumerState<InitialAgreementGate> {
     }
     return Stack(
       children: [
-        // 弹窗背后的内容整体模糊掉：旧版是模态对话框，背后内容不可交互。
+        // Blur the content behind: upstream's dialog was modal.
         ExcludeSemantics(
           child: ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
@@ -74,11 +71,11 @@ class _InitialAgreementGateState extends ConsumerState<InitialAgreementGate> {
   }
 }
 
-/// 「不同意」后的收尾屏。
+/// Screen shown after declining.
 ///
-/// 不杀进程：Flutter 侧直接 `SystemNavigator.pop()` 在部分厂商 ROM 上会被判为
-/// 异常退出并弹「应用屡次停止运行」。旧版是 Activity 里 `finish()`，这里改为
-/// 收起弹窗 + 明确提示，用户自行退出，并留一个「重新查看」——误触不算终局。
+/// Does not kill the process: `SystemNavigator.pop()` is treated as a crash by
+/// some vendor ROMs. The user exits on their own, and "review again" is offered
+/// so a mis-tap is not final.
 class _DeclinedNotice extends StatelessWidget {
   const _DeclinedNotice({required this.onReopen});
 
@@ -114,9 +111,9 @@ class _DeclinedNotice extends StatelessWidget {
   }
 }
 
-/// 「使用须知与免责声明」对话框本体。
+/// The terms dialog itself.
 ///
-/// 文案逐字来自旧版 `InitialAgreementDialog`：这是用户实际同意过的法律文本。
+/// Wording comes verbatim from the upstream agreement text.
 class InitialAgreementDialog extends StatelessWidget {
   const InitialAgreementDialog({
     super.key,
@@ -127,7 +124,7 @@ class InitialAgreementDialog extends StatelessWidget {
   final VoidCallback onAccept;
   final VoidCallback onDecline;
 
-  /// 旧版 `InitialAgreementDialog` 的 `message`，含换行结构。
+  /// Upstream `InitialAgreementDialog.message`, with its line breaks.
   static const message =
       '软件说明\n'
       '谛听是一款专注于本地 DNS 解析优化与网络规则过滤的开源工具。提供三种工作模式：'
@@ -146,15 +143,10 @@ class InitialAgreementDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 三段法律文本是本应用里最长的一段连续正文。此前它被夹在
-    // `CommonDialog` 的默认内容上限（348 − 30×2 = 288dp）里，再加上外层
-    // `Padding(horizontal: 24)`，真机 411dp 宽的屏上正文只剩约 230dp 宽 ——
-    // 一行不到 12 个汉字，滚动条要拖四次才读得完。
-    //
-    // 长文档与短问句的排版要求是相反的：iOS 的告警宽度（270–348）是为一句
-    // 「是否删除」调的，而这段文本需要的是「铺满能铺的宽度」。所以这里显式
-    // 请求满宽、把 inset 收到 20，并把正文内缩从 30 降到 20：411 − 20×2 − 20×2
-    // = 331dp 的正文宽度，比原来宽 44%。
+    // Three paragraphs of legal text are the longest body copy in the app.
+    // A long document needs opposite treatment to a short question such as
+    // "delete this?": request full width with a 20 inset and 20 body padding,
+    // which widens the body by ~44% on a 411dp screen.
     return CommonDialog(
       title: '使用须知与免责声明',
       width: double.infinity,
@@ -164,11 +156,11 @@ class InitialAgreementDialog extends StatelessWidget {
         TextButton(onPressed: onDecline, child: const Text('不同意并退出')),
         TextButton(onPressed: onAccept, child: const Text('同意并继续')),
       ],
-      // 正文较长（三段），必须可滚：小屏 + 大字号下整段放不下，写死高度会
-      // 把按钮挤出屏幕。行高 1.6 而不是默认的 1.33：连续汉字正文靠行距分辨
-      // 行，默认行距在三段法律文本上读起来是糊成一片的（与免责声明页正文
-      // `InitialAgreementCard` 的 1.6 一致）。
+      // Must scroll: three paragraphs do not fit on a small screen with large
+      // text. Line height 1.6 instead of the default 1.33 keeps dense CJK body
+      // text legible.
       child: ConstrainedBox(
+
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.5,
         ),

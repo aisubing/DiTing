@@ -1,13 +1,7 @@
 /// Read access to the legacy `app_traffic_daily` table.
 ///
-/// Rows are written by the native side (`TrafficIngest` → `AppTrafficDao.upsertDelta`
-/// equivalent), so this repository is read-only.
-///
-/// Both aggregate queries are copied verbatim from
-/// `DITING-Legacy/app/src/main/java/com/haoze/diting/data/dao/AppTrafficDao.kt`
-/// (`queryDateRange` / `queryAllHistory`), including the `min(date)` / `max(app_name)`
-/// projections: Room maps those into an `AppTrafficDailyEntity`, so the DTO keeps
-/// the same shape instead of inventing a second one.
+/// Rows are written natively, so this repository only reads. The aggregate
+/// projections (`min(date)`, `max(app_name)`) mirror the legacy DAO.
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -23,8 +17,8 @@ class AppTrafficDaily {
     required this.updatedAt,
   });
 
-  /// `yyyy-MM-dd`, local time zone. For the range/history queries this is the
-  /// **earliest** date in the group, exactly like the legacy `min(date)`.
+    /// `yyyy-MM-dd` in the local zone. For the range/history queries this is the
+    /// earliest date in the group.
   final String date;
   final String packageName;
   final String appName;
@@ -34,8 +28,8 @@ class AppTrafficDaily {
 
   int get totalBytes => txBytes + rxBytes;
 
-  /// Share of [total], as 0..1. Guards the empty list shown before the first
-  /// traffic tick lands, where `total == 0` would otherwise divide by zero.
+    /// Share of [total], as 0..1. Guards against a zero total while the list is
+    /// still empty.
   double shareOf(int total) => total <= 0 ? 0 : totalBytes / total;
 }
 
@@ -44,7 +38,6 @@ class AppTrafficRepository {
 
   final Database _db;
 
-  /// 1.4.3 `queryByDate`.
   Future<List<AppTrafficDaily>> byDate(String date) async {
     final rows = await _db.rawQuery(
       'SELECT * FROM app_traffic_daily WHERE date = ? '
@@ -54,7 +47,7 @@ class AppTrafficRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// 1.4.3 `queryDateRange`（含首尾两天，字符串比较即日期比较）。
+    /// Inclusive on both ends; comparing the `yyyy-MM-dd` strings compares dates.
   Future<List<AppTrafficDaily>> dateRange(
     String startDate,
     String endDate,
@@ -72,7 +65,6 @@ class AppTrafficRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// 1.4.3 `queryAllHistory`.
   Future<List<AppTrafficDaily>> allHistory() async {
     final rows = await _db.rawQuery(
       'SELECT min(date) as date, package_name, max(app_name) as app_name, '
@@ -85,25 +77,15 @@ class AppTrafficRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// Today's row per package; the page shows "今日" by default, which is what
-  /// 1.4.3's `TrafficTimeRange.TODAY` selected.
+    /// Today's row per package.
   Future<List<AppTrafficDaily>> today() => byDate(todayKey());
 
-  /// 1.4.3 `AppTrafficDao.clearAll()`：`DELETE FROM app_traffic_daily`。
-  ///
-  /// 这是本仓储唯一的写操作，对应流量页的「清除历史」（旧版
-  /// `AppTrafficStatsViewModel.clearHistory` → `TrafficStatsManager.clearAllTrafficStats`
-  /// + `LogMaintenance.clearAllTrafficStats`）。调用方负责先弹确认框——旧版
-  /// 的确认文案是「此操作将清空所有已持久化的应用历史流量统计，清除后无法恢复。」
-  ///
-  /// 返回删掉的行数，供 UI 报告「已清除 N 条记录」。
+    /// The repository's only write: deletes every row and returns the count. The
+    /// caller asks for confirmation first.
   Future<int> clearAll() => _db.delete('app_traffic_daily');
 
-  /// `yyyy-MM-dd` in the local time zone.
-  ///
-  /// Local, not UTC: `TrafficIngest` derives the row key from
-  /// `SimpleDateFormat("yyyy-MM-dd")` in the device zone, so a UTC key would
-  /// point at the wrong row for eight hours a day in UTC+8.
+    /// `yyyy-MM-dd` in the local zone, matching the key the native ingest writes;
+    /// a UTC key would point at the wrong row for part of each day.
   static String dateKey(DateTime time) {
     String two(int value) => value.toString().padLeft(2, '0');
     return '${time.year}-${two(time.month)}-${two(time.day)}';

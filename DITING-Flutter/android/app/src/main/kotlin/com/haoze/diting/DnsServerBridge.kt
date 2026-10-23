@@ -27,23 +27,12 @@ class DnsServerBridge(
                 result.success(true)
             }
             "status" -> result.success(DitingDnsServerService.status(context))
-            // 1.4.3 的独立服务器模式在设置页有「清空 DNS 缓存」
-            // （`DnsDataCleanupManager.clearDnsCache` → `engine.ClearDNSCache()`，
-            // 实现见 `engine_config.go`）。本仓的 Go 引擎暴露了同名方法，只是
-            // 此前没有任何通道把它接出来，页面上那一格只能显示「尚未接入」。
             "clearCache" -> result.success(clearCache())
             else -> result.notImplemented()
         }
     }
 
-    /**
-     * Clears the running engine's DNS cache.
-     *
-     * Returns false when no engine is running: there is no cache to clear, and
-     * reporting true would make the UI claim it cleared something it never
-     * touched. The engine is only reachable while the service is alive, which is
-     * why this borrows the service's active instance instead of owning one.
-     */
+    /// Clears the running engine's DNS cache; false when no engine is running.
     private fun clearCache(): Boolean {
         val engine = DitingDnsServerService.engineForDiagnostics() ?: return false
         return runCatching {

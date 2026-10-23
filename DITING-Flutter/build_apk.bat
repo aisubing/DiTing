@@ -2,23 +2,16 @@
 setlocal EnableDelayedExpansion
 title DITING Flutter APK Build and Install Tool
 
-:: ============================================================================
-:: DITING Flutter - APK build / install script
+:: APK build / install script.
 ::
-:: Difference from DITING-Legacy\build_apk.bat:
-::   The native project builds via `gradlew assembleXxx`. This is a Flutter
-::   project, so it MUST go through `flutter build apk`; calling gradlew
-::   directly would produce an APK with no Dart code inside.
+:: Must go through `flutter build apk`; calling gradlew directly would produce an
+:: APK with no Dart code inside. Release uses the keystore from
+:: android/key.properties; "Debug (Release Key)" adds -PsignDebugWithRelease=true
+:: so the debug build can upgrade-install a release build.
 ::
-:: Signing:
-::   Release uses the real keystore referenced by android/key.properties.
-::   "Debug (Release Key)" passes -PsignDebugWithRelease=true so a debug build
-::   is signed with the release key (lets it upgrade-install a release build).
-::
-:: NOTE: this file is intentionally pure ASCII. cmd.exe parses batch files with
-:: the OEM code page (936 here), so UTF-8 Chinese text inside a .bat breaks the
-:: parser. Chinese documentation lives in android/SIGNING.md instead.
-:: ============================================================================
+:: NOTE: this file is intentionally pure ASCII. cmd.exe parses batch files with the
+:: OEM code page, so UTF-8 Chinese text here breaks the parser. Chinese docs live
+:: in android/SIGNING.md.
 
 cd /d "%~dp0"
 
@@ -26,15 +19,12 @@ if not exist "pubspec.yaml" goto ERR_NO_FLUTTER
 where flutter >nul 2>&1
 if errorlevel 1 goto ERR_NO_FLUTTER_BIN
 
-:: Read the display version (e.g. "2.0.0") from pubspec.yaml so the versioned
-:: archive name always matches the build, with no second place to edit.
+:: Version name comes from pubspec.yaml so the archive name always matches.
 set "APP_VERSION_NAME=unknown"
 for /f "tokens=2 delims=: " %%A in ('findstr /b "version:" pubspec.yaml') do set "APP_VERSION_NAME=%%A"
 for /f "tokens=1 delims=+" %%B in ("!APP_VERSION_NAME!") do set "APP_VERSION_NAME=%%B"
 
-:: ============================================================================
 :: Step 1: Select build type
-:: ============================================================================
 :CHOOSE_BUILD_TYPE
 cls
 echo ================================================================
@@ -113,9 +103,7 @@ set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-arm64-v8a-release.apk"
 goto START_BUILD
 
-:: ============================================================================
 :: Step 2: Build
-:: ============================================================================
 :START_BUILD
 echo.
 echo ================================================================
@@ -135,8 +123,7 @@ echo ================================================================
 echo [SUCCESS] %BUILD_TYPE_NAME% build completed!
 echo [INFO] APK: %FOUND_APK%
 for %%F in ("%FOUND_APK%") do echo [INFO] Size: %%~zF bytes
-rem Versioned archive: produced by android\app\build.gradle.kts's
-rem copy*ApkWithVersion after assemble, e.g. DITING-release-v2.0.0.apk
+rem Versioned archive from copy*ApkWithVersion in android/app/build.gradle.kts
 rem (not produced for --split-per-abi).
 if not "%BUILD_TYPE_NAME%"=="Release (per-ABI)" (
     set "VERSIONED_APK=%CD%\build\app\outputs\apk\versioned\%BUILD_TYPE%\DITING-%BUILD_TYPE%-v%APP_VERSION_NAME%.apk"
@@ -145,7 +132,7 @@ if not "%BUILD_TYPE_NAME%"=="Release (per-ABI)" (
 echo ================================================================
 echo.
 
-:: Print the signer fingerprint so it is obvious which key was used.
+:: Print the signer fingerprint.
 set "BUILD_TOOLS=%LOCALAPPDATA%\Android\Sdk\build-tools"
 if exist "%BUILD_TOOLS%" (
     for /f "delims=" %%D in ('dir /b /o:-n "%BUILD_TOOLS%" 2^>nul') do (
@@ -158,9 +145,7 @@ if exist "%BUILD_TOOLS%" (
 )
 :SIGNED_SHOWN
 
-:: ============================================================================
 :: Step 3: Ask to install
-:: ============================================================================
 :ASK_INSTALL
 echo Install the APK onto a device?
 echo   [Y] Yes - detect/connect ADB device and install (default)
@@ -188,9 +173,7 @@ echo [INFO] Installation skipped. APK kept at:
 echo        %FOUND_APK%
 goto SUCCESS_EXIT
 
-:: ============================================================================
 :: Step 4: ADB environment check and device detection
-:: ============================================================================
 :PREPARE_ADB
 echo.
 echo ================================================================
@@ -243,9 +226,7 @@ goto DO_INSTALL
 echo [INFO] Target device detected: !TARGET_DEVICE!
 goto DO_INSTALL
 
-:: ============================================================================
 :: Step 5: Connect manual ADB device (IP:Port)
-:: ============================================================================
 :PROMPT_CONNECT_ADB
 if "!EMPTY_RETRIES!"=="" set "EMPTY_RETRIES=0"
 echo [WARN] No ready ADB device currently detected.
@@ -262,9 +243,8 @@ if "%ADB_ADDRESS%"=="" (
     echo.
     echo [WARN] Input cannot be empty, please try again.
     echo.
-    REM Guard against an endless prompt loop when stdin is not a console
-    REM (running under CI, a pipe, or a redirected file): `set /p` returns
-    REM immediately with an empty value forever, so bail out explicitly.
+    REM Without a console (CI, pipe, redirected file) `set /p` returns an empty
+    REM value forever, so bail out instead of looping.
     if !EMPTY_RETRIES! GEQ 3 goto ERR_NO_INPUT
     goto PROMPT_CONNECT_ADB
 )
@@ -302,9 +282,7 @@ echo.
 echo [SUCCESS] Successfully connected to device: !TARGET_DEVICE!
 goto DO_INSTALL
 
-:: ============================================================================
 :: Step 6: Install
-:: ============================================================================
 :DO_INSTALL
 echo.
 echo ================================================================
@@ -322,9 +300,7 @@ echo [SUCCESS] %BUILD_TYPE_NAME% APK installed successfully!
 echo ================================================================
 goto SUCCESS_EXIT
 
-:: ============================================================================
 :: Error handlers
-:: ============================================================================
 :ERR_NO_FLUTTER
 echo.
 echo ================================================================
@@ -422,9 +398,7 @@ echo   3. Device system policy blocked installation.
 echo ================================================================
 goto ERROR_EXIT
 
-:: ============================================================================
 :: Exit handlers
-:: ============================================================================
 :SUCCESS_EXIT
 echo.
 echo ================================================================

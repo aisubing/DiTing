@@ -1,16 +1,8 @@
 part of 'backup_importer.dart';
 
-/// 外观与系统设置分组的合并。
-///
-/// 设置类分组一律「本机已有值即跳过」：导入备份通常是恢复规则与订阅，
-/// 顺手改掉用户当前的界面与开关属于意外行为（见 `backup_importer.dart` 文件头）。
+/// Merges appearance and system setting groups; local values win.
 extension _BackupImportSettings on BackupImporter {
-  // ----------------------------------------------------------------- 设置
-
-  /// 外观：本机已有值的项跳过（见文件头「合并语义」）。
-  ///
-  /// 1.4.3 的备份里每个首页组件单独存透明度、还有两句首页标语；2.0 早期导出
-  /// 丢了这些字段，导回旧版时它们会变回默认值。
+  /// Skip items that already have a local value.
   BackupGroupOutcome _importAppearance(
     Object? value,
     BackupImportTarget target,
@@ -77,8 +69,8 @@ extension _BackupImportSettings on BackupImporter {
       }
     }
 
-    // 每个首页组件的透明度：本机统一用一个 `componentOpacity`，旧备份里五个
-    // 键各自独立，这里按「有值就写回对应旧键」处理，让旧版恢复后的长相一致。
+    // This build has one shared `componentOpacity`; old backups held five
+    // separate keys, so each present value is written back to its legacy key.
     final component = _decimal(value['componentOpacity']);
     for (final entry in const {
       'homePowerButtonOpacity': 'home_power_button_opacity',
@@ -130,11 +122,10 @@ extension _BackupImportSettings on BackupImporter {
     );
   }
 
-  /// 透明度比较要留容差。
+  /// Opacity needs a tolerance.
   ///
-  /// 安卓端的 SharedPreferences 用 Java `float` 存，`putFloat(0.8)` 读回来是
-  /// `0.800000011920929`；用 `==` 比会和备份里的 `0.8` 永远不相等，于是每次
-  /// 导入都把这五项判成「新增」，用户看到的是永远消不掉的汇总。
+  /// Android stores floats as Java `float`, so `putFloat(0.8)` reads back as
+  /// `0.800000011920929`; exact comparison would report these as added forever.
   bool _sameOpacity(double current, double incoming) =>
       (current - incoming).abs() < 0.001;
 
@@ -144,11 +135,10 @@ extension _BackupImportSettings on BackupImporter {
     return null;
   }
 
-  /// 系统设置：**值相同即跳过**。
+  /// System settings: skip keys whose value is unchanged.
   ///
-  /// 早期版本无论值有没有变化都写一遍并计一次「新增」，于是同一份备份导入
-  /// 两次都会报「新增 18 项」——用户看到的是「明明什么都没变，为什么又说新增」。
-  /// 判断依据是本机当前值，不是「有没有写过这个键」。
+  /// Compare against the current local value, not against whether the key was
+  /// ever written, so re-importing the same backup reports nothing new.
   BackupGroupOutcome _importSystem(Object? value, BackupImportTarget target) {
     if (value is! Map) {
       throw const BackupFormatException('系统设置分组应为对象');
@@ -390,7 +380,7 @@ extension _BackupImportSettings on BackupImporter {
   }
 }
 
-/// JSON 里的字符串集合；接受数组或 `{value: ...}` 形状。
+/// String set from JSON; accepts a list or a map shape.
 Set<String> _stringSet(Object? value) {
   if (value is List) {
     return {

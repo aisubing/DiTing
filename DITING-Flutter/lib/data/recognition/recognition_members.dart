@@ -1,39 +1,30 @@
-/// 赞助者 / 共建者名单的数据模型与校验。
+/// Data model and validation for the sponsor / co-builder list.
 ///
-/// 数据来源是仓库根目录的 `recognition_members.json`（云端下发，改完推到
-/// GitHub `main` 即生效，见 `docs/development/recognition-members.md`）。
-/// 这里只做两件事：把 JSON 解析成强类型列表，并按文档里的约束校验——
-/// 名字非空、同一数组内不重复、头像文件名符合 `^[a-z0-9_]+_avatar\.jpg$`。
-///
-/// 校验失败一律抛 [FormatException]：调用方据此判定「这份配置不可用」，
-/// 保留上一次成功的缓存，而不是把半份坏名单渲染给用户。
+/// Any validation failure throws [FormatException] so callers keep the last
+/// good cache instead of rendering a partial list.
 library;
 
 import 'dart:convert';
 
-/// 云端名单配置地址（与旧版 `RecognitionMembersRepository` 一致）。
 const recognitionMembersUrl =
     'https://raw.githubusercontent.com/haoze-evolluling/DITING/main/'
     'recognition_members.json';
 
-/// 头像资源根地址。
 const recognitionAvatarBaseUrl =
     'https://raw.githubusercontent.com/haoze-evolluling/DITING/main/avatars/';
 
-/// 头像文件名必须以 `<小写字母/数字/下划线>_avatar.jpg` 结尾。
+/// Avatar file names must match `<lowercase/digit/underscore>_avatar.jpg`.
 final _avatarFileNamePattern = RegExp(r'^[a-z0-9_]+_avatar\.jpg$');
 
-/// 名单里的一位成员。
 class RecognitionMember {
   const RecognitionMember({required this.name, this.avatarFileName});
 
   final String name;
 
-  /// 自定义头像文件名；缺省表示这位成员没有头像，界面画默认人形占位。
+  /// Avatar file name; null means a placeholder is drawn.
   final String? avatarFileName;
 }
 
-/// 一份完整名单。
 class RecognitionMembers {
   const RecognitionMembers({
     required this.version,
@@ -41,13 +32,13 @@ class RecognitionMembers {
     required this.coBuilders,
   });
 
-  /// 配置版本号；每次更新名单建议递增（仅用于展示/排查）。
+  /// Config version, display only.
   final int version;
 
-  /// 赞助者，顺序即 JSON 数组顺序（按赞助时间由早到晚）。
+  /// Sponsors, ordered by sponsorship time.
   final List<RecognitionMember> sponsors;
 
-  /// 共建者，顺序即 JSON 数组顺序（按昵称字母/拼音排序）。
+  /// Co-builders, sorted by nickname.
   final List<RecognitionMember> coBuilders;
 
   static const empty = RecognitionMembers(
@@ -57,10 +48,10 @@ class RecognitionMembers {
   );
 }
 
-/// 解析并校验一份名单 JSON。
+/// Parses and validates a list JSON.
 ///
-/// 抛 [FormatException] 的三种情况：根结构不对、必需字段缺失/类型不符、
-/// 违反唯一性或头像命名规范。
+/// Throws [FormatException] on a wrong root, a missing or mistyped field, a
+/// duplicate entry, or a malformed avatar file name.
 RecognitionMembers parseRecognitionMembers(String raw) {
   final Object? decoded;
   try {

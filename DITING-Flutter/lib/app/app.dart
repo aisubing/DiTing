@@ -14,18 +14,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 应用根。
+/// App root.
 ///
-/// 三个必须按这个顺序摆的层：
-/// 1. `MaterialApp` 提供 `Theme` / `MediaQuery` / `Navigator`；
-/// 2. [ThemeCrossFade] 包在 `builder` 里，用上一帧截图淡出——它依赖
-///    `ThemeData` 每次重建都不相等，因此主题必须走 [AppThemeCache]；
-/// 3. [AppScopes] 必须在 `Navigator` **之上**（也就是 `builder` 里），
-///    否则浮层路由拿不到 `MeasureScope` / `ViewScope`。
+/// Layer order matters: [ThemeCrossFade] lives in `builder` and relies on
+/// [ThemeData] comparing unequal on every rebuild, so themes must come from
+/// [AppThemeCache]. [AppScopes] must also sit above the `Navigator` (i.e. in
+/// `builder`), otherwise overlay routes cannot resolve their scopes.
 class DitingApp extends ConsumerStatefulWidget {
   const DitingApp({super.key, this.initialLocation});
 
-  /// 仅测试用：直接从某个路由起跑，免得每个用例都要点一路过去。
+  /// Test-only: start at a route directly instead of navigating there.
   final String? initialLocation;
 
   @override
@@ -38,11 +36,11 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     initialLocation: widget.initialLocation ?? Routes.home,
   );
 
-  /// 自动更新的前台补跑（旧版由 WorkManager 周期任务驱动，本仓没有该调度器）。
+  /// Foreground catch-up for auto update (upstream used a WorkManager job).
   ///
-  /// 触发点是「启动」与「回到前台」两处：只在启动检查会让长期挂后台的用户
-  /// 永远等不到更新，只在回前台检查会让首启不跑。`_autoUpdateChecked` 只是
-  /// 防抖，真正的到期判据在 [AutoUpdateRunner] 里按 `lastAttemptAt` 算。
+  /// Runs on both start and resume: start-only would starve long-backgrounded
+  /// users, resume-only would skip the first launch. `_autoUpdateChecking` is
+  /// just a debounce; the real due check lives in [AutoUpdateRunner].
   AppLifecycleListener? _lifecycle;
   bool _autoUpdateChecking = false;
 
@@ -70,8 +68,8 @@ class _DitingAppState extends ConsumerState<DitingApp> {
         return;
       }
       if (run.didRun) {
-        // 有真实执行才写入「上次自动更新」；跳过（未到期 / 关闭）不刷新时间，
-        // 否则页面会把「刚刚检查过」误读成「刚刚更新过」。
+        // Only a real run refreshes the timestamp; a skip (not due / disabled)
+        // must not be shown as "just updated".
         ref.read(autoUpdateLastRunProvider.notifier).record(run);
       }
     } finally {
@@ -85,7 +83,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     final palette = ref.watch(paletteProvider);
     final pureBlack = ref.watch(pureBlackProvider);
     final textScale = ref.watch(textScaleProvider);
-    // 软件背景：启用且已选图时，根部垫一张壁纸、页面底色转透明。
+    // Custom background: a wallpaper behind the root, pages go transparent.
     final background = ref.watch(customBackgroundProvider);
     final backgroundUri = background.enabled ? background.currentUri : null;
     final showBackground = backgroundUri != null && backgroundUri.isNotEmpty;
@@ -108,30 +106,23 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       darkTheme: _themes.of(pair.darkSpec),
       localizationsDelegates: const [
         AppUiLocalizations.delegate,
-        // `DefaultMaterialLocalizations` 只带英文；zh_CN 必须用 intl 生成的
-        // 全局实现，否则 AppBar 之类在 build 期直接抛「No MaterialLocalizations」。
+        // `DefaultMaterialLocalizations` is English only; zh_CN needs the
+        // generated globals or AppBar throws "No MaterialLocalizations".
         ...GlobalMaterialLocalizations.delegates,
       ],
       supportedLocales: const [Locale('zh', 'CN')],
       locale: const Locale('zh', 'CN'),
       builder: (context, child) {
-        // `child` 是 Navigator（含当前路由与浮层路由）；scopes 必须在它之上。
+        // `child` is the Navigator; all scopes must sit above it.
         //
-        // `LiquidGlassScope` 也挂在这一层：`lib/ui` 的浮条与卡片用它决定要不要
-        // 走模糊路径，挂在 Navigator 之下会让浮层里的玻璃效果失效。
-        //
-        // `LiquidGlassHost` 必须与它成对挂上，而且必须包住**所有**玻璃面：
-        // 它负责在合成阶段把玻璃背后的内容抓成一张图，供各个 pane 折射/模糊。
-        // 少挂这一层时每个 pane 只能走 `_addFrost` 的兜底——只剩下 tint + 描边，
-        // 看起来「玻璃没生效」（本轮真机复现的正是这个：开关切到标准/极致，
-        // 浮条渲染与关闭时逐像素相同）。上游 `theme_manager.dart` 里
-        // `_LiquidGlassSetting` 也是 Scope + Host 一起挂。
-        // 首启「使用须知与免责声明」也挂在这一层（旧版 `InitialAgreementDialog`
-        // 在 Activity 里弹一次）：它必须盖住整棵树，包括浮层路由。已同意时
-        // `InitialAgreementGate` 直接返回 child，不增加任何布局层级。
+        // `LiquidGlassScope` and `LiquidGlassHost` are a pair: the host captures
+        // what sits behind each glass pane during compositing. Without it panes
+        // fall back to tint + border only, which looks like glass is off. The
+        // first-launch agreement gate lives here too so it covers overlay
+        // routes; once accepted it returns `child` with no extra layout.
         final glass = ref.watch(liquidGlassModeProvider);
-        // 壁纸层包在 AppScopes 之外、ThemeCrossFade 之内：它在 Navigator 之下，
-        // 于是每个页面的透明底色都会透出同一张壁纸；主题切换时随 cross-fade 一起淡出。
+        // The background sits below the Navigator so every page's transparent
+        // fill shows the same wallpaper, and it fades with the theme cross-fade.
         final content = child ?? const SizedBox.shrink();
         return ThemeCrossFade(
           child: AppSystemUi(

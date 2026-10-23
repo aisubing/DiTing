@@ -24,9 +24,8 @@ import tunnel.Engine
 import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 
-/// Express-mode VpnService: the same Go engine as normal mode, but the TUN
-/// only owns DNS routes. Everything else stays outside the tunnel, matching
-/// 1.4.3's narrow-route design without porting its Kotlin DNS core.
+/// Express-mode VpnService: same Go engine as normal mode, but the TUN only
+/// owns DNS routes.
 class ExpressVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
     private var engine: Engine? = null
@@ -161,12 +160,8 @@ class ExpressVpnService : VpnService() {
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
 
-            // Narrow-route mode only gets the UID resolvers. `dns_log` exists in
-            // `diting_express` and the Go DNS path reads its `a` field from
-            // these two callbacks, so package attribution works here — but
-            // traffic and HTTP logs do not: the TUN owns only DNS routes (no
-            // byte counting on user traffic) and there is no MITM stage.
-            // Neither table exists in `diting_express` anyway.
+            // Resolvers only: the narrow TUN counts no user traffic and has no
+            // MITM stage, so traffic and HTTP logs do not exist in this mode.
             val plane = EngineDataPlane(this, logMode)
             dataPlane = plane
             plane.attachResolvers(goEngine)
@@ -179,8 +174,7 @@ class ExpressVpnService : VpnService() {
 
         isRunning = true
         setPersistedRunning(this, true)
-        // Express keeps its own log file and its own retention window, and has
-        // neither `http_request_log` nor `app_traffic_daily`.
+        // Express has its own log file, so no HTTP or traffic tables.
         LogRetention.start(
             context = this,
             databaseName = LOG_DATABASE,
@@ -220,8 +214,7 @@ class ExpressVpnService : VpnService() {
         stopSelf()
     }
 
-    /// Releases the resolver callbacks. No writers are ever attached in this
-    /// mode, so this only drops the UID cache.
+    /// Drops the resolver callbacks; no log writers are attached in this mode.
     private fun closeDataPlane() {
         val plane = dataPlane
         dataPlane = null
@@ -232,8 +225,7 @@ class ExpressVpnService : VpnService() {
         runCatching { tun?.close() }
         tun = null
         worker = null
-        // Same reasoning as the normal-mode service: the sweep belongs to the
-        // tunnel's lifetime, not to the process.
+        // Retention sweep is bound to the tunnel lifetime, not the process.
         LogRetention.stop()
     }
 
@@ -341,10 +333,10 @@ class ExpressVpnService : VpnService() {
     companion object {
         private const val TAG = "ExpressVpnService"
 
-        /// `ExpressRulesDatabase` (version 2, `RuleDataset.EXPRESS`).
+        /// Log database of this mode (RuleDataset.EXPRESS, version 2).
         private const val LOG_DATABASE = "diting_express"
 
-        /// `RuleDataset.EXPRESS.prefsName()`: its retention window is separate.
+        /// Separate retention window; not shared with normal mode.
         private const val LOG_PREFS = "diting_express_prefs"
 
         const val ACTION_START = "com.haoze.diting.express.START_VPN"
@@ -373,7 +365,7 @@ class ExpressVpnService : VpnService() {
         @Volatile
         private var activeEngine: Engine? = null
 
-        /** Read-only handle for the diagnostics channel; never expose a setter. */
+        /// Read-only handle for diagnostics.
         internal fun engineForDiagnostics(): Engine? = activeEngine
 
         @Volatile

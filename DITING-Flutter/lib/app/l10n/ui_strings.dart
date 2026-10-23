@@ -1,13 +1,10 @@
 import 'package:diting/ui/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// The Chinese [UiLocalizations] the demo app runs with.
+/// The Chinese [UiLocalizations] the app runs with.
 ///
-/// `lib/ui` reads its own labels (search, cancel, back…) through this type and
-/// `UiLocalizations.of` **asserts** it is present, so the app must register the
-/// delegate or every vendored widget throws while building. The test suite
-/// keeps its own copy (`test/support/ui_localizations_stub.dart`) so a change
-/// here cannot silently rewrite what the tests assert on.
+/// `UiLocalizations.of` asserts the delegate is registered, so every vendored
+/// widget in `lib/ui` depends on it. The tests keep their own copy.
 class AppUiLocalizations extends UiLocalizations {
   AppUiLocalizations();
 

@@ -1,9 +1,7 @@
-/// Typed view over the preference keys documented in
-/// `docs/refactor/01-foundation-and-startup-2.md` §3.1.
+/// Typed view over the legacy preference keys.
 ///
-/// Keys, containers and defaults are copied from DITING 1.4.3 verbatim; the
-/// `GOLD` palette still stores `indigo`, the server dataset is still called
-/// `dns`, and absent values must fall back exactly as the old stores did.
+/// Keys, containers and defaults match DITING 1.4.3 verbatim, and absent
+/// values must fall back exactly as the old stores did.
 library;
 
 import 'dart:convert';
@@ -20,31 +18,24 @@ class LegacySettings {
 
   final LegacyPrefsStore _store;
 
-  /// Container for the DNS/tunnel keys. Normal and express modes use the same
-  /// key names in different files; an express instance only swaps this
-  /// container and keeps UI keys on [uiContainer].
+    /// Container for DNS/tunnel keys. Normal and express modes use the same key
+    /// names in different files; express only swaps this container and keeps UI
+    /// keys on [uiContainer].
   final String dnsContainer;
 
-  /// Global UI keys (`SettingsPreferencesExtensions.PREFS_NAME`).
   static const uiContainer = 'dns_vpn_prefs';
 
-  /// Work-mode selection (`WorkModeStore`).
   static const workModeContainer = 'diting_settings';
 
-  /// Express-mode DNS settings (`RuleDataset.EXPRESS.prefsName`).
   static const expressContainer = 'diting_express_prefs';
 
-  /// Express-mode runtime flag (`VpnStateRegistry.isExpressRunning`).
   static const expressRunningContainer = 'express_vpn_prefs';
 
-  /// Server-mode settings (`DnsModePreferences`).
   static const serverContainer = 'diting_dns_mode_prefs';
 
-  /// Notification-bar settings (`NotificationSettingsStore`).
-  ///
-  /// A container of its own: the foreground service reads this one, not
-  /// `dns_vpn_prefs`. Writing notification keys anywhere else silently has no
-  /// effect on the notification while still passing every UI test.
+    /// Notification settings live in their own container: the foreground service
+    /// reads this one, not `dns_vpn_prefs`, so writing them elsewhere silently
+    /// has no effect.
   static const notificationContainer = 'notification_settings_prefs';
 
   static const defaultRunningSentence = '谛听万象，明察清浊';
@@ -52,9 +43,8 @@ class LegacySettings {
 
   static const defaultBottomBarIds = ['home', 'feature_hub', 'log_dashboard'];
 
-  /// The only ids 1.4.3 accepts. Kept here so an unknown value in a restored
-  /// backup is dropped exactly like `BottomBarDestination.fromId` did; the
-  /// matching test asserts it stays in sync with the enum.
+    /// The only ids the legacy app accepts; unknown ids from a restored backup
+    /// are dropped. Kept in sync with the enum by a test.
   static const bottomBarIdValues = {
     'home',
     'feature_hub',
@@ -69,27 +59,21 @@ class LegacySettings {
 
   static const defaultServerPort = 1053;
 
-  // ------------------------------------------------------- 订阅自动更新（键名）
 
-  /// `SubscriptionAutoUpdateSettings.KEY_ENABLED`。
   static const subscriptionAutoUpdateEnabledKey =
       'subscription_auto_update_enabled';
 
-  /// `SubscriptionAutoUpdateSettings.KEY_INTERVAL`。
   static const subscriptionAutoUpdateIntervalKey =
       'subscription_auto_update_interval_hours';
 
-  /// `SubscriptionAutoUpdateSettings.DEFAULT_INTERVAL_HOURS`。
   static const defaultSubscriptionAutoUpdateIntervalHours = 24;
 
-  /// `MIN_INTERVAL_HOURS` / `MAX_INTERVAL_HOURS`。
   static const minSubscriptionAutoUpdateIntervalHours = 1;
   static const maxSubscriptionAutoUpdateIntervalHours = 168;
 
-  /// `SubscriptionAutoUpdateSettings.intervals`：预设档位（自定义档另算）。
+    /// Preset intervals; custom values are handled separately.
   static const subscriptionAutoUpdatePresetHours = [6, 12, 24, 48];
 
-  // ---------------------------------------------------------------- appearance
 
   String? get themeModeRaw => _string(uiContainer, 'app_theme_mode');
 
@@ -101,32 +85,27 @@ class LegacySettings {
   void setPaletteRaw(String storageValue) =>
       _store.putString(uiContainer, 'theme_color_style', storageValue);
 
-  // --------------------------------------------- appearance (Flutter-only)
 
-  /// Liquid 玻璃档位（`none` / `standard` / `ultra`）。
-  ///
-  /// 1.4.3 没有这一项，所以键名是本仓新增的；仍放进 `dns_vpn_prefs`，与其余
-  /// 外观键同容器，备份/恢复时天然一起走。
-  ///
-  /// **必须落盘**：这一档决定整个应用要不要走离屏合成（`LiquidGlassHost`
-  /// 抓图 + 每个玻璃面折射）。只在内存里记的后果是——用户在设置里选了「极致」，
-  /// 退出应用再进来就静默回到「关闭」，而设置项本身仍显示用户选过的值，
-  /// 看起来像「玻璃被重置了」。（本轮真机复现：`18_ultra.png` 选完生效，
-  /// 重启后 `19_home_ultra.png` 里浮条又变回实色白胶囊。）
+    /// Liquid glass level (`none` / `standard` / `ultra`).
+    ///
+    /// Must be persisted: it decides whether the whole app renders offscreen
+    /// (`LiquidGlassHost`), so keeping it in memory only resets it on restart
+    /// while the settings page still shows the chosen value.
   String get liquidGlassModeRaw =>
       _string(uiContainer, 'liquid_glass_mode') ?? 'none';
 
   void setLiquidGlassModeRaw(String storageValue) =>
       _store.putString(uiContainer, 'liquid_glass_mode', storageValue);
 
-  /// 底栏形态（`floating` / `docked`）。理由同上。
+    /// Bottom bar style (`floating` / `docked`); persisted for the same reason.
   String get bottomBarStyleRaw =>
       _string(uiContainer, 'bottom_bar_style') ?? 'floating';
 
   void setBottomBarStyleRaw(String storageValue) =>
       _store.putString(uiContainer, 'bottom_bar_style', storageValue);
 
-  /// tab 切换动画（`none` / `fade` / `slide` / `scale`）。理由同上。
+    /// Tab transition (`none` / `fade` / `slide` / `scale`); same persistence
+    /// requirement.
   String get tabTransitionRaw =>
       _string(uiContainer, 'tab_transition') ?? 'slide';
 
@@ -135,8 +114,7 @@ class LegacySettings {
 
   double get componentOpacity =>
       _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
-  /// Per-element opacity falls back to the shared component opacity, exactly
-  /// like `AppearanceSettingsStore.getHomeOpacity`.
+    /// Per-element opacity falls back to the shared component opacity.
   double homeOpacity(String storageKey) =>
       _clampedOpacity(_double(uiContainer, storageKey, componentOpacity));
 
@@ -146,7 +124,8 @@ class LegacySettings {
   void setHomeComponentOpacity(double value) =>
       _store.putFloat(uiContainer, 'home_component_opacity', _clampedOpacity(value));
 
-  /// 备份等需要按 1.4.3 原始键名直写的场景用；正常页面请走具名访问器。
+    /// Direct access for backups that write raw legacy keys; pages should use
+    /// the named accessors.
   LegacyPrefsStore get rawStore => _store;
 
   ({String running, String stopped}) get homeSentences => (
@@ -173,7 +152,7 @@ class LegacySettings {
   int get defaultWhitelistSeededVersion =>
       _int(uiContainer, 'default_whitelist_seeded_version', 0);
 
-  /// `versionCode * 1000 + presetSchemaVersion(2)`, exactly as 1.4.3 computed it.
+    /// `versionCode * 1000 + 2`, the legacy marker value.
   void markDefaultWhitelistSeeded(int versionCode) {
     _store.putBool(uiContainer, 'default_whitelist_initialized', true);
     _store.putLong(
@@ -183,9 +162,9 @@ class LegacySettings {
     );
   }
 
-  /// Parses `bottom_bar_destinations` with the legacy rules: unknown ids are
-  /// dropped, duplicates collapse, fewer than two entries restores defaults,
-  /// and the list is cut at four.
+    /// Legacy parsing rules; see [bottomBarIdValues] and [bottomBarMinCount]:
+    /// unknown ids drop, duplicates collapse, fewer than two entries restore
+    /// defaults, and the list is cut at four.
   List<String> get bottomBarIds {
     final raw = _string(uiContainer, 'bottom_bar_destinations');
     if (raw == null || raw.trim().isEmpty) {
@@ -230,7 +209,6 @@ class LegacySettings {
     );
   }
 
-  // ---------------------------------------------------------------- work mode
 
   String get workModeRaw =>
       _string(workModeContainer, 'app_work_mode') ?? 'normal';
@@ -244,28 +222,25 @@ class LegacySettings {
   void setWorkModeSelected(bool value) =>
       _store.putBool(workModeContainer, 'work_mode_initial_selected', value);
 
-  /// Legacy `resetWorkModeSelection` removes both keys rather than storing false.
+    /// Removes both keys rather than storing false, as the legacy store did.
   void clearWorkModeSelection() {
     _store.remove(workModeContainer, 'app_work_mode');
     _store.remove(workModeContainer, 'work_mode_initial_selected');
   }
 
-  // ------------------------------------------------------------- resolution
 
-  /// Dataset-aware resolution mode; normal reads `dns_vpn_prefs`, express
-  /// reads `diting_express_prefs`.
+    /// Dataset-aware: normal reads `dns_vpn_prefs`, express reads
+    /// `diting_express_prefs`.
   String get resolutionModeRaw =>
       _string(dnsContainer, 'dns_resolution_mode') ?? 'single';
 
   void setResolutionModeRaw(String storageValue) =>
       _store.putString(dnsContainer, 'dns_resolution_mode', storageValue);
 
-  // ------------------------------------------------------------- dns upstream
 
   /// Raw value for keys that only the Go config builder consumes.
   Object? rawValue(String key) => _store.read(dnsContainer, key);
 
-  // ------------------------------------------------------------ tunnel system
   bool get bypassLanEnabled => _bool(uiContainer, 'bypass_lan_enabled', true);
 
   String get ipv6ModeRaw => _string(dnsContainer, 'ipv6_mode') ?? 'auto';
@@ -281,21 +256,19 @@ class LegacySettings {
     return const {};
   }
 
-  /// Stored as a SharedPreferences string set (`putStringSet`), which the
-  /// bridge serialises as a string array.
+    /// Stored via `putStringSet`; the bridge serialises it as a string array.
   void setExcludedPackages(Set<String> packages) =>
       _store.putStringSet(uiContainer, 'excluded_app_packages', {
         for (final item in packages)
           if (item.trim().isNotEmpty) item,
       });
 
-  /// `app_allowlist_rules_json`: package -> allowed domains, the per-app rules
-  /// behind `Engine.setAppAllowlist`. Stored as a JSON **object** (not a string
-  /// set), so it needs its own decoder; a malformed blob must yield an empty map
-  /// rather than throwing, otherwise one corrupt write bricks every tunnel start.
-  ///
-  /// Blank packages and this app's own id are dropped, exactly like
-  /// `AppRulesSettingsStore.getAppAllowlistRuleMap`.
+    /// `app_allowlist_rules_json`: package -> allowed domains, feeding
+    /// `Engine.setAppAllowlist`. It is a JSON object rather than a string set, so
+    /// it needs its own decoder; a malformed blob must yield an empty map instead
+    /// of throwing, or one corrupt write breaks every tunnel start.
+    ///
+    /// Blank packages are dropped.
   Map<String, Set<String>> get appAllowlistRules {
     final raw = _string(uiContainer, 'app_allowlist_rules_json');
     if (raw == null || raw.trim().isEmpty) return const {};
@@ -342,8 +315,8 @@ class LegacySettings {
   void setAppAllowlistEnabled(bool value) =>
       _store.putBool(uiContainer, 'app_allowlist_enabled', value);
 
-  /// `blocked_app_packages` + `blocked_apps_enabled`; the app itself is always
-  /// stripped, exactly like `AppRulesSettingsStore.getBlockedAppPackages`.
+    /// `blocked_app_packages` + `blocked_apps_enabled`; this app's own id is
+    /// always stripped.
   Set<String> get blockedAppPackages =>
       _stringSet('blocked_app_packages', container: uiContainer) ?? const {};
   bool get blockedAppsEnabled =>
@@ -357,7 +330,7 @@ class LegacySettings {
     _store.putBool(uiContainer, 'blocked_apps_enabled', enabled);
   }
 
-  /// `http_inspection_app_packages` + `http_inspection_enabled`.
+    /// `http_inspection_app_packages` + `http_inspection_enabled`.
   Set<String> get httpInspectionPackages =>
       _stringSet('http_inspection_app_packages', container: uiContainer) ??
       const {};
@@ -365,10 +338,9 @@ class LegacySettings {
   bool get httpInspectionEnabled =>
       _bool(uiContainer, 'http_inspection_enabled', false);
 
-  /// `https_inspection_ready` + `https_inspection_ca_backend`. 1.4.3's
-  /// `isHttpsInspectionReady` requires BOTH: the boolean alone can survive a
-  /// CA reset, so the backend marker is what proves the current engine wrote
-  /// the certificate the trust store now holds.
+    /// `https_inspection_ready` + `https_inspection_ca_backend`; both are
+    /// required. The boolean alone survives a CA reset, so the `go-v1` backend
+    /// marker proves the current engine wrote the installed certificate.
   bool get httpsInspectionReady =>
       _bool(uiContainer, 'https_inspection_ready', false) &&
       _string(uiContainer, 'https_inspection_ca_backend') == 'go-v1';
@@ -382,9 +354,8 @@ class LegacySettings {
     );
   }
 
-  /// `isHttpsInspectionOperational`: ready AND enabled AND at least one app
-  /// selected. MITM with an empty app list inspects nothing, so treating it as
-  /// "operational" would let the engine start a CA-less interception path.
+    /// Ready AND enabled AND at least one app selected. MITM with an empty app
+    /// list inspects nothing.
   bool get httpsInspectionOperational =>
       httpsInspectionReady &&
       httpInspectionEnabled &&
@@ -401,7 +372,6 @@ class LegacySettings {
     _store.putBool(uiContainer, 'http_inspection_enabled', enabled);
   }
 
-  // ----------------------------------------------------------- server mode
 
   int get serverPort => _clampedPort(
     _int(serverContainer, 'local_listen_port', defaultServerPort),
@@ -419,10 +389,8 @@ class LegacySettings {
   String? get serverCustomUpstreamsJson =>
       _stringIn(serverContainer, 'custom_upstreams');
 
-  /// 写 `custom_upstreams`（旧版 `DnsModePreferences.saveCustomUpstreams`）。
-  ///
-  /// 传空列表时写 `[]` 而不是删键：旧版 `serializeUpstreams(emptyList())` 也是
-  /// `"[]"`，两种表示在读侧等价，但删键会让「曾经有自定义项」这个事实消失。
+    /// Writes `custom_upstreams`. An empty list is stored as `[]` rather than
+    /// removed, which keeps the fact that custom upstreams once existed.
   void setServerCustomUpstreamsJson(String json) =>
       _store.putString(serverContainer, 'custom_upstreams', json);
 
@@ -432,7 +400,7 @@ class LegacySettings {
   void setServerCacheEnabled(bool value) =>
       _store.putBool(serverContainer, 'cache_enabled', value);
 
-  /// Preset values stayed `conservative` / `balanced` / `high_hit_rate`.
+    /// Preset values: `conservative` / `balanced` / `high_hit_rate`.
   String get serverCachePresetRaw =>
       _stringIn(serverContainer, 'cache_preset') ?? 'balanced';
 
@@ -471,7 +439,6 @@ class LegacySettings {
   void setServerLogQueries(bool value) =>
       _store.putBool(serverContainer, 'log_queries', value);
 
-  // ----------------------------------------------------------------- helpers
 
   String? _string(String container, String key) {
     final value = _store.read(container, key);
@@ -500,9 +467,8 @@ class LegacySettings {
     return value is int ? value : fallback;
   }
 
-  /// Reads a JSON array of ids; the legacy stores fall back to the two default
-  /// race providers for every resolution list when the value is missing or
-  /// malformed.
+    /// Reads a JSON array of ids, falling back to the two default race providers
+    /// when the value is missing or malformed.
   List<String> _idList(
     String key, {
     List<String> fallback = const ['preset_alidns_dns', 'preset_dnspod_dns'],
@@ -526,8 +492,8 @@ class LegacySettings {
     return value is num ? value.toDouble() : fallback;
   }
 
-  /// Reads a JSON array string; also accepts the list form the bridge returns
-  /// for `putStringSet` values.
+    /// Reads a JSON array string, and also the list form the bridge returns for
+    /// `putStringSet` values.
   Set<String>? _stringSet(String key, {String? container}) {
     final value = _store.read(container ?? dnsContainer, key);
     if (value is List) {
@@ -549,7 +515,7 @@ class LegacySettings {
     }
   }
 
-  /// Sorted JSON array, matching `writeStringSet`'s output byte for byte.
+    /// Sorted JSON array, matching the legacy `writeStringSet` output.
   static String _encodeSet(Set<String> values) =>
       jsonEncode(values.toList()..sort());
 

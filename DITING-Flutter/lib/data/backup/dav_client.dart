@@ -1,27 +1,11 @@
-/// 一个够用的 WebDAV 客户端：PROPFIND 探测、MKCOL 建目录、PUT 上传、GET 下载。
+/// Minimal WebDAV client: PROPFIND probe, MKCOL create, PUT upload, GET download.
 ///
-/// ## 为什么自己写而不用包
-///
-/// 需要的只有四个动词，且必须在 Android 上跑通自签证书/明文 HTTP 的组合。引入一个
-/// WebDAV 包会带来它自己的 XML 解析器、状态机和依赖树；而这里真正要处理的只有
-/// 「基本认证 + 一条 XML + 四个状态码」。
-///
-/// ## 旧版没有这个功能
-///
-/// 1.4.3 里没有任何 WebDAV 代码（`config_transfer_webdav` 是本仓新加的能力，注释里
-/// 写明「用户要求保留」）。所以这里没有可照抄的实现，行为按 RFC 4918 中真正用到的
-/// 那一小部分定义，并在失败时如实说明是哪个环节失败。
-///
-/// ## 凭据处理
-///
-/// 密码只存在于 [DavCredentials] 的内存实例和单次请求头里，**不落盘**：备份文件本身
-/// 已经明确不含凭据，把密码写进 prefs 会让「不含凭据」这个承诺失效。
+/// Credentials stay in memory and request headers only; they are never persisted.
 library;
 
 import 'dart:convert';
 import 'dart:io';
 
-/// 一次成功的连接需要的最小凭据集合。
 class DavCredentials {
   const DavCredentials({
     required this.server,
@@ -30,12 +14,12 @@ class DavCredentials {
     required this.path,
   });
 
-  /// 形如 `https://dav.example.com` 或 `http://192.168.1.10:5005`。
+  /// Server base URL, e.g. `https://dav.example.com`.
   final String server;
   final String username;
   final String password;
 
-  /// 目标目录，形如 `/diting/`；始终以 `/` 结尾。
+  /// Target directory, always starting and ending with `/`.
   final String path;
 
   DavCredentials normalized() => DavCredentials(
@@ -45,7 +29,7 @@ class DavCredentials {
     path: _normalizePath(path),
   );
 
-  /// 目录缺前导斜杠、缺尾部斜杠都会让 PROPFIND 打到上一级，这里统一补齐。
+  /// A missing leading slash makes PROPFIND hit the parent, so normalize both ends.
   static String _normalizePath(String raw) {
     var value = raw.trim();
     if (value.isEmpty) return '/diting/';
@@ -54,20 +38,17 @@ class DavCredentials {
     return value;
   }
 
-  /// 目录的绝对地址。
   String get directoryUrl => '$server$path';
 
-  /// 目录下一个文件的绝对地址。
   String fileUrl(String name) => '$server$path$name';
 
-  /// 把基本认证头算出来。密码不写日志、不进预置。
+  /// The password is never logged or persisted.
   String get basicAuthHeader {
     final raw = '$username:$password';
     return 'Basic ${base64Encode(utf8.encode(raw))}';
   }
 }
 
-/// 连接测试的结果。
 class DavProbeResult {
   const DavProbeResult.ok({required this.created})
     : error = null,
@@ -78,26 +59,23 @@ class DavProbeResult {
 
   final bool created;
 
-  /// 失败原因，直接作为用户可见文案。
+  /// Failure reason; shown to the user verbatim.
   final String? error;
 
-  /// HTTP 状态码，用于在提示里带上（「401 未授权」比「连接失败」有用得多）。
+  /// HTTP status, surfaced in the message to make it actionable.
   final int? statusCode;
 
   bool get succeeded => error == null;
 }
 
-/// WebDAV 客户端。
 class DavClient {
   const DavClient({this.timeout = const Duration(seconds: 20)});
 
-  /// 单次请求超时。
-  ///
-  /// 20 秒是「服务器关机」与「服务器慢」之间的分界：自建 WebDAV 通常局域网内响应，
-  /// 超过 20 秒基本可以断定不可达，而用户已经盯着屏幕等。
+  /// Per-request timeout. Self-hosted WebDAV answers quickly on a LAN; past
+  /// 20s the server is likely unreachable.
   final Duration timeout;
 
-  /// 探测连接：先 PROPFIND 目录，不存在则 MKCOL 建一个。
+  /// PROPFIND the directory, creating it with MKCOL if missing.
   Future<DavProbeResult> probe(DavCredentials rawCredentials) async {
     final credentials = rawCredentials.normalized();
     final client = HttpClient()..connectionTimeout = timeout;
@@ -107,7 +85,7 @@ class DavClient {
         return const DavProbeResult.ok(created: false);
       }
       if (status == 404) {
-        // 目录不存在是正常的首次使用。建不出来才是错误。
+        // A missing directory is normal on first use; failing to create it is not.
         final created = await _mkcol(client, credentials);
         if (created) return const DavProbeResult.ok(created: true);
         return const DavProbeResult.failed(
@@ -119,7 +97,7 @@ class DavClient {
         statusCode: status,
       );
     } on SocketException catch (error) {
-      // 地址不可达 / DNS 失败 / 端口没开，三者对用户是同一件事。
+      // Unreachable address, DNS failure and closed port look the same to users.
       return DavProbeResult.failed('无法连接到服务器：${error.message}');
     } on HandshakeException {
       return const DavProbeResult.failed(
@@ -132,7 +110,7 @@ class DavClient {
     }
   }
 
-  /// 上传一份文本文件（`PUT`）。
+  /// Upload a text file with `PUT`.
   Future<DavProbeResult> putText(
     DavCredentials rawCredentials, {
     required String name,
@@ -174,7 +152,7 @@ class DavClient {
     }
   }
 
-  /// 下载一份文本文件；文件不存在返回 `null`（不是错误）。
+  /// Download a text file; returns null when it does not exist.
   Future<String?> getText(
     DavCredentials rawCredentials, {
     required String name,
@@ -204,7 +182,6 @@ class DavClient {
     }
   }
 
-  /// `PROPFIND`，返回状态码。
   Future<int> _propfind(HttpClient client, DavCredentials credentials) async {
     final request = await client
         .openUrl('PROPFIND', Uri.parse(credentials.directoryUrl))
@@ -213,7 +190,7 @@ class DavClient {
       HttpHeaders.authorizationHeader,
       credentials.basicAuthHeader,
     );
-    // Depth: 0 表示「只要这个资源本身」。要子项列表用 1，但连接测试不需要。
+    // Depth 0 asks for this resource only; no child listing is needed.
     request.headers.set('Depth', '0');
     request.headers.contentType = ContentType('application', 'xml');
     final body = utf8.encode(
@@ -229,7 +206,6 @@ class DavClient {
     return response.statusCode;
   }
 
-  /// `MKCOL`，返回是否建成。
   Future<bool> _mkcol(HttpClient client, DavCredentials credentials) async {
     final request = await client
         .openUrl('MKCOL', Uri.parse(credentials.directoryUrl))
@@ -241,11 +217,11 @@ class DavClient {
     request.headers.contentLength = 0;
     final response = await request.close().timeout(timeout);
     await response.drain<void>();
-    // 201 是建成；405 表示已存在（并发下不算失败）。
+    // 201 means created; 405 means it already exists, which is fine under races.
     return response.statusCode == 201 || response.statusCode == 405;
   }
 
-  /// 把状态码翻成用户能采取行动的话。
+  /// Translate a status code into an actionable message.
   String _statusMessage(int status) => switch (status) {
     401 => '认证失败：用户名或密码不正确',
     403 => '服务器拒绝访问：该账号没有读写此目录的权限',

@@ -1,14 +1,9 @@
-/// 打开（必要时创建）1.4.3 用的三个 SQLite 库。
+/// Opens the three legacy SQLite databases, creating them when absent.
 ///
-/// ## 两个方向
-///
-/// - **升级**：文件由 1.4.3 的 Room 建好，这里按原文件打开，列名与
-///   `user_version` 都已就位，什么都不用改。
-/// - **全新安装 / 数据清理之后**：文件不存在。旧实现直接返回 `null`，于是
-///   `ruleRepositoryProvider` 恒为 null——导入备份时每一组规则都报「本机还没有
-///   规则库」，订阅也永远加不进去。现在改成按 `LegacySchema` 建出来。
-///
-/// 两种情况的库对上层完全等价：列相同、版本相同、唯一索引相同。
+/// An upgraded install keeps the files Room already created, with the same
+/// columns and `user_version`. After a fresh install or a data wipe the files
+/// do not exist, so they are created from [LegacySchema]; both paths yield a
+/// schema identical to the legacy one, which the rest of the app relies on.
 library;
 
 import 'package:diting/data/db/legacy_schema.dart';
@@ -19,7 +14,7 @@ import 'package:sqflite/sqflite.dart';
 class LegacyDatabase {
   LegacyDatabase._();
 
-  /// Normal (full tunnel) database, `AppDatabase`, version 3.
+    /// Normal (full tunnel) database, version 3.
   static const mainFile = 'diting_database';
 
   /// Express-mode database, version 2.
@@ -28,10 +23,11 @@ class LegacyDatabase {
   /// Server-mode rules database, version 3.
   static const serverFile = 'diting_dns_rules';
 
-  /// 打开 [fileName]；文件不存在时按 1.4.3 的 schema 创建。
-  ///
-  /// 只有「创建也失败」时才返回 `null`——例如磁盘满、目录不可写。这种情况下
-  /// 上层仍然按「没有规则库」降级，而不是把整个应用卡在启动。
+    /// Opens [fileName], creating it when absent.
+    ///
+    /// Null means the database could neither be opened nor created, for example
+    /// on a full disk; callers degrade to "no rule database" instead of blocking
+    /// startup.
   static Future<Database?> open(String fileName, {bool create = true}) async {
     final path = p.join(await getDatabasesPath(), fileName);
     if (!await databaseExists(path)) {
@@ -46,8 +42,8 @@ class LegacyDatabase {
     }
   }
 
-  /// `PRAGMA foreign_keys` 必须在每次连接时单独打开：它是连接级设置，
-  /// 库里不存。漏了它，删主规则时 `*_source` 的级联删除不会发生。
+    /// `PRAGMA foreign_keys` is per connection, not stored in the file, so it has
+    /// to be set on every open; without it `*_source` rows are not cascaded.
   static Future<void> _configure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
   }
@@ -65,15 +61,16 @@ class LegacyDatabase {
           }
         },
         onUpgrade: (db, from, to) async {
-          // 走到这里说明文件存在但 `user_version` 低于预期——只可能是一份
-          // 损坏或被外部工具改过的库。补齐缺的表/索引比让用户重装轻。
+                    // The file exists with a lower `user_version`, which only happens to
+                    // a damaged or externally modified database. Patching is cheaper than
+                    // asking the user to reinstall.
           await _createIfMissing(db, statements);
         },
       );
     } on DatabaseException catch (error) {
       debugPrint('legacy database create failed: $fileName ($error)');
-      // 建表失败时删掉半成品，否则下次启动会打开一个缺表的库并一直报
-      // 「no such column」。
+            // Drop the half-built file, otherwise the next launch opens a database
+            // missing tables and fails with "no such column".
       try {
         await deleteDatabase(path);
       } on DatabaseException catch (cleanupError) {
@@ -83,10 +80,11 @@ class LegacyDatabase {
     }
   }
 
-  /// 只补建缺失的表/索引，已有的跳过。
-  ///
-  /// `IF NOT EXISTS` 对「同名但列不同」的表无能为力，那种情况本函数无效——
-  /// 但它只会出现在被外部工具破坏过的库上，此时能读出多少算多少。
+    /// Creates only the missing tables and indexes.
+    ///
+    /// `IF NOT EXISTS` cannot repair a table that exists with different columns;
+    /// that only happens to externally damaged files, where partial recovery is
+    /// all that is possible.
   static Future<void> _createIfMissing(
     Database db,
     List<String> statements,
@@ -100,7 +98,7 @@ class LegacyDatabase {
     }
   }
 
-  /// 把 `CREATE TABLE x` / `CREATE INDEX x` 改写成 `CREATE ... IF NOT EXISTS x`。
+    /// Inserts `IF NOT EXISTS` into a `CREATE TABLE` / `CREATE INDEX` statement.
   static String _withIfNotExists(String statement) {
     if (statement.startsWith('CREATE UNIQUE INDEX ')) {
       return statement.replaceFirst(

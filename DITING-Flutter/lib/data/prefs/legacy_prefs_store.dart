@@ -1,10 +1,9 @@
 /// Access to the SharedPreferences files written by DITING 1.4.3.
 ///
-/// The file names and keys are part of the upgrade contract: a DITING 1.4.3
-/// user installing this build must find their settings where the old app left
-/// them. Only the platform API can open those files (the `shared_preferences`
-/// plugin uses its own container and prefix), so Android goes through
-/// [LegacyPrefsBridge] and everything else falls back to memory.
+/// File names and keys are part of the upgrade contract. Only the platform API
+/// can open these files (the `shared_preferences` plugin uses its own
+/// container and prefix), so Android goes through the channel and everything
+/// else falls back to memory.
 library;
 
 import 'dart:async';
@@ -15,11 +14,11 @@ import 'package:flutter/services.dart';
 /// Canonical channel implemented by `LegacyPrefsBridge.kt`.
 const legacyPrefsChannel = MethodChannel('com.haoze.diting/legacy_prefs');
 
-/// All containers that existed in 1.4.3. Keep in sync with the Kotlin allowlist.
-/// 启动时一次性读入的容器清单，必须与原生 `LegacyPrefsBridge.CONTAINERS` 一致。
+/// Containers loaded once at startup; keep in sync with the native
+/// `LegacyPrefsBridge.CONTAINERS` allowlist.
 ///
-/// 少一个的表现很隐蔽：写入照样成功（文件落在磁盘上），但下次冷启动 `read` 拿不到，
-/// 因为快照里没有这个容器——界面于是显示默认值，看起来像「设置没保存」。
+/// A missing entry still accepts writes, but the next cold start cannot read
+/// them back, so settings silently revert to defaults.
 const legacyPrefContainers = <String>[
   'dns_vpn_prefs',
   'diting_express_prefs',
@@ -32,7 +31,7 @@ const legacyPrefContainers = <String>[
   'diting_crash_state',
   'network_tools_settings',
   'recognition_members',
-  // 本仓自有容器（1.4.3 无对应功能）：图标集 / UA / 按需连接。
+  // Own container, no 1.4.3 counterpart: icon sets, UA, on-demand.
   'diting_config_resources',
 ];
 
@@ -108,8 +107,8 @@ class MemoryLegacyPrefsStore implements LegacyPrefsStore {
   }
 }
 
-/// Android implementation: a synchronous snapshot loaded once at startup,
-/// with every mutation mirrored to the real file through the channel.
+/// Android implementation: a snapshot loaded once at startup, with every
+/// mutation mirrored to the real file through the channel.
 class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
   MethodChannelLegacyPrefsStore(
     this._snapshot, {
@@ -137,10 +136,8 @@ class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
             'value': value,
           })
           .catchError((Object error) {
-            // A dropped write is a data-loss bug; keep it visible in logs.
-            // 这条日志曾经是唯一线索：新增的容器不在原生白名单里时，界面照常
-            // 反映「已保存」，磁盘上却没有文件。排查靠的就是这句话，所以它必须
-            // 说清是哪一对 container/key。
+                        // A dropped write is data loss, and this log is the only trace:
+                        // it must name the container/key pair.
             debugPrint('legacy prefs write failed: $container/$key ($error)');
           }),
     );
@@ -183,9 +180,8 @@ class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
   }
 }
 
-/// Loads every legacy container once, before the first frame.
-///
-/// On platforms without the Android bridge the app still starts, with defaults.
+/// Loads every legacy container once, before the first frame. On platforms
+/// without the bridge the app still starts, with defaults.
 Future<LegacyPrefsStore> loadLegacyPrefsStore({
   MethodChannel channel = legacyPrefsChannel,
 }) async {

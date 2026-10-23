@@ -18,8 +18,8 @@ pluginManagement {
     }
 }
 
-// Flutter plugins (e.g. sqflite_android) declare their own `buildscript`
-// repositories, so the mirror has to be injected before those blocks run.
+// Plugins declare their own `buildscript` repositories, so the mirror must be
+// injected before those blocks run.
 gradle.beforeProject {
     buildscript.repositories {
         maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")

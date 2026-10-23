@@ -1,29 +1,6 @@
-/// 数据清理的真实实现（1.4.3 `DataCleanupManager` 的 Dart 移植）。
-///
-/// ## 为什么必须重写而不是「调一个通道」
-///
-/// 1.4.3 的清理动作分散在四个存储里，每一处都有自己的 DAO 或 prefs 键：
-///
-/// | 动作 | 1.4.3 | 本仓 |
-/// |---|---|---|
-/// | 请求日志 / 流量 / 缓存 / 竞速 / Bootstrap | `LogMaintenance` + 各 DAO | sqflite 直接 `DELETE` |
-/// | 权重（服务商 / Bootstrap） | `ProviderHealthStore.clearAll` | 删 prefs 的两个 JSON 键 |
-/// | 域名 / 地址规则、订阅 | 各 DAO 的 `clearAll` 族 | sqflite 事务 + 预设白名单重播 |
-/// | 应用名单 / 出站代理 / 证书 | `AppRulesSettingsStore` 等 | prefs 键 + 两条原生通道 |
-/// | 下载缓存 / 背景缓存 / 引导 | `AppUpdateDirectories` 等 | 原生通道 + prefs 键 |
-///
-/// ## 三条必须照抄的语义
-///
-/// 1. **「删除全部域名规则」要重新播种预设白名单**。旧版 `clearAllDomainRules`
-///    删完立刻 `DefaultWhitelistSeeder.seed(forceReset = true)`；只删不播会让
-///    保活类域名从放行变成拦截，而界面显示「已删除」。
-/// 2. **订阅行要 `resetAfterRuleCleanup()`**，见 [resetSubscriptionImportState]。
-/// 3. **「清理全部本地数据」按序跑完整清单**。中途某一项失败就停下会留下
-///    「日志清了、规则还在」的半清理态，而应用已经退出。
-///
 // ignore_for_file: prefer_initializing_formals
-// 上面这条 lint 在这里是误报：字段全是私有的 `_xxx`，而 Dart 不允许具名参数
-// 以 `_` 开头，所以无法写成 `required this._prefs`。
+// False positive here: fields are private `_xxx`, and Dart forbids named
+// parameters starting with `_`, so `required this._prefs` is impossible.
 library;
 
 import 'package:diting/data/cleanup/cleanup_models.dart';
@@ -39,11 +16,10 @@ import 'package:sqflite/sqflite.dart';
 
 export 'cleanup_models.dart';
 
-/// 清理服务：一个类装下 16 个动作。
+/// Runs all cleanup actions from one class.
 ///
-/// 不拆成 16 个 provider：它们共享同一批句柄（prefs、数据库缓存、两条通道），
-/// 拆开会让每个动作各自打开一次数据库，而「清理全部本地数据」又要把它们按序
-/// 串起来。
+/// They share handles (prefs, database cache, native channels) and
+/// [CleanupAction.allData] runs them in sequence.
 class DataCleanupService {
   DataCleanupService({
     required LegacyPrefsStore prefs,
@@ -65,10 +41,10 @@ class DataCleanupService {
   final PlatformBridge _platform;
   final OutboundProxyStore _outboundProxy;
 
-  /// 播种标记用的 versionCode，与启动时的 [bootstrapRules] 同源（`pubspec.yaml`）。
+  /// App version code used for the seed marker; must match startup seeding.
   ///
-  /// 必须和启动播种用的是同一个值：清理后重新播种写下的标记若比启动门槛低，
-  /// 下次启动会再播一遍；比它高，则升级后该补的播种永远不补。
+  /// A lower value re-seeds on the next launch; a higher one skips future
+  /// upgrade seeds entirely.
   final int _appVersionCode;
 
   final CaCertificateService _ca;
@@ -76,11 +52,10 @@ class DataCleanupService {
   final CleanupDatabases _databases;
   LegacySettings get _settings => LegacySettings(_prefs);
 
-  /// 包一层原生调用：通道缺失 / 宿主无 binding 时退化成 0，不让它拖垮整个动作。
+  /// Calls a native channel, degrading to 0 when the channel is unavailable.
   ///
-  /// 三个用到原生通道的动作都**同时**要改 prefs（背景壁纸、抓包就绪标记），
-  /// 原生半边失败就把 prefs 半边一起丢掉，会得到「文件删了、设置还显示开着」
-  /// 或反过来的半清理态。
+  /// Actions that touch native storage also clear prefs; an exception here must
+  /// not skip the prefs half.
   Future<int> _platformCall(Future<int> Function() call) async {
     try {
       return await call();
@@ -90,17 +65,17 @@ class DataCleanupService {
     }
   }
 
-  /// 三个数据集的 prefs 容器名（`RuleDataset.prefsName()`）。
+  /// Prefs containers of the three rule datasets.
   static const _datasetContainers = [
     LegacySettings.uiContainer,
     LegacySettings.expressContainer,
     LegacySettings.serverContainer,
   ];
 
-  /// 运行一个动作；异常一律转成 [CleanupResult.failed]。
+  /// Runs one action; any exception becomes [CleanupResult.failed].
   ///
-  /// 不向上抛：调用点在确认框之后，抛出去只会变成红屏。每个动作都已经二次
-  /// 确认过，用户需要的是「为什么没成功」而不是一个 stack trace。
+  /// Never rethrows: the caller runs after a confirmation dialog and needs a
+  /// reason, not a red screen.
   Future<CleanupResult> run(CleanupAction action) async {
     try {
       return switch (action) {
@@ -142,12 +117,12 @@ class DataCleanupService {
   CleanupResult _result(CleanupAction action, int removed, {String? detail}) =>
       CleanupResult(action: action, removed: removed, detail: detail);
 
-  // --------------------------------------------------------------- 运行数据
 
-  /// 四张日志表一起清（`LogMaintenance.clearAllLogs` 同口径）。
+
+  /// Clears the four log tables.
   ///
-  /// 逐表容错：极速库没有 `http_request_log`（`ExpressRulesDatabase` 明确排除），
-  /// 一张表缺失不能让另外三张跟着不清。
+  /// Per-table tolerance: the express database has no `http_request_log`, and a
+  /// missing table must not skip the others.
   Future<CleanupResult> _clearLogs() async {
     var removed = 0;
     for (final db in await _databases.runtimeDatabases()) {
@@ -163,19 +138,18 @@ class DataCleanupService {
     return _result(CleanupAction.logs, removed);
   }
 
-  /// `TrafficStatsManager.clearAllTrafficStats` + `app_traffic_daily` 清空。
+  /// Clears `app_traffic_daily`.
   ///
-  /// 只动主库：极速库没有这张表，服务器库更没有（`DnsRulesDatabase` 只含规则）。
+  /// Main database only: the express and server databases lack this table.
   Future<CleanupResult> _clearTraffic() async {
     final db = await _databases.main;
     final removed = db == null ? 0 : await deleteAllRows(db, 'app_traffic_daily');
     return _result(CleanupAction.traffic, removed);
   }
 
-  /// `dns_cache` 落盘快照。
+  /// Clears the persisted `dns_cache` table.
   ///
-  /// 引擎自己的内存 LRU 由 `dns_server` 的 `clearCache` 处理，那条路只在服务器
-  /// 模式的 service 存活时可调；这里清的是页面显示的那张表。
+  /// The engine keeps its own in-memory LRU, which is not cleared here.
   Future<CleanupResult> _clearDnsCache() async {
     var removed = 0;
     for (final db in await _databases.runtimeDatabases()) {
@@ -184,12 +158,11 @@ class DataCleanupService {
     return _result(CleanupAction.dnsCache, removed);
   }
 
-  // --------------------------------------------------------------- 权重数据
 
-  /// `ProviderHealthStore.clearAll` / `BootstrapHealthStore.clearAll`。
+
+  /// Removes the stored provider/bootstrap health samples.
   ///
-  /// 三个数据集各有一份（`RuleDataset.prefsName()`）：只清一处会让另一个模式
-  /// 继续用旧的健康样本。
+  /// Each dataset keeps its own copy, so all three containers are cleared.
   CleanupResult _resetWeights(CleanupAction action, String key) {
     var removed = 0;
     for (final container in _datasetContainers) {
@@ -198,12 +171,12 @@ class DataCleanupService {
     return _result(action, removed);
   }
 
-  // ----------------------------------------------------------- 规则与订阅
 
-  /// 域名规则：黑名单 / 白名单 / IPv4+IPv6 覆写 / 修饰规则 / 域名订阅。
+
+  /// Clears block, allow, cosmetic and domain-subscription data, then re-seeds
+  /// the preset whitelist on the main database.
   ///
-  /// 删完立刻重播预设白名单——旧版就是「删 + seed」，只删不播会让保活域名失去
-  /// 放行，而界面已经说了「已删除」。
+  /// Skipping the re-seed would block hosts that must stay reachable.
   Future<CleanupResult> _clearDomainRules() async {
     final preset = await loadPresetEntries(load: _loadPresetAsset);
     var removed = 0;
@@ -217,7 +190,7 @@ class DataCleanupService {
           count += await deleteAllRows(txn, sourceTable);
           count += await deleteAllRows(txn, table);
         }
-        // 覆写表只清 IPv4 / IPv6；CNAME 属于「地址规则」那一档。
+        // Only IPv4/IPv6 rewrites here; CNAME rewrites belong to address rules.
         for (final (table, sourceTable) in const [
           ('rewrite_rule', 'rewrite_rule_source'),
         ]) {
@@ -236,8 +209,7 @@ class DataCleanupService {
         await deleteOrphanAutoUpdateItems(txn);
         return count;
       });
-      // 预设白名单只播主库：旧版对 NORMAL 调 seeder，另外两个数据集分别走
-      // `ExpressDefaultsSeeder` 与「不播种」。
+            // Only the main dataset is re-seeded.
       if (preset.isNotEmpty && _databases.isMain(db)) {
         await RuleRepository(db).resetPresetWhitelist(preset);
         _settings.markDefaultWhitelistSeeded(_versionCodeOrFallback);
@@ -246,7 +218,7 @@ class DataCleanupService {
     return _result(CleanupAction.domainRules, removed);
   }
 
-  /// 地址规则：`go_url_rule` 全部 + `rewrite_rule` 的 CNAME 档。
+  /// Clears all `go_url_rule` rows and the CNAME half of `rewrite_rule`.
   Future<CleanupResult> _clearAddressRules() async {
     var removed = 0;
     for (final db in await _databases.ruleDatabases()) {
@@ -269,7 +241,7 @@ class DataCleanupService {
     return _result(CleanupAction.addressRules, removed);
   }
 
-  /// 全部订阅：订阅行、分组、自动更新任务，以及由订阅引入的规则。
+  /// Clears subscriptions, groups, auto-update items and subscription-owned rules.
   Future<CleanupResult> _clearSubscriptions() async {
     var removed = 0;
     for (final db in await _databases.ruleDatabases()) {
@@ -277,7 +249,8 @@ class DataCleanupService {
         var count = await deleteAllRows(txn, 'subscription');
         count += await deleteAllRows(txn, 'subscription_group');
         count += await deleteAllRows(txn, 'subscription_auto_update_item');
-        // 订阅引入的规则：source 形如 `sub_<id>`，`staging_sub_` 是导入中间态。
+        // Subscription-owned rules use `sub_<id>` sources; `staging_sub_` is a
+        // mid-import state.
         for (final (table, sourceTable) in const [
           ('block_rule', 'block_rule_source'),
           ('allow_rule', 'allow_rule_source'),
@@ -298,12 +271,12 @@ class DataCleanupService {
     return _result(CleanupAction.subscriptions, removed);
   }
 
-  // --------------------------------------------------------- 应用 / 代理 / 证书
 
-  /// 四份应用名单一起清空（`AppRulesSettingsStore.resetAppControlRules`）。
+
+  /// Clears all app lists together.
   ///
-  /// 四份必须同时清：留一份而清另外三份会得到「禁止联网为空、但独立放行仍
-  /// 指向某个包」的分裂状态，引擎读到的组合与页面显示不一致。
+  /// Clearing only some of them leaves a state where the page and the engine
+  /// disagree about which apps are allowed.
   CleanupResult _resetAppRules() {
     var removed = 0;
     const keys = [
@@ -318,8 +291,8 @@ class DataCleanupService {
     for (final key in keys) {
       if (_removeKey(LegacySettings.uiContainer, key)) removed++;
     }
-    // 抓包开关关掉后 `https_inspection_ready` 也要归零：留着 true 会让下一次
-    // 启动隧道以为 CA 仍然可用。
+        // Reset `https_inspection_ready` too, otherwise the next tunnel start
+        // assumes the CA is still usable.
     if (_prefs.read(LegacySettings.uiContainer, 'https_inspection_ready') !=
         null) {
       _settings.setHttpsInspectionReady(false);
@@ -328,17 +301,17 @@ class DataCleanupService {
     return _result(CleanupAction.appRules, removed);
   }
 
-  /// 出站代理：走原生通道——凭据在 AndroidKeyStore 里，Dart 清不掉。
+  /// Resets the outbound proxy through the native channel; credentials live in
+  /// the AndroidKeyStore.
   Future<CleanupResult> _resetOutboundProxy() async {
     await _outboundProxy.reset();
     return _result(CleanupAction.outboundProxy, 1, detail: '已恢复直连');
   }
 
-  /// HTTPS 抓包根证书：删 `ca.crt` / `ca.key` / 黑名单，并把 ready 置假。
+  /// Deletes the HTTPS inspection CA and marks inspection as not ready.
   ///
-  /// `inspectCa(regenerate: true)` 是既有通道里唯一会删证书的入口；它删完会顺手
-  /// 再生成一份，但新证书没被安装到系统信任库，所以 `installed` 仍为 false，
-  /// 与「已重置」一致。
+  /// `inspect(regenerate: true)` is the only channel entry that deletes the
+  /// files; the regenerated CA is not trusted by the system.
   Future<CleanupResult> _resetCaCertificate() async {
     await _ca.inspect(regenerate: true);
     _settings.setHttpsInspectionReady(false);
@@ -349,12 +322,12 @@ class DataCleanupService {
     );
   }
 
-  // ------------------------------------------------------------- 存储与引导
 
-  /// 自定义壁纸：删缓存文件 + 清三个 prefs 键。
+
+  /// Deletes the custom background files and clears the three prefs keys.
   ///
-  /// 原生半边（删位图与标记文件）失败不影响 prefs 那半边：只清设置会让下次启动
-  /// 重读一张已不存在的图，只清文件则设置仍显示「已启用壁纸」——两半都要走。
+  /// Both halves must run: clearing only settings leaves stale files, clearing
+  /// only files leaves the UI claiming a background is enabled.
   Future<CleanupResult> _clearCustomBackground() async {
     var removed = await _platformCall(_platform.clearCustomBackgroundCache);
     for (final key in const [
@@ -367,10 +340,10 @@ class DataCleanupService {
     return _result(CleanupAction.customBackground, removed);
   }
 
-  /// 重置引导：清 `settings_guide_acknowledged_ids` 与首启协议标记。
+  /// Resets guide acknowledgements and the first-launch consent flag.
   ///
-  /// 还要清 `mode_permission_preferences` 里的「不再提醒」——旧版 O-146 的教训：
-  /// 不清它，用户会永久失去一条建议提醒而没有任何入口恢复。
+  /// Also clears the "do not remind" entries in `mode_permission_preferences`:
+  /// with no dismissal left there is no way to restore that reminder.
   CleanupResult _resetSettingsGuides() {
     var removed = 0;
     for (final key in const [
@@ -389,12 +362,12 @@ class DataCleanupService {
     return _result(CleanupAction.settingsGuides, removed);
   }
 
-  // ------------------------------------------------------------- 全面清理
 
-  /// `DataCleanupManager.clearAllLocalData(dataset = NORMAL)`。
+
+  /// Runs every cleanup action in order: runtime data, weights, rules and
+  /// subscriptions, then storage and guides.
   ///
-  /// 顺序照抄旧版：运行数据 → 权重 → 规则与订阅 → 存储与引导。每一步的结果
-  /// 单独累计，某一项失败不影响其余步骤（见文件头的语义 3）。
+  /// Each step's count is summed; a failing step does not stop the rest.
   Future<CleanupResult> _clearAllLocalData() async {
     var removed = 0;
     for (final action in const [
@@ -416,26 +389,25 @@ class DataCleanupService {
     ]) {
       removed += (await run(action)).removed;
     }
-    // 旧版这一段还清镜像模板与识别库缓存。
+    // Also clears mirror templates and the recognition members cache.
     final db = await _databases.main;
     if (db != null) removed += await deleteAllRows(db, 'mirror_template');
     if (_removeKey('recognition_members', 'members')) removed++;
     return _result(CleanupAction.allData, removed);
   }
 
-  // ------------------------------------------------------------- prefs 工具
 
-  /// 删一个键并返回它原先是否存在。
+
+  /// Removes a key and returns whether it existed.
   ///
-  /// 「存在但值为默认值」也算删除成功——用户看到的那条确实没了，报 0 会让人
-  /// 以为按钮没生效。
+  /// A key holding its default value still counts as removed.
   bool _removeKey(String container, String key) {
     final existed = _prefs.read(container, key) != null;
     if (existed) _prefs.remove(container, key);
     return existed;
   }
 
-  /// 播种标记用的 versionCode；prefs 里记录的安装版本优先，读不到就用当前包版本。
+  /// Version code for the seed marker: the stored install version wins.
   int get _versionCodeOrFallback {
     final raw = _prefs.read(LegacySettings.uiContainer, 'app_version_code');
     return raw is int && raw > 0 ? raw : _appVersionCode;

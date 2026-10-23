@@ -11,16 +11,8 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 /// Dart-facing control plane for the normal-mode tunnel.
-///
-/// `prepare` may open the system consent dialog; its result is delivered to
-/// Dart as an `onPrepareResult` callback so the UI can retry `start` without
-/// polling.
-///
-/// `trafficRates` exists because the dashboard's 实时速率 readout polls at 1 Hz
-/// and `status` is a heavier call (it also serialises the engine's counter JSON
-/// on every poll). The rates themselves come from the same
-/// [com.haoze.diting.log.TrafficRateMonitor] the notification reads, so the two
-/// surfaces can never disagree.
+/// `prepare` opens the system consent dialog; its result arrives as an
+/// `onPrepareResult` callback instead of a polled status.
 class VpnBridge(
     private val activity: Activity,
     messenger: BinaryMessenger,
@@ -67,13 +59,11 @@ class VpnBridge(
             bypassLan = call.argument<Boolean>("bypassLan") ?: true,
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = excluded,
-            // Both lists are package names on the Dart side; the service turns
-            // them into UIDs because Engine.setBlockedUIDs /
-            // setMitmAllowedUIDs match the UID the packet path sees.
+            // Package names; the service converts them before calling the
+            // UID-based engine setters.
             blockedPackages = call.argument<List<String>>("blockedPackages").orEmpty(),
             inspectionPackages = call.argument<List<String>>("inspectionPackages").orEmpty(),
-            // Already folded by Dart from https_inspection_ready &&
-            // http_inspection_enabled && packages.isNotEmpty().
+            // Pre-folded by Dart.
             inspectionEnabled = call.argument<Boolean>("inspectionEnabled") ?: false,
         )
         return try {

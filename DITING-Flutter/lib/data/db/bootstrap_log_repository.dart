@@ -1,9 +1,7 @@
 /// Read access to the legacy `bootstrap_log` table.
 ///
-/// Rows are written by the native services when a bootstrap IP is probed, so
-/// this repository is read-only. The page shows the same aggregate as
-/// `BootstrapLogDao.ipStats`: attempts, successes, average latency and the
-/// fallback counter.
+/// Rows are written natively when a bootstrap IP is probed, so this repository
+/// only reads.
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -33,7 +31,7 @@ class BootstrapLogRepository {
 
   final Database _db;
 
-  /// Aggregates the last 24 hours; the upstream screen uses the same window.
+    /// Aggregates a rolling window, 24 hours by default.
   Future<List<BootstrapIpStat>> recentStats({
     Duration window = const Duration(hours: 24),
   }) async {

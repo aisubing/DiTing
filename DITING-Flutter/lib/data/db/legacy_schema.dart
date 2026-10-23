@@ -1,45 +1,36 @@
-/// 1.4.3 三个 Room 库的建表语句。
+/// DDL for the three legacy Room databases.
 ///
-/// ## 为什么要在这里重写一遍 DDL
-///
-/// 2.0 之前的版本只会**打开**已有库：`LegacyDatabase.open` 在文件不存在时返回
-/// `null`，于是全新安装（或用户执行过「数据清理」）的用户永远没有规则库，
-/// 导入备份时每一组规则都报「本机还没有规则库」。库必须能被创建出来。
-///
-/// ## 为什么不能随便建
-///
-/// 这些列名、列序、`NOT NULL`、唯一索引都是 Room 从实体推导出来的，而升级用户的
-/// 库就是那份 DDL 建出来的。两边不一致的后果不是「报错」而是「读出来看着对、
-/// 写进去的口径不同」——例如漏掉
-/// `index_block_rule_pattern_important_appScope_appInverted_dnsType_isRegex`，
-/// 同一条规则会被插入两次，引擎侧就多了一条重复策略。
-///
-/// 因此这里的每一条语句都逐字转写自 1.4.3 生成的 `sqlite_master`，`user_version`
-/// 也与 Room 一致（main=3、express=2、server=3）。
+/// Every statement is transcribed verbatim from the legacy `sqlite_master`, and
+/// the `user_version` values match Room (main=3, express=2, server=3), because
+/// upgraded installs keep databases built from that exact DDL. A mismatch does
+/// not raise an error; it makes reads look right while writes behave
+/// differently. A missing unique index, for instance, lets the same rule be
+/// inserted twice.
 library;
 
-/// 建库语句集合：按库文件名给出「该库应有的表与索引」。
+  /// The tables and indexes each database file should contain.
 abstract final class LegacySchema {
-  /// `AppDatabase` 的版本号（`AppDatabase.kt:114`）。
+    /// Version of the normal database.
   static const mainVersion = 3;
 
-  /// `ExpressRulesDatabase` 的版本号（`ExpressRulesDatabase.kt:80`）。
+    /// Version of the express database.
   static const expressVersion = 2;
 
-  /// `DnsRulesDatabase` 的版本号（`DnsRulesDatabase.kt:97`）。
+    /// Version of the server database.
   static const serverVersion = 3;
 
-  /// 库文件对应的 `user_version`。
+    /// `user_version` for a database file.
   static int versionOf(String fileName) => switch (fileName) {
     'diting_express' => expressVersion,
     'diting_dns_rules' => serverVersion,
     _ => mainVersion,
   };
 
-  /// 该库应有的全部建表 + 建索引语句。
-  ///
-  /// 顺序有意义：`*_source` 表带外键指向主表，SQLite 建表时不校验目标表是否
-  /// 存在，但保持「先主表后子表」能让 `PRAGMA foreign_key_check` 的输出可读。
+    /// All table and index statements for a database file.
+    ///
+    /// Order matters: `*_source` tables reference the main tables. SQLite does not
+    /// validate that at creation time, but parents first keeps
+    /// `PRAGMA foreign_key_check` output readable.
   static List<String> statementsFor(String fileName) => switch (fileName) {
     'diting_dns_rules' => [..._ruleTables, ..._subscriptionTables, ..._ruleIndexes],
     'diting_express' => [
@@ -64,7 +55,6 @@ abstract final class LegacySchema {
     ],
   };
 
-  // --------------------------------------------------------------- 规则表
 
   static const _blockRule = '''
 CREATE TABLE `block_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, `rawLine` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `groupName` TEXT, `important` INTEGER NOT NULL, `appScope` TEXT, `appInverted` INTEGER NOT NULL, `isWildcard` INTEGER NOT NULL, `denyallow` TEXT, `isRegex` INTEGER NOT NULL, `dnsType` TEXT)''';
@@ -72,8 +62,9 @@ CREATE TABLE `block_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pat
   static const _blockRuleSource = '''
 CREATE TABLE `block_rule_source` (`ruleId` INTEGER NOT NULL, `source` TEXT NOT NULL, `enabled` INTEGER NOT NULL, PRIMARY KEY(`ruleId`, `source`), FOREIGN KEY(`ruleId`) REFERENCES `block_rule`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )''';
 
-  /// 注意 `important` 的位置与 `block_rule` 不同：Room 按实体属性声明顺序生成列，
-  /// 两个实体的属性顺序本来就不一样。列序错了 `SELECT *` 的按序取值就会串位。
+    /// `important` sits in a different position than in `block_rule`, because
+    /// Room emits columns in entity declaration order. A wrong column order would
+    /// shift the positional values of `SELECT *`.
   static const _allowRule = '''
 CREATE TABLE `allow_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, `rawLine` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `groupName` TEXT, `appScope` TEXT, `appInverted` INTEGER NOT NULL, `isWildcard` INTEGER NOT NULL, `important` INTEGER NOT NULL, `denyallow` TEXT, `isRegex` INTEGER NOT NULL, `dnsType` TEXT)''';
 
@@ -95,7 +86,8 @@ CREATE TABLE `go_url_rule_source` (`ruleId` INTEGER NOT NULL, `source` TEXT NOT 
   static const _cosmeticRule = '''
 CREATE TABLE `cosmetic_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `domain` TEXT NOT NULL, `selector` TEXT NOT NULL, `rawLine` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `isException` INTEGER NOT NULL)''';
 
-  /// `cosmetic_rule_source` 是唯一没有外键的 source 表（Room 实体里就没声明）。
+    /// The only source table without a foreign key, because the legacy entity
+    /// never declared one.
   static const _cosmeticRuleSource = '''
 CREATE TABLE `cosmetic_rule_source` (`ruleId` INTEGER NOT NULL, `source` TEXT NOT NULL, `enabled` INTEGER NOT NULL, PRIMARY KEY(`ruleId`, `source`))''';
 
@@ -116,7 +108,6 @@ CREATE TABLE `mirror_template` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     _mirrorTemplate,
   ];
 
-  // ------------------------------------------------------------- 订阅表
 
   static const _subscription = '''
 CREATE TABLE `subscription` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `name` TEXT NOT NULL, `sourceType` TEXT NOT NULL, `kind` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `ruleCount` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, `importState` TEXT NOT NULL, `importError` TEXT, `httpEtag` TEXT, `httpLastModified` TEXT, `ruleSetHash` TEXT, `lastAttemptAt` INTEGER NOT NULL, `consecutiveFailureCount` INTEGER NOT NULL, `mirrorTemplate` TEXT, `mirrorFallback` INTEGER NOT NULL, `groupId` INTEGER)''';
@@ -133,7 +124,6 @@ CREATE TABLE `subscription_auto_update_item` (`batchId` TEXT NOT NULL, `subscrip
     _subscriptionAutoUpdateItem,
   ];
 
-  // --------------------------------------------------------------- 日志表
 
   static const _dnsCache = '''
 CREATE TABLE `dns_cache` (`key` TEXT NOT NULL, `queryName` TEXT NOT NULL, `queryType` INTEGER NOT NULL, `queryClass` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL, `lastHitAt` INTEGER, `hitCount` INTEGER NOT NULL DEFAULT 0, `originalTtlSeconds` INTEGER NOT NULL, `ttlOffsets` TEXT NOT NULL, `response` BLOB NOT NULL, `responseSize` INTEGER NOT NULL, PRIMARY KEY(`key`))''';
@@ -160,10 +150,8 @@ CREATE TABLE `http_request_log` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL
   static const _appTrafficDaily = '''
 CREATE TABLE `app_traffic_daily` (`date` TEXT NOT NULL, `package_name` TEXT NOT NULL, `app_name` TEXT NOT NULL, `tx_bytes` INTEGER NOT NULL, `rx_bytes` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`date`, `package_name`))''';
 
-  // --------------------------------------------------------------- 索引
-  //
-  // 三个 UNIQUE 索引是导入去重的**唯一**依据：导入器按 pattern 先查再插，
-  // 两条并发路径之间仍可能撞车，靠它们兜底才不会写出重复规则。
+    // The UNIQUE indexes are the only guard against duplicate rules: the importer
+    // checks before inserting, but concurrent imports can still race.
 
   static const _ruleIndexes = <String>[
     'CREATE INDEX `index_block_rule_appScope` ON `block_rule` (`appScope`)',

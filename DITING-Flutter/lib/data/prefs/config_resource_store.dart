@@ -1,18 +1,8 @@
-/// 三张「保留资源」表的持久化：图标集 / User-Agent / 按需连接的 SSID 规则。
+/// Persists icon sets, user agents and on-demand SSID rules as JSON blobs.
 ///
-/// ## 为什么存成一条 JSON 而不是三张 sqlite 表
-///
-/// 这三组的操作**都是整表替换**（增一条、删一条、切换开关，最后都把整份列表交回
-/// notifier），没有按行查询、没有跨表关联、条数在几十的量级。为它们建三张表要多写
-/// 三个 DAO、三份 schema 迁移和一轮 sqflite 异步装配，换来的能力这里一个都用不上。
-/// 一条 JSON 记录与「整表替换」的语义完全同构，读回时逐项校验即可。
-///
-/// ## 为什么不塞进 `LegacySettings`
-///
-/// `LegacySettings` 镜像的是 1.4.3 的 prefs 键（`dns_vpn_prefs` 等容器），键名有
-/// 兼容契约。这三张表是**本仓新增**的能力（1.4.3 没有图标集 / UA / 按需连接），
-/// 混进那个命名会把「旧版兼容键」和「本仓自有键」搅在一起，将来做迁移时无法区分。
-/// 因此单独一个容器 [container] 承载。
+/// These lists are always replaced as a whole, so one JSON value per table
+/// replaces three tables, DAOs and migrations. They live in their own
+/// container to stay apart from the legacy-compatible keys of `LegacySettings`.
 library;
 
 import 'dart:convert';
@@ -21,11 +11,11 @@ import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:flutter/foundation.dart';
 
-/// 三张表的读写。
+/// Reads and writes the three tables.
 class ConfigResourceStore {
   const ConfigResourceStore(this._store);
 
-  /// 本仓自有容器名；不与 1.4.3 的任何容器重名，避免污染兼容契约。
+  /// Own container; deliberately not one of the legacy names.
   static const container = 'diting_config_resources';
 
   static const _iconSetsKey = 'icon_sets_json';
@@ -36,9 +26,8 @@ class ConfigResourceStore {
 
   final LegacyPrefsStore _store;
 
-  /// 读回三张表。缺键或内容损坏时各自回落到初始值。
-  ///
-  /// 逐组回落而不是整份回落：一份坏的 UA JSON 不该让用户丢掉图标集。
+  /// Reads the tables; each group falls back to its defaults independently, so
+  /// one corrupt blob does not reset the others.
   ConfigResourceSnapshot load() {
     final iconSets = _decodeList(_iconSetsKey, _iconSetFromMap);
     final userAgents = _decodeList(_userAgentsKey, _userAgentFromMap);
@@ -48,7 +37,8 @@ class ConfigResourceStore {
     return ConfigResourceSnapshot(
       iconSets: iconSets ?? mockIconSets,
       userAgents: userAgents ?? mockUserAgents,
-      // 空串 = 用户显式选了「不覆写」；缺少键 = 从未设置，两者都归 null。
+      // Empty string means "no override" was chosen; a missing key means never set.
+      // Both read as null.
       selectedUserAgent: selected == null || selected.isEmpty ? null : selected,
       ssidRules: ssidRules ?? mockSsidRules,
       onDemand: _store.read(container, _onDemandKey) == true,
@@ -78,7 +68,7 @@ class ConfigResourceStore {
     ]),
   );
 
-  /// `null` 表示「不覆写」；写入空串以便与「未设置过」区分。
+  /// Null means no override; an empty string is written to tell it from unset.
   void saveSelectedUserAgent(String? value) => _store.putString(
     container,
     _selectedUaKey,
@@ -101,9 +91,9 @@ class ConfigResourceStore {
 
   void saveOnDemand(bool value) => _store.putBool(container, _onDemandKey, value);
 
-  /// 解一组对象；缺键返回 `null`（保留「用初始值」的语义）。
+  /// Decodes one group; a missing key returns null so defaults are used.
   ///
-  /// 空数组是**合法结果**：用户可能把 UA 列表删光了，此时不该又冒出四条默认值。
+  /// An empty array is valid and must not be replaced by the defaults.
   List<T>? _decodeList<T>(
     String key,
     T? Function(Map<String, Object?>) decode,
@@ -126,7 +116,7 @@ class ConfigResourceStore {
     for (final item in decoded) {
       if (item is! Map) continue;
       final value = decode(Map<String, Object?>.from(item));
-      // 单条坏数据只丢这一条，不牵连整组。
+      // A bad entry drops only itself.
       if (value != null) result.add(value);
     }
     return result;
@@ -166,7 +156,7 @@ class ConfigResourceStore {
   }
 }
 
-/// 一次读回的整份快照。
+/// Snapshot of all three tables.
 class ConfigResourceSnapshot {
   const ConfigResourceSnapshot({
     required this.iconSets,

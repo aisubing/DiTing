@@ -2,25 +2,21 @@ import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Most call sites read settings through [legacySettingsProvider]; re-exporting
-/// the type keeps the extension accessors (a separate part of that library) in
-/// scope without every page importing two files.
+/// Re-exported so a page that reads [legacySettingsProvider] also gets the type
+/// and its extension accessors from one import.
 export 'package:diting/data/prefs/legacy_settings.dart';
 
-/// Loaded once in `main()` and overridden with the Android snapshot.
-///
-/// The default is an empty memory store, so tests and non-Android hosts start
-/// with the documented defaults instead of crashing on a missing plugin.
+/// Loaded once in `main()` and overridden with the Android snapshot. The
+/// default memory store lets tests and non-Android hosts start with the
+/// documented defaults instead of crashing on a missing plugin.
 final legacyPrefsStoreProvider = Provider<LegacyPrefsStore>(
   (ref) => MemoryLegacyPrefsStore(),
 );
 
 /// Bumped after any write through [LegacySettings].
 ///
-/// `LegacySettings` is a thin view over SharedPreferences: writes are fire-and-
-/// forget and nothing is observable. Pages that read a setting must depend on
-/// this counter (directly or via [legacySettingsProvider]) so an edit on one
-/// screen is reflected on the others, exactly like 1.4.3's preference listeners.
+/// Writes are fire-and-forget and nothing is observable, so pages reading a
+/// setting must depend on this counter to see edits made on other screens.
 class LegacySettingsRevision extends Notifier<int> {
   @override
   int build() => 0;

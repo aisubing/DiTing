@@ -1,21 +1,16 @@
 /// Read/delete access to the legacy `http_request_log` table.
 ///
-/// Rows are written by the native services (1.4.3 used `HttpRequestLogger`), so
-/// this repository is read-only apart from "clear all".
-///
-/// Every filter clause below is copied verbatim from
-/// `DITING-Legacy/app/src/main/java/com/haoze/diting/data/repository/RequestLogRepository.kt`
-/// (`load()`), including the `IN (...)` lists and the `ORDER BY timestamp DESC
-/// LIMIT n` tail, so the counts on this screen match what 1.4.3 showed.
+/// Rows are written natively, so this repository only reads apart from clearing
+/// the table. The filter clauses mirror the legacy request log repository, so
+/// the counts match what it showed.
 library;
 
 import 'package:sqflite/sqflite.dart';
 
-/// 1.4.3 `RequestStatus`（`data/RequestLogModels.kt`），六档。
+/// Request outcome buckets.
 ///
-/// 页面上的三态配色不够用：`rewritten`（覆写成功）和 `bypassed`（旁路直连）
-/// 都不是失败，套进「成功 / 拦截 / 失败」只能二选一地误报。这里保留旧版六档
-/// 与原文标签，颜色由页面按档位映射。
+/// Six buckets instead of success / blocked / failed, because `rewritten` and
+/// `bypassed` are neither; the page maps each bucket to a color.
 enum RequestStatus {
   all('全部', '显示所有请求记录'),
   passed('通过', '请求正常放行，未命中拦截规则'),
@@ -30,7 +25,7 @@ enum RequestStatus {
   final String explanation;
 }
 
-/// 1.4.3 `RequestSource`：请求来源的两个表。
+  /// Which log table a request came from.
 enum RequestSource {
   all('全部'),
   dns('DNS'),
@@ -41,7 +36,6 @@ enum RequestSource {
   final String label;
 }
 
-/// 一条 HTTPS 请求记录（`http_request_log` 一行的等价物）。
 class HttpRequestRecord {
   const HttpRequestRecord({
     required this.id,
@@ -58,23 +52,22 @@ class HttpRequestRecord {
   final int timestamp;
   final String packageName;
 
-  /// 可能为空：1.4.3 在拿不到 authority（例如 TLS 失败早期）时写 null。
+    /// Null when no authority is known, e.g. an early TLS failure.
   final String? authority;
 
-  /// `h2` / `http/1.1` 等，由引擎上报。
+    /// `h2`, `http/1.1`, ... as reported by the engine.
   final String protocol;
 
-  /// 落盘原值，见 [statusOfOutcome]。
+    /// Raw stored value, not a bucket; see [statusOfOutcome].
   final String outcome;
   final String? matchedRule;
   final int? blockSubscriptionId;
 
-  /// 处置档位。与旧版 `httpRequestItem` 的 `when (log.outcome)` 逐字一致：
-  /// 任何未列出的 outcome 都算 `error`，包括引擎新增的失败类型。
+    /// Bucket for this record. Unlisted outcomes count as `error`, including
+    /// failure types the engine may add later.
   RequestStatus get status => statusOfOutcome(outcome);
 }
 
-/// `outcome` → [RequestStatus]。四个直连值来自旧版 `directOutcomes`。
 RequestStatus statusOfOutcome(String outcome) => switch (outcome) {
   'allowed' => RequestStatus.passed,
   'rewritten' => RequestStatus.rewritten,
@@ -86,7 +79,6 @@ RequestStatus statusOfOutcome(String outcome) => switch (outcome) {
   _ => RequestStatus.error,
 };
 
-/// `dailyStats` 的结果：总数 + 按 `outcome` 原值分组。
 class HttpRequestDailyStats {
   const HttpRequestDailyStats({required this.total, required this.byOutcome});
 
@@ -94,10 +86,9 @@ class HttpRequestDailyStats {
 
   final int total;
 
-  /// 键是落盘原值（`allowed` / `blocked` / …），不是档位。
+    /// Keys are raw outcome values, not buckets.
   final Map<String, int> byOutcome;
 
-  /// 某一档的条数。[RequestStatus.all] 返回 [total]。
   int countFor(RequestStatus status) {
     if (status == RequestStatus.all) return total;
     var count = 0;
@@ -113,10 +104,9 @@ class HttpRequestRepository {
 
   final Database _db;
 
-  /// `LIKE` patterns are lower-cased like the legacy repository does. SQLite's
-  /// `LIKE` is ASCII case-insensitive by default, and `HttpRequestLogger`
-  /// already lower-cases `authority` on write, so a mixed-case `matchedRule`
-  /// is the only field this can under-match — same as 1.4.3.
+    /// Patterns are lower-cased. SQLite `LIKE` is ASCII case-insensitive and
+    /// `authority` is stored lower-cased, so a mixed-case `matchedRule` is the
+    /// only field this can miss.
   Future<List<HttpRequestRecord>> recent({
     int limit = 200,
     RequestStatus status = RequestStatus.all,
@@ -165,10 +155,8 @@ class HttpRequestRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// `HttpRequestLogDao.dailyStats`：按 `outcome` 分组的当日计数。
-  ///
-  /// 与 `countSince` 分开是旧版的写法；这里把它们合成一次扫描，`total` 取
-  /// 分组计数之和——两者用同一个窗口，不会出现「总数」与「分档」跨零点错位。
+    /// Today's per-outcome counts. One scan yields both the groups and their sum,
+    /// so the total and the buckets can never disagree across midnight.
   Future<HttpRequestDailyStats> dailyStats({DateTime? since}) async {
     final start = (since ?? _startOfToday()).millisecondsSinceEpoch;
     final rows = await _db.rawQuery(

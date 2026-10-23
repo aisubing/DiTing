@@ -16,41 +16,19 @@ import java.security.cert.X509Certificate
 import java.util.concurrent.Executors
 import tunnel.Engine
 
-/**
- * Native side of `com.haoze.diting/https_inspection`: the MITM root CA.
- *
- * 1.4.3 drove `GoInspectionCaManager` (the engine mints `ca.crt` / `ca.key` under
- * `filesDir/go-mitm`); the Flutter port hardcoded a fingerprint, so the page could
- * not tell "not generated yet" from "generated but not trusted by Android".
- *
- * Two facts are reported separately on purpose:
- * - `available`: the engine produced a certificate (PEM readable, fingerprint
- *   computable). Without it HTTPS inspection cannot work at all.
- * - `installed`: that certificate's SHA-256 matches an entry in `AndroidCAStore`
- *   under `user:`. Only the *user* store counts — an app cannot write the system
- *   store, and the legacy manager filtered on the `user:` prefix for exactly this
- *   reason. Claiming `installed` from any other source would let the UI enable
- *   inspection that will fail on every handshake.
- *
- * Contract frozen by `lib/data/native/ca_bridge.dart`:
- * - `inspectCa(regenerate)` -> `{available,installed,fingerprintSha256,pem,error}`
- * - `exportCa(uri)` -> null
- * - `openCaInstallSettings` -> Boolean
- */
+/// Exposes the MITM root CA to Dart. `available` means the engine produced a
+/// readable certificate; `installed` means its SHA-256 matches an entry in the
+/// AndroidCAStore `user:` section, since apps cannot write the system store.
 class CaInspectionBridge(private val context: Context) :
     MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/https_inspection"
 
-        /** Same file name 1.4.3 offered in the system "save document" picker. */
         const val EXPORTED_CERTIFICATE_NAME = "谛听-HTTPS-Inspection-Root-CA.crt"
 
-        /**
-         * `Engine()` loads the Go shared library and allocates a DNS cache; both
-         * are far too slow for the platform thread, and a failed `dlopen` must be
-         * reported as `error` instead of crashing the app.
-         */
+        /// Engine() loads the Go shared library and allocates a DNS cache, far too
+        /// slow for the platform thread; a failed dlopen must surface as an error.
         private val worker = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "diting-ca").apply { isDaemon = true }
         }
@@ -89,10 +67,8 @@ class CaInspectionBridge(private val context: Context) :
     private fun inspect(regenerate: Boolean): Map<String, Any?> {
         if (regenerate) reset()
 
-        // A throwaway Engine is the only way to materialise the CA; it *must* be
-        // torn down. 1.4.3's comment is explicit: Engine() allocates a DNS cache
-        // whose cleaner goroutine only stops via stop(), so leaking the instance
-        // leaked a goroutine per call.
+        // Engine() must be stopped: its DNS cache cleaner goroutine only exits
+        // via stop(), so a leaked instance leaks a goroutine per call.
         val pem = runCatching {
             val engine = Engine()
             try {
@@ -102,8 +78,8 @@ class CaInspectionBridge(private val context: Context) :
                 runCatching { engine.stop() }
             }
         }.getOrElse { error ->
-            // ABI mismatch (`libgojni.so` not found on an x86_64 emulator running
-            // an arm64-only AAR) surfaces here; the page must show it, not die.
+            // ABI mismatch (arm64-only libgojni.so on an x86_64 emulator) shows up
+            // here and must be reported, not crash.
             return mapOf(
                 "available" to false,
                 "installed" to false,
@@ -129,8 +105,8 @@ class CaInspectionBridge(private val context: Context) :
             "installed" to (fingerprint != null && isInstalled(fingerprint)),
             "fingerprintSha256" to fingerprint,
             "pem" to pem,
-            // The certificate exists but cannot be parsed: the engine wrote
-            // something this device's CertificateFactory rejects.
+            // Present but unparsable: the engine wrote something this device's
+            // CertificateFactory rejects.
             "error" to if (fingerprint == null) "根证书无法解析" else null,
         )
     }
@@ -152,15 +128,8 @@ class CaInspectionBridge(private val context: Context) :
         stream.use { it.write(pem.toByteArray(Charsets.UTF_8)) }
     }
 
-    /**
-     * Android gives an app no way to install a CA silently. This only navigates
-     * to the security settings screen, matching 1.4.3's flow: the user saves the
-     * exported file, then installs it from "install from storage".
-     *
-     * `FLAG_ACTIVITY_NEW_TASK` is required because this runs from a non-Activity
-     * context (`applicationContext` in MainActivity), and starting an activity
-     * from one without the flag throws `AndroidRuntimeException`.
-     */
+    /// Android offers no silent CA install, so this only opens the security
+    /// settings screen. NEW_TASK is required when starting from applicationContext.
     private fun openInstallSettings(): Boolean = runCatching {
         context.startActivity(
             Intent(Settings.ACTION_SECURITY_SETTINGS)
@@ -183,7 +152,7 @@ class CaInspectionBridge(private val context: Context) :
     private fun certificateDirectory(): File =
         File(context.filesDir, MITM_DIR).apply { mkdirs() }
 
-    /** True when [fingerprint] appears in the *user* trust store. */
+    /// True when fingerprint appears in the user trust store.
     private fun isInstalled(fingerprint: String): Boolean = runCatching {
         val store = KeyStore.getInstance("AndroidCAStore").apply { load(null) }
         store.aliases().asSequence()
@@ -198,7 +167,7 @@ class CaInspectionBridge(private val context: Context) :
         return fingerprintOfBytes(certificate.encoded)
     }
 
-    /** Colon-separated uppercase hex — the format 1.4.3 displayed verbatim. */
+    /// Colon-separated uppercase hex, as displayed verbatim.
     private fun fingerprintOfBytes(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256")
             .digest(bytes)
@@ -206,9 +175,8 @@ class CaInspectionBridge(private val context: Context) :
 
     private fun describe(error: Throwable): String {
         val message = error.message.orEmpty()
-        // UnsatisfiedLinkError's message is the only diagnostic the user can act
-        // on ("install an ABI-matching build"), so it is passed through with a
-        // human prefix instead of a generic failure.
+        // UnsatisfiedLinkError's message is the only actionable diagnostic
+        // ("install an ABI-matching build"), so it is prefixed and passed through.
         return when {
             error is UnsatisfiedLinkError -> "证书引擎加载失败：$message"
             message.isEmpty() -> error.javaClass.simpleName

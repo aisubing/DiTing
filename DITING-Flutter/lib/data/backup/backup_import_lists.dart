@@ -1,11 +1,9 @@
 part of 'backup_importer.dart';
 
-/// 应用名单（排除 / 禁止联网 / 独立规则 / HTTPS 抓包）。
+/// App-list groups (excluded / blocked / allowlist / HTTPS inspection).
 ///
-/// 四组都做并集：导入一份备份不该把本机已经加过的条目删掉。
+/// All four merge with local data: an import never removes existing entries.
 extension _BackupImportLists on BackupImporter {
-  // ------------------------------------------------------------- 应用名单
-
   BackupGroupOutcome _importExcluded(Object? value, BackupImportTarget target) {
     final incoming = _stringSet(value);
     if (incoming.isEmpty) {
@@ -32,8 +30,8 @@ extension _BackupImportLists on BackupImporter {
     final added = merged.length - settings.blockedAppPackages.length;
     settings.setBlockedApps(
       packages: merged,
-      // 开关按「备份或本机任一为真」取并集：用户导入一份开了这项的备份，
-      // 却因为本机是关的而整体无效，会让人以为导入没生效。
+      // OR the switch with the local value: importing a backup that enabled it
+      // must not appear to have had no effect.
       enabled: settings.blockedAppsEnabled || value['enabled'] == true,
     );
     return BackupGroupOutcome(
@@ -90,11 +88,10 @@ extension _BackupImportLists on BackupImporter {
     final added = merged.length - settings.httpInspectionPackages.length;
     settings.setHttpInspectionApps(
       packages: merged,
-      // 抓包开关**不**从备份打开：`https_inspection_ready` 依赖本机是否装了
-      // CA，拿别人的开关来打开本机的抓包会让每个 HTTPS 请求都失败。
+      // Inspection is never enabled by an import: `https_inspection_ready`
+      // depends on a locally installed CA, so enabling it would break HTTPS.
       enabled: settings.httpInspectionEnabled,
     );
-    // HTTP/3 抓包是纯开关，跟着同一个分组走。
     final http3 = value['http3Enabled'];
     if (http3 is bool) {
       settings.setHttpInspectionToggles(

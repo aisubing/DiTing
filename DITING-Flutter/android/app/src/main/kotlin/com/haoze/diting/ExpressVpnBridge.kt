@@ -30,11 +30,8 @@ class ExpressVpnBridge(
                 result.success(true)
             }
             "status" -> result.success(ExpressVpnService.status(activity))
-            // Express has no traffic statistics at all: `ExpressRulesDatabase`
-            // excludes `app_traffic_daily`, and `ExpressVpnService` never calls
-            // `EngineDataPlane.attachTraffic` (see that class's comment). Answer
-            // explicitly instead of leaving the channel method missing, so Dart
-            // shows "极速模式无流量统计" rather than a `MissingPluginException`.
+            // Express never collects traffic stats, so answer explicitly with
+            // zeros instead of leaving Dart with a MissingPluginException.
             "trafficRates" -> result.success(
                 mapOf(
                     "running" to ExpressVpnService.isRunning,
@@ -67,11 +64,8 @@ class ExpressVpnBridge(
             proxyJson = call.argument<String>("outboundProxy").orEmpty(),
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = call.argument<List<String>>("excludedPackages").orEmpty(),
-            // `blockedPackages` / `inspectionPackages` / `inspectionEnabled` are
-            // deliberately not forwarded: the narrow TUN has neither the firewall
-            // stage (`setBlockedUIDs` is only read by the full-tunnel handlers in
-            // engine_full_tunnel.go) nor a MITM stage. Forwarding them would look
-            // like the setting took effect while nothing consumes it.
+            // Blocked/inspection packages are not forwarded: the narrow TUN has
+            // no firewall or MITM stage to consume them.
         )
         return try {
             ContextCompat.startForegroundService(activity, intent)

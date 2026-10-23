@@ -7,34 +7,18 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-/**
- * Exposes the SharedPreferences containers written by DITING 1.4.3.
- *
- * The Flutter side must read and write the *same* files with the *same* keys,
- * otherwise an upgraded install would silently lose every setting. The plugin
- * `shared_preferences` cannot do that: it keeps everything in a single
- * `FlutterSharedPreferences` file with a `flutter.` prefix, so we go straight
- * through the platform API instead.
- */
+/// Exposes the SharedPreferences containers written by the legacy app.
+/// The Flutter side must use the same files and keys, so the platform API is
+/// used directly: shared_preferences keeps everything under one prefixed file.
 class LegacyPrefsBridge(private val context: Context) :
     MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/legacy_prefs"
 
-        /**
-         * Allowed containers.
-         *
-         * The first eleven exist in 1.4.3 and carry the upgrade-compatibility
-         * contract (same file, same keys). A whitelist means a typo in a
-         * container name fails loudly instead of silently creating a parallel
-         * prefs file that the tunnel services never read.
-         *
-         * `diting_config_resources` is **not** from 1.4.3: it holds this port's
-         * own icon-set / user-agent / on-demand tables, which 1.4.3 had no
-         * equivalent for. It is listed here because it goes through the same
-         * channel; one channel beats two.
-         */
+        /// Allowed containers; the first eleven are legacy upgrade contracts.
+        /// A whitelist makes a typo fail loudly instead of silently creating a
+        /// prefs file the services never read.
         val CONTAINERS = setOf(
             "dns_vpn_prefs",
             "diting_express_prefs",
@@ -47,7 +31,7 @@ class LegacyPrefsBridge(private val context: Context) :
             "diting_crash_state",
             "network_tools_settings",
             "recognition_members",
-            // 本仓自有（1.4.3 无对应功能），与上面十一个不共享兼容契约。
+            // Port-specific, no legacy equivalent.
             "diting_config_resources",
         )
     }
@@ -57,9 +41,8 @@ class LegacyPrefsBridge(private val context: Context) :
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        // 版本号的唯一来源：`pubspec.yaml` 的 `version:` 由 Flutter 的 Gradle 插件
-        // 写进包信息，Dart 侧再从这里读回，界面上就不会出现「改了 pubspec、关于页
-        // 还显示旧版本」。
+        // Single source of version numbers: the Flutter Gradle plugin stamps
+        // pubspec.yaml's version into the package info read back here.
         if (call.method == "versionInfo") {
             result.success(versionInfo())
             return
@@ -86,7 +69,7 @@ class LegacyPrefsBridge(private val context: Context) :
         }
     }
 
-    /** 包信息里的版本号：`name` 来自 `flutter.versionName`，`code` 来自 `flutter.versionCode`。 */
+    /// name comes from flutter.versionName, code from flutter.versionCode.
     private fun versionInfo(): Map<String, Any> {
         @Suppress("DEPRECATION")
         val info = context.packageManager.getPackageInfo(context.packageName, 0)

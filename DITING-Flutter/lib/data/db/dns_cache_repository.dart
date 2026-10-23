@@ -1,9 +1,7 @@
-/// Read access to the legacy persisted DNS cache table.
+/// Read access to the legacy persisted `dns_cache` table.
 ///
-/// 1.4.3 wrote every cached response into `dns_cache` through Room; the
-/// upgraded install still holds those rows. The Go engine keeps its own
-/// in-memory LRU, so a fresh tunnel may show an empty table until the legacy
-/// rows expire — the table is a snapshot, not a live view.
+/// Only the legacy app wrote these rows; the engine keeps its own in-memory
+/// LRU, so this table is a snapshot and may lag behind or run empty.
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -48,8 +46,8 @@ class DnsCacheRepository {
         'originalTtlSeconds',
         'responseSize',
       ],
-      // Legacy `observeValid` also hides expired rows; showing them as TTL 0
-      // would misrepresent a cache the engine can no longer serve.
+            // Like the legacy `observeValid`: expired rows are hidden, since the
+            // engine can no longer serve them.
       where: 'expiresAt > ?',
       whereArgs: [now],
       orderBy: 'hitCount DESC, expiresAt DESC',
@@ -58,7 +56,7 @@ class DnsCacheRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// `DnsCacheDao.countUnexpired`：有效缓存条数（概览块的「有效缓存」）。
+    /// Number of unexpired entries.
   Future<int> countUnexpired() async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final rows = await _db.rawQuery(
@@ -68,10 +66,8 @@ class DnsCacheRepository {
     return (rows.first['n'] as num?)?.toInt() ?? 0;
   }
 
-  /// `DnsCacheDao.totalHitCount`：`COALESCE(SUM(hitCount), 0)`。
-  ///
-  /// 统计的是**整张表**的命中累计，不过期过滤：过期行的命中确实发生过，
-  /// 旧版「累计缓存命中」也是这么算的。
+    /// Lifetime hits over the whole table, expired rows included, because those
+    /// hits did happen.
   Future<int> totalHitCount() async {
     final rows = await _db.rawQuery(
       'SELECT COALESCE(SUM(hitCount), 0) AS n FROM dns_cache',
