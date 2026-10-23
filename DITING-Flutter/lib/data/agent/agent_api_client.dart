@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diting/data/http/request_user_agent.dart';
+
 class AgentChatMessage {
   const AgentChatMessage({required this.role, required this.content});
 
@@ -65,11 +67,15 @@ class AgentApiClient {
     this.connectTimeout = const Duration(seconds: 15),
     this.readTimeout = const Duration(seconds: 45),
     this.modelsTimeout = const Duration(seconds: 20),
+    this.userAgent = appFallbackUserAgent,
   });
 
   final Duration connectTimeout;
   final Duration readTimeout;
   final Duration modelsTimeout;
+
+  /// `/config/user-agents` override; some gateways reject the default one.
+  final String userAgent;
 
   /// Base URL to `/chat/completions`; OpenAI and DeepSeek need the `/v1` segment.
   static String resolveChatCompletionsEndpoint(String rawBaseUrl) {
@@ -245,7 +251,7 @@ class AgentApiClient {
     try {
       final request = await client.openUrl(method, uri).timeout(timeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      request.headers.set(HttpHeaders.userAgentHeader, 'DITING-Android');
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       if (apiKey.trim().isNotEmpty) {
         request.headers.set(
           HttpHeaders.authorizationHeader,

@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diting/data/http/request_user_agent.dart';
+
 class IpSourceResult {
   const IpSourceResult({
     required this.name,
@@ -88,9 +90,13 @@ class IpQualityChecker {
     this.ipApiUrl = 'http://ip-api.com/json',
     this.ipWhoIsUrl = 'https://ipwho.is',
     this.ipInfoUrl = 'https://ipinfo.io',
+    this.userAgent = appFallbackUserAgent,
   });
 
   final Duration timeout;
+
+  /// `/config/user-agents` override; public IP-intel endpoints throttle unknown agents.
+  final String userAgent;
 
   /// Ordered fallback chain of "what is my egress IP" probes. Measured, not read from the NIC: the
   /// user cares about the tunnel exit, not the LAN IP.
@@ -132,7 +138,7 @@ class IpQualityChecker {
   Future<String?> _fetchIp(HttpClient client, String url) async {
     try {
       final request = await client.getUrl(Uri.parse(url)).timeout(timeout);
-      request.headers.set(HttpHeaders.userAgentHeader, 'DITING-Android');
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
       final body = await response.transform(utf8.decoder).join().timeout(timeout);
       if (response.statusCode != 200) return null;
@@ -251,7 +257,7 @@ class IpQualityChecker {
   ) async {
     try {
       final request = await client.getUrl(Uri.parse(url)).timeout(timeout);
-      request.headers.set(HttpHeaders.userAgentHeader, 'DITING-Android');
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
       final body = await response.transform(utf8.decoder).join().timeout(timeout);
       watch.stop();

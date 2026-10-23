@@ -5,6 +5,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diting/data/http/request_user_agent.dart';
+
 class UpdateInfo {
   const UpdateInfo({
     required this.version,
@@ -46,6 +48,7 @@ class AppUpdateChecker {
   const AppUpdateChecker({
     this.releaseUrl = defaultReleaseUrl,
     this.timeout = const Duration(seconds: 15),
+    this.userAgent = appFallbackUserAgent,
   });
 
   /// The legacy `AppUpdateManager.RELEASE_URL`; the compile-time override points at a mirror or a
@@ -59,13 +62,16 @@ class AppUpdateChecker {
   final String releaseUrl;
   final Duration timeout;
 
+  /// `/config/user-agents` override; GitHub 403s a request without one.
+  final String userAgent;
+
   Future<UpdateCheckResult> check(String currentVersion) async {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
       final request = await client.getUrl(Uri.parse(releaseUrl)).timeout(timeout);
       // GitHub 403s a request without a User-Agent; `Accept` selects the schema.
       request.headers.set(HttpHeaders.acceptHeader, 'application/vnd.github+json');
-      request.headers.set(HttpHeaders.userAgentHeader, 'DITING-Android');
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
       final body = await response.transform(utf8.decoder).join().timeout(timeout);
       if (response.statusCode != 200) {

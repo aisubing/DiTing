@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:diting/data/http/request_user_agent.dart';
 import 'package:diting/data/native/recognition_avatar_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/recognition/recognition_members.dart';
@@ -17,6 +18,7 @@ class RecognitionMembersRepository {
     required this.store,
     RecognitionAvatarBridge? avatarBridge,
     this.timeout = const Duration(seconds: 10),
+    this.userAgent = appFallbackUserAgent,
   }) : _avatars = avatarBridge ?? const RecognitionAvatarBridge();
 
   /// Legacy container name, so upgrades keep their cache.
@@ -33,6 +35,9 @@ class RecognitionMembersRepository {
 
   final LegacyPrefsStore store;
   final Duration timeout;
+
+  /// `/config/user-agents` override; the member list and avatars both use it.
+  final String userAgent;
   final RecognitionAvatarBridge _avatars;
 
   /// In-process avatar bytes; avoids re-reading the disk on scroll.
@@ -83,7 +88,7 @@ class RecognitionMembersRepository {
           .getUrl(Uri.parse(recognitionMembersUrl))
           .timeout(timeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      request.headers.set(HttpHeaders.userAgentHeader, 'DITING-Android');
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final etag = store.read(container, _etagKey);
       if (etag is String && etag.isNotEmpty) {
         request.headers.set(HttpHeaders.ifNoneMatchHeader, etag);
@@ -156,7 +161,7 @@ class RecognitionMembersRepository {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
       final request = await client.getUrl(Uri.parse(url)).timeout(timeout);
-      request.headers.set(HttpHeaders.userAgentHeader, 'DITING-Android');
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
       if (response.statusCode != HttpStatus.ok) {
         throw HttpException('HTTP ${response.statusCode}');

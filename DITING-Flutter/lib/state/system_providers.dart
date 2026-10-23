@@ -6,9 +6,11 @@ import 'dart:async';
 
 import 'package:diting/data/backup/dav_client.dart';
 import 'package:diting/data/native/update_bridge.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/data/update/app_update_checker.dart';
 import 'package:diting/state/app_version_provider.dart';
+import 'package:diting/state/config_providers_resources.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum DavStatus {
@@ -66,6 +68,9 @@ class DavNotifier extends Notifier<DavState> {
   @override
   DavState build() => const DavState();
 
+  /// Built per call so a UA change in `/config/user-agents` applies to the next request.
+  DavClient get _client => DavClient(userAgent: ref.read(requestUserAgentProvider));
+
   void update(DavState Function(DavState state) update) =>
       state = update(state);
 
@@ -79,7 +84,7 @@ class DavNotifier extends Notifier<DavState> {
       return;
     }
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
-    final result = await const DavClient().probe(
+    final result = await _client.probe(
       DavCredentials(
         server: state.server,
         username: state.username,
@@ -115,7 +120,7 @@ class DavNotifier extends Notifier<DavState> {
   /// Uploads with `PUT` to `<path>/diting-config.json`.
   Future<DavProbeResult> upload(String content) async {
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
-    final result = await const DavClient().putText(
+    final result = await _client.putText(
       credentials,
       name: remoteFileName,
       content: content,
@@ -130,7 +135,7 @@ class DavNotifier extends Notifier<DavState> {
   Future<String?> download() async {
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
     try {
-      final text = await const DavClient().getText(
+      final text = await _client.getText(
         credentials,
         name: remoteFileName,
       );
@@ -164,12 +169,24 @@ final disclaimerAcceptedProvider = NotifierProvider<DisclaimerNotifier, bool>(
   DisclaimerNotifier.new,
 );
 
-/// Developer-mode master switch; when off the option section is disabled.
+/// Developer-mode master switch; when off the option section is disabled. Persisted in the UI
+/// container so the switch survives a restart, like every other legacy boolean.
 class DeveloperModeNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
+  static const _key = 'developer_mode_enabled';
 
-  void toggle(bool value) => state = value;
+  @override
+  bool build() {
+    final store = ref.watch(legacyPrefsStoreProvider);
+    return store.read(LegacySettings.uiContainer, _key) == true;
+  }
+
+  void toggle(bool value) {
+    state = value;
+    ref
+        .read(legacyPrefsStoreProvider)
+        .putBool(LegacySettings.uiContainer, _key, value);
+    ref.read(legacySettingsRevisionProvider.notifier).bump();
+  }
 }
 
 final developerModeProvider = NotifierProvider<DeveloperModeNotifier, bool>(
@@ -331,7 +348,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
 
 /// Update checker; tests may override the endpoint.
 final appUpdateCheckerProvider = Provider<AppUpdateChecker>(
-  (ref) => const AppUpdateChecker(),
+  (ref) => AppUpdateChecker(userAgent: ref.watch(requestUserAgentProvider)),
 );
 
 /// Update download/install channel, replaceable in tests.
@@ -403,7 +420,7 @@ class IpQualityNotifier extends Notifier<IpQualityState> {
 
 /// IP-quality checker; tests may override the endpoints.
 final ipQualityCheckerProvider = Provider<IpQualityChecker>(
-  (ref) => const IpQualityChecker(),
+  (ref) => IpQualityChecker(userAgent: ref.watch(requestUserAgentProvider)),
 );
 
 final ipQualityProvider = NotifierProvider<IpQualityNotifier, IpQualityState>(

@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:diting/data/db/subscription_models.dart';
+import 'package:diting/data/http/request_user_agent.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
 
 /// Result of one download. A non-null [error] means failure and the other fields are meaningless.
@@ -84,12 +85,16 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     HttpClient Function()? clientFactory,
     this.connectTimeout = const Duration(seconds: 30),
     this.readTimeout = const Duration(seconds: 60),
+    this.userAgent = appFallbackUserAgent,
     this.onProgress,
   }) : _clientFactory = clientFactory ?? HttpClient.new;
 
   final HttpClient Function() _clientFactory;
   final Duration connectTimeout;
   final Duration readTimeout;
+
+  /// `/config/user-agents` override; servers that key on UA reject the default one.
+  final String userAgent;
 
   /// Download progress: (bytes read, total bytes, or -1 when unknown).
   final void Function(int received, int total)? onProgress;
@@ -215,6 +220,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     final request = await client.getUrl(Uri.parse(requestedUrl));
     request.followRedirects = true;
     request.maxRedirects = 5;
+    request.headers.set(HttpHeaders.userAgentHeader, userAgent);
     if (useValidators) {
       final etag = record.httpEtag;
       final lastModified = record.httpLastModified;

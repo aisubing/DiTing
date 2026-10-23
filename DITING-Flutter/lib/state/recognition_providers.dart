@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/recognition/recognition_members.dart';
 import 'package:diting/data/recognition/recognition_repository.dart';
+import 'package:diting/state/config_providers_resources.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -56,11 +57,15 @@ class RecognitionState {
   static const _keep = Object();
 }
 
-/// Repository instance; tests override it with in-memory data.
+/// Repository instance; tests override it with in-memory data. Rebuilt when the
+/// `/config/user-agents` selection changes.
 final recognitionRepositoryProvider = Provider<RecognitionMembersRepository>((
   ref,
 ) {
-  return RecognitionMembersRepository(store: ref.watch(legacyPrefsStoreProvider));
+  return RecognitionMembersRepository(
+    store: ref.watch(legacyPrefsStoreProvider),
+    userAgent: ref.watch(requestUserAgentProvider),
+  );
 });
 
 class RecognitionController extends AsyncNotifier<RecognitionState> {

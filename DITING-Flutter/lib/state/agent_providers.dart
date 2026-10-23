@@ -5,14 +5,16 @@ import 'package:diting/data/agent/agent_analysis.dart';
 import 'package:diting/data/agent/agent_api_client.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
+import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Real OpenAI-compatible client; tests inject a fake via `overrideWithValue`.
+/// Real OpenAI-compatible client; tests inject a fake via `overrideWithValue`. Rebuilds when the
+/// `/config/user-agents` selection changes, so a gateway that filters on UA sees the chosen one.
 final agentApiClientProvider = Provider<AgentApiClient>(
-  (ref) => const AgentApiClient(),
+  (ref) => AgentApiClient(userAgent: ref.watch(requestUserAgentProvider)),
 );
 
 /// Active provider as [AgentChatConfig]; null when no key is configured.

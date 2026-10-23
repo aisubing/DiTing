@@ -1,7 +1,7 @@
-/// Icon sets, user agents and on-demand connection in one notifier: every operation replaces a
-/// whole table.
+/// User agents and on-demand connection in one notifier: every operation replaces a whole table.
 library;
 
+import 'package:diting/data/http/request_user_agent.dart';
 import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/data/prefs/config_resource_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -9,14 +9,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ConfigResources {
   const ConfigResources({
-    required this.iconSets,
     required this.userAgents,
     required this.selectedUserAgent,
     required this.ssidRules,
     required this.onDemand,
   });
 
-  final List<MockIconSet> iconSets;
   final List<MockUserAgent> userAgents;
 
   /// Selected user agent; null means no override (subscription or engine default).
@@ -25,14 +23,12 @@ class ConfigResources {
   final bool onDemand;
 
   ConfigResources copyWith({
-    List<MockIconSet>? iconSets,
     List<MockUserAgent>? userAgents,
     String? selectedUserAgent,
     bool clearSelectedUserAgent = false,
     List<MockSsidRule>? ssidRules,
     bool? onDemand,
   }) => ConfigResources(
-    iconSets: iconSets ?? this.iconSets,
     userAgents: userAgents ?? this.userAgents,
     selectedUserAgent: clearSelectedUserAgent
         ? null
@@ -53,7 +49,6 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
       ref.watch(legacyPrefsStoreProvider),
     ).load();
     return ConfigResources(
-      iconSets: snapshot.iconSets,
       userAgents: snapshot.userAgents,
       selectedUserAgent: snapshot.selectedUserAgent,
       ssidRules: snapshot.ssidRules,
@@ -62,32 +57,6 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
   }
 
   void _put(ConfigResources next) => state = next;
-
-  /// An empty [originalName] adds a set; sets are keyed by name, so a duplicate overwrites in
-  /// place.
-  void putIconSet(String? originalName, MockIconSet iconSet) {
-    final next = state.copyWith(
-      iconSets: originalName == null
-          ? [...state.iconSets, iconSet]
-          : [
-              for (final item in state.iconSets)
-                item.name == originalName ? iconSet : item,
-            ],
-    );
-    _put(next);
-    _store.saveIconSets(next.iconSets);
-  }
-
-  void removeIconSet(String name) {
-    final next = state.copyWith(
-      iconSets: [
-        for (final item in state.iconSets)
-          if (item.name != name) item,
-      ],
-    );
-    _put(next);
-    _store.saveIconSets(next.iconSets);
-  }
 
   /// Returns false for an empty or duplicate value; the caller shows a message.
   bool addUserAgent(String value) {
@@ -224,3 +193,11 @@ final configResourcesProvider =
     NotifierProvider<ConfigResourcesNotifier, ConfigResources>(
       ConfigResourcesNotifier.new,
     );
+
+/// The `User-Agent` every outbound HTTP client sends. Watching this provider is what makes
+/// `/config/user-agents` a real setting instead of a stored string.
+final requestUserAgentProvider = Provider<String>(
+  (ref) => resolveRequestUserAgent(
+    ref.watch(configResourcesProvider.select((state) => state.selectedUserAgent)),
+  ),
+);

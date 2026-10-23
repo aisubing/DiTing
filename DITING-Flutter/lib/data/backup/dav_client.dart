@@ -4,6 +4,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diting/data/http/request_user_agent.dart';
+
 class DavCredentials {
   const DavCredentials({
     required this.server,
@@ -63,10 +65,16 @@ class DavProbeResult {
 }
 
 class DavClient {
-  const DavClient({this.timeout = const Duration(seconds: 20)});
+  const DavClient({
+    this.timeout = const Duration(seconds: 20),
+    this.userAgent = appFallbackUserAgent,
+  });
 
   /// 20s: a self-hosted LAN server answers quickly; beyond that it is unreachable.
   final Duration timeout;
+
+  /// `/config/user-agents` override; some WebDAV gateways log or filter on UA.
+  final String userAgent;
 
   Future<DavProbeResult> probe(DavCredentials rawCredentials) async {
     final credentials = rawCredentials.normalized();
@@ -117,6 +125,7 @@ class DavClient {
         HttpHeaders.authorizationHeader,
         credentials.basicAuthHeader,
       );
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       request.headers.contentType = ContentType(
         'application',
         'json',
@@ -157,6 +166,7 @@ class DavClient {
         HttpHeaders.authorizationHeader,
         credentials.basicAuthHeader,
       );
+      request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
       if (response.statusCode == 404) {
         await response.drain<void>();
@@ -180,6 +190,7 @@ class DavClient {
       HttpHeaders.authorizationHeader,
       credentials.basicAuthHeader,
     );
+    request.headers.set(HttpHeaders.userAgentHeader, userAgent);
     // Depth 0 asks for this resource only; no child listing is needed.
     request.headers.set('Depth', '0');
     request.headers.contentType = ContentType('application', 'xml');
@@ -204,6 +215,7 @@ class DavClient {
       HttpHeaders.authorizationHeader,
       credentials.basicAuthHeader,
     );
+    request.headers.set(HttpHeaders.userAgentHeader, userAgent);
     request.headers.contentLength = 0;
     final response = await request.close().timeout(timeout);
     await response.drain<void>();
