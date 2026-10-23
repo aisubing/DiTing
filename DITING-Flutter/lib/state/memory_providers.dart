@@ -1,11 +1,5 @@
-/// 进程内存的实时采样。
-///
-/// 与 [speedSeriesProvider] 同一种形状：`Notifier` + 显式 `attachPolling()`，由
-/// 卡片在 `initState` 里挂、`dispose` 里摘。定时器放进 provider 构造函数会让每次
-/// watch 都起一个，测试里也就永远 settle 不下来。
-///
-/// 采样周期 2 秒而不是 1 秒：`getProcessMemoryInfo` 要跨 Binder 问
-/// `ActivityManager`，比读一次计数器贵得多，而内存占用本来也不是每秒都变的量。
+/// Live memory sampling shaped like [speedSeriesProvider]; 2 s period, since it crosses Binder into
+/// `ActivityManager`.
 library;
 
 import 'dart:async';
@@ -15,7 +9,6 @@ import 'package:diting/state/cleanup_providers.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 内存采样周期。
 const memoryPollInterval = Duration(seconds: 2);
 
 final processMemoryProvider =
@@ -52,7 +45,8 @@ class ProcessMemoryNotifier extends Notifier<ProcessMemory> {
     _timer = null;
   }
 
-  /// 取一拍真实内存；通道缺失时快照的 `available` 为 false，卡片显示破折号。
+  /// Samples memory once; without the channel the snapshot is unavailable and the card shows a
+  /// dash.
   Future<void> tick() async {
     if (_inFlight) return;
     _inFlight = true;

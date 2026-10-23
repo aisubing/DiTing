@@ -7,8 +7,7 @@ class CommonPopupMenu extends StatefulWidget {
 
   final List<CommonPopupMenuItem> items;
 
-  /// Half of the next row shows past these, so the cut tells the menu scrolls.
-  /// Setting them builds only the rows in view, which needs rows of one height.
+  /// Half the next row shows past these, telling the menu scrolls; rows in view share one height.
   final int? maxVisibleItems;
 
   @override
@@ -43,7 +42,6 @@ class _MenuLevel {
   final List<CommonPopupMenuItem> items;
   final CommonPopupMenuItem? owner;
 
-  /// The step that opened this level from an item of the one below.
   final _MenuStep? step;
   final double top;
   final double fromWidth;
@@ -51,7 +49,6 @@ class _MenuLevel {
   final double maxWidth;
 }
 
-/// [begin] to [end] of a value that may overshoot either, as 0 to 1.
 class _Span extends Animatable<double> {
   const _Span(this.begin, this.end);
 

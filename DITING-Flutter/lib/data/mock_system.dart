@@ -1,10 +1,6 @@
-/// 系统域演示数据：访问控制应用表 / 免责条款 / 开发者选项 / 更新日志。
-///
-/// 数据层不依赖 widget 层，所以图标用 `AppGlyphs` 的常量名字符串记录，由页面
-/// 侧的 `glyphByName` 解析（与 `lib/data/mock_data.dart` 同一约定）。
+/// System demo data: access control, disclaimer, developer options, changelog.
 library;
 
-/// 一个可授权的应用。
 class MockPackage {
   const MockPackage({
     required this.name,
@@ -21,20 +17,15 @@ class MockPackage {
   final String category;
   final String glyphName;
 
-  /// 系统应用；访问控制默认把它们折叠掉。
   final bool isSystem;
 
-  /// 没有网络权限的应用不会产生 DNS 请求，默认也应折叠。
+  /// No network permission, so no DNS queries; folded too.
   final bool hasNetwork;
 
-  /// 安装顺序；`AccessSort.time` 用它排序，数字越小越新装。
+  /// Install order; smaller means newer.
   final int installOrder;
 }
 
-/// 访问控制列表。
-///
-/// 故意混入两个系统应用与一个无网络权限的应用，这样「来源」分组里的两个
-/// 开关才有肉眼可见的效果——否则演示页上它们看起来像是坏的。
 const mockPackages = <MockPackage>[
   MockPackage(
     name: '浏览器',
@@ -132,7 +123,6 @@ const mockPackages = <MockPackage>[
   ),
 ];
 
-/// 免责声明的一段条款。
 class MockDisclaimerTerm {
   const MockDisclaimerTerm({required this.title, required this.content});
 
@@ -140,7 +130,6 @@ class MockDisclaimerTerm {
   final String content;
 }
 
-/// 上游 `disclaimer.dart` 的十段条款，一一对应（`_terms()`）。
 const mockDisclaimerTerms = <MockDisclaimerTerm>[
   MockDisclaimerTerm(
     title: '一、软件性质',
@@ -205,7 +194,6 @@ const mockDisclaimerTerms = <MockDisclaimerTerm>[
   ),
 ];
 
-/// 开发者模式下的一个实验动作。
 class MockDeveloperAction {
   const MockDeveloperAction({
     required this.title,
@@ -218,7 +206,6 @@ class MockDeveloperAction {
   final String subtitle;
   final String glyphName;
 
-  /// 危险动作（清空数据等）用错误色，并在执行前二次确认。
   final bool destructive;
 }
 
@@ -252,7 +239,6 @@ const mockDeveloperActions = <MockDeveloperAction>[
   ),
 ];
 
-/// 恢复备份时可勾选的恢复项。
 enum RestoreOption {
   config('配置与设置'),
   rules('规则与订阅'),

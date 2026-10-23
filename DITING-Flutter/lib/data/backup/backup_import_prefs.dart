@@ -2,7 +2,6 @@ part of 'backup_importer.dart';
 
 /// Merges the prefs-backed groups; never touches the rule database.
 extension _BackupImportPrefs on BackupImporter {
-  /// Dedupe by name; same name with changed config is updated.
   BackupGroupOutcome _importProviders(
     Object? value,
     BackupImportTarget target,
@@ -107,10 +106,8 @@ extension _BackupImportPrefs on BackupImporter {
     return name is String ? name.trim() : '';
   }
 
-  /// Compare config content only, excluding `id`.
-  ///
-  /// Ids are generated locally, so including them would mark every re-import
-  /// as an update that never clears.
+  /// Content only: ids are generated locally, so comparing them would mark every re-import as an
+  /// update that never clears.
   String _encodeConfig(Object? value) {
     if (value is Map) {
       final stripped = {
@@ -122,7 +119,6 @@ extension _BackupImportPrefs on BackupImporter {
     return _encode(value);
   }
 
-  /// Stable string form used to test for exact equality.
   String _encode(Object? value) {
     if (value is Map) {
       final keys = value.keys.map((key) => '$key').toList()..sort();
@@ -134,7 +130,6 @@ extension _BackupImportPrefs on BackupImporter {
     return '$value';
   }
 
-  /// Provider selection state: primary, mode, per-mode candidates, visibility.
   void _applyProviderSelection(Object? value, BackupImportTarget target) {
     if (value is! Map) return;
     final settings = target.settings;
@@ -220,10 +215,8 @@ extension _BackupImportPrefs on BackupImporter {
     return ids;
   }
 
-  /// Resolve a reference to an id that exists locally.
-  ///
-  /// Try the id first, then fall back to (name, protocol): ids from old backups
-  /// may no longer exist, and accepting only ids would break the chain.
+  /// Local id for a reference, else the (name, protocol) fallback of old backups whose ids no
+  /// longer exist.
   String? _resolveProviderId(Map ref, Map<String, String> catalog) {
     final id = ref['id'];
     if (id is String && id.isNotEmpty && catalog.containsKey(id)) return id;
@@ -237,7 +230,6 @@ extension _BackupImportPrefs on BackupImporter {
     return id is String && id.isNotEmpty ? id : null;
   }
 
-  /// Two lookup tables: id -> id and (name, protocol) -> id.
   Map<String, String> _providerNameIndex(LegacySettings settings) {
     final index = <String, String>{};
     void add(String id, String name, String protocol) {
@@ -296,7 +288,7 @@ extension _BackupImportPrefs on BackupImporter {
 
     final custom = value['custom'];
     if (custom != null) {
-      // Write back the encoded JSON: this entry is the raw custom node text.
+      // This entry is the raw custom node text, so write back the encoded JSON.
       final encoded = jsonEncode(custom);
       if (settings.bootstrapCustomJson == encoded) {
         skipped++;
@@ -315,10 +307,7 @@ extension _BackupImportPrefs on BackupImporter {
     );
   }
 
-  /// Cache policy, written as one atomic group.
-  ///
-  /// Use `applyCachePreset` rather than separate setters so the engine never
-  /// sees a new mode with an old TTL.
+  /// Written through `applyCachePreset` so the engine never sees a new mode with an old TTL.
   BackupGroupOutcome _importCache(Object? value, BackupImportTarget target) {
     if (value is! Map) {
       throw const BackupFormatException('缓存分组应为对象');
@@ -384,10 +373,8 @@ extension _BackupImportPrefs on BackupImporter {
     );
   }
 
-  /// Outbound proxy: backups carry no credentials, only non-secret fields.
-  ///
-  /// Never auto-enable: a restored on-switch would fail to connect without
-  /// local credentials, and a false "updated" is worse than an explicit skip.
+  /// Non-secret fields only and never auto-enabled: an on-switch without local credentials would
+  /// fail to connect.
   BackupGroupOutcome _importOutbound(Object? value, BackupImportTarget target) {
     if (value is! Map) {
       throw const BackupFormatException('出站代理分组应为对象');
@@ -397,8 +384,7 @@ extension _BackupImportPrefs on BackupImporter {
     for (final entry in const {
       'protocol': 'outbound_proxy_protocol',
       'host': 'outbound_proxy_host',
-      // Legacy and the native bridge both use `outbound_proxy_app`; an early
-      // 2.0 build wrote `outbound_proxy_app_package`, which always read empty.
+      // An early 2.0 build wrote `outbound_proxy_app_package`, which always read empty.
       'proxyAppPackage': 'outbound_proxy_app',
     }.entries) {
       final raw = value[entry.key];

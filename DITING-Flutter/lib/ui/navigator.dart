@@ -21,8 +21,7 @@ class BaseNavigator {
     return CommonRoute(builder: (context) => child);
   }
 
-  /// The mobile layout drops a home page's navigator, pages and all, so a
-  /// desktop page left open reopens in the mobile form while its opener stays.
+  /// The mobile layout drops a home page's navigator, so a desktop page left open reopens.
   static Future<T?> push<T>(BuildContext context, Widget child) {
     final navigator = Navigator.of(context);
     if (context.isMobileView) {
@@ -79,8 +78,7 @@ class _DropWatchState extends State<_DropWatch> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// The route of the page [context] is on and, for a page in a sheet, the
-/// routes of the sheets carrying it.
+/// The route of [context]'s page plus, for a page in a sheet, the sheets'.
 Iterable<ModalRoute<Object?>> routesCarrying(BuildContext context) sync* {
   var route = ModalRoute.of(context);
   while (route != null) {
@@ -107,8 +105,7 @@ bool isRouteArriving(BuildContext context) => routesCarrying(
 ).any((route) => route.offstage || (route.animation?.isAnimating ?? false));
 
 Future<void> _whenSettled(ModalRoute<Object?> route) async {
-  // HeroController builds a pushed route offstage for its first frame, with
-  // the animation pinned to completed, so it only tells the truth after that.
+  // HeroController builds a pushed route offstage first, so it tells the truth only after.
   while (route.offstage && route.isActive) {
     await SchedulerBinding.instance.endOfFrame;
   }

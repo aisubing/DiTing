@@ -12,8 +12,8 @@ typedef _PlatterGlass = ({
   LiquidGlassRim rim,
 });
 
-/// The press that opened a popup on its control's pointer down. Its events
-/// keep reaching the control, which hands them on for the menu to follow.
+/// The press that opened a popup on its control's pointer down; its events keep reaching the
+/// control.
 class _CarriedPress {
   ValueSetter<Offset>? onMove;
   ValueSetter<Offset>? onRelease;
@@ -71,8 +71,7 @@ class _PopupMorph extends SingleChildRenderObjectWidget {
   final Color surfaceColor;
   final List<BoxShadow> shadows;
 
-  /// The platter's glass as it leaves the anchor and as it lands on the card,
-  /// or null for a [surfaceColor] fill.
+  /// The platter's glass leaving the anchor and landing on the card, or null for a fill.
   final _PlatterGlass? glass;
 
   @override
@@ -122,12 +121,8 @@ typedef _MorphFrame = ({
   bool platter,
 });
 
-/// Grows the popup out of its anchor the way iOS 26 menus leave their button:
-/// a platter flies from the anchor's capsule to the card's center on an arc,
-/// growing on its own spring, while the content rides inside it, scaling,
-/// fading and sharpening in. Closing returns it into its control the same way,
-/// the content blurring out first; with no control to return into, the popup
-/// shrinks toward its anchor as it fades.
+/// Grows the popup out of its anchor as iOS 26 menus do: a platter flies from the anchor to the
+/// card.
 class _RenderPopupMorph extends RenderProxyBox {
   _RenderPopupMorph({
     required Rect anchor,
@@ -197,7 +192,6 @@ class _RenderPopupMorph extends RenderProxyBox {
     _closingFrame = _frame();
   }
 
-  /// Where the opening stands, or null once it has settled.
   _MorphFrame? _frame() {
     if (_animation.value >= 1) {
       return null;
@@ -308,8 +302,7 @@ class _RenderPopupMorph extends RenderProxyBox {
   @override
   bool get alwaysNeedsCompositing => child != null;
 
-  /// The anchor in this box's coordinates; it comes in those of the layout
-  /// box that places this one.
+  /// The anchor in this box's coordinates, handed over in those of the layout box that places it.
   Rect get _localAnchor =>
       _anchor.shift(-(parentData! as BoxParentData).offset);
 
@@ -391,15 +384,12 @@ class _RenderPopupMorph extends RenderProxyBox {
     final clip = AppShape.all(math.max(0.0, radius)).getOuterPath(rect);
     final sourceImage = _sourceImage;
     final image = sourceImage?.value;
-    // The source control stays visible until its snapshot exists, so the
-    // platter would only cover it.
+    // The source control stays visible until its snapshot exists, so the platter would cover it.
     if (sourceImage != null && image == null) {
       return;
     }
     final reveal = frame.reveal;
-    // The card paints the same surface and shadow as the platter, so once it
-    // is revealed, or a sub menu leaves the root's bounds, the platter steps
-    // aside instead of clipping the levels until the spring settles.
+    // The card paints the same surface as the platter, so once revealed the platter steps aside.
     if (!frame.platter && !size.isEmpty) {
       _pane.clear();
       context.pushTransform(
@@ -413,8 +403,7 @@ class _RenderPopupMorph extends RenderProxyBox {
     final glass = _glass;
     final settled = progress.clamp(0.0, 1.0);
     final rim = glass?.rim.scale(settled);
-    // Returning cards keep their own fill and shadow as they fade into the
-    // platter's; on glass they stand bare and the platter holds throughout.
+    // Returning cards keep their own fill and shadow as they fade; on glass the platter holds.
     final platter = returning && glass == null ? 1 - reveal : 1.0;
     final path = clip.shift(offset);
     if (glass != null) {
@@ -485,8 +474,7 @@ class _RenderPopupMorph extends RenderProxyBox {
     if (reveal <= 0 || size.isEmpty) {
       return;
     }
-    // Opening, the content fills the platter and is cut to it; returning, it
-    // shrinks whole inside it.
+    // Opening, the content fills the platter and is cut to it; returning, it shrinks whole inside.
     final transform = _contentTransform(rect, fit: returning);
     final sigma = _maxContentBlur * (1 - reveal);
     void paintContent(PaintingContext context, Offset offset) =>

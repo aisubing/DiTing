@@ -1,9 +1,8 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 part of 'focus.dart';
 
-/// Arrows at the edge of a text field leave the field instead of stalling the
-/// caret, and up or down with no control that way scrolls the text there into
-/// reach.
+/// Arrows at a field's edge leave it rather than stall the caret; a dead direction scrolls the
+/// text.
 class _RemoteArrowKeys extends StatefulWidget {
   const _RemoteArrowKeys({required this.child});
 
@@ -51,8 +50,7 @@ class _RemoteArrowKeysState extends State<_RemoteArrowKeys> {
         direction == TraversalDirection.right) {
       return;
     }
-    // The traversal the key goes on to applies its focus change in a
-    // microtask, so only a later task can tell whether it found a target.
+    // Traversal applies its focus change in a microtask, so only a later task can tell.
     Timer.run(() {
       final context = focus.context;
       if (!mounted ||
@@ -126,8 +124,7 @@ class _RemoteArrowKeysState extends State<_RemoteArrowKeys> {
     return null;
   }
 
-  // The route's list beside the sidebar belongs to the page; a remote stopped at
-  // the sidebar's end is not pointing at it.
+  // The list beside the sidebar belongs to the page, not to a remote stopped at its end.
   static bool _inSameRegion(BuildContext context, ScrollPosition position) =>
       FocusTraversalGroup.maybeOf(context) ==
       FocusTraversalGroup.maybeOf(position.context.storageContext);

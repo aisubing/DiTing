@@ -6,24 +6,21 @@ import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 功能中心：按上游 `FeatureHubScreen.kt` 的 7 类 28 卡、2 列网格迁移。
-///
-/// 只迁布局与模块：分类标题、卡片顺序、隐藏开关、日志卡长按都沿用旧版；
-/// 视觉仍走本仓设计系统（`CommonScaffold` / `ListHeader` / 卡片表面与字号）。
-/// 极速模式不另做一份 UI，按上游 18 项门控白名单过滤同一数据源。
+/// Feature hub migrated from upstream `FeatureHubScreen.kt`: 7 categories, 28 cards,
+/// two-column grid. Only layout and modules are ported; express mode filters the same data
+/// through the upstream 18-item gate.
 class FeatureHubPage extends ConsumerWidget {
   const FeatureHubPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 卡片可见性跟随落盘的隐藏集合（`dns_vpn_prefs` / `hidden_features_set`）。
-    // 过滤放在 provider 里，隐藏功能页改开关后这一页会立刻跟着变。
+    // Card visibility follows the persisted hidden set (`dns_vpn_prefs` /
+    // `hidden_features_set`); filtering lives in the provider so toggling updates immediately.
     final categories = ref.watch(visibleFeatureCategoriesProvider);
     return CommonScaffold(
       title: '功能中心',
       body: CustomScrollView(
         slivers: [
-          // 顶栏浮在正文之上，正文自己让出栏高。
           SliverToBoxAdapter(child: SizedBox(height: context.appBarInset)),
           for (final category in categories)
             SliverToBoxAdapter(child: _CategorySection(category: category)),
@@ -66,17 +63,14 @@ class _CardGrid extends StatelessWidget {
 
   static const _gap = 10.0;
 
-  /// 卡片基础高度（1.0 字号下）。
-  ///
-  /// 必须随字号放大：卡片里是「图标 + 标题 + 副标题」三行固定内容，1.4 倍字号
-  /// 时三行文字比 92dp 高约 6dp，固定高度会直接溢出。用 `textScaler` 线性放大
-  /// 与 `clampTextScale` 的上界（1.4）对齐即可，不做更细的拟合。
+  /// Base card height at text scale 1.0; it scales with the text because icon, title and
+  /// subtitle exceed 92dp by about 6dp at 1.4x. A linear `textScaler` matches `clampTextScale`.
   static const _cardHeight = 92.0;
 
   @override
   Widget build(BuildContext context) {
-    // 2 列等宽网格。用 Row/Column 而不是 GridView：卡片数量是个位数，
-    // 且 GridView 在 Column 里需要 shrinkWrap，反而更贵。
+    // Two equal columns via Row/Column rather than GridView: a handful of cards, and
+    // GridView inside a Column needs shrinkWrap.
     final rows = <Widget>[];
     for (var i = 0; i < cards.length; i += 2) {
       final left = cards[i];
@@ -113,10 +107,8 @@ class _FeatureCard extends ConsumerStatefulWidget {
 class _FeatureCardState extends ConsumerState<_FeatureCard> {
   bool _pressed = false;
 
-  /// 字号放大时同步放宽卡片高度。
-  ///
-  /// `MediaQuery.textScalerOf` 已经过全局 `clampTextScale` 夹取，所以这里直接
-  /// 用它，不额外 `clamp`——否则两处上界不一致，1.4 倍时又会差几像素。
+  /// Widens the card height with the text scale; `MediaQuery.textScalerOf` is already
+  /// clamped globally, so it is used as is.
   static double _heightScale(BuildContext context) =>
       MediaQuery.textScalerOf(context).scale(_CardGrid._cardHeight) /
       _CardGrid._cardHeight;

@@ -9,21 +9,9 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/**
- * AES-GCM wrapper for the outbound-proxy credentials, byte-compatible with
- * 1.4.3's `OutboundProxySettingsStore.encryptProxySecret` / `decryptProxySecret`.
- *
- * The on-disk format is `Base64(iv + ciphertext)` with a 12-byte IV and a
- * 128-bit tag, produced by the AndroidKeyStore key `diting_outbound_proxy`.
- * Reproducing it exactly is not cosmetic: an upgrade install must be able to
- * decrypt the credentials the user already saved. A different alias, IV length,
- * or padding would silently yield an empty password and every proxied request
- * would start failing with a 407.
- *
- * Every failure path collapses to "" (`decrypt`) or "" (`encrypt`), matching the
- * legacy `runCatching { ... }.getOrDefault("")`: a bricked keystore (device
- * restore, key invalidation) must not crash the settings page.
- */
+/// AES-GCM wrapper for the outbound-proxy credentials, byte-compatible with the legacy
+/// `encryptProxySecret` / `decryptProxySecret`: an upgrade install must decrypt saved
+/// credentials, so the alias, IV length and tag size are fixed. Failures yield "".
 internal object ProxySecretCodec {
 
     private const val KEYSTORE = "AndroidKeyStore"
@@ -46,8 +34,9 @@ internal object ProxySecretCodec {
         if (value.isNullOrEmpty()) return ""
         return runCatching {
             val payload = Base64.decode(value, Base64.NO_WRAP)
-            // A truncated payload would throw on copyOfRange; the range check
-            // keeps the failure inside runCatching instead of an IndexOutOfBounds.
+            // Check the range first: copyOfRange would throw outside runCatching on truncation.
+            
+            
             require(payload.size > IV_LENGTH) { "payload too short" }
             val iv = payload.copyOfRange(0, IV_LENGTH)
             val cipher = Cipher.getInstance(TRANSFORMATION)
@@ -56,7 +45,6 @@ internal object ProxySecretCodec {
         }.getOrDefault("")
     }
 
-    /** Loads the existing key, creating it on first use. */
     private fun secretKey(): SecretKey {
         val keyStore = KeyStore.getInstance(KEYSTORE).apply { load(null) }
         (keyStore.getKey(ALIAS, null) as? SecretKey)?.let { return it }

@@ -1,15 +1,4 @@
-/// 关于页（对齐旧版 `ui/AboutScreen.kt`）。
-///
-/// 结构逐字照抄旧版：Hero（应用名 + 版本徽章 + 运行状态点）→「核心能力」→
-/// 「运行边界」→ 项目卡 → 页尾等宽小字。旧版在极速模式下会**少两条能力**，
-/// 并把运行边界的第一条换成窄路由说明（`getAboutCapabilities` /
-/// `getAboutBoundaries`），这里用同一套过滤逻辑，避免两份文案各自漂移。
-///
-/// 与旧版的两处有意差异：
-/// - 旧版点仓库直接 `ACTION_VIEW` 打开浏览器；本仓不引 `url_launcher`，改为
-///   复制地址 + SnackBar 提示。
-/// - 旧版「使用须知与免责声明」是首启弹窗；本仓弹窗挂在应用层
-///   （`lib/app/initial_agreement.dart`），这里留一个只读回看入口。
+/// About page (legacy `ui/AboutScreen.kt`); express mode drops two capabilities.
 library;
 
 import 'package:diting/pages/system/app_info.dart';
@@ -23,7 +12,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一条能力 / 边界：标题 + 说明 + 行首图标。
 class _AboutEntry {
   const _AboutEntry(this.title, this.description, this.glyph);
 
@@ -32,7 +20,6 @@ class _AboutEntry {
   final Glyph glyph;
 }
 
-/// 旧版 `aboutCapabilities`：顺序与文案逐字一致。
 const _capabilities = <_AboutEntry>[
   _AboutEntry('加密上游', '支持 DNS、DoH 与 DoT，并可管理自定义服务商。', AppGlyphs.lock),
   _AboutEntry('规则与缓存', '以缓存、屏蔽规则、白名单和订阅规则减少重复请求与干扰。', AppGlyphs.rules),
@@ -56,7 +43,6 @@ const _capabilities = <_AboutEntry>[
   ),
 ];
 
-/// 旧版 `aboutBoundaries`（普通 / 服务器模式）。
 const _boundaries = <_AboutEntry>[
   _AboutEntry(
     '默认仅处理 DNS',
@@ -73,7 +59,6 @@ const _boundaries = <_AboutEntry>[
   ),
 ];
 
-/// 极速模式把第一条换成窄路由说明（旧版 `getAboutBoundaries` 的 express 分支）。
 const _expressRouteBoundary = _AboutEntry(
   '极速原生 DNS 窄路由',
   '通过纯 Kotlin 原生轻量窄路由接管 UDP/TCP 53 端口 DNS 请求；设备常规应用数据'
@@ -81,10 +66,8 @@ const _expressRouteBoundary = _AboutEntry(
   AppGlyphs.bolt,
 );
 
-/// 旧版只在普通模式出现的两条能力。
 const _normalOnlyCapabilities = {'应用管控', 'HTTPS 流量检查'};
 
-/// 关于页。
 class AboutPage extends ConsumerWidget {
   const AboutPage({super.key});
 
@@ -92,7 +75,8 @@ class AboutPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(workModeProvider);
     final express = mode == AppWorkMode.express;
-    // 旧版 `rememberDnsServiceRunning`：服务器模式看服务器状态，其余看 VPN 电源态。
+    // Legacy `rememberDnsServiceRunning`: server mode reads the server status, everything
+    // else reads the VPN power state.
     final running = mode == AppWorkMode.server
         ? ref.watch(serverStatusProvider) == ServerStatus.running
         : ref.watch(powerProvider) == PowerState.running;
@@ -133,7 +117,8 @@ class AboutPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.gavel),
                 title: const Text('使用须知与免责声明'),
                 subtitle: const Text('软件说明、运行机制与免责条款全文'),
-                // 首启已由应用层弹窗强制同意，这里只做回看。
+                // Consent is enforced by the app-level dialog on first run; this is a
+                // read-only re-read.
                 widget: const DisclaimerPage(),
               ),
             ],
@@ -148,11 +133,9 @@ class AboutPage extends ConsumerWidget {
   }
 }
 
-/// 页首：应用名 + 一句定位 + 版本徽章 + 运行状态点。
 class _Hero extends StatelessWidget {
   const _Hero({required this.version, required this.running});
 
-  /// 展示用版本名，取自 `pubspec.yaml`（见 [appVersionProvider]）。
   final String version;
 
   final bool running;
@@ -234,7 +217,7 @@ class _Hero extends StatelessWidget {
   }
 }
 
-/// 运行状态点：运行中主色、未运行错误色（旧版顶栏 `titleTrailing` 的圆点）。
+/// Running dot: primary colour while running, error colour otherwise (legacy `titleTrailing`).
 class _StatusDot extends StatelessWidget {
   const _StatusDot({required this.running});
 
@@ -263,7 +246,6 @@ class _StatusDot extends StatelessWidget {
   }
 }
 
-/// 一条能力 / 边界。
 class _EntryRow extends StatelessWidget {
   const _EntryRow({required this.entry});
 
@@ -279,7 +261,6 @@ class _EntryRow extends StatelessWidget {
   }
 }
 
-/// 项目卡：维护者信息 + 可复制的仓库地址。
 class _ProjectCard extends StatelessWidget {
   const _ProjectCard();
 
@@ -374,7 +355,6 @@ class _ProjectCard extends StatelessWidget {
   }
 }
 
-/// 页尾签名：旧版用等宽字体、居中。
 class _Signature extends StatelessWidget {
   const _Signature();
 

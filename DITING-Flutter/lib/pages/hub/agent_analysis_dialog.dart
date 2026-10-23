@@ -5,15 +5,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// AI 分析结果对话框：真实状态机 + 送进提示词的摘要。
-///
-/// 上一轮这里是四个常量文本（「风险等级：中」…）。现在四种状态各自说自己的
-/// 话：未配置（指路到 AI 厂商管理）/ 进行中（可关闭，请求继续）/ 成功（正文 +
-/// 模型名 + token 用量）/ 失败（具体原因）。
-///
-/// 成功时把**送进提示词的摘要**折叠展示在下方。理由：流量分析的结论只有在
-/// 「模型拿到的是这 40 条记录」这句话可见时才可验证；只给结论，用户没法判断
-/// 模型是在分析他的网络还是在复述提示词。
+/// AI analysis result dialog: not configured, running (closable, request continues), succeeded
+/// and failed (the real reason). The prompt summary makes the conclusion verifiable.
 class AgentAnalysisDialog extends ConsumerStatefulWidget {
   const AgentAnalysisDialog({
     super.key,
@@ -23,7 +16,6 @@ class AgentAnalysisDialog extends ConsumerStatefulWidget {
 
   final AgentAnalysisTarget target;
 
-  /// 已启动的分析；对话框只负责订阅状态，不重发请求。
   final Future<void> pending;
 
   @override

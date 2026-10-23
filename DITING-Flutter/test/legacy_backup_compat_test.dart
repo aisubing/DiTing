@@ -13,13 +13,7 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// 新旧备份互通的回归测试。
-///
-/// 三件事必须一直成立，否则用户升级后会丢配置：
-///
-/// 1. 1.4.3 导出的平铺备份能被 2.0 导入（此前直接报「这不是谛听的备份文件」）；
-/// 2. 2.0 导出的文件**同时**带着旧版平铺键，导回 1.4.3 时不再是「内容为空」；
-/// 3. 全新安装（没有任何旧库）时 2.0 自己建库，导入不再报「本机还没有规则库」。
+/// Backup interop with 1.4.3: old flat backups import and new ones still carry the flat keys
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -58,7 +52,6 @@ void main() {
 
       expect(result.failed, isFalse, reason: result.fatalError);
       expect(result.legacyFormat, isTrue);
-      // 旧版把 customBlockRules 与 customAllowRules 分成两组，2.0 合成一组。
       expect(result.failedGroups, isEmpty);
 
       final blockRows = await db.query('block_rule');
@@ -78,7 +71,6 @@ void main() {
         contains('https://example.com/ad-domain.txt'),
       );
 
-      // 服务商没有 id 的旧条目要补 id，否则界面上一个都用不了。
       final providers = jsonDecode(
         store.read('dns_vpn_prefs', 'user_providers_json')! as String,
       );
@@ -121,7 +113,6 @@ void main() {
 
   group('2.0 → 1.4.3', () {
     test('导出的文件带旧版平铺键，1.4.3 读出来不再是空内容', () async {
-      // 先让库里有内容，再导出。
       await const BackupImporter().import(
         fixture('legacy-export-1.4.3.json'),
         target(MemoryLegacyPrefsStore()),
@@ -141,12 +132,11 @@ void main() {
       );
       final root = jsonDecode(export.content) as Map<String, Object?>;
 
-      // 新格式仍在，保证 2.0 自己能再导入一次。
       expect(root['format'], BackupFormat.magic);
       expect(root['data'], isA<Map>());
 
-      // 旧格式的关键顶层键必须齐备：1.4.3 的解析器逐字段 optString，
-      // 缺一个就是「导入后内容为空」。
+      // 1.4.3's parser reads every top-level key with optString, so one missing key empties the
+      // import
       expect(root['formatVersion'], 10);
       expect(root['providers'], hasLength(1));
       expect(root['selectedProvider'], isA<Map>());
@@ -168,7 +158,6 @@ void main() {
         reason: '1.4.3 用 getInt 读这个键，写成字符串会被静默忽略',
       );
       expect((root['outboundProxy'] as Map)['credentialsOmitted'], isTrue);
-      // 出站代理的应用包名键名必须与原生一致（outbound_proxy_app）。
       expect(
         (root['outboundProxy'] as Map).containsKey('proxyAppPackage'),
         isTrue,
@@ -325,8 +314,7 @@ void main() {
     });
 
     test('安卓 float 精度不会让透明度被反复导入', () async {
-      // 安卓 SharedPreferences 用 Java float 存，putFloat(0.8) 读回来是
-      // 0.800000011920929。设备上曾因此每次导入都报「外观 · 新增 6」。
+      // `putFloat(0.8)` reads back 0.800000011920929, so every import saw six new appearance items
       const stored = 0.800000011920929;
       final store = MemoryLegacyPrefsStore({
         'dns_vpn_prefs': {

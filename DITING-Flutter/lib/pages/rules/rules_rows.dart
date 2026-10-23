@@ -1,10 +1,7 @@
 part of 'rules_page.dart';
 
-/// 一条规则行。
-///
-/// 行内容按上游 `RuleItem` 组织：主行是规则内容（覆写加 `pattern → target`），
-/// 副行是来源标签。来源用文字而不是图标，因为「订阅名」本身就要显示出来，
-/// 图标撑不下。
+/// One rule row, organized like the upstream RuleItem: main line is the rule (rewrite shows
+/// `pattern -> target`), second line the source label, shown as text because names are long.
 class _RuleRow extends StatelessWidget {
   const _RuleRow({
     required this.rule,
@@ -19,7 +16,7 @@ class _RuleRow extends StatelessWidget {
   final MockRule rule;
   final RuleKind kind;
 
-  /// 只读保护：预设行且未开启「允许编辑默认白名单」。
+  /// Read-only protection: a preset row while editing default whitelists is off.
   final bool protected;
   final ValueChanged<bool> onToggle;
   final VoidCallback onEdit;
@@ -29,8 +26,8 @@ class _RuleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    // 只读行压到 0.75 透明度、未启用行再压一档：两种「不能按」的视觉必须
-    // 可区分，否则用户会以为开关坏了。
+    // Read-only rows drop to 0.75 opacity and disabled rows further still: the two
+    // "cannot press" states must be distinguishable, or the switch looks broken.
     final opacity = protected ? 0.75 : (rule.enabled ? 1.0 : 0.5);
     final pattern = rule.target == null
         ? rule.pattern
@@ -52,15 +49,8 @@ class _RuleRow extends StatelessWidget {
             fontSize: 15,
           ),
         ),
-        // 副行最多要塞四个 chip（重要 / 分组 / 订阅名 / 只读）+ 来源标签。
-        // `ListTile` 给 subtitle 的宽度是「行宽 − leading − trailing」再减去
-        // 内边距，320 宽设备上只剩约 160px，而 chip 是**不可压缩**的（内部
-        // `Text` 会被自己的 `maxLines: 1` + ellipsis 撑到自然宽度）。
-        //
-        // 之前这里用 `Row` + `spacing: 6`：在 320 宽溢出 34/76px、在 390 宽溢出
-        // 6px，表现为真机上一行横着被黄黑条纹切断。`Wrap` 让放不下的 chip 折到
-        // 第二行——chip 是「元信息」，折行比截断更可读（截断后就分不清是哪个分组
-        // 还是哪个订阅）。
+        // The subtitle holds four chips plus the source label, and ListTile leaves about 160px on
+        // a 320-wide device, while chips cannot shrink. A Row used to overflow here.
         subtitle: Wrap(
           spacing: 6,
           runSpacing: 4,

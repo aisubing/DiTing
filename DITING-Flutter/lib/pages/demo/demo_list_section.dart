@@ -1,11 +1,8 @@
 part of 'demo_page.dart';
 
-/// 列表分区：把 [ListItem] 的七种构造器全部铺开，再补上 [ListHeader]、
-/// [ListFooter]、[generateSection] 与 [DecorationListItem]。
-///
-/// 七种构造器其实是同一行 ListTile 的七种「右端行为」：默认箭头、内嵌页面、
-/// 下一级页面、选项菜单、输入对话框、复选框、开关。它们必须并排在同一组里，
-/// 因为分组后的圆角拼接（首行只圆上、末行只圆下）只有在连续多行时才看得出来。
+/// Lists: all seven [ListItem] constructors plus [ListHeader], [ListFooter],
+/// [generateSection] and [DecorationListItem]. They share one group because the rounded
+/// first and last row only shows in a run of rows.
 class _DemoListSection extends StatefulWidget {
   const _DemoListSection();
 
@@ -131,7 +128,7 @@ class _DemoListSectionState extends State<_DemoListSection> {
   }
 }
 
-/// 三种状态的 [DecorationListItem]：普通、选中、非法（校验失败）。
+/// Three [DecorationListItem] states: plain, selected and invalid.
 class _DemoDecorationItems extends StatelessWidget {
   const _DemoDecorationItems();
 
@@ -169,10 +166,7 @@ class _DemoDecorationItems extends StatelessWidget {
   }
 }
 
-/// `ListItem.open` / `.next` 打开的内容：一个能自己退出的简单页面。
-///
-/// 必须能 `safeNestedPop`，否则在桌面端 Extend 与移动端 OpenContainer
-/// 两种宿主下退出行为会不一致。
+/// The page opened by `ListItem.open`; it must support `safeNestedPop`.
 class _DemoOpenDetail extends StatelessWidget {
   const _DemoOpenDetail();
 
@@ -180,8 +174,8 @@ class _DemoOpenDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonScaffold(
       title: '详情页',
-      // `_DemoSectionBody` 是 `Column`，正文从 y=0 起排会被浮着的顶栏压住，
-      // 这里补上浮位（`PageBody` 那类滚动正文才用 padding 方案）。
+      // A `Column` body would sit under the floating top bar; only scrolling bodies
+      // like `PageBody` use padding.
       body: AppBarClearance(
         child: _DemoSectionBody(
           children: [

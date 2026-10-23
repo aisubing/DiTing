@@ -1,8 +1,4 @@
-/// 服务器模式三 Tab 共用的两个动作：改监听端口、重置运行统计。
-///
-/// 单独成文件而不是各页各写一份：端口在「概览」与「模式设置」都能改，统计在两处
-/// 都有入口，校验文案与确认框口径必须一致，否则同一个动作在两张页面上会出现
-/// 两种失败提示。
+/// Port change and stats reset shared by the three server tabs, so failure copy cannot drift.
 library;
 
 import 'package:diting/state/server_status_providers.dart';
@@ -12,11 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 端口合法区间。上游 `DnsListenPortValidator` 同口径。
 const serverPortMin = 1024;
 const serverPortMax = 65535;
 
-/// 弹出端口输入框；返回用户填的新端口（取消返回 null）。
 Future<int?> promptServerPort(BuildContext context, int current) async {
   final result = await showFloatingDialog<String>(
     context: Navigator.of(context, rootNavigator: true).context,
@@ -43,7 +37,6 @@ Future<int?> promptServerPort(BuildContext context, int current) async {
   return int.tryParse(result?.trim() ?? '');
 }
 
-/// 改端口：写进 `diting_dns_mode_prefs/local_listen_port`，下次启动服务才生效。
 Future<void> editServerPort(BuildContext context, WidgetRef ref) async {
   final port = ref.read(serverPortProvider);
   final value = await promptServerPort(context, port);
@@ -56,7 +49,6 @@ Future<void> editServerPort(BuildContext context, WidgetRef ref) async {
   }
 }
 
-/// 重置运行统计前的二次确认（上游 `DnsMainScreen` 同样先弹确认框）。
 Future<void> confirmResetServerStats(
   BuildContext context,
   WidgetRef ref,
@@ -85,7 +77,6 @@ Future<void> confirmResetServerStats(
   showServerHint(context, '运行统计已重置');
 }
 
-/// 服务器模式统一的行内提示。
 void showServerHint(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(

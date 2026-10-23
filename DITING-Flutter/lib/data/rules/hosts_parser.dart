@@ -1,13 +1,11 @@
-/// hosts 与 dnsmasq 语法解析（1.4.3 `HostsAndDnsmasqParser` 的移植）。
-///
-/// 这两种语法都把「一行多域名」展开成多条规则，且用目标地址区分拦截与改写：
-/// 目标是黑洞地址 → 拦截；是真实 IP → 覆写；是域名 → CNAME 覆写。
+/// Parses hosts and dnsmasq lines; the target address picks the kind: sinkhole = block, IP =
+/// rewrite, domain = CNAME.
 library;
 
 import 'package:diting/data/rules/rule_domain_utils.dart';
 import 'package:diting/data/rules/rule_models.dart';
 
-/// `address=/domain/ip`、`server=/domain/ip`、`address=/domain/`。
+/// `address=/domain/ip`, `server=/domain/ip`, `address=/domain/`.
 CategorizedLine parseDnsmasqLine(String line, String originalLine) {
   var content = line;
   if (line.contains(' #')) {
@@ -133,7 +131,7 @@ CategorizedLine parseDnsmasqLine(String line, String originalLine) {
   return const CategorizedLine(invalidCount: 1);
 }
 
-/// `IP domain1 [domain2 ...]`。返回 null 表示这不是 hosts 行。
+/// `IP domain1 [domain2 ...]`; null when not a hosts line.
 CategorizedLine? parseHostsLineDetailed(String line, String originalLine) {
   final content = line.contains('#')
       ? line.substring(0, line.indexOf('#')).trim()

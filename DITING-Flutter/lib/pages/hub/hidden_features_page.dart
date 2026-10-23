@@ -7,12 +7,8 @@ import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 隐藏功能：按上游 `HiddenFeaturesScreen` 的分组与开关布局迁移。
-///
-/// 卡片只在功能中心隐藏，不影响任何功能运行；隐藏功能管理卡本身固定常驻。
-/// 开关状态落盘到 `dns_vpn_prefs` / `hidden_features_set`（StringSet），键名逐条
-/// 照抄 `HiddenFeaturesStore.HiddenFeature.key`，升级用户此前的隐藏选择会被直接
-/// 读到。
+/// Hidden features (upstream `HiddenFeaturesScreen`). Hiding only affects the feature hub
+/// and never disables anything; keys persist to `dns_vpn_prefs` / `hidden_features_set`.
 class HiddenFeaturesPage extends ConsumerWidget {
   const HiddenFeaturesPage({super.key});
 

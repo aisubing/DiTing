@@ -9,26 +9,11 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/test_hooks.dart';
 
-/// 保留页可达性守门。
-///
-/// 背景：用户明确要求保留 18 项「旧版不存在」的功能，但这些页面在旧版里没有
-/// 对应菜单。它们统一挂在 `/developer` 聚合页下（WebDAV 挂在
-/// `/hub/config-transfer` 页尾，字体与纯黑/字号等挂在外观子树里）。
-///
-/// 为什么需要这个测试：上一轮就发生过「页面存在但没有任何入口」的情况
-/// ——`/scan`、`/ip-quality`、`/editor`、`/form/rule-preset` 四个页面只有路由
-/// 定义，全仓找不到一处 `context.push`。这类页面在路由冒烟测试里是绿的（它能
-/// build），只有人点不到；下一轮清理时又会被当成孤儿删掉。
-///
-/// 因此这里做两件事：
-/// 1. **静态**：断言保留路由常量与聚合页里出现的字符串一一对应；
-/// 2. **动态**：断言 `/developer` 页面上真的能找到指向它们的行。
+/// Guards the retained pages are reachable from `/developer` and the config-transfer page; a
+/// page with a route but no `context.push` is only caught here
 void main() {
   installGlobalTestHooks();
 
-  /// 由 `/developer` 直接承载入口的保留页。
-  ///
-  /// WebDAV 不在此列：它挂在功能中心的备份与迁移页尾（另一条路径）。
   const viaDeveloper = <String, String>{
     '活动连接': '/connections',
     '资源更新': '/resources',
@@ -40,7 +25,6 @@ void main() {
     '编辑器': SystemPaths.editor,
   };
 
-  /// 由其它既有页承载入口的保留页。
   const viaOtherPage = <String>[
     '/config/icon-sets',
     '/config/user-agents',
@@ -64,7 +48,6 @@ void main() {
     expect(tester.takeException(), isNull);
 
     for (final entry in viaDeveloper.entries) {
-      // 行标题必须上屏：`generateSection` + `ListItem` 会把标题渲染成 Text。
       expect(
         find.text(entry.key),
         findsWidgets,
@@ -83,7 +66,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    // 页脚必须写清「不属于旧版 1.4.3」——否则下一轮会被当成"未对齐遗留"删掉。
+      // The footer must say these pages are not part of 1.4.3, or a cleanup pass deletes them
     expect(find.textContaining('旧版'), findsWidgets);
   });
 
@@ -127,7 +110,6 @@ void main() {
   });
 
   test('底栏六个 branch 与旧版 BottomBarDestination 一一对应', () {
-    // 顺序即 `_branchOrder`，底栏只是它的子集视图。
     const expected = <String>[
       Routes.home,
       Routes.hub,

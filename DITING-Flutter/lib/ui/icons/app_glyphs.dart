@@ -14,8 +14,6 @@ part 'app_glyphs_f.dart';
 part 'app_glyphs_g.dart';
 
 abstract final class AppGlyphs {
-  // 按项目单文件 ≤550 行规范，字形数据定义拆分至下方各 part 文件
-  // （顶层私有常量/函数）；以下转发保持 `AppGlyphs.xxx` 调用点不变。
   static const dashboard = _g_dashboard_;
   static const proxies = _g_proxies_;
   static const profiles = _g_profiles_;
@@ -139,8 +137,7 @@ abstract final class AppGlyphs {
   static const appsList = _g_appsList_;
   static const iconTile = _g_iconTile_;
 
-  // 站点品牌标识（网络测速卡用）。与 FlClash `assets/images/services/` 同一批
-  // 图形，走同一条 GlyphPath 渲染路径。
+  // Brand marks for the speed card, same shapes as FlClash's and the same GlyphPath render.
   static const baidu = _g_baidu_;
   static const douyin = _g_douyin_;
   static const bilibili = _g_bilibili_;

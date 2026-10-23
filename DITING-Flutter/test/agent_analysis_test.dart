@@ -14,43 +14,31 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/legacy_schema.dart';
 
-/// Pins the AI-analysis backend against real HTTP responses and real databases.
-///
-/// The page this replaces popped a hard-coded 「风险等级：中」 for both "analyse a
-/// domain" and "analyse recent traffic", with the provider list living only in
-/// memory. A widget test cannot catch either (both dialogs looked right), so the
-/// assertions here are on the request body actually sent and the config actually
-/// written to disk.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
 
-  // `flutter_test` 默认装一个假 HttpClient，把所有请求直接答成 400；
-  // 不清掉它，下面每一条 HTTP 断言拿到的都是那一个 400。
+  // `flutter_test` answers every request with a fake 400, so the override goes here
   setUpAll(() => HttpOverrides.global = null);
 
   group('KeyObfuscator', () {
     test('往返还原，且与 1.4.3 的掩码一致', () {
-      // 期望值用 Kotlin 版算法手算：`sk-abc` 的 UTF-8 字节逐位异或三组掩码后
-      // 走标准 Base64。写死这个常量是为了在有人「顺手换一套算法」时立刻失败——
-      // 换算法的代价是升级用户与回退用户的密钥都读不出来。
+      // Hand-computed with Kotlin's algorithm: changing it strands keys saved by upgraders
       expect(openApiKey(sealApiKey('sk-abc')), 'sk-abc');
       expect(sealApiKey(''), '');
       expect(openApiKey(''), '');
     });
 
     test('非 ASCII 密钥不被截断', () {
-      // 旧版 A-059 就是把这个写成逐 Char 截断，中文密钥往返变问号。
       const key = '密钥-测试-🔑';
       expect(openApiKey(sealApiKey(key)), key);
     });
 
     test('坏密文返回空串而不是抛异常', () {
-      // 非法 Base64。
       expect(openApiKey('!!!not-base64!!!'), '');
-      // 合法 Base64 但不是本仓写出的密文：解出来不是合法 UTF-8，同样返回空串。
-      // 抛异常会让整个厂商列表读不出来——一条坏数据连累整页。
+      // Valid Base64 from another encoder decodes to invalid UTF-8; a throw would blank the
+      // provider list
       expect(openApiKey('YWJj'), '');
     });
   });
@@ -71,7 +59,6 @@ void main() {
         ),
         'https://open.bigmodel.cn/api/paas/v4/chat/completions',
       );
-      // 已经写全的地址原样返回，不能再拼一段。
       expect(
         AgentApiClient.resolveChatCompletionsEndpoint(
           'https://x.test/v1/chat/completions',
@@ -321,7 +308,6 @@ void main() {
         systemPrompt: '',
       );
       expect(request.userPrompt, contains('样本不足'));
-      // 空样本时不索要四节报告——那只会诱导模型编内容。
       expect(request.userPrompt, isNot(contains('### 1.')));
     });
 
@@ -352,7 +338,6 @@ void main() {
       expect(request.userPrompt, contains('ads.tracker.test'));
       expect(request.userPrompt, contains('BLOCKED'));
       expect(request.userPrompt, isNot(contains('other.test')));
-      // 空系统提示词回落到旧版那段默认文案。
       expect(request.systemPrompt, contains('资深网络安全'));
     });
   });
@@ -374,7 +359,6 @@ void main() {
       settings.setAgentApiSystemPrompt('prompt');
       settings.setAgentAiActiveProviderId('p1');
       expect(store.read('dns_vpn_prefs', 'agent_api_base_url'), 'https://api.moonshot.cn/v1');
-      // 写入时 trim：带空格去请求会 401，而界面上看不出来。
       expect(store.read('dns_vpn_prefs', 'agent_api_key'), 'sk-1');
       expect(store.read('dns_vpn_prefs', 'agent_api_model'), 'kimi-k3');
       expect(store.read('dns_vpn_prefs', 'agent_api_temperature'), '0.4');
@@ -383,7 +367,6 @@ void main() {
     });
 
     test('温度按字符串存，读的时候两种类型都认', () {
-      // 旧版写的是 `config.temperature.toString()`；早期安装里可能有 float。
       expect(settings.agentApiTemperature, 0.7);
       store.putFloat('dns_vpn_prefs', 'agent_api_temperature', 1.2);
       expect(settings.agentApiTemperature, 1.2);
@@ -396,7 +379,6 @@ void main() {
       expect(empty.providers, hasLength(1));
       expect(empty.providers.single.id, 'preset_deepseek');
 
-      // 曾经配过 Key 的用户得到一条「已配置厂商」：升级后列表不能是空的。
       store.putString('dns_vpn_prefs', 'agent_api_key', 'sk-legacy');
       store.putString(
         'dns_vpn_prefs',
@@ -429,7 +411,6 @@ void main() {
       final decoded = decodeAiProviders(encoded);
       expect(decoded.single.id, 'p1');
       expect(decoded.single.apiKey, 'sk-round-trip');
-      // 落盘的是密文，不是明文。
       expect(encoded.contains('sk-round-trip'), isFalse);
     });
   });

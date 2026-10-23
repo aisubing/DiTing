@@ -9,16 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// AI 分析设置（上游 `AgentApiSettingsScreen`）。
-///
-/// 上一轮这一页的「功能测试」两个入口弹的是一份**写死的**研判
-/// （「风险等级：中」「该域名包含明显的统计参数与第三方追踪特征」），页脚
-/// 还写着「本演示不会真正发起网络请求」。现在两个入口都真发请求：
-/// - 「分析一个域名」用 `example-tracker.com` 作示例，上下文取自 `dns_log`；
-/// - 「分析最近流量」把最近 40 条 DNS + 30 条 HTTPS 记录汇总成摘要再说。
-///
-/// 结果对话框里同时展示**送进提示词的摘要**：用户能对照「模型看到的是什么」，
-/// 而不是只能相信一段无法验证的结论。
+/// AI analysis settings (upstream `AgentApiSettingsScreen`). Both test entries send real
+/// requests from recent `dns_log`, HTTPS and traffic records.
 class AgentApiPage extends ConsumerWidget {
   const AgentApiPage({super.key});
 

@@ -8,12 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// CA 证书设置（上游 `CaCertificateSettingsScreen`）。
-///
-/// 状态全部来自 `CaCertificateService.inspect()`：`available`（引擎产出过证书）、
-/// `installed`（SHA-256 命中 Android **user** 信任存储）、`fingerprintSha256`
-/// （冒号分隔大写）。这里没有任何硬编码指纹——旧实现写死一串十六进制，页面因此
-/// 分不清「还没生成」与「生成了但没装」。
+/// CA certificate settings (upstream `CaCertificateSettingsScreen`). State comes from
+/// `CaCertificateService.inspect()`: `available`, `installed` and `fingerprintSha256`,
+/// never hard-coded.
 class CaCertificatePage extends ConsumerWidget {
   const CaCertificatePage({super.key});
 
@@ -21,8 +18,8 @@ class CaCertificatePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncState = ref.watch(caCertificateStateProvider);
     final state = asyncState.value;
-    // 首次 inspect 要加载 Go 引擎（`libgojni.so` + 现造证书），可能几百毫秒，
-    // 期间显示一行「正在检查」而不是伪装成「未安装」。
+    // The first inspect loads the Go engine and may take hundreds of milliseconds, so a
+    // "checking" row shows meanwhile rather than a fake "not installed".
     if (state == null) {
       return CommonScaffold(
         title: 'CA 证书设置',
@@ -132,14 +129,9 @@ class CaCertificatePage extends ConsumerWidget {
     );
   }
 
-  /// 「安装根证书」= 先把 PEM 交到用户手里，再打开系统的「安装证书」界面。
-  ///
-  /// 取舍：`CaCertificateService.exportTo(uri)` 需要一个 `content://` URI，而 URI
-  /// 只能由系统「保存文件」选择器给出。本仓库没有文件选择器依赖
-  /// （`pubspec.yaml` 只有 material_ui / riverpod / go_router / sqflite），按任务
-  /// 约束不新增 pub 依赖，所以这里**不调用 exportTo**，改为把 PEM 显示成可复制
-  /// 文本（`_showPem`），由用户存成 .crt 或直接在文件管理器里打开。
-  /// 若后续引入选择器，只需在这里拿到 URI 后调 `exportTo(uri)`，其余不变。
+  /// Hands the user the PEM, then opens the system installer. `exportTo(uri)` needs a
+  /// `content://` URI from a system picker and this repo must not add that dependency, so
+  /// the PEM is shown as copyable text instead.
   Future<void> _install(
     BuildContext context,
     WidgetRef ref,
@@ -190,7 +182,6 @@ class CaCertificatePage extends ConsumerWidget {
           ? '已在系统设置中打开安装界面；回到本页会重新检查状态'
           : '无法打开系统证书安装界面，请手动前往「设置 → 安全 → 加密与凭据」',
     );
-    // 用户可能正是在系统里装完证书回来的，这里主动再查一次。
     await ref.read(caCertificateStateProvider.notifier).refresh();
   }
 
@@ -305,7 +296,6 @@ class CaCertificatePage extends ConsumerWidget {
   }
 }
 
-/// 安装指南（上游 `CaCertificateGuideScreen`）。内容与 1.4.3 同源，保持纯文案。
 class CaCertificateGuidePage extends StatelessWidget {
   const CaCertificateGuidePage({super.key});
 

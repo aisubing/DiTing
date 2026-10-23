@@ -1,8 +1,5 @@
-/// Read/delete access to the legacy `dns_race_log` table.
-///
-/// Rows are written by the native services through [RaceLogWriter]. Provider
-/// names are resolved in Dart from the provider catalog, because the native
-/// side only knows the ids that came in through the start intent.
+/// Read/delete access to the legacy `dns_race_log` table; rows are written natively and provider
+/// names are resolved in Dart, since native code only knows the ids.
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -31,7 +28,6 @@ class RaceLogRecord {
   final String? message;
 }
 
-/// Per-provider aggregate over the retained race rows.
 class RaceRankingEntry {
   const RaceRankingEntry({
     required this.providerId,
@@ -44,10 +40,7 @@ class RaceRankingEntry {
   final int averageLatencyMs;
 }
 
-/// 一种解析策略的聚合（旧版 `RaceStrategyStatRow`）。
-///
-/// `primaryWins` 只在 `smart_prediction` 下有意义：它统计「首选服务商就是胜出者
-/// 且成功」的次数，用来判断智能预测的命中率。其余策略的该值恒为 0，页面不展示。
+/// [primaryWins] only matters for `smart_prediction`: successful requests it won.
 class RaceStrategyStatRow {
   const RaceStrategyStatRow({
     required this.strategy,
@@ -73,7 +66,6 @@ class RaceStrategyStatRow {
   double get primaryWinRate => requests == 0 ? 0 : primaryWins / requests;
 }
 
-/// 智能选择首选服务商的命中统计（旧版 `SmartSelectionStatRow`）。
 class RaceSmartSelectionRow {
   const RaceSmartSelectionRow({
     required this.providerId,
@@ -91,7 +83,6 @@ class RaceSmartSelectionRow {
       selectedCount == 0 ? 0 : selectedSuccesses / selectedCount;
 }
 
-/// Whole-table summary, independent of which provider won.
 class RaceLogSummary {
   const RaceLogSummary({
     required this.requests,
@@ -126,9 +117,8 @@ class RaceLogRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// Wins are rows where this provider produced the winning response. Only
-  /// successful rows have a winner, so failures belong to [summary] instead of
-  /// being pinned on the provider that happened to sort first.
+  /// Wins are rows where this provider produced the winning response; failures are not pinned on
+  /// the provider that happened to sort first.
   Future<List<RaceRankingEntry>> ranking({int limit = 20}) async {
     final rows = await _db.rawQuery(
       'SELECT winnerProviderId AS providerId, '
@@ -171,12 +161,6 @@ class RaceLogRepository {
     );
   }
 
-  /// 按策略聚合（旧版 `RaceLogDao.strategyStats`）。
-  ///
-  /// 逐字照搬旧版 SQL：`primaryWins` 的口径是「有 selectedProviderId、胜出者就是
-  /// 它、且成功」，因此它是智能预测命中率的分子，别的策略恒为 0。
-  ///
-  /// [since] 为 null 表示不限下界（「全部」档）。
   Future<List<RaceStrategyStatRow>> strategyStats({int? since}) async {
     final rows = await _db.rawQuery(
       'SELECT strategy, '
@@ -210,10 +194,8 @@ class RaceLogRepository {
     ];
   }
 
-  /// 智能选择首选服务商统计（旧版 `RaceLogDao.smartSelectionStats`）。
-  ///
-  /// `selectedSuccesses` 只统计「没走兜底、首选即胜出、且成功」的行——与旧版
-  /// SQL 完全一致，改用「只要成功」会把兜底救回来的查询也算成首选命中。
+  /// `selectedSuccesses` requires no fallback, a win by the selected provider and success, so
+  /// queries rescued by the fallback do not count.
   Future<List<RaceSmartSelectionRow>> smartSelectionStats({
     int? since,
     String strategy = 'smart_prediction',

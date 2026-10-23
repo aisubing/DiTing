@@ -1,6 +1,5 @@
 part of 'mock_observability.dart';
 
-/// 一条请求的结果。
 enum RequestOutcome {
   success('成功'),
   blocked('已拦截'),
@@ -11,7 +10,6 @@ enum RequestOutcome {
   final String label;
 }
 
-/// 一条已结束的请求（上游 `requestsProvider` 的 `TrackerInfo`）。
 class MockRequest {
   const MockRequest({
     required this.id,
@@ -31,7 +29,6 @@ class MockRequest {
   final RequestOutcome outcome;
   final int latencyMs;
 
-  /// 发起请求的客户端。
   final String client;
   final String rule;
 }
@@ -247,7 +244,6 @@ const _requestRows = <_RequestRow>[
   ),
 ];
 
-/// 请求明细（时间倒序）。
 final mockRequests = <MockRequest>[
   for (final (index, row) in _requestRows.indexed)
     MockRequest(

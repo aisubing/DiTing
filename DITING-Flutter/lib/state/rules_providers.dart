@@ -1,8 +1,5 @@
-/// 规则域演示状态：黑名单 / 白名单 / 覆写三张表的唯一可变副本。
-///
-/// 为什么表放进 provider 而不是页面 `State`：规则页与批量导入页同时读写同一
-/// 张表，页面 pop 之后用户在别处新增的规则不能跟着页面一起消失；而规则页
-/// 每次进入都要重建，页面内 state 做不到跨页留存。
+/// The single mutable copy of the three rule tables, so a page rebuild cannot drop edits made
+/// elsewhere.
 library;
 
 import 'dart:async';
@@ -14,10 +11,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 白名单预设规则的只读判定。
-///
-/// 判据放在数据层：Switch、行菜单、删除入口三处必须用同一个判断，分散在页面
-/// 里迟早会出现「菜单能删、开关不能动」这类自相矛盾的状态。
+/// Read-only check for preset whitelist rules, shared by the switch, row menu and delete action.
 bool isRuleProtected(
   MockRule rule, {
   required RuleKind kind,
@@ -27,11 +21,7 @@ bool isRuleProtected(
     rule.source == RuleSource.preset &&
     !allowPresetEditable;
 
-/// 三张规则表。
-///
-/// 用一张 `Map<RuleKind, List<MockRule>>` 而不是三个 provider：三种规则的结构
-/// 完全一致（只有 kind 与 target 不同），拆成三个 notifier 会带来三份重复的
-/// 增删改逻辑，而它们的差异只有「是否允许只读预设」这一条。
+/// The three rule tables keyed by kind; separate notifiers would duplicate the CRUD logic.
 class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   var _sequence = 0;
 
@@ -40,10 +30,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   @override
   Map<RuleKind, List<MockRule>> build() {
     final initial = ref.watch(initialRulesProvider);
-    // 全局规则表只展示 appScope 为空的规则。带 appScope 的规则属于「应用独立
-    // 规则」页，若在这里也列出来，用户会在「黑名单」里看到一条只对某个 app
-    // 生效的规则，误以为是全局拦截，删除/停用还会同时改掉应用规则。快照侧
-    // `buildRuleSnapshot` 已经把这类规则分流进 appRules，这里同步分流。
+    // Only rules with an empty appScope belong here; app-scoped rules live on the app-rules page.
     return {
       for (final kind in RuleKind.values)
         kind: [
@@ -55,7 +42,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
 
   List<MockRule> rulesOf(RuleKind kind) => state[kind] ?? const [];
 
-  /// 切换启停。只读行由调用方拦截，这里不再二次判断，避免同一规则写两遍。
+  /// Toggles a rule; read-only rows are filtered by the caller.
   void toggle(RuleKind kind, String id, bool enabled) {
     _replace(kind, id, (rule) => _copy(rule, enabled: enabled));
     final repo = _repo;
@@ -65,10 +52,8 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     }
   }
 
-  /// 新增一条用户规则；pattern 与已有规则重复时返回 false。
-  ///
-  /// 去重放在这里而不是对话框里：批量导入走的是同一个入口，两处各写一遍校验
-  /// 会出现「单个添加能拦、批量导入放过去」的漏洞。
+  /// Adds a user rule; false when the pattern exists. Deduplication lives here because bulk import
+  /// shares it.
   Future<bool> add(RuleKind kind, String pattern, {String? target}) async {
     final trimmed = pattern.trim();
     if (trimmed.isEmpty) {
@@ -102,9 +87,8 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     return true;
   }
 
-  /// 编辑规则内容。白名单预设行被编辑时把来源改写为用户自定义：上游
-  /// `WhitelistViewModel` 同样这么做，否则升级时按来源清空预设会把用户改动
-  /// 一起丢掉。
+  /// Editing a whitelist preset rewrites its source to user-defined, so clearing presets cannot
+  /// discard the edit.
   Future<void> edit(
     RuleKind kind,
     String id,
@@ -162,7 +146,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     };
   }
 
-  /// 清空自定义规则，返回被清掉的条数（供确认框与提示复用）。
+  /// Clears user rules and returns how many were removed.
   Future<int> clearCustom(RuleKind kind) async {
     final repo = _repo;
     final removed = repo == null
@@ -178,7 +162,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     return removed;
   }
 
-  /// 重置默认白名单：把预设行恢复成初始内容，用户行与订阅行不动。
+  /// Resets default whitelist presets; user and subscription rows are kept.
   Future<int> resetPreset(RuleKind kind) async {
     final repo = _repo;
     if (repo != null && kind == RuleKind.allow) {
@@ -208,7 +192,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     return initial.length;
   }
 
-  /// 批量导入：逐行去重后追加，返回实际写入的条数。
+  /// Bulk import: appends deduplicated rows and returns how many were written.
   Future<int> importRules(
     RuleKind kind,
     List<String> patterns, {
@@ -274,15 +258,13 @@ final rulesProvider =
       RulesNotifier.new,
     );
 
-/// 某一类规则的只读视图，页面只订阅自己那一类，改别的种类不会让它重建。
+/// Read-only view of one rule kind; edits to other kinds do not rebuild it.
 final rulesOfKindProvider = Provider.family<List<MockRule>, RuleKind>(
   (ref, kind) => ref.watch(rulesProvider)[kind] ?? const [],
 );
 
-/// 「允许编辑默认白名单」开关。
-///
-/// 默认关闭是安全侧默认值：白名单放宽直接等于放行流量，误触代价远大于多一步
-/// 确认，因此必须先显式开启才能动预设行。
+/// "Allow editing default whitelist" switch, off by default: relaxing the whitelist lets traffic
+/// through.
 class AllowPresetEditableNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -295,13 +277,11 @@ final allowPresetEditableProvider =
       AllowPresetEditableNotifier.new,
     );
 
-/// 规则来源筛选；`null` 表示「全部」。
+/// Rule-source filter; `null` means all sources.
 typedef RuleSourceFilter = RuleSource?;
 
-/// 把一行文本解析成「可导入 / 重复 / 无效」三类，供批量导入页与单条校验共用。
-///
-/// 三条拒绝理由都来自上游：空行忽略、重复行跳过、含 `#@#` 的是放行规则，
-/// 必须去白名单添加——黑名单页里静默导入一条放行规则等于给用户一个安全错觉。
+/// Parses one line into importable, duplicate or invalid; `#@#` lines are allow rules for the
+/// whitelist page.
 class RuleLineParseResult {
   const RuleLineParseResult({
     required this.accepted,
@@ -314,7 +294,7 @@ class RuleLineParseResult {
   final List<String> rejected;
 }
 
-/// 逐行解析粘贴内容；[existing] 是目标表里已有的 pattern。
+/// Parses pasted text; [existing] holds patterns already in the target table.
 RuleLineParseResult parseRuleLines(
   String text, {
   Set<String> existing = const {},

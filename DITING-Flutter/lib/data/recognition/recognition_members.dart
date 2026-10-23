@@ -1,7 +1,5 @@
-/// Data model and validation for the sponsor / co-builder list.
-///
-/// Any validation failure throws [FormatException] so callers keep the last
-/// good cache instead of rendering a partial list.
+/// Data model and validation for the sponsor / co-builder list; any failure throws
+/// [FormatException] so callers keep the last good cache.
 library;
 
 import 'dart:convert';
@@ -32,13 +30,10 @@ class RecognitionMembers {
     required this.coBuilders,
   });
 
-  /// Config version, display only.
   final int version;
 
-  /// Sponsors, ordered by sponsorship time.
   final List<RecognitionMember> sponsors;
 
-  /// Co-builders, sorted by nickname.
   final List<RecognitionMember> coBuilders;
 
   static const empty = RecognitionMembers(
@@ -48,10 +43,8 @@ class RecognitionMembers {
   );
 }
 
-/// Parses and validates a list JSON.
-///
-/// Throws [FormatException] on a wrong root, a missing or mistyped field, a
-/// duplicate entry, or a malformed avatar file name.
+/// Parses and validates a list JSON; throws [FormatException] on a wrong root, mistyped field,
+/// duplicate entry or bad avatar file name.
 RecognitionMembers parseRecognitionMembers(String raw) {
   final Object? decoded;
   try {

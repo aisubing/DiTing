@@ -6,16 +6,7 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Bootstrap DNS 统计（1.4.3 `BootstrapStatsScreen`）。
-///
-/// 数据源是真实表 `bootstrap_log`（[bootstrapStatsProvider] →
-/// `BootstrapLogRepository.recentStats()`）：原生服务每次探测一个 Bootstrap IP
-/// 都会写一行，页面上看到的就是这些行的聚合。
-///
-/// 与旧版一致的信息：`IP 名 + 地址 · 成功 x% · 平均 x ms`、右侧尝试次数。
-/// 旧版还有「权重」与「冷却中 / 连续失败 N」两段后缀，它们来自引擎的
-/// `predictionWeight` / `cooldownUntil` 运行时状态，本仓没有这条通道，因此不显示
-/// 编造的权重数字。
+/// Bootstrap DNS stats from the real `bootstrap_log` table, one row per probe.
 class LogsBootstrapPage extends ConsumerWidget {
   const LogsBootstrapPage({super.key});
 

@@ -65,7 +65,6 @@ class EmojiText extends StatelessWidget {
     this.style,
   });
 
-  /// The spans [EmojiText] lays [text] out in, emoji in their own font.
   static TextSpan spanOf(String text, TextStyle? style) {
     final List<TextSpan> spans = [];
     final matches = emojiRegex().allMatches(text);
@@ -97,7 +96,6 @@ class EmojiText extends StatelessWidget {
     return TextSpan(children: spans);
   }
 
-  /// The width [EmojiText] lays [text] out at on one line under [style].
   static double widthOf(BuildContext context, String text, TextStyle style) {
     final painter = TextPainter(
       text: TextSpan(

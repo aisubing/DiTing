@@ -7,32 +7,9 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 
-/**
- * One manual DNS query against a **user-specified** resolver, ported from
- * 1.4.3's `core/dns/DnsLookupTool.lookup(host, recordType, servers)`.
- *
- * The migrated diagnostics channel only had a `viaTunnel` flag, so 1.4.3's
- * 「自定义 DNS 服务器」 mode (`DnsLookupSection` + `DnsServerMode.CUSTOM` +
- * 「自定义 DNS 服务器 IP」) had no equivalent — the tool could only report what
- * *this device's* resolver says. That is the one thing a DNS debugging tool
- * exists to look past, so this fills the gap with a real UDP query.
- *
- * Deliberately narrow compared to the original:
- *
- * - **A / AAAA only.** 1.4.3 also surfaced CNAME/NS rows; the Flutter model
- *   (`DnsLookupResult`) renders `{type,value,ttl}` and the page labels rows by
- *   record type, so CNAME chains would show up as unexplained extra rows. The
- *   address records are what 「解析」 means; the chain is not.
- * - **UDP only, no TCP retry on truncation.** Truncation is reported as an error
- *   (`TC` bit) rather than silently retried: a truncated reply means the answer
- *   does not fit, and pretending otherwise would show a partial address list.
- * - **No VpnService involvement.** The socket is bound to the physical network,
- *   exactly like `DnsLatencyTester`, so the result reflects the server you typed
- *   rather than the tunnel's own resolver.
- */
+/// Manual A/AAAA UDP query to a user resolver over the physical network; TC reported, not retried.
 internal object DnsServerProbe {
 
-    /** How long to wait for a reply before giving up. */
     private const val TIMEOUT_MS = 5000
 
     private const val TYPE_A = 1
@@ -40,17 +17,9 @@ internal object DnsServerProbe {
     private const val TYPE_AAAA = 28
     private const val CLASS_IN = 1
 
-    /** One answer record, in the shape the Dart model reads. */
     data class Record(val type: String, val value: String, val ttl: Long)
 
-    /**
-     * Queries [server] (an IP literal) for [domain].
-     *
-     * Returns the parsed records plus how long the round trip took. Failures are
-     * surfaced as exceptions with a readable Chinese message; the caller
-     * (`DiagnosticsBridge`) turns them into `source=error` results so the page
-     * renders them inline instead of crashing.
-     */
+    /// Queries `server` (an IP literal); failures throw and surface as `source=error`
     fun lookup(domain: String, server: String, ipv4: Boolean): Result {
         val port = 53
         val address = InetAddress.getByName(server)
@@ -62,9 +31,7 @@ internal object DnsServerProbe {
         if (response.size < 12 || (response[0].toInt() and 0x80) == 0) {
             throw IllegalStateException("响应不完整，不是有效的 DNS 应答")
         }
-        // `TC` bit: the answer did not fit in a UDP datagram. Retrying over TCP
-        // would give a complete list, but silently showing a partial one is worse
-        // than saying why it is partial.
+        // `TC` bit: the answer did not fit in one datagram; report it, not a partial list.
         if ((response[2].toInt() and 0x02) != 0) {
             throw IllegalStateException("应答被截断（TC=1），请改用支持 TCP 的查询工具")
         }
@@ -87,7 +54,6 @@ internal object DnsServerProbe {
         val server: String,
     )
 
-    /** Human text for the rcodes a manual lookup actually hits. */
     private fun rcodeMessage(rcode: Int): String = when (rcode) {
         1 -> "查询格式错误（FORMERR）"
         2 -> "服务器内部失败（SERVFAIL）"
@@ -108,18 +74,12 @@ internal object DnsServerProbe {
         }
     }
 
-    /**
-     * Builds a single-question query.
-     *
-     * `RD = 1` (recursion desired) because a manual lookup expects the server to
-     * resolve on our behalf; a stub resolver that only answers authoritative data
-     * would return an empty answer for most domains and look broken.
-     */
+    /// Builds a single-question query with `RD = 1`, so the server resolves on our behalf
     private fun buildQuery(domain: String, qtype: Int): ByteArray {
         val out = ByteArrayOutputStream()
         val data = DataOutputStream(out)
         data.writeShort((System.nanoTime() and 0xFFFF).toInt()) // ID
-        data.writeShort(0x0100) // RD = 1
+        data.writeShort(0x0100) // RD = 1, recursion desired
         data.writeShort(1) // QDCOUNT
         data.writeShort(0) // ANCOUNT
         data.writeShort(0) // NSCOUNT
@@ -132,20 +92,14 @@ internal object DnsServerProbe {
             data.writeByte(bytes.size)
             data.write(bytes)
         }
-        data.writeByte(0) // 根标签结束
+        data.writeByte(0) // end of QNAME
         data.writeShort(qtype)
         data.writeShort(CLASS_IN)
         data.flush()
         return out.toByteArray()
     }
 
-    /**
-     * Parses the answer section into address records.
-     *
-     * Skips the question section, then walks `ANCOUNT` resource records. Name
-     * fields may use compression pointers (`0xC0` prefix), which is why
-     * [skipName] exists instead of a straight length-prefixed read.
-     */
+    /// Names may use compression pointers, hence skipName over a length-prefixed read
     private fun parseAnswers(response: ByteArray, ipv4: Boolean): List<Record> {
         val input = DataInputStream(response.inputStream())
         input.skipBytes(4) // ID + flags
@@ -177,21 +131,15 @@ internal object DnsServerProbe {
                 TYPE_AAAA -> if (!ipv4 && length == 16) {
                     records.add(Record("AAAA", formatIpv6(payload), ttl))
                 }
-                // CNAME is not rendered (see the class doc), but it is walked
-                // rather than skipped so a malformed one still surfaces.
+                // CNAME is not rendered but still walked, so a malformed one surfaces.
                 TYPE_CNAME -> Unit
             }
         }
         return records
     }
 
-    /**
-     * Advances past a (possibly compressed) domain name.
-     *
-     * Compression pointers end the *name in this record* — the bytes they point
-     * at live elsewhere in the message and are not consumed here. Reading them
-     * inline would desynchronise every following field.
-     */
+    /// A pointer ends the name and its target is not consumed, or the next fields drift
+    
     private fun skipName(input: DataInputStream) {
         while (true) {
             val length = input.readUnsignedByte()
@@ -204,7 +152,7 @@ internal object DnsServerProbe {
         }
     }
 
-    /** RFC 5952-ish formatting: compress the longest run of zero groups. */
+    /// RFC 5952-ish formatting: compress the longest run of zero groups
     private fun formatIpv6(bytes: ByteArray): String {
         val groups = IntArray(8) {
             ((bytes[it * 2].toInt() and 0xFF) shl 8) or (bytes[it * 2 + 1].toInt() and 0xFF)

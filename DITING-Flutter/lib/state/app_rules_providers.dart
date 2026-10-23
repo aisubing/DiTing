@@ -1,15 +1,5 @@
-/// 应用独立规则里「DNS 专属黑/白名单」「默认拦截全部外联」的真实数据源。
-///
-/// 这两块此前是页面上的只读说明位（「尚未接通」），因为 `RuleRepository` 只
-/// 覆盖 `appScope IS NULL` 的全局规则。现在仓储补上了按应用的读写
-/// （[RuleRepository.loadForApp] / `addForApp` / `setFullBlock`），这里把它们
-/// 包成可监听的 provider：
-/// - 读取：[appScopedRulesProvider]（按包名 family）；
-/// - 写入：`AppScopedRulesController` 把仓储操作 + `invalidate` 收在一处，
-///   避免页面里四处 `ref.invalidate` 漏掉一处。
-///
-/// 规则库不可用（非 Android 宿主、测试、首次安装未建库）时返回
-/// [AppScopedRules.unavailable]，页面据此显示「读不到规则库」而不是伪造空白。
+/// Per-app DNS allow/block lists and block-all-outbound; writes and invalidations stay together
+/// here.
 library;
 
 import 'package:diting/data/db/rule_providers.dart';
@@ -17,7 +7,6 @@ import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 某个应用在规则库里的一条规则（block / allow）。
 class AppScopedRules {
   const AppScopedRules({
     required this.block,
@@ -36,16 +25,15 @@ class AppScopedRules {
   final List<MockRule> block;
   final List<MockRule> allow;
 
-  /// 是否已开启「默认拦截全部外联」（存在 `*$app=<pkg>`）。
+  /// Whether "block all outbound" is on (a `*$app=<pkg>` row exists).
   final bool fullBlock;
 
-  /// 规则库是否可读。false 时页面应显示错误，而不是「没有规则」。
+  /// Whether the rule DB is readable; false means "show an error", not "no rules".
   final bool available;
 
   final String? error;
 }
 
-/// 读取某应用的全部应用级规则。
 final appScopedRulesProvider =
     FutureProvider.family<AppScopedRules, String>((ref, packageName) async {
       final repository = ref.watch(ruleRepositoryProvider);
@@ -71,7 +59,7 @@ final appScopedRulesProvider =
       }
     });
 
-/// 写入入口：所有改动都经过这里，成功后刷新对应的 provider。
+/// Write entry point; refreshes the matching provider on success.
 class AppScopedRulesController {
   AppScopedRulesController(this._ref);
 
@@ -79,7 +67,7 @@ class AppScopedRulesController {
 
   RuleRepository? get _repository => _ref.read(ruleRepositoryProvider);
 
-  /// 追加一条 block / allow 规则。返回 false 表示规则库不可用或已存在。
+  /// Adds a block / allow rule. Returns false if the DB is unavailable or the rule already exists.
   Future<bool> addRule(
     String packageName,
     RuleKind kind,
@@ -100,7 +88,6 @@ class AppScopedRulesController {
     return created != null;
   }
 
-  /// 启用/停用一条规则。
   Future<void> toggle(String packageName, MockRule rule, bool enabled) async {
     final repository = _repository;
     final id = int.tryParse(rule.id);
@@ -109,7 +96,6 @@ class AppScopedRulesController {
     _ref.invalidate(appScopedRulesProvider(packageName));
   }
 
-  /// 删除一条规则。
   Future<void> delete(String packageName, MockRule rule) async {
     final repository = _repository;
     final id = int.tryParse(rule.id);
@@ -118,7 +104,7 @@ class AppScopedRulesController {
     _ref.invalidate(appScopedRulesProvider(packageName));
   }
 
-  /// 切换「默认拦截全部外联」，返回新状态。
+  /// Toggles "block all outbound" and returns the new state.
   Future<bool> setFullBlock(String packageName, bool enabled) async {
     final repository = _repository;
     if (repository == null) return false;

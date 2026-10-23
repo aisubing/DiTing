@@ -1,13 +1,5 @@
-/// 配置档案域的演示状态：档案网格、自定义配置的六个子表、扩展模式。
-///
-/// 为什么状态放在 provider 而不是页面 `State`：档案网格与每个子页面（节点、
-/// 组、规则…）要跨路由共享同一份数据，且从子页面返回网格时不能让改动跟着
-/// 页面一起消失。演示版没有数据库，provider 就是唯一的持久层。
-///
-/// 文件按用途拆成三个 part（AGENTS.md 的 550 行上限）：
-/// - 本文件：档案网格与节点；
-/// - `profiles_providers_custom.dart`：代理组、规则、代理/规则提供者；
-/// - `profiles_providers_extend.dart`：拨号器、扩展模式、脚本、匹配目标、追加规则。
+/// Demo state for the profile domain; providers rather than page `State` so every sub page shares
+/// one copy.
 library;
 
 import 'dart:async';
@@ -18,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 part 'profiles_providers_custom.dart';
 part 'profiles_providers_extend.dart';
 
-/// 档案网格的状态。
 class ProfilesState {
   const ProfilesState({
     required this.profiles,
@@ -29,13 +20,13 @@ class ProfilesState {
 
   final List<MockProfile> profiles;
 
-  /// 当前生效的档案；点卡片就是切换它。
+  /// Active profile; tapping a card switches it.
   final String? currentId;
 
-  /// 正在拉取的档案（进度条与禁用态都看这个集合）。
+  /// Profiles being fetched; drives both the progress bar and the disabled state.
   final Set<String> updatingIds;
 
-  /// 长按进入的多选集合；非空时顶栏换成选择工具栏。
+  /// Long-press selection; a non-empty set turns the top bar into a selection bar.
   final Set<String> selection;
 
   bool get isSelecting => selection.isNotEmpty;
@@ -64,7 +55,7 @@ class ProfilesState {
   }
 }
 
-/// 网格排序方式（顶栏「排序」菜单）。
+/// Grid sort order (the "sort" menu in the top bar).
 enum ProfileSort {
   name('按名称'),
   updatedAt('按更新时间'),
@@ -75,11 +66,6 @@ enum ProfileSort {
   final String label;
 }
 
-/// 档案网格：增删改、选择、排序、下载进度都在这里。
-///
-/// 下载进度用定时器模拟：演示版没有真实订阅可拉，但进度条的中间态（部分进度、
-/// 波浪头、更新完成后时间戳变化）正是要验证的东西，直接给个静态 62% 看不出
-/// 它会不会动。
 class ProfilesNotifier extends Notifier<ProfilesState> {
   final _timers = <String, Timer>{};
   var _sequence = 0;
@@ -102,7 +88,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     state = state.copyWith(currentId: id);
   }
 
-  /// 长按进入多选；已选中则再点一次取消。
+  /// Long-press toggles multi-select.
   void toggleSelection(String id) {
     final next = {...state.selection};
     if (!next.add(id)) {
@@ -124,7 +110,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     state = state.copyWith(selection: const {});
   }
 
-  /// 删除多选中的档案；当前档案被删掉时自动落到剩下的第一条。
+  /// Deletes the selection; deleting the active one falls back to the first remaining.
   void deleteSelected() {
     final ids = state.selection;
     if (ids.isEmpty) {
@@ -160,7 +146,6 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     );
   }
 
-  /// 拖拽重排后整体替换顺序。
   void reorder(int oldIndex, int newIndex) {
     if (oldIndex == newIndex) {
       return;
@@ -178,7 +163,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     final profiles = [...state.profiles];
     profiles.sort(switch (sort) {
       ProfileSort.name => (a, b) => a.name.compareTo(b.name),
-      // 更新时间是人类可读字符串，只能按预设顺序取序号；真实实现按时间戳排。
+      // The timestamp is a human-readable string, so rank by preset order.
       ProfileSort.updatedAt => (a, b) => _updatedRank(
         a,
       ).compareTo(_updatedRank(b)),
@@ -188,7 +173,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
   }
 
   int _updatedRank(MockProfile profile) {
-    // 「正在更新」永远排最前，其次是「N 分钟前」，最后是绝对时间。
+    // "Updating" ranks first, then "N minutes ago", then absolute timestamps.
     if (profile.isDownloading) {
       return -1;
     }
@@ -204,7 +189,6 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     return 3;
   }
 
-  /// 新增档案，返回新档案的 id。
   String add({
     required String name,
     required ProfileKind kind,
@@ -235,7 +219,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     return id;
   }
 
-  /// 编辑页保存：返回 false 表示名称与现有档案重名。
+  /// Saves the edit page; false means the name duplicates an existing profile.
   bool update(
     String id, {
     required String name,
@@ -277,7 +261,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     );
   }
 
-  /// 拉取远程档案：进度条从 0 走到 1，走完把更新时间改成「刚刚」。
+  /// Fetches a remote profile: progress runs 0 to 1, then the timestamp is "just now".
   void startUpdate(String id) {
     if (state.updatingIds.contains(id)) {
       return;
@@ -299,7 +283,7 @@ class ProfilesNotifier extends Notifier<ProfilesState> {
     var step = 0;
     _timers[id] = Timer.periodic(const Duration(milliseconds: 140), (timer) {
       step++;
-      // 前几秒慢、中间快：真实下载的进度条也不是匀速的。
+      // Slow at first, fast in the middle: real download progress is not linear.
       final progress = step < 4 ? step * 0.06 : step * 0.13;
       if (progress >= 1) {
         timer.cancel();
@@ -365,15 +349,13 @@ final profilesProvider = NotifierProvider<ProfilesNotifier, ProfilesState>(
   ProfilesNotifier.new,
 );
 
-/// 当前档案的只读视图；顶栏与编辑页都只看它，换选中不会重建整个网格。
+/// Read-only active profile, so switching selection does not rebuild the whole grid.
 final currentProfileProvider = Provider<MockProfile?>(
   (ref) => ref.watch(profilesProvider.select((state) => state.current)),
 );
 
-/// 多选自建节点：[1100] 上游的 `itemsProvider`。
-///
-/// 只存 id 集合而不是整条记录：列表随时可能因为搜索/重排变化，存记录会让
-/// 「选中项」指向一份过期副本。
+/// Multi-select for custom nodes; only ids are stored, since records would go stale with search and
+/// reordering.
 class ProxySelectionNotifier extends Notifier<Set<String>> {
   @override
   Set<String> build() => const {};
@@ -398,14 +380,13 @@ final proxySelectionProvider =
       ProxySelectionNotifier.new,
     );
 
-/// 自定义节点表。
 class CustomProxiesNotifier extends Notifier<List<MockProxy>> {
   var _sequence = 0;
 
   @override
   List<MockProxy> build() => [...mockProxies];
 
-  /// 新增或替换；返回 false 表示名称重复。
+  /// Adds or replaces a node; false means the name is duplicated.
   bool put(MockProxy proxy) {
     final exists = state.any(
       (item) => item.id != proxy.id && item.name == proxy.name,
@@ -467,7 +448,7 @@ class CustomProxiesNotifier extends Notifier<List<MockProxy>> {
     state = next;
   }
 
-  /// 批量编辑：把多选节点的端口一起改掉（上游批量编辑里最常用的一项）。
+  /// Batch edit: sets the port of every selected node.
   void setPort(Set<String> ids, int port) {
     state = [
       for (final proxy in state)
@@ -475,7 +456,7 @@ class CustomProxiesNotifier extends Notifier<List<MockProxy>> {
     ];
   }
 
-  /// 批量编辑：把多选节点的协议一起改掉。
+  /// Batch edit: sets the protocol of every selected node.
   void setProtocol(Set<String> ids, ProxyProtocol protocol) {
     state = [
       for (final proxy in state)
@@ -509,7 +490,7 @@ class CustomProxiesNotifier extends Notifier<List<MockProxy>> {
     ];
   }
 
-  /// 快速编辑保存：整份替换（文本编辑器的语义就是「这段文本就是全部」）。
+  /// Quick-edit save: replaces everything, since the text is the whole document.
   void replaceAll(List<MockProxy> proxies) => state = [...proxies];
 }
 

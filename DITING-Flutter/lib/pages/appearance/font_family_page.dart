@@ -1,13 +1,4 @@
-/// 字体设置页（上游 `views/font_family.dart`，194 行）。
-///
-/// 上游用平台通道读系统字体表，逐帧把每个名字换成它自己的字族——第一帧用
-/// 默认字体渲染、随后逐个切换，因为一次给几十个家庭加载字体卡主线程。演示层
-/// 不接平台通道，改成「进页面时异步加载（`Future.delayed`）+ 骨架」，同样保留
-/// 逐项延迟上字体的效果，但来源换成 `mock_forms.dart` 的静态表。
-///
-/// **这一页是「字体设置」，不是单纯的字体族选择**：字号滑杆从外观设置页搬到了
-/// 这里的二级页（`/font-size`），标题也随之从「字体族」改成「字体设置」。
-/// 外观设置页只剩一个「字体」入口。
+/// Font settings page (upstream `views/font_family.dart`).
 library;
 
 import 'dart:async';
@@ -22,7 +13,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 字体设置页：字号入口 + 字体族选择。
 class FontFamilyPage extends ConsumerStatefulWidget {
   const FontFamilyPage({super.key});
 
@@ -31,10 +21,10 @@ class FontFamilyPage extends ConsumerStatefulWidget {
 }
 
 class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
-  /// `null` 表示仍在「加载」；空列表表示真的没有可选字体。
+  /// `null` means still loading; an empty list means no fonts are available.
   List<MockFontFamily>? _families;
 
-  /// 已经能用自己的字族渲染的条目。逐帧放行，避免一屏同时加载全部字体。
+  /// Items already rendered in their own family, released one at a time.
   final _shown = <String>{};
 
   Timer? _ticker;
@@ -60,7 +50,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
     _revealNext();
   }
 
-  /// 每 90ms 放行一个条目；全部放行后停表。
+  /// Releases one item every 90 ms and stops once all are released.
   void _revealNext() {
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(milliseconds: 90), (timer) {
@@ -99,8 +89,8 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
           : PageBody(
               dockSpacer: false,
               children: [
-                // 字号入口：滑杆搬进 `/font-size` 二级页，这里只留一行入口，
-                // 副标题直接显示当前档位，不必点进去才知道。
+                // Font size entry: the slider lives in `/font-size`, so the
+                // subtitle shows the current scale here.
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: CommonCard(
@@ -165,7 +155,6 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
   }
 }
 
-/// 加载中的骨架：一行页首 + 六行列表。
 class _FontSkeleton extends StatelessWidget {
   const _FontSkeleton();
 
@@ -191,7 +180,6 @@ class _FontSkeleton extends StatelessWidget {
   }
 }
 
-/// 页首：用当前选中的字族渲染一段示例文字。
 class _PreviewHero extends StatelessWidget {
   const _PreviewHero({required this.family, required this.label});
 
@@ -250,7 +238,6 @@ class _PreviewHero extends StatelessWidget {
   }
 }
 
-/// 一行字体：名字用它自己的字族渲染，右侧是选中标记。
 class _FontRow extends StatelessWidget {
   const _FontRow({
     required this.family,
@@ -262,7 +249,6 @@ class _FontRow extends StatelessWidget {
   final MockFontFamily family;
   final bool selected;
 
-  /// 是否已经可以换成自己的字族渲染。
   final bool preview;
 
   final VoidCallback onTap;

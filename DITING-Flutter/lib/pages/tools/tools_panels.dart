@@ -1,9 +1,7 @@
 part of 'tools_page.dart';
 
-/// 面板共用的输入行外框。
-///
-/// `FilledInputTheme` 而不是裸 `TextField`：设计系统里独立出现的输入框统一是填充
-/// 圆角，裸框会退回 Material 默认的描边样式，和卡片叠在一起很突兀。
+/// Shared input field wrapper for the panels. `FilledInputTheme` because a bare `TextField`
+/// falls back to the outlined Material default, which clashes with the cards.
 class _ToolField extends StatelessWidget {
   const _ToolField({
     required this.controller,
@@ -19,8 +17,8 @@ class _ToolField extends StatelessWidget {
   final Glyph glyph;
   final ValueChanged<String>? onSubmitted;
 
-  /// 需要在输入过程中就同步到 provider 的字段（例如测速域名要落盘）用这个；
-  /// 只在提交时读一次的字段可以省掉。
+  /// For fields that sync to the provider while typing (for example a persisted speed-test
+  /// domain); fields read only on submit can omit it.
   final ValueChanged<String>? onChanged;
   final bool enabled;
 
@@ -43,10 +41,8 @@ class _ToolField extends StatelessWidget {
   }
 }
 
-/// 面板共用的「走隧道」开关行。
-///
-/// 三个工具各有一个独立开关，落盘在 `network_tools_settings`（键名照抄旧版
-/// `NetworkToolsSettingsStore`）。默认关 = 走物理网络。
+/// Shared "via tunnel" switch row. Each tool has its own flag in `network_tools_settings` (keys
+/// copied from the legacy `NetworkToolsSettingsStore`); off means the physical network is used.
 class _ViaTunnelRow extends ConsumerWidget {
   const _ViaTunnelRow({
     required this.storageKey,
@@ -76,7 +72,7 @@ class _ViaTunnelRow extends ConsumerWidget {
   }
 }
 
-/// 面板共用的提示条：失败态、fallback 说明、输入错误都走它。
+/// Shared notice bar for failures, fallback notes and input errors.
 class _ToolNotice extends StatelessWidget {
   const _ToolNotice({
     required this.text,
@@ -115,7 +111,6 @@ class _ToolNotice extends StatelessWidget {
   }
 }
 
-/// 面板共用的「结果卡片 + 组脚」。
 class _ToolSection extends StatelessWidget {
   const _ToolSection({required this.rows, this.footer});
 
@@ -143,7 +138,7 @@ class _ToolSection extends StatelessWidget {
   }
 }
 
-/// 面板共用的执行按钮行：忙碌态由 [running] 决定，禁用而不是隐藏。
+/// Shared action row; [running] disables the button rather than hiding it.
 class _RunButton extends StatelessWidget {
   const _RunButton({
     required this.glyph,
@@ -172,6 +167,5 @@ class _RunButton extends StatelessWidget {
   }
 }
 
-/// 面板共用的结果格式化：`1.2 ms` / `—`。
 String _msText(double? value) =>
     value == null ? '—' : '${value.toStringAsFixed(1)} ms';

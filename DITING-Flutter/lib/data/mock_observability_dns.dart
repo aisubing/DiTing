@@ -1,6 +1,6 @@
 part of 'mock_observability.dart';
 
-/// DNS 记录类型。展示一律用 [label]，不要插值枚举名。
+/// DNS record type; render [label], not the enum name.
 enum DnsRecordType {
   a('A'),
   aaaa('AAAA'),
@@ -13,7 +13,6 @@ enum DnsRecordType {
   final String label;
 }
 
-/// 一次 DNS 查询的结果。
 enum DnsOutcome {
   ok('成功'),
   cached('缓存命中'),
@@ -25,14 +24,12 @@ enum DnsOutcome {
 
   final String label;
 
-  /// 失败态：列表里用 error 色 + 警告图标，而不是普通结果的灰字。
   bool get isFailure =>
       this == DnsOutcome.servfail ||
       this == DnsOutcome.nxdomain ||
       this == DnsOutcome.timeout;
 }
 
-/// 一条 DNS 查询记录。
 class MockDnsQuery {
   const MockDnsQuery({
     required this.id,
@@ -55,14 +52,11 @@ class MockDnsQuery {
   final DnsOutcome outcome;
   final int latencyMs;
 
-  /// 实际应答的上游（并发竞速时可能不是首选上游）。
   final String source;
   final int ttlSeconds;
 
-  /// 应答记录；失败查询为空。
   final List<String> answers;
 
-  /// 查询链路：发起 → 缓存 → 上游 → 应答。
   final List<String> hops;
   final String? error;
 
@@ -305,7 +299,6 @@ const _dnsRows = <_DnsRow>[
   ),
 ];
 
-/// DNS 查询记录（时间倒序，含 6 条失败：超时 / SERVFAIL / NXDOMAIN）。
 final mockDnsQueries = <MockDnsQuery>[
   for (final (index, row) in _dnsRows.indexed)
     MockDnsQuery(
@@ -337,10 +330,7 @@ final mockDnsQueries = <MockDnsQuery>[
     ),
 ];
 
-/// IP 质量来源的一条结果。
-///
-/// 名字带 `Observed` 前缀：`mock_forms.dart` 里已有一个 IP 质量演示模型，两个
-/// 库同时被引用时不至于撞名。
+/// One IP source result; `Observed` avoids the `mock_forms` name clash.
 class MockObservedIpSource {
   const MockObservedIpSource({
     required this.name,
@@ -351,13 +341,11 @@ class MockObservedIpSource {
 
   final String name;
 
-  /// 命中 / 超时 / 限流 / 失败。
   final String status;
   final String? detail;
   final int? latencyMs;
 }
 
-/// IP 质量快照（DNS 页「IP 质量」入口的演示浮层）。
 class MockObservedIpQuality {
   const MockObservedIpQuality({
     required this.ip,
@@ -371,10 +359,8 @@ class MockObservedIpQuality {
 
   final String ip;
 
-  /// 住宅 / 移动 / 商业 / 机房。
   final String ipType;
 
-  /// 优秀 / 一般 / 风险。
   final String level;
   final String organization;
   final String asn;
@@ -382,8 +368,6 @@ class MockObservedIpQuality {
   final List<MockObservedIpSource> sources;
 }
 
-/// DNS 页浮层用的演示快照：故意给出「机房 + 风险」，这样等级色与来源失败都
-/// 能在一次演示里同时看到。
 const mockObservedIpQuality = MockObservedIpQuality(
   ip: '203.0.113.24',
   ipType: '机房',

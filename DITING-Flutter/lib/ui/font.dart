@@ -3,8 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 enum _HanVariant { simplified, traditional, japanese, korean }
 
-// The system fallback picks Han glyph forms by the UI locale, which draws
-// Chinese proxy names with Japanese forms under an English UI on Windows.
+// The system fallback picks Han forms by UI locale, so Chinese names draw with Japanese forms.
 const _hanFamilies = <TargetPlatform, Map<_HanVariant, List<String>>>{
   TargetPlatform.windows: {
     _HanVariant.simplified: ['Microsoft YaHei UI'],

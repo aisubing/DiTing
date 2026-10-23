@@ -5,7 +5,6 @@ import 'package:diting/ui/context.dart';
 import 'package:diting/ui/shape.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// A pulsing bar that holds the place of one line of [style] text.
 class SkeletonText extends StatelessWidget {
   const SkeletonText({super.key, required this.width, this.style});
 
@@ -38,7 +37,6 @@ class SkeletonText extends StatelessWidget {
   }
 }
 
-/// A pulsing pill that holds the place of a block of a known size.
 class SkeletonPill extends StatefulWidget {
   const SkeletonPill({super.key, required this.width, required this.height});
 
@@ -59,8 +57,7 @@ class _SkeletonPillState extends State<SkeletonPill>
   @override
   void initState() {
     super.initState();
-    // Starting from the wall clock keeps bars that appear at different times
-    // pulsing in step.
+    // Starting from the wall clock keeps bars pulsing in step.
     _controller = AnimationController(
       vsync: this,
       duration: _period,

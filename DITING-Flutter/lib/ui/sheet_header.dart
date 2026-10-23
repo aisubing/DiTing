@@ -35,8 +35,6 @@ class SheetDragHandle extends StatelessWidget {
   }
 }
 
-/// A drag handle, or its space, over [appBar], together exactly
-/// [sheetAppBarHeight] tall.
 class SheetToolBar extends StatelessWidget {
   const SheetToolBar({super.key, required this.appBar, this.dragHandle = true});
 
@@ -61,8 +59,6 @@ class SheetToolBar extends StatelessWidget {
   }
 }
 
-/// Fades the surface behind [child] toward its foot so content reads through,
-/// easing out over [overhang] past the foot so the fade shows no edge.
 class FloatingHeader extends StatelessWidget {
   const FloatingHeader({
     super.key,
@@ -127,8 +123,6 @@ class FloatingHeader extends StatelessWidget {
   }
 }
 
-/// Floats [header] over [body], fading it out so content reads through it
-/// as it scrolls past; [footer] sits on its own surface.
 class FloatingHeaderBody extends StatelessWidget {
   const FloatingHeaderBody({
     super.key,
@@ -174,8 +168,7 @@ class FloatingHeaderBody extends StatelessWidget {
   }
 }
 
-/// Holds its child clear of the part of the sheet that hangs below the screen
-/// while the sheet is dragged below its shortest detent.
+/// Holds its child clear of the part of the sheet that hangs below the screen.
 class SheetOverhangLift extends SingleChildRenderObjectWidget {
   const SheetOverhangLift({super.key, super.child});
 

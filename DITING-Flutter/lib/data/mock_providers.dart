@@ -1,6 +1,5 @@
 part of 'mock_data.dart';
 
-/// DNS 服务商协议。
 enum ProviderProtocol {
   dns('DNS'),
   doh('DoH'),
@@ -11,7 +10,6 @@ enum ProviderProtocol {
   final String label;
 }
 
-/// 解析服务商。
 class MockProvider {
   const MockProvider({
     required this.id,
@@ -29,7 +27,7 @@ class MockProvider {
   final String address;
   final int latencyMs;
 
-  /// 内置服务商不可编辑/删除（上游 `isPreset`）。
+  /// Built-in providers cannot be edited or deleted.
   final bool isPreset;
 
   final bool isEnabled;
@@ -85,7 +83,6 @@ const mockProviders = <MockProvider>[
   ),
 ];
 
-/// 规则种类：黑 / 白 / 覆写。
 enum RuleKind {
   block('黑名单', '拦截匹配的域名', 'rules'),
   allow('白名单', '放行匹配的域名', 'checkCircle'),
@@ -96,11 +93,10 @@ enum RuleKind {
   final String title;
   final String summary;
 
-  /// 与 `AppGlyphs` 常量同名，由页面侧映射成 Glyph。
+  /// Same names as `AppGlyphs` constants; the page maps them to a Glyph.
   final String glyphName;
 }
 
-/// 规则来源。
 enum RuleSource {
   user('用户自定义'),
   subscription('规则订阅'),
@@ -111,7 +107,6 @@ enum RuleSource {
   final String label;
 }
 
-/// 一条规则。
 class MockRule {
   const MockRule({
     required this.id,
@@ -136,19 +131,13 @@ class MockRule {
   final String? group;
   final String? subscriptionName;
 
-  /// 覆写规则的目标值（IPv4 / IPv6 / CNAME）。
   final String? target;
 
-  /// 应用作用域：`block_rule` / `allow_rule` 的 `appScope` 列，`|` 分隔的包名
-  /// 列表。为空表示这是一条**全局**规则。
-  ///
-  /// 这个字段必须一路传到引擎：1.4.3 把带 `appScope` 的规则写进规则快照的
-  /// `appRules[pkg].block/important`，**而不是** `globalBlock`。若在读取时丢掉
-  /// 它，一条本该只拦某个 app 的规则会变成拦所有 app——这既是功能缺失，也是
-  /// 把用户配置放大成全局拦截的危险默认。
+  /// `appScope` column, a `~`-separated package list, empty for global. Must reach the engine as
+  /// `appRules[pkg].block`, never `globalBlock`.
   final String? appScope;
 
-  /// `~` 取反的应用排除规则（`appInverted`）；`appScope` 里的包名从拦截中排除。
+  /// Inverted app exclusion: packages in `appScope` are never blocked.
   final bool appInverted;
 
   MockRule copyWith({bool? enabled, bool? important}) {
@@ -200,7 +189,6 @@ const _rewritePatterns = <(String, String)>[
   ('api.example.com', '192.168.1.20'),
 ];
 
-/// 黑名单：12 条自定义 + 3 条订阅 + 3 条预设。
 final mockBlockRules = <MockRule>[
   for (var i = 0; i < _blockPatterns.length; i++)
     MockRule(
@@ -219,7 +207,6 @@ final mockBlockRules = <MockRule>[
     ),
 ];
 
-/// 白名单：6 条。
 final mockAllowRules = <MockRule>[
   for (var i = 0; i < _allowPatterns.length; i++)
     MockRule(
@@ -232,7 +219,6 @@ final mockAllowRules = <MockRule>[
     ),
 ];
 
-/// 覆写：5 条。
 final mockRewriteRules = <MockRule>[
   for (var i = 0; i < _rewritePatterns.length; i++)
     MockRule(
@@ -246,7 +232,6 @@ final mockRewriteRules = <MockRule>[
     ),
 ];
 
-/// 按种类取规则表。
 List<MockRule> mockRulesOf(RuleKind kind) => switch (kind) {
   RuleKind.block => mockBlockRules,
   RuleKind.allow => mockAllowRules,

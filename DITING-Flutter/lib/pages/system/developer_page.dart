@@ -1,20 +1,4 @@
-/// 开发者选项聚合页。
-///
-/// **这一页在 1.4.3 里不存在**：它是本轮的「保留项入口」。用户明确要求保留
-/// 图标集 / UA / 按需连接 / 活动连接 / 资源更新 / WebDAV / 开发者 / 扫码 /
-/// IP 质量 / 编辑器 / 字体 / 纯黑 / 字号 / 液态玻璃 / Tab 动画 / 底栏样式 /
-/// 组件画廊 / 表单演示页 这些页面，但它们大多没有旧版对应菜单。直接塞回设置页
-/// 会破坏「旧版五组六行」的验收基线，因此统一收进本页，入口是设置页顶栏的
-/// 一个扳手图标（旧版也没有这一颗按钮，是本轮唯一新增的可点元素）。
-///
-/// 组织原则：
-/// - 每一行都指向一个真实存在、可构建的路由；**没有入口的页面不算保留**，所以
-///   图标集 / User-Agent / 按需连接在一页里各占一行，而不是只在副标题里提一句；
-/// - 「纯黑 / 字号 / 底栏样式 / tab 动画 / Liquid 玻璃」在旧版与新版的落点都是
-///   外观设置页里的**内联控件**，不是独立页；这里照实写成「在外观设置内」，
-///   而不是伪造五个并不存在的子页；
-/// - 实验动作保留原有总开关与二次确认语义；
-/// - 页脚如实写明这些页面不属于旧版界面，避免把「保留」误读成「旧版就有」。
+/// Developer options hub, which has no 1.4.3 counterpart.
 library;
 
 import 'package:diting/data/mock_system.dart';
@@ -30,7 +14,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 开发者选项聚合页。
 class DeveloperPage extends ConsumerWidget {
   const DeveloperPage({super.key});
 
@@ -74,10 +57,8 @@ class DeveloperPage extends ConsumerWidget {
     final enabled = ref.watch(developerModeProvider);
     return CommonScaffold(
       title: '开发者选项',
-      // 这一页刻意**不用** `PageBody`（懒构建的 ListView）：它是一张目录页，
-      // 三十来行轻量条目，滚动可视区外的入口如果没被构建，「保留项在哪」就
-      // 只能靠用户自己翻——无障碍树、搜索和无 instrument 的截图审核都会漏。
-      // 一次性建完的代价可以忽略，换来的是整页入口同时存在。
+      // Avoids `PageBody` (a lazy ListView): this is a directory, and never-built entries stay
+      // invisible to the a11y tree and screenshot review. Building them all is cheap.
       body: AppBarClearance(
         child: SingleChildScrollView(
           child: Column(
@@ -138,9 +119,8 @@ class DeveloperPage extends ConsumerWidget {
                     glyph: AppGlyphs.cloudSync,
                     title: 'WebDAV 云同步',
                     subtitle: '把备份真实上传到自建的 WebDAV 服务',
-                    // 旧版的 WebDAV 只是备份页里的一张表单；本轮它成了「备份与迁移」
-                    // 页尾的子页，这里直接指向那张表单——落在一层目录上再让用户自己
-                    // 找第二层，等于把入口做丢。
+                    // The WebDAV form is now a sub page of "backup and migration", so this
+                    // row points straight at it instead of adding a directory hop.
                     route: HubPaths.configTransferWebdav,
                   ),
                 ],
@@ -244,9 +224,7 @@ class DeveloperPage extends ConsumerWidget {
   }
 }
 
-/// 开发者模式总开关卡：关闭时整块实验动作禁用（不是隐藏）。
-///
-/// 隐藏会让人以为功能没了；置灰能让用户看见「它被关闭了」，并且知道去哪打开。
+/// When off the actions are disabled, not hidden, so the user sees where to enable them.
 class _DeveloperModeCard extends ConsumerWidget {
   const _DeveloperModeCard();
 
@@ -325,7 +303,6 @@ class _DeveloperModeCard extends ConsumerWidget {
   }
 }
 
-/// 一条「跳到保留页」的入口行：图标 + 标题 + 一句说明 + 箭头。
 class _Entry extends StatelessWidget {
   const _Entry({
     required this.glyph,
@@ -351,7 +328,6 @@ class _Entry extends StatelessWidget {
   }
 }
 
-/// 一条实验动作：未解锁时整行禁用并降透明度。
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
     required this.action,

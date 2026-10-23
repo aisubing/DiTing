@@ -1,12 +1,8 @@
-/// Read access to the legacy `app_traffic_daily` table.
-///
-/// Rows are written natively, so this repository only reads. The aggregate
-/// projections (`min(date)`, `max(app_name)`) mirror the legacy DAO.
+/// Read access to the legacy `app_traffic_daily` table; rows are written natively.
 library;
 
 import 'package:sqflite/sqflite.dart';
 
-/// One row of `app_traffic_daily` (or one aggregated package across dates).
 class AppTrafficDaily {
   const AppTrafficDaily({
     required this.date,
@@ -17,8 +13,7 @@ class AppTrafficDaily {
     required this.updatedAt,
   });
 
-    /// `yyyy-MM-dd` in the local zone. For the range/history queries this is the
-    /// earliest date in the group.
+  /// `yyyy-MM-dd` in the local zone; the earliest date in the group for the aggregated queries.
   final String date;
   final String packageName;
   final String appName;
@@ -28,8 +23,7 @@ class AppTrafficDaily {
 
   int get totalBytes => txBytes + rxBytes;
 
-    /// Share of [total], as 0..1. Guards against a zero total while the list is
-    /// still empty.
+  /// Share of [total] as 0..1; 0 while the list is still empty.
   double shareOf(int total) => total <= 0 ? 0 : totalBytes / total;
 }
 
@@ -47,7 +41,7 @@ class AppTrafficRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-    /// Inclusive on both ends; comparing the `yyyy-MM-dd` strings compares dates.
+  /// Inclusive on both ends; comparing the `yyyy-MM-dd` strings compares dates.
   Future<List<AppTrafficDaily>> dateRange(
     String startDate,
     String endDate,
@@ -77,15 +71,11 @@ class AppTrafficRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-    /// Today's row per package.
   Future<List<AppTrafficDaily>> today() => byDate(todayKey());
 
-    /// The repository's only write: deletes every row and returns the count. The
-    /// caller asks for confirmation first.
   Future<int> clearAll() => _db.delete('app_traffic_daily');
 
-    /// `yyyy-MM-dd` in the local zone, matching the key the native ingest writes;
-    /// a UTC key would point at the wrong row for part of each day.
+  /// Local-zone `yyyy-MM-dd`, matching the native ingest key; a UTC key hits the wrong row.
   static String dateKey(DateTime time) {
     String two(int value) => value.toString().padLeft(2, '0');
     return '${time.year}-${two(time.month)}-${two(time.day)}';

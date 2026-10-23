@@ -1,32 +1,16 @@
-/// The real installed-app inventory, shared by every picker screen.
-///
-/// 1.4.3 enumerated applications through `PackageManager`
-/// (`InstalledAppPickerComponents.loadInstalledApps`); the migrated Manifest
-/// dropped `QUERY_ALL_PACKAGES`, so the Flutter port hardcoded `mockInstalledApps`
-/// / `mockPackages` and every picker offered apps that are not on the device.
-/// This layer puts the native list back behind one provider so the four picker
-/// screens cannot drift apart.
-///
-/// Failure policy: a missing plugin (widget tests, desktop hosts, a build without
-/// the bridge) or a platform error must degrade to an **empty list plus a
-/// readable message**. Throwing out of a `FutureProvider` would put every picker
-/// page into Riverpod's error state, whose default rendering is a red box — the
-/// user would see a crash instead of "no apps found".
+/// The installed-app inventory every picker shares; a platform error degrades to an empty list,
+/// never a throw.
 library;
 
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Overridden in `main()` with [MethodChannelInstalledAppsSource].
-///
-/// The default is [EmptyInstalledAppsSource] so tests and non-Android hosts get
-/// an honest "no apps" page instead of a `MissingPluginException`.
+/// Overridden in `main()`; the default gives an honest "no apps" page on non-Android hosts.
 final installedAppsSourceProvider = Provider<InstalledAppsSource>(
   (ref) => const EmptyInstalledAppsSource(),
 );
 
-/// Result of listing the device's apps: the list plus why it may be empty.
 class InstalledAppsSnapshot {
   const InstalledAppsSnapshot({required this.apps, this.error});
 
@@ -35,20 +19,14 @@ class InstalledAppsSnapshot {
   /// Sorted by label (`AppListSort.LABEL_ASC`, the 1.4.3 default).
   final List<InstalledApp> apps;
 
-  /// Non-null when enumeration failed. The list is then empty, and the picker
-  /// must show the reason instead of "no apps installed".
+  /// Non-null when enumeration failed; the picker shows the reason instead of "no apps".
   final String? error;
 
-  /// Fast membership test used by the outbound-proxy validator: "selected but
-  /// not installed" is a hard error there, and it must not scan the list per key
-  /// stroke.
+  /// Fast membership test for the outbound-proxy validator, which runs on every key stroke.
   Set<String> get packageNames => {for (final app in apps) app.packageName};
 }
 
-/// The device's installed apps, with a bumpable revision for manual refresh.
-///
-/// A fresh install of an app while a picker is open is rare enough that the page
-/// only reloads on demand (`installedAppsRevisionProvider`), not on a timer.
+/// Bumpable revision for manual refresh; an app installed while a picker is open is rare enough.
 class InstalledAppsRevision extends Notifier<int> {
   @override
   int build() => 0;
@@ -66,10 +44,8 @@ final installedAppsProvider = FutureProvider<InstalledAppsSnapshot>((
   final source = ref.watch(installedAppsSourceProvider);
   try {
     final apps = await source.list();
-    // `MethodChannelInstalledAppsSource` already sorts by label, but the
-    // contract in `InstalledAppsSnapshot` belongs to this provider: any other
-    // source (a fake, a future Room-backed one) must not be able to hand the
-    // pages a differently-ordered list.
+    // Sort here: ordering belongs to `InstalledAppsSnapshot`, so no source can hand pages an
+    // unordered list.
     return InstalledAppsSnapshot(
       apps: [...apps]..sort(AppListSort.labelAsc.compare),
     );
@@ -85,13 +61,8 @@ final installedAppListProvider = Provider<List<InstalledApp>?>((ref) {
   return ref.watch(installedAppsProvider).value?.apps;
 });
 
-/// Resolves package names to UIDs for whatever the engine needs to be handed.
-///
-/// The engine takes UIDs (`setBlockedUIDs`, `setMitmAllowedUIDs`), and an
-/// uninstalled package is **absent** from the result rather than mapped to -1,
-/// so callers drop it instead of feeding the engine an invalid UID. A missing
-/// channel yields an empty map — the same "nothing to apply" state as a device
-/// with no matching apps, and never an exception on a page-build path.
+/// Resolves package names to engine UIDs; uninstalled packages are absent rather than -1, so
+/// callers drop them.
 Future<Map<String, int>> resolveInstalledUids(
   InstalledAppsSource source,
   Iterable<String> packages,
@@ -110,11 +81,7 @@ String _describe(PlatformException error) {
   return message.isEmpty ? '读取应用列表失败（${error.code}）' : '读取应用列表失败：$message';
 }
 
-/// The `AppListFilter` of 1.4.3, in the enum's own declaration order.
-///
-/// `name` is the persisted form (`excluded_apps_filter` etc.), so a value that
-/// does not match any member must fall back to [user] — that is what
-/// `AppListFilter.entries.firstOrNull { it.name == stored } ?: USER` did.
+/// 1.4.3 `AppListFilter` in declaration order; an unknown `storageValue` falls back to [user].
 enum AppListFilter {
   all('ALL', '全部应用'),
   system('SYSTEM', '系统应用'),
@@ -139,10 +106,7 @@ enum AppListFilter {
   };
 }
 
-/// The `AppListSort` of 1.4.3 (`InstalledAppPickerComponents.kt`), same numerals.
-///
-/// Label comparisons use the lowercased label and then the package name, exactly
-/// like `compareBy { normalizedLabel }.thenBy { packageName }`.
+/// 1.4.3 `AppListSort` with the same storage values; labels compare lowercased, then by package.
 enum AppListSort {
   labelAsc('LABEL_ASC', '应用名称 A-Z'),
   labelDesc('LABEL_DESC', '应用名称 Z-A'),
@@ -173,8 +137,7 @@ enum AppListSort {
     if (verdict != 0) {
       return descending ? -verdict : verdict;
     }
-    // The tie-break stays ascending in both directions, matching 1.4.3's
-    // `compareByDescending { normalizedLabel }.thenBy { packageName }`.
+    // The tie-break stays ascending in both directions, as in 1.4.3.
     return a.packageName.compareTo(b.packageName);
   }
 
@@ -186,7 +149,7 @@ enum AppListSort {
   }
 }
 
-/// Query + filter + sort in one place, so every picker filters identically.
+/// Query, filter and sort in one place so every picker filters identically.
 List<InstalledApp> visibleInstalledApps({
   required List<InstalledApp> apps,
   required String query,

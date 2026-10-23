@@ -1,8 +1,4 @@
-/// IP 质量浮层（上游 `features/ip_quality/ip_quality_sheet.dart`，229 行）。
-///
-/// 上游是浮层而不是页面：它从首页/工具页的一个按钮弹出，看完即走。本仓路由表
-/// 里登记的是 `/ip-quality`，所以这里做成「页面形式打开同一个内容」，并把内容
-/// 本身抽成 `IpQualitySheet`，两种入口共用一份——浮层与整页的差别只在容器。
+/// IP quality (upstream `features/ip_quality/ip_quality_sheet.dart`).
 library;
 
 import 'package:diting/data/tools/ip_quality_checker.dart';
@@ -12,7 +8,7 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// IP 类型徽标的四个取值（上游 `IpType`）。
+/// The four IP type badge values (upstream `IpType`).
 enum IpType {
   residential('住宅', AppGlyphs.account),
   mobile('移动', AppGlyphs.devices),
@@ -25,7 +21,7 @@ enum IpType {
   final Glyph glyph;
 }
 
-/// IP 质量等级（上游 `IpQualityLevel`，三档配色与上游一致）。
+/// IP quality level (upstream `IpQualityLevel`, with matching three-tier colors).
 enum IpQualityLevel {
   good('优秀'),
   normal('一般'),
@@ -36,7 +32,7 @@ enum IpQualityLevel {
   final String label;
 }
 
-/// 单个来源的结果（上游 `IpQualitySourceStatus`）。
+/// Result of one source (upstream `IpQualitySourceStatus`).
 enum IpQualitySourceStatus {
   ok('命中'),
   noType('无类型'),
@@ -52,7 +48,7 @@ enum IpQualitySourceStatus {
   bool get isError => this != ok;
 }
 
-/// 解析数据层的字符串枚举；未知值按失败处理（数据与枚举不同步时别崩）。
+/// Parses a string enum; unknown values become failures instead of crashing.
 IpQualitySourceStatus _statusOf(String raw) => switch (raw) {
   '命中' => IpQualitySourceStatus.ok,
   '无类型' => IpQualitySourceStatus.noType,
@@ -75,7 +71,6 @@ IpQualityLevel _levelOf(String raw) => switch (raw) {
   _ => IpQualityLevel.risky,
 };
 
-/// IP 质量页（整页容器）。
 class IpQualityPage extends ConsumerStatefulWidget {
   const IpQualityPage({super.key});
 
@@ -87,7 +82,7 @@ class _IpQualityPageState extends ConsumerState<IpQualityPage> {
   @override
   void initState() {
     super.initState();
-    // 进页面就重测一次：出口 IP 可能已经变了，不重测的话用户看到的是上次结果。
+    // Re-probe on entry: the egress IP may have changed since the last run.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(ipQualityProvider.notifier).detect();
     });
@@ -120,10 +115,7 @@ class _IpQualityPageState extends ConsumerState<IpQualityPage> {
   }
 }
 
-/// IP 质量内容本体：地址 + 类型徽标 + 风险等级 + 来源列表。
-///
-/// 做成 `StatelessWidget` 而不是浮层函数，这样可以同时被页面与
-/// `showIpQualitySheet` 使用，且不依赖调用方的 `BuildContext` 生命周期。
+/// `StatelessWidget` so both the page and `showIpQualitySheet` can use it.
 class IpQualitySheet extends StatelessWidget {
   const IpQualitySheet({
     super.key,
@@ -133,7 +125,7 @@ class IpQualitySheet extends StatelessWidget {
     this.onRetry,
   });
 
-  /// 真实检测结果；`null` 表示还没成功检测过。
+  /// The real probe result; `null` means no successful probe yet.
   final IpQualityReport? report;
   final IpQualityStage stage;
   final String? error;
@@ -143,8 +135,8 @@ class IpQualitySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     if (report == null) {
-      // 没有报告时按阶段说话：检测中转圈、失败给原因与重试、未检测给提示。
-      // 不再像上一轮那样先把一份写死的「样例报告」摆在页面上。
+      // Without a report, speak per stage: spinner, reason and retry, or a hint. No
+      // hard-coded sample is shown.
       return _EmptyReport(
         stage: stage,
         error: error,
@@ -214,16 +206,15 @@ class IpQualitySheet extends StatelessWidget {
                   spacing: 8,
                   children: [
                     _TypeBadge(type: type),
-                    // ASN 由响应决定长度（`AS15169` 与空串都可能），给它一个上限并
-                    // 允许省略：`MetaChip` 本身不省略，真机上 `AS9808` 加长机构名
-                    // 会直接把整行撑出卡片（`RIGHT OVERFLOWED BY 51 PIXELS`）。
+                    // The ASN is capped and may ellipsize, otherwise a long org name
+                    // overflows the card (`RIGHT OVERFLOWED BY 51 PIXELS`).
                     if (current.asn.isNotEmpty)
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 120),
                         child: MetaChip(label: current.asn),
                       ),
-                    // 机构名必须 `Expanded`：`Spacer` 只能分配**剩余**空间，而
-                    // 未约束的 `Text` 会先按自身宽度占位，`Row` 于是溢出。
+                    // The org name must be `Expanded`: `Spacer` only distributes leftover
+                    // space, so an unconstrained `Text` overflows the `Row`.
                     Expanded(
                       child: Text(
                         current.organization,
@@ -277,10 +268,7 @@ class IpQualitySheet extends StatelessWidget {
   }
 }
 
-/// 还没有报告时的样子：按阶段说话，不摆一份写死的样例。
-///
-/// 上一轮页面一进来就渲染 `mockIpQualityReport`（`203.0.113.24` / `AS64500` /
-/// 「风险」），看起来像检测结果，其实是常量。现在没有真实数据就明说没有。
+/// Placeholder before any report exists; no constant sample is rendered.
 class _EmptyReport extends StatelessWidget {
   const _EmptyReport({required this.stage, this.error, this.onRetry});
 
@@ -356,7 +344,6 @@ class _EmptyReport extends StatelessWidget {
   }
 }
 
-/// IP 类型徽标。
 class _TypeBadge extends StatelessWidget {
   const _TypeBadge({required this.type});
 
@@ -392,7 +379,6 @@ class _TypeBadge extends StatelessWidget {
   }
 }
 
-/// 一个来源行：名称 + 延迟 + 状态徽标。
 class _SourceRow extends StatelessWidget {
   const _SourceRow({required this.source});
 
@@ -412,9 +398,8 @@ class _SourceRow extends StatelessWidget {
         color: color,
       ),
       title: Text(source.name),
-      // `Wrap` 而不是 `Row`：一条来源最多有四段文字（状态/判定/延迟/失败原因），
-      // 窄屏加上大字号会超出卡片宽度。`Row` 溢出时只是印一句调试条纹，用户看到的是
-      // 一行字被截断；`Wrap` 会换行，信息不会丢。
+      // `Wrap` rather than `Row`: four text segments overflow a `Row` on narrow screens
+      // with large text.
       subtitle: Wrap(
         spacing: 8,
         runSpacing: 2,
@@ -432,7 +417,7 @@ class _SourceRow extends StatelessWidget {
                 fontFamily: 'JetBrainsMono',
               ),
             ),
-          // 失败原因必须显示：只写「失败」用户无从判断是限流、地址错还是网络问题。
+          // The reason is shown: "failed" alone cannot tell rate limiting apart.
           if (detail != null && detail.isNotEmpty)
             Text(detail, style: context.listCaptionStyle),
         ],

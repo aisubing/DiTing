@@ -1,10 +1,7 @@
 part of 'traffic_page.dart';
 
-/// 一行应用流量：名称 + 包名 + 占比条 + 上下行字节数。
-///
-/// 占比条不用 `LinearProgressIndicator`：那个组件的轨道与指示条颜色由主题
-/// 接管，与卡片底色叠在一起几乎看不见；这里用两个 `DecoratedBox` 自绘，
-/// 高度与圆角都能和行高对齐。
+/// One app row: name, package, share bar, up/down bytes. The share bar is hand-drawn from
+/// two DecoratedBox widgets, since a LinearProgressIndicator vanishes on the card color.
 class AppTrafficRow extends StatelessWidget {
   const AppTrafficRow({
     super.key,
@@ -17,7 +14,8 @@ class AppTrafficRow extends StatelessWidget {
   final AppTrafficDaily row;
   final int total;
 
-  /// 当前排序字段。占比条跟着它变：按上传排序却画总量的条，条长与名次不一致。
+  /// Current sort field. The share bar follows it: sorting by upload while drawing
+  /// the total would put bar length and rank out of step.
   final TrafficSort sort;
   final VoidCallback onTap;
 
@@ -76,7 +74,6 @@ class AppTrafficRow extends StatelessWidget {
   }
 }
 
-/// 占比条：轨道铺满宽度，指示条按比例填充。
 class ShareBar extends StatelessWidget {
   const ShareBar({super.key, required this.share});
 
@@ -110,7 +107,7 @@ class ShareBar extends StatelessWidget {
   }
 }
 
-/// 单应用流量详情（旧版 `AppTrafficDetailDialog.kt`）。
+/// Per-app traffic detail (upstream AppTrafficDetailDialog.kt).
 class _AppTrafficDetailSheet extends StatelessWidget {
   const _AppTrafficDetailSheet({
     required this.row,
@@ -135,7 +132,7 @@ class _AppTrafficDetailSheet extends StatelessWidget {
     return CommonScaffold(
       title: row.appName.isEmpty ? row.packageName : row.appName,
       body: ListView(
-        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        // The sheet title floats over the body, so without this gap it covers line one.
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           Padding(
@@ -174,8 +171,8 @@ class _AppTrafficDetailSheet extends StatelessWidget {
                   ),
                   KeyValueRow(
                     label: '统计起始日',
-                    // `dateRange` / `allHistory` 的 `date` 是组内最早一天
-                    // （旧版 `min(date)`），不是「最近一次更新」。
+                    // For dateRange and allHistory, date is the earliest day in the group
+                    // (upstream min(date)), not the latest update.
                     value: row.date.isEmpty ? '—' : row.date,
                     monospace: true,
                   ),
@@ -213,7 +210,7 @@ class _AppTrafficDetailSheet extends StatelessWidget {
     );
   }
 
-  /// `updated_at` 是毫秒时间戳；按 `yyyy-MM-dd HH:mm` 显示。
+  /// updated_at is a millisecond timestamp, shown as `yyyy-MM-dd HH:mm`.
   static String _updatedAtLabel(int millis) {
     final time = DateTime.fromMillisecondsSinceEpoch(millis);
     String two(int value) => value.toString().padLeft(2, '0');
@@ -222,8 +219,7 @@ class _AppTrafficDetailSheet extends StatelessWidget {
   }
 }
 
-/// 归因说明面板（旧版 `TrafficAttributionDialog.kt`）：解释「为什么某个应用
-/// 算到了这些流量」，以及为什么这里的数字与内核的没有实时速率。
+/// Upstream TrafficAttributionDialog.kt: why this app is credited and why no live rate.
 class _AttributionSheet extends StatelessWidget {
   const _AttributionSheet();
 

@@ -2,11 +2,7 @@ import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 仪表盘取色。
-///
-/// 上游 `views/dashboard/style.dart:6-61`。与页面其它部分的区别是**多一层
-/// 明度**：仪表盘卡片自己带投影、内部还有 block/inset 两级嵌套，直接用
-/// `colorScheme.surface` 会让嵌套层糊在一起。
+/// Dashboard palette, after upstream views/dashboard/style.dart.
 class DashboardColors {
   const DashboardColors._({
     required this.page,
@@ -28,7 +24,7 @@ class DashboardColors {
       tone: SurfaceLevel.block.colorOf(colorScheme),
       tone2: SurfaceLevel.inset.colorOf(colorScheme),
       track: colorScheme.surfaceContainerHighest,
-      // 上行曲线用主色混 45% 卡片底色，与下载曲线区分又同属一个色族。
+      // Upload curve: primary mixed 45% with the card color, distinct but same family.
       series2: Color.alphaBlend(
         colorScheme.primary.withValues(alpha: 0.45),
         card,
@@ -48,11 +44,8 @@ class DashboardColors {
   final Color warn;
 }
 
-/// 阴影。
-///
-/// 上游注释特别强调：设计稿给的是 CSS `blur`，它是 Flutter `blurRadius` 的
-/// 两倍；同时 Flutter 把半径 r 转成 sigma = 0.577r + 0.5。直接照抄 CSS 值会
-/// 重三分之一，因此每个值都过一遍 [blur]。
+/// Elevation shadows. Design values are CSS `blur`, twice Flutter's blurRadius (Flutter
+/// maps radius r to sigma = 0.577r + 0.5), so every value goes through [blur].
 abstract final class DashboardShadows {
   static List<BoxShadow> e1(BuildContext context) =>
       context.colorScheme.brightness == Brightness.dark ? _e1Dark : _e1Light;
@@ -92,10 +85,7 @@ abstract final class DashboardShadows {
   static final _e2Dark = [_shadow(0x80, 2, 6), _shadow(0xB3, 32, 64, -12)];
 }
 
-/// 圆角。
-///
-/// 脱离 `AppCorner` 刻度：仪表盘卡片比应用内任何表面都高，圆角要更大才能
-/// 保持同样的视觉比例。
+/// Corner radii. Larger than AppCorner: the dashboard card sits above every other surface.
 abstract final class DashboardCorner {
   static const desktopCard = 32.0;
   static const mobileCard = 34.0;
@@ -105,7 +95,7 @@ abstract final class DashboardCorner {
   static const badge = 14.0;
 }
 
-/// 仪表盘文字角色。所有数字都用等宽（tabular）数字，否则速率跳动时整行左右抖。
+/// Dashboard text roles. All figures use tabular digits so rows do not jitter.
 abstract final class DashboardText {
   static TextStyle cardTitle(BuildContext context) => AppTextStyle.footnote
       .of(context, emphasized: true)
@@ -140,7 +130,6 @@ abstract final class DashboardText {
       AppTextStyle.subheadline.of(context, emphasized: true);
 }
 
-/// 卡片内边距随密度收紧。
 EdgeInsets dashboardCardPadding(DashboardDensity density) => switch (density) {
   DashboardDensity.standard => const EdgeInsets.symmetric(
     horizontal: 22,
@@ -156,22 +145,15 @@ EdgeInsets dashboardCardPadding(DashboardDensity density) => switch (density) {
   ),
 };
 
-/// 相邻两张仪表盘卡片之间的纵向间距。
-///
-/// 首页与日志仪表盘共用同一批卡片组件，间距也必须只有一个来源：卡片自身
-/// **不带**外边距（`DashboardCard` 只有内边距与阴影），间距一律由外层
-/// `Column(spacing:)` 给出。上游 `dashboard.dart` 的移动分支同样是
-/// `spacing: 12`。
-///
-/// 12 而不是更小：卡片的圆角是 34，阴影往下铺 12，间距小于阴影高度时相邻卡片
-/// 的投影会盖到下一张的圆角上，看起来像两张卡黏在一起。
+/// Vertical gap between dashboard cards; the gap comes from the enclosing
+/// Column(spacing:). 12 rather than less: the shadow drops 12px onto the next corner.
 const double dashboardCardGap = 12;
 
 double dashboardCardRadius(DashboardDensity density) => density.isDesktop
     ? DashboardCorner.desktopCard
     : DashboardCorner.mobileCard;
 
-/// 字节数 →「1.2 MB」。1000 进制，与流量页口径一致。
+/// Bytes to `1.2 MB`, base 1000 to match the traffic page.
 String dashboardTraffic(num bytes) {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   var value = bytes.toDouble();
@@ -184,7 +166,8 @@ String dashboardTraffic(num bytes) {
   return '$text ${units[unit]}';
 }
 
-/// 带千分位的计数；超过十万改用紧凑写法，避免撑破窄卡片。
+/// Count with thousands separators; above 100k switches to compact form so it
+/// does not overflow a narrow card.
 String dashboardCount(int count) {
   if (count >= 100000) {
     return '${(count / 1000).toStringAsFixed(0)}k';
@@ -200,6 +183,6 @@ String dashboardCount(int count) {
   return buffer.toString();
 }
 
-/// 速率文案：`12.3 KB/s`。
+/// Speed text, e.g. `12.3 KB/s`.
 String dashboardSpeed(num bytesPerSecond) =>
     '${dashboardTraffic(bytesPerSecond)}/s';

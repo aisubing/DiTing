@@ -1,15 +1,5 @@
-/// 仪表盘（首页）领域路由。
-///
-/// 1.4.3 的仪表盘是**一屏 + 编辑模式**（`lib/ui/dashboard/`），编辑模式不是独立
-/// 路由而是同屏状态。这里仍给它一条路由，理由是深链与测试都需要「不点两次就
-/// 进编辑态」的入口，而首页组件本身从路由参数里拿不到状态（`StatefulShellRoute`
-/// 的 branch 只按 location 匹配）。
-///
-/// 这条路由进入后会**立刻**跳回 `/`：它的作用是「设置一个开关再回首页」，
-/// 不是渲染一屏内容。所以它只有 `redirect`，没有 `builder`。
-///
-/// 上一轮这里还有 `/dashboard/profile`（配置档案详情浮层）。配置档案是 FlClash
-/// 的概念，1.4.3 没有对应物，随 `lib/pages/profiles/` 一并删除。
+/// Dashboard (home) routes. Editing is same-screen state, but a dedicated route gives deep
+/// links and tests a way into edit mode; it redirects straight back to `/`.
 library;
 
 import 'package:diting/state/dashboard_providers.dart';
@@ -21,15 +11,13 @@ import 'package:material_ui/material_ui.dart';
 abstract final class DashboardPaths {
   static const dashboard = '/';
 
-  /// 深链进编辑模式：设置开关后跳回首页。
+  /// Deep link that enters edit mode and returns to home.
   static const edit = '/dashboard/edit';
 }
 
-/// 仪表盘领域路由表。由 `lib/router.dart` 拼接。
-///
-/// 用 `redirect` 而不是 `builder`：`GoRouter` 的 redirect 在导航解析阶段执行，
-/// 此时 `ProviderScope` 已经在树上了，可以直接读容器改状态；而 `builder` 里
-/// 改状态会在 build 期触发 provider 更新，属于「build 期间产生副作用」。
+/// Dashboard routes, assembled by `lib/router.dart`. Uses `redirect` rather than `builder`:
+/// redirects run during navigation resolution, when `ProviderScope` is mounted, while
+/// mutating state in `builder` is a side effect during build.
 List<RouteBase> dashboardRoutes() => [
   GoRoute(
     path: DashboardPaths.edit,
@@ -41,11 +29,9 @@ List<RouteBase> dashboardRoutes() => [
   ),
 ];
 
-/// 在 redirect 阶段改 provider 状态。
-///
-/// `GoRouter` 的 redirect 回调拿不到 `WidgetRef`，只能靠 `ProviderScope.containerOf`
-/// 从 `BuildContext` 里取容器。取不到（例如在测试里没有 ProviderScope 祖先）时
-/// 静默跳过——导航仍应成功，只是不进编辑态。
+/// Sets the editing provider from a redirect. Redirect callbacks get no `WidgetRef`, so the
+/// container is read from the `BuildContext`; without a `ProviderScope` ancestor navigation
+/// still succeeds.
 void _setEditing(BuildContext context, bool value) {
   final container = ProviderScope.containerOf(context, listen: false);
   final notifier = container.read(dashboardEditingProvider.notifier);

@@ -7,8 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/// Persists the engine's batch DNS log JSON straight into the `dns_log` table,
-/// which the Flutter side also reads through sqflite.
+/// Writes the engine's batch DNS log JSON into `dns_log`, a table the Flutter side also reads
 object DnsLogWriter {
     const val DB_NORMAL = "diting_database"
     const val DB_EXPRESS = "diting_express"
@@ -58,8 +57,7 @@ object DnsLogWriter {
     private fun open(context: Context, databaseName: String): SQLiteDatabase? {
         val path = context.getDatabasePath(databaseName)
         if (!File(path.path).exists()) {
-            // No database yet on a fresh install; the Dart side creates the
-            // schema later, so skip instead of writing.
+            // No database yet on a fresh install; Dart creates the schema, so skip.
             return null
         }
         return runCatching {

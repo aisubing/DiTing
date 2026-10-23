@@ -1,10 +1,7 @@
 part of 'icon_sets_page.dart';
 
-/// 图标集预览：按网格铺开集内所有图标名。
-///
-/// 演示层不加载真实图片（图标集来自网络，且演示环境不联网），每一格用
-/// `iconTile` 字形占位、底下标注图标名。格子数量与排版是真实的：换成真图片
-/// 只需要把 [GlyphIcon] 换成 `Image.network`，布局不用动。
+/// Icon set preview: every name in a grid. Icon sets come from the network, so each cell
+/// shows an `iconTile` glyph placeholder with its name.
 Future<void> showIconSetPreview(BuildContext context, MockIconSet iconSet) =>
     showSheet<void>(
       context: context,
@@ -66,7 +63,6 @@ class _IconSetPreviewSheet extends StatelessWidget {
   }
 }
 
-/// 一个图标格：字形占位 + 图标名。
 class _IconTile extends StatelessWidget {
   const _IconTile({required this.name});
 

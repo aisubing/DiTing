@@ -1,4 +1,3 @@
-/// Dart side of `com.haoze.diting/dns_server`.
 library;
 
 import 'package:flutter/services.dart';

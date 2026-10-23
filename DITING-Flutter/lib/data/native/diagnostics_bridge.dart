@@ -1,22 +1,12 @@
-/// Dart side of `com.haoze.diting/diagnostics`: the network tools.
-///
-/// 1.4.3 implemented all four panels in Kotlin (`core/diagnostic/NetworkPingTool`,
-/// `NetworkTraceRouteTool`, `core/dns/DnsLatencyTester`, `NetworkInfoProbe`);
-/// the Flutter port degraded them to canned numbers. Executing `ping` /
-/// `traceroute` and opening sockets needs a native process, so they cannot be
-/// reimplemented in Dart — the results are passed back as plain maps.
-///
-/// All four panels intentionally bypass the tunnel: 1.4.3 added the app's own
-/// UID to `addDisallowedApplication`, so probes measure the physical network.
-/// `pingViaTunnel` / `tracerouteViaTunnel` / `dnsLookupViaTunnel` reproduce the
-/// per-tool escape hatches stored in `network_tools_settings`.
+/// Dart side of `com.haoze.diting/diagnostics`: probe results arrive as plain maps. Panels bypass
+/// the tunnel (this app's UID is in `addDisallowedApplication`) unless a `*ViaTunnel` flag
+/// reproduces a per-tool escape hatch.
 library;
 
 import 'package:flutter/services.dart';
 
 const diagnosticsChannelName = 'com.haoze.diting/diagnostics';
 
-/// One ICMP reply line (`NetworkPingTool.Reply`).
 class PingReply {
   const PingReply({
     required this.sequence,
@@ -40,7 +30,6 @@ class PingReply {
   );
 }
 
-/// Aggregate result of one `ping` run (`NetworkPingTool.Summary`).
 class PingSummary {
   const PingSummary({
     required this.target,
@@ -73,9 +62,8 @@ class PingSummary {
   final bool success;
   final String? message;
 
-  /// True when the system `ping` binary was unavailable and the probe fell back
-  /// to `InetAddress.isReachable` / TCP port timing. The UI must say so: the
-  /// numbers then measure a handshake, not ICMP echo.
+  /// True when the system `ping` binary was missing and the probe used `InetAddress.isReachable` or
+  /// TCP timing, so the numbers measure a handshake, not ICMP.
   final bool measuredWithFallback;
 
   static PingSummary fromMap(Map<Object?, Object?> map) {
@@ -104,7 +92,6 @@ class PingSummary {
   }
 }
 
-/// One traceroute hop (`NetworkTraceRouteTool.Hop`).
 class TraceHop {
   const TraceHop({
     required this.hop,
@@ -128,7 +115,6 @@ class TraceHop {
   );
 }
 
-/// Final state of one traceroute run (`NetworkTraceRouteTool.Progress`).
 class TraceResult {
   const TraceResult({
     required this.target,
@@ -163,7 +149,6 @@ class TraceResult {
   }
 }
 
-/// One DNS answer (`DnsLookupSection`).
 class DnsAnswer {
   const DnsAnswer({
     required this.recordType,
@@ -182,10 +167,8 @@ class DnsAnswer {
   );
 }
 
-/// Result of one manual DNS lookup.
-///
-/// `source` mirrors the legacy text: `upstream`, `rewrite`, `blocked`,
-/// `cache`, or `error`. Only `upstream` means the query reached a resolver.
+/// Result of one manual DNS lookup. `source` is `upstream`, `rewrite`, `blocked`, `cache` or
+/// `error`; only `upstream` means the query reached a resolver.
 class DnsLookupResult {
   const DnsLookupResult({
     required this.domain,
@@ -220,7 +203,6 @@ class DnsLookupResult {
   }
 }
 
-/// Physical-network facts (`NetworkInfoProbe`).
 class NetworkInfoSnapshot {
   const NetworkInfoSnapshot({
     required this.interfaceName,
@@ -238,11 +220,8 @@ class NetworkInfoSnapshot {
   final List<String> dnsServers;
   final String? gateway;
 
-  /// True when the OS reports the VPN as the active network, i.e. probes are
-  /// being routed into the tunnel.
   final bool vpnActive;
 
-  /// `Private DNS` hostname mode (`off` / `opportunistic` / `hostname`).
   final String privateDns;
 
   static NetworkInfoSnapshot fromMap(Map<Object?, Object?> map) {
@@ -263,38 +242,20 @@ class NetworkInfoSnapshot {
   }
 }
 
-/// Network diagnostics executed natively.
 abstract class DiagnosticsRunner {
-  /// [count] is clamped to 1–20 and [timeoutSeconds] per reply, as 1.4.3 did.
+  /// [count] is clamped to 1-20, [timeoutSeconds] applies per reply.
   Future<PingSummary> ping(
     String target, {
     int count = 4,
     int timeoutSeconds = 3,
   });
 
-  /// [maxHops] is clamped to 1–30. Hops are returned all at once; the legacy
-  /// progressive callback is not reproducible across a widget rebuild boundary,
-  /// and a traceroute finishes in seconds on mobile.
+  /// [maxHops] is clamped to 1-30. Hops come back all at once: a traceroute finishes in seconds on
+  /// mobile.
   Future<TraceResult> traceRoute(String target, {int maxHops = 30});
 
-  /// Resolves through the tunnel's own decision path
-  /// (`Engine.resolveDomain`) when [viaTunnel]; otherwise asks a specific
-  /// resolver.
-  ///
-  /// [server] names the resolver for the non-tunnel path, mirroring 1.4.3's
-  /// `DnsServerMode`:
-  ///
-  /// - `null` / empty — 系统：ask this device's own resolver
-  ///   (`InetAddress.getAllByName`), i.e. whatever the VPN or Wi-Fi handed us.
-  /// - an IP literal — 自定义：send a real A/AAAA query to that server over UDP.
-  ///
-  /// 1.4.3 offered both modes in `DnsLookupSection`（`DnsServerMode.SYSTEM` /
-  /// `CUSTOM` + 「自定义 DNS 服务器 IP」输入框）. The migrated `lookupDns` only
-  /// had `viaTunnel`, so 「自定义」 was lost — a real parity gap, since the point
-  /// of the tool is checking what a *specific* server answers.
-  ///
-  /// `viaTunnel` ignores [server]: the tunnel resolves through its own policy
-  /// path and never lets you pick a resolver.
+  /// Resolves through the tunnel's decision path when [viaTunnel], otherwise asks [server] over
+  /// UDP; a null or empty [server] means the device resolver, which [viaTunnel] ignores.
   Future<DnsLookupResult> lookupDns(
     String domain, {
     bool viaTunnel = false,
@@ -349,8 +310,8 @@ class MethodChannelDiagnosticsRunner implements DiagnosticsRunner {
       'domain': domain,
       'viaTunnel': viaTunnel,
       'ipv4': ipv4,
-      // 空串与 null 在原生侧等价（都表示「系统」）；显式传空串而不是省略参数，
-      // 免得原生侧区分「没传」和「传了空」这两种语义。
+      // Empty string and null both mean "system" natively; pass it explicitly so "absent" is never
+      // a separate case.
       'server': server ?? '',
     });
     return DnsLookupResult.fromMap(

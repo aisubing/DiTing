@@ -2,10 +2,7 @@
 
 part of 'navigation_dock.dart';
 
-/// Paints what lies under the lens in [color], magnified as the lens lifts,
-/// and the rest as it is, cut to the lens's own shape so a destination it
-/// passes over turns part by part. The content leans after the [parallax], in
-/// destinations, while layout and hit testing see it at rest.
+/// Paints what lies under the lens in [color], magnified as it lifts, cut to the lens shape.
 class _LensTint extends SingleChildRenderObjectWidget {
   const _LensTint({
     required this.part,
@@ -23,8 +20,7 @@ class _LensTint extends SingleChildRenderObjectWidget {
 
   final _LensPart part;
 
-  /// 是否按镜片位置着色。当前页不在底栏里（没有选中项）时传 false，避免
-  /// 停在 0 号位的镜片把 0 号项染成主色、读作「已选中」。
+  /// Whether to tint by lens position; false when no page is in the dock, so item 0 stays grey.
   final bool active;
   final _Spring lens;
   final double lensWidth;
@@ -296,8 +292,7 @@ class _RenderLensTint extends RenderProxyBox {
     if (child == null) {
       return;
     }
-    // 没有选中项时不按镜片着色：镜片停在 0 号位不动，照常着色会把 0 号项染成
-    // 主色、读作「已选中」。直接当普通素材画一遍即可。
+    // With no selection, skip the lens tint: the lens rests at index 0 and would read as selected.
     if (!_active) {
       _outside.layer = null;
       _inside.layer = null;
@@ -317,8 +312,7 @@ class _RenderLensTint extends RenderProxyBox {
     Rect moved(Matrix4? motion) =>
         motion == null ? bounds : MatrixUtils.transformRect(motion, bounds);
     final lensBounds = _lensBounds;
-    // The lens rests [_barPadding] past its destination, over the edges of
-    // the neighbours where nothing is drawn.
+    // The lens rests [_barPadding] past its destination, over the edges of the neighbours.
     final reached = Rect.fromLTRB(
       lensBounds.left + _barPadding,
       lensBounds.top,

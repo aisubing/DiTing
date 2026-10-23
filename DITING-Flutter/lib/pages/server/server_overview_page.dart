@@ -12,14 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 服务器模式「概览」Tab（上游 `server/ui/DnsHomeScreen.kt`，221 行）。
-///
-/// 上游这一屏是 LazyColumn 六个 item：电源 + 状态文字 / 当前上游 / 局域网接入 /
-/// 服务状态五项 / 底部说明。这里逐项对应，另把「切换工作模式」放回顶栏——它是
-/// 进这个模式的唯一出口，旧版同样把它放在概览页的 `actions` 里。
-///
-/// 状态源是 `serverStatusProvider`（五态）而不是首页的 `powerProvider`：两者
-/// 状态机相同但生命周期不同，服务器模式没有「启动失败」的自动复位语义。
+/// Server mode "overview" tab (upstream `server/ui/DnsHomeScreen.kt`): power plus status text,
+/// current upstream, LAN access, service stats and a footer, all from `serverStatusProvider`.
 class ServerOverviewPage extends ConsumerWidget {
   const ServerOverviewPage({
     super.key,
@@ -27,7 +21,6 @@ class ServerOverviewPage extends ConsumerWidget {
     required this.onOpenSettings,
   });
 
-  /// 跳到同壳的另外两个 Tab（上游 `onNavigateToServers`）。
   final VoidCallback onOpenUpstreams;
   final VoidCallback onOpenSettings;
 
@@ -74,8 +67,8 @@ class ServerOverviewPage extends ConsumerWidget {
           const SizedBox(height: 6),
           generateSection(
             title: '局域网接入',
-            // 端口只在启动时绑定：改完端口不重启，界面上的地址就是一个没人
-            // 监听的端口，局域网里的设备会直接超时。
+            // The port binds at startup only: changing it without a restart shows an
+            // address nobody listens on and LAN devices time out.
             footer:
                 '把同网段设备的 DNS 指向上面这个地址即可；'
                 '端口只在启动时绑定，改动后需要重启服务。',
@@ -104,8 +97,8 @@ class ServerOverviewPage extends ConsumerWidget {
                 onTap: localIpv4.isEmpty
                     ? null
                     : () async {
-                        // 真的写剪贴板再提示：只弹「已复制」而不写，用户会拿着
-                        // 空剪贴板去配置另一台设备。
+                        // Write the clipboard before reporting: a bare "copied" leaves the
+                        // user with an empty clipboard.
                         final address = '$localIpv4:$port';
                         await Clipboard.setData(ClipboardData(text: address));
                         if (!context.mounted) {
@@ -118,8 +111,8 @@ class ServerOverviewPage extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           const ListHeader(title: '服务状态'),
-          // 统计条直接放在 `PageBody` 里（不经 `generateSection` 包一层），
-          // 横向留白得自己给，否则数字两端贴住屏幕边沿。
+          // The stat strip sits directly in `PageBody` without `generateSection`, so it
+          // supplies its own horizontal padding.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: CommonCard(
@@ -139,9 +132,9 @@ class ServerOverviewPage extends ConsumerWidget {
                   ),
                   const StatItem(
                     label: '平均时延',
-                    // 旧版这一格读 `DnsModeStats.latencyMs`；迁移后原生状态快照
-                    // （`EngineStats.snapshot`）没有这个字段，所以固定显示破折号，
-                    // 不拿 0 或 mock 数字顶上——那会让用户以为服务「很快」。
+                    // The legacy version read `DnsModeStats.latencyMs`, which
+                    // `EngineStats.snapshot` lacks, so this
+                    // shows a dash rather than 0 or a mock number.
                     value: '--',
                     unit: 'ms',
                   ),
@@ -184,11 +177,8 @@ class ServerOverviewPage extends ConsumerWidget {
   }
 }
 
-/// 电源区：复用首页的 [HomePowerButton]，只覆写两个文案。
-///
-/// 状态映射是必须的：`PowerState` 与 `ServerStatus` 都是五态，但语义标签不同
-/// （前者「启动失败」、后者「异常」）。直接传字符串会绕过类型检查，所以这里显式
-/// switch，编译期就能发现新增状态。
+/// Power area reusing [HomePowerButton] with two overridden labels. The explicit switch is
+/// required: `PowerState` and `ServerStatus` both have five states with different labels.
 class _PowerArea extends ConsumerWidget {
   const _PowerArea({required this.status, required this.port});
 
@@ -226,10 +216,8 @@ class _PowerArea extends ConsumerWidget {
   };
 }
 
-/// 五态状态文案：颜色与措辞都跟着状态走。
-///
-/// 单独一行而不是塞进按钮：按钮只表达「能不能点」，出问题时用户需要一句能读的
-/// 结论，红色是第二层信号。
+/// Five-state status text; colour and wording follow the state. A separate line because the
+/// button only conveys "tappable" and a failure needs a readable sentence.
 class _StatusText extends StatelessWidget {
   const _StatusText({required this.status});
 

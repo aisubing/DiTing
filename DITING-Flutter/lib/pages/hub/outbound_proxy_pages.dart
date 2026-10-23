@@ -11,17 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 谛听自身的包名（`DITING-Legacy/app/build.gradle.kts` 的 `applicationId`）。
-///
-/// 上游用 `context.packageName`；Dart 侧只能写常量，所以取值必须与应用 id 一致，
-/// 否则「不能选择 DITING 自身」这条校验会失效。
+/// DITING's own package id (`applicationId` in `DITING-Legacy/app/build.gradle.kts`).
+/// Upstream reads `context.packageName`; this constant must match or the "cannot select
+/// DITING itself" check breaks.
 const ditingSelfPackage = 'com.haoze.diting';
 
-/// 出站代理（上游 `OutboundProxySettingsScreen`）。
-///
-/// 配置走 `OutboundProxyStore`（原生 AES-GCM 加密账号密码，Dart 读不到密钥），
-/// 因此本页的初值只能异步读：`outboundProxyConfigProvider` 在 store 上做
-/// `read()`，保存后 `bump()` revision 让它重新读。
+/// Outbound proxy (upstream `OutboundProxySettingsScreen`). Config goes through
+/// `OutboundProxyStore`, so initial values arrive asynchronously from
+/// `outboundProxyConfigProvider`; a save bumps its revision.
 class OutboundProxyPage extends ConsumerStatefulWidget {
   const OutboundProxyPage({super.key});
 
@@ -35,13 +32,12 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
   final _username = TextEditingController();
   final _password = TextEditingController();
 
-  /// 表单初值只填一次：再次 `read()` 会用落盘值覆盖用户正在输入的内容。
+  /// Filled once: another `read()` would overwrite what the user is typing.
   OutboundProxyConfig? _loaded;
   bool _saving = false;
 
-  /// 状态轮询。上游 `LaunchedEffect(draft.enabled) { while (enabled) { poll; delay(1s) } }`
-  /// 每秒读一次引擎回报的 `outbound_proxy_status`：隧道启动后由 `connecting` 变成
-  /// `ready`/`error`，页面不刷新的话用户会以为它一直卡在「正在连接」。
+  /// Status polling, as upstream's one-second loop: `outbound_proxy_status` goes connecting
+  /// -> ready or error once the tunnel starts.
   Timer? _poll;
 
   @override
@@ -60,10 +56,8 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     super.dispose();
   }
 
-  /// 只在「隧道可能正在建立」时重新读一次 store。
-  ///
-  /// `ready` / `error` / `disabled` 都是终态：引擎不会自己再变，继续每秒读只是
-  /// 白白触发重建。真正会变的是 `connecting`。
+  /// Re-reads the store only while the tunnel may still come up; `ready`, `error` and
+  /// `disabled` are terminal, so polling them only causes rebuilds.
   void _tick() {
     if (!mounted) {
       return;
@@ -95,8 +89,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
 
   Future<void> _save(OutboundProxyConfig base) async {
     final draft = _compose(base);
-    // 关掉时上游不做校验（`if (savedConfig.enabled) validationError`），否则
-    // 一个停用的半成品配置会永远保存不了。
+    // Upstream skips validation while disabled, or a disabled draft could never be saved.
     final error = draft.enabled
         ? draft.validationError(
             selfPackage: ditingSelfPackage,
@@ -117,7 +110,6 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
       _loaded = draft;
       _toast('出站代理设置已保存，启动隧道后生效');
     } on Object catch (error) {
-      // 写盘失败（原生通道异常）必须让用户看到，而不是假装保存成功。
       _toast('保存失败：$error');
     } finally {
       if (mounted) {
@@ -165,8 +157,8 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
 
   Set<String>? _installedPackages() {
     final snapshot = ref.read(installedAppsProvider).value;
-    // 读不到列表（通道缺失）时返回 null：`validationError` 会跳过「未安装」
-    // 这一条，而不是把一个合法包名报成未安装。
+    // Null when the list is unavailable (missing channel), so `validationError` skips the
+    // "not installed" check instead of failing a valid package.
     return snapshot == null || snapshot.error != null
         ? null
         : snapshot.packageNames;
@@ -191,8 +183,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     _adopt(config);
     final apps = ref.watch(installedAppsProvider).value;
     final appLabel = _labelOf(config.proxyAppPackage, apps?.apps ?? const []);
-    // 只在启用时提示校验问题：上游 `if (savedConfig.enabled) validationError`
-    // 就是这个口径，关着的半成品配置不该报红。
+    // Validation problems are shown only while enabled, matching upstream.
     final validation = config.enabled
         ? _compose(config).validationError(
             selfPackage: ditingSelfPackage,
@@ -228,8 +219,8 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
                 onChanged: _saving
                     ? null
                     : (value) async {
-                        // 与上游一致：开关即时落盘并切到 connecting/disabled，
-                        // 其余字段等「保存」。
+                        // As upstream: the switch persists immediately and moves to
+                        // connecting or disabled; other fields wait for save.
                         final next = config.copyWith(enabled: value);
                         await ref.read(outboundProxyStoreProvider).write(next);
                         await ref
@@ -345,8 +336,8 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     );
   }
 
-  /// 引擎上报的四态（`OutboundProxyStatusCallback`）：disabled / connecting /
-  /// ready / error。未知值按 disabled 显示，与上游 `else -> 未运行` 一致。
+  /// The four engine states: disabled, connecting, ready and error. Unknown values display
+  /// as disabled, as upstream does.
   static String _statusLabel(OutboundProxyConfig config) {
     if (!config.enabled) {
       return '未运行';
@@ -397,10 +388,8 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
   }
 }
 
-/// 选择代理应用（上游 `OutboundProxyAppsScreen`）。
-///
-/// 单选，且不走单选项保存：选项直接写进 `OutboundProxyStore`，与上游
-/// `singleSelect` + `onSave(onSelectedPackage)` 的效果相同。
+/// Proxy app selection (upstream `OutboundProxyAppsScreen`). Single select that writes
+/// straight into `OutboundProxyStore`, matching upstream's `singleSelect` with `onSave`.
 class OutboundProxyAppsPage extends ConsumerStatefulWidget {
   const OutboundProxyAppsPage({super.key});
 

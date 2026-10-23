@@ -1,8 +1,4 @@
-/// 图标集页（上游 `views/config/icon_sets.dart`，316 行）。
-///
-/// 图标集是「名字 → 图标文件」的 JSON：订阅里的节点组写上图标名，就能在分组
-/// 卡片上显示。本仓保留列表、表单与网格预览；从文件导入需要文件选择器，演示层
-/// 不引依赖，改为手动填写图标名。
+/// Icon sets page (upstream `views/config/icon_sets.dart`).
 library;
 
 import 'package:diting/data/mock_config_resources.dart';
@@ -17,7 +13,6 @@ import 'package:material_ui/material_ui.dart';
 part 'icon_sets_form.dart';
 part 'icon_sets_preview.dart';
 
-/// 图标集列表页。
 class IconSetsConfigPage extends ConsumerWidget {
   const IconSetsConfigPage({super.key});
 

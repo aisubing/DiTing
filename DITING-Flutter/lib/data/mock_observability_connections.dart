@@ -1,9 +1,6 @@
 part of 'mock_observability.dart';
 
-/// 一条活动连接（上游 `TrackerInfo` + `Metadata` 的拍平等价物）。
-///
-/// 上游是「外层连接 + 内层元数据」两层结构，这里拍平成一层：列表与详情都按
-/// 平铺字段渲染，少一层取值路径。
+/// One active connection; upstream nests TrackerInfo and Metadata, flattened here.
 class MockConnection {
   const MockConnection({
     required this.id,
@@ -34,15 +31,12 @@ class MockConnection {
   final String destinationIp;
   final int destinationPort;
 
-  /// 发起连接的应用（演示数据里用中文应用名，不用包名）。
   final String process;
 
-  /// `tcp` / `udp`。
   final String network;
   final String rule;
   final String rulePayload;
 
-  /// 命中规则之后的节点与策略组，按实际走向排列。
   final List<String> chains;
 
   final int upload;
@@ -51,7 +45,6 @@ class MockConnection {
   final int downloadSpeed;
   final String startedAt;
 
-  /// 已持续秒数。
   final int seconds;
 
   final String geoIp;
@@ -81,7 +74,6 @@ typedef _ConnectionRow = ({
   int seconds,
 });
 
-/// 连接明细表。链路固定是「节点 → 策略组」，与上游 `chains` 反序展示一致。
 const _connectionRows = <_ConnectionRow>[
   (
     host: 'api.github.com',
@@ -477,8 +469,7 @@ const _connectionRows = <_ConnectionRow>[
   ),
 ];
 
-/// 观测快照的「现在」。所有 `startedAt` 都由它减去已持续秒数得到——写死的
-/// 时间字面量没法跟 `seconds` 对上，一眼就能看出是假数据。
+/// Snapshot "now"; every `startedAt` is this minus its elapsed seconds.
 final _observedAt = DateTime(2026, 10, 19, 13, 42, 8);
 
 String _startedAt(int seconds) {
@@ -488,7 +479,6 @@ String _startedAt(int seconds) {
       '${two(start.hour)}:${two(start.minute)}:${two(start.second)}';
 }
 
-/// 当前连接列表。
 final mockConnections = <MockConnection>[
   for (final (index, row) in _connectionRows.indexed)
     MockConnection(
@@ -507,7 +497,7 @@ final mockConnections = <MockConnection>[
       downloadSpeed: row.seconds == 0 ? 0 : row.down ~/ row.seconds,
       startedAt: _startedAt(row.seconds),
       seconds: row.seconds,
-      // 被拦截的连接没有真实远端：留空，详情里就不会出现一行假的「远端目标」。
+      // Blocked connections have no real remote.
       remoteDestination: row.chain == 'REJECT' ? '' : '${row.ip}:${row.port}',
     ),
 ];

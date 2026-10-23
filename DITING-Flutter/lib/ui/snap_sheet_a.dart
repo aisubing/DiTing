@@ -2,8 +2,7 @@
 
 part of 'snap_sheet.dart';
 
-/// SpringSimulation picks its solution by the sign of a discriminant that a
-/// critically damped spring leaves to rounding.
+/// Rounding may pick the other root where the discriminant vanishes.
 class _SheetSpring extends Simulation {
   _SheetSpring({
     required double from,
@@ -31,8 +30,7 @@ class _SheetSpring extends Simulation {
         (_start * math.cos(_damped * time) + sine * math.sin(_damped * time));
   }
 
-  /// Lands exactly on [to], which an AnimationController would otherwise
-  /// stop a tolerance short of.
+  /// Lands exactly on [to]; a controller would stop a tolerance short.
   @override
   double x(double time) => isDone(time) ? to : to + _offset(time);
 
@@ -72,7 +70,6 @@ class _Holding extends _Activity {
   final bool dragged;
 }
 
-/// An offset from the detent, which carries the sheet along as it moves.
 class _Settling extends _Activity {
   _Settling(this.stop, this.offset, this.velocity, this.ratio);
 
@@ -82,9 +79,7 @@ class _Settling extends _Activity {
   final double ratio;
 }
 
-/// Heights are shown above the keyboard, which raises the sheet's foot, and
-/// layout resolves the detents every frame; a drag below the shortest detent
-/// moves the route's presentation, which the barrier follows too.
+/// Detents resolve every frame; a drag below the shortest moves the route.
 class _SheetModel extends ChangeNotifier {
   _SheetModel({required this.route, required TickerProvider vsync})
     : detents = route.detents,
@@ -105,14 +100,12 @@ class _SheetModel extends ChangeNotifier {
   final settling = ValueNotifier(false);
   final open = ValueNotifier(false);
 
-  /// How far a drag has pulled the sheet down, for a footer that stays put.
   final lift = ValueNotifier(0.0);
   bool _liftFollows = false;
 
   double _available = 0;
   double _keyboard = 0;
 
-  /// Infinite while the content fills the height it was laid out within.
   double _fitHeight = double.infinity;
   double _filledRoom = 0;
   double? _measureRoom;
@@ -135,8 +128,7 @@ class _SheetModel extends ChangeNotifier {
     return peak - _rounded(peak - tallest - _keyboard, room);
   }
 
-  /// A fit sheet follows its content up to each detent but never rests below
-  /// the shortest one; each keeps what it shows above the keyboard.
+  /// A fit sheet follows its content up to each detent, never below the shortest.
   List<double> get _stops {
     final shortest = detents.first * _available;
     final top = _top;
@@ -176,8 +168,7 @@ class _SheetModel extends ChangeNotifier {
     return height >= stops.last - precisionErrorTolerance;
   }
 
-  /// A sheet at rest measures its content up to its detent, which finds the
-  /// content however it changes; a moving one lays it out at what it shows.
+  /// At rest the content is measured up to the detent; moving, at what it shows.
   double beginLayout(double available, double keyboard) {
     _available = available;
     _keyboard = keyboard;
@@ -201,7 +192,6 @@ class _SheetModel extends ChangeNotifier {
     return _contentLimit;
   }
 
-  /// Short content lays out the same within its room and the limit it had.
   bool get _isShortOfLimit =>
       contentHeight <
       math.min(_contentRoom, _contentLimit) - precisionErrorTolerance;
@@ -228,8 +218,7 @@ class _SheetModel extends ChangeNotifier {
   double get _tallestRoom =>
       math.min(detents.last * _available, _top - _keyboard);
 
-  /// Content taller than the detent the sheet rests at is measured up to the
-  /// tallest one before the sheet moves, so a release lands where it ends.
+  /// Measure up to the tallest detent before moving, so a release lands where it ends.
   void _measureBeforeMoving() {
     final room = _tallestRoom;
     if (!fitsContent ||
@@ -320,8 +309,7 @@ class _SheetModel extends ChangeNotifier {
     }
   }
 
-  /// Returns how much of [delta], positive to grow, the sheet took: what is
-  /// left past the tallest detent goes to the content.
+  /// How much of [delta], positive to grow, the sheet took; the rest goes to the content.
   double dragBy(double delta) {
     // A drag the pop caught mid-gesture would hold the route from leaving.
     if (_closing) {

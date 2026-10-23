@@ -1,12 +1,8 @@
 part of 'demo_page.dart';
 
-/// 图标目录：名字 + [Glyph] 的对照表。
-///
-/// `AppGlyphs` 有 122 个常量，全抄一遍既啰嗦又容易抄错；这里挑出覆盖各种
-/// 笔画类型（圆/方/折线/弧/实心/描边、左右镜像、双色 role）的代表性字形，
-/// 名称与常量名严格一致，方便按名字反查源码。
+/// Glyph catalog: representative names mapped to [Glyph] shapes. `AppGlyphs` has 122 constants, so
+/// only shapes covering the stroke kinds, mirrors and dual-color roles are listed.
 const demoGlyphCatalog = <(String, Glyph)>[
-  // 导航与页面
   ('dashboard', AppGlyphs.dashboard),
   ('proxies', AppGlyphs.proxies),
   ('profiles', AppGlyphs.profiles),
@@ -18,7 +14,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('logs', AppGlyphs.logs),
   ('tools', AppGlyphs.tools),
   ('target', AppGlyphs.target),
-  // 方向
   ('arrowBack', AppGlyphs.arrowBack),
   ('chevronBack', AppGlyphs.chevronBack),
   ('chevronForward', AppGlyphs.chevronForward),
@@ -29,7 +24,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('arrowUp', AppGlyphs.arrowUp),
   ('arrowDown', AppGlyphs.arrowDown),
   ('openExternal', AppGlyphs.openExternal),
-  // 操作
   ('undo', AppGlyphs.undo),
   ('redo', AppGlyphs.redo),
   ('sync', AppGlyphs.sync),
@@ -46,7 +40,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('checkDouble', AppGlyphs.checkDouble),
   ('checkCircle', AppGlyphs.checkCircle),
   ('block', AppGlyphs.block),
-  // 状态
   ('info', AppGlyphs.info),
   ('warning', AppGlyphs.warning),
   ('error', AppGlyphs.error),
@@ -57,7 +50,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('filter', AppGlyphs.filter),
   ('textShort', AppGlyphs.textShort),
   ('wrap', AppGlyphs.wrap),
-  // 编辑与剪贴板
   ('listAdd', AppGlyphs.listAdd),
   ('edit', AppGlyphs.edit),
   ('compose', AppGlyphs.compose),
@@ -68,7 +60,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('paste', AppGlyphs.paste),
   ('selectAll', AppGlyphs.selectAll),
   ('deselect', AppGlyphs.deselect),
-  // 检索与导入
   ('search', AppGlyphs.search),
   ('matchCase', AppGlyphs.matchCase),
   ('regex', AppGlyphs.regex),
@@ -77,7 +68,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('cloudSync', AppGlyphs.cloudSync),
   ('link', AppGlyphs.link),
   ('send', AppGlyphs.send),
-  // 规则与设置
   ('rules', AppGlyphs.rules),
   ('rulePresets', AppGlyphs.rulePresets),
   ('code', AppGlyphs.code),
@@ -85,7 +75,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('sliders', AppGlyphs.sliders),
   ('wrench', AppGlyphs.wrench),
   ('toggle', AppGlyphs.toggle),
-  // 安全
   ('pin', AppGlyphs.pin),
   ('eye', AppGlyphs.eye),
   ('eyeOff', AppGlyphs.eyeOff),
@@ -94,7 +83,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('key', AppGlyphs.key),
   ('password', AppGlyphs.password),
   ('account', AppGlyphs.account),
-  // 强调
   ('sparkle', AppGlyphs.sparkle),
   ('bolt', AppGlyphs.bolt),
   ('locate', AppGlyphs.locate),
@@ -102,7 +90,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('puzzle', AppGlyphs.puzzle),
   ('customize', AppGlyphs.customize),
   ('layers', AppGlyphs.layers),
-  // 外观
   ('sun', AppGlyphs.sun),
   ('pureBlack', AppGlyphs.pureBlack),
   ('palette', AppGlyphs.palette),
@@ -115,14 +102,12 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('textSize', AppGlyphs.textSize),
   ('language', AppGlyphs.language),
   ('keyboard', AppGlyphs.keyboard),
-  // 媒体与硬件
   ('photos', AppGlyphs.photos),
   ('camera', AppGlyphs.camera),
   ('qrCode', AppGlyphs.qrCode),
   ('torch', AppGlyphs.torch),
   ('torchOff', AppGlyphs.torchOff),
   ('torchAuto', AppGlyphs.torchAuto),
-  // 网络与系统
   ('vpn', AppGlyphs.vpn),
   ('status', AppGlyphs.status),
   ('verified', AppGlyphs.verified),
@@ -142,7 +127,6 @@ const demoGlyphCatalog = <(String, Glyph)>[
   ('iconTile', AppGlyphs.iconTile),
 ];
 
-/// 三个非 const 字形（按参数生成），单独一组展示。
 List<(String, Glyph)> get demoParametricGlyphs => [
   ('sidebar(0.25)', AppGlyphs.sidebar(0.25)),
   ('sidebar(0.75)', AppGlyphs.sidebar(0.75)),

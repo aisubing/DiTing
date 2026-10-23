@@ -1,8 +1,7 @@
 part of 'backup_importer.dart';
 
-/// App-list groups (excluded / blocked / allowlist / HTTPS inspection).
-///
-/// All four merge with local data: an import never removes existing entries.
+/// App-list groups (excluded / blocked / allowlist / HTTPS inspection); all four merge with local
+/// data and an import never removes entries.
 extension _BackupImportLists on BackupImporter {
   BackupGroupOutcome _importExcluded(Object? value, BackupImportTarget target) {
     final incoming = _stringSet(value);
@@ -30,8 +29,7 @@ extension _BackupImportLists on BackupImporter {
     final added = merged.length - settings.blockedAppPackages.length;
     settings.setBlockedApps(
       packages: merged,
-      // OR the switch with the local value: importing a backup that enabled it
-      // must not appear to have had no effect.
+      // OR the switch with the local value so an imported enable is not lost.
       enabled: settings.blockedAppsEnabled || value['enabled'] == true,
     );
     return BackupGroupOutcome(
@@ -88,8 +86,8 @@ extension _BackupImportLists on BackupImporter {
     final added = merged.length - settings.httpInspectionPackages.length;
     settings.setHttpInspectionApps(
       packages: merged,
-      // Inspection is never enabled by an import: `https_inspection_ready`
-      // depends on a locally installed CA, so enabling it would break HTTPS.
+      // Inspection is never enabled by an import: `https_inspection_ready` depends on a locally
+      // installed CA, so enabling it would break HTTPS.
       enabled: settings.httpInspectionEnabled,
     );
     final http3 = value['http3Enabled'];

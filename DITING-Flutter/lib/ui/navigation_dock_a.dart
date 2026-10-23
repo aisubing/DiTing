@@ -2,11 +2,7 @@
 
 part of 'navigation_dock.dart';
 
-/// A value that springs toward a target the finger may move every frame.
-///
-/// [AnimationController.animateWith] restarts its ticker, whose first frame
-/// reads no elapsed time, so retargeting it on every pointer move holds the
-/// value still for as long as the finger keeps moving.
+/// Springs toward a target the finger may move every frame; animateWith restarts the ticker.
 class _Spring extends ChangeNotifier implements ValueListenable<double> {
   _Spring(TickerProvider vsync, this._value) {
     _ticker = vsync.createTicker(_tick);
@@ -166,6 +162,7 @@ class NavigationDockDestination {
   final String label;
 }
 
+/// A floating pill of destinations after iOS's tab bar, with a lens between them.
 class NavigationDock extends StatelessWidget {
   const NavigationDock({
     super.key,
@@ -187,8 +184,6 @@ class NavigationDock extends StatelessWidget {
   static double _bottomMarginOf(BuildContext context) =>
       math.max(_edgeMargin, MediaQuery.paddingOf(context).bottom);
 
-  /// The room content scrolling under the dock leaves at its foot: the bar
-  /// itself, the margin below it, plus the quiet gap above the floating bar.
   static double insetOf(BuildContext context) =>
       heightOf(context) + _bottomMarginOf(context) + dockContentGap;
 
@@ -231,8 +226,7 @@ class NavigationDock extends StatelessWidget {
         ),
       ),
     );
-    // The bar rebuilds every frame its lens or a press moves; a scope of its
-    // own keeps that to the dock (.agents/architecture.md, Rebuild Scopes).
+    // The bar rebuilds every frame its lens moves; a scope keeps that to the dock.
     return SizedBox(
       width: double.infinity,
       height: _shadowRoom + height + _bottomMarginOf(context),
@@ -240,5 +234,3 @@ class NavigationDock extends StatelessWidget {
     );
   }
 }
-
-/// Lets a touch that misses the dock by at most [_hitSlop] still reach it.

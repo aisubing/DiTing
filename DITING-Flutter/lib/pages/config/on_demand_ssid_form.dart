@@ -1,6 +1,6 @@
 part of 'on_demand_page.dart';
 
-/// 添加或编辑一条 SSID 规则；[existing] 为空表示新增。
+/// Add or edit an SSID rule; an empty [existing] means a new rule.
 Future<void> showSsidForm(
   BuildContext context,
   WidgetRef ref, {

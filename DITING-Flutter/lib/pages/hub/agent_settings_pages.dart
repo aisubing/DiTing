@@ -5,15 +5,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// AI 参数与提示词（上游 `AgentApiParamsScreen`）。
-///
-/// 两项都落盘到旧版同名键（`agent_api_system_prompt` / `agent_api_temperature`），
-/// 因此改完立刻对下一次分析生效，冷启动后也还在。
-///
-/// **「最大输出长度」这一行删掉了**：上一轮它是个 `onChanged: (_) {}` 的下拉框，
-/// 选项能选、但选了什么都不会发出去，而页脚还写着「参数仅用于展示设置项与交互」。
-/// 与其保留一个装饰性控件，不如不显示——真要支持得先有 `max_tokens` 的落盘键，
-/// 而 1.4.3 没有这个键，凭空造一个会让「改完没效果」重新出现。
+/// AI parameters and prompt (upstream `AgentApiParamsScreen`), persisted to
+/// `agent_api_system_prompt` and `agent_api_temperature`.
 class AgentParamsPage extends ConsumerWidget {
   const AgentParamsPage({super.key});
 
@@ -123,15 +116,9 @@ class AgentParamsPage extends ConsumerWidget {
   }
 }
 
-/// 系统提示词输入框。
-///
-/// 控制器**必须由弹窗自己持有**：写成「页面方法里 new 一个 controller、
-/// `await showFloatingDialog` 之后立刻 `dispose()`」时，`pop` 一调用弹窗的
-/// future 就完成了，而退场动画（404 ms）还没跑完、`TextField` 仍在树上并挂着
-/// 这个 controller。此时 dispose 会让输入框在动画中途重建到已失效的
-/// 依赖上，实测直接触发 framework 断言 `'_dependents.isEmpty': is not true`
-/// （`InheritedElement.debugDeactivated`）整屏红。由 `State` 持有后，
-/// 释放发生在路由真正卸载之后，与 `InputDialog` 同一套生命周期。
+/// The controller must be owned by the dialog: disposing it right after `await` fires on
+/// `pop` while the exit animation runs, and the `TextField` then trips
+/// `'_dependents.isEmpty': is not true`.
 class _PromptFieldDialog extends StatefulWidget {
   const _PromptFieldDialog({required this.initial});
 

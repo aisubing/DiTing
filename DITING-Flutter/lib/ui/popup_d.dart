@@ -2,9 +2,7 @@
 
 part of 'popup.dart';
 
-/// Opens a popup out of the button [targetBuilder] builds. A press on the
-/// button opens it at once, as iOS menus do, so the finger can slide on into
-/// the menu and let go on an item.
+/// Opens a popup out of the button [targetBuilder] builds; a press opens it at once, as iOS does.
 class CommonPopupBox extends StatefulWidget {
   const CommonPopupBox({
     super.key,
@@ -96,7 +94,6 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     _sourceHidden.value = true;
   }
 
-  /// Whether the button takes taps, as the first ink response in it tells.
   bool _targetEnabled() {
     bool? enabled;
     void visit(Element element) {
@@ -138,8 +135,7 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
     }
   }
 
-  // The popup covers the button, so a press let go where it went down leaves
-  // the popup open rather than picking what now lies under it.
+  // The popup covers the button, so releasing where it went down leaves it open.
   void _handlePointerMove(PointerMoveEvent event) {
     if (event.pointer != _pointer) {
       return;
@@ -207,8 +203,7 @@ class _CommonPopupBoxState extends State<CommonPopupBox> {
       snapshot.value?.dispose();
       snapshot.dispose();
     });
-    // The control repaints its ink as it is tapped, so it can only be
-    // captured once that frame has been painted.
+    // The control repaints its ink when tapped, so capture after that frame.
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _captureSource(route, snapshot),
     );
@@ -289,8 +284,7 @@ class PopupValueText extends StatelessWidget {
         switchInCurve: const Interval(0.3, 1, curve: Curves.easeOut),
         switchOutCurve: const Interval(0.6, 1, curve: Curves.easeIn),
         transitionBuilder: _transition,
-        // The old value takes no room, so the button sizes to the new one
-        // and AnimatedSize eases it there while both are showing.
+        // The old value takes no room, so the button sizes to the new one as AnimatedSize eases it.
         layoutBuilder: (current, previous) => Stack(
           alignment: alignment,
           clipBehavior: Clip.none,
@@ -315,9 +309,7 @@ class PopupValueText extends StatelessWidget {
   }
 }
 
-/// Opens a popup on its button's pointer down and carries the press on into
-/// it, claiming the pointer so the button's tap and tooltip stand down. In a
-/// scroll view it waits [delay] first, so a drag scrolls instead.
+/// Opens a popup on its button pointer down and carries the press in; a scroll view waits [delay].
 class _PopupPressRecognizer extends OneSequenceGestureRecognizer {
   _PopupPressRecognizer({super.debugOwner});
 

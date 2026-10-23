@@ -1,9 +1,3 @@
-/// 带搜索的选择浮层（上游 `features/form/selection_sheet.dart`，346 行）。
-///
-/// 上游的 `SelectionSheet` 是「分段 + 搜索 + 可选揭示」的通用选择器：分段之间
-/// 可以有不同数据源（比如「默认」+「已安装」），选中项会被打勾，支持单选与
-/// 多选两种模式。这里是它的等价实现，但用泛型 + 回调而不是继承一个基类——
-/// 演示层只需要一种行为，多一层继承只会让调用方多写一个子类。
 library;
 
 import 'package:diting/ui/ui.dart';
@@ -11,7 +5,6 @@ import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一个分段：标题 + 若干条目。
 class SelectionSection<T> {
   const SelectionSection({
     required this.label,
@@ -22,15 +15,12 @@ class SelectionSection<T> {
   final String label;
   final List<T> items;
 
-  /// 行副标题；`null` 表示该段的行不带副标题。
+  /// Row subtitle; `null` means this section has none.
   final String Function(T item)? subtitleBuilder;
 }
 
-/// 通用选择浮层。
-///
-/// 单选用 [selected] + [onSelected]；多选用 [selectedMany] + [onSelectedMany]。
-/// 两套回调而不是一个 `Set<T>`：单选时调用方往往要「选中即关闭」，多选要
-/// 「勾完再确认」，语义差得太远，合成一个反而要每处都判断。
+/// Generic selection sheet. Single select uses [selected] + [onSelected], multi select
+/// [selectedMany] + [onSelectedMany]; their closing behavior differs too much for one callback.
 class SelectionSheet<T> extends StatefulWidget {
   const SelectionSheet({
     super.key,
@@ -50,17 +40,14 @@ class SelectionSheet<T> extends StatefulWidget {
   final String title;
   final List<SelectionSection<T>> sections;
 
-  /// 行标题。
   final String Function(T item) labelBuilder;
 
-  /// 行标题的富文本版本；给了就优先用它。
+  /// Rich version of the row title; takes precedence when given.
   final Widget Function(T item)? titleBuilder;
 
-  /// 单选模式的当前值。
   final T? selected;
   final ValueChanged<T>? onSelected;
 
-  /// 多选模式的当前值。
   final Set<T>? selectedMany;
   final ValueChanged<Set<T>>? onSelectedMany;
 
@@ -76,7 +63,7 @@ class _SelectionSheetState<T> extends State<SelectionSheet<T>> {
   final _search = TextEditingController();
   var _query = '';
 
-  /// 多选模式的本地副本：点「确定」才提交，取消不影响外部状态。
+  /// Local copy for multi select: committed on confirm, discarded on cancel.
   late final Set<T> _multi = {...?widget.selectedMany};
 
   @override
@@ -198,10 +185,8 @@ class _SelectionSheetState<T> extends State<SelectionSheet<T>> {
   }
 }
 
-/// 打开一个单选浮层，返回选中的条目。
-///
-/// 调用点最常用的形态：给一组值、一个显示名，拿回结果。把它抽成函数是为了
-/// 让调用方不必每次都写 `showFormSheet<...>` + `SelectionSheet<...>` 两层泛型。
+/// Open a single-select sheet and return the chosen entry, so the caller does not spell out
+/// both `showFormSheet` and `SelectionSheet` generics.
 Future<T?> showSelectionSheet<T>({
   required BuildContext context,
   required String title,

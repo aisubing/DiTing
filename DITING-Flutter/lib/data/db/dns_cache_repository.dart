@@ -1,7 +1,4 @@
-/// Read access to the legacy persisted `dns_cache` table.
-///
-/// Only the legacy app wrote these rows; the engine keeps its own in-memory
-/// LRU, so this table is a snapshot and may lag behind or run empty.
+/// Read access to the legacy `dns_cache` table; the engine keeps its own in-memory LRU.
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -46,8 +43,7 @@ class DnsCacheRepository {
         'originalTtlSeconds',
         'responseSize',
       ],
-            // Like the legacy `observeValid`: expired rows are hidden, since the
-            // engine can no longer serve them.
+      // Expired rows are hidden: the engine can no longer serve them.
       where: 'expiresAt > ?',
       whereArgs: [now],
       orderBy: 'hitCount DESC, expiresAt DESC',
@@ -56,7 +52,6 @@ class DnsCacheRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-    /// Number of unexpired entries.
   Future<int> countUnexpired() async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final rows = await _db.rawQuery(
@@ -66,8 +61,7 @@ class DnsCacheRepository {
     return (rows.first['n'] as num?)?.toInt() ?? 0;
   }
 
-    /// Lifetime hits over the whole table, expired rows included, because those
-    /// hits did happen.
+  /// Lifetime hits over the whole table, expired rows included.
   Future<int> totalHitCount() async {
     final rows = await _db.rawQuery(
       'SELECT COALESCE(SUM(hitCount), 0) AS n FROM dns_cache',

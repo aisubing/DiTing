@@ -1,12 +1,7 @@
 part of 'demo_page.dart';
 
-/// 卡片分区：验证 [CommonCard] 的六种状态、[InfoHeader] + [Info] 的卡片表头，
-/// 以及 [SettingTextCard]、[SortHandle]、[DisclosureIndicator]、
-/// [DetailButton] 这几个行内小件。
-///
-/// 卡片是本设计系统里最常用的容器，它的六种状态（普通 / 可点 / 选中 /
-/// 选中填充 / 错误 / 惰性）必须逐个摆出来，否则「选中却没变色」这类回归
-/// 会被当成主题问题而不是卡片问题。
+/// Cards: the six [CommonCard] states, the [InfoHeader] + [Info] header, and the
+/// inline [SettingTextCard], [SortHandle], [DisclosureIndicator], [DetailButton].
 class _DemoCardSection extends StatelessWidget {
   const _DemoCardSection();
 
@@ -30,7 +25,6 @@ class _DemoCardSection extends StatelessWidget {
   }
 }
 
-/// 六种状态：普通、可点、选中（仅描边）、选中且填充、错误、惰性。
 class _DemoCardStates extends StatelessWidget {
   const _DemoCardStates();
 
@@ -100,7 +94,7 @@ class _DemoCardStates extends StatelessWidget {
   }
 }
 
-/// 卡片表头：带字形的 [Info] 与右侧两个动作按钮，以及不带字形的最小形态。
+/// Card header: a [Info] with a glyph and two actions, plus the minimal form.
 class _DemoInfoHeaders extends StatelessWidget {
   const _DemoInfoHeaders();
 
@@ -166,7 +160,6 @@ class _DemoInfoHeaders extends StatelessWidget {
   }
 }
 
-/// 设置页的文字卡片：选中态会把底色填成主色、文字转 onPrimary。
 class _DemoSettingCards extends StatelessWidget {
   const _DemoSettingCards();
 
@@ -200,10 +193,8 @@ class _DemoSettingCards extends StatelessWidget {
   }
 }
 
-/// 行内小件：拖拽把手、展开指示器、详情按钮。
-///
-/// [SortHandle] 依赖 `SliverReorderableList.maybeOf`，离开可排序列表时它不响应
-/// 拖拽，所以这里只验证静态形态。
+/// Inline pieces: drag handle, disclosure indicator, detail button. [SortHandle]
+/// ignores drags outside a reorderable list, so only its shape is verified here.
 class _DemoInlineBits extends StatelessWidget {
   const _DemoInlineBits();
 

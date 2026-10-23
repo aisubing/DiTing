@@ -6,16 +6,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// AI 厂商管理（上游 `AiProviderManageScreen`）。
-///
-/// 与上一轮的差别只有一条但很关键：**密钥与厂商真的落盘**。上一轮
-/// `AgentApiNotifier` 把列表放在内存里，`hasKey` 只是一个布尔占位，编辑时填的
-/// Key 从来没存过——「测试连接」成功与否与磁盘上有没有这个 Key 毫无关系。
-///
-/// 现在的三条约束：
-/// 1. 编辑时 Key 留空 = 保留原密钥（旧版 `existing.apiKey` 分支）；
-/// 2. 点选预设只预填接口地址，模型名一律在线拉取（硬编码型号会过期）；
-/// 3. 拉取模型与连通性测试都**真发请求**，失败原因逐条翻成可操作的话。
+/// AI provider management (upstream `AiProviderManageScreen`), persisted by `AgentApiNotifier` so
+/// "test connection" reflects what is on disk. An empty key keeps the existing one.
 class AgentProvidersPage extends ConsumerWidget {
   const AgentProvidersPage({super.key});
 

@@ -10,9 +10,7 @@ class _MenuRow {
   final bool togglesSubMenu;
 }
 
-/// Follows a press on a row across the rows and picks the one it is let go
-/// on, as iOS menus do. It claims the pointer only then, so a menu that
-/// scrolls takes a drag first, and a row's own tap never fires on a press.
+/// Follows a press across the rows and picks the one it is let go on, as iOS menus do.
 class _RowPressRecognizer extends OneSequenceGestureRecognizer {
   _RowPressRecognizer({super.debugOwner});
 
@@ -92,9 +90,7 @@ class _RowPressRecognizer extends OneSequenceGestureRecognizer {
   String get debugDescription => 'menu row press';
 }
 
-/// A menu card, which a sub menu grows out of the item that opens it: its
-/// surface and clip move from that item at [grow] 0 to its own bounds at 1,
-/// over content laid out at full height.
+/// A menu card a sub menu grows out of the item that opens it, at [grow] 0 to 1.
 @visibleForTesting
 class PopupMenuCard extends SingleChildRenderObjectWidget {
   const PopupMenuCard({
@@ -112,20 +108,16 @@ class PopupMenuCard extends SingleChildRenderObjectWidget {
 
   final double grow;
 
-  /// The top and height of the item a sub menu grows out of, which spans the
-  /// card's current width since the content is laid out to it.
   final ({double top, double height})? origin;
 
   final List<BoxShadow> shadows;
   final Color fill;
 
-  /// Laid over the content, as a card recedes under the one above it.
   final Color dim;
 
   final LiquidGlassStyle? glass;
   final LiquidGlassRim? rim;
 
-  /// Leaves the glass out while the popup's platter bends the backdrop.
   final bool bare;
 
   @override

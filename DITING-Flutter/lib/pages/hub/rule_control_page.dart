@@ -11,16 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 规则控制（上游 `RuleControlScreen`）。
-///
-/// 总开关 + URL 规则入口 + 拦截响应 + 订阅与更新；黑/白/覆写名单仍在
-/// 功能中心对应卡片里独立管理。
-///
-/// ## 两处曾经是字面量
-/// 「规则订阅 5 个」「镜像站模板 3 个」与「已开启 · 每 6 小时」原本是写死的。
-/// 现在分别读 `subscription` 表、`mirror_template` 表与数据集 prefs 的
-/// `subscription_auto_update_*`；旧库为空时显示 `0 个`（这是真的「一条都没有」），
-/// 读取中显示破折号。
+/// Rule control (upstream `RuleControlScreen`): master switch, URL rules, block response
+/// and subscription updates; block, allow and override lists stay in their own hub cards.
 class RuleControlPage extends ConsumerWidget {
   const RuleControlPage({super.key});
 
@@ -31,9 +23,8 @@ class RuleControlPage extends ConsumerWidget {
     final blockMode = BlockResponseMode.fromStorage(
       settings.blockResponseModeRaw,
     );
-    // CA 就绪状态已从演示 provider 换成真实通道：`caReadyProvider` 读的是
-    // `CaCertificateService.inspect()`（available && installed），否则这张卡会
-    // 永远显示「需先安装并验证 CA 根证书」，哪怕用户已经装好。
+    // CA readiness comes from the real channel: `caReadyProvider` reads
+    // `CaCertificateService.inspect()`, so an installed certificate is not reported as missing.
     final caReady = ref.watch(caReadyProvider);
     final inspectionApps = settings.httpInspectionPackages;
     final subscriptions = ref.watch(subscriptionEntriesProvider).value;
@@ -156,12 +147,9 @@ class RuleControlPage extends ConsumerWidget {
   }
 }
 
-/// 拦截响应设置（上游 `BlockResponseSettingsScreen`）。
-///
-/// Fixed mode and the dynamic policy are persisted in `dns_vpn_prefs`
-/// (`block_response_mode` + four `dynamic_block_*` keys). `buildDnsConfig`
-/// publishes them on the next tunnel start, so the page must not hold them in
-/// local state; the clamps below are the upstream ones.
+/// Block response settings (upstream `BlockResponseSettingsScreen`), persisted in
+/// `dns_vpn_prefs` (`block_response_mode` plus four `dynamic_block_*` keys) and published
+/// by `buildDnsConfig` on next start.
 class BlockResponsePage extends ConsumerWidget {
   const BlockResponsePage({super.key});
 
@@ -283,7 +271,7 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
     final window = int.tryParse(_window.text);
     final duration = int.tryParse(_duration.text);
     String? error;
-    // Upstream clamps: 2–100 requests, 10–300 s window, 60–3600 s hold.
+    // Upstream clamps: 2-100 requests, 10-300 s window, 60-3600 s hold.
     if (threshold == null || threshold < 2 || threshold > 100) {
       error = '请求次数需在 2–100 之间';
     } else if (window == null || window < 10 || window > 300) {

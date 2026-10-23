@@ -7,33 +7,14 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
-/**
- * Native side of `com.haoze.diting/outbound_proxy`.
- *
- * 1.4.3 kept the outbound proxy in `dns_vpn_prefs` (`OutboundProxySettingsStore`,
- * nine keys) and encrypted only the two credentials with an AndroidKeyStore
- * AES-GCM key. Dart cannot reach that keystore, so this bridge reads/writes the
- * whole record; the *non-secret* keys stay in the same prefs file and remain
- * readable through [com.haoze.diting.LegacyPrefsBridge], so an upgrade install
- * keeps its configuration.
- *
- * Contract frozen by `lib/data/native/outbound_proxy_bridge.dart`:
- * - `read` -> `{enabled,protocol,host,port,username,password,proxyAppPackage,
- *   status,statusMessage}`
- * - `write(enabled,protocol,host,port,username,password,proxyAppPackage)` -> null
- * - `reset` -> null (removes all nine keys)
- * - `setStatus(state,message)` -> null
- *
- * Key names are copied verbatim from `OutboundProxySettingsStore`; renaming one
- * would make an upgraded install lose that field without any visible error.
- */
+/// Native side of `com.haoze.diting/outbound_proxy`; key names stay verbatim from the legacy store.
 class OutboundProxyBridge(private val context: Context) :
     MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/outbound_proxy"
 
-        /** Same container as 1.4.3 (`SettingsPreferencesExtensions.PREFS_NAME`). */
+        /// Same container the legacy app used
         private const val PREFS_NAME = "dns_vpn_prefs"
 
         private const val KEY_ENABLED = "outbound_proxy_enabled"
@@ -51,11 +32,7 @@ class OutboundProxyBridge(private val context: Context) :
         private const val DEFAULT_PROTOCOL = "socks5"
         private const val DEFAULT_STATUS = "disabled"
 
-        /**
-         * Keystore unwrap is tens of milliseconds and `read` runs on every page
-         * build; a serial background worker keeps the platform thread free
-         * without risking a reordered write.
-         */
+        /// Keystore unwrap costs tens of ms and `read` runs per page build, so it runs off-thread.
         private val worker = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "diting-outbound-proxy").apply { isDaemon = true }
         }
@@ -91,9 +68,8 @@ class OutboundProxyBridge(private val context: Context) :
             "protocol" to protocolOf(preferences.getString(KEY_PROTOCOL, null)),
             "host" to (preferences.getString(KEY_HOST, DEFAULT_HOST) ?: DEFAULT_HOST),
             "port" to preferences.getInt(KEY_PORT, DEFAULT_PORT),
-            // Decryption failure yields "" (keystore reset / restored backup):
-            // the page then shows an empty credential and asks the user again,
-            // which is the honest state — the old password is unrecoverable.
+            // Decryption failure yields "": the page asks again, as the old password is gone.
+            
             "username" to ProxySecretCodec.decrypt(
                 preferences.getString(KEY_USERNAME, null),
             ),
@@ -106,11 +82,8 @@ class OutboundProxyBridge(private val context: Context) :
         )
     }
 
-    /**
-     * Writes the seven configuration keys. The two `status` keys are deliberately
-     * left alone: 1.4.3 reported engine state through a separate callback, and
-     * clearing it here would blank the "last error" the user is about to read.
-     */
+    /// Leaves the two `status` keys alone, so a write never blanks the last error.
+    
     private fun write(config: Map<String, Any?>) {
         prefs().edit()
             .putBoolean(KEY_ENABLED, config["enabled"] == true)
@@ -160,10 +133,7 @@ class OutboundProxyBridge(private val context: Context) :
         "proxyAppPackage" to call.argument<String>("proxyAppPackage"),
     )
 
-    /**
-     * `OutboundProxyProtocol.fromStorageValue`: unknown values fall back to
-     * `socks5` rather than being persisted as garbage the Go engine cannot parse.
-     */
+    /// Unknown values fall back to `socks5`, never persisted as garbage Go cannot parse
     private fun protocolOf(value: String?): String = when (value) {
         "http" -> "http"
         "socks5" -> "socks5"
@@ -172,7 +142,6 @@ class OutboundProxyBridge(private val context: Context) :
 
     private fun prefs() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /** Keeps the worker result on the platform thread, like every other bridge. */
     private fun <T> Result<T>.ship(result: MethodChannel.Result) =
         ChannelResults.ship(result, this, "outbound_proxy_unavailable")
 }

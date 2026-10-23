@@ -6,7 +6,6 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 厂商编辑表单的返回值。
 class ProviderFormResult {
   const ProviderFormResult({
     required this.name,
@@ -19,16 +18,11 @@ class ProviderFormResult {
   final String baseUrl;
   final String model;
 
-  /// 明文 Key；空串表示「保留原密钥」。
   final String key;
 }
 
-/// 厂商编辑对话框：名称 / 地址 / 模型 / 密钥 + 两个**真实**动作。
-///
-/// 「拉取模型」与「测试连接」上一轮不存在（页面只写了「填好 API Key 后即可在线
-/// 拉取」——那句话指向一个没有的按钮）。现在两个按钮都真发请求：
-/// - 拉模型走 `GET {base}/models`，结果做成可点选的候选；
-/// - 测试连接真发一次极短的 `chat/completions`，返回模型名与 token 用量。
+/// Provider edit dialog: name, base URL, model, key plus two real actions - "fetch models"
+/// calls `GET {base}/models`, "test connection" sends a minimal `chat/completions` request.
 class AgentProviderEditor extends ConsumerStatefulWidget {
   const AgentProviderEditor({super.key, this.existing, this.preset});
 
@@ -63,7 +57,6 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
     super.dispose();
   }
 
-  /// 编辑时留空 = 沿用原密钥（旧版 `existing.apiKey` 分支）。
   String get _effectiveKey {
     final typed = _key.text.trim();
     if (typed.isNotEmpty) return typed;

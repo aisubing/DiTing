@@ -1,6 +1,5 @@
 part of 'mock_profiles.dart';
 
-/// 扩展模式（上游 `enum ExtendType { standard, script }`）。
 enum ExtendMode {
   standard('标准模式', 'star', '用表单维护追加规则与匹配目标，界面里能看清每一条'),
   script('脚本模式', 'code', '用一段 JavaScript 改配置，适合批量改写难以用表单表达的字段');
@@ -12,9 +11,7 @@ enum ExtendMode {
   final String description;
 }
 
-/// 匹配目标的内置策略（上游 `RuleTarget.baseTargetNames`）。
-///
-/// 这些名字由内核直接认识，不属于任何组或节点，因此单独列一段。
+/// Built-in targets of a match rule; the kernel knows these names directly.
 enum MockRuleTarget {
   direct('DIRECT', '直连，不经过任何代理'),
   reject('REJECT', '拒绝连接，立即返回失败'),
@@ -28,7 +25,6 @@ enum MockRuleTarget {
   final String description;
 }
 
-/// 覆盖脚本（上游 `scripts` 表）。
 class MockScript {
   const MockScript({
     required this.id,
@@ -45,7 +41,6 @@ class MockScript {
   final bool enabled;
 }
 
-/// 初始脚本列表。
 const mockScripts = <MockScript>[
   MockScript(
     id: 's1',
@@ -70,7 +65,6 @@ const mockScripts = <MockScript>[
   ),
 ];
 
-/// 全局追加规则里的一条（上游 `AddedRulesView` 的行）。
 class MockGlobalRule {
   const MockGlobalRule({
     required this.id,
@@ -87,7 +81,6 @@ class MockGlobalRule {
   final bool enabled;
 }
 
-/// 全局追加规则。
 const mockGlobalRules = <MockGlobalRule>[
   MockGlobalRule(
     id: 'gr1',
@@ -122,10 +115,8 @@ const mockGlobalRules = <MockGlobalRule>[
   ),
 ];
 
-/// 图标选择器候选（上游按图标集分组，演示里用 `AppGlyphs` 的名字当候选）。
-///
-/// 名义上是「图标集」，实际是设计系统自带的 130 个字形——演示版没有网络去拉
-/// 真实图标集，而这些字形本身就是要验证的东西：网格密度、选中态、搜索命中。
+/// Icon picker candidates: the 130 `AppGlyphs` names, standing in for an icon set the demo cannot
+/// download.
 const mockIconGroups = <String, List<String>>{
   '常用': [
     'bolt',
@@ -185,10 +176,7 @@ const mockIconGroups = <String, List<String>>{
   ],
 };
 
-/// 预览页的 YAML 片段（上游预览页是只读代码编辑器）。
-///
-/// 这里保留真实的结构与配色所需的关键字，但内容是编的：演示要验证的是等宽
-/// 字体、行号槽、横向滚动与折行策略，不是 YAML 解析。
+/// YAML snippet for the preview page: real syntax, fabricated content.
 const mockProfileYaml = '''
 mixed-port: 7890
 allow-lan: true
@@ -301,10 +289,7 @@ proxy-providers:
       interval: 300
 ''';
 
-/// 预览页要标出的语法高亮区间（行号 → 类别），只覆盖前几十行。
-///
-/// 与其在页面里写一个 YAML 词法分析器，不如把「哪一行是什么」直接放进数据：
-/// 演示要的是一眼看出高亮有层次，而不是真的能解析任意 YAML。
+/// Highlight ranges for the preview page (line to category), first lines only.
 enum YamlToken {
   key('键'),
   section('顶层段'),

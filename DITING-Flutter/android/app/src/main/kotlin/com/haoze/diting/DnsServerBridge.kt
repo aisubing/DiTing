@@ -8,7 +8,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-/// Dart-facing control plane for the standalone LAN DNS server.
+/// Dart-facing control plane for the standalone LAN DNS server
 class DnsServerBridge(
     private val context: Context,
     messenger: BinaryMessenger,
@@ -32,7 +32,7 @@ class DnsServerBridge(
         }
     }
 
-    /// Clears the running engine's DNS cache; false when no engine is running.
+    /// Clears the running engine's DNS cache; false when no engine is running
     private fun clearCache(): Boolean {
         val engine = DitingDnsServerService.engineForDiagnostics() ?: return false
         return runCatching {

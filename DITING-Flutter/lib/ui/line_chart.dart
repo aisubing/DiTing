@@ -17,13 +17,11 @@ class LineChart extends StatefulWidget {
 
   final List<double> values;
 
-  /// Advances by one for each sample appended to [values]. Any other change,
-  /// such as a clear, starts the chart over.
+  /// Advances by one per sample appended to [values]; a clear or any other change starts over.
   final int revision;
 
   final int capacity;
 
-  /// The least value the top stands for, so idle noise stays near the baseline.
   final double minScale;
 
   final Color color;

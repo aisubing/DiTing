@@ -1,10 +1,5 @@
-/// Read/write helpers for the 1.4.3 provider catalog.
-///
-/// The legacy app keeps presets in code and only persists the *custom* ones as
-/// `user_providers_json`; selection, race lists and the home visibility filter
-/// live in separate keys of the same preferences file. This file mirrors
-/// `DnsProvider`/`ResolutionSettingsStore` so the Flutter UI edits the exact
-/// same storage the engine reads.
+/// Legacy provider catalog: presets live in code, only custom providers persist
+/// (`user_providers_json`), which is what the engine reads.
 library;
 
 import 'dart:convert';
@@ -12,7 +7,6 @@ import 'dart:convert';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 
-/// One custom provider as stored by 1.4.3.
 class UserProviderRecord {
   const UserProviderRecord({
     required this.id,
@@ -42,8 +36,8 @@ class UserProviderRecord {
   };
 }
 
-/// Parses `user_providers_json`, dropping exactly the rows 1.4.3 drops
-/// (unknown protocol, blank id/name, DoH without https, bad host/port).
+/// Parses `user_providers_json`, dropping the same rows 1.4.3 drops: unknown protocol, blank
+/// id/name, DoH without https, bad host/port.
 List<UserProviderRecord> readUserProviders(LegacySettings settings) {
   final raw = settings.userProvidersJson;
   if (raw == null || raw.isEmpty) return const [];
@@ -97,7 +91,6 @@ void writeUserProviders(
   );
 }
 
-/// Appends one custom provider and returns the stored record.
 UserProviderRecord addUserProvider(
   LegacySettings settings, {
   required String name,
@@ -118,8 +111,6 @@ UserProviderRecord addUserProvider(
   return record;
 }
 
-/// Replaces a custom provider by id. Missing ids are a no-op, matching the old
-/// `map { if (it.id == provider.id) provider else it }` implementation.
 void updateUserProvider(
   LegacySettings settings, {
   required String id,
@@ -145,8 +136,7 @@ void updateUserProvider(
   writeUserProviders(settings, updated);
 }
 
-/// Removes a custom provider and scrubs it from every place that references it,
-/// exactly like `DnsProvider.deleteUserProvider` + the resolution cleanup.
+/// Removes a custom provider and scrubs it from every reference.
 void deleteUserProvider(LegacySettings settings, String id) {
   writeUserProviders(settings, [
     for (final provider in readUserProviders(settings))
@@ -170,7 +160,7 @@ void deleteUserProvider(LegacySettings settings, String id) {
   }
 }
 
-/// `1.1.1.1:853` → host/port, DoH keeps the URL and clears host/port.
+/// `1.1.1.1:853` to host/port; DoH keeps the URL and clears host/port.
 (String url, String host, int port) _splitAddress(
   DnsProtocol protocol,
   String address,

@@ -4,14 +4,9 @@ import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 三条原生通道的 Dart 侧守门。
-///
-/// 这层不做 UI，只钉住「契约本身」——校验顺序、JSON 形状、枚举回落和空实现。
-/// 它们全是纯函数，因此不需要 MethodChannel 也不需要插件注册：真的把断言跑到
-/// channel 上只会得到 `MissingPluginException`，什么也证明不了。
+/// Guards the Dart side of three native channels: validation order, JSON shape, enum fallbacks
 void main() {
   group('OutboundProxyConfig.validationError', () {
-    /// 合法基线：每条例只改一个字段，失败时能直接看出是哪一条判据错了。
     OutboundProxyConfig base({
       String host = '127.0.0.1',
       int port = 7890,
@@ -97,7 +92,6 @@ void main() {
     });
 
     test('installedPackages 为 null 时跳过「未安装」判据', () {
-      // 枚举失败（通道缺失）不等于「没装」；此时应当放行而不是拦住保存。
       expect(
         base(proxyAppPackage: 'com.gone.app').validationError(
           selfPackage: self,
@@ -123,8 +117,6 @@ void main() {
     });
 
     test('判据顺序：地址先于端口、端口先于应用', () {
-      // 上游按顺序返回第一条错误，界面文案也因此固定；顺序被换掉会让人看到
-      // 「请选择应用」而不是真正的地址写错。
       expect(
         OutboundProxyConfig(enabled: true, host: 'bad', port: 0, proxyAppPackage: '')
             .validationError(selfPackage: self),
@@ -164,7 +156,7 @@ void main() {
         password: r'p@ss"wor\d',
       );
       final json = config.toEngineJson();
-      // 反斜杠先转成 \\，引号转成 \" —— 顺序反了会产出 \\"，JSON 直接坏掉。
+      // Backslashes are escaped before quotes; the reverse order breaks the JSON.
       expect(json, contains(r'"username":"us\"er\\name"'));
       expect(json, contains(r'"password":"p@ss\"wor\\d"'));
     });
@@ -179,10 +171,8 @@ void main() {
     });
 
     test('port 必须是 JSON 数字，不能带引号', () {
-      // 回归：Go 侧 `outboundProxyConfig.Port int`（`DITING-Legacy/tunnel/flow_outbound.go:29`）
-      // 由 `json.Unmarshal` 解析，`"port":"7890"` 会整份配置解析失败，
-      // `Engine.configureOutboundProxy` 返回错误后代理静默不生效。1.4.3 的
-      // Kotlin 生产者（`OutboundProxyConfig.toNativeJson`）写的是数字。
+      // The Go side parses `Port int` with `json.Unmarshal`, so a string port silently kills the
+      // config
       for (final port in [1, 7890, 65535]) {
         final json = OutboundProxyConfig(port: port).toEngineJson();
         expect(json, contains('"port":$port,'));
@@ -243,7 +233,7 @@ void main() {
     test('fromMap 只认 boolean true', () {
       final state = CaCertificateState.fromMap({
         'available': true,
-        'installed': 'true', // 字符串不是 true
+        'installed': 'true', // a string, not a bool
         'fingerprintSha256': 'AB:CD',
         'pem': 'PEM',
         'error': null,
@@ -290,8 +280,7 @@ void main() {
 
     test('不匹配的内容返回 false', () {
       for (final query in ['邮箱', 'com.other', ' 地图']) {
-        // 前导空格不做 trim：页面在防抖回调里已经 trim 过，这里保持原样匹配，
-        // 避免两处都 trim 却不一致。
+        // No trim: the debounce callback already trimmed, and a second trim would disagree
         expect(app.matches(query), isFalse, reason: '$query 不该命中');
       }
     });
@@ -384,13 +373,10 @@ void main() {
     test('排序：标签升/降序，同级用包名升序兜底', () {
       final apps = [system, userA, userB];
       final asc = [...apps]..sort(AppListSort.labelAsc.compare);
-      // 'Alpha' < 'beta' < 'System UI'（比较前统一小写）。
       expect(asc.map((app) => app.label), ['Alpha', 'beta', 'System UI']);
       final desc = [...apps]..sort(AppListSort.labelDesc.compare);
       expect(desc.map((app) => app.label), ['System UI', 'beta', 'Alpha']);
       final byPackage = [...apps]..sort(AppListSort.packageAsc.compare);
-      // 逐字符比较：'com.a.app' 与 'com.android.systemui' 在 'com.a' 后分岔，
-      // '.'(46) < 'n'(110)，所以前者更小；'com.android…' 的 'a' 又小于 'com.b'。
       expect(byPackage.map((app) => app.packageName), [
         'com.a.app',
         'com.android.systemui',

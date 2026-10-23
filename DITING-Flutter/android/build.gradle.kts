@@ -1,7 +1,6 @@
 allprojects {
     repositories {
-        // Maven Central answers 403 on this network; the mirror carries the
-        // same artifacts.
+        // Maven Central answers 403 on this network; the mirror carries the same artifacts.
         maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")
         google()
         mavenCentral()

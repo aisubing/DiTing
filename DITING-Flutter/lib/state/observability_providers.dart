@@ -1,22 +1,5 @@
-/// 观测域状态：请求 / DNS 查询读真实旧库表，连接与资源仍是演示数据。
-///
-/// ## 哪些是真的
-/// - **请求**（本文件 [requestFeedProvider]）读 `http_request_log` 与 `dns_log`
-///   两张表，合并口径与筛选 SQL 来自 1.4.3 的 `RequestLogRepository.load()`。
-/// - **DNS 查询**（[dnsQueriesProvider]）读 `dns_log`，六档状态筛选见
-///   `dns_query_repository.dart`。
-///
-/// ## 哪些仍是演示，为什么
-/// - **连接**（[connectionsProvider]）：Go 引擎没有「枚举活动连接」的导出接口
-///   （`tunnel-debug-sources.jar` 里没有对应方法），1.4.3 的连接页读的是它自己
-///   内核的 tracker，本项目没有等价物。保留 `mockConnections` 之外的演示副本，
-///   页面顶部文案如实说明「演示数据」。
-/// - **资源**（[resourcesProvider]）：1.4.3 没有任何「资源下载器」后端，四类资源
-///   是上游自带的演示清单；这里保留内存副本，不假装有真实来源。
-///
-/// 共享一份 revision（复用 `dnsLogRevisionProvider`）而不是再造一个计数器：
-/// 「清空日志」与「刷新」改的就是同一批表，两个计数器会让一个动作只刷新一半
-/// 页面。极速模式的库文件不同，`activeLogDatabaseProvider` 已经按模式选好了。
+/// Observability state; requests merge `http_request_log` and `dns_log`, DNS queries read
+/// `dns_log`, the rest is demo.
 library;
 
 import 'package:diting/data/db/dns_query_repository.dart';
@@ -28,11 +11,10 @@ import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// 演示用固定延时：900 ms 足够看清按钮的 loading 态，又不至于让「全部更新」
-/// 的四类资源等上十几秒。
+/// Long enough to show the loading state without stalling "update all".
 const _updateDelay = Duration(milliseconds: 900);
 
-/// 时间戳格式 `yyyy-MM-dd HH:mm`，与 mock 里 `updatedAt` 的字面量一致。
+/// Timestamp format `yyyy-MM-dd HH:mm`, matching the mock's `updatedAt`.
 String _stampNow() {
   final now = DateTime.now();
   String two(int value) => value.toString().padLeft(2, '0');
@@ -40,18 +22,11 @@ String _stampNow() {
       '${two(now.hour)}:${two(now.minute)}';
 }
 
-// ---------------------------------------------------------------------------
-// 连接（演示）
-// ---------------------------------------------------------------------------
-
-/// 连接列表。
-///
-/// 演示来源：引擎没有连接枚举接口，见文件头的说明。
 class ConnectionsNotifier extends Notifier<List<MockConnection>> {
   @override
   List<MockConnection> build() => [...mockConnections];
 
-  /// 关闭单条。详情页与列表的关闭按钮走同一个入口。
+  /// Closes one connection; the detail page and list share this entry point.
   void close(String id) {
     state = [
       for (final connection in state)
@@ -59,7 +34,6 @@ class ConnectionsNotifier extends Notifier<List<MockConnection>> {
     ];
   }
 
-  /// 全部关闭。返回关掉的条数，供调用方在确认框之后显示结果。
   int closeAll() {
     final count = state.length;
     state = const [];
@@ -72,15 +46,7 @@ final connectionsProvider =
       ConnectionsNotifier.new,
     );
 
-// ---------------------------------------------------------------------------
-// 请求（真实表：http_request_log + dns_log）
-// ---------------------------------------------------------------------------
-
-/// 一条合并后的请求记录。
-///
-/// 1.4.3 的请求页是「DNS + HTTPS 两张表的并集」（`RequestLogRepository.load`
-/// 返回 `RequestLogBatch` 后按 `timestamp` 倒序合并），所以这里也拍平成一个
-/// 模型：两张表的专有字段可空，页面只渲染非空项。
+/// One record merged from the DNS and HTTPS tables; only the non-null per-table fields render.
 class ObservedRequest {
   const ObservedRequest({
     required this.key,
@@ -97,25 +63,25 @@ class ObservedRequest {
     this.blockSubscriptionId,
   });
 
-  /// `https-<id>` / `dns-<id>`，与旧版 `RequestLogItem.key` 同形。
+  /// `https-<id>` or `dns-<id>`, shaped like the legacy `RequestLogItem.key`.
   final String key;
   final int timestamp;
   final RequestSource source;
   final RequestStatus status;
 
-  /// HTTPS 行是 authority（可能为空串），DNS 行是 queryName。
+  /// Authority for HTTPS rows (possibly empty), query name for DNS rows.
   final String title;
 
-  /// HTTPS 才有（`h2` / `http/1.1`）。
+  /// HTTPS only (`h2` / `http/1.1`).
   final String? protocol;
   final String? packageName;
   final String? matchedRule;
 
-  /// DNS 行的原始 message（`app=.., resolved=.., elapsed=..`）。
+  /// Raw DNS message (`app=.., resolved=.., elapsed=..`).
   final String? message;
   final bool cached;
 
-  /// DNS 行的 `elapsed=NNms`；HTTPS 表没有耗时列，为 null 时不显示。
+  /// `elapsed=NNms` for DNS rows; null and hidden for HTTPS, which has no column.
   final int? elapsedMs;
   final int? blockSubscriptionId;
 
@@ -149,7 +115,7 @@ class ObservedRequest {
   }
 }
 
-/// 请求页的查询条件。旧版的四维筛选（来源 / 状态 / 关键词 / 条数）原样保留。
+/// Request-page query: the legacy four filters (source, status, keyword, limit).
 class RequestFeedQuery {
   const RequestFeedQuery({
     this.source = RequestSource.all,
@@ -203,7 +169,6 @@ final requestFeedQueryProvider =
       RequestFeedNotifier.new,
     );
 
-/// 合并后的请求列表 + 「可能还有更多」标记。
 class RequestFeed {
   const RequestFeed({required this.items, required this.hasMore});
 
@@ -211,15 +176,12 @@ class RequestFeed {
 
   final List<ObservedRequest> items;
 
-  /// 任一侧查满 [RequestFeedQuery.limit] 就为真：旧版 `RequestLogBatch.hasMore`
-  /// 用的是同一判据（两条查询各自 `LIMIT limit`）。
+  /// True when either side filled [RequestFeedQuery.limit].
   final bool hasMore;
 }
 
-/// Express mode keeps its own database, and 1.4.3 passed `null` for the HTTP
-/// DAO there (`RequestLogViewModel`: `RequestLogRepository(express.dnsLogDao(),
-/// null)`), because `diting_express` has no `http_request_log` table. Query it
-/// anyway and every build throws `no such table`.
+/// Express keeps its own database without `http_request_log`, so querying it throws `no such
+/// table`.
 Future<RequestFeed> _loadRequestFeed(Ref ref) async {
   final query = ref.watch(requestFeedQueryProvider);
   final express = ref.watch(workModeProvider) == AppWorkMode.express;
@@ -248,10 +210,8 @@ Future<RequestFeed> _loadRequestFeed(Ref ref) async {
           );
         }();
 
-  // 两个 future 一起等，而不是先 `await dnsFuture` 再 `await httpFuture`：
-  // 后者在 DNS 侧先抛错时会提前返回，http 侧的错误就变成无人处理的异步异常
-  // （`FutureProvider` 里表现为整帧崩掉，而不是进 error 态让页面显示重试）。
-  // 记录类型的 `.wait` 保留两侧的静态类型，也把两边的失败合并成同一个错误。
+  // Await both together: a sequential await returns early when the DNS side throws, leaving the
+  // HTTP error unhandled.
   final (dnsRows, httpRows) = await (dnsFuture, httpFuture).wait;
 
   final items = <ObservedRequest>[
@@ -270,26 +230,15 @@ final requestFeedProvider = FutureProvider<RequestFeed>((ref) async {
   return _loadRequestFeed(ref);
 });
 
-// ---------------------------------------------------------------------------
-// DNS 查询（真实表：dns_log）
-// ---------------------------------------------------------------------------
-
-/// `diting_database`：普通 / 服务器模式，也是 `http_request_log` 与
-/// `app_traffic_daily` 唯一存在的库。
-///
-/// 与 `activeLogDatabaseProvider`（按工作模式二选一）分开：极速模式的
-/// `diting_express` 明确排除了这两个实体（见 `ExpressRulesDatabase` 类注释），
-/// 对它执行 `SELECT ... FROM http_request_log` 会直接抛 `no such table`。
-/// 请求页与流量页读这张表时必须无视当前模式，改用本 provider。
+/// The main `diting_database`, the only one with `http_request_log` and `app_traffic_daily`.
 final mainLogDatabaseProvider = FutureProvider<Database?>(
   (ref) => LegacyDatabase.open(LegacyDatabase.mainFile),
 );
 
-/// 空结果，供「库里没有这张表」之外的正常空态复用。
+/// Empty result reused for normal empty states.
 const _noDnsRows = <DnsLogRow>[];
 
-/// DNS 查询页的概览窗口：不受状态 chip 影响，用来算总数 / 失败 / 命中缓存，
-/// 以及提供关键词 chip 的取值来源。
+/// Overview window for the DNS page, independent of the status chips.
 final dnsQueryWindowProvider = FutureProvider<List<DnsLogRow>>((ref) async {
   ref.watch(dnsLogRevisionProvider);
   final db = await ref.watch(activeLogDatabaseProvider.future);
@@ -297,12 +246,10 @@ final dnsQueryWindowProvider = FutureProvider<List<DnsLogRow>>((ref) async {
   return DnsQueryRepository(db).recent(limit: _dnsWindowSize);
 });
 
-/// 概览窗口条数。与日志页的「最近 200 行」同量级，但这里表格更宽、行更高，
-/// 取 300 条仍够覆盖一次排查会话，又不会让首帧查询变慢。
+/// Covers a debugging session without slowing the first frame.
 const _dnsWindowSize = 300;
 
-/// 页面当前选中的状态档位。搜索词与「只看失败 / 仅看缓存」是页面内状态：
-/// 前者进 SQL（与旧版一致），后两者是对已取回行的即时过滤。
+/// Selected status filter. The keyword goes to SQL; the toggles filter fetched rows.
 class DnsQueryStatusNotifier extends Notifier<RequestStatus> {
   @override
   RequestStatus build() => RequestStatus.all;
@@ -318,8 +265,7 @@ final dnsQueryStatusProvider =
       DnsQueryStatusNotifier.new,
     );
 
-/// 关键词也进 SQL：旧版用 `LIKE '%<lowercased>%'` 匹配 queryName / packageName /
-/// message，放在 Dart 侧过滤会漏掉「窗口外但匹配」的行，两边的条数就对不上。
+/// The keyword goes into SQL (`LIKE`), since Dart-side filtering misses rows outside the window.
 class DnsQueryTextNotifier extends Notifier<String> {
   @override
   String build() => '';
@@ -346,14 +292,8 @@ final dnsQueriesProvider = FutureProvider<List<DnsLogRow>>((ref) async {
       .recent(limit: _dnsWindowSize, status: status, query: query);
 });
 
-// ---------------------------------------------------------------------------
-// 资源（演示）
-// ---------------------------------------------------------------------------
-
-/// 资源更新状态。
-///
-/// `updatingIds` 与 `updatingAll` 分开记：全部更新时每一条都要显示自己的
-/// loading 态，只用一个布尔的话，用户看不出到底哪一条在动。
+/// `updatingIds` and `updatingAll` are separate so each row shows its own loading state during
+/// update-all.
 class ResourcesState {
   const ResourcesState({
     required this.resources,
@@ -367,7 +307,6 @@ class ResourcesState {
   final Set<String> updatingIds;
   final bool updatingAll;
 
-  /// 全部更新的进度：已完成 / 总数。
   final int completed;
   final int total;
 
@@ -390,18 +329,12 @@ class ResourcesState {
   );
 }
 
-/// 资源清单（演示）。
-///
-/// 1.4.3 没有资源下载器：这四类资源来自上游自带的演示清单，刷新只是改内存
-/// 副本里的时间戳与体积。数据层不依赖 widget 层，所以这里的「刷新」不改
-/// `mock_observability.dart` 的常量，只改 provider 里的副本。
+/// Demo: 1.4.3 has no downloader, so refreshing rewrites this copy's timestamps, not the mock ones.
 class ResourcesNotifier extends Notifier<ResourcesState> {
   @override
   ResourcesState build() => ResourcesState(resources: [...mockObsResources]);
 
-  /// 更新单条：置 loading → 等 900 ms → 刷新时间戳与体积。
-  ///
-  /// 更新中重复点击直接返回，避免同一行叠加两次计时。
+  /// Marks the row loading, waits, then refreshes its timestamp and size.
   Future<void> updateOne(String id) async {
     if (state.isUpdating(id) || state.updatingAll) {
       return;
@@ -420,10 +353,7 @@ class ResourcesNotifier extends Notifier<ResourcesState> {
     );
   }
 
-  /// 全部更新：逐条串行。
-  ///
-  /// 串行而不是并发，是因为真实实现里资源下载走同一条队列；并发模拟会让
-  /// 「正在更新 2/4」这种进度文案失去意义。
+  /// Updates all serially, like a single download queue.
   Future<void> updateAll() async {
     if (state.isBusy) {
       return;
@@ -461,7 +391,7 @@ class ResourcesNotifier extends Notifier<ResourcesState> {
     state = state.copyWith(updatingAll: false, completed: 0, total: 0);
   }
 
-  /// 改地址。地址是这份资源的唯一可变配置，其余字段刷新时都不动。
+  /// Changes the URL, the only editable field of a resource.
   void setUrl(String id, String url) {
     final trimmed = url.trim();
     if (trimmed.isEmpty) {
@@ -487,9 +417,7 @@ class ResourcesNotifier extends Notifier<ResourcesState> {
     );
   }
 
-  /// 刷新一条：时间戳换成本刻，体积按「演示增量」长一点。
-  ///
-  /// 用固定增量而不是随机数：截图与快照测试要能复现同一屏。
+  /// Refreshes a row; the size grows by a fixed increment so snapshots reproduce.
   void _refresh(String id) {
     state = state.copyWith(
       resources: [

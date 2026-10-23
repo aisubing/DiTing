@@ -6,15 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 工作模式选择页：三张大卡 + 展开特性清单 + 「继续」。
-///
-/// 上游是「点卡片 → 1000ms 全屏 morph → 立即写 Store → 转引导」。演示层不做
-/// 全屏 morph（那需要 Activity 级转场），改用卡片自身的 `AnimatedSize` 展开：
-/// 点选先就地展示这个模式到底提供什么，用户能比较完再决定，比动画结束后才
-/// 知道选了什么更可控。
-///
-/// 状态写入时机仍是「点选即写」，这样返回首页时标题与卡片已经是新模式；
-/// 「继续」只负责离开。
+/// Work mode selection: three large cards, expandable feature list, continue. No
+/// full-screen morph like upstream; AnimatedSize expands the card in place so it compares.
 class ModeSelectPage extends ConsumerStatefulWidget {
   const ModeSelectPage({super.key});
 
@@ -23,8 +16,8 @@ class ModeSelectPage extends ConsumerStatefulWidget {
 }
 
 class _ModeSelectPageState extends ConsumerState<ModeSelectPage> {
-  /// 展开中的卡片。与 `workModeProvider` 分开存：用户可能点开看一眼又不选它，
-  /// 展开是「浏览态」，写入才是「决定」。
+  /// Currently expanded card, stored apart from workModeProvider: expanding is
+  /// browsing, writing is deciding.
   AppWorkMode? _expanded;
 
   @override
@@ -34,8 +27,8 @@ class _ModeSelectPageState extends ConsumerState<ModeSelectPage> {
   }
 
   void _select(AppWorkMode mode) {
-    // 再点一次已选中的卡片视为确认：这是移动端列表的通行手势，也避免用户
-    // 明明选好了还要去找底部按钮。
+    // Tapping the selected card again confirms it, so the user does not have to hunt
+    // for the bottom button.
     if (_expanded == mode && ref.read(workModeProvider) == mode) {
       _confirm(mode);
       return;
@@ -47,8 +40,8 @@ class _ModeSelectPageState extends ConsumerState<ModeSelectPage> {
   void _confirm(AppWorkMode mode) {
     ref.read(workModeProvider.notifier).select(mode);
     ref.read(workModeSelectedProvider.notifier).markSelected();
-    // 引导未完成时顺势进引导，而不是回首页——否则用户会看到一个没解释过
-    // 权限的首页。
+    // Enter onboarding when it is unfinished, otherwise the user lands on a home page
+    // whose permissions were never explained.
     if (ref.read(onboardingProvider)) {
       context.pop();
     } else {
@@ -121,10 +114,8 @@ class _ModeSelectIntro extends StatelessWidget {
   }
 }
 
-/// 一张模式卡：标题 + 徽章 + 摘要，选中后原地展开特性清单。
-///
-/// 展开用 `AnimatedSize` 而不是 `ExpansionTile`：后者会插入自己的分隔线与
-/// 点击语义，和整张卡可点的手势冲突（点标题展开、点别处选中，用户分不清）。
+/// One mode card: title, badge, summary, then the feature list when expanded. AnimatedSize
+/// rather than ExpansionTile, whose divider and tap semantics fight a tappable card.
 class _WorkModeCard extends StatelessWidget {
   const _WorkModeCard({
     required this.mode,
@@ -218,10 +209,7 @@ class _WorkModeCard extends StatelessWidget {
   };
 }
 
-/// 展开后的特性清单：每行「图标 + 一句话」。
-///
-/// 文案直接对应 `docs/refactor/03-navigation-and-main-ui.md` §4.7 的 feature 步，
-/// 保证选择页和引导页说的是同一件事。
+/// Feature list shown when expanded, one line per feature.
 class _ModeFeatureList extends StatelessWidget {
   const _ModeFeatureList({required this.mode});
 

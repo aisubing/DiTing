@@ -8,11 +8,7 @@ import 'package:diting/state/config_providers_resources.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pins the persistence of the three config-resource tables.
-///
-/// They used to live only in memory: add an icon set, toggle on-demand, and the
-/// next process start silently restored the demo values. Nothing said "this is
-/// not saved", so the setting looked applied.
+/// Pins the three config-resource tables, which used to live in memory and reverted on restart
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -20,7 +16,6 @@ void main() {
 
   setUp(() => store = MemoryLegacyPrefsStore());
 
-  /// A fresh container reading the same store — i.e. what a cold start does.
   ProviderContainer container() {
     final instance = ProviderContainer(
       overrides: [legacyPrefsStoreProvider.overrideWithValue(store)],
@@ -67,7 +62,6 @@ void main() {
         isNot(contains('地区旗帜')),
       );
 
-      // 冷启动：删掉的那条不能又冒出来。
       final reopened = container().read(configResourcesProvider);
       expect(reopened.iconSets.map((s) => s.name), isNot(contains('地区旗帜')));
       expect(
@@ -102,7 +96,6 @@ void main() {
 
       final reopened = container().read(configResourcesProvider);
       expect(reopened.userAgents.map((a) => a.value), isNot(contains('Temp/1.0')));
-      // 留下一个指向已删除值的选中项会让界面显示「已选中」但实际没有。
       expect(reopened.selectedUserAgent, isNull);
     });
 
@@ -142,16 +135,13 @@ void main() {
 
     test('删光 UA 列表后不会回落到演示值', () {
       final notifier = container().read(configResourcesProvider.notifier);
-      // 内置那条不许删，其余都能删。
       for (final agent in mockUserAgents) {
         if (!agent.isDefault) notifier.removeUserAgent(agent.value);
       }
-      // 再加一条再删，验证「空列表」本身能被持久化。
       notifier.addUserAgent('Only/1.0');
       notifier.removeUserAgent('Only/1.0');
 
       final reopened = container().read(configResourcesProvider);
-      // 空数组是合法结果：用户删光了，不该又冒出四条默认值。
       expect(reopened.userAgents, hasLength(1));
       expect(reopened.userAgents.single.isDefault, isTrue);
     });
@@ -182,7 +172,6 @@ void main() {
         ]),
       );
       final state = container().read(configResourcesProvider);
-      // 坏的 UA 组用初始值，好的 SSID 组照常读回。
       expect(state.userAgents, hasLength(mockUserAgents.length));
       expect(state.ssidRules, hasLength(1));
       expect(state.ssidRules.single.ssid, 'Kept');

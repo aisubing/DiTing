@@ -1,18 +1,14 @@
-/// 日志页与日志下钻页共用的格式化函数与状态小件。
-///
-/// 独立成文件而不是塞进页面：四个下钻页都要 `dnsTypeName` / `clockOf` /
-/// `countOf`，各写一份必然出现「缓存页写 A、竞速页写 TYPE1」的分叉。
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/chip_row.dart';
 import 'package:material_ui/material_ui.dart';
 
-// `dnsTypeName` 的定义搬到了 `data/dns_type_name.dart`（概览聚合层也要用），
-// 这里重新导出，页面侧的 import 不必跟着改。
+// dnsTypeName now lives in data/dns_type_name.dart (the aggregate layer needs it
+// too); re-exported here so page imports stay unchanged.
 export 'package:diting/data/dns_type_name.dart' show dnsTypeName;
 
-/// 剩余秒数 → `57 分钟` / `3 小时`（旧版 `formatDuration`，三级、不取余）。
+/// Seconds to `57 min` / `3 h`. Truncates, does not round up.
 String remainingLabel(int seconds) {
   if (seconds <= 0) return '已过期';
   if (seconds >= 3600) return '${seconds ~/ 3600} 小时';
@@ -20,10 +16,8 @@ String remainingLabel(int seconds) {
   return '$seconds 秒';
 }
 
-/// 毫秒时间戳 → `MM-dd HH:mm:ss`（旧版缓存页的 `cacheTimeFormatter`）。
-///
-/// 用固定的两位补零格式而不是 `intl`：全应用只有这一处要这个形态，多引一个
-/// 依赖不划算。
+/// Millisecond timestamp to `MM-dd HH:mm:ss`. Hand-formatted rather than pulling in intl
+/// for the single place that needs it.
 String shortDateTimeOf(int milliseconds) {
   if (milliseconds <= 0) return '无';
   final time = DateTime.fromMillisecondsSinceEpoch(milliseconds);
@@ -32,7 +26,7 @@ String shortDateTimeOf(int milliseconds) {
       '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';
 }
 
-/// 毫秒时间戳 → `HH:mm:ss`（旧版 `formatClockTime`）。
+/// Millisecond timestamp to `HH:mm:ss`.
 String clockOf(int milliseconds) {
   if (milliseconds <= 0) return '无';
   final time = DateTime.fromMillisecondsSinceEpoch(milliseconds);
@@ -40,7 +34,6 @@ String clockOf(int milliseconds) {
   return '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';
 }
 
-/// 千分位整数（旧版 `formatCount` = `NumberFormat.getIntegerInstance`）。
 String countOf(int value) {
   final digits = value.abs().toString();
   final buffer = StringBuffer(value < 0 ? '-' : '');
@@ -53,24 +46,16 @@ String countOf(int value) {
   return buffer.toString();
 }
 
-/// 百分比：`12.3%`，整数不带小数点（旧版 `formatPercent`）。
+/// Percent text: `12.3%`, no trailing `.0`.
 String percentOf(double ratio) {
   final rounded = (ratio.clamp(0.0, 1.0) * 1000).round() / 10;
   return rounded % 1 == 0 ? '${rounded.toInt()}%' : '$rounded%';
 }
 
-/// 毫秒：`38 ms`（旧版 `formatMs`）。
 String millisOf(num milliseconds) => '${milliseconds.round()} ms';
 
-/// 日志仪表盘的整页说明块（旧版 `DashboardHero`）。
-///
-/// 三套模式各有一句自己的标题与说明，逐字照抄旧版：
-/// - 记录全部：「请求日志仪表盘 / 全部 DNS、HTTPS、缓存、竞速与规则拦截的实时概览」
-/// - 仅拦截与错误：「重点请求仪表盘 / DNS 与 HTTPS 拦截、错误、旁路记录及解析状态概览」
-/// - 关闭日志：「服务状态与解析概览 / 当前处于隐私模式，不记录请求明细。…」
-///
-/// 它不是卡片：旧版这块没有外框，就是页面顶部两行字。做成卡片会与下面第一张
-/// 统计卡连成一片，看不出「这是整页的说明」。
+/// Full-page description block at the top of a log dashboard. Not a card: upstream draws
+/// it as two bare lines, and a card would merge with the first stats card below.
 class LogsDashboardHero extends StatelessWidget {
   const LogsDashboardHero({
     super.key,
@@ -107,7 +92,6 @@ class LogsDashboardHero extends StatelessWidget {
   }
 }
 
-/// 日志下钻页统一的加载态。
 class LogsPageLoading extends StatelessWidget {
   const LogsPageLoading({super.key, required this.label});
 
@@ -133,11 +117,8 @@ class LogsPageLoading extends StatelessWidget {
   }
 }
 
-/// 日志下钻页统一的空态。
-///
-/// 返回 [NullStatus] 而不是包一层 `Widget`：`NullStatusSwitcher.nullStatus`
-/// 的参数类型就是 `NullStatus?`，包一层就拿不到「插画 + 文案 + 动作」那套
-/// 内部布局，只能塞进 `child` 里，于是空态会被当成正文重复绘制。
+/// Empty state shared by the log drill-down pages. Returns [NullStatus] rather than a
+/// wrapper widget because NullStatusSwitcher builds the illustration and action itself.
 NullStatus logsEmpty({
   required String label,
   String? description,
@@ -150,17 +131,8 @@ NullStatus logsEmpty({
   illustration: illustration,
 );
 
-/// 三档时间范围选择器（旧版 `RuleFilterChipRow` 的同等物）。
-///
-/// 竞速页、Bootstrap 页、订阅拦截页三处都用它：三页的范围档位不同（`7 天` 与
-/// `近 7 天`），但样式与位置必须一致，否则用户在三个页面之间切换会觉得是三个
-/// 不同组件。泛型化而不是各写一份。
-///
-/// **不再自带横向内边距**：三个调用方都把这个选择器放进 `generateSection`，
-/// 而 `generateSection` 已经给卡片列加了 `horizontal: 16`。这里再套一层，chip
-/// 左沿就是 32，而同组的 `ListHeader` 标题在 16——真机上量到的正是
-/// `title x=16 / chip x=32`，标题比 chip 左移半格。样式按 chip 行统一交给
-/// [ChipRow]（定高 32、横向滚动），与白名单/黑名单页那套 UI 对齐。
+/// Three-option time range selector used by the race, bootstrap and subscription pages.
+/// Carries no horizontal padding: callers place it in generateSection, which already pads 16.
 class LogStatsRangeSelector<T> extends StatelessWidget {
   const LogStatsRangeSelector({
     super.key,

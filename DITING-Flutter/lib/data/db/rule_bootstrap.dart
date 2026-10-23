@@ -12,15 +12,8 @@ typedef RuleBootstrap = ({
   Map<RuleKind, List<MockRule>> rules,
 });
 
-/// Opens the legacy database and applies the one-time preset whitelist seed.
-///
-/// 1.4.3 re-seeds the preset when the versionCode or preset schema changes; the
-/// same gate is kept here so an upgrade does not silently drop the passthrough
-/// hosts that keep Play services reachable.
-///
-/// [versionCode] 必传：它决定播种门槛（见 [_seedPresetIfNeeded]）。上一轮这里
-/// 有 `?? 20001` 的回落，等于把版本号又写死了一份；调用方从 `pubspec.yaml`
-/// 读到的值（见 `appVersion`）直接传进来即可。
+/// Opens the legacy database and seeds the preset whitelist once per version code, so an upgrade
+/// keeps the passthrough hosts Play services need; [versionCode] has no default.
 Future<RuleBootstrap> bootstrapRules(
   LegacySettings settings, {
   required int versionCode,

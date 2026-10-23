@@ -163,7 +163,6 @@ mixin ScrubbableScrollPosition on ScrollPosition {
   bool isScrubbing = false;
 }
 
-/// Drags move the sheet until it opens fully, so a scrollbar hides till then.
 mixin SheetScrollController on ScrollController {
   ValueListenable<bool> get sheetOpen;
 }

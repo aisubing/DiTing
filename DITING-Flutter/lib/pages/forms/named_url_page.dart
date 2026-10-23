@@ -1,8 +1,4 @@
-/// 命名 URL 表单页（`/form/named-url`）。
-///
-/// 把 `NamedUrlForm` 装进页面：保存时把新记录追加到页内列表，列表本身用
-/// `generateSection` 展示。上游把这份表单放在订阅编辑的浮层里；这里做成整页，
-/// 便于演示与截图。
+/// Named URL form page (`/form/named-url`).
 library;
 
 import 'package:diting/data/mock_forms.dart';
@@ -11,7 +7,6 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 命名 URL 表单页。
 class NamedUrlPage extends StatefulWidget {
   const NamedUrlPage({super.key});
 
@@ -20,7 +15,6 @@ class NamedUrlPage extends StatefulWidget {
 }
 
 class _NamedUrlPageState extends State<NamedUrlPage> {
-  /// 已保存的记录；初始来自演示数据。
   late final _saved = <NamedUrl>[
     for (final entry in mockNamedUrls)
       (label: entry.label, url: entry.url, ageSecretKey: ''),
@@ -55,8 +49,8 @@ class _NamedUrlPageState extends State<NamedUrlPage> {
       body: PageBody(
         dockSpacer: false,
         children: [
-          // `NamedUrlForm` 内部自己按 16 排每块内容，外层再套一次横向 16 会让
-          // 表单卡片比下方「已添加 N 条」这组缩进一倍（真机量到 32 vs 16）。
+          // `NamedUrlForm` already pads its content by 16, so adding horizontal
+          // padding here would double the card indent to 32.
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: NamedUrlForm(

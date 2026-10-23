@@ -1,11 +1,7 @@
 import 'package:diting/ui/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// A minimal [UiLocalizations] for tests and for the demo app's own strings.
-///
-/// `lib/ui` reads its own labels (search, sort, cancel…) through this type and
-/// asserts it is present, so every widget test that mounts a vendored
-/// component must install it — see the assertion in `lib/ui/l10n.dart`.
+/// Minimal [UiLocalizations] for tests and the demo app; `lib/ui` asserts it is present
 class StubUiLocalizations extends UiLocalizations {
   StubUiLocalizations();
 

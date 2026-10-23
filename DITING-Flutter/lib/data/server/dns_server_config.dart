@@ -1,8 +1,5 @@
-/// DNS snapshot for server mode (`DnsServerEngine.applyDnsConfig`).
-///
-/// Server mode has its own dataset: upstream, cache and block settings live in
-/// `diting_dns_mode_prefs`, not in the normal-mode keys. The JSON shape is the
-/// same one the Go engine validates with `DisallowUnknownFields`.
+/// DNS snapshot for server mode (`DnsServerEngine.applyDnsConfig`), read from
+/// `diting_dns_mode_prefs`; the Go engine rejects unknown fields.
 library;
 
 import 'dart:convert';
@@ -193,8 +190,7 @@ class ServerDnsConfig {
         'url': upstream.protocol == DnsProtocol.doh ? upstream.address : '',
       },
     ],
-    // Server mode never used bootstrap: LAN clients already resolve through
-    // this device's normal network.
+    // Server mode never used bootstrap: LAN clients resolve through this device.
     'bootstrap': {'enabled': false, 'ips': <Object?>[]},
   };
 
@@ -275,11 +271,8 @@ List<ServerUpstream> parseServerCustomUpstreams(String? raw) {
   return upstreams;
 }
 
-/// 把自定义上游列表编码回 `custom_upstreams` 的 JSON 字符串。
-///
-/// 逐字对齐旧版 `DnsModePreferences.serializeUpstreams`：只写
-/// `id` / `name` / `protocol` / `address` / `port` 五个字段，`isCustom` 不落盘
-/// （读取侧靠 `preset_` 前缀区分），多写字段会让旧版升级回来时解析出脏数据。
+/// Encodes custom upstreams for `custom_upstreams`: `id`, `name`, `protocol`, `address`, `port`;
+/// `isCustom` comes from the `preset_` prefix.
 String encodeServerCustomUpstreams(List<ServerUpstream> servers) => jsonEncode([
   for (final server in servers)
     {
@@ -291,10 +284,6 @@ String encodeServerCustomUpstreams(List<ServerUpstream> servers) => jsonEncode([
     },
 ]);
 
-/// 新增 / 编辑自定义上游时的校验结果。
-///
-/// 校验放在数据层而不是对话框里：旧版的校验在 `DnsModeManager` 里，页面只负责
-/// 收字段。两处都写会让「对话框放过了、写盘时又拒绝」变成静默失败。
 sealed class UpstreamValidation {
   const UpstreamValidation();
 }
@@ -309,14 +298,8 @@ class UpstreamInvalid extends UpstreamValidation {
   final String message;
 }
 
-/// 校验一条自定义上游（名称 / 协议 / 地址 / 端口）。
-///
-/// 规则与旧版一致：
-/// - 名称不能为空；
-/// - DoH 地址必须是 `https://` 开头（Go 引擎只认 HTTPS 的 DoH 端点）；
-/// - DNS / DoT 地址不能为空，端口 1–65535（DoT 默认 853，其余 53）；
-/// - 方括号 IPv6（`[2001:db8::1]`）在校验时接受，**存储时去掉方括号**，否则
-///   引擎自己再包一层会变成 `[[...]]`。
+/// Validates one custom upstream: DoH needs an `https://` address, DNS/DoT default to ports 53/853,
+/// and bracketed IPv6 is accepted but stored bare.
 UpstreamValidation validateServerUpstream({
   required String name,
   required DnsProtocol protocol,
@@ -343,7 +326,8 @@ UpstreamValidation validateServerUpstream({
   if (port < 1 || port > 65535) {
     return const UpstreamInvalid('端口需在 1–65535 之间');
   }
-  // 裸 IPv6 必须能被解析成「只有主机名」的形式，否则引擎侧拼 host:port 会失败。
+  // A bare IPv6 address must parse as host-only, otherwise the engine fails when it joins
+  // host:port.
   final bare = _stripBrackets(trimmed);
   if (bare.contains(':') && Uri.tryParse('http://[$bare]') == null) {
     return const UpstreamInvalid('IPv6 地址格式不正确');
@@ -351,7 +335,6 @@ UpstreamValidation validateServerUpstream({
   return const UpstreamOk();
 }
 
-/// 非 DoH 上游落盘前的地址归一：去掉 IPv6 方括号（旧版同口径）。
 String normalizeServerUpstreamAddress(DnsProtocol protocol, String address) =>
     protocol == DnsProtocol.doh ? address.trim() : _stripBrackets(address.trim());
 

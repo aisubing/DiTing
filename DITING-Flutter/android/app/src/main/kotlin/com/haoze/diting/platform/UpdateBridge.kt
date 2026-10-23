@@ -12,34 +12,15 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-/**
- * 应用更新的原生半边：下载安装包 + 调起系统安装器。
- *
- * 1.4.3 的 `AppUpdateManager` 把 APK 下到 `filesDir/app-update/update-<ver>.apk`，
- * 再用 `FileProvider` 生成一个 `content://` URI，通过 `ACTION_VIEW` +
- * `application/vnd.android.package-archive` 交给系统安装器。这两步都没有 Dart
- * 等价物（Dart 无法写应用私有目录后授予别的应用读取权，也无法直接拉起安装器），
- * 因此单独一条通道。
- *
- * 为什么另开 `com.haoze.diting/update` 而不是塞进 `PlatformBridge`：
- * `PlatformBridge` 已经 542 行、接近 600 行上限；下载与安装的生命周期（后台线程、
- * 进度回推）也和那四个「一次性系统调用」不同，混在一起会让两件事都难读。
- *
- * ## 进度回推
- *
- * 下载在后台线程跑，通过同一条通道反向 `invokeMethod("progress", …)` 把
- * `{downloaded, total}` 推给 Dart。`MethodChannel.invokeMethod` 必须在主线程调用，
- * 所以每次 `activity.runOnUiThread`。Dart 侧用 `setMethodCallHandler` 接这两类事件。
- */
+/// Native download and install: Dart cannot share its private files or start the installer.
 class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/update"
 
-        /** 1.4.3 `AppUpdateManager.UPDATE_DIRECTORY`（与本包清理逻辑同口径）。 */
+        /// Must match the directory the cleanup logic deletes
         private const val UPDATE_DIR = "app-update"
 
-        /** 连接/读取超时：GitHub 资产走 CDN，给宽松一点但仍会失败退出。 */
         private const val CONNECT_TIMEOUT_MS = 20_000
         private const val READ_TIMEOUT_MS = 30_000
     }
@@ -47,7 +28,7 @@ class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHan
     private val context: Activity get() = activity
     private var channel: MethodChannel? = null
 
-    /** 同一时刻只允许一个下载，避免两个线程写同一个 `.part` 文件。 */
+    /// Only one download at a time, so two threads never write the same `.part`
     @Volatile
     private var downloading = false
 
@@ -65,15 +46,7 @@ class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHan
         }
     }
 
-    // --------------------------------------------------------------- 下载
-
-    /**
-     * 下载 [url] 到 `filesDir/app-update/update-<version>.apk`，完成后把绝对路径
-     * 作为结果返回。
-     *
-     * 先写 `.part` 临时文件再改名：下载中断时不会留下一个「看起来完整」的 APK，
-     * 否则用户点安装会得到「解析包出错」而不是重下。
-     */
+    /// Downloads via a `.part` file, so an interruption leaves no truncated APK in place.
     private fun download(call: MethodCall, result: MethodChannel.Result) {
         val url = call.argument<String>("url")?.trim().orEmpty()
         val version = call.argument<String>("version")?.trim().orEmpty()
@@ -118,7 +91,7 @@ class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHan
                             if (read < 0) break
                             output.write(buffer, 0, read)
                             downloaded += read
-                            // 每 ~256KB 或到末尾推一次进度：太密会在主线程堆消息。
+                            // Throttle to ~256KB: a message per read would flood the main thread.
                             if (downloaded - lastReported >= 256 * 1024) {
                                 lastReported = downloaded
                                 emitProgress(downloaded, total)
@@ -127,7 +100,7 @@ class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHan
                     }
                 }
                 if (!tempFile.renameTo(finalFile)) {
-                    // 某些机型 rename 跨目录失败：退回复制。
+                    // Some devices fail a cross-directory rename; fall back to a copy.
                     tempFile.copyTo(finalFile, overwrite = true)
                     tempFile.delete()
                 }
@@ -157,17 +130,7 @@ class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHan
         }
     }
 
-    // --------------------------------------------------------------- 安装
-
-    /**
-     * 调起系统安装器。
-     *
-     * 传的是下载得到的**绝对路径**（不是 URI）：FileProvider 的 authority 必须由
-     * 原生侧按包名拼，Dart 拿不到也不知道。
-     *
-     * 未授予「安装未知应用」权限时，安装器会自己弹出授权引导——不预先拦截，
-     * 那样会把用户挡在一次系统弹窗之外。
-     */
+    /// Takes a path, not a URI: the FileProvider authority embeds the package name
     private fun install(call: MethodCall, result: MethodChannel.Result) {
         val path = call.argument<String>("path")?.trim().orEmpty()
         if (path.isEmpty()) {
@@ -199,7 +162,7 @@ class UpdateBridge(private val activity: Activity) : MethodChannel.MethodCallHan
         }
     }
 
-    /** 让系统在 Android 8+ 上识别到「安装未知应用」的授权入口所需（manifest 已声明）。 */
+    /// Unknown-sources entrypoint; the manifest declares the activity
     @Suppress("unused")
     private fun needsInstallPermission(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
 }

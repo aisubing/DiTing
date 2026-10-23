@@ -1,7 +1,7 @@
 part of 'backup_importer.dart';
 
-/// Merge of subscription and rule groups; a missing rule database is
-/// reported as a failure, never silently skipped.
+/// Merge of subscription and rule groups; a missing rule database is a failure, never silently
+/// skipped.
 extension _BackupImportRules on BackupImporter {
   Future<BackupGroupOutcome> _importSubscriptions(
     Object? value,
@@ -73,8 +73,8 @@ extension _BackupImportRules on BackupImporter {
             ),
             kind: kind,
             enabled: item['enabled'] != false,
-            // Importing the URL, not its contents: start from a zero count and
-            // never-touched timestamps so the first refresh actually downloads.
+            // Importing the URL, not its contents: zero count and untouched timestamps so the first
+            // refresh downloads.
             ruleCount: 0,
             lastUpdated: 0,
             addedAt: now,
@@ -98,8 +98,7 @@ extension _BackupImportRules on BackupImporter {
     );
   }
 
-  /// Mirror templates, deduped by name. Inserted directly because the table has
-  /// no incremental write path and a unique index on `name` handles the conflict.
+  /// Mirror templates, deduped by name; the table has no incremental write path.
   Future<void> _importMirrorTemplates(Database db, Object? value) async {
     if (value is! List) return;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -118,13 +117,9 @@ extension _BackupImportRules on BackupImporter {
   }
 }
 
-/// Merge of domain, rewrite and address rule groups.
 extension _BackupImportRuleTables on BackupImporter {
-  /// Domain rules: block and allow share one list, split by `kind`.
-  ///
-  /// Dedupe by `pattern` and never overwrite an existing row, since the user may
-  /// have adjusted `important`/`appScope` locally. New rows must keep every
-  /// original field, or per-app rules degrade into global blocks.
+  /// Block and allow rules share one list, split by `kind`. Dedupe by `pattern` without
+  /// overwriting, or per-app rules degrade into global blocks.
   Future<BackupGroupOutcome> _importRules(
     Object? value,
     BackupImportTarget target,
@@ -185,7 +180,6 @@ extension _BackupImportRuleTables on BackupImporter {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  /// Insert directly with a `useradd` source, keeping the backup's original fields.
   Future<void> _insertDomainRule(
     Database db,
     String table,

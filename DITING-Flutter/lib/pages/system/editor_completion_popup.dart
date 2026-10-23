@@ -1,14 +1,7 @@
 part of 'editor_page.dart';
 
-/// 补全浮层。
-///
-/// 上游把浮层定位到光标下方（`TextPainter` 量出光标矩形再 `CompositedTransform`
-/// 过去）。演示层把浮层放在编辑器底部：位置差一点，但「哪些候选、按什么顺序、
-/// 点了插什么」这些真正要验证的东西都还在，而定位代码是上游 216 行里最不
-/// 可复用的部分。
-///
-/// 拆到这个 part 是因为 `editor_page.dart` 已到 550 行上限（AGENTS.md），
-/// 而本轮还要给页面补「演示页」标注。
+/// Completion popup. Upstream anchors it below the caret; here it sits at the bottom of the
+/// editor, keeping the candidates, their order and the insert behavior.
 class _CompletionPopup extends StatelessWidget {
   const _CompletionPopup({
     required this.items,

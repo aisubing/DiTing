@@ -1,14 +1,3 @@
-/// 订阅内容的真实网络下载（`dart:io HttpClient`，不引入 pub 依赖）。
-///
-/// 行为转写自 1.4.3 `core/rule/SubscriptionDownloader.kt` 的下载层。**下载与
-/// 解析/入库是分开的两层**：这里只负责「把正文拉下来、拿校验符」，正文原样放进
-/// [SubscriptionFetchResult.content]，由 `lib/data/rules/` 的解析器与
-/// `RuleImporter` 负责分类、去重、写表。把两件事混在一个类里会让下载层难以在
-/// 测试里替换（页面与测试都靠 [SubscriptionFetcher] 注入假实现）。
-///
-/// ## 超时与重定向
-/// 连接 30s、读取 60s，与 `SubscriptionDownloader` 构造的 `OkHttpClient` 一致。
-/// `HttpClient` 默认跟随重定向（最多 5 跳），镜像站常靠 302 跳转，所以不能关。
 library;
 
 import 'dart:async';
@@ -18,7 +7,7 @@ import 'dart:io';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
 
-/// 一次下载的结果。[error] 非空表示失败，其余字段无意义。
+/// Result of one download. A non-null [error] means failure and the other fields are meaningless.
 class SubscriptionFetchResult {
   const SubscriptionFetchResult({
     required this.outcome,
@@ -57,25 +46,20 @@ class SubscriptionFetchResult {
 
   final SubscriptionFetchOutcome outcome;
 
-  /// 词法级有效行数（见 [countEffectiveRuleLines] 的「已知近似」说明）。
+  /// Lexical line count, not imported rules (see [countEffectiveRuleLines]).
   final int lineCount;
   final int byteLength;
   final String? etag;
   final String? lastModified;
 
-  /// 失败时的可读文案，直接上屏与落库到 `importError`。
+  /// Readable failure text, shown to the user and stored as `importError`.
   final String? error;
 
-  /// 实际请求的地址（镜像回退后可能与订阅原址不同）。
+  /// URL actually requested; differs after a mirror fallback.
   final String? requestedUrl;
 
-  /// 本次是否走了镜像模板。
   final bool usedMirror;
 
-  /// 下载到的正文（仅 `content` 结果有值）。
-  ///
-  /// 必须保留：规则解析与入库都在下载之后进行，丢掉正文就只能数行数——上一轮
-  /// 就是这样，订阅永远不产生实际拦截。
   final String? content;
 
   bool get isSuccess => outcome == SubscriptionFetchOutcome.content;
@@ -85,17 +69,16 @@ class SubscriptionFetchResult {
 
 enum SubscriptionFetchOutcome { content, notModified, failed }
 
-/// 可替换的下载接口：页面与测试都通过它取数据，避免真连网络。
+/// Replaceable so pages and tests never hit the network.
 abstract class SubscriptionFetcher {
-  /// 下载 [record] 指向的订阅。[useValidators] 为 false 时不带
-  /// `If-None-Match` / `If-Modified-Since`（412 重试路径用）。
+  /// Downloads the subscription in [record]. With [useValidators] false the request omits
+  /// `If-None-Match` / `If-Modified-Since` (the 412 retry path).
   Future<SubscriptionFetchResult> fetch(
     SubscriptionRecord record, {
     bool useValidators = true,
   });
 }
 
-/// 基于 `dart:io HttpClient` 的实现。
 class HttpSubscriptionFetcher implements SubscriptionFetcher {
   HttpSubscriptionFetcher({
     HttpClient Function()? clientFactory,
@@ -108,7 +91,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
   final Duration connectTimeout;
   final Duration readTimeout;
 
-  /// 下载进度：`(已读字节, 总字节；未知为 -1)`。
+  /// Download progress: (bytes read, total bytes, or -1 when unknown).
   final void Function(int received, int total)? onProgress;
 
   @override
@@ -124,7 +107,6 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
         useValidators: useValidators,
         usedMirror: true,
       );
-      // null 表示「镜像失败且允许回退」，落到底下的原址请求。
       if (mirrorResult != null) {
         return mirrorResult;
       }
@@ -139,7 +121,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
         SubscriptionFetchResult.failed('订阅地址不可用', requestedUrl: record.url);
   }
 
-  /// 镜像地址；没有模板、模板非法或非远程订阅时返回 null（直接问原址）。
+  /// Mirror URL, or null without a usable template or for a non-remote record.
   static String? _mirrorUrlOf(SubscriptionRecord record) {
     final template = record.mirrorTemplate?.trim();
     if (template == null || template.isEmpty || !record.isRemote) {
@@ -152,10 +134,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     }
   }
 
-  /// 下载一次。
-  ///
-  /// 返回 null 只在「镜像下载失败且 `mirrorFallback` 为 true」时发生：由调用方
-  /// 换原址重试，与上游 `catch (e) { if (!mirrorFallback) throw; ... }` 一致。
+  /// Downloads once. Null only when a mirror failed and fallback is allowed.
   Future<SubscriptionFetchResult?> _fetchOnce(
     SubscriptionRecord record,
     String requestedUrl, {
@@ -164,7 +143,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
   }) async {
     final client = _clientFactory()..connectionTimeout = connectTimeout;
     try {
-      // 412（校验符失效）按上游做法去掉校验符重试一次，所以这里是个循环。
+      // A 412 means the validators are stale; retry once without them.
       var validators = useValidators;
       while (true) {
         final result = await _request(
@@ -174,7 +153,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
           useValidators: validators,
           usedMirror: usedMirror,
         );
-        // null 哨兵：校验符被服务端拒绝，去掉它们再来一次。
+        // Null sentinel: the server rejected the validators, retry without them.
         if (result != null) {
           return result;
         }
@@ -225,7 +204,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     }
   }
 
-  /// 单次请求。返回 null 表示「校验符被服务端拒绝（412），去掉后再试一次」。
+  /// Single request. Null means 412: retry without the validators.
   Future<SubscriptionFetchResult?> _request(
     HttpClient client,
     SubscriptionRecord record,
@@ -293,9 +272,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     );
   }
 
-  /// 镜像地址失败时：允许回退则返回 null（让调用方换原址），否则原样返回失败。
-  ///
-  /// 只有本次请求确实走了镜像才有回退目标；原址自己失败没有备选，直接报错。
+  /// After a mirror failure: null when fallback is allowed, else the failure.
   SubscriptionFetchResult? _fallbackOr(
     SubscriptionFetchResult failure,
     SubscriptionRecord record,
@@ -323,7 +300,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
   }
 }
 
-/// 非 Android 宿主 / 未注入实现时的兜底：直接报「不可用」，不抛异常。
+/// Fallback when no implementation is injected: reports "unavailable" instead of throwing.
 class UnavailableSubscriptionFetcher implements SubscriptionFetcher {
   const UnavailableSubscriptionFetcher();
 

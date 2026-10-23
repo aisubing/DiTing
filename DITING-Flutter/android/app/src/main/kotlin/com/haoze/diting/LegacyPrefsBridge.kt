@@ -7,18 +7,14 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-/// Exposes the SharedPreferences containers written by the legacy app.
-/// The Flutter side must use the same files and keys, so the platform API is
-/// used directly: shared_preferences keeps everything under one prefixed file.
+/// Exposes the legacy SharedPreferences containers; shared_preferences would prefix file names.
 class LegacyPrefsBridge(private val context: Context) :
     MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/legacy_prefs"
 
-        /// Allowed containers; the first eleven are legacy upgrade contracts.
-        /// A whitelist makes a typo fail loudly instead of silently creating a
-        /// prefs file the services never read.
+        /// Legacy upgrade contracts; the whitelist makes a typo fail, not create a dead file
         val CONTAINERS = setOf(
             "dns_vpn_prefs",
             "diting_express_prefs",
@@ -41,8 +37,7 @@ class LegacyPrefsBridge(private val context: Context) :
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        // Single source of version numbers: the Flutter Gradle plugin stamps
-        // pubspec.yaml's version into the package info read back here.
+        // Single source of versions: the Gradle plugin stamps pubspec.yaml's version in.
         if (call.method == "versionInfo") {
             result.success(versionInfo())
             return
@@ -69,7 +64,7 @@ class LegacyPrefsBridge(private val context: Context) :
         }
     }
 
-    /// name comes from flutter.versionName, code from flutter.versionCode.
+    /// name comes from flutter.versionName, code from flutter.versionCode
     private fun versionInfo(): Map<String, Any> {
         @Suppress("DEPRECATION")
         val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -100,8 +95,7 @@ class LegacyPrefsBridge(private val context: Context) :
                 "bool" -> editor.putBoolean(key, value as Boolean)
                 "int" -> editor.putInt(key, (value as Number).toInt())
                 "long" -> editor.putLong(key, (value as Number).toLong())
-                // SharedPreferences has a dedicated float slot; the channel only
-                // carries doubles, so the type has to be explicit.
+                // SharedPreferences stores floats; the channel carries doubles, so cast explicitly.
                 "float" -> editor.putFloat(key, (value as Number).toFloat())
                 "string_set" -> editor.putStringSet(key, (value as List<*>).map { it.toString() }.toSet())
                 else -> {
@@ -117,7 +111,7 @@ class LegacyPrefsBridge(private val context: Context) :
         result.success(null)
     }
 
-    /** `getAll` can return `Set<String>`, which the standard codec cannot carry. */
+    /// `getAll` can return `Set<String>`, which the standard codec cannot carry
     private fun readable(values: Map<String, *>): Map<String, Any?> {
         val output = HashMap<String, Any?>(values.size)
         values.forEach { (key, value) ->

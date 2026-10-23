@@ -4,34 +4,22 @@ import 'dart:io';
 import 'package:diting/data/backup/dav_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pins the WebDAV client against a real HTTP server.
-///
-/// `DavNotifier.test()` used to be `await Future.delayed(1.2s)` plus "does the
-/// address contain `fail`" — a server that did not exist reported 「连接成功」.
-/// These tests run a throwaway `HttpServer` so each branch is decided by an
-/// actual response, not by a string.
+/// Pins the WebDAV client against a real HTTP server: every branch is decided by an actual reply
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // `flutter_test` installs `HttpOverrides.global` that answers every request
-  // with a bare 400 — it exists to catch tests that accidentally hit the network.
-  // This file deliberately hits a local server, so the override has to go; the
-  // server binds to loopback on an ephemeral port, so nothing leaves the machine.
+  // `flutter_test` installs `HttpOverrides.global` answering 400; this file uses a loopback server
   setUpAll(() => HttpOverrides.global = null);
 
   late HttpServer server;
   late String baseUrl;
 
-  /// Auth the fake server requires; tests that expect 401 pass a different one.
   const goodAuth = 'diting:secret';
 
-  /// Records every (method, path, authorized) the client issued.
   late List<({String method, String path, bool authorized})> requests;
 
-  /// Directories that should be reported as already existing (PROPFIND → 207).
   late Set<String> existingDirs;
 
-  /// Stored file bodies for PUT/GET.
   late Map<String, String> files;
 
   setUp(() async {
@@ -50,8 +38,7 @@ void main() {
         path: request.uri.path,
         authorized: authorized,
       ));
-      // Drain the body before responding: an unread body keeps the socket open
-      // and `HttpClient` waits forever for the response.
+      // Drain the body before responding, or the unread body keeps the socket open forever
       final body = await utf8.decoder.bind(request).join();
       if (!authorized) {
         request.response.statusCode = HttpStatus.unauthorized;
@@ -120,7 +107,6 @@ void main() {
 
       expect(result.succeeded, isTrue);
       expect(result.created, isTrue);
-      // 先探后建：顺序错了会在已存在目录上多做一次 MKCOL。
       expect(requests.map((item) => item.method), ['PROPFIND', 'MKCOL']);
       expect(existingDirs, contains('/diting/'));
     });
@@ -136,7 +122,7 @@ void main() {
     });
 
     test('服务器不可达时报告无法连接', () async {
-      // 端口 1 上不会有服务；这是「填了个不存在的地址」的真实形状。
+      // Nothing listens on port 1: the shape of a nonexistent address.
       final result = await const DavClient().probe(
         const DavCredentials(
           server: 'http://127.0.0.1:1',

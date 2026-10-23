@@ -7,10 +7,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 服务商管理（上游 `ProviderManagementScreen`）。
-///
-/// 结构：当前服务摘要 → 协议切换 → 内置服务商 → 自定义服务商。
-/// 内置项只能选中，自定义项可编辑/删除；与上游一致。
+/// Provider management (upstream `ProviderManagementScreen`): current provider summary,
+/// protocol switcher, built-in and custom providers. Built-in entries are selectable only.
 class ProviderManagementPage extends ConsumerStatefulWidget {
   const ProviderManagementPage({super.key});
 

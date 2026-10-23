@@ -28,8 +28,7 @@ enum ColorStyle {
   };
 }
 
-/// `.agents/surfaces.md` explains why each role this replaces leaves
-/// Material's value.
+/// `.agents/surfaces.md` explains why these roles replace Material's values.
 ColorScheme seededColorScheme({
   required Color seedColor,
   required Brightness brightness,
@@ -177,9 +176,7 @@ const _maxDarkAccentTone = 75.0;
 
 DynamicScheme? _lastScheme;
 
-// Palettes do not depend on brightness, and a seed's light and dark schemes
-// are built one after the other, so the second takes the first one's rather
-// than running the content variant's temperature analysis again.
+// Schemes are built light then dark, so the second reuses the first's temperature analysis.
 DynamicScheme _dynamicScheme(Hct source, bool dark, ColorStyle style) {
   final last = _lastScheme;
   final scheme =

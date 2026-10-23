@@ -1,16 +1,10 @@
-/// 观测域四个页面共用：格式化、确认框、链路与状态小件。
-///
-/// 为什么集中在一个文件：连接 / 请求 / DNS 三页的「字节数」「速率」「时长」
-/// 口径必须一致——同一个页面里下行写 1.2 MB、详情写 1228 KB 是最容易出的一类
-/// 不一致；链路的「节点 → 策略组」箭头样式同理。
+/// Shared by the four observability pages so byte, rate and duration units cannot diverge.
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 字节数：B / KB / MB / GB，1000 进制。
-///
-/// 与流量页同一口径（运营商账单也是 1000），全站不能一半 1000 一半 1024。
+/// Bytes as B / KB / MB / GB, base 1000 to match the traffic page.
 String obsFormatBytes(int bytes) {
   const units = ['B', 'KB', 'MB', 'GB'];
   var value = bytes.toDouble();
@@ -23,7 +17,7 @@ String obsFormatBytes(int bytes) {
   return '$text ${units[unit]}';
 }
 
-/// 速率：`82.4 KB/s`。不足 1 KB 时给整字节，避免出现 `0.0 KB/s`。
+/// Rate text, e.g. `82.4 KB/s`. Below 1 KB it shows whole bytes, never `0.0 KB/s`.
 String obsFormatSpeed(int bytesPerSecond) {
   if (bytesPerSecond < 1000) {
     return '$bytesPerSecond B/s';
@@ -31,7 +25,7 @@ String obsFormatSpeed(int bytesPerSecond) {
   return '${obsFormatBytes(bytesPerSecond)}/s';
 }
 
-/// 时长：`42 秒` / `12 分 4 秒` / `1 小时 8 分`。
+/// Duration text: `42 s`, `12 min 4 s`, `1 h 8 min`.
 String obsFormatDuration(int seconds) {
   if (seconds < 60) {
     return '$seconds 秒';
@@ -46,14 +40,12 @@ String obsFormatDuration(int seconds) {
   return minutes == 0 ? '$hours 小时' : '$hours 小时 $minutes 分';
 }
 
-/// 延迟：`0 ms`（缓存命中）到 `2000 ms`（超时）。
+/// Latency text, from `0 ms` (cache hit) to `2000 ms` (timeout).
 String obsFormatLatency(int milliseconds) =>
     milliseconds == 0 ? '缓存命中' : '$milliseconds ms';
 
-/// 统一的二次确认框，返回用户是否确认。
-///
-/// 确认文案由调用方给（「关闭」「更新」），取消一律取 `UiLocalizations`，
-/// 免得每处再写一遍「取消」。
+/// Confirmation dialog returning whether the user confirmed; the action label comes from
+/// the caller, cancel always uses UiLocalizations.
 Future<bool> showObsConfirm(
   BuildContext context, {
   required String title,
@@ -83,16 +75,14 @@ Future<bool> showObsConfirm(
   return confirmed == true;
 }
 
-/// 轻提示。演示页里操作结果不必弹框，用底部提示条即可。
+/// Bottom tip bar. Operations here do not need a dialog.
 void showObsTip(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)
       ?.showSnackBar(SnackBar(content: Text(message)));
 }
 
-/// 首次加载占位：一个转圈 + 一句说明。
-///
-/// 不用 `SkeletonText` 拼十行假行：连接表列宽随窗口变化，假行宽对不上真行，
-/// 加载完成的一瞬间会跳一下。
+/// First-load placeholder: a spinner, not fake `SkeletonText` rows, whose fixed widths make
+/// the list jump.
 class ObservabilityLoading extends StatelessWidget {
   const ObservabilityLoading({super.key, required this.label});
 
@@ -118,11 +108,8 @@ class ObservabilityLoading extends StatelessWidget {
   }
 }
 
-/// 「节点 → 策略组」链路。
-///
-/// 上游用 `RecordArrow` 画箭头；这里直接用小号 `chevronForward`，宽度与 chip
-/// 的圆角基线能对齐。chip 不可点：链路在列表里只是信息，点它没有可去的地方，
-/// 可点的样式会让人误以为能展开。
+/// Node to policy group chain. The chip is not tappable because the chain is information
+/// only, and a tappable style would promise an expansion that does not exist.
 class ObsChainTrail extends StatelessWidget {
   const ObsChainTrail({super.key, required this.chains});
 
@@ -154,10 +141,8 @@ class ObsChainTrail extends StatelessWidget {
   }
 }
 
-/// 链路的一步：圆点 + 竖线 + 节点名 + 角色说明。
-///
-/// 竖线用 `Stack` + `Positioned` 撑满整行，而不是 `IntrinsicHeight` 里放
-/// `Expanded`：后者要为每行做一次固有高度测量，条目一多就是明显的布局开销。
+/// One chain step: dot, vertical line, node name, role. The line uses Stack and Positioned
+/// rather than IntrinsicHeight plus Expanded, which would measure every row.
 class ChainStepRow extends StatelessWidget {
   const ChainStepRow({
     super.key,
@@ -243,10 +228,8 @@ class ChainStepRow extends StatelessWidget {
   }
 }
 
-/// 空态：插画 + 文案 + 可选动作。
-///
-/// 返回 `NullStatus` 而不是包一层 widget——`NullStatusSwitcher.nullStatus`
-/// 的形参就是 `NullStatus?`，包一层只是多一次拆包。
+/// Empty state: illustration, text and an optional action. Returns [NullStatus] because
+/// NullStatusSwitcher takes NullStatus? directly.
 NullStatus obsEmpty({
   required String label,
   required NullStatusIllustration illustration,
@@ -259,11 +242,8 @@ NullStatus obsEmpty({
   action: action,
 );
 
-/// 读取失败态：说明 + 重试。
-///
-/// 旧库只读且可能被原服务占用（WAL 未合并），失败是**可恢复**的，所以给重试
-/// 按钮而不是把整页变成错误页——列表页的「一片红」比一条说明加一个按钮更让
-/// 人以为数据丢了。
+/// Read-failure state with retry. The failure is recoverable, so a retry button beats
+/// turning the page into an error page.
 class ObsFailure extends StatelessWidget {
   const ObsFailure({
     super.key,

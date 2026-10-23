@@ -1,19 +1,11 @@
-/// Dart side of `com.haoze.diting/background`: 选图 + 解码成可渲染的本地文件。
-///
-/// 三步都在原生完成，原因见 [BackgroundBridge]（Kotlin）：
-/// - `pick` 走系统图片选择器（`ACTION_OPEN_DOCUMENT`），返回原始 URI；
-/// - `resolve` 把 URI 采样解码成 `filesDir/background/bg_<hash>.png` 并返回路径，
-///   Dart 用 `Image.file` 渲染即可；
-/// - `release` 在删除某张壁纸时删掉它的缓存副本。
-///
-/// 通道缺失（非 Android 宿主 / 单测）时全部返回「不可用」，页面据此降级。
+/// Dart side of `com.haoze.diting/background`: `pick` returns a system picker URI, `resolve`
+/// decodes it to `filesDir/background/bg_<hash>.png`, `release` drops a deleted wallpaper.
 library;
 
 import 'package:flutter/services.dart';
 
 const _backgroundChannelName = 'com.haoze.diting/background';
 
-/// 选图结果。
 class BackgroundPickResult {
   const BackgroundPickResult.picked({
     required this.uri,
@@ -32,7 +24,7 @@ class BackgroundPickResult {
 
   final String? uri;
 
-  /// 已解码的本地缓存路径；可能为 null（解码失败但 URI 有效）。
+  /// Decoded local cache path; null when decoding failed but the URI is valid.
   final String? path;
   final bool cancelled;
 
@@ -47,14 +39,13 @@ class BackgroundPickResult {
   }
 }
 
-/// 原生背景通道封装。
 class BackgroundBridge {
   BackgroundBridge({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel(_backgroundChannelName);
 
   final MethodChannel _channel;
 
-  /// 打开系统图片选择器并缓存所选图片。用户取消时返回 cancelled。
+  /// Opens the system image picker and caches the choice; null when cancelled.
   Future<BackgroundPickResult> pick() async {
     try {
       final raw = await _channel.invokeMethod<Object?>('pick');
@@ -66,7 +57,6 @@ class BackgroundBridge {
     }
   }
 
-  /// 把已记录的 URI 解析成本地缓存路径（不存在则现解）。
   Future<String?> resolve(String uri) async {
     try {
       return await _channel.invokeMethod<String>('resolve', {'uri': uri});
@@ -77,7 +67,6 @@ class BackgroundBridge {
     }
   }
 
-  /// 删除某个 URI 的本地缓存副本。
   Future<bool> release(String uri) async {
     try {
       final result = await _channel.invokeMethod<bool>('release', {'uri': uri});

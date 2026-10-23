@@ -1,17 +1,12 @@
-/// Filtered read access to the legacy `dns_log` table, for the request log
-/// page. The dashboard uses the unfiltered queries of `dns_log_repository.dart`.
-///
-/// The per-status SQL below is copied verbatim from the legacy repository; do
-/// not simplify it. The rewrite markers are why a rewritten query is not
-/// counted as passed, and the `TCP ` / `UDP ` prefix exclusions keep connection
-/// lines out of the DNS result set.
+/// Filtered read of the legacy `dns_log` table for the request log page. Per-status SQL stays
+/// verbatim: rewrite markers keep rewritten queries out of `passed` and `TCP `/`UDP ` prefixes keep
+/// connection lines out.
 library;
 
 import 'package:sqflite/sqflite.dart';
 
 import 'package:diting/data/db/http_request_repository.dart' show RequestStatus;
 
-/// One `dns_log` row.
 class DnsLogRow {
   const DnsLogRow({
     required this.id,
@@ -30,28 +25,23 @@ class DnsLogRow {
   final String queryName;
   final int queryType;
 
-    /// `PASSED` / `REWRITTEN` / `BLOCKED` / `ERROR`.
   final String result;
   final bool cached;
   final String? message;
   final String? packageName;
   final int? blockSubscriptionId;
 
-    /// Whether the row is a connection log line rather than a DNS query: no query
-    /// type, a `TCP ` / `UDP ` prefixed name, or `blocked_by=connection`.
   bool get isConnection =>
       queryType == 0 ||
       queryName.startsWith('TCP ') ||
       queryName.startsWith('UDP ') ||
       (message?.contains('blocked_by=connection') ?? false);
 
-    /// Blocked by the firewall: `result = BLOCKED` or `blocked_by=firewall:`.
   bool get isBlocked =>
       result == 'BLOCKED' ||
       (message?.contains('blocked_by=firewall:') ?? false);
 
-    /// Rewritten: the result column says so, or the message carries a rewrite
-    /// marker. The Chinese markers come from legacy rule descriptions.
+  /// The Chinese markers are the ones legacy rule descriptions emit.
   bool get isRewritten =>
       result == 'REWRITTEN' ||
       (message?.contains('blocked_by=rewrite=') ?? false) ||
@@ -59,8 +49,8 @@ class DnsLogRow {
       (message?.contains('复写') ?? false) ||
       (message?.contains('覆写') ?? false);
 
-    /// Display bucket. Only `result = ERROR` maps to `error`; connection rows fold
-    /// into bypassed or blocked instead.
+  /// Display bucket. Connection rows fold into bypassed or blocked; everything unrecognised counts
+  /// as error.
   RequestStatus get status {
     if (isConnection) {
       return isBlocked ? RequestStatus.blocked : RequestStatus.bypassed;
@@ -74,11 +64,8 @@ class DnsLogRow {
   }
 }
 
-/// Parsed form of `dns_log.message`.
-///
-/// The writer joins entries as `app=.., resolved=.., blocked_by=.., error=..,
-/// elapsed=NNms`, so splitting on the first `=` per token is enough; values may
-/// themselves contain `=`.
+/// Parsed `dns_log.message` (`app=.., resolved=.., blocked_by=.., error=.., elapsed=NNms`); each
+/// token splits on its first `=`.
 class DnsLogMessage {
   const DnsLogMessage({
     this.app,
@@ -94,8 +81,8 @@ class DnsLogMessage {
   final String? error;
   final int? elapsedMs;
 
-    /// Keeps the known keys. Unknown tokens are dropped: the detail sheet labels
-    /// each field, so a raw `foo=bar` would look like a bug.
+  /// Keeps the known keys only; unknown tokens are dropped because the detail sheet labels each
+  /// field.
   static DnsLogMessage parse(String? message) {
     if (message == null || message.isEmpty) return const DnsLogMessage();
     String? app;
@@ -140,8 +127,7 @@ class DnsQueryRepository {
 
   final Database _db;
 
-    /// Newest first. [status] defaults to `all`; the page chips select one bucket
-    /// at a time, so there is no `IN (...)` path.
+  /// Newest first. The page chips select one bucket at a time, so there is no `IN (...)` path.
   Future<List<DnsLogRow>> recent({
     int limit = 200,
     RequestStatus status = RequestStatus.all,
@@ -171,7 +157,7 @@ class DnsQueryRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-    /// Single-bucket SQL, whitespace included, so it stays verbatim.
+  /// Single-bucket SQL; whitespace included, so it stays verbatim.
   static String? _statusClause(RequestStatus status) => switch (status) {
     RequestStatus.all => null,
     RequestStatus.passed =>

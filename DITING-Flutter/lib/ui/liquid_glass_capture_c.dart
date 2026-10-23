@@ -2,9 +2,7 @@
 
 part of 'liquid_glass.dart';
 
-/// Redraws onto a capture what a pane's root holds below the pane, as the
-/// engine composites it, but for the root's own effect, which the engine
-/// applies to the glass as well.
+/// Redraws onto a capture what a pane's root holds below it, for the root's own effect too.
 class _Replay {
   _Replay(this.canvas, this.drawn, this.entry) : _toHost = [entry.rootToHost];
 
@@ -13,7 +11,7 @@ class _Replay {
   final _Behind entry;
   final List<Matrix4> _toHost;
 
-  // A layer's effects are applied only once something under it draws.
+  // A layer's effects apply only once something under it draws.
   final _entered = <(ContainerLayer, Matrix4?, bool)>[];
   final _saves = <int>[];
 
@@ -140,8 +138,7 @@ class _Replay {
           ..clipPath(clipPath, doAntiAlias: clipBehavior != Clip.hardEdge);
         clip = clipPath;
       default:
-        // Lib clips to no rounded rect, so one a package draws clips by its
-        // bounds here.
+        // Lib clips to no rounded rect, so a package's clips by its bounds here.
         final bounds = layer.describeClipBounds();
         if (bounds == null) {
           return false;

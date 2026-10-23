@@ -1,32 +1,21 @@
-/// 单行规则解析：cosmetic / URL / 修饰符 / 域名（1.4.3
-/// `AdblockRuleLineParser` 的移植）。
-///
-/// 判定顺序是语义的一部分，不能重排：
-/// 1. cosmetic 分隔符先探测（`#$@#` 必须早于 `#$#`）；
-/// 2. 再切尾部 `#` 注释（但正则可含 `#`）；
-/// 3. 再抽 `$` 修饰符；
-/// 4. 再判 URL/路径规则；
-/// 5. 最后当域名规则。
+/// Single-line rule parsing: cosmetic, URL, modifier and domain forms. The check order is semantic
+/// and must not be reordered.
 library;
 
 import 'package:diting/data/rules/rule_domain_utils.dart';
 import 'package:diting/data/rules/rule_models.dart';
 
-/// 元素隐藏分隔符，长的在前：`#$@#` 是 `#$#` 的例外形式，先匹配短会把
-/// `example.com#$@#selector` 整条降级成整域拦截。
+/// Element-hiding delimiters, longest first: `#$@#` is the exception form of `#$#`, so the short
+/// one first would demote the rule.
 const _cosmeticDelimiters = ['#\$@#', '#@#', '##', '#?#', '#\$#'];
 
-/// 该行是否使用元素隐藏分隔符。
-///
-/// 以 `#` 开头的行既可能是注释也可能是通用 cosmetic 规则（`##.ad`），所以这条
-/// 判定必须先于注释过滤执行。
+/// Whether the line uses an element-hiding delimiter. Must run before comment filtering: a `#` line
+/// may be a comment or a rule.
 bool isCosmeticRuleLine(String line) =>
     _cosmeticDelimiters.any(line.contains);
 
-/// 尾部 `#` 注释可能的起点。
-///
-/// 正则可含 `#`（`/foo#bar/`），扫描从正则字面量闭合的 `/` 之后开始；因此
-/// 紧跟其后的注释仍能被找到。非正则行返回 0，等价于从头扫。
+/// Index where a trailing `#` comment may start, or 0. A regex may contain `#` (`/foo#bar/`), so
+/// the scan starts after the closing `/`.
 int _commentSearchStart(String line, bool allow) {
   final offset = (allow && line.startsWith('@@')) ? 2 : 0;
   if (line.length <= offset + 1 || line[offset] != '/') {
@@ -40,21 +29,18 @@ int _commentSearchStart(String line, bool allow) {
   return closing <= offset ? 0 : closing + 1;
 }
 
-/// 解析一行 AdGuard / ABP / 裸域名 / cosmetic / URL 规则。
 CategorizedLine parseAdblockOrDomainLine(
   String line,
   String originalLine,
   bool allow,
 ) {
-  // 1. 元素隐藏（cosmetic）
   final cosmetic = _parseCosmeticLine(line, originalLine);
   if (cosmetic != null) {
     return cosmetic;
   }
 
-  // 只有「起始尾部注释」的 `#` 可以被丢弃。粘在 pattern 上的 `#` 是本解析器
-  // 不认识的标记或畸形规则，在这里截断会静默把它放宽成整域拦截，因此按
-  // unsupported 处理。正则可以合法携带 `#`，扫描从字面量之后开始。
+  // Only a `#` that starts a trailing comment may be dropped: truncating at a `#` glued to the
+  // pattern would widen the rule to a whole domain block.
   final hashIndex = line.indexOf('#', _commentSearchStart(line, allow));
   var value = hashIndex < 0 ? line.trim() : '';
   if (hashIndex >= 0) {
@@ -72,7 +58,6 @@ CategorizedLine parseAdblockOrDomainLine(
     value = value.startsWith('@@') ? value.substring(2) : value;
   }
 
-  // 2. 正则语法
   var isRegex = false;
   String? regexPattern;
   String? modifiersStr;
@@ -109,7 +94,6 @@ CategorizedLine parseAdblockOrDomainLine(
     }
   }
 
-  // 3. 修饰符
   var important = false;
   String? appScope;
   var appInverted = false;
@@ -130,9 +114,8 @@ CategorizedLine parseAdblockOrDomainLine(
       if (lower == 'important') {
         important = true;
       } else if (lower.startsWith('~denyallow=')) {
-        // `~denyallow=` 没有可反转的语义（该修饰符本身已是排除表），丢弃修饰符
-        // 但保留规则——与桌面版解析器一致。当成普通 denyallow 处理会把那些域名
-        // 变成活跃拦截规则的例外，规则就一条都拦不住了。
+        // The modifier is already an exclusion list, so `~` is dropped but the rule is kept, as the
+        // desktop parser does.
         continue;
       } else if (lower.startsWith('app=') || lower.startsWith('~app=')) {
         final isNegativePrefix = lower.startsWith('~app=');
@@ -253,14 +236,13 @@ CategorizedLine parseAdblockOrDomainLine(
       } else if (isWebOnlyModifier(lower)) {
         return const CategorizedLine(ignoredCount: 1);
       } else if (lower == 'all' || lower == 'empty') {
-        // `$all` 匹配全部内容类型，对 DNS 层等价于「无附加约束」。
+        // `$all` matches every content type: no extra constraint at DNS level.
       } else {
         return const CategorizedLine(unsupportedCount: 1);
       }
     }
   }
 
-  // 4. URL / 路径拦截规则
   if (!isRegex && _isUrlOrPathRule(value)) {
     final cleanPattern = _cleanUrlPattern(value);
     if (cleanPattern.isNotEmpty) {
@@ -283,7 +265,6 @@ CategorizedLine parseAdblockOrDomainLine(
     }
   }
 
-  // 5. 普通域名规则
   final String domain;
   final bool isWildcard;
   if (isRegex) {
@@ -371,8 +352,7 @@ CategorizedLine parseAdblockOrDomainLine(
       : CategorizedLine(blockRules: [rule]);
 }
 
-/// `dnsrewrite=a;b;c` 取最后一段；但首段是 NXDOMAIN/REFUSED/SERVFAIL 时按
-/// 黑洞处理（旧版 `targetSpec` 的取值规则）。
+/// `dnsrewrite=a;b;c` takes the last part; a leading NXDOMAIN/REFUSED/SERVFAIL means a blackhole.
 String _dnsrewriteLastPart(String rawSpec) {
   final parts = rawSpec
       .split(';')
@@ -390,7 +370,6 @@ String _dnsrewriteLastPart(String rawSpec) {
 }
 
 CategorizedLine? _parseCosmeticLine(String line, String originalLine) {
-  // `#$@#` 是 `#$#` 的例外形式，必须先于更短的标记探测。
   final isException = line.contains('#@#') || line.contains(r'#$@#');
   final String delimiter;
   if (line.contains(r'#$@#')) {
@@ -436,7 +415,6 @@ CategorizedLine? _parseCosmeticLine(String line, String originalLine) {
   );
 }
 
-/// 是否把该值当 URL / 路径规则处理（`isUrlOrPathRule`）。
 bool _isUrlOrPathRule(String value) {
   final lower = value.toLowerCase();
   if (lower.startsWith('http://') || lower.startsWith('https://')) {
@@ -445,11 +423,10 @@ bool _isUrlOrPathRule(String value) {
   if (lower.startsWith('|http://') || lower.startsWith('|https://')) {
     return true;
   }
-  // ||domain/path^ 或 ||*/path^
+  // ||domain/path^ or ||*/path^
   if (value.startsWith('||') && value.substring(2).contains('/')) {
     return true;
   }
-  // 纯路径规则：*/api/... 或 /api/...（排除 /.../ 正则）
   if (value.startsWith('*/') && value.length > 2) {
     return true;
   }
@@ -468,7 +445,7 @@ String _cleanUrlPattern(String value) {
   return cleaned.trim();
 }
 
-/// Dart 的 `RegExp` 没有「只校验不匹配」的构造器；能编译就算合法。
+/// Dart's `RegExp` has no validate-only constructor; compiling is the check.
 bool _isValidRegex(String pattern) {
   try {
     RegExp(pattern);
@@ -478,20 +455,14 @@ bool _isValidRegex(String pattern) {
   }
 }
 
-/// `$dnsrewrite=` 的目标 IP 归一化：`parseNumericAddressSafe` 的薄封装，
-/// 单独提出来是为了让调用点读起来是「这是 IP 分支」。
 class InternetAddressParse {
   const InternetAddressParse._();
 
   static String? numeric(String value) => parseNumericAddressSafe(value);
 }
 
-/// 规则去重键（`AdGuardRuleParser.blockRuleKey` / `allowRuleKey` /
-/// `rewriteRuleKey`）。
-///
-/// 键必须包含 `important` / `appScope` / `appInverted` 等所有区分维度：只按
-/// pattern 去重会把「仅对某 app 生效的重要拦截」和「全局普通拦截」判成同一条，
-/// 后者会覆盖前者。
+/// Rule dedupe keys. A key must include every distinguishing dimension (`important`, `appScope`,
+/// `appInverted`), or distinct rules would merge.
 String blockRuleKey(
   String pattern, {
   required bool important,
@@ -553,7 +524,6 @@ String _ruleKey(
   return '$base:${denyallow ?? ''}:$isRegex:${dnsType ?? ''}';
 }
 
-/// `ParsedRule` 的 block 键。
 String blockKeyOf(ParsedRule rule) => blockRuleKey(
   rule.pattern,
   important: rule.important,
@@ -564,7 +534,6 @@ String blockKeyOf(ParsedRule rule) => blockRuleKey(
   dnsType: rule.dnsType,
 );
 
-/// `ParsedRule` 的 allow 键。
 String allowKeyOf(ParsedRule rule) => allowRuleKey(
   rule.pattern,
   important: rule.important,
@@ -575,6 +544,5 @@ String allowKeyOf(ParsedRule rule) => allowRuleKey(
   dnsType: rule.dnsType,
 );
 
-/// `ParsedRewriteRule` 的键。
 String rewriteKeyOf(ParsedRewriteRule rule) =>
     rewriteRuleKey(rule.pattern, rule.targetType, rule.targetValue);

@@ -1,10 +1,6 @@
-/// First-launch terms and disclaimer.
-///
-/// Upstream 1.4.3 showed `InitialAgreementDialog` once from `MainActivity` and
-/// stored `initial_agreement_accepted`. [InitialAgreementGate] is mounted in
-/// `DitingApp.builder` so it also covers overlay routes. The wording is copied
-/// verbatim from `ui/MainActivityDialogs.kt`: it is the legal text users
-/// actually agreed to.
+/// First-launch terms and disclaimer. 1.4.3 showed `InitialAgreementDialog` once from
+/// `MainActivity` and stored `initial_agreement_accepted`; the gate mounts in `DitingApp.builder`
+/// so it covers overlay routes too. Wording is verbatim from `ui/MainActivityDialogs.kt`.
 library;
 
 import 'dart:ui' show ImageFilter;
@@ -14,10 +10,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Gates the app behind the first-launch agreement.
-///
-/// Returns [child] untouched once accepted, so the gate adds no extra layout
-/// level afterwards.
+/// Gates the app behind the first-launch agreement; returns [child] untouched once
+/// accepted, adding no layout level afterwards.
 class InitialAgreementGate extends ConsumerStatefulWidget {
   const InitialAgreementGate({super.key, required this.child});
 
@@ -71,11 +65,8 @@ class _InitialAgreementGateState extends ConsumerState<InitialAgreementGate> {
   }
 }
 
-/// Screen shown after declining.
-///
-/// Does not kill the process: `SystemNavigator.pop()` is treated as a crash by
-/// some vendor ROMs. The user exits on their own, and "review again" is offered
-/// so a mis-tap is not final.
+/// Screen shown after declining. It does not kill the process: `SystemNavigator.pop()` is treated
+/// as a crash by some vendor ROMs, and "review again" keeps a mis-tap reversible.
 class _DeclinedNotice extends StatelessWidget {
   const _DeclinedNotice({required this.onReopen});
 
@@ -111,9 +102,7 @@ class _DeclinedNotice extends StatelessWidget {
   }
 }
 
-/// The terms dialog itself.
-///
-/// Wording comes verbatim from the upstream agreement text.
+/// The terms dialog; the wording is the verbatim upstream agreement text.
 class InitialAgreementDialog extends StatelessWidget {
   const InitialAgreementDialog({
     super.key,
@@ -143,10 +132,9 @@ class InitialAgreementDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Three paragraphs of legal text are the longest body copy in the app.
-    // A long document needs opposite treatment to a short question such as
-    // "delete this?": request full width with a 20 inset and 20 body padding,
-    // which widens the body by ~44% on a 411dp screen.
+    // Three paragraphs of legal text are the app's longest body copy. Unlike a short question such
+    // as "delete this?", it wants full width: the 20 inset plus 20 body padding widens the body by
+    // ~44% on a 411dp screen.
     return CommonDialog(
       title: '使用须知与免责声明',
       width: double.infinity,
@@ -156,9 +144,8 @@ class InitialAgreementDialog extends StatelessWidget {
         TextButton(onPressed: onDecline, child: const Text('不同意并退出')),
         TextButton(onPressed: onAccept, child: const Text('同意并继续')),
       ],
-      // Must scroll: three paragraphs do not fit on a small screen with large
-      // text. Line height 1.6 instead of the default 1.33 keeps dense CJK body
-      // text legible.
+      // Must scroll: three paragraphs do not fit a small screen at large text. Line height 1.6
+      // (default 1.33) keeps dense CJK body text legible.
       child: ConstrainedBox(
 
         constraints: BoxConstraints(

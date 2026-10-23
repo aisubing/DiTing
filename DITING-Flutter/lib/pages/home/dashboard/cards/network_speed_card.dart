@@ -8,17 +8,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 网络速度卡（FlClash `widgets/traffic.dart` 的 `NetworkSpeedCard`）。
-///
-/// 上游手机端是一张卡里左右两块 `_SpeedTile`：方向标签 + 大字速率 + 累计流量 +
-/// 底部一条贴边的曲线。这里保留这个结构，数据换成 DITING 的真实来源——
-/// 速率来自原生 `TrafficRateMonitor` 的每秒快照（`speedSeriesProvider`），
-/// 累计来自旧库 `app_traffic_daily` 的当日行（`trafficTotalsProvider`）。
-///
-/// 与上游的两处差异都是「数据源缺失时说实话」：
-/// - 极速模式 / 无原生通道时**不画曲线**：一条贴在基线上的 0 线会被读成
-///   「确实没有流量」，而事实是这一模式不统计；
-/// - 累计流量未就绪时显示 `—`，不是 `0 B`。
+/// Network speed card, after FlClash widgets/traffic.dart. Rates come from the native
+/// TrafficRateMonitor, totals from app_traffic_daily; a missing source is never a flat 0.
 class NetworkSpeedCard extends ConsumerWidget {
   const NetworkSpeedCard({super.key, this.onDetail});
 
@@ -100,7 +91,7 @@ class _SpeedTile extends StatelessWidget {
   final double? total;
   final SpeedSeries series;
 
-  /// 曲线高度。乘 `scale` 是为了放大字号时整块跟着长，而不是让文字压住曲线。
+  /// Chart height. Scaled with text size so the curve keeps its room.
   static const _chartHeight = 44.0;
 
   @override
@@ -177,7 +168,7 @@ class _SpeedTile extends StatelessWidget {
                     values: values,
                     revision: series.revision,
                     capacity: speedSampleCapacity,
-                    // 与上游同值：空载抖动不会把曲线顶到满高。
+                    // Same as upstream: idle jitter must not pin the curve to full height.
                     minScale: 8 * 1024,
                     color: color,
                     baselineRatio: 1,
@@ -188,7 +179,7 @@ class _SpeedTile extends StatelessWidget {
     );
   }
 
-  /// `1.2 MB` → `('1.2', 'MB')`；没有单位（`512 B`）时返回空串。
+  /// Split `1.2 MB` into number and unit; bytes have no unit, so it returns ''.
   static (String, String) _split(String text) {
     final at = text.lastIndexOf(' ');
     return at < 0

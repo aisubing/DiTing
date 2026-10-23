@@ -1,15 +1,6 @@
-/// Translates the Room rule tables into `Engine.applyRuleSnapshot` input.
-///
-/// 1.4.3 keeps "important" block rules in a separate list so they survive
-/// allowlist overrides; everything else goes into the plain global arrays. The
-/// Go policy engine lowercases and validates each pattern itself.
-///
-/// **App-scoped rules never go into the global arrays.** A rule whose
-/// `appScope` is set (e.g. `*$app=com.foo` / `||ads.com^$app=com.foo`) applies
-/// to one app only; the engine expects it in `appRules[<pkg>].block` /
-/// `.important`, keyed by package name exactly like
-/// `DomainPolicyEngine.buildRuleSnapshotJson`. Emitting it globally instead
-/// would widen a single-app block into an all-app block.
+/// Translates the Room rule tables into `Engine.applyRuleSnapshot`: "important" rules travel in a
+/// separate list, and app-scoped rules stay under `appRules[<pkg>]` because emitting them globally
+/// widens a single-app block to every app.
 library;
 
 import 'dart:convert';
@@ -23,7 +14,6 @@ Map<String, Object?> buildRuleSnapshot(
   final normalBlock = <String>{};
   final importantBlock = <String>{};
   final allow = <String>{};
-  // package -> block / important patterns sourced from app-scoped rules.
   final scopedBlock = <String, Set<String>>{};
   final scopedImportant = <String, Set<String>>{};
 
@@ -46,8 +36,7 @@ Map<String, Object?> buildRuleSnapshot(
   }
   for (final rule in rules[RuleKind.allow] ?? const <MockRule>[]) {
     if (!rule.enabled || rule.pattern.isEmpty) continue;
-    // App-scoped allow rules are already covered by the app allowlist map; the
-    // rule-table allow rows are the global ones. Keep globals here.
+    // App-scoped allow rules come from the app allowlist map.
     if (_scopesOf(rule).isEmpty) allow.add(rule.pattern);
   }
 
@@ -56,10 +45,8 @@ Map<String, Object?> buildRuleSnapshot(
     'globalAllow': allow.toList(),
     'globalBlock': normalBlock.toList(),
     'globalImportant': importantBlock.toList(),
-    // Shape mirrors `DomainPolicyEngine.buildRuleSnapshotJson`: every package
-    // maps to an object with `allow` / `block` / `important` arrays. A bare
-    // array here would be silently discarded by the Go parser instead of
-    // applying the allowlist.
+    // Each package maps to `allow` / `block` / `important` arrays; the Go parser silently discards
+    // any other shape.
     'appRules': _encodeAppRules(
       appAllowlist: appAllowlist,
       scopedBlock: scopedBlock,
@@ -73,7 +60,6 @@ Map<String, Object?> buildRuleSnapshot(
   };
 }
 
-/// Split an `appScope` package list (`|`-separated) into trimmed package names.
 List<String> _scopesOf(MockRule rule) {
   final scope = rule.appScope?.trim();
   if (scope == null || scope.isEmpty || rule.appInverted) return const [];
@@ -83,12 +69,7 @@ List<String> _scopesOf(MockRule rule) {
   ];
 }
 
-/// Per-app allowlists + app-scoped block rules, keyed by **package name**.
-///
-/// 1.4.3's `GoTunnelRuleManager.syncAppAllowlist` keys this object by UID
-/// because it feeds `Engine.setAppAllowlist` directly. The snapshot route takes
-/// package names instead (the engine resolves them through `AppUidResolver`,
-/// which the tunnel service registers), so no UID lookup is needed here.
+/// Per-app allowlists and app-scoped block rules, keyed by package name, not UID.
 Map<String, Object?> _encodeAppRules({
   required Map<String, Set<String>> appAllowlist,
   required Map<String, Set<String>> scopedBlock,
@@ -105,7 +86,6 @@ Map<String, Object?> _encodeAppRules({
     final allowDomains = appAllowlist[packageName] ?? const <String>{};
     final block = scopedBlock[packageName] ?? const <String>{};
     final important = scopedImportant[packageName] ?? const <String>{};
-    // Skip packages that would contribute nothing in any of the three arrays.
     if (allowDomains.isEmpty && block.isEmpty && important.isEmpty) continue;
     result[packageName] = {
       'allow': [
@@ -124,8 +104,8 @@ String encodeRuleSnapshot(
   Map<String, Set<String>> appAllowlist = const {},
 }) => jsonEncode(buildRuleSnapshot(rules, appAllowlist: appAllowlist));
 
-/// `Engine.setRewriteRules` takes a flat domain -> target map. CNAME targets
-/// and IP literals share the same shape, so no type detection is needed.
+/// `Engine.setRewriteRules` takes a flat domain -> target map; CNAME targets and IP literals share
+/// that shape.
 String encodeRewriteRules(Map<RuleKind, List<MockRule>> rules) {
   final targets = <String, String>{};
   for (final rule in rules[RuleKind.rewrite] ?? const <MockRule>[]) {

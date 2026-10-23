@@ -1,9 +1,4 @@
-/// 演示用状态：主题页里上游有、但 `appearance_providers.dart` 尚未覆盖的几项。
-///
-/// 这几项（底栏形态 / tab 动画 / Liquid 玻璃）**都落盘**到旧版 `dns_vpn_prefs`
-/// 容器（键名由本仓新增，见 `LegacySettings.liquidGlassModeRaw` 等）。早先它们
-/// 只活在内存里，结果是：外观页显示「极致」，退出应用再进来浮条又变回实色，
-/// 而设置项仍显示用户选过的值——两边谁都不算错，但对不上。
+/// Bottom bar style, tab transition and liquid glass: in memory only, so they reset on restart.
 library;
 
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -13,10 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
-/// 底栏形态：浮条（`NavigationDock`）或普通底栏（`NavigationBar` 形态）。
-///
-/// 与 `appearance_providers.dart` 的 [BottomBarDestination] 是两件事：那一份
-/// 决定「底栏有哪几个 tab」，这一份决定「底栏长什么样」。
+/// Bottom bar look; [BottomBarDestination] decides which tabs exist, not how they are drawn.
 enum BottomBarStyle {
   floating('浮条'),
   docked('普通');
@@ -47,10 +39,8 @@ final bottomBarStyleProvider =
       BottomBarStyleNotifier.new,
     );
 
-/// tab 切换动画。
-///
-/// 上游只有滑动与淡入；这里补上「无」和「缩放」，四种都能在缩略图里预览，
-/// 否则用户只能靠文字猜「缩放」到底缩的是页面还是 tab 图标。
+/// Tab switch animation; `none` and `scale` extend the upstream slide/fade so all four can be
+/// previewed.
 enum TabTransition {
   none('无'),
   fade('淡入'),
@@ -81,7 +71,7 @@ final tabTransitionProvider =
       TabTransitionNotifier.new,
     );
 
-/// Liquid 玻璃：关闭 / 标准 / 极致（质量档位见 `lib/ui/liquid_glass.dart`）。
+/// Liquid glass: off / standard / ultra (quality tiers live in `lib/ui/liquid_glass.dart`).
 enum LiquidGlassMode {
   none('关闭'),
   standard('标准'),
@@ -116,7 +106,7 @@ final liquidGlassModeProvider =
       LiquidGlassModeNotifier.new,
     );
 
-/// 选中的字体族；`null` 表示用系统默认字体。
+/// Selected font family; null means the system default.
 class FontFamilyNotifier extends Notifier<String?> {
   @override
   String? build() => null;
@@ -127,11 +117,8 @@ class FontFamilyNotifier extends Notifier<String?> {
 final selectedFontFamilyProvider =
     NotifierProvider<FontFamilyNotifier, String?>(FontFamilyNotifier.new);
 
-/// 自定义主色（取色浮层确认后落在这里）。
-///
-/// `appearance_providers.dart` 的九色板是 `AppPalette` 枚举，装不下任意颜色，
-/// 所以自定义色只影响本页与主题预览页里由 `seededColorScheme` 推导出来的
-/// 预览色板；应用级 `ThemeData` 仍只跟随九色板。这是演示层的有意简化。
+/// Custom primary color; it only seeds the preview palette, app-wide `ThemeData` still follows
+/// `AppPalette`.
 class CustomPrimaryColorNotifier extends Notifier<Color?> {
   @override
   Color? build() => null;
@@ -146,7 +133,7 @@ final customPrimaryColorProvider =
       CustomPrimaryColorNotifier.new,
     );
 
-/// 主题预览页要对比的几个对象：日间 / 夜间 / 当前自定义色。
+/// Brightness the theme preview page compares: light / dark.
 enum PreviewBrightness {
   light('浅色', Brightness.light),
   dark('深色', Brightness.dark);

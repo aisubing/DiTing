@@ -1,16 +1,5 @@
-/// 网络工具的运行时依赖与设置。
-///
-/// 三个约束决定了这里的形状：
-///
-/// 1. **探测必须走原生**。`ping` / `traceroute` 需要 fork 进程、`lookupDns` 的
-///    隧道分支要问 Go 引擎，Dart 侧都无法实现，因此统一经
-///    `lib/data/native/diagnostics_bridge.dart` 的 `DiagnosticsRunner`。
-/// 2. **平台异常不能冒到 UI**。`MethodChannel` 在桌面/测试宿主上抛
-///    `MissingPluginException`，原生实现出错抛 `PlatformException`。两者都必须在
-///    这一层转成「带可读 message 的失败结果」，页面只面对数据。
-/// 3. **三个 viaTunnel 开关落盘到 1.4.3 的独立容器** `network_tools_settings`
-///    （键名照抄 `ui/settings/NetworkToolsSettingsStore.kt`）。它们与 DNS 域的
-///    `dns_vpn_prefs` 不是同一个文件，写错容器等于写进没人读的抽屉。
+/// Runtime dependencies and settings of the network tools; probes go through the native
+/// `DiagnosticsRunner`.
 library;
 
 import 'package:diting/data/native/diagnostics_bridge.dart';
@@ -21,22 +10,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// `NetworkToolsSettingsStore.PREFS_NAME`
 const networkToolsContainer = 'network_tools_settings';
 
-/// 三个逐工具的「走隧道解析」开关键名，逐字照抄 Kotlin 常量。
+/// Per-tool "resolve via tunnel" keys, copied verbatim from the Kotlin constants.
 const pingViaTunnelKey = 'ping_via_tunnel';
 const dnsLookupViaTunnelKey = 'dns_lookup_via_tunnel';
 const tracerouteViaTunnelKey = 'traceroute_via_tunnel';
 
-/// 原生诊断实现。**main.dart 需要 override 成
-/// `GuardedDiagnosticsRunner(MethodChannelDiagnosticsRunner())`**；
-/// 默认给不可用实现，让测试与非 Android 宿主启动即有可读文案而不是崩溃。
+/// Native runner; `main.dart` overrides it with `GuardedDiagnosticsRunner`, the default reports
+/// failures.
 final diagnosticsRunnerProvider = Provider<DiagnosticsRunner>(
   (ref) => const GuardedDiagnosticsRunner(UnavailableDiagnosticsRunner()),
 );
 
-/// 把平台异常转成失败结果的装饰器。
-///
-/// 每个方法都返回「结构完整但 success=false」的对象，而不是抛异常：面板的
-/// 忙碌态在 `await` 之后才复位，抛出会让按钮永久卡在「正在探测…」。
+/// Turns platform exceptions into `success=false` results: the panel resets busy after the await.
 class GuardedDiagnosticsRunner implements DiagnosticsRunner {
   const GuardedDiagnosticsRunner(this._inner);
 
@@ -127,7 +112,7 @@ class GuardedDiagnosticsRunner implements DiagnosticsRunner {
   }
 }
 
-/// 非 Android 宿主（桌面、单元测试）的默认实现：全部返回可读失败，不抛。
+/// Default for hosts without the channel (desktop, unit tests): readable failures, never throws.
 class UnavailableDiagnosticsRunner implements DiagnosticsRunner {
   const UnavailableDiagnosticsRunner();
 
@@ -177,12 +162,11 @@ class UnavailableDiagnosticsRunner implements DiagnosticsRunner {
   );
 }
 
-/// 物理网络快照。页面顶部信息条读它，不用任何 mock 常量。
+/// Physical network snapshot read by the header bar; no mock constants.
 final networkInfoProvider = FutureProvider<NetworkInfoSnapshot>(
   (ref) => ref.watch(diagnosticsRunnerProvider).networkInfo(),
 );
 
-/// 三个 viaTunnel 开关的当前值。
 class NetworkToolFlags {
   const NetworkToolFlags({
     this.pingViaTunnel = false,
@@ -205,11 +189,8 @@ class NetworkToolFlags {
   );
 }
 
-/// 读 `network_tools_settings`；默认全部 false（旧版也是默认 false）。
-///
-/// 依赖 [legacySettingsRevisionProvider] 复用来做失效：两者的写入口都是同一个
-/// `LegacyPrefsStore`，而 SharedPreferences 写入不可观察，必须有显式版本号，
-/// 否则面板 A 改了开关、面板 B 已经 build 过就读到旧值。
+/// Reads `network_tools_settings`, defaulting false; watches the revision since prefs are
+/// unobservable.
 final networkToolFlagsProvider = Provider<NetworkToolFlags>((ref) {
   ref.watch(legacySettingsRevisionProvider);
   final store = ref.watch(legacyPrefsStoreProvider);
@@ -221,21 +202,14 @@ final networkToolFlagsProvider = Provider<NetworkToolFlags>((ref) {
   );
 });
 
-/// 写一个开关并通知所有读 `network_tools_settings` 的 provider。
+/// Writes one switch and invalidates every reader of `network_tools_settings`.
 void setNetworkToolFlag(WidgetRef ref, String key, bool value) {
   ref.read(legacyPrefsStoreProvider).putBool(networkToolsContainer, key, value);
   ref.read(legacySettingsRevisionProvider.notifier).bump();
 }
 
-/// 探测目标的清洗：去掉 scheme / 路径 / 用户信息 / 端口，只留主机名或 IP。
-///
-/// 逐步转写自 `core/diagnostic/NetworkPingTool.sanitizeHost`（Kotlin）：
-/// 1. `://` 之后的部分；
-/// 2. 第一个 `/`、`?`、`#` 之前；
-/// 3. 最后一个 `@` 之后（去 `user:pass@`）；
-/// 4. `[` 开头取到 `]`（`[::1]:53` → `::1`）；
-/// 5. 否则「不含 `::` 且恰好一个 `:` 且冒号后全数字」才当端口剥掉——
-///    这条守卫是 `2001:db8::1` 这类地址不被误伤的关键。
+/// Strips scheme, path, user info and port; `2001:db8::1` survives, only a `:` plus digits is a
+/// port.
 String sanitizeProbeHost(String input) {
   var value = input.trim();
   if (value.isEmpty) {
@@ -277,7 +251,7 @@ int _firstIndexOfAny(String value, List<String> needles) {
   return best;
 }
 
-/// 清洗 + 判空，返回 (host, error)。error 非空时面板直接展示，不再发探测。
+/// Sanitises and validates the target; a non-null error is shown instead of probing.
 ({String host, String? error}) resolveProbeHost(String input) {
   final host = sanitizeProbeHost(input);
   if (host.isEmpty) {
@@ -289,7 +263,6 @@ int _firstIndexOfAny(String value, List<String> needles) {
   return (host: host, error: null);
 }
 
-/// 把 `DnsLookupResult.source` 翻成中文。`only upstream reaches a resolver`。
 String dnsSourceLabel(String source) => switch (source) {
   'upstream' => '上游解析',
   'cache' => '缓存命中',
@@ -298,10 +271,10 @@ String dnsSourceLabel(String source) => switch (source) {
   _ => '查询失败',
 };
 
-/// `networkInfo` 的接口名存在与否决定「无网络」的文案。
+/// An empty interface name means there is no active network.
 String networkInterfaceLabel(NetworkInfoSnapshot snapshot) =>
     snapshot.interfaceName.isEmpty ? '无活动网络' : snapshot.interfaceName;
 
-/// 延迟配色分档。负数/空值交给调用方渲染成破折号，这里只处理有效值。
+/// Formats a latency value; null is rendered as a dash by the caller.
 String latencyText(double? value) =>
     value == null ? '—' : '${value.toStringAsFixed(1)} ms';

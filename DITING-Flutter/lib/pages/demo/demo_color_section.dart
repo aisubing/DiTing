@@ -1,10 +1,8 @@
 part of 'demo_page.dart';
 
-/// 颜色与表面分区：验证四级表面色阶、九种种子色、[ColorStyle] 四种取色风格，
-/// 以及 [ColorScheme.toPureBlack] 的纯黑折叠。
-///
-/// 色块下面一律标出十六进制值：色偏是最难凭肉眼判定的回归，有 hex 就能直接
-/// 和设计稿核对。角色色的成对对比见 [_DemoSchemeSection]。
+/// Colors and surfaces: four surface levels, nine seed colors, four [ColorStyle] variants
+/// and the [ColorScheme.toPureBlack] collapse. Every swatch prints its hex, since hue drift
+/// is the hardest regression to judge by eye.
 class _DemoColorSection extends StatelessWidget {
   const _DemoColorSection();
 
@@ -35,8 +33,7 @@ class _DemoColorSection extends StatelessWidget {
   }
 }
 
-/// 四级表面：page → card → block → inset。深色模式下这四级是往上「提亮」，
-/// 而不是往下压暗，所以必须并排看才能判断层级是否读得出来。
+/// Dark mode brightens the four surface levels instead of darkening, so they read side by side.
 class _DemoSurfaceLevels extends StatelessWidget {
   const _DemoSurfaceLevels();
 
@@ -84,8 +81,7 @@ class _DemoSurfaceLevels extends StatelessWidget {
   }
 }
 
-/// 当前所处的表面层级，以及它往上一级是什么颜色。这决定「卡片里的卡片」
-/// 该用哪个填充色——本页正文在 page 上，所以 raised 是 card。
+/// The current surface level and the one step up, which decides nested card fills.
 class _DemoSurfaceContext extends StatelessWidget {
   const _DemoSurfaceContext();
 
@@ -120,8 +116,6 @@ class _DemoSurfaceContext extends StatelessWidget {
   }
 }
 
-/// 九个种子色。种子本身只是输入，真正上屏的是 HCT 推导后的色板，所以这里
-/// 同时给出种子圆点和「用它生成的 primary」——两者不一样才是对的。
 class _DemoPaletteSeeds extends StatelessWidget {
   const _DemoPaletteSeeds();
 
@@ -216,9 +210,8 @@ class _DemoSeedDot extends StatelessWidget {
   }
 }
 
-/// 四种取色风格：vivid/tinted 走 content 变体并自己压色度，soft 走 tonalSpot，
-/// monochrome 走 monochrome。同一颗种子下四行应当明显不同，否则说明
-/// `seededColorScheme(style:)` 的开关没接上。
+/// Four color styles: vivid and tinted use the content variant with their own
+/// chroma, soft uses tonalSpot, monochrome uses monochrome.
 class _DemoColorStyles extends StatelessWidget {
   const _DemoColorStyles();
 
@@ -264,8 +257,8 @@ class _DemoColorStyles extends StatelessWidget {
   }
 }
 
-/// 每种风格取哪几个角色来看：primary 看主色，container 看容器色阶，
-/// surfaceContainer 看中性色被种子带偏了多少。
+/// Roles shown per style: primary for the main color, container for the container
+/// ramp and surfaceContainer for how far the seed tints neutrals.
 const _colorStyleRoles = <(String, Color Function(ColorScheme))>[
   ('primary', _rolePrimary),
   ('primaryContainer', _rolePrimaryContainer),
@@ -295,8 +288,8 @@ class _DemoStyleSwatch extends StatelessWidget {
   }
 }
 
-/// 纯黑折叠：深色主题下 surface 系列被压到 `#000000`，其余角色不动。
-/// 这一行必须在深色主题下看；浅色主题里 `toPureBlack` 是恒等变换。
+/// Pure black collapse: dark mode pushes the surface ramp to `#000000`; light mode
+/// leaves `toPureBlack` as identity.
 class _DemoPureBlack extends StatelessWidget {
   const _DemoPureBlack();
 

@@ -160,8 +160,7 @@ class _AppScrollbarState extends RawScrollbarState<_AppScrollbar> {
     widget.onScrub?.call(_scrubRate);
   }
 
-  // The thumb maps to an absolute offset, so a slowed scrub feeds the base
-  // class a virtual pointer that advances by the scaled delta only.
+    // The thumb maps to an absolute offset; feed the base class the scaled delta only.
   @override
   void handleThumbPressUpdate(Offset localPosition) {
     final origin = _scrubOrigin;
@@ -269,8 +268,7 @@ class _FloatingScrollbarState extends State<FloatingScrollbar> {
   @override
   void initState() {
     super.initState();
-    // Lazy lists also refine maxScrollExtent during layout, which moves the
-    // thumb without a scroll notification; the position listener covers both.
+    // Lazy lists refine maxScrollExtent during layout without a notification.
     widget.controller.addListener(_syncPosition);
   }
 
@@ -306,7 +304,6 @@ class _FloatingScrollbarState extends State<FloatingScrollbar> {
         _hintMounted = true;
       });
       if (appearing) {
-        // Mounts transparent so AnimatedOpacity has a value to fade from.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && _hintMounted) {
             setState(() => _hintVisible = true);
@@ -379,8 +376,7 @@ class _FloatingScrollbarState extends State<FloatingScrollbar> {
             final fraction =
                 ((metrics.pixels - metrics.minScrollExtent) / scrollableExtent)
                     .clamp(0.0, 1.0);
-            // Continuous clamp: the pill stays clear of the bottom inset at any
-            // height.
+            // Continuous clamp keeps the pill clear of the bottom inset.
             final half = _pillHeight / 2;
             final limit =
                 (constraints.maxHeight - bottomInset - _bottomInsetGap).clamp(

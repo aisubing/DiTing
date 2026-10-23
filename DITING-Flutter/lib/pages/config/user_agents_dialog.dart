@@ -1,6 +1,6 @@
 part of 'user_agents_page.dart';
 
-/// 添加或编辑一条 UA；[existing] 为空表示新增。
+/// Add or edit a User-Agent; an empty [existing] means a new entry.
 Future<void> showUserAgentDialog(
   BuildContext context,
   WidgetRef ref, {

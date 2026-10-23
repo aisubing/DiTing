@@ -1,26 +1,5 @@
-/// 日志仪表盘**概览块**的真实聚合（首页与 `/logs` 顶部那些统计卡）。
-///
-/// ## 口径来源
-/// 逐条转写自 `DITING-Legacy/.../ui/ModernLogDashboardViewModel.kt` 的
-/// `buildDashboardState()`：
-/// - 今日请求 = `dns_log` 当日四档 + `http_request_log` 当日四档；
-/// - 「仅拦截与错误」模式下 DNS 侧的 `passed` / `cached` 归零、HTTPS 侧只保留
-///   非通过行（旧版 `it.copy(passed = 0, cached = 0)` 与那个 `filter`）；
-/// - 「关闭日志」模式下不读 `dns_log` / `http_request_log` 的当日统计，只保留
-///   缓存、竞速、Bootstrap 三项仍在跑的计数；
-/// - 竞速与 Bootstrap 一律取**今日**窗口，不是整表；
-/// - 订阅拦截的分子只算 `result = BLOCKED` / `outcome ∈ (blocked, invalid)` 且
-///   `blockSubscriptionId` 非空的行，分母是两张表的当日全部行数。
-///
-/// ## 为什么仍然是一个 snapshot
-/// 这些数字来自旧版**同一次** `buildDashboardState()` 扫描。拆成十几个 provider
-/// 后各自重建，「今日请求」与「今日流量结构」会短暂不一致——同一个屏幕上两个
-/// 数字互相矛盾，比数字慢一拍难解释得多。
-///
-/// ## 极速模式
-/// `diting_express` 没有 `http_request_log`（`ExpressRulesDatabase` 明确排除），
-/// 查它会抛 `no such table`。这里按「没有 HTTPS 记录」处理，而不是让整块概览
-/// 进 error 态。
+/// Real aggregates for the overview cards; one snapshot, or separate providers show contradictory
+/// totals.
 library;
 
 import 'package:diting/data/db/bootstrap_log_repository.dart';
@@ -39,14 +18,12 @@ import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// 旧版 `RECENT_LOG_LIMIT` / `RECENT_CACHE_LIMIT` / `TOP_LIST_LIMIT` /
-/// `SUBSCRIPTION_LIST_LIMIT`。
+/// Legacy `RECENT_LOG_LIMIT`, `RECENT_CACHE_LIMIT`, `TOP_LIST_LIMIT`, `SUBSCRIPTION_LIST_LIMIT`.
 const _recentLogLimit = 5;
 const _recentCacheLimit = 5;
 const _topListLimit = 8;
 const _subscriptionListLimit = 5;
 
-/// 一次渲染所需的全部概览数据。
 class LogDashboardSnapshot {
   const LogDashboardSnapshot({
     required this.breakdown,
@@ -61,10 +38,7 @@ class LogDashboardSnapshot {
     required this.subscriptionBlocks,
   });
 
-  /// 没有旧库（全新安装）时的空快照：所有计数为 0、所有列表为空。
-  ///
-  /// 卡片据此渲染「0」与空态文案。这是真实的「今天还没有请求」，不是占位符；
-  /// 加载中/读取失败则由调用方看 `AsyncValue` 自行显示破折号。
+  /// Empty snapshot for a fresh install: genuine "no requests today" values, not placeholders.
   const LogDashboardSnapshot.empty()
     : breakdown = const LogTrafficBreakdown.empty(),
       quality = const LogDnsQuality.empty(),
@@ -79,7 +53,7 @@ class LogDashboardSnapshot {
 
   final LogTrafficBreakdown breakdown;
 
-  /// DNS 解析质量（平均延迟 / 缓存命中率），读同一批 `dns_log` 当日行。
+  /// DNS quality (average latency, cache hit rate) from the same `dns_log` rows.
   final LogDnsQuality quality;
   final LogRaceSummary race;
   final LogBootstrapSummary bootstrap;
@@ -90,24 +64,19 @@ class LogDashboardSnapshot {
   final List<LogBootstrapIp> bootstrapIps;
   final List<LogSubscriptionBlock> subscriptionBlocks;
 
-  /// 「重点记录」四格：重点记录 / 过滤拦截 / 异常失败 / 旁路直连。
-  ///
-  /// 旧版 `FilteredModeDashboard` 里 `重点记录` 取自 `stats.total`，而
-  /// `total` 在 filtered 模式下已经只含拦截与错误，因此这里按「过滤 + 失败」
-  /// 求和，与卡片语义一致。
+  /// Highlighted total: blocked plus failed (legacy `FilteredModeDashboard`).
   int get highlightedTotal => breakdown.blocked + breakdown.error;
 }
 
-/// 今日零点的毫秒时间戳（本地时区，与旧版 `dayStartMillis()` 同口径）。
+/// Milliseconds at local midnight, matching the legacy `dayStartMillis()`.
 int _dayStartMillis() {
   final now = DateTime.now();
   return DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
 }
 
-/// 概览数据。真实表为空时给 [LogDashboardSnapshot.empty]，绝不回退演示值。
+/// Overview data. Empty tables yield [LogDashboardSnapshot.empty], never demo values.
 final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
-  // 刷新按钮与「清空日志」都 bump 这个计数器：概览必须与列表一起重建，
-  // 否则清空之后顶部还挂着旧数字。
+  // Refresh and "clear logs" both bump this, or the overview goes stale.
   ref.watch(dnsLogRevisionProvider);
   final mode = ref.watch(logModeProvider);
   final express = ref.watch(workModeProvider) == AppWorkMode.express;
@@ -122,8 +91,7 @@ final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
       ? null
       : await DnsLogRepository(db).dailyStats(since: since);
 
-  // 极速模式与「关闭日志」都不产生 HTTPS 记录。主库缺失或旧版本没有这张表
-  // （`no such table`）同样按「没有 HTTPS 记录」处理。
+  // Express, off mode, a missing database and an older schema all mean no HTTPS rows.
   var httpStats = const HttpRequestDailyStats.empty();
   if (!off && !express) {
     final mainDb = await ref.watch(mainLogDatabaseProvider.future);
@@ -155,9 +123,8 @@ final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
     }
   }
 
-  // 「仅拦截与错误」模式下旧版把 DNS 侧的 `passed` / `cached` 直接归零
-  // （`it.copy(passed = 0, cached = 0)`），因为那一档的日志里本来就只有拦截与
-  // 错误行——不归零会让「重点流量结构」把通过数也画进环形图，两个数字互相矛盾。
+  // Blocked-and-errors zeroes DNS passed/cached (legacy `copy(passed = 0, cached = 0)`), or the
+  // ring lies.
   final dnsPassed = filteredMode ? 0 : (dnsDaily?.passed ?? 0);
   final dnsCached = filteredMode ? 0 : (dnsDaily?.cached ?? 0);
   final passed = dnsPassed + httpPassed;
@@ -183,10 +150,8 @@ final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
       bypassed: httpBypassed,
       cached: dnsCached,
     ),
-    // 平均延迟在没有计时样本时给 null（页面显示破折号）；命中率分母是
-    // `passed + error`，与 `DnsLogDailyStats.cacheHitRate` 同一口径。
-    // 过滤模式把通过数归零后，命中率必须跟着重算：直接用
-    // `dnsDaily.cacheHitRate` 会留下一个「通过 0 但命中率 40%」的自相矛盾。
+    // Latency is null without samples; filtered mode recomputes the hit rate, cached hits would
+    // lie.
     quality: dnsDaily == null
         ? const LogDnsQuality.empty()
         : LogDnsQuality(
@@ -212,10 +177,6 @@ final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
         : await _loadSubscriptionBlocks(db, since, express: express),
   );
 });
-
-// ---------------------------------------------------------------------------
-// 竞速（dns_race_log，今日窗口）
-// ---------------------------------------------------------------------------
 
 class _RaceSlice {
   const _RaceSlice({required this.summary, required this.winners});
@@ -248,8 +209,7 @@ Future<_RaceSlice> _loadRace(Ref ref, Database db, DateTime since) async {
     [start, _topListLimit],
   );
 
-  // 名称解析与竞速页共用同一份目录（预设 + 用户自定义），否则同一服务商在
-  // 概览与下钻页会显示成两个名字。
+  // Share the catalog with the race page, or one provider appears under two names.
   final settings = ref.watch(legacySettingsProvider);
   final names = {
     for (final provider in [
@@ -273,10 +233,6 @@ Future<_RaceSlice> _loadRace(Ref ref, Database db, DateTime since) async {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Bootstrap（bootstrap_log，今日窗口）
-// ---------------------------------------------------------------------------
-
 class _BootstrapSlice {
   const _BootstrapSlice({required this.summary, required this.ips});
 
@@ -285,8 +241,7 @@ class _BootstrapSlice {
 }
 
 Future<_BootstrapSlice> _loadBootstrap(Database db, DateTime since) async {
-  // `BootstrapLogRepository.recentStats` 只接受窗口长度：把「今日」翻译成
-  // 「从今天零点到现在的时长」，与旧版 `statsRangeStartMillis(TODAY)` 等价。
+  // `recentStats` takes a window length, so "today" is time since local midnight.
   final window = DateTime.now().difference(since);
   final stats = await BootstrapLogRepository(
     db,
@@ -319,18 +274,13 @@ Future<_BootstrapSlice> _loadBootstrap(Database db, DateTime since) async {
   );
 }
 
-// ---------------------------------------------------------------------------
-// 最近请求（dns_log + http_request_log 合并，按时间倒序取前 N 条）
-// ---------------------------------------------------------------------------
-
 Future<List<LogRecentRequest>> _loadRecentRequests(
   Ref ref,
   Database db, {
   required bool express,
   required bool filtered,
 }) async {
-  // 「仅拦截与错误」模式下旧版在 SQL 里就只取 BLOCKED / ERROR 两档
-  // （`recentLogs(limit, mode)`），不是在内存里筛。
+  // Blocked-and-errors mode filters in SQL (legacy `recentLogs(limit, mode)`).
   final dnsRows = await db.query(
     'dns_log',
     where: filtered ? "result IN ('BLOCKED', 'ERROR')" : null,
@@ -375,10 +325,6 @@ Future<List<LogRecentRequest>> _loadRecentRequests(
   return [for (final entry in merged.take(_recentLogLimit)) entry.row];
 }
 
-// ---------------------------------------------------------------------------
-// 缓存热点（dns_cache，命中次数降序）
-// ---------------------------------------------------------------------------
-
 Future<List<LogCacheHotspot>> _loadCacheHotspots(
   DnsCacheRepository repository,
 ) async {
@@ -394,10 +340,6 @@ Future<List<LogCacheHotspot>> _loadCacheHotspots(
       ),
   ];
 }
-
-// ---------------------------------------------------------------------------
-// 规则拦截（订阅拦截命中 → 订阅名）
-// ---------------------------------------------------------------------------
 
 Future<List<LogSubscriptionBlock>> _loadSubscriptionBlocks(
   Database db,
@@ -427,8 +369,7 @@ Future<List<LogSubscriptionBlock>> _loadSubscriptionBlocks(
   }
 
   if (!express) {
-    // 极速模式没有 `http_request_log`；旧库版本偏旧时也没有这一列，两种都按
-    // 「没有 HTTPS 命中」处理，不影响 DNS 侧的统计。
+    // No `http_request_log` (express) or no column (old schema): no HTTPS hits.
     try {
       final httpTotal = await db.rawQuery(
         'SELECT COUNT(*) AS n FROM http_request_log WHERE timestamp >= ?',
@@ -450,7 +391,7 @@ Future<List<LogSubscriptionBlock>> _loadSubscriptionBlocks(
         hits[id] = (hits[id] ?? 0) + ((row['hits'] as num?)?.toInt() ?? 0);
       }
     } on DatabaseException {
-      // 表或列不存在：HTTPS 侧没有可统计的行。
+      // Missing table or column: no HTTPS rows to count.
     }
   }
 

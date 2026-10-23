@@ -4,9 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/app_host.dart';
 
-/// 移植层的最小球探：`lib/ui` 里每个组件都通过 `assert(scope != null)` 依赖
-/// [MeasureScope]/[ViewScope]/[UiLocalizations]，且浮层需要 Navigator 之上的
-/// 上下文。这里用 [AppHost] 一次性装好这些前置条件，再逐个挂载公开 API。
+/// Minimal probe of the ported widgets; each needs [MeasureScope]/[ViewScope]/[UiLocalizations]
 void main() {
   Widget host(Widget child) => AppHost(child: child);
 
@@ -78,8 +76,7 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(NavigationDock), findsOneWidget);
-    // 62dp 浮条 + 21dp 边距（MediaQuery 底部安全区为 0）+ 16dp 净空：净空是
-    // 这一版加的，没有它正文末尾会贴到浮条的玻璃上，看起来像被底栏遮住。
+    // 62dp dock + 21dp margin + 16dp clearance; less and the content reads as covered
     expect(inset, greaterThan(62));
     expect(inset, closeTo(62 + 21 + dockContentGap, 0.01));
   });
@@ -97,8 +94,7 @@ void main() {
   });
 
   testWidgets('NullStatusSwitcher 在 ListView 里仍渲染空状态', (tester) async {
-    // 回归：`layoutBuilder` 一度写死 `StackFit.expand`，无界高度下整棵空状态
-    // 子树布局失败，真机上表现为顶栏以下一整片空白（/config/dns 等四页）。
+    // Regression: a hard-coded `StackFit.expand` broke the empty state under unbounded height
     await tester.pumpWidget(
       host(
         Scaffold(
@@ -182,7 +178,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('对话框内容'), findsOneWidget);
 
-    // 遮罩可点空关闭；这里用路由出栈验证同一语义，避开遮罩动画的时序。
+    // The scrim closes on a tap outside; popping the route tests the same thing without timing
     Navigator.of(tester.element(find.text('对话框内容'))).pop();
     await tester.pumpAndSettle();
     expect(find.text('对话框内容'), findsNothing);

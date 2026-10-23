@@ -1,9 +1,7 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 part of 'liquid_glass.dart';
 
-// A capture shrinks while a sigma of its frost still spans two of its own
-// pixels; at one, where g1455 records its regular finish, text under dark glass
-// shows blocks. g1455 measured no divisor past _maxDivisor.
+// A capture shrinks while a sigma of its frost spans two pixels; smaller shows blocks under glass.
 const double _captureFrost = 2;
 const int _maxDivisor = 8;
 const double _maxCaptureSide = 2048;
@@ -11,11 +9,9 @@ const double _maxCaptureSide = 2048;
 const double _captureSoftness = 0.5;
 // How far content may paint past the bounds its layer was recorded for.
 const double _overflow = 64;
-// Impeller keeps the targets of layers and of their blurs by size for a few
-// frames: a layer resized as content moves would miss them every frame.
+// Impeller caches layer and blur targets by size for a few frames, so resizing misses them.
 const double _atlasStep = 32;
-// Past this many sigmas of its frost a pane takes under 1% of what it reads, so
-// one painted there does not raise it a level.
+// Past this many sigmas a pane takes under 1% of what it reads, so one painted there adds a level.
 const double _levelReach = 2.5;
 const double _heldFrostShare = 0.9;
 // Offsets into a pane's mapping, in the order of the shader's uniforms.
@@ -39,9 +35,7 @@ typedef LiquidGlassCapture = ({
   panes,
 });
 
-/// Draws the panes below from one capture of what lies behind them, taken as
-/// the frame is composited, in place of each pane reading the backdrop
-/// (.agents/architecture.md). Only one may enclose a pane.
+/// Draws the panes below from one capture of what lies behind them (.agents/architecture.md).
 class LiquidGlassHost extends StatelessWidget {
   const LiquidGlassHost({
     super.key,
@@ -69,14 +63,12 @@ class LiquidGlassHost extends StatelessWidget {
   }
 }
 
-/// Fades [child] as [FadeTransition] does, but as Core Animation fades a layer:
-/// the panes within still bend what lies behind it, and fade with the rest.
+/// Fades [child] as Core Animation fades a layer: the panes within still bend and fade with it.
 class LiquidGlassFade extends SingleChildRenderObjectWidget {
   const LiquidGlassFade({super.key, required this.opacity, super.child});
 
   final Animation<double> opacity;
 
-  /// [PaintingContext.pushOpacity] for a render object, fading as this does.
   static void push(
     PaintingContext context,
     Offset offset,

@@ -1,9 +1,4 @@
-/// 按需连接页（上游 `views/config/on_demand.dart`，394 行）。
-///
-/// 上游这一页是「排除 SSID 列表」加两项前置权限（Android 的电池优化白名单、
-/// Android/macOS 的定位权限）。演示层没有平台通道，拿不到真实 SSID 也申请不了
-/// 权限，所以：SSID 列表照做（可增删、可设延迟），权限项改成展示当前状态 +
-/// 一句「演示环境不申请」，而不是给一排点了没反应的授权按钮。
+/// On-demand page (upstream `views/config/on_demand.dart`).
 library;
 
 import 'package:diting/data/mock_config_resources.dart';
@@ -16,10 +11,8 @@ import 'package:material_ui/material_ui.dart';
 
 part 'on_demand_ssid_form.dart';
 
-/// 当前连接的 SSID（演示值）。
 const _currentSsid = 'Home-5G';
 
-/// 按需连接页。
 class OnDemandConfigPage extends ConsumerWidget {
   const OnDemandConfigPage({super.key});
 
@@ -122,10 +115,7 @@ String _ruleSummary(MockSsidRule rule) {
   return '$kinds · $delay';
 }
 
-/// 前置条件：定位权限与电池优化。
-///
-/// 演示环境不申请权限（没有平台通道），只报状态并解释用途——用户需要知道
-/// 「为什么这一页可能要开权限」，而不是看到两个灰按钮不明所以。
+/// Only the state is reported and the purpose explained, so the rows are not dead buttons.
 class _PrerequisiteSection extends StatelessWidget {
   const _PrerequisiteSection();
 

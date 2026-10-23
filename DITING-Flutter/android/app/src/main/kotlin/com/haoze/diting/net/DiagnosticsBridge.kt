@@ -7,41 +7,14 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
-/**
- * Native side of `com.haoze.diting/diagnostics`: the four network-tool panels.
- *
- * 1.4.3 implemented these in Kotlin (`NetworkPingTool`,
- * `NetworkTraceRouteTool`, `NetworkInfoProbe`, `TunnelDiagnosticsResolver`);
- * the Flutter port degraded them to canned numbers. Executing `ping` /
- * `traceroute` and enumerating link properties needs a native process or a
- * platform service, so the results come back as plain maps.
- *
- * Contract frozen by `lib/data/native/diagnostics_bridge.dart`:
- * - `ping(target,count,timeoutSeconds)`
- * - `traceRoute(target,maxHops)`
- * - `lookupDns(domain,viaTunnel,ipv4)`
- * - `networkInfo`
- *
- * No method needs an `Activity`: the probes never touch UI (no consent dialog,
- * no file picker), so one `Context` is enough. An `Activity` parameter was
- * considered and dropped as an unused dependency.
- *
- * Probes run on a worker pool and every result is posted back to the platform
- * thread. `ping` with 20 counts can take most of a minute; blocking the platform
- * thread for that would freeze the whole Flutter UI, and answering from a worker
- * thread is not allowed by `MethodChannel.Result`.
- */
+/// Native side of `com.haoze.diting/diagnostics`; probes run on a worker pool.
 class DiagnosticsBridge(private val context: Context) :
     MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/diagnostics"
 
-        /**
-         * Unbounded, like 1.4.3's `Executors.newCachedThreadPool()`: the UI
-         * already disables the run button while a probe is in flight, so the pool
-         * size is bounded in practice by the four panels.
-         */
+        /// Unbounded pool; the UI disables the run button, so four panels bound it in practice
         private val workers = Executors.newCachedThreadPool { runnable ->
             Thread(runnable, "diting-diagnostics").apply { isDaemon = true }
         }
@@ -75,14 +48,10 @@ class DiagnosticsBridge(private val context: Context) :
                 val domain = call.argument<String>("domain").orEmpty()
                 val viaTunnel = call.argument<Boolean>("viaTunnel") ?: false
                 val ipv4 = call.argument<Boolean>("ipv4") ?: true
-                // 空串 = 系统解析器（1.4.3 的 `DnsServerMode.SYSTEM`），非空 =
-                // 自定义 DNS 服务器（`DnsServerMode.CUSTOM`）。两个模式合并成一个
-                // 可选参数，原生侧不必再猜用户选了哪个。
+                // Empty = system resolver, non-empty = custom server: one argument serves both.
                 val server = call.argument<String>("server").orEmpty().trim()
                 workers.execute {
-                    // A lookup never throws for a bad domain: every failure is
-                    // expressed as source=error plus a readable message, because
-                    // the Dart model renders `error` inline next to the answers.
+                    // A bad domain never throws: failures come back as source=error.
                     val value = runCatching {
                         if (!viaTunnel && server.isNotEmpty()) {
                             DnsLookupProbe.customServerLookup(domain, server, ipv4)

@@ -53,29 +53,20 @@ class CommonScaffold extends StatefulWidget {
 
   final IconButtonData? primaryAction;
 
-  /// Folded into the overflow menu once the bar would hold more than three
-  /// buttons, as [primaryAction] and [menuItems] are; [actions] never fold.
   final List<IconButtonData> iconActions;
   final List<CommonPopupMenuItem> menuItems;
 
-  /// Answers a form: last in the bar, and in a form sheet the filled default
-  /// at its foot beside cancel, where SwiftUI sets one on macOS.
   final IconButtonData? confirmationAction;
 
-  /// Folds [primaryAction] ahead of [iconActions], so a bar without search
-  /// keeps the first of them in sight instead.
   final bool foldPrimaryAction;
   final AppBarSearchState? searchState;
   final List<IconButtonData> searchActions;
 
-  /// Shown searching or not and never folded; the first two share a button
-  /// group and any after them stand alone.
   final List<IconButtonData> selectionActions;
   final OnKeywordsUpdateCallback? onKeywordsUpdate;
   final bool? resizeToAvoidBottomInset;
   final VoidCallback? backAction;
 
-  /// Puts the toggle of the sort mode in the bar.
   final bool canSort;
 
   const CommonScaffold({

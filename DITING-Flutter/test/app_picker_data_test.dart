@@ -6,13 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 应用选择类页面的数据行为：真实清单 → 过滤排序 → 落盘 → 互斥清洗。
-///
-/// 这里不挂页面。四张选择页（`/apps`、应用独立规则、HTTPS 检查应用、出站代理
-/// 应用）共用同一套「清单 + 过滤 + 排序 + 互斥」逻辑，逻辑一旦漂移，四个入口
-/// 会给出互相矛盾的勾选状态；把这层钉住比逐个页面截图稳得多，也不需要原生通道。
+/// Data behavior of the app-picker pages - inventory, filter, sort, persist, cleanup
 void main() {
-  /// 三档应用：一个系统应用、两个用户应用，标签大小写刻意混着。
   const systemApp = InstalledApp(
     packageName: 'com.android.systemui',
     label: 'System UI',
@@ -54,7 +49,6 @@ void main() {
       final container = containerWith();
       final snapshot = await container.read(installedAppsProvider.future);
       expect(snapshot.error, isNull);
-      // 小写比较：'chat' < 'system ui' < '地图'（CJK 码位大于 ASCII）。
       expect(snapshot.apps.map((app) => app.packageName), [
         'com.example.chat',
         'com.android.systemui',
@@ -68,8 +62,6 @@ void main() {
     });
 
     test('通道缺失时给空列表 + 可读原因，而不是抛异常', () async {
-      // 默认 override 不设置 source 时用 EmptyInstalledAppsSource；这里直接
-      // 用一个抛 MissingPluginException 的实现模拟「装在没有桥的宿主上」。
       final container = ProviderContainer(
         overrides: [
           legacyPrefsStoreProvider.overrideWithValue(MemoryLegacyPrefsStore()),
@@ -80,8 +72,7 @@ void main() {
       final snapshot = await container.read(installedAppsProvider.future);
       expect(snapshot.apps, isEmpty);
       expect(snapshot.error, isNotNull);
-      // 页面靠 isError 判断不出「通道坏了」还是「设备真没应用」，所以必须
-      // 走 value + error 双字段：FutureProvider 本身不该进 error 态。
+      // A broken channel looks like a device without apps, so report value plus error
       expect(container.read(installedAppsProvider).hasError, isFalse);
     });
 
@@ -106,11 +97,8 @@ void main() {
   });
 
   group('互斥写入', () {
-    /// 排除应用必须同时从「禁止联网」「HTTPS 检查」「应用独立规则」里清掉。
-    ///
-    /// 种子里的包名集合一律写成 `List<String>`：`LegacyPrefsStore` 的
-    /// `putStringSet` 就是这么存的（桥接层把 set 序列化成字符串数组），
-    /// 塞一个真 `Set` 进去会走不到解析分支，测出来的「空集」是假的。
+    /// Excluding an app clears it from blocked, HTTPS-check and app rules. Packages are
+    /// seeded as `List<String>` because that is what `putStringSet` stores
     test('排除应用清掉另外三处', () {
       final container = containerWith({
         'dns_vpn_prefs': {
@@ -144,7 +132,6 @@ void main() {
       expect(next.blockedAppPackages, isEmpty);
       expect(next.httpInspectionPackages, isEmpty);
       expect(next.appAllowlistRules, isEmpty);
-      // 开关本身不该被顺手改掉。
       expect(next.blockedAppsEnabled, isTrue);
       expect(next.httpInspectionEnabled, isTrue);
     });
@@ -178,12 +165,7 @@ void main() {
   });
 
   group('互斥清洗不能把自己清掉', () {
-    /// 回归：`_dropOverlaps` 最初先 `setBlockedApps(packages)` 再读
-    /// `blockedAppPackages.difference(packages)` —— 读回来的正是刚写进去的那份，
-    /// 差集当场为空，用户点「保存」等于清空自己的选择。
-    ///
-    /// 现在归属方由 `_Owner` 显式传入，被跳过的正是刚写的那一份。这里用与页面
-    /// 相同的调用顺序复现：先写归属方，再清其余三处。
+    /// Regression: `_dropOverlaps` once read back the set it had just written, wiping the selection
     test('保存禁止联网名单后，该名单仍是刚提交的内容', () {
       final container = containerWith({
         'dns_vpn_prefs': {
@@ -196,7 +178,6 @@ void main() {
       final settings = container.read(legacySettingsProvider);
       const chosen = {'com.example.maps'};
 
-      // 与 BlockedAppsPage._saveBlocked 同序：先写归属方，再清其余。
       settings.setBlockedApps(packages: chosen, enabled: true);
       settings.setExcludedPackages(settings.excludedPackages.difference(chosen));
       settings.setHttpInspectionApps(
@@ -210,7 +191,6 @@ void main() {
       container.read(legacySettingsRevisionProvider.notifier).bump();
 
       final next = container.read(legacySettingsProvider);
-      // 关键断言：刚保存的那一份必须还在。
       expect(next.blockedAppPackages, chosen);
       expect(next.blockedAppsEnabled, isTrue);
       expect(next.excludedPackages, isEmpty);
@@ -263,7 +243,6 @@ void main() {
       container.read(legacySettingsRevisionProvider.notifier).bump();
       final next = container.read(legacySettingsProvider);
       expect(next.excludedAppsFilterRaw, 'SELECTED');
-      // 改一处不能带动另一处。
       expect(next.appAllowlistFilterRaw, 'ALL');
     });
 
@@ -326,7 +305,6 @@ void main() {
 
   group('httpsInspectionOperational', () {
     test('需要证书就绪 + 总开关 + 至少一个应用', () {
-      /// 包名集合写成 `List<String>`，理由同上一组：这是 `putStringSet` 的存储形态。
       Map<String, Map<String, Object>> seed({
         required String backend,
         required bool ready,
@@ -353,7 +331,6 @@ void main() {
         )),
         isTrue,
       );
-      // 缺任一条即为 false；尤其是旧后端（无 go-v1 标记）时 ready 必须为 false。
       expect(
         operational(seed(
           backend: 'legacy',

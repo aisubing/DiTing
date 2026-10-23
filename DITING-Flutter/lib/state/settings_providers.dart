@@ -1,14 +1,4 @@
-/// 设置域状态：旧版「其他设置」六行 / 外观子树 / 通知栏 / 前后台行为 / 语言。
-///
-/// 这些 provider 的共同点：值直接来自 `LegacySettings`，写回同名键后 bump
-/// `legacySettingsRevisionProvider` 让所有读者重建。上一轮把外观状态散在
-/// `appearance_providers.dart` 与各页面私有 State 里，导致「改了不生效、重进才
-/// 生效」；本轮统一走这层。
-///
-/// 不在这里做的两件事：
-/// - **不翻译语言**：Flutter 侧还没有英文资源，`app_language_mode` 只落盘。
-/// - **不改运行时行为**：通知栏、后台隐藏、电池优化都靠原生通道生效，页面只负责
-///   读写键与提示；通道缺失时页面照常可点，值照样存下来。
+/// Settings-domain state; writes go back to the same `LegacySettings` keys.
 library;
 
 import 'package:diting/data/native/background_bridge.dart';
@@ -19,14 +9,7 @@ LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
 void _bump(Ref ref) => ref.read(legacySettingsRevisionProvider.notifier).bump();
 
-// ---------------------------------------------------------------------------
-// 日志模式（旧版 dns_log_mode，存在数据集容器里）
-// ---------------------------------------------------------------------------
-
-/// 日志记录模式。1.4.3 的 `DnsLogModeScreen` 三档，值即 storageValue。
-///
-/// 三档对日志仪表盘的正文影响极大：`all` 是完整仪表盘、`blockedAndErrors` 与
-/// `off` 各自换成另一套卡片组合（见 `lib/pages/logs/`）。
+/// Log recording mode, the three 1.4.3 `DnsLogModeScreen` values; swaps the dashboard body.
 enum LegacyLogMode {
   all('all', '记录全部', '请求、命中、竞速与拦截都进日志'),
   blockedAndErrors('blocked_and_errors', '仅拦截与错误', '只记录被拦截与出错的请求'),
@@ -60,7 +43,7 @@ final logModeProvider = NotifierProvider<LogModeNotifier, LegacyLogMode>(
   LogModeNotifier.new,
 );
 
-/// 日志保留天数（1–30，默认 7）。
+/// Log retention in days (1-30, default 7).
 class LogRetentionNotifier extends Notifier<int> {
   @override
   int build() => _settings(ref).logRetentionDays;
@@ -76,7 +59,6 @@ final logRetentionProvider = NotifierProvider<LogRetentionNotifier, int>(
   LogRetentionNotifier.new,
 );
 
-/// 日志浮窗开关。
 class FloatingLogNotifier extends Notifier<bool> {
   @override
   bool build() => _settings(ref).floatingLogEnabled;
@@ -92,11 +74,7 @@ final floatingLogProvider = NotifierProvider<FloatingLogNotifier, bool>(
   FloatingLogNotifier.new,
 );
 
-// ---------------------------------------------------------------------------
-// 前后台行为（旧版 FOREGROUND_BACKGROUND_SETTINGS）
-// ---------------------------------------------------------------------------
-
-/// IPv6 三档。`VpnRouteConfig` 只区分 `auto` 与其余。
+/// IPv6 mode; `VpnRouteConfig` only distinguishes `auto` from the rest.
 enum LegacyIpv6Mode {
   auto('auto', '自动', '按当前网络能力决定是否启用'),
   disable('disable', '关闭', '隧道内不启用 IPv6'),
@@ -144,7 +122,6 @@ class ForegroundBackgroundNotifier extends Notifier<ForegroundBackgroundState> {
   }
 }
 
-/// 前后台行为的三项取值。
 class ForegroundBackgroundState {
   const ForegroundBackgroundState({
     required this.hideFromRecents,
@@ -172,11 +149,7 @@ final foregroundBackgroundProvider =
       ForegroundBackgroundNotifier.new,
     );
 
-// ---------------------------------------------------------------------------
-// 语言（旧版 LANGUAGE_SETTINGS：只有跟随系统 / 中文）
-// ---------------------------------------------------------------------------
-
-/// 语言两选一。旧版枚举里预留了英文但没有文案资源，界面上不存在，本轮不臆造。
+/// Two-way language choice; English has no resources, so it is not exposed.
 enum AppLanguageMode {
   system('system', '跟随系统'),
   chinese('chinese', '中文');
@@ -206,10 +179,6 @@ class LanguageNotifier extends Notifier<AppLanguageMode> {
 
 final languageModeProvider =
     NotifierProvider<LanguageNotifier, AppLanguageMode>(LanguageNotifier.new);
-
-// ---------------------------------------------------------------------------
-// 通知栏（旧版通知设置四键）
-// ---------------------------------------------------------------------------
 
 class NotificationSettingsNotifier extends Notifier<NotificationSettingsState> {
   @override
@@ -251,7 +220,7 @@ class NotificationSettingsNotifier extends Notifier<NotificationSettingsState> {
   }
 }
 
-/// 通知栏四项取值。两条文案的空串表示「用默认文案」。
+/// The four notification values; an empty string means the default text.
 class NotificationSettingsState {
   const NotificationSettingsState({
     required this.persistent,
@@ -283,10 +252,6 @@ final notificationSettingsProvider =
       NotificationSettingsNotifier.new,
     );
 
-// ---------------------------------------------------------------------------
-// 软件背景（旧版 custom_background_*）
-// ---------------------------------------------------------------------------
-
 class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
   @override
   CustomBackgroundState build() {
@@ -304,10 +269,7 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
     _bump(ref);
   }
 
-  /// 添加一张壁纸：同时更新「当前生效」与历史清单。
-  ///
-  /// 旧版的顺序是「先 append 到 `_uris`，再写 `_uri`」；这里保持一致，避免
-  /// 出现「清单里有但当前指向另一张」的中间态。
+  /// Adds a wallpaper, writing the history list before the current entry (legacy order).
   void add(String uri) {
     if (uri.trim().isEmpty) return;
     final uris = [...state.uris, uri];
@@ -319,7 +281,7 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
     _bump(ref);
   }
 
-  /// 选中已有的一张作为当前壁纸。
+  /// Selects an existing wallpaper as the current one.
   void select(String uri) {
     if (!state.uris.contains(uri)) return;
     state = state.copyWith(currentUri: uri);
@@ -327,7 +289,7 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
     _bump(ref);
   }
 
-  /// 移除一张。移除当前那张时，把 `_uri` 退回到剩下清单里的最后一张。
+  /// Removes one wallpaper; removing the current one falls back to the last remaining.
   void remove(String uri) {
     final uris = [
       for (final item in state.uris)
@@ -344,20 +306,17 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
     } else {
       settings.setCustomBackgroundUri(nextCurrent);
     }
-    // 顺手删掉这张的解码缓存，避免私有目录里越攒越多。
+    // Drop this image's decode cache so the private directory does not grow.
     ref.read(backgroundBridgeProvider).release(uri);
     _bump(ref);
   }
 
   void _storeRemoveCurrent(LegacySettings settings) {
-    // 没有「删除键」的 API：写空串在旧版语义里等价于「未设置」
-    // （`getCustomBackgroundUri()` 对空串返回 null）。
+    // No delete-key API: an empty string means "unset", as in the legacy store.
     settings.setCustomBackgroundUri('');
   }
 
-  /// 打开系统图片选择器，选中后加入清单并设为当前。
-  ///
-  /// 返回 `null` 表示成功或用户取消（两者都无需提示），返回字符串是失败原因。
+  /// Opens the system image picker; null on success or cancel, else the reason.
   Future<String?> pickAndAdd() async {
     final result = await ref.read(backgroundBridgeProvider).pick();
     if (result.ok) {
@@ -369,7 +328,6 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
   }
 }
 
-/// 软件背景三项。
 class CustomBackgroundState {
   const CustomBackgroundState({
     required this.enabled,
@@ -397,20 +355,16 @@ final customBackgroundProvider =
       CustomBackgroundNotifier.new,
     );
 
-/// 背景选图通道（可在测试里替换）。
+/// Background picker channel, replaceable in tests.
 final backgroundBridgeProvider = Provider<BackgroundBridge>(
   (ref) => BackgroundBridge(),
 );
-
-// ---------------------------------------------------------------------------
-// 启动更新检查 / 首启须知
-// ---------------------------------------------------------------------------
 
 class StartupUpdateCheckNotifier extends Notifier<bool> {
   @override
   bool build() => _settings(ref).disableStartupUpdateCheck;
 
-  /// 参数是「关闭启动检查」的开关值，与键名同向，避免取反写错。
+  /// Takes the "disable startup check" value; key and switch agree to avoid inversion.
   void toggle(bool value) {
     state = value;
     _settings(ref).setDisableStartupUpdateCheck(value);

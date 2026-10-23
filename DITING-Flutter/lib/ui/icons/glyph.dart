@@ -103,8 +103,7 @@ class GlyphArc extends GlyphShape {
     );
 }
 
-/// Joins two circles of [radius] with a line whose round caps end on their
-/// strokes, so a cap never pokes into a hollow node.
+/// Joins two circles of [radius] with a line whose round caps end on their strokes.
 class GlyphLink extends GlyphShape {
   const GlyphLink(this.from, this.to, this.radius)
     : super(role: GlyphRole.line);
@@ -126,7 +125,6 @@ class GlyphLink extends GlyphShape {
 }
 
 /// SVG path data on the glyph grid, for curves the other shapes cannot draw.
-/// Like them it traces the center of the stroke, not an outline to fill.
 class GlyphPath extends GlyphShape {
   const GlyphPath(this.data, {super.role, super.solid});
 

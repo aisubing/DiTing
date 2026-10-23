@@ -2,8 +2,7 @@
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
-/// Starts a push transition one frame after the page is first built, so a long
-/// first build does not swallow the start of the transition.
+/// Starts the push one frame after the page is built, so a long first build cannot swallow it.
 mixin DeferredPushRouteMixin<T> on TransitionRoute<T> {
   _TickerCapture? _vsync;
 

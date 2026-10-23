@@ -1,11 +1,7 @@
 import 'package:diting/data/mock_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 功能中心迁移的规格守门。
-///
-/// 这些断言直接对着上游 `FeatureHubScreen.kt` / `ExpressFeatureHubScreen.kt`
-/// 的实测计数：normal 7 类 28 卡（27 项可隐藏 + 1 张固定卡），express 5 类 19 卡
-/// （18 项可隐藏 + 同一张固定卡）。
+/// Guards the feature-hub migration counts measured on upstream `FeatureHubScreen.kt`
 void main() {
   test('normal 模式：7 类 28 卡，隐藏键唯一', () {
     expect(mockFeatureCategories.length, 7);

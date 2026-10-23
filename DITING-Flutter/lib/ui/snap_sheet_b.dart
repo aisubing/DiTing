@@ -48,8 +48,7 @@ class _SnapSheetState extends State<_SnapSheet>
     );
   }
 
-  /// Sees the events the content scrolls with too, so a turn the content
-  /// started never moves the sheet, and no turn moves it past one detent.
+  /// Sees the content's scrolls too, so a turn the content started never moves the sheet.
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) {
       return;
@@ -127,7 +126,6 @@ class _SnapSheetState extends State<_SnapSheet>
 }
 
 /// The sheet makes room for the keyboard itself, so nothing inside it does.
-/// Only this rebuilds with the keyboard; the content keeps its widgets.
 class _WithoutKeyboard extends StatelessWidget {
   const _WithoutKeyboard({required this.child});
 
@@ -162,8 +160,7 @@ class _KeyboardViewport extends StatelessWidget {
   }
 }
 
-/// The keyboard, the presentation and a sheet over this one move the sheet as
-/// it is painted; only its height lays it out.
+/// Keyboard, presentation and stacked sheets move the sheet as painted; only height lays it out.
 class _SheetViewport extends SingleChildRenderObjectWidget {
   const _SheetViewport({
     required this.model,
@@ -318,8 +315,7 @@ class _RenderSheetViewport extends RenderBox
   void performLayout() {
     var limit = _model.beginLayout(size.height, _keyboard);
     final content = _model._content;
-    // The limit reaches the content outside its constraints, which may not
-    // have changed.
+    // The limit reaches the content outside its constraints, which may not have changed.
     if (content != null &&
         (content._limit != limit || _model._measureRoom != null)) {
       invokeLayoutCallback<BoxConstraints>((_) => content.markNeedsLayout());

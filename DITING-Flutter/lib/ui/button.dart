@@ -55,8 +55,6 @@ enum TonalButtonSize {
   final double icon;
 }
 
-/// Buttons sharing one filled pill, which answers a press on any of them as a
-/// single button does.
 class TonalButtonGroup extends StatefulWidget {
   const TonalButtonGroup({
     super.key,
@@ -127,8 +125,6 @@ class _TonalButtonGroupState extends State<TonalButtonGroup> {
   }
 }
 
-/// A labelled button on the fill of a [TonalButtonGroup], for an action that
-/// is not the one a screen is for.
 class TonalButton extends StatelessWidget {
   const TonalButton({
     super.key,
@@ -170,9 +166,7 @@ class TonalButton extends StatelessWidget {
   }
 }
 
-/// Fills every button below and, as iOS does, leaves a press to the swell of
-/// [ElasticPress]; inside a [TonalButtonGroup] the group is filled. With
-/// [glass] the fills are panes of [LiquidGlass], a filled button's tinted.
+/// Fills every button below, as panes of [LiquidGlass] when [glass]; a press swells as iOS does.
 class TonalButtonTheme extends StatelessWidget {
   const TonalButtonTheme({
     super.key,
@@ -187,7 +181,6 @@ class TonalButtonTheme extends StatelessWidget {
   final TonalButtonSize size;
   final Widget child;
 
-  /// Whether a button here stands on glass of its own.
   static bool glassOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_GlassButtons>()?.glass ??
       false;

@@ -1,12 +1,7 @@
 part of 'demo_page.dart';
 
-/// 浮层分区：验证 [showFloatingDialog] / [showSheet] / [showFormSheet] /
-/// [showExtend] / [showSnapSheet] 五种打开方式，以及 [CommonPopupBox] 的
-/// 锚点弹出菜单。
-///
-/// 浮层最容易出的回归是「层级」而不是「样式」：对话框必须压在 Dock 之上、
-/// 侧边抽屉必须能盖住整个页面、弹窗必须贴着按钮而不越出屏幕。这些只有真的
-/// 点开才能验证，所以每个按钮都接真实的宿主。
+/// Overlays: [showFloatingDialog], [showSheet], [showFormSheet], [showExtend], [showSnapSheet] and
+/// [CommonPopupBox]. Regressions here are about layering, so every button opens a real host.
 class _DemoOverlaySection extends StatelessWidget {
   const _DemoOverlaySection();
 
@@ -34,8 +29,8 @@ class _DemoOverlaySection extends StatelessWidget {
   }
 }
 
-/// [AlertActions] 的两种排布：普通（末项是默认动作，填主色）与破坏性
-/// （末项是危险动作，填 error 色）。两者都按「取消在左、确认在右」排列。
+/// Both [AlertActions] layouts: regular fills the last action with primary,
+/// destructive with error. Cancel stays left, confirm right.
 class _DemoAlertActions extends StatelessWidget {
   const _DemoAlertActions();
 
@@ -75,7 +70,6 @@ class _DemoAlertActions extends StatelessWidget {
   }
 }
 
-/// 三个对话框入口：普通双按钮、带输入框、破坏性操作。
 class _DemoDialogButtons extends StatelessWidget {
   const _DemoDialogButtons();
 
@@ -170,7 +164,7 @@ class _DemoDialogButtons extends StatelessWidget {
   }
 }
 
-/// 抽屉入口：普通抽屉、表单抽屉（带键盘避让）、侧边抽屉。
+/// Sheet openers: regular, form with keyboard avoidance, and side sheet.
 class _DemoSheetButtons extends StatelessWidget {
   const _DemoSheetButtons();
 
@@ -214,7 +208,6 @@ class _DemoSheetButtons extends StatelessWidget {
   }
 }
 
-/// 页面式浮层：showExtend 与 showSnapSheet。
 class _DemoExtendButtons extends StatelessWidget {
   const _DemoExtendButtons();
 
@@ -251,8 +244,7 @@ class _DemoExtendButtons extends StatelessWidget {
   }
 }
 
-/// 锚点菜单：一个放在按钮上的 [CommonPopupBox]，菜单里带图标、勾选、子菜单
-/// 与危险项。
+/// Anchored menu: icons, check mark, submenu and a destructive item in one `CommonPopupBox`.
 class _DemoPopupButtons extends StatelessWidget {
   const _DemoPopupButtons();
 
@@ -330,10 +322,7 @@ class _DemoPopupButtons extends StatelessWidget {
   }
 }
 
-/// 浮层里放的内容：一个能自己关掉的最小页面，验证宿主给的退出路径。
-///
-/// 是 StatefulWidget 只为了持有表单字段的 controller：浮层关闭时它必须跟着
-/// dispose，否则每开一次表单抽屉就漏一个 controller。
+/// Stateful only to own the form controllers, which must be disposed with the overlay.
 class _DemoSheetContent extends StatefulWidget {
   const _DemoSheetContent({
     required this.title,

@@ -9,23 +9,7 @@ import android.util.LruCache
 import java.net.InetAddress
 import java.net.InetSocketAddress
 
-/// Resolves packet-origin UIDs to package names for the engine callbacks.
-///
-/// Ported from 1.4.3 `core/diagnostic/UidPackageCache` and kept behaviourally
-/// identical, because both resolvers below are called on the Go hot path:
-/// every DNS query and every TCP flow asks for a UID, so an IPC round trip per
-/// packet is not affordable. Two LRU levels absorb that:
-///  - `StringFlowKey` (5-tuple) -> UID, positive 10s / negative 2s.
-///    The asymmetric TTL matters: a negative answer usually means "the socket is
-///    not visible to ConnectivityManager yet", which resolves moments later,
-///    while a positive answer stays valid for the life of the flow.
-///  - UID -> package name, no TTL: the mapping cannot change while the process
-///    lives (package installs/removals bump the UID, so a stale entry is dropped
-///    by the negative lookup instead of being refreshed).
-///
-/// API < 29 has no `ConnectivityManager.getConnectionOwnerUid`, so [resolveUid]
-/// degrades to `Process.INVALID_UID` and callers fall back to "unknown" instead
-/// of mis-attributing traffic. `minSdk` is 24, so this is a reachable path.
+/// Packet-origin UID -> package, two LRU levels; below API 29 resolveUid answers INVALID_UID.
 class UidPackageCache(context: Context) {
     private val connectivityManager: ConnectivityManager? =
         context.getSystemService(ConnectivityManager::class.java)
@@ -35,9 +19,6 @@ class UidPackageCache(context: Context) {
     private val uidPackageCache = LruCache<Int, String>(UID_PACKAGE_CACHE_CAPACITY)
     private val lock = Any()
 
-    /// `getConnectionOwnerUid` is API 29+. Below that the platform has no
-    /// equivalent (reading `/proc/net` needs root), so this stays false and
-    /// [resolveUid] answers INVALID_UID.
     private val ownerUidSupported: Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
@@ -51,7 +32,7 @@ class UidPackageCache(context: Context) {
 
     private data class CachedUid(val uid: Int, val timestamp: Long)
 
-    /// `UIDResolver.resolveUID` payload: protocol is the IPPROTO number.
+    /// UIDResolver payload: protocol is the IPPROTO number
     fun resolveUid(
         protocol: Long,
         localIP: String,
@@ -75,12 +56,7 @@ class UidPackageCache(context: Context) {
             }
         }
 
-        // Direction: `resolveFlowUID` passes `id.appIP` as the FIRST argument
-        // (named `localIP` in tunnel.UIDResolver) and `id.serverIP` as
-        // `remoteIP`. So the app endpoint — the pair `getConnectionOwnerUid`
-        // needs as `local` — is `localIP`, exactly as 1.4.3's
-        // CachedConnectionOwnerUidResolver treated it. Swapping these two makes
-        // every lookup return INVALID_UID, which silently blanks packageName.
+        // The engine passes the app endpoint as localIP, matching getConnectionOwnerUid's `local`.
         val uid = runCatching {
             val app = InetAddress.getByName(localIP)
             val server = InetAddress.getByName(remoteIP)
@@ -95,9 +71,7 @@ class UidPackageCache(context: Context) {
         return uid
     }
 
-    /// `AppUidResolver.packageForUid` payload. Empty string means "unknown" —
-    /// the Go side writes that verbatim into `dns_log.packageName`'s `a` field,
-    /// and [DnsLogWriter] converts a blank value to NULL.
+    /// AppUidResolver payload. Empty means unknown; DnsLogWriter turns a blank value into NULL
     fun packageForUid(uid: Int): String {
         if (!isKnownUid(uid)) return ""
         synchronized(lock) { uidPackageCache.get(uid)?.let { return it } }

@@ -1,6 +1,5 @@
 part of 'mock_profiles.dart';
 
-/// 初始节点列表。
 const mockProxies = <MockProxy>[
   MockProxy(
     id: 'n1',
@@ -69,7 +68,6 @@ const mockProxies = <MockProxy>[
   ),
 ];
 
-/// 初始代理组。
 const mockProxyGroups = <MockProxyGroup>[
   MockProxyGroup(
     id: 'g1',
@@ -111,7 +109,6 @@ const mockProxyGroups = <MockProxyGroup>[
   ),
 ];
 
-/// 初始自定义规则。
 const mockCustomRules = <MockCustomRule>[
   MockCustomRule(
     id: 'r1',
@@ -160,7 +157,6 @@ const mockCustomRules = <MockCustomRule>[
   ),
 ];
 
-/// 初始代理提供者。
 const mockProxyProviders = <MockProxyProvider>[
   MockProxyProvider(
     id: 'pp1',
@@ -180,7 +176,6 @@ const mockProxyProviders = <MockProxyProvider>[
   ),
 ];
 
-/// 初始规则提供者。
 const mockRuleProviders = <MockRuleProvider>[
   MockRuleProvider(
     id: 'rp1',
@@ -209,7 +204,6 @@ const mockRuleProviders = <MockRuleProvider>[
   ),
 ];
 
-/// 初始拨号器配置。
 const mockDialers = <MockDialer>[
   MockDialer(proxyName: '美国 04 · 家宽', target: '隧道 · WireGuard'),
   MockDialer(proxyName: '德国 05', target: '香港 01 · IPLC'),

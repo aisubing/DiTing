@@ -1,24 +1,7 @@
-/// AdGuard / ABP / hosts / dnsmasq 规则的逐行解析（1.4.3
-/// `AdGuardRuleParser` + `AdblockRuleLineParser` + `HostsAndDnsmasqParser` +
-/// `AdGuardDomainUtils` 的合并移植）。
-///
-/// ## 为什么要有这个文件
-/// 上一轮订阅更新只做「下载 + 数行数」：正文拉下来就地丢弃，一条规则都没进
-/// 规则库，于是用户订阅了几万条广告域名，拦截行为却毫无变化，而界面还显示
-/// 「已更新」。这是整个订阅功能最实质的缺失，不是文案问题。
-///
-/// ## 与旧版的结构差异
-/// 旧版拆成四个 object 是为了 Kotlin 的可见性控制；Dart 里没有等价收益，故合并
-/// 成一个库，但**逐条保留**判定顺序与返回值形态：判定顺序决定结果（例如
-/// `#$@#` 必须先于 `#$#` 探测，否则异常规则会被当成普通 `#$#` 规则）。
-///
-/// ## 不支持的族
-/// 元素隐藏（cosmetic）规则会解析出来，但**不入库**：本仓的 Go 引擎没有 cosmetic
-/// 注入通道，写进表里只会让「已导入 N 条」虚高。调用方按
-/// [CategorizedLine.cosmeticRules] 计数并如实说明未生效。
+/// Models for parsed AdGuard, ABP, hosts and dnsmasq rules. Cosmetic rules are parsed but never
+/// stored; see [CategorizedLine.cosmeticRules].
 library;
 
-/// `RewriteTargetType`：逐字照抄 `RewriteRuleEntity.kt`，直接写进数据库。
 class RewriteTargetType {
   const RewriteTargetType._();
 
@@ -27,7 +10,6 @@ class RewriteTargetType {
   static const cname = 'CNAME';
 }
 
-/// 解析后的一条域名拦截 / 放行规则（`ParsedRule`）。
 class ParsedRule {
   const ParsedRule({
     required this.pattern,
@@ -52,7 +34,6 @@ class ParsedRule {
   final String? dnsType;
 }
 
-/// 解析后的一条 URL / 路径拦截规则（`ParsedUrlRule`）。
 class ParsedUrlRule {
   const ParsedUrlRule({
     required this.pattern,
@@ -69,7 +50,6 @@ class ParsedUrlRule {
   final bool important;
 }
 
-/// 解析后的一条元素隐藏规则（`ParsedCosmeticRule`）。
 class ParsedCosmeticRule {
   const ParsedCosmeticRule({
     required this.domain,
@@ -86,7 +66,6 @@ class ParsedCosmeticRule {
   String toCss() => '$selector { display: none !important; }';
 }
 
-/// 解析后的一条 DNS 覆写规则（`RewriteRule`）。
 class ParsedRewriteRule {
   const ParsedRewriteRule({
     required this.pattern,
@@ -101,8 +80,7 @@ class ParsedRewriteRule {
   final String rawLine;
 }
 
-/// 单行的解析结果（`CategorizedLine`）。一行可能展开成多条规则——hosts 与
-/// dnsmasq 的一行就带多个域名。
+/// Result of parsing one line; one line may expand into several rules.
 class CategorizedLine {
   const CategorizedLine({
     this.blockRules = const [],
@@ -137,7 +115,6 @@ class CategorizedLine {
       cosmeticRules.isEmpty;
 }
 
-/// 一份规则的完整解析结果（`CategorizedRules`）。
 class CategorizedRules {
   const CategorizedRules({
     this.blockRules = const [],

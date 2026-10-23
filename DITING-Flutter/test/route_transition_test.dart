@@ -10,18 +10,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/test_hooks.dart';
 
-/// 守住「二级页全屏独立、走安卓系统默认转场」这两条。
-///
-/// 两个坑都不会被 analyze 或普通冒烟用例发现：
-///
-/// 1. `GoRoute` 只写 `builder:` 时，go_router 用
-///    `isMaterialApp(context)` 判断要不要包 [MaterialPage]。它找的是
-///    `package:flutter/material.dart` 的 `MaterialApp`，而本工程用的是
-///    `material_ui` 那份，判断恒为假 → 落到 `NoTransitionPage`：**没有转场**，
-///    页面硬切。所以每条路由都必须显式 `pageBuilder`。
-/// 2. `PageTransitionsTheme.builders` 缺 `TargetPlatform.android` 时兜底到
-///    `ZoomPageTransitionsBuilder`（Android 10 的老动画），不是系统默认的
-///    `PredictiveBackPageTransitionsBuilder`。
+/// Guards second-level pages are full-screen with the Android transition: `builder:`-only routes
+/// get `NoTransitionPage`, and a theme without `TargetPlatform.android` falls back to zoom
 void main() {
   installGlobalTestHooks();
 
@@ -41,7 +31,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));
 
-    // 转场进行中：`/about` 已在树上，但还没就位。
+    // Mid-transition: `/about` is mounted but not yet in place.
     expect(find.byType(AboutPage), findsOneWidget);
     final route = ModalRoute.of(tester.element(find.byType(AboutPage)));
     expect(route, isNotNull);
@@ -51,7 +41,7 @@ void main() {
       reason: '没有转场时长 = go_router 退化成 `NoTransitionPage`，页面是硬切的',
     );
 
-    // 真的在动：转场还没走完时 animation 不到 1，页面位置也和落位后不同。
+    // Still moving: animation below 1 and the position differs from the final one.
     expect(route.animation!.value, lessThan(1.0));
     final midX = tester.getTopLeft(find.byType(AboutPage)).dx;
     await tester.pumpAndSettle();

@@ -1,15 +1,4 @@
-/// 更新与支持（对齐旧版 `ui/AppUpdateScreen.kt`）。
-///
-/// 旧版是一张设置组：当前版本 / 检查更新 / 关闭启动时检查更新 / 加入 QQ 群 /
-/// （发现新版本时才出现的）下载·安装。本页结构照抄，并按需求**不再展示历史
-/// 版本更新日志**：更新内容由 GitHub Release 决定，页面只负责「检查 → 下载 →
-/// 安装」这一条真实链路。
-///
-/// 下载与安装走原生 `UpdateBridge`：Dart 写不了应用私有目录、也调不起系统安装器。
-///
-/// `关闭启动时检查更新` 的语义容易写反：键名是 `disable_*`、默认 true，
-/// 也就是**开关打开 = 不检查**。provider 的 `toggle(bool)` 与键同向，页面直接
-/// 传开关值，不做取反。
+/// Update and support page (upstream `ui/AppUpdateScreen.kt`).
 library;
 
 import 'package:diting/pages/system/app_info.dart';
@@ -21,7 +10,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 检查更新页。
 class AppUpdatePage extends ConsumerWidget {
   const AppUpdatePage({super.key});
 
@@ -86,7 +74,8 @@ class AppUpdatePage extends ConsumerWidget {
     );
   }
 
-  /// 安装：调起系统安装器；失败时把原因告诉用户（多半是未授予安装权限）。
+  /// Install through the system installer; failures are reported, usually a missing
+  /// install permission.
   Future<void> _install(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final ok = await ref.read(updateProvider.notifier).install();
@@ -104,7 +93,8 @@ class AppUpdatePage extends ConsumerWidget {
   }
 }
 
-/// 检查更新状态文案。版本号取**真实检查结果**，读不到时明说「未检查」。
+/// Update status text. The version comes from the real check result; an unread version is
+/// reported as unchecked.
 String statusText(UpdateState state) {
   final latest = state.info?.version;
   final current = state.currentVersion;
@@ -125,7 +115,6 @@ String statusText(UpdateState state) {
   };
 }
 
-/// 页首版本卡：当前版本 + 阶段徽标 + 检查 / 下载 / 安装按钮。
 class _UpdateCard extends StatelessWidget {
   const _UpdateCard({
     required this.currentVersion,
@@ -136,7 +125,7 @@ class _UpdateCard extends StatelessWidget {
     required this.onInstall,
   });
 
-  /// 展示用版本名，取自 `pubspec.yaml`。
+  /// Display version, read from `pubspec.yaml`.
   final String currentVersion;
 
   final UpdateState update;
@@ -270,7 +259,6 @@ class _UpdateCard extends StatelessWidget {
   }
 }
 
-/// 阶段徽标。
 class _StageBadge extends StatelessWidget {
   const _StageBadge({required this.stage});
 
@@ -329,7 +317,6 @@ class _StageBadge extends StatelessWidget {
   }
 }
 
-/// 下载进度条。
 class _DownloadProgress extends StatelessWidget {
   const _DownloadProgress({required this.state});
 

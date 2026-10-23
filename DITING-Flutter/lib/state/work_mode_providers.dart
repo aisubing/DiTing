@@ -1,4 +1,4 @@
-/// 演示用状态：工作模式、电源状态、服务商选择、服务器模式。
+/// Work mode, power state, provider selection and server mode.
 library;
 
 import 'dart:async';
@@ -17,11 +17,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 export 'package:diting/state/provider_catalog_providers.dart';
 
-/// 三种工作模式（上游 `ui/mode/AppWorkMode.kt`）。
-///
-/// 语义陷阱（`docs/refactor/14-migration-strategy.md` §5）：上游的
-/// `normal` 指「全隧道 Go 模式」、`server` 指「纯 DNS 局域网服务」、
-/// `express` 指「纯 Kotlin 窄路由」。这里沿用同一命名，避免与规格对不上。
+/// The three work modes: `normal` (full-tunnel Go), `server` (DNS-only LAN), `express` (narrow
+/// Kotlin route).
 enum AppWorkMode {
   normal('普通模式', '推荐', '全量域名解析、黑白名单、HTTPS 检查、网络管控', 'normal'),
   server('服务器模式', '轻量', '纯 DNS 代理与解析加速、低功耗', 'dns'),
@@ -33,7 +30,7 @@ enum AppWorkMode {
   final String badge;
   final String summary;
 
-  /// 旧版 `app_work_mode` 的落盘值：服务器模式仍写作 `dns`。
+  /// Persisted legacy `app_work_mode` value; server mode is still stored as `dns`.
   final String storageValue;
 
   static AppWorkMode fromStorageValue(String? value) => values.firstWhere(
@@ -42,8 +39,7 @@ enum AppWorkMode {
   );
 }
 
-/// 电源状态机：停止 / 启动中 / 运行 / 停止中（上游 `PowerToggleButton` 三态，
-/// 服务器模式另有 ERROR）。
+/// Power state machine; the error state is server-mode only.
 enum PowerState {
   stopped('已停止'),
   starting('启动中'),
@@ -60,8 +56,7 @@ enum PowerState {
   bool get isRunning => this == running;
 }
 
-/// 工作模式 + 电源状态放在一个 Notifier 里：两者在真实实现中互相牵连
-/// （切换模式会停止另一个模式的服务），拆开会漏掉这种约束。
+/// Work mode and power state share a notifier: switching mode stops the other service.
 class WorkModeNotifier extends Notifier<AppWorkMode> {
   @override
   AppWorkMode build() => AppWorkMode.fromStorageValue(
@@ -70,9 +65,7 @@ class WorkModeNotifier extends Notifier<AppWorkMode> {
 
   void select(AppWorkMode mode) {
     final previous = state;
-    // Stop before publishing the new mode: the notifier picks its platform
-    // channel from the current mode, so flipping state first would send the
-    // stop to the wrong service.
+    // Stop before publishing: the channel is picked from the current mode.
     if (previous != mode) {
       final power = ref.read(powerProvider);
       if (power.isRunning || power == PowerState.starting) {
@@ -100,17 +93,11 @@ final expressVpnControllerProvider = Provider<VpnController>(
 );
 
 class PowerNotifier extends Notifier<PowerState> {
-  /// How long the consent dialog may stay open before the state machine gives
-  /// up waiting for `onPrepareResult`. The callback is delivered through the
-  /// activity result of MainActivity, so a recreate/back-press race can drop
-  /// it entirely; without a deadline the power button would sit on
-  /// 「启动中」forever and the user cannot start the service again, because
-  /// [toggle] ignores taps while [PowerState.isBusy].
+  /// Deadline for `onPrepareResult`: it travels through the activity result and can be lost on
+  /// recreate.
   static const Duration _consentTimeout = Duration(seconds: 90);
 
-  /// Deadline for a start attempt that already got consent. `start()` returns
-  /// as soon as the foreground service is scheduled, so this only catches a
-  /// wedged platform round-trip, not a slow tunnel.
+  /// Deadline for a consented start; `start()` returns once scheduled.
   static const Duration _launchTimeout = Duration(seconds: 30);
 
   bool _disposed = false;
@@ -118,9 +105,7 @@ class PowerNotifier extends Notifier<PowerState> {
   Timer? _statsTimer;
   Timer? _guardTimer;
 
-  /// Last failure surfaced by the platform bridge; the UI shows the generic
-  /// [PowerState.error] label, but keeping the reason here makes device
-  /// diagnostics possible without a debugger.
+  /// Last bridge failure, kept for diagnostics while the UI shows a generic label.
   String? lastError;
 
   bool get _isExpress => ref.read(workModeProvider) == AppWorkMode.express;
@@ -143,10 +128,7 @@ class PowerNotifier extends Notifier<PowerState> {
         ? settings.expressVpnRunning
         : settings.vpnRunning;
     if (persisted) {
-      // The legacy flag survives process death — including an app upgrade that
-      // interrupted a running tunnel. Confirm with the native side before
-      // claiming "running", but never leave the button on 「启动中」 if that
-      // round-trip never answers.
+      // The legacy flag survives process death, so confirm with the native side.
       scheduleMicrotask(syncStatus);
       _armGuard(_launchTimeout);
       return PowerState.starting;
@@ -155,8 +137,7 @@ class PowerNotifier extends Notifier<PowerState> {
   }
 
   Future<void> syncStatus() async {
-    // Capture the dataset before awaiting: a mode switch during the platform
-    // round-trip must not write the other mode's flag.
+    // Capture the dataset before awaiting: a concurrent switch must not write it.
     final express = _isExpress;
     final settings = ref.read(legacySettingsProvider);
     try {
@@ -199,8 +180,7 @@ class PowerNotifier extends Notifier<PowerState> {
     await _start();
   }
 
-  /// Stops the tunnel only when it is running or starting; server mode calls
-  /// this before binding its port so both data planes never coexist.
+  /// Stops the tunnel; server mode calls it first so the two data planes never coexist.
   Future<void> stopIfActive() async {
     if (state.isRunning || state == PowerState.starting) {
       await stop();
@@ -222,9 +202,7 @@ class PowerNotifier extends Notifier<PowerState> {
       if (!prepared) {
         // The consent dialog is showing; _onPrepareResult continues the flow.
         _pendingPermissionStart = true;
-        // ...but that callback travels through MainActivity's activity result,
-        // so it can be lost when the activity is recreated or the dialog is
-        // dismissed outside the callback. Do not wait for it forever.
+        // It can be lost on recreate or dismissal, so do not wait forever.
         _armGuard(_consentTimeout);
         return;
       }
@@ -234,11 +212,7 @@ class PowerNotifier extends Notifier<PowerState> {
     }
   }
 
-  /// Restarts the watchdog for the current start attempt.
-  ///
-  /// Firing means the attempt never reached a terminal state, so the only
-  /// honest outcome is: ask the service what it actually is, and if it is not
-  /// running, leave «启动中». Retrying silently would hide the real failure.
+  /// Restarts the start watchdog; on expiry it asks the service for its real state.
   void _armGuard(Duration timeout) {
     _guardTimer?.cancel();
     _guardTimer = Timer(timeout, () {
@@ -247,14 +221,12 @@ class PowerNotifier extends Notifier<PowerState> {
       _pendingPermissionStart = false;
       if (state != PowerState.starting && state != PowerState.stopping) return;
       if (state == PowerState.stopping) {
-        // A wedged stop: the flag is already what matters, converge to idle.
+        // A wedged stop: the flag is already correct, so converge to idle.
         state = PowerState.stopped;
         return;
       }
       if (pending) {
-        // Consent never came back, so no tunnel was ever requested. Do not ask
-        // for the status: it would legitimately answer "not running" and turn a
-        // visible failure into a silent no-op.
+        // Consent never came back, so asking for status would hide the failure.
         _fail('没有获得 VPN 授权');
         return;
       }
@@ -269,8 +241,7 @@ class PowerNotifier extends Notifier<PowerState> {
   Future<void> _onPrepareResult(bool granted) async {
     if (!_pendingPermissionStart) return;
     _pendingPermissionStart = false;
-    // Consent arrived: the consent deadline no longer applies, but the launch
-    // itself still gets one.
+    // Consent arrived: the consent deadline is over, the launch deadline still runs.
     _armGuard(_launchTimeout);
     if (_disposed) return;
     if (!granted) {
@@ -296,9 +267,7 @@ class PowerNotifier extends Notifier<PowerState> {
     final rules = await _rulesFor(express);
     if (_disposed) return;
 
-    // Per-app allowlists are a normal-mode feature (the express route has no
-    // firewall stage). Read before the await below so a settings edit during
-    // startup cannot produce a snapshot that disagrees with the mode.
+    // Per-app allowlists are normal-mode only; read them before the await.
     final appAllowlist = express
         ? const <String, Set<String>>{}
         : baseSettings.appAllowlistRules;
@@ -314,25 +283,21 @@ class PowerNotifier extends Notifier<PowerState> {
         dnsConfig: config.encode(settings),
         ruleSnapshot: encodeRuleSnapshot(rules, appAllowlist: appAllowlist),
         rewriteRules: encodeRewriteRules(rules),
-        // Off unless the user enabled it AND every field validates: the Go
-        // side parses this JSON before the tunnel starts, and a half-filled
-        // config would fail the whole start rather than fall back to direct.
+        // Off unless enabled and every field validates: a half-filled config fails start.
         outboundProxy: proxy.enabled && proxy.validationError() == null
             ? proxy.toEngineJson()
             : '',
         bypassLan: express ? false : settings.bypassLanEnabled,
         ipv6Mode: settings.ipv6ModeRaw,
         excludedPackages: settings.excludedPackages.toList(),
-        // Express mode is a narrow DNS-only route: it has no firewall or MITM
-        // stage, so app-level inputs would be accepted and silently ignored.
+        // Express is a narrow DNS-only route, so app-level inputs are ignored.
         blockedPackages: express
             ? const []
             : settings.blockedAppPackages.toList(),
         inspectionPackages: express
             ? const []
             : settings.httpInspectionPackages.toList(),
-        // 1.4.3 requires the CA to be installed before MITM may start; the
-        // transport re-checks this, but failing early keeps the UI honest.
+        // 1.4.3 requires the CA before MITM may start; the transport re-checks.
         inspectionEnabled: !express && settings.httpsInspectionOperational,
       ),
     );
@@ -350,8 +315,7 @@ class PowerNotifier extends Notifier<PowerState> {
     state = PowerState.running;
     _guardTimer?.cancel();
     _ensureStatsPolling();
-    // First counters land a moment after start; refresh once without waiting
-    // a full poll interval.
+    // First counters land shortly after start; refresh once early.
     Timer(const Duration(milliseconds: 700), syncStatus);
   }
 
@@ -367,9 +331,7 @@ class PowerNotifier extends Notifier<PowerState> {
     _statsTimer = null;
   }
 
-  /// Express keeps its own database; a fresh install legitimately has none, so
-  /// an empty rule set is the correct fallback (unlike normal mode, which shows
-  /// the bundled presets).
+  /// Express keeps its own database, so an empty rule set is a valid fallback.
   Future<Map<RuleKind, List<MockRule>>> _rulesFor(bool express) async {
     if (!express) {
       final repository = ref.read(ruleRepositoryProvider);
@@ -392,8 +354,7 @@ class PowerNotifier extends Notifier<PowerState> {
     _cancelStatsPolling();
     _pendingPermissionStart = false;
     state = PowerState.stopping;
-    // The stop method channel answers immediately; a wedge here would leave the
-    // button on 「停止中」 with no way back, so it gets a deadline too.
+    // The stop channel answers immediately; a deadline catches a wedge.
     _armGuard(_launchTimeout);
     try {
       await (express
@@ -437,7 +398,7 @@ final powerProvider = NotifierProvider<PowerNotifier, PowerState>(
   PowerNotifier.new,
 );
 
-/// 服务统计（服务器模式 / 日志页共用）。
+/// Service statistics shared by server mode and the log page.
 class ServiceStatsNotifier extends Notifier<ServiceStats> {
   static const zero = ServiceStats(
     queries: 0,
@@ -496,7 +457,7 @@ final serviceStatsProvider =
       ServiceStatsNotifier.new,
     );
 
-/// 首页是否已经选过工作模式（引导完成标记）。
+/// Whether the home page has picked a work mode (onboarding marker).
 class WorkModeSelectedNotifier extends Notifier<bool> {
   @override
   bool build() => ref.read(legacySettingsProvider).workModeSelected;
@@ -517,7 +478,6 @@ final workModeSelectedProvider =
       WorkModeSelectedNotifier.new,
     );
 
-/// 引导是否已完成（三步流程）。
 class OnboardingNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -531,20 +491,13 @@ final onboardingProvider = NotifierProvider<OnboardingNotifier, bool>(
   OnboardingNotifier.new,
 );
 
-/// 首页 `resolutionMode` 对应的服务商摘要文案（上游 `raceProviderSummary`）。
-///
-/// 只在没有 Riverpod 容器时使用（例如测试里直接调工具函数）；页面必须从
-/// `visibleProvidersProvider` 取目录，否则自定义服务商的名字会缺。
+/// Provider summary text for the home `resolutionMode` (upstream `raceProviderSummary`).
 String raceProviderSummary(Set<String> ids) =>
     summaryOfProviders(ids, defaultProviderCatalog());
 
-/// 单服务商模式下服务商的端点文案。
-///
-/// 必须拼 `.label`——枚举的 `toString()` 给的是 `ProviderProtocol.doh`，直接插值
-/// 会把源码标识符漏到界面上。多个调用方都踩过这一点，所以这里是唯一出口，
-/// 页面不要再自己拼。
+/// Endpoint text; must use `.label`, since `toString()` leaks `ProviderProtocol.doh`.
 String providerEndpointOf(String id) =>
     endpointOfProvider(id, defaultProviderCatalog());
 
-/// 让 `appearance_providers.dart` 的解析模式参与首页分支的便捷读取。
+/// Convenience read of the resolution mode from `appearance_providers.dart`.
 ResolutionMode resolutionModeOf(Ref ref) => ref.read(resolutionModeProvider);

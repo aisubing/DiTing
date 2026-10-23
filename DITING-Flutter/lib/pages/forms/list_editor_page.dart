@@ -1,8 +1,4 @@
-/// 列表编辑页（上游 `features/form/list_editor_page.dart`，377 行）。
-///
-/// 一个「可搜索、可全选、可排序、可删除、可添加」的通用列表编辑页。上游把它
-/// 做成泛型类 `ListEditorPage<T, K>` 让规则、节点、提供者共用；这里保留泛型，
-/// 但把「行内编辑」简化为「点击回调」——演示层不需要每种类型各写一套编辑器。
+/// List editor page (upstream `features/form/list_editor_page.dart`): inline editing is a tap.
 library;
 
 import 'package:diting/ui/ui.dart';
@@ -10,10 +6,7 @@ import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 列表编辑页。
-///
-/// 排序用上下箭头而不是拖拽：拖拽在长列表里很难精确落点，而演示数据只有十来
-/// 行，上下箭头反而更快。真实场景里拖拽更好，这里为了骨架可读性做了取舍。
+/// List editor page. Sorting uses arrows, not drag, which is faster for the ten-odd demo rows.
 class ListEditorPage<T> extends StatefulWidget {
   const ListEditorPage({
     super.key,
@@ -40,7 +33,7 @@ class ListEditorPage<T> extends StatefulWidget {
   final VoidCallback? onAdd;
   final ValueChanged<T>? onEdit;
 
-  /// 返回 `null` 表示不提交（比如页面只是演示，没有真实保存动作）。
+  /// `null` means no submit, for demo pages without a real save.
   final ValueChanged<List<T>>? onSave;
 
   final String? footer;
@@ -261,7 +254,6 @@ class _ListEditorPageState<T> extends State<ListEditorPage<T>> {
   }
 }
 
-/// 列表编辑行：勾选、标题、上移 / 下移 / 删除。
 class _EditorRow<T> extends StatelessWidget {
   const _EditorRow({
     required this.item,

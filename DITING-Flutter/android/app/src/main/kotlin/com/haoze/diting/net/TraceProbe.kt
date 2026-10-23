@@ -3,21 +3,7 @@ package com.haoze.diting.net
 import java.net.Inet6Address
 import java.net.InetAddress
 
-/**
- * Hop-by-hop traceroute via the system `ping` binary's TTL flag, ported from
- * 1.4.3 `NetworkTraceRouteTool`.
- *
- * No root and no separate `traceroute` binary is needed: an intermediate router
- * answers a low-TTL probe with "Time to live exceeded", which carries its own
- * address. Probe output shape is read exactly like the legacy tool:
- * - a normal reply (`from <addr>: ... time=` ) means the destination was reached;
- * - a `From <addr> ... icmp_seq=` line means an intermediate hop;
- * - anything else is a silent hop (recorded with a null address, as 1.4.3 did,
- *   so the UI can render the gap instead of collapsing the list).
- *
- * Result shape matches `TraceResult.fromMap`: `{target,resolvedAddress,hops,
- * success,message,cancelled}`, each hop `{hop,address,elapsedMs,reachedTarget}`.
- */
+/// Hop-by-hop traceroute via `ping`'s TTL flag: no root, no `traceroute` binary
 internal object TraceProbe {
 
     const val DEFAULT_MAX_HOPS = 30
@@ -100,9 +86,7 @@ internal object TraceProbe {
                 listOf("ping", "-c", "1", "-W", "$PROBE_TIMEOUT_SECONDS", "-t", "$ttl", host),
             )
         }
-        // The first-response timestamp has to be measured while the output is
-        // streaming, so this probe cannot reuse ProcessProbe.run (which collects
-        // the whole output first).
+        // The first-response stamp needs the streaming output, so ProcessProbe.run is not reused.
         for (command in candidates) {
             val output = streamingProbe(command) ?: continue
             return output
@@ -133,8 +117,7 @@ internal object TraceProbe {
             }
             ProcessSupport.waitOrKill(process, SELF_CAP_MS)
         } catch (_: Exception) {
-            // A mid-read crash still leaves usable output on some devices; fall
-            // through and let the parser decide.
+            // A mid-read crash still leaves usable output on some devices; let the parser decide.
         } finally {
             runCatching { process.destroy() }
         }
@@ -171,22 +154,16 @@ internal object TraceProbe {
         "hops" to hops,
         "success" to success,
         "message" to message,
-        // A Flutter MethodChannel call has no cancel path (the Dart bridge
-        // returns the whole run at once), so this is always false. Kept in the
-        // map because `TraceResult.fromMap` reads it.
+        // Always false: a MethodChannel call has no cancel path, but `fromMap` reads the key.
         "cancelled" to false,
     )
 
     // Matches "64 bytes from 1.2.3.4: icmp_seq=1 ttl=57 time=12.3 ms".
     private val REPLY_REGEX = Regex("from\\s+(\\S+):\\s+(?:icmp_seq|seq)=\\d+.*?time=([0-9.]+)\\s*ms")
 
-    // IPv4: "From 1.2.3.4: icmp_seq=1 Time to live exceeded";
-    // IPv6: "From 2001:db8::1 icmp_seq=1 Time exceeded: Hop limit".
+    // IPv4 "From 1.2.3.4: icmp_seq=1 Time to live exceeded", IPv6 "... Time exceeded: Hop limit".
     private val FROM_REGEX = Regex("From\\s+(.+?)\\s*:??\\s*icmp_seq=\\d+\\s+(.*)")
 
-    /**
-     * Hard cap for one hop. The `-W` value covers the wait for a reply; the
-     * remainder covers process spawn plus a slow `readLine` on a dead socket.
-     */
+    /// Hard cap per hop: `-W` covers the reply wait, the rest spawn plus a slow readLine
     private const val SELF_CAP_MS = (PROBE_TIMEOUT_SECONDS + 3) * 1000L
 }

@@ -79,8 +79,6 @@ class _MeasureSizeRenderObject extends RenderProxyBox {
   }
 }
 
-/// Tells a list following its end when the reader scrolls off the end and
-/// back onto it; the list's [FollowEndScrollPhysics] keeps it there.
 class ScrollToEndBox extends StatefulWidget {
   final ScrollController controller;
   final Widget child;

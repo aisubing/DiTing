@@ -6,12 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/legacy_schema.dart';
 
-/// Exercises the SQL against the exact 1.4.3 table layout read off the device
-/// (`sqlite3 .schema`), so column names and filter semantics cannot drift.
-///
-/// The schema lives in `support/legacy_schema.dart` because all three
-/// observability repositories share it. Anything wrong there would let a bad
-/// column name pass in memory and fail on a device only.
+/// Exercises the SQL against the exact 1.4.3 layout read off the device
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -83,9 +78,7 @@ void main() {
   );
 
   group('http_request_log 五档筛选', () {
-    /// One row per outcome the engine can write, plus an unknown one. The
-    /// unknown value is the important case: 1.4.3's `else -> ERROR` branch is
-    /// what keeps a newly added outcome from silently disappearing.
+    /// One row per outcome plus an unknown one, which 1.4.3's `else` branch maps to ERROR
     const outcomes = <String>[
       'allowed',
       'rewritten',
@@ -125,8 +118,7 @@ void main() {
         'unsupported_protocol',
         'resource_bypass',
       });
-      // `NOT IN` 兜底：任何旧版没有列举的 outcome 都归到「失败」，
-      // 而不是落进某个「已通过」的桶里。
+      // `NOT IN` catch-all: an unlisted outcome counts as failed, not passed
       expect(await outcomesOf(RequestStatus.error), {'decryption_failed'});
     });
 
@@ -188,8 +180,6 @@ void main() {
         (await repository.recent(query: 'com.game')).single.packageName,
         'com.game.big',
       );
-      // 中文关键词：`LIKE` 对非 ASCII 是大小写敏感的，lowercase 不影响匹配，
-      // 但这里要确认中文规则名能被命中。
       expect(
         (await repository.recent(query: '广告拦截')).single.matchedRule,
         'RULE-SET,广告拦截',
@@ -213,7 +203,6 @@ void main() {
       expect(stats.byOutcome['blocked'], 1);
       expect(stats.countFor(RequestStatus.blocked), 2);
       expect(stats.countFor(RequestStatus.all), outcomes.length);
-      // 落在 `NOT IN` 兜底里的行也要计入「失败」档。
       expect(stats.countFor(RequestStatus.error), 1);
     });
 
@@ -232,7 +221,6 @@ void main() {
 
   group('dns_log 六档筛选', () {
     setUp(() async {
-      // 普通放行。
       await insertDns(
         timestamp: 100,
         queryName: 'api.github.com',
@@ -241,7 +229,6 @@ void main() {
         message: 'app=com.example.browser, resolved=140.82.113.6, '
             'elapsed=28ms',
       );
-      // 连接日志：`TCP ` 前缀 + queryType 0，旧版归旁路。
       await insertDns(
         timestamp: 101,
         queryName: 'TCP 1.1.1.1:443',
@@ -249,7 +236,6 @@ void main() {
         queryType: 0,
         message: 'app=com.example.app, resolved=1.1.1.1',
       );
-      // 连接日志的另一种写法：只有 blocked_by=connection。
       await insertDns(
         timestamp: 102,
         queryName: 'UDP 8.8.8.8:53',
@@ -257,28 +243,24 @@ void main() {
         queryType: 0,
         message: 'blocked_by=connection',
       );
-      // 规则拦截。
       await insertDns(
         timestamp: 103,
         queryName: 'ads.example.com',
         result: 'BLOCKED',
         message: 'blocked_by=firewall:ads, elapsed=1ms',
       );
-      // 覆写：结果列本身。
       await insertDns(
         timestamp: 104,
         queryName: 'rewrite-column.example',
         result: 'REWRITTEN',
         message: 'blocked_by=rewrite=1.2.3.4',
       );
-      // 覆写：只靠 message 里的中文标记。
       await insertDns(
         timestamp: 105,
         queryName: 'rewrite-chinese.example',
         result: 'PASSED',
         message: '命中覆写规则 matched rewrite rule elapsed=4ms',
       );
-      // 失败。
       await insertDns(
         timestamp: 106,
         queryName: 'broken.example',
@@ -296,7 +278,6 @@ void main() {
       expect(names, contains('api.github.com'));
       expect(names, isNot(contains('TCP 1.1.1.1:443')));
       expect(names, isNot(contains('UDP 8.8.8.8:53')));
-      // 有明确覆写标记的行不能算「通过」。
       expect(names, isNot(contains('rewrite-column.example')));
       expect(names, isNot(contains('rewrite-chinese.example')));
     });
@@ -310,7 +291,6 @@ void main() {
       expect(names, contains('rewrite-column.example'));
       expect(names, contains('rewrite-chinese.example'));
       expect(names, isNot(contains('api.github.com')));
-      // 覆写档同样排除连接行。
       expect(names, isNot(contains('TCP 1.1.1.1:443')));
     });
 
@@ -322,7 +302,6 @@ void main() {
 
       expect(names, contains('ads.example.com'));
       expect(names, isNot(contains('api.github.com')));
-      // 被覆写的行不能同时算拦截。
       expect(names, isNot(contains('rewrite-column.example')));
     });
 
@@ -341,7 +320,6 @@ void main() {
 
       expect(names, contains('TCP 1.1.1.1:443'));
       expect(names, contains('UDP 8.8.8.8:53'));
-      // 普通域名查询不是旁路。
       expect(names, isNot(contains('api.github.com')));
       expect(names, isNot(contains('broken.example')));
     });
@@ -375,7 +353,6 @@ void main() {
         (await repository.recent(query: 'com.example.browser')).single.id,
         isNotNull,
       );
-      // message 里的中文标记也能命中；这里顺带覆盖 `LIKE` 对中文的行为。
       expect(
         (await repository.recent(query: '覆写')).single.queryName,
         'rewrite-chinese.example',
@@ -416,20 +393,15 @@ void main() {
     test('DnsLogMessage 对空值 / 缺失字段容错', () {
       expect(DnsLogMessage.parse(null).elapsedMs, isNull);
       expect(DnsLogMessage.parse('').app, isNull);
-      // 没有 `=` 的 token 被丢弃，而不是当成 key 塞进去。
       expect(DnsLogMessage.parse('garbage, app=x').app, 'x');
-      // 值里带 `=` 时按第一个 `=` 切分。
       expect(DnsLogMessage.parse('error=a=b').error, 'a=b');
-      // 非数字的 elapsed 不应该把解析搞崩。
       expect(DnsLogMessage.parse('elapsed=fast').elapsedMs, isNull);
     });
   });
 
   group('app_traffic_daily', () {
     setUp(() async {
-      // 总量刻意不相等：`com.a` 当天 100、`com.b` 120。若两行总量相同，
-      // `ORDER BY (tx_bytes + rx_bytes) DESC` 就是并列，返回顺序不保证，
-      // 断言排序的用例会变成随机通过/失败。
+      // Totals differ on purpose: equal totals make the `ORDER BY` a tie with no stable order
       await insertTraffic('2026-10-19', 'com.a', tx: 10, rx: 90, appName: '甲');
       await insertTraffic('2026-10-19', 'com.b', tx: 70, rx: 50, appName: '乙');
       await insertTraffic('2026-10-20', 'com.a', tx: 20, rx: 80, appName: '甲');
@@ -456,7 +428,6 @@ void main() {
       expect(a.totalBytes, 200);
       expect(a.date, '2026-10-19', reason: '旧版 min(date)');
       expect(a.appName, '甲');
-      // `com.b` 只有一天（120），`com.a` 两天合计 200，故 a 排在前面。
       expect(rows.first.packageName, 'com.a');
     });
 

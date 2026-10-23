@@ -1,7 +1,4 @@
-/// 选择浮层演示页（`/form/selection`）。
-///
-/// 展示 `SelectionSheet` 的两种模式：单选（点一下即回填）与多选（勾完确认）。
-/// 上游这两种模式都用在节点 / 分组选择上，差别只在回调。
+/// Selection sheet demo (`/form/selection`): single select returns on tap, multi confirms.
 library;
 
 import 'package:diting/pages/forms/selection_sheet.dart';
@@ -9,7 +6,6 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一个演示条目。
 class _DemoOption {
   const _DemoOption(this.label, this.description);
 
@@ -28,7 +24,6 @@ const _demoOptions = <_DemoOption>[
   _DemoOption('洛杉矶 04', 'ss · us04.example.com:8388'),
 ];
 
-/// 选择浮层演示页。
 class SelectionDemoPage extends StatefulWidget {
   const SelectionDemoPage({super.key});
 

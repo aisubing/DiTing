@@ -1,10 +1,7 @@
 part of 'demo_page.dart';
 
-/// 输入分区：验证 [SearchField]、[CommonCheckBox]、[SecretTextFormField]、
-/// [SegmentedControl] 四种输入控件的常态、聚焦态与禁用态。
-///
-/// 输入控件的回归几乎都藏在「聚焦边框」和「光标内缩」上，所以这里让每个控件
-/// 都可交互：点进去看焦点环是否跟着 AppShape 的超椭圆走，而不是默认的圆弧。
+/// Inputs: normal, focused and disabled states of [SearchField], [CommonCheckBox],
+/// [SecretTextFormField] and [SegmentedControl], all interactive so the focus ring can be checked.
 class _DemoInputSection extends StatefulWidget {
   const _DemoInputSection();
 
@@ -122,10 +119,7 @@ class _DemoInputSectionState extends State<_DemoInputSection> {
   }
 }
 
-/// 复选框的禁用态：选中与未选各一个。
-///
-/// [CommonCheckBox] 不暴露 `tristate`，所以 `value` 传 null 会直接触发
-/// Checkbox 的断言——半选态在这个组件上是不存在的，不要试图演示它。
+/// [CommonCheckBox] has no `tristate`, so a null `value` trips the Checkbox assertion.
 class _DemoCheckBoxRow extends StatelessWidget {
   const _DemoCheckBoxRow();
 
@@ -168,7 +162,7 @@ class _DemoCheckBoxRow extends StatelessWidget {
   }
 }
 
-/// 可交互的两个复选框：方形与圆形。圆形用于「单选语义」的列表行。
+/// Two interactive checkboxes, square and round; the round one means single choice in a list row.
 class _DemoCheckBoxes extends StatelessWidget {
   const _DemoCheckBoxes({
     required this.checked,

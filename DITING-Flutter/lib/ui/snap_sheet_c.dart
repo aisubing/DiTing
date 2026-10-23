@@ -45,8 +45,7 @@ class _SheetScrollPosition extends ScrollPositionWithSingleContext
 
   bool get _isReversed => axisDirectionIsReversed(axisDirection);
 
-  /// Whether the content has left the edge it shows at the top of the sheet.
-  /// A reverse list reaches that edge at its maximum offset, not its minimum.
+  /// A reverse list reaches the top edge at its maximum offset, not its minimum.
   bool get _contentScrolled {
     if (!hasContentDimensions) {
       return false;
@@ -79,8 +78,7 @@ class _SheetScrollPosition extends ScrollPositionWithSingleContext
     super.pointerScroll(delta);
   }
 
-  /// Keeps a reverse list, which hangs from its bottom, fixed to the top
-  /// edge as the sheet resizes.
+  /// Keeps a reverse list, which hangs from its bottom, fixed to the top edge.
   @override
   bool correctForNewDimensions(
     ScrollMetrics oldPosition,
@@ -134,9 +132,7 @@ class _SheetScrollPosition extends ScrollPositionWithSingleContext
   }
 }
 
-/// As UIKit's prefersScrollingExpandsWhenScrolledToEdge: a drag up grows the
-/// sheet and then scrolls the content in one gesture; a drag down takes the
-/// sheet only when it began with the content at its top.
+/// As UIKit: a drag up grows the sheet then scrolls; a drag down takes it only from the top.
 class _SheetContentDrag implements Drag {
   _SheetContentDrag(
     this._position,

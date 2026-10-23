@@ -1,10 +1,6 @@
-/// On-device UI probe, debug/profile only.
-///
-/// Exposes VM Service extensions that navigate, dump the global rects of all
-/// texts and container widgets, and collect layout errors, so spacing and
-/// clipping problems can be measured instead of guessed from screenshots.
-/// In release builds `kDebugMode` is constant false and call sites are
-/// tree-shaken away.
+/// On-device UI probe, debug/profile only: VM Service extensions that navigate, dump global
+/// rects and collect layout errors, so spacing is measured rather than guessed. In release
+/// builds `kDebugMode` is constant false and call sites are tree-shaken away.
 library;
 
 import 'dart:convert';

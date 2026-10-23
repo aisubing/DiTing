@@ -4,17 +4,11 @@ import 'dart:io';
 import 'package:diting/data/update/app_update_checker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pins the update check against a real HTTP server and the exact parsing rules
-/// 1.4.3's `parseLatestRelease` used.
-///
-/// The old `UpdateNotifier.check()` was `await Future.delayed(900ms)` then
-/// `UpdateStage.available` — it *always* claimed an update existed, regardless
-/// of what GitHub said. These tests decide each branch from a real response.
+/// Pins the update check against a real HTTP server and 1.4.3's parsing rules.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // `flutter_test` installs an HttpOverrides that answers 400 to everything;
-  // this file talks to a loopback server on purpose.
+  // `flutter_test` installs an HttpOverrides answering 400; this file uses a loopback server
   setUpAll(() => HttpOverrides.global = null);
 
   late HttpServer server;
@@ -66,7 +60,7 @@ void main() {
 
   group('版本比较（旧版 isNewerVersion）', () {
     test('逐段整数比较，不是字符串比较', () {
-      // 字符串比较会说 "1.4.10" < "1.4.9"，这是最常见的版本号 bug。
+      // String comparison puts "1.4.10" below "1.4.9".
       expect(AppUpdateChecker.isNewerVersion('1.4.10', '1.4.9'), isTrue);
       expect(AppUpdateChecker.isNewerVersion('1.4.9', '1.4.10'), isFalse);
     });
@@ -88,7 +82,7 @@ void main() {
     });
 
     test('看不懂的版本号不当作更新', () {
-      // 宁可「没有更新」，也不要把一个 unparseable 的 tag 当成更新去提示下载。
+      // Better to report no update than to treat an unparseable tag as one.
       expect(AppUpdateChecker.isNewerVersion('latest', '1.4.4'), isFalse);
       expect(AppUpdateChecker.isNewerVersion('1.4.x', '1.4.4'), isFalse);
       expect(AppUpdateChecker.isNewerVersion('', '1.4.4'), isFalse);

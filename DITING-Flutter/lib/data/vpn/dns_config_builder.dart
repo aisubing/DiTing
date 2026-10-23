@@ -1,10 +1,5 @@
-/// Builds the exact JSON payload consumed by `Engine.applyDNSConfig`.
-///
-/// The Go side rejects unknown fields, so every key here mirrors
-/// `HttpsDnsConfigSnapshot.toJson()` from 1.4.3. Provider resolution follows
-/// `DnsVpnProviderResolver`: single mode uses the selected provider, race modes
-/// use their own id lists, and anything with fewer than two usable providers
-/// falls back to the selected one while keeping the requested mode.
+/// Builds the exact JSON for `Engine.applyDNSConfig`; the Go side rejects unknown fields. Below two
+/// providers, resolution falls back to the selected one.
 library;
 
 import 'dart:convert';
@@ -52,13 +47,13 @@ class DnsProviderEntry {
       ? '[$host]:$port'
       : '$host:$port';
 
-  /// Endpoint exactly as 1.4.3 renders it (`[DoH] https://…` / `[DNS] 1.1.1.1:53`).
+  /// Endpoint as 1.4.3 renders it (`[DoH] https://...` / `[DNS] 1.1.1.1:53`).
   String get endpointLabel => switch (protocol) {
     DnsProtocol.doh => '[${protocol.storageValue}] $url',
     _ => '[${protocol.storageValue}] $hostPort',
   };
 
-  /// `host:port` the management UI edits; DoH providers keep an empty one.
+  /// `host:port` edited by the management UI; DoH providers keep it empty.
   String get address => protocol == DnsProtocol.doh ? url : hostPort;
 
   MockProvider toMock({int latencyMs = 0, bool isPreset = false}) =>
@@ -93,8 +88,7 @@ class BootstrapEntry {
   final String name;
   final String ip;
 
-  /// Only consulted for custom entries stored in `bootstrap_custom_json`;
-  /// presets are filtered by `bootstrap_preset_ids` before they get here.
+  /// Only for custom entries in `bootstrap_custom_json`; presets are filtered earlier.
   final bool enabled;
 
   Map<String, Object?> toJson() => {'id': id, 'name': name, 'ip': ip};

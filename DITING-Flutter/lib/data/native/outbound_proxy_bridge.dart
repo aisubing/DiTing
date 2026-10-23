@@ -1,22 +1,11 @@
-/// Dart side of `com.haoze.diting/outbound_proxy`.
-///
-/// 1.4.3 stored the outbound proxy in `dns_vpn_prefs` (`OutboundProxySettingsStore`)
-/// with the username/password encrypted by an AndroidKeyStore AES-GCM key.
-/// Dart cannot reach that keystore, so the credentials compose/decompose
-/// natively; the *non-secret* fields still live in the same prefs file and are
-/// readable through [LegacyPrefsBridge], keeping the on-disk layout unchanged
-/// for an upgrade install.
-///
-/// Why a proxy app is mandatory: Android only lets one app bind a loopback port
-/// at a time, and 1.4.3 refuses to let the user pick anything other than
-/// `127.0.0.1` / `::1`. That makes "which app owns the port" part of the
-/// configuration instead of something to autodetect.
+/// Dart side of `com.haoze.diting/outbound_proxy`. Credentials sit in `dns_vpn_prefs` under an
+/// AndroidKeyStore key Dart cannot reach, so the proxy is composed natively. The app package is
+/// part of the config: Android lets only one app bind a loopback port.
 library;
 
 import 'package:flutter/services.dart';
 
-/// Matches `OutboundProxyProtocol` in 1.4.3 (`storageValue` is what the Go
-/// engine parses — lowercase, `socks5` / `http`).
+/// Matches 1.4.3 `OutboundProxyProtocol`; `storageValue` is parsed by the Go engine.
 enum OutboundProxyProtocol {
   socks5('socks5', 'SOCKS5'),
   http('http', 'HTTP CONNECT');
@@ -33,7 +22,6 @@ enum OutboundProxyProtocol {
       );
 }
 
-/// The whole proxy configuration, secrets included (only in memory).
 class OutboundProxyConfig {
   const OutboundProxyConfig({
     this.enabled = false,
@@ -54,11 +42,9 @@ class OutboundProxyConfig {
   final String username;
   final String password;
 
-  /// Package that is expected to be listening on [host]:[port].
   final String proxyAppPackage;
 
-  /// Engine-reported state (`disabled` / `connecting` / `ready` / `error`),
-  /// fed by `OutboundProxyStatusCallback`.
+  /// Engine-reported state: `disabled`, `connecting`, `ready` or `error`.
   final String status;
   final String statusMessage;
 
@@ -84,12 +70,9 @@ class OutboundProxyConfig {
     statusMessage: statusMessage ?? this.statusMessage,
   );
 
-  /// `OutboundProxyConfig.validationError`, in the same order so the first
-  /// offending field is reported identically. [selfPackage] is passed in
-  /// because Dart already knows its own application id.
-  ///
-  /// [installedPackages] is null when the caller could not enumerate apps; the
-  /// "not installed" check is then skipped rather than failing closed.
+  /// Mirrors `OutboundProxyConfig.validationError` in the same order, so the first offending field
+  /// is reported identically; a null [installedPackages] skips the "not installed" check rather
+  /// than failing closed.
   String? validationError({
     String? selfPackage,
     Set<String>? installedPackages,
@@ -110,17 +93,9 @@ class OutboundProxyConfig {
     return null;
   }
 
-  /// The JSON handed to `Engine.configureOutboundProxy` via `VpnStartRequest`.
-  /// `protocol` uses [OutboundProxyProtocol.storageValue]; the Go side rejects
-  /// anything else.
-  ///
-  /// `port` must be a JSON **number**, not a string: the Go side unmarshals into
-  /// `outboundProxyConfig{Port int}` (`DITING-Legacy/tunnel/flow_outbound.go:29`), and
-  /// `json.Unmarshal` rejects `"port":"7890"` with
-  /// `invalid outbound proxy config: … cannot unmarshal string into Go struct
-  /// field …Port of type int`. That error comes back from
-  /// `Engine.configureOutboundProxy` and the whole proxy silently stays disabled,
-  /// while 1.4.3's Kotlin producer (`toNativeJson`) emitted a real number.
+  /// JSON handed to `Engine.configureOutboundProxy`. `port` must be a JSON number: Go unmarshals
+  /// into `Port int` (`tunnel/flow_outbound.go:29`), and a string leaves the proxy silently
+  /// disabled.
   String toEngineJson() {
     final encoded = <String, Object>{
       'enabled': enabled,
@@ -163,18 +138,14 @@ class OutboundProxyConfig {
       );
 }
 
-/// Persistence for [OutboundProxyConfig] (`OutboundProxySettingsStore`).
 abstract class OutboundProxyStore {
   Future<OutboundProxyConfig> read();
 
-  /// Encrypts the credentials with the platform keystore and writes every key.
   Future<void> write(OutboundProxyConfig config);
 
-  /// Removes all nine keys (1.4.3's `resetOutboundProxy`).
   Future<void> reset();
 
-  /// Engine-reported status, written by `OutboundProxyStatusCallback` from the
-  /// tunnel service so the settings page can show it after a restart.
+  /// Engine-reported status, persisted so the page can show it after a restart.
   Future<void> setStatus(String state, String message);
 }
 
@@ -214,7 +185,6 @@ class MethodChannelOutboundProxyStore implements OutboundProxyStore {
       .invokeMethod<void>('setStatus', {'state': state, 'message': message});
 }
 
-/// In-memory store for tests / non-Android hosts.
 class MemoryOutboundProxyStore implements OutboundProxyStore {
   OutboundProxyConfig _config = const OutboundProxyConfig();
 

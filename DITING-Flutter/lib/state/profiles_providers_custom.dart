@@ -1,6 +1,5 @@
 part of 'profiles_providers.dart';
 
-/// 自定义代理组。
 class ProxyGroupsNotifier extends Notifier<List<MockProxyGroup>> {
   var _sequence = 0;
 
@@ -68,7 +67,7 @@ class ProxyGroupsNotifier extends Notifier<List<MockProxyGroup>> {
     state = next;
   }
 
-  /// 成员选择页保存：整份替换成员的顺序与集合。
+  /// Saved from the member picker: replaces the whole ordered member set.
   void setMembers(String groupId, List<String> members) {
     state = [
       for (final group in state)
@@ -83,7 +82,7 @@ class ProxyGroupsNotifier extends Notifier<List<MockProxyGroup>> {
     ];
   }
 
-  /// 按类型重排：整份替换（列表页的「按类型重排」动作）。
+  /// Re-sorts by type, replacing the whole list.
   void replaceAll(List<MockProxyGroup> groups) => state = [...groups];
 }
 
@@ -92,7 +91,6 @@ final proxyGroupsProvider =
       ProxyGroupsNotifier.new,
     );
 
-/// 自定义规则。
 class CustomRulesNotifier extends Notifier<List<MockCustomRule>> {
   var _sequence = 0;
 
@@ -167,7 +165,7 @@ class CustomRulesNotifier extends Notifier<List<MockCustomRule>> {
     state = next;
   }
 
-  /// 快速编辑保存：整份替换。
+  /// Saved from the quick editor: replaces the whole list.
   void replaceAll(List<MockCustomRule> rules) => state = [...rules];
 }
 
@@ -176,12 +174,11 @@ final customRulesProvider =
       CustomRulesNotifier.new,
     );
 
-/// 代理提供者。
 class ProxyProvidersNotifier extends Notifier<List<MockProxyProvider>> {
   @override
   List<MockProxyProvider> build() => [...mockProxyProviders];
 
-  /// 新增：演示版只问名字，其余字段给一份合理的占位值。
+  /// Adds an entry; only the name is asked for, other fields get placeholders.
   void addProvider(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
@@ -243,7 +240,6 @@ final proxyProvidersProvider =
       ProxyProvidersNotifier.new,
     );
 
-/// 规则提供者。
 class RuleProvidersNotifier extends Notifier<List<MockRuleProvider>> {
   @override
   List<MockRuleProvider> build() => [...mockRuleProviders];
@@ -266,7 +262,7 @@ class RuleProvidersNotifier extends Notifier<List<MockRuleProvider>> {
     ];
   }
 
-  /// 新增（演示版只问名字，其余字段给占位值）。
+  /// Adds an entry; only the name is asked for, other fields get placeholders.
   void addNamed(String name) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
@@ -292,7 +288,7 @@ final ruleProvidersProvider =
       RuleProvidersNotifier.new,
     );
 
-/// 拨号器：节点名 → 中转目标。
+/// Dialer: node name to relay target.
 class DialersNotifier extends Notifier<Map<String, String>> {
   @override
   Map<String, String> build() => {

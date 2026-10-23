@@ -1,6 +1,5 @@
 // ignore_for_file: prefer_initializing_formals
-// False positive here: fields are private `_xxx`, and Dart forbids named
-// parameters starting with `_`, so `required this._prefs` is impossible.
+// False positive: fields are private `_xxx`, and Dart forbids named parameters starting with `_`.
 library;
 
 import 'package:diting/data/cleanup/cleanup_models.dart';
@@ -16,10 +15,7 @@ import 'package:sqflite/sqflite.dart';
 
 export 'cleanup_models.dart';
 
-/// Runs all cleanup actions from one class.
-///
-/// They share handles (prefs, database cache, native channels) and
-/// [CleanupAction.allData] runs them in sequence.
+/// Runs every cleanup action, sharing the prefs store, database cache and channels.
 class DataCleanupService {
   DataCleanupService({
     required LegacyPrefsStore prefs,
@@ -41,10 +37,8 @@ class DataCleanupService {
   final PlatformBridge _platform;
   final OutboundProxyStore _outboundProxy;
 
-  /// App version code used for the seed marker; must match startup seeding.
-  ///
-  /// A lower value re-seeds on the next launch; a higher one skips future
-  /// upgrade seeds entirely.
+  /// Seed marker version code; must match startup seeding. A lower value re-seeds on the next
+  /// launch, a higher one skips upgrade seeds entirely.
   final int _appVersionCode;
 
   final CaCertificateService _ca;
@@ -52,10 +46,7 @@ class DataCleanupService {
   final CleanupDatabases _databases;
   LegacySettings get _settings => LegacySettings(_prefs);
 
-  /// Calls a native channel, degrading to 0 when the channel is unavailable.
-  ///
-  /// Actions that touch native storage also clear prefs; an exception here must
-  /// not skip the prefs half.
+  /// 0 without the channel; actions that also clear prefs must still run.
   Future<int> _platformCall(Future<int> Function() call) async {
     try {
       return await call();
@@ -65,17 +56,13 @@ class DataCleanupService {
     }
   }
 
-  /// Prefs containers of the three rule datasets.
   static const _datasetContainers = [
     LegacySettings.uiContainer,
     LegacySettings.expressContainer,
     LegacySettings.serverContainer,
   ];
 
-  /// Runs one action; any exception becomes [CleanupResult.failed].
-  ///
-  /// Never rethrows: the caller runs after a confirmation dialog and needs a
-  /// reason, not a red screen.
+  /// Never rethrows: the caller needs a reason after the confirmation dialog.
   Future<CleanupResult> run(CleanupAction action) async {
     try {
       return switch (action) {
@@ -117,12 +104,7 @@ class DataCleanupService {
   CleanupResult _result(CleanupAction action, int removed, {String? detail}) =>
       CleanupResult(action: action, removed: removed, detail: detail);
 
-
-
-  /// Clears the four log tables.
-  ///
-  /// Per-table tolerance: the express database has no `http_request_log`, and a
-  /// missing table must not skip the others.
+  /// Per-table tolerance: a missing table must not skip the others.
   Future<CleanupResult> _clearLogs() async {
     var removed = 0;
     for (final db in await _databases.runtimeDatabases()) {
@@ -138,17 +120,13 @@ class DataCleanupService {
     return _result(CleanupAction.logs, removed);
   }
 
-  /// Clears `app_traffic_daily`.
-  ///
-  /// Main database only: the express and server databases lack this table.
+  /// Main database only: the express and server databases lack `app_traffic_daily`.
   Future<CleanupResult> _clearTraffic() async {
     final db = await _databases.main;
     final removed = db == null ? 0 : await deleteAllRows(db, 'app_traffic_daily');
     return _result(CleanupAction.traffic, removed);
   }
 
-  /// Clears the persisted `dns_cache` table.
-  ///
   /// The engine keeps its own in-memory LRU, which is not cleared here.
   Future<CleanupResult> _clearDnsCache() async {
     var removed = 0;
@@ -158,11 +136,7 @@ class DataCleanupService {
     return _result(CleanupAction.dnsCache, removed);
   }
 
-
-
-  /// Removes the stored provider/bootstrap health samples.
-  ///
-  /// Each dataset keeps its own copy, so all three containers are cleared.
+  /// Each dataset keeps its own copy of the health samples.
   CleanupResult _resetWeights(CleanupAction action, String key) {
     var removed = 0;
     for (final container in _datasetContainers) {
@@ -171,12 +145,8 @@ class DataCleanupService {
     return _result(action, removed);
   }
 
-
-
-  /// Clears block, allow, cosmetic and domain-subscription data, then re-seeds
-  /// the preset whitelist on the main database.
-  ///
-  /// Skipping the re-seed would block hosts that must stay reachable.
+  /// Clears rules, then re-seeds the preset whitelist; otherwise hosts that must stay reachable
+  /// stay blocked.
   Future<CleanupResult> _clearDomainRules() async {
     final preset = await loadPresetEntries(load: _loadPresetAsset);
     var removed = 0;
@@ -209,7 +179,7 @@ class DataCleanupService {
         await deleteOrphanAutoUpdateItems(txn);
         return count;
       });
-            // Only the main dataset is re-seeded.
+      // Only the main dataset is re-seeded.
       if (preset.isNotEmpty && _databases.isMain(db)) {
         await RuleRepository(db).resetPresetWhitelist(preset);
         _settings.markDefaultWhitelistSeeded(_versionCodeOrFallback);
@@ -241,7 +211,6 @@ class DataCleanupService {
     return _result(CleanupAction.addressRules, removed);
   }
 
-  /// Clears subscriptions, groups, auto-update items and subscription-owned rules.
   Future<CleanupResult> _clearSubscriptions() async {
     var removed = 0;
     for (final db in await _databases.ruleDatabases()) {
@@ -249,8 +218,7 @@ class DataCleanupService {
         var count = await deleteAllRows(txn, 'subscription');
         count += await deleteAllRows(txn, 'subscription_group');
         count += await deleteAllRows(txn, 'subscription_auto_update_item');
-        // Subscription-owned rules use `sub_<id>` sources; `staging_sub_` is a
-        // mid-import state.
+        // Subscription-owned rules use `sub_<id>` sources; `staging_sub_` is mid-import.
         for (final (table, sourceTable) in const [
           ('block_rule', 'block_rule_source'),
           ('allow_rule', 'allow_rule_source'),
@@ -271,12 +239,7 @@ class DataCleanupService {
     return _result(CleanupAction.subscriptions, removed);
   }
 
-
-
-  /// Clears all app lists together.
-  ///
-  /// Clearing only some of them leaves a state where the page and the engine
-  /// disagree about which apps are allowed.
+  /// All app lists together, or the page and the engine disagree on what is allowed.
   CleanupResult _resetAppRules() {
     var removed = 0;
     const keys = [
@@ -291,8 +254,7 @@ class DataCleanupService {
     for (final key in keys) {
       if (_removeKey(LegacySettings.uiContainer, key)) removed++;
     }
-        // Reset `https_inspection_ready` too, otherwise the next tunnel start
-        // assumes the CA is still usable.
+    // Reset `https_inspection_ready` too, or the next tunnel start assumes the CA works.
     if (_prefs.read(LegacySettings.uiContainer, 'https_inspection_ready') !=
         null) {
       _settings.setHttpsInspectionReady(false);
@@ -301,17 +263,13 @@ class DataCleanupService {
     return _result(CleanupAction.appRules, removed);
   }
 
-  /// Resets the outbound proxy through the native channel; credentials live in
-  /// the AndroidKeyStore.
+  /// Credentials live in the AndroidKeyStore, so the reset goes through native.
   Future<CleanupResult> _resetOutboundProxy() async {
     await _outboundProxy.reset();
     return _result(CleanupAction.outboundProxy, 1, detail: '已恢复直连');
   }
 
-  /// Deletes the HTTPS inspection CA and marks inspection as not ready.
-  ///
-  /// `inspect(regenerate: true)` is the only channel entry that deletes the
-  /// files; the regenerated CA is not trusted by the system.
+  /// `inspect(regenerate: true)` is the only call that deletes the CA files.
   Future<CleanupResult> _resetCaCertificate() async {
     await _ca.inspect(regenerate: true);
     _settings.setHttpsInspectionReady(false);
@@ -322,12 +280,7 @@ class DataCleanupService {
     );
   }
 
-
-
-  /// Deletes the custom background files and clears the three prefs keys.
-  ///
-  /// Both halves must run: clearing only settings leaves stale files, clearing
-  /// only files leaves the UI claiming a background is enabled.
+  /// Both halves must run, or stale files or a lying UI remain.
   Future<CleanupResult> _clearCustomBackground() async {
     var removed = await _platformCall(_platform.clearCustomBackgroundCache);
     for (final key in const [
@@ -340,10 +293,7 @@ class DataCleanupService {
     return _result(CleanupAction.customBackground, removed);
   }
 
-  /// Resets guide acknowledgements and the first-launch consent flag.
-  ///
-  /// Also clears the "do not remind" entries in `mode_permission_preferences`:
-  /// with no dismissal left there is no way to restore that reminder.
+  /// Also clears the "do not remind" entries; there is no way to restore them.
   CleanupResult _resetSettingsGuides() {
     var removed = 0;
     for (final key in const [
@@ -362,12 +312,7 @@ class DataCleanupService {
     return _result(CleanupAction.settingsGuides, removed);
   }
 
-
-
-  /// Runs every cleanup action in order: runtime data, weights, rules and
-  /// subscriptions, then storage and guides.
-  ///
-  /// Each step's count is summed; a failing step does not stop the rest.
+  /// Every action in order, summing counts; a failing step does not stop the rest.
   Future<CleanupResult> _clearAllLocalData() async {
     var removed = 0;
     for (final action in const [
@@ -396,10 +341,6 @@ class DataCleanupService {
     return _result(CleanupAction.allData, removed);
   }
 
-
-
-  /// Removes a key and returns whether it existed.
-  ///
   /// A key holding its default value still counts as removed.
   bool _removeKey(String container, String key) {
     final existed = _prefs.read(container, key) != null;
@@ -407,7 +348,7 @@ class DataCleanupService {
     return existed;
   }
 
-  /// Version code for the seed marker: the stored install version wins.
+  /// The stored install version wins over the value passed in.
   int get _versionCodeOrFallback {
     final raw = _prefs.read(LegacySettings.uiContainer, 'app_version_code');
     return raw is int && raw > 0 ? raw : _appVersionCode;

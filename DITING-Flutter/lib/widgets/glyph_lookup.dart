@@ -1,10 +1,8 @@
 import 'package:diting/ui/ui.dart';
 
-/// `mock_data.dart` 与功能中心用字符串记图标名（数据层不该依赖 widget 层），
-/// 这里做唯一的名字 → [Glyph] 映射。
-///
-/// 名字与 `AppGlyphs` 的常量名一致；写错名字时返回 [AppGlyphs.info] 而不是抛错，
-/// 因为演示页面里一个错图标不值得让整屏崩掉——但测试会断言常用名字都能解析。
+/// The only name-to-[Glyph] mapping; data layers store icon names as strings so they need not
+/// depend on the widget layer. Names match the `AppGlyphs` constants. An unknown name yields
+/// [AppGlyphs.info] rather than throwing, but tests assert common names resolve.
 Glyph glyphByName(String name) => switch (name) {
   'account' => AppGlyphs.account,
   'add' => AppGlyphs.add,

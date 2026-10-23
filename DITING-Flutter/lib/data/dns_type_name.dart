@@ -1,8 +1,5 @@
-/// DNS 记录类型数字 → 展示名（旧版 `dnsTypeName` 逐字照抄，含 `TYPE$n` 兜底）。
-///
-/// 放在 `data/` 而不是 `pages/logs/logs_shared.dart`：仪表盘概览的聚合层也要把
-/// `dns_cache.queryType` 转成 `A` / `AAAA`，让页面层提供这个函数会逼着 state 层
-/// 反向 import 页面，两处各写一份则必然出现「缓存页写 A、概览块写 TYPE1」。
+/// DNS record type number to display name, with a `TYPE$n` fallback. Lives in `data/` because the
+/// dashboard aggregation needs it too.
 library;
 
 String dnsTypeName(int type) => switch (type) {

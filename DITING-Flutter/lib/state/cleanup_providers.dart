@@ -1,8 +1,5 @@
-/// 数据清理的 provider 层。
-///
-/// 页面只认 [dataCleanupServiceProvider]：它把 prefs、两条原生通道与数据库
-/// 打开函数装配在一起。测试与非 Android 宿主拿到的是同一套「诚实降级」实现
-/// （通道缺失 → 删 0 项，不抛异常），因此不需要 override 也能跑。
+/// Data cleanup; `dataCleanupServiceProvider` wires prefs, channels and the DB opener, degrading to
+/// delete 0.
 library;
 
 import 'package:diting/data/cleanup/data_cleanup_service.dart';
@@ -16,15 +13,11 @@ import 'package:diting/state/outbound_proxy_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 原生平台通道。`main()` 不必 override：默认实现已经把所有失败收成「不可用」。
+/// Native channel; the default already folds every failure into "unavailable".
 final platformBridgeProvider = Provider<PlatformBridge>(
   (ref) => PlatformBridge(),
 );
 
-/// 清理服务。
-///
-/// 依赖装配在一处：动作本身只关心「删什么」，不关心 prefs 从哪来、证书服务
-/// 是不是真的（测试里换成 fake 只需 override 一个 provider）。
 final dataCleanupServiceProvider = Provider<DataCleanupService>((ref) {
   return DataCleanupService(
     prefs: ref.watch(legacyPrefsStoreProvider),
@@ -36,7 +29,7 @@ final dataCleanupServiceProvider = Provider<DataCleanupService>((ref) {
   );
 });
 
-/// 正在执行的清理动作；页面据此禁用整张列表并显示进度。
+/// Action currently running; the page disables the list and shows progress.
 class CleanupProgressNotifier extends Notifier<CleanupAction?> {
   @override
   CleanupAction? build() => null;
@@ -49,10 +42,8 @@ final cleanupProgressProvider =
       CleanupProgressNotifier.new,
     );
 
-/// 执行一个动作，并让所有读数据的页面重新查表。
-///
-/// 刷新是必须的：清空日志后仪表盘、`/logs` 下钻页与流量页都还挂着旧行，
-/// 不 bump 就会出现「清理成功，但页面还显示 3 条」。
+/// Runs one action and makes every data page re-query; without the bump pages keep showing deleted
+/// rows.
 class CleanupRunner {
   CleanupRunner(this._ref);
 
@@ -71,22 +62,22 @@ class CleanupRunner {
   }
 
   void _invalidate() {
-    // 日志 / 流量 / 缓存 / 竞速 / Bootstrap 五张表共用这一个 revision。
+    // Logs, traffic, cache, race and bootstrap tables share this revision.
     _ref.read(dnsLogRevisionProvider.notifier).bump();
-    // 订阅与镜像模板表有自己的计数器。
+    // Subscriptions and mirror templates have their own counters.
     _ref.read(subscriptionRevisionProvider.notifier).bump();
-    // prefs 域（应用名单、权重、引导标记、壁纸）。
+    // Prefs domain: app lists, weights, onboarding flags, wallpaper.
     _ref.read(legacySettingsRevisionProvider.notifier).bump();
-    // 出站代理走原生通道读，配置对象有自己的 revision。
+    // Outbound proxy is read through a native channel and has its own revision.
     _ref.read(outboundProxyRevisionProvider.notifier).bump();
-    // 证书状态重新探测（清证书那一条改了 `https_inspection_ready`）。
+    // Re-inspect the CA: clearing it changes `https_inspection_ready`.
     _ref.invalidate(caCertificateStateProvider);
   }
 }
 
 final cleanupRunnerProvider = Provider<CleanupRunner>(CleanupRunner.new);
 
-/// 每组动作的分组标题（照抄旧版 `DataCleanupScreen` 的五个 `SettingsGroupTitle`）。
+/// Group titles, matching 1.4.3 `DataCleanupScreen`.
 const cleanupGroups = <String, List<CleanupAction>>{
   '运行数据': [
     CleanupAction.logs,

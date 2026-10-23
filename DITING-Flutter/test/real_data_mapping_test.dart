@@ -7,13 +7,7 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 概览块的**纯函数**与**落盘键**守卫（不碰数据库）。
-///
-/// 与 `real_data_wiring_test.dart` 分工：那边用真 schema 跑聚合 SQL，这边钉那些
-/// 一旦被「简化」就会悄悄改变口径的判定，以及自动更新的两个 prefs 键。
-///
-/// 这些判定都在旧版里有明确原文（`DashboardLogLabels.kt` /
-/// `SubscriptionAutoUpdateSettings.kt`），改动等于改产品语义，必须有人先看见。
+/// Guards the pure functions and prefs keys behind the overview block
 void main() {
   group('行映射：DNS', () {
     test('连接行按 queryType / 前缀 / message 三种线索识别', () {
@@ -43,8 +37,7 @@ void main() {
       expect(dnsResultLabelOf('REWRITTEN', isConnection: false), '覆写');
       expect(dnsResultLabelOf('BLOCKED', isConnection: false), '过滤');
       expect(dnsResultLabelOf('ERROR', isConnection: false), '失败');
-      // 未知结果原样显示（旧版 `else => result`）。这条兜底只属于**展示层**：
-      // 搬进 `dailyStats` 的分档 switch 会把新结果值算进「通过」（README §7.2）。
+      // Unknown results render as is; mapping them to passed belongs to the view layer
       expect(
         dnsResultLabelOf('SOMETHING_NEW', isConnection: false),
         'SOMETHING_NEW',
@@ -72,7 +65,6 @@ void main() {
         dnsRowStatusOf('ERROR', isConnection: false, cached: false),
         LogRowStatus.failed,
       );
-      // 连接行即使 result=PASSED 也算旁路，不能算进「通过」。
       expect(
         dnsRowStatusOf('PASSED', isConnection: true, cached: false),
         LogRowStatus.bypassed,
@@ -129,7 +121,6 @@ void main() {
   group('行映射：HTTPS', () {
     test('四档映射与「仅拦截与错误」筛选一致', () {
       expect(httpRowStatusOf('allowed'), LogRowStatus.passed);
-      // 覆写成功的 HTTPS 请求确实被正常放行，旧版也算「通过」。
       expect(httpRowStatusOf('rewritten'), LogRowStatus.passed);
       expect(httpRowStatusOf('blocked'), LogRowStatus.filtered);
       expect(httpRowStatusOf('invalid'), LogRowStatus.filtered);
@@ -143,7 +134,6 @@ void main() {
       }
       expect(httpRowStatusOf('whatever'), LogRowStatus.failed);
 
-      // 筛选只看「是不是通过」：旁路不算通过，过滤模式下要保留。
       expect(httpOutcomeIsPassed('allowed'), isTrue);
       expect(httpOutcomeIsPassed('passthrough'), isFalse);
       expect(httpOutcomeIsPassed('blocked'), isFalse);
@@ -201,7 +191,6 @@ void main() {
         LegacySettings.defaultSubscriptionAutoUpdateIntervalHours,
       );
 
-      // 旧版把非法值当默认值读（不是 clamp 到边界）。
       store.putInt(
         'dns_vpn_prefs',
         LegacySettings.subscriptionAutoUpdateIntervalKey,
@@ -240,7 +229,6 @@ void main() {
         ),
         isTrue,
       );
-      // 极速模式读的是自己的容器，不能被普通模式的写入带过去。
       expect(settings.forExpress().subscriptionAutoUpdateEnabled, isFalse);
     });
   });

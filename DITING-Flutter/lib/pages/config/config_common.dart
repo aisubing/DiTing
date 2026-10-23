@@ -1,17 +1,10 @@
-/// 配置域各页共用的小部件与交互惯用法。
-///
-/// 不放进 `lib/widgets/`：这些helper只服务 `lib/pages/config/`，别处的页面
-/// 不该被迫跟着配置页的密度与文案口径走。
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 配置项即时反馈。
-///
-/// 配置页大量操作是「改了就生效」的开关与选项，除了控件自身的状态变化没有
-/// 别的痕迹；被规则拒绝（重名、端口冲突、超范围）时尤其需要一句话说明，
-/// 否则用户只会看到开关弹回去。
+/// Immediate feedback for a config change: these switches apply at once, so a rejection
+/// would otherwise show only as the switch bouncing back.
 void showConfigHint(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(
@@ -22,7 +15,6 @@ void showConfigHint(BuildContext context, String message) {
   );
 }
 
-/// 删除类操作的确认框。
 Future<bool> confirmConfigAction(
   BuildContext context, {
   required String title,
@@ -50,10 +42,7 @@ Future<bool> confirmConfigAction(
   return confirmed ?? false;
 }
 
-/// 表单页里「左标签 + 右输入框」的一行。
-///
-/// 不复用 `ListItem.input`：那个自带点击弹出的对话框，而表单页是内联编辑，
-/// 行为完全不同。
+/// Not `ListItem.input`, which opens a dialog on tap.
 class ConfigFieldRow extends StatelessWidget {
   const ConfigFieldRow({
     super.key,
@@ -65,7 +54,7 @@ class ConfigFieldRow extends StatelessWidget {
   final String label;
   final Widget child;
 
-  /// 输入框下方的补充说明；比 placeholder 适合放「为什么这样填」。
+  /// Note below the field, better than a placeholder for explaining the value.
   final String? hint;
 
   @override
@@ -99,10 +88,7 @@ class ConfigFieldRow extends StatelessWidget {
   }
 }
 
-/// 页面顶部的说明卡。
-///
-/// 覆写页与资源页的规则都不直观（「这里的键会写进每一份订阅」），塞进列表
-/// 首行会让那一行既能点又不可点；单独一张卡说明白更清楚。
+/// Explainer card for pages whose rules are not obvious.
 class ConfigNoteCard extends StatelessWidget {
   const ConfigNoteCard({
     super.key,
@@ -142,10 +128,8 @@ class ConfigNoteCard extends StatelessWidget {
   }
 }
 
-/// 行尾的「删除这一项」小按钮。
-///
-/// 统一包一层 `CommonMinIconButtonTheme`：默认 IconButton 的命中区在列表行里
-/// 会把行高撑大一截，而这里的删除按钮只是个附注动作。
+/// Trailing remove button, wrapped in `CommonMinIconButtonTheme`: a default IconButton tap
+/// target would stretch the row height.
 class ConfigRemoveButton extends StatelessWidget {
   const ConfigRemoveButton({
     super.key,
@@ -176,14 +160,12 @@ class ConfigRemoveButton extends StatelessWidget {
   }
 }
 
-/// 列表型条目的副标题：报出条数，空列表时说明后果。
+/// Subtitle for list entries: report the count, and explain an empty list.
 String configListSummary(List<String> items, {String empty = '未设置'}) =>
     items.isEmpty ? empty : '共 ${items.length} 项';
 
-/// 一条「打开另一个页面」的入口行。
-///
-/// 配置域的四个覆写页与四份资源页都从别的页面进去，入口行的长相必须一致：
-/// 图标 + 标题 + 一句副标题 + 箭头。
+/// Entry row that opens another page: icon, title, one-line subtitle and chevron,
+/// identical across the override and resource pages.
 class ConfigEntryRow extends StatelessWidget {
   const ConfigEntryRow({
     super.key,

@@ -1,10 +1,7 @@
-/// Backup file format definition and groups.
-///
-/// A backup is a JSON object with a fixed `format`/`version` marker and a
-/// `data` map keyed by [BackupGroup.key].
+/// Backup file: `{format, version, data}`; `data` is keyed by [BackupGroup.key].
 library;
 
-/// Backup groups. Declaration order is the order shown on the export screen.
+/// Backup groups; declaration order is the export screen order.
 enum BackupGroup {
   providers('providers', '自定义 DNS 服务商', 'DoH、DoT 服务商与解析配置'),
   bootstrap('bootstrap', '自定义 Bootstrap IP', '引导 DNS 节点与启用状态'),
@@ -24,7 +21,7 @@ enum BackupGroup {
 
   const BackupGroup(this.key, this.title, this.description);
 
-  /// Key used in `data`. Never rename: it would break existing backups.
+  /// Key in `data`. Never rename: existing backups depend on it.
   final String key;
   final String title;
   final String description;
@@ -37,20 +34,17 @@ enum BackupGroup {
   }
 }
 
-/// Backup file marker and version fields.
 abstract final class BackupFormat {
-  /// Top-level `format` value. Changing it invalidates all existing backups.
+  /// Top-level `format` value. Changing it invalidates every existing backup.
   static const magic = 'diting-backup';
 
-  /// Version written by this build.
   static const version = 1;
 
-  /// Highest version this build can parse; newer backups are rejected.
+  /// Highest version this build parses; newer backups are rejected.
   static const maxReadableVersion = 1;
 
   static const fileNamePrefix = 'DITING-backup';
 
-  /// Format a timestamp as `yyyyMMdd-HHmmss` in local time.
   static String stampOf(DateTime time) {
     String two(int value) => value.toString().padLeft(2, '0');
     return '${time.year}${two(time.month)}${two(time.day)}-'

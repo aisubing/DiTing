@@ -1,19 +1,4 @@
-/// 日志模式（对齐旧版 `ui/LogRetentionSettingsScreen.kt`）。
-///
-/// 四组：DNS 请求日志（三档）/ 悬浮窗 / 自动清理时间（仅日志非关闭时）/ 崩溃日志。
-///
-/// 两处上一轮的缺陷在本轮修掉：
-/// 1. **崩溃日志条数是写死的 `_crashLogCount = 3`**。旧版读
-///    `CrashLogManager.getCrashLogCount(context)`——它枚举 `filesDir/crash/` 的真实
-///    文件数。这里改为 `PlatformBridge().crashLogCount()`，并在回到前台时刷新：
-///    崩溃收集发生在页面构建之外（应用启动时的原生崩溃收集线程），只在进页面时
-///    采样一次会一直过期到下次进来。通道缺失（非 Android 宿主 / 测试）返回 0，
-///    页面显示「当前设备没有崩溃日志」并禁用清空，不显示假数字。
-/// 2. **日志模式与保留天数没有落盘**：上一轮用 `hub_settings_providers` 里的
-///    内存版 `logModeProvider`，退出页面就回到默认值。旧版三档与天数存在数据集
-///    容器的 `dns_log_mode` 与 `log_retention_days`，运行中的引擎读同一份键。
-///    现在改读 `settings_providers` 的 `logModeProvider` /
-///    `logRetentionProvider` / `floatingLogProvider`。
+/// Log mode (legacy `ui/LogRetentionSettingsScreen.kt`): `dns_log_mode`, `log_retention_days`.
 library;
 
 import 'package:diting/data/native/platform_bridge.dart';
@@ -23,7 +8,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 日志模式页。
 class LogRetentionPage extends ConsumerStatefulWidget {
   const LogRetentionPage({super.key});
 
@@ -33,10 +17,9 @@ class LogRetentionPage extends ConsumerStatefulWidget {
 
 class _LogRetentionPageState extends ConsumerState<LogRetentionPage>
     with WidgetsBindingObserver {
-  /// 真实崩溃日志条数；`null` 表示还没读到（首帧不显示任何数字）。
+  /// The real crash log count; `null` while it loads, so the first frame shows no number.
   int? _crashLogCount;
 
-  /// 与旧版一致的可选保留窗口。
   static const _retentionOptions = [1, 7, 30];
 
   @override
@@ -54,7 +37,8 @@ class _LogRetentionPageState extends ConsumerState<LogRetentionPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 与旧版 `ON_RESUME` 的监听同义：崩溃收集在页面之外发生，回前台时重读。
+    // Same intent as the legacy `ON_RESUME` listener: crashes are collected outside the
+    // page, so re-read on resume.
     if (state == AppLifecycleState.resumed) {
       _refreshCrashCount();
     }
@@ -169,18 +153,15 @@ class _LogRetentionPageState extends ConsumerState<LogRetentionPage>
     );
   }
 
-  /// 副标题按真实条数说话；读不到时明确说「没有」，不编一个数字。
+  /// The subtitle reflects the real count; an unreadable count says so instead of inventing one.
   String _crashSubtitle(int? count) => switch (count) {
     null => '正在读取本机崩溃日志…',
     0 => '当前设备没有崩溃日志',
     _ => '已记录 $count 份崩溃日志，点击导出文件',
   };
 
-  /// 导出崩溃日志：读真实文件 → 拼成一份文本 → 写到应用外部私有目录。
-  ///
-  /// 上一轮这里只弹一句「导出内容需原生侧提供文件读取」。那是个假入口：按钮
-  /// 可点、提示像成功、文件不存在。现在内容与落盘都走真实通道，并在失败时说明
-  /// 原因，而不是笼统地说「导出成功」。
+  /// Reads the real files, joins them and writes the text to the app's external private
+  /// directory; failures report a reason instead of a fake success.
   Future<void> _exportCrashes() async {
     final content = await PlatformBridge().readCrashLogs();
     if (!mounted) return;
@@ -233,8 +214,8 @@ class _LogRetentionPageState extends ConsumerState<LogRetentionPage>
     if (confirmed != true) return;
     final removed = await PlatformBridge().clearCrashLogs();
     if (!mounted) return;
-    // 清空后重读而不是直接置 0：原生侧可能因文件被占用少删几个，
-    // 界面上的数字必须是删完之后的真实值。
+    // Re-read after clearing instead of zeroing: the native side may fail to delete a file,
+    // and the number shown must be the real one afterwards.
     await _refreshCrashCount();
     if (!mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(

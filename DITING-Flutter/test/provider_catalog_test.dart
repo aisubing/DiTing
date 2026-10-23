@@ -11,8 +11,7 @@ import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 1.4.3 的服务商、缓存、拦截响应与应用规则都靠固定的 prefs 键互通；
-/// 这里锁住「UI 写下去的正是引擎读到的」。
+/// Locks that the UI writes the fixed prefs keys the engine reads (providers, cache, app rules)
 void main() {
   ProviderContainer container({Map<String, Object?> dns = const {}}) {
     final store = MemoryLegacyPrefsStore({
@@ -247,7 +246,7 @@ void main() {
       final visible = c.read(visibleProvidersProvider);
       final ids = visible.map((provider) => provider.id).toSet();
       expect(ids, contains('preset_alidns_dot'));
-      // 当前选中项永远保留，否则用户看不到自己在用的服务。
+      // The current selection is always kept, so the user can see it.
       expect(ids, contains('preset_google_dns'));
       expect(ids, isNot(contains('preset_cloudflare_dns')));
     });

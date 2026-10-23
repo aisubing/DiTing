@@ -10,27 +10,12 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 网络测速卡：百度 / 抖音 / 哔哩哔哩 / 网易云音乐的实测延迟。
-///
-/// 上一轮这里是「本机解析 / 当前服务商 / 本地缓存 / 上游服务商」四项，测的是
-/// **DNS 服务商**的应答耗时。它回答的是「我选的解析服务好不好」，但首页上用户
-/// 更常问的是「现在上网顺不顺」——后者要看真实站点。
-///
-/// 四块砖的形态沿用上游 `widgets/service_status.dart` 的 `_ServiceGrid`：
-/// 徽标 + 名称 + 耗时 + 状态点，2 列。
-///
-/// ## 测量是真的
-/// 每次探测调 `diagnosticsRunnerProvider.ping`（原生 `PingProbe`：系统 `ping`
-/// 二进制解析 ICMP 往返；二进制缺失时回退到 `isReachable` / TCP 握手，并在结果
-/// 里标 `measuredWithFallback`，浮层会写明「TCP 回退」）。四个站点并发测，每站
-/// 3 次。失败显示「失败」，通道不存在时整卡显示「不可用」——**没有**编造的毫秒数。
-///
-/// 本应用 UID 被排除在 VPN 之外（`addDisallowedApplication`），所以这里测的是
-/// 物理网络，内核没跑时同样有意义，卡片不与 `coreStateProvider` 耦合。
+/// Real-site latency card: Baidu, Douyin, Bilibili, NetEase Music. Probes use ping with a
+/// TCP fallback marked measuredWithFallback; failures show as failed, never as a fake number.
 class SiteLatencyCard extends ConsumerStatefulWidget {
   const SiteLatencyCard({super.key, this.onDetail});
 
-  /// 右上角「详情」的落点（有对应下钻页时才给）。
+  /// Detail target; only set when a drill-down page exists.
   final VoidCallback? onDetail;
 
   @override
@@ -38,17 +23,12 @@ class SiteLatencyCard extends ConsumerStatefulWidget {
 }
 
 class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
-  /// 每个站点的最近一次完整结果；缺项 = 尚未测过。
+  /// Latest result per site; a missing key means not probed yet.
   final Map<String, PingSummary> _results = {};
   var _probing = false;
   DateTime? _lastRunAt;
 
-  /// 首帧自动测一次：卡片空着显示四块「尚未测速」没有信息量，而这条测量不依赖
-  /// 内核、也不写日志，开机跑一次的成本就是 4 个 ping。
-  ///
-  /// 测试里不自动跑：`installGlobalTestHooks` 打开的
-  /// `debugDisableDashboardLiveUpdates` 正是「别让仪表盘自己动」的开关，自动测速
-  /// 是同一类后台动作，`pumpAndSettle` 会因为它迟迟不结算。
+  /// Probe once on first frame, skipped under tests where pumpAndSettle would never settle.
   var _autoRan = false;
 
   @override
@@ -156,10 +136,8 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
 
   static const _columns = 2;
 
-  /// 并发测四个站点，每站 3 次 ICMP 回显。
-  ///
-  /// 并发而不是逐个 `await`：串行时最坏要等 4 × 3 × 超时，用户会以为卡住了。
-  /// 原生侧本来就是线程池，四个目标一起跑不会互相拖慢。
+  /// Probe all four sites concurrently, three ICMP echoes each: serial awaits would make
+  /// the worst case 4 x 3 timeouts and look frozen.
   Future<void> _probe() async {
     if (_probing) return;
     setState(() {
@@ -182,7 +160,6 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
   }
 }
 
-/// 一块站点砖：徽标 + 名称 + 平均耗时 + 状态点。
 class _SiteCell extends StatelessWidget {
   const _SiteCell({
     required this.target,
@@ -268,7 +245,8 @@ class _SiteCell extends StatelessWidget {
     );
   }
 
-  /// 平均往返；`measuredWithFallback` 时数值来自 TCP 握手，加 `*` 并在浮层解释。
+  /// Average round trip. With measuredWithFallback the value comes from a TCP
+  /// handshake, so it gets a `*` suffix explained in the tooltip.
   static String _latencyLabel(PingSummary summary) {
     final avg = summary.avgMs;
     if (avg == null) return '无回包';
@@ -277,8 +255,6 @@ class _SiteCell extends StatelessWidget {
   }
 }
 
-/// 砖块左上角的品牌徽标，右下角挂状态点（沿用上游 `_ServiceBadge` 的构图：
-/// 一枚圆角方块 + 居中品牌图形 + 一个压在右下角的 8dp 状态点）。
 class _Badge extends StatelessWidget {
   const _Badge({required this.glyph, required this.dot});
 
@@ -306,7 +282,7 @@ class _Badge extends StatelessWidget {
             child: Center(
               child: GlyphIcon(
                 glyph,
-                // 品牌图形接近满格，比线性图标的常规 15dp 略小，四周留出留白。
+                // Brand glyphs sit near full size, slightly under the 15dp icon norm.
                 size: size * 0.6,
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -327,7 +303,6 @@ class _Badge extends StatelessWidget {
   }
 }
 
-/// 单个站点的完整测量结果。
 class _SiteDetailSheet extends StatelessWidget {
   const _SiteDetailSheet({
     required this.target,
@@ -346,7 +321,7 @@ class _SiteDetailSheet extends StatelessWidget {
     return CommonScaffold(
       title: target.name,
       body: ListView(
-        // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+        // The sheet title floats over the body, so this top padding is required.
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           const ListHeader(title: '延迟'),

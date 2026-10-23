@@ -1,7 +1,6 @@
 part of 'traffic_page.dart';
 
-/// 时间窗口与排序的可选项：旧版多出的两档在本仓没有数据源，做成**禁用项**
-/// 并说明原因——静默删除会让用户以为旧版也没这两个功能。
+/// Ranges with no data source stay visible but disabled, so upstream parity stays visible.
 class _RangeOption {
   const _RangeOption({
     required this.label,
@@ -11,17 +10,14 @@ class _RangeOption {
 
   final String label;
 
-  /// `null` 表示这一档在本仓不可用（见 [unavailableReason]）。
+  /// null means this option is unavailable in this build (see [unavailableReason]).
   final TrafficWindow? window;
 
   final String? unavailableReason;
 }
 
-/// 旧版 `TrafficTimeRange` 五档，逐字对齐 `AppTrafficStatsModels.kt:5`。
-///
-/// 「本次会话」在本仓没有数据来源：那是一份进程内实时累计，而落库的
-/// `app_traffic_daily` 只按天存一行（`AppTrafficRepository` 的注释里写明了）。
-/// 这里把它显示成禁用项而不是删掉，用户仍能看出旧版有这一档。
+/// The five upstream TrafficTimeRange values. "This session" has no source here: the daily
+/// table stores one row per app per day, with no in-process running total.
 const _rangeOptions = <_RangeOption>[
   _RangeOption(
     label: '本次会话',
@@ -30,11 +26,10 @@ const _rangeOptions = <_RangeOption>[
   _RangeOption(label: '今日', window: TrafficWindow.today),
   _RangeOption(label: '本周', window: TrafficWindow.week),
   _RangeOption(label: '本月', window: TrafficWindow.month),
-  // 旧版 displayName 是「全部历史」，enum 里的简称是「全部」。
   _RangeOption(label: '全部历史', window: TrafficWindow.all),
 ];
 
-/// 旧版 `TrafficSortMode` 四档，逐字对齐 `AppTrafficStatsModels.kt:13`。
+/// The four upstream TrafficSortMode values, matching AppTrafficStatsModels.kt.
 const _sortOptions = <_SortOption>[
   _SortOption(label: '按总流量', sort: TrafficSort.total),
   _SortOption(label: '按下载流量', sort: TrafficSort.download),
@@ -50,10 +45,8 @@ class _SortOption {
   final String? unavailableReason;
 }
 
-/// 筛选条：搜索 + 排序 + 隐藏系统应用（旧版 `TrafficFilterBar.kt`）。
-///
-/// 搜索放在正文里而不是顶栏：旧版就是正文里的一行 `RuleSearchField`，
-/// 顶栏搜索按钮会把这一行挤掉，且与「排序、隐藏系统应用」分成两处不好用。
+/// Filter bar: search, sort, hide system apps (upstream TrafficFilterBar.kt). Search sits
+/// in the body rather than the app bar, matching upstream's inline RuleSearchField.
 class _TrafficFilterBar extends StatelessWidget {
   const _TrafficFilterBar({
     required this.searchController,
@@ -93,8 +86,8 @@ class _TrafficFilterBar extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          // 与档位行同一形态（[ChipRow]）：此前这里是 `Wrap`，chip 只有 18dp
-          // 高，和上方那行 32dp 的档位看起来不是同一套控件。
+          // Same ChipRow shape as the range row above: a bare Wrap leaves TonalChip at its
+          // 18dp text height, and it wraps to a second line on narrow screens.
           child: ChipRow(
             children: [
               for (final option in _sortOptions)
@@ -125,7 +118,7 @@ class _TrafficFilterBar extends StatelessWidget {
   }
 }
 
-/// 归因说明入口（旧版 `AttributionBannerCard`）。
+/// Attribution explainer entry (upstream AttributionBannerCard).
 class _AttributionBanner extends StatelessWidget {
   const _AttributionBanner({required this.onTap});
 
@@ -170,13 +163,8 @@ class _AttributionBanner extends StatelessWidget {
   }
 }
 
-/// 「实时速率」块：有原生速率就显示，没有就如实说明缺失。
-///
-/// 旧版这里是 `TrafficGaugeCard`：标题「实时速率」+ 上下行 B/s。本仓的原生侧
-/// 有 `TrafficRateMonitor`（常驻通知里那个 ↑/↓ 读数就是它），但**只覆盖本次
-/// 会话**，而按天流量表存的是「日期 + 包名 + 上下行累计字节」。所以：
-/// - 普通 / 服务器模式：显示真实速率，并注明「本次会话」；
-/// - 极速模式与无原生通道的宿主：显示缺失说明，不画假曲线、不留空标题。
+/// Live rate block: show the native rate when available, otherwise say so. The monitor only
+/// covers the current session, so the label must say "this session".
 class _LiveRateCard extends ConsumerWidget {
   const _LiveRateCard({required this.windowLabel});
 
@@ -236,10 +224,8 @@ class _LiveRateCard extends ConsumerWidget {
   }
 }
 
-/// 旧版 `SystemAppClassifier.isKnownSystemPackagePrefix` 的逐条转写。
-///
-/// 流量表里没有 `isSystem` 列，旧版也是用这份前缀表兜底（见
-/// `AppTrafficStatsViewModel.isSystemApp` 的第 2 步）。
+/// Package-prefix fallback for system apps. The traffic table has no isSystem column, so
+/// upstream also falls back to this list (AppTrafficStatsViewModel.isSystemApp).
 const _knownSystemPrefixes = <String>[
   'android',
   'com.android.',
@@ -249,28 +235,20 @@ const _knownSystemPrefixes = <String>[
   'com.google.android.ext.services',
   'com.google.android.networkstack',
   'com.google.android.providers.media.module',
-  // 小米 / HyperOS / MIUI
   'com.miui.',
   'com.xiaomi.',
-  // 华为 / 荣耀
   'com.huawei.',
   'com.hihonor.',
-  // OPPO / 一加 / realme
   'com.coloros.',
   'com.heytap.',
   'com.oplus.',
-  // vivo / iQOO
   'com.vivo.',
   'com.bbk.',
-  // 三星 One UI
   'com.samsung.',
   'com.sec.',
-  // 联想 / 摩托罗拉
   'com.lenovo.',
   'com.motorola.',
-  // 魅族 Flyme
   'com.meizu.',
-  // 芯片与底层硬件服务
   'com.qualcomm.',
   'com.qti.',
   'com.mediatek.',

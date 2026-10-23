@@ -6,10 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// Opens each database file at most once per cleanup session.
-///
-/// "Clear all local data" runs a dozen actions in a row, and every
-/// `LegacyDatabase.open` call re-checks and reopens the file.
+/// Opens each database file once per session: "clear all local data" runs a dozen actions and
+/// `LegacyDatabase.open` re-checks the file every call.
 class CleanupDatabases {
   CleanupDatabases(this._open);
 
@@ -25,9 +23,8 @@ class CleanupDatabases {
 
   Future<Database?> get server => of(LegacyDatabase.serverFile);
 
-  /// Rule databases that exist, in fixed order: main, express, server.
-  ///
-  /// The order is pinned so map iteration order cannot make tests flaky.
+  /// Existing rule databases in a fixed order (main, express, server), so map iteration order
+  /// cannot make tests flaky.
   Future<List<Database>> ruleDatabases() async {
     final databases = <Database>[];
     for (final fileName in _ruleFiles) {
@@ -37,7 +34,7 @@ class CleanupDatabases {
     return databases;
   }
 
-  /// Databases holding runtime tables (logs, cache): main and express only.
+  /// Databases holding runtime tables (logs, cache); main and express only.
   Future<List<Database>> runtimeDatabases() async {
     final databases = <Database>[];
     for (final fileName in [LegacyDatabase.mainFile, LegacyDatabase.expressFile]) {
@@ -80,9 +77,8 @@ Future<int> deleteOrphanRows(
   'NOT EXISTS (SELECT 1 FROM $sourceTable s WHERE s.ruleId = $ruleTable.id)',
 );
 
-/// Zeroes subscription import metadata after the rule tables are cleared.
-///
-/// A stale ETag would get a 304 from the server and the rules would never return.
+/// Zeroes subscription import metadata after the rule tables are cleared. A stale ETag would get a
+/// 304 and the rules would never come back.
 Future<void> resetSubscriptionImportState(DatabaseExecutor db) async {
   try {
     await db.update('subscription', {
@@ -97,7 +93,6 @@ Future<void> resetSubscriptionImportState(DatabaseExecutor db) async {
   }
 }
 
-/// Deletes auto-update items whose subscription no longer exists.
 Future<void> deleteOrphanAutoUpdateItems(DatabaseExecutor db) async {
   try {
     await db.delete(
@@ -109,10 +104,8 @@ Future<void> deleteOrphanAutoUpdateItems(DatabaseExecutor db) async {
   }
 }
 
-/// Reads the preset whitelist asset; empty when it cannot be loaded.
-///
-/// Callers must skip seeding on an empty result: deleting preset rows before the
-/// asset is known to load leaves the seeded flag set with an empty whitelist.
+/// Reads the preset whitelist asset; callers must skip seeding on an empty result or the flag is
+/// set with nothing seeded.
 Future<List<({String domain, String group})>> loadPresetEntries({
   Future<String> Function()? load,
 }) async {

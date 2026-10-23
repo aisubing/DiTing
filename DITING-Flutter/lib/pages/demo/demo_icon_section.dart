@@ -1,11 +1,7 @@
 part of 'demo_page.dart';
 
-/// 图标分区：验证 [GlyphIcon] 的描边宽度、尺寸档位与填色，[AnimatedGlyph]
-/// 的填充过渡，以及 [CaptionIcon] 的角标定位。
-///
-/// 图标全量铺开的价值在于「成对」：eye/eyeOff、lock/lockOpen、
-/// playPause(0)/playPause(1) 这些互补字形必须笔画密度一致，只挑一个看是查不出
-/// 来的。
+/// Icons: [GlyphIcon] stroke width, sizes and fill, [AnimatedGlyph] and [CaptionIcon].
+/// Pairs such as eye/eyeOff must match in stroke density, which is only visible laid out.
 class _DemoIconSection extends StatelessWidget {
   const _DemoIconSection();
 
@@ -33,7 +29,7 @@ class _DemoIconSection extends StatelessWidget {
   }
 }
 
-/// 窗口标题栏四枚字形：10×10、1px 描边、半像素对齐，放大看不能糊。
+/// Four title bar glyphs: 10x10 at 1px stroke, pixel aligned and sharp when zoomed.
 class _DemoCaptionIcons extends StatelessWidget {
   const _DemoCaptionIcons();
 
@@ -77,7 +73,7 @@ class _DemoCaptionIcons extends StatelessWidget {
   }
 }
 
-/// 四档尺寸并排：16 用于行尾箭头，20 用于卡片图标，24 是默认，32 用于空态。
+/// Sizes side by side: 16 for row chevrons, 20 card icons, 24 default, 32 empty states.
 class _DemoGlyphSizes extends StatelessWidget {
   const _DemoGlyphSizes();
 
@@ -119,8 +115,7 @@ class _DemoGlyphSizes extends StatelessWidget {
   }
 }
 
-/// fill 从 0 到 1 的中间态：`GlyphIcon(fill:)` 支持小数，用于开关图标
-/// 在滑动过程中跟着进度填充。
+/// Intermediate fills: `GlyphIcon(fill:)` accepts fractions for drag progress.
 class _DemoGlyphFills extends StatelessWidget {
   const _DemoGlyphFills();
 
@@ -163,8 +158,6 @@ class _DemoGlyphFills extends StatelessWidget {
   }
 }
 
-/// 动画填充：点一下在实心与描边之间过渡，用来验证 [AnimatedGlyph] 的
-/// 过渡时长与曲线是否和主题的 motionDuration 对齐。
 class _DemoAnimatedGlyphRow extends StatefulWidget {
   const _DemoAnimatedGlyphRow();
 
@@ -208,7 +201,6 @@ class _DemoAnimatedGlyphRowState extends State<_DemoAnimatedGlyphRow> {
   }
 }
 
-/// 三个按参数生成的字形：sidebar 的进度、playPause 的进度、backFor 的平台。
 class _DemoParametricGlyphs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -251,8 +243,7 @@ class _DemoParametricGlyphs extends StatelessWidget {
   }
 }
 
-/// 全量字形网格：每格一个图标 + 名字。名字用等宽体且强制两行，
-/// 保证网格行高一致，不会因为名字长短跳动。
+/// Full glyph grid: monospace names clamped to two lines so row heights stay even.
 class _DemoGlyphGrid extends StatelessWidget {
   const _DemoGlyphGrid();
 

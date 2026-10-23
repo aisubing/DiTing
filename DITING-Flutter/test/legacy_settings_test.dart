@@ -7,7 +7,7 @@ import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 1.4.3 的落盘契约：容器、键名、默认值与旧值语义都不能漂移。
+/// The 1.4.3 persistence contract: containers, key names, defaults, legacy semantics.
 void main() {
   MemoryLegacyPrefsStore legacyStore() => MemoryLegacyPrefsStore({
     'dns_vpn_prefs': {
@@ -35,7 +35,7 @@ void main() {
       expect(settings.themeModeRaw, 'dark');
       expect(settings.paletteRaw, 'indigo');
       expect(settings.componentOpacity, 0.8);
-      // 单项未设置时回退到 home_component_opacity。
+      // Falls back to home_component_opacity when the item is unset.
       expect(settings.homeOpacity('home_power_button_opacity'), 0.8);
       expect(settings.homeOpacity('home_poem_opacity'), 0.4);
       expect(settings.homeSentences.running, '运行句子');
@@ -68,7 +68,7 @@ void main() {
       expect(settings.workModeRaw, 'normal');
       expect(settings.workModeSelected, isFalse);
       expect(settings.resolutionModeRaw, 'single');
-      // 旧版已把默认端口从 5353/5354 迁到 1053。
+      // 1.4.3 already moved the default port from 5353/5354 to 1053.
       expect(settings.serverPort, 1053);
     });
 

@@ -6,10 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 批量导入页：一整块文本框 + 实时解析统计 + 一个提交按钮。
-///
-/// 为什么不做「选择文件」：演示项目没有文件系统权限，而真实使用中九成场景
-/// 是从别处复制一段规则粘进来。把文本框做主角，用户一眼就知道该往里贴什么。
+/// Batch import: one large text field, live parse counts, one submit button. No file
+/// picker: the demo has no filesystem permission and real usage mostly pastes copied rules.
 class BatchEditorPage extends ConsumerStatefulWidget {
   const BatchEditorPage({super.key});
 
@@ -20,14 +18,14 @@ class BatchEditorPage extends ConsumerStatefulWidget {
 class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
   final _controller = TextEditingController();
 
-  /// 目标表。默认黑名单——批量导入的绝大多数用途是加拦截规则。
+  /// Target table. Defaults to block, since most bulk imports are block rules.
   var _kind = RuleKind.block;
 
   @override
   void initState() {
     super.initState();
-    // 解析统计随输入实时变化，所以监听 controller 而不是走 onChanged：
-    // 粘贴、撤销、清空按钮都绕过 onChanged，但都会触发 controller 通知。
+    // Listen to the controller rather than using onChanged: paste, undo and the clear
+    // button all bypass onChanged but still notify the controller.
     _controller.addListener(_onTextChanged);
   }
 
@@ -75,7 +73,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     if (!mounted) {
       return;
     }
-    // 导入完就回列表：用户来这里只为贴一段规则，留着空文本框没有意义。
+    // Leave once imported: the user came only to paste a block of rules.
     context.pop();
   }
 
@@ -105,16 +103,13 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     return CommonScaffold(
       title: '批量添加规则',
       resizeToAvoidBottomInset: true,
-      // 顶栏浮在正文之上（`extendBodyBehindAppBar`），正文自己让出「状态栏 +
-      // 工具栏」的高度，否则「导入到」组头会画到状态栏底下。
+      // The app bar floats over the body, so the body reserves status bar plus toolbar
+      // height or the section header would be drawn underneath it.
       body: ListView(
         padding: EdgeInsets.fromLTRB(16, 8 + context.appBarInset, 16, 16),
         children: [
-          // 目标表放在文本框之上：先决定「导去哪」，再贴内容，顺序与用户
-          // 的思考顺序一致；放下面会出现贴完才想起来选错表的情况。
-          //
-          // `padding: EdgeInsets.zero`：这一页的 `ListView` 已经自带 16 横向
-          // 内边距，`generateSection` 默认再加一次会让卡片缩进 32。
+          // Target table above the text field: pick where first, then paste.
+          // padding is zero because this ListView already pads 16 horizontally.
           generateSection(
             padding: EdgeInsets.zero,
             title: '导入到',
@@ -130,13 +125,8 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
             ],
           ),
           const SizedBox(height: 12),
-          // 文本框高度固定 360：既能让用户看见一屏内容，又不至于把按钮顶出
-          // 屏幕。maxLines 撑满配合 scrollController 让长文本内部滚动。
-          //
-          // `borderRadius` 必须显式给：`FilledInputTheme` 的默认值是
-          // `AppRadius.full`（1000），那是为「单行胶囊高度」设计的——框一高，
-          // 圆角就按短边收敛成真圆，360 高的文本框在真机上画成一个巨大的圆，
-          // 提示文字挤在上缘、下面整片是空壳。多行块一律用卡片级圆角。
+          // Fixed height 360 shows a screenful without pushing the button off-screen.
+          // borderRadius must be explicit: FilledInputTheme defaults to AppRadius.full.
           SizedBox(
             height: 360,
             child: FilledInputTheme(
@@ -162,8 +152,8 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
             ),
           ),
           const SizedBox(height: 12),
-          // 解析计数紧跟文本框：它是对「刚贴进来的这段内容」的解释，
-          // 离得越远越像一份与当前输入无关的统计。
+          // Parse counts sit right under the text field: they explain the pasted content,
+          // and the further away they are the less they look related to it.
           CommonCard(
             child: StatStrip(
               stats: [
@@ -188,8 +178,8 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
             ),
           ),
           const SizedBox(height: 12),
-          // 提交按钮放在正文末尾而不是顶栏：条数（「导入 N 条」）是用户按下
-          // 前最后一个确认点，顶栏只放得下一个图标，说不清要导入多少条。
+          // Submit sits at the end of the body, not the app bar: the item count is the last
+          // confirmation point before the user commits, and an icon cannot show it.
           SizedBox(
             height: 48,
             child: FilledButton(

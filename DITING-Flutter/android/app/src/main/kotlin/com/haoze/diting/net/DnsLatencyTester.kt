@@ -12,45 +12,18 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 import kotlin.math.roundToLong
 
-/**
- * Measures the real round-trip latency of one DNS provider, ported from
- * 1.4.3's `core/dns/DnsLatencyTester`.
- *
- * The old app used OkHttp for the DoH path. This port has no third-party HTTP
- * dependency (the Flutter module ships only the Go tunnel AAR), so DoH goes
- * through `HttpURLConnection` and plain/DoT go through raw sockets. The
- * measurement contract is identical to the original:
- *
- * - **Resolve before timing.** DNS-over-TLS and DoH need the server's address
- *   first; host resolution is setup cost, not upstream latency, so the clock
- *   starts only after the socket / connection is ready. Timing the lookup as
- *   well would report tens of extra milliseconds for every provider.
- * - **A failed probe still reports elapsed time** so the UI can show "失败" with
- *   how long it took to fail, exactly like `Result.elapsedMs` did.
- * - **No `VpnService` involvement.** The probe sends a single A-record query
- *   straight to the provider; the app's own UID is excluded from the tunnel
- *   (`addDisallowedApplication`), so no request loop can form.
- *
- * Everything here blocks. The bridge runs it on a worker pool and posts the
- * result back to the platform thread.
- */
+/// Measures round-trip latency of one DNS provider using only JDK APIs: DoH via
+/// HttpURLConnection, plain DNS and DoT over sockets. Host resolution happens before the
+/// clock starts, so it is not counted.
 object DnsLatencyTester {
 
-    /** One provider as handed down by the Dart layer. */
     data class Spec(
         val id: String,
         val name: String,
         val host: String,
         val port: Int,
         val protocol: Protocol,
-        /**
-         * DoH 的完整查询地址。
-         *
-         * 仓内预设目录（`defaultDnsProviders`）对 DoH 服务商只存 url、不存 host，
-         * Dart 侧虽然会从 url 里解析 host 一起下发，但**原始 url 才是权威**：有的
-         * 服务商路径不是 `/dns-query`（例如 `/resolve`），按约定拼路径会 404 而
-         * 表现为「测速失败」。因此 DoH 探测优先用这个字段。DNS / DoT 服务商为空串。
-         */
+        /// Full DoH query URL; some providers do not serve `/dns-query`. Empty for DNS and DoT
         val url: String = "",
     )
 
@@ -65,7 +38,6 @@ object DnsLatencyTester {
         }
     }
 
-    /** One probe result. Mirrors the map the Dart side decodes. */
     data class Sample(
         val providerId: String,
         val providerName: String,
@@ -94,15 +66,7 @@ object DnsLatencyTester {
     private const val DEFAULT_PORT = 53
     private const val DEFAULT_DOT_PORT = 853
 
-    /**
-     * Runs [attempts] real queries against [spec] and averages the successful
-     * samples.
-     *
-     * All attempts failing yields one `success = false` sample carrying the last
-     * error message; a mix yields `success = true` with `successCount` telling
-     * how many of them worked. This is 1.4.3's `testAverage` semantics, and the
-     * UI shows both numbers ("3/3" vs "2/3").
-     */
+    /// Averages the successful samples; if all fail, one `success = false` sample keeps the error
     fun probeAverage(spec: Spec, domain: String, attempts: Int): Sample {
         val safeAttempts = attempts.coerceAtLeast(1)
         val single = (1..safeAttempts).map { probeOnce(spec, domain) }
@@ -134,7 +98,7 @@ object DnsLatencyTester {
         )
     }
 
-    /** One probe. Never throws: failures come back as `success = false`. */
+    /// One probe. Never throws: failures come back as `success = false`
     private fun probeOnce(spec: Spec, domain: String): Sample {
         val query = buildQuery(domain)
         val started = System.currentTimeMillis()
@@ -188,15 +152,6 @@ object DnsLatencyTester {
         )
     }
 
-    // ------------------------------------------------------------------ DNS
-
-    /**
-     * Plain DNS over UDP.
-     *
-     * Address resolution happens before the clock starts (see the class doc), and
-     * an IP literal in `host` short-circuits it: `InetAddress.getByName` on a
-     * literal is a no-op parse, but skipping it makes the intent obvious.
-     */
     private fun queryPlain(spec: Spec, query: ByteArray): ByteArray {
         val port = if (spec.port > 0) spec.port else DEFAULT_PORT
         val address = InetAddress.getByName(spec.host)
@@ -209,8 +164,6 @@ object DnsLatencyTester {
             return packet.data.copyOf(packet.length)
         }
     }
-
-    // ------------------------------------------------------------------ DoT
 
     private fun queryDot(spec: Spec, query: ByteArray): ByteArray {
         val port = if (spec.port > 0) spec.port else DEFAULT_DOT_PORT
@@ -233,17 +186,7 @@ object DnsLatencyTester {
         }
     }
 
-    // ------------------------------------------------------------------ DoH
-
-    /**
-     * DNS-over-HTTPS (RFC 8484): POST the raw wire-format query.
-     *
-     * Prefers [Spec.url] when the Dart layer supplied one: provider directories
-     * store DoH as a full endpoint URL and some of them do not use the
-     * `/dns-query` path, so guessing the path turns a working provider into a
-     * 404 that reads as "测速失败" in the UI. Only when the url is absent does it
-     * fall back to `https://<host>/dns-query`.
-     */
+    /// DNS-over-HTTPS (RFC 8484): POST the raw query, defaulting to `https://<host>/dns-query`
     private fun queryDoh(spec: Spec, query: ByteArray): ByteArray {
         val endpoint = when {
             spec.url.isNotBlank() -> spec.url
@@ -269,17 +212,7 @@ object DnsLatencyTester {
         }
     }
 
-    // --------------------------------------------------------------- packing
-
-    /**
-     * Builds a minimal A-record query for [domain] with recursion desired.
-     *
-     * Hand-rolled instead of pulling a DNS library: the probe only needs one
-     * fixed shape (one question, type A, class IN), and a missing dependency is
-     * cheaper than a wrapper nobody else uses. QNAME is length-prefixed labels
-     * terminated by a zero byte; a 16-bit random id keeps concurrent probes from
-     * being confused with each other.
-     */
+    /// Minimal A query with RD: length-prefixed, zero-terminated QNAME and a 16-bit id per probe
     private fun buildQuery(domain: String): ByteArray {
         val out = ByteArrayOutputStream()
         val data = DataOutputStream(out)
@@ -298,20 +231,14 @@ object DnsLatencyTester {
             data.writeByte(bytes.size)
             data.write(bytes)
         }
-        data.writeByte(0) // 根标签结束
+        data.writeByte(0) // end of QNAME
         data.writeShort(1) // QTYPE = A
         data.writeShort(1) // QCLASS = IN
         data.flush()
         return out.toByteArray()
     }
 
-    /**
-     * True when the response has QR = 1 and RCODE = 0.
-     *
-     * The check reads only the fixed header: byte 2 bit 7 is QR, byte 3 low
-     * nibble is RCODE. A truncated or TCP-framed body would already have thrown
-     * while being read, so a length check here would be dead code.
-     */
+    /// True when QR = 1 and RCODE = 0. Reads only the fixed header; a short body already threw
     private fun isSuccess(response: ByteArray): Boolean {
         if (response.size < 12) return false
         val qr = (response[2].toInt() and 0x80) != 0

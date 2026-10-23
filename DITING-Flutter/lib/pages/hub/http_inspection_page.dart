@@ -10,11 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// HTTPS 流量检查（上游 `HttpInspectionSettingsScreen`）。
-///
-/// 开关与目标应用清单走 `legacySettings`（`http_inspection_enabled` /
-/// `http_inspection_app_packages`），CA 就绪状态来自 `CaCertificateService`
-/// ——不再有 `caReady` 这类页面内开关，因为它必须反映设备上真实装没装证书。
+/// HTTPS inspection (upstream `HttpInspectionSettingsScreen`). Switch and app list live in
+/// `http_inspection_enabled` / `http_inspection_app_packages`; CA readiness comes from
+/// `CaCertificateService`.
 class HttpInspectionPage extends ConsumerWidget {
   const HttpInspectionPage({super.key});
 
@@ -206,8 +204,8 @@ class HttpInspectionPage extends ConsumerWidget {
     );
   }
 
-  /// 「有证书但没装」和「压根没生成」是两种不同的处置，文案必须分开说：
-  /// 前者去系统设置安装，后者要先点「重新生成」。
+  /// "Certificate exists but is not installed" and "not generated yet" need different copy:
+  /// install it from system settings, or regenerate first.
   static String _caProblem(bool available, bool installed) {
     if (!available) {
       return '尚未生成根证书：前往 CA 证书页生成';
@@ -218,12 +216,8 @@ class HttpInspectionPage extends ConsumerWidget {
     return '证书已就绪';
   }
 
-  /// 打开/关闭 HTTPS 检查；域名规则关着时先要求用户确认联动开启。
-  ///
-  /// 上游 `HttpInspectionSettingsScreen` 的耦合约束：`domain_rules_enabled` 是关的
-  /// 时候打开检查，解密流量却没有任何规则可应用，看起来像「开了但没用」；它弹
-  /// `DomainRulesInspectionLinkageDialog` 让用户一次性把两个开关都打开。这里保留
-  /// 同一行为，只是文案换成直白解释。
+  /// Toggles inspection, asking first when domain rules are off: decrypting traffic with
+  /// `domain_rules_enabled` off looks "on but useless", so the dialog enables both at once.
   Future<void> _setEnabled(
     BuildContext context,
     WidgetRef ref,
@@ -290,7 +284,6 @@ class HttpInspectionPage extends ConsumerWidget {
   }
 }
 
-/// 选择检查应用（上游 `HttpInspectionAppsScreen`）。
 class HttpInspectionAppsPage extends ConsumerStatefulWidget {
   const HttpInspectionAppsPage({super.key});
 
@@ -310,13 +303,8 @@ class _HttpInspectionAppsPageState
     super.dispose();
   }
 
-  /// 每次改动立即落盘：选择集很小，父页面读的是同一个键。
-  ///
-  /// 总开关保持原值不跟着变——上游 `saveHttpInspectionApps` 只写包名集合，是否
-  /// 启用由 CA 就绪状态与用户手动切换决定，勾选应用不该顺手把检查打开。
-  ///
-  /// 三处互斥清洗与上游一致：勾选的应用不能同时留在「排除」「禁止联网」
-  /// 「应用独立规则」里，否则引擎侧判定顺序决定结果，用户看到的是随机行为。
+  /// Every change is persisted immediately, since the parent page reads the same keys; the
+  /// master switch is left alone, matching `saveHttpInspectionApps`.
   void _write(Set<String> packages) {
     final settings = ref.read(legacySettingsProvider);
     settings.setHttpInspectionApps(
@@ -471,12 +459,8 @@ class _HttpInspectionAppsPageState
   }
 }
 
-/// 绕过域名输入弹窗。
-///
-/// 控制器由弹窗自己持有：写成「调用方 new 一个 controller、`await` 之后立刻
-/// `dispose()`」时，`pop` 一调用 future 就完成，而退场动画还没跑完、`TextField`
-/// 仍挂在树上，dispose 会让它在动画中途重建到已失效的依赖上，实测整屏红
-/// （`'_dependents.isEmpty': is not true`）。
+/// Bypass domain dialog. The controller is owned by the dialog: disposing it right after
+/// `await` fires on `pop` mid animation and trips `'_dependents.isEmpty': is not true`.
 class _BypassDomainDialog extends StatefulWidget {
   const _BypassDomainDialog();
 

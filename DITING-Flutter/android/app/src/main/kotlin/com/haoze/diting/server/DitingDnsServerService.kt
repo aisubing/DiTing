@@ -23,12 +23,9 @@ import tunnel.Engine
 import tunnel.RaceLogCallback
 import java.util.concurrent.atomic.AtomicInteger
 
-/// LAN DNS server backed by the same Go engine as 1.4.3.
-///
-/// `Engine.startStandalone` binds UDP/TCP on all interfaces and returns once
-/// both listeners are up, so unlike the VPN path it does not own a thread.
-/// Configuration is still applied before the bind: a server that answers its
-/// first queries with an empty rule set would silently leak blocked domains.
+/// LAN DNS server backed by the same Go engine as the tunnels. `startStandalone` returns
+/// once both listeners are up, so unlike the VPN path it owns no thread. Config must be
+/// applied before the bind: answering the first queries with an empty rule set leaks.
 class DitingDnsServerService : Service() {
     private var engine: Engine? = null
     private val generation = AtomicInteger(0)
@@ -327,7 +324,7 @@ class DitingDnsServerService : Service() {
         @Volatile
         private var activeEngine: Engine? = null
 
-        /** Read-only handle for the diagnostics channel; never expose a setter. */
+        /// Read-only handle for the diagnostics channel; never expose a setter
         internal fun engineForDiagnostics(): Engine? = activeEngine
 
         @Volatile

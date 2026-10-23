@@ -26,8 +26,7 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     super.dispose();
   }
 
-  /// A pane over one painted before it in the same root sits a level above
-  /// it, and reads a capture with that one drawn as glass.
+  /// A pane painted over another in the same root reads a capture with it drawn as glass.
   void _capture() {
     _pass++;
     final found = <_Behind>[];
@@ -140,10 +139,7 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     chain.removeLast();
   }
 
-  /// Snaps the slot to the capture's pixels, so that content holding still
-  /// lands on the same ones while the pane moves. A pane with a hold keeps
-  /// its slot while it fits inside at no more frost, nor much less, as a
-  /// spring settling past its card would need, rather than glass fading.
+  /// Snaps the slot to the capture's pixels so still content stays put while the pane moves.
   bool _place(_Behind entry) {
     final pane = entry.pane;
     final style = entry.style;
@@ -227,8 +223,7 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     int level,
     List<_Behind> members,
   ) {
-    // Slots that blur alike lie together, under one layer that blurs them;
-    // one that does not blur lies alone, so it is kept or drawn on its own.
+    // Slots that blur alike share one blurring layer; the rest go alone.
     final classes = <Object, List<_Behind>>{};
     for (final entry in members) {
       (classes[entry.blurSigma == 0 ? entry : entry.blurSigma] ??= []).add(
@@ -292,8 +287,8 @@ class _LiquidGlassHostLayer extends ContainerLayer {
       }
       return (atlas: previous.image, taken: false, kept: 0);
     }
-    // Skia keeps what an image was drawn from for as long as the image lives,
-    // so a capture copied from the last would hold every one before it.
+    // Skia retains an image's source while it lives, so copying the last capture retains all
+    // before.
     final carry =
         LiquidGlassHost.debugCarryBandsOverride ??
         ui.ImageFilter.isShaderFilterSupported;
@@ -331,8 +326,7 @@ class _LiquidGlassHostLayer extends ContainerLayer {
               ),
           );
         }
-        // Impeller filters a layer under the transform current at its
-        // restore (flutter-upgrade.md).
+        // Impeller filters a layer under the transform current at its restore.
         canvas
           ..save()
           ..translate(band.rect.left, band.rect.top)
@@ -441,18 +435,15 @@ class _Behind {
   final LiquidGlassStyle style;
   final Matrix4 toHost;
 
-  /// The host, or below it the nearest layer that draws offscreen: a backdrop
-  /// filter there would read only that layer's texture.
+  /// The host, else the nearest offscreen layer: a backdrop filter there reads only its texture.
   final ContainerLayer root;
   final Matrix4 rootToHost;
   final Set<ContainerLayer> ancestors;
 
-  /// Captures the backdrop again for the pane's [LiquidGlassStyle.haze].
   final bool hazed;
 
   late final Rect device = MatrixUtils.transformRect(toHost, pane.rect);
 
-  /// Where a pane painted before this one would show in what it reads.
   Rect reach = Rect.zero;
   Rect slot = Rect.zero;
   double texelsPerDp = 1;
@@ -465,8 +456,7 @@ class _Behind {
   _Behind? haze;
 }
 
-/// The transform a layer gives its children, from what it holds now:
-/// [Layer.applyTransform] may answer from the frame before.
+/// The transform a layer gives its children now; [Layer.applyTransform] may answer from last frame.
 Matrix4? _geometry(ContainerLayer layer) {
   Matrix4 applied(Layer child) {
     final matrix = Matrix4.identity();
@@ -512,6 +502,3 @@ bool _drawsOffscreen(Layer layer) {
   };
 }
 
-/// Redraws onto a capture what a pane's root holds below the pane, as the
-/// engine composites it, but for the root's own effect, which the engine
-/// applies to the glass as well.

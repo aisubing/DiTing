@@ -5,10 +5,9 @@ import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import java.io.File
 
-/// Opens the database files owned by the Dart side for direct writes. A missing
-/// file is skipped instead of created, and no version is passed to openDatabase
-/// because that would rewrite `user_version`. `hasTable` guards the tables that
-/// exist in only one of the two databases.
+/// Opens the database files owned by the Dart side for direct writes. A missing file is
+/// skipped instead of created, and no version is passed to openDatabase because that
+/// would rewrite `user_version`. `hasTable` guards tables present in only one database.
 internal object LegacyDb {
     private const val TAG = "LegacyDb"
 

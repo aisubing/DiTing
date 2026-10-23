@@ -1,8 +1,5 @@
-/// 代理域演示状态：节点延迟、组内选择、展开态、搜索词、外部提供者。
-///
-/// 节点延迟与「组内已选」都是可变状态，而 `mock_proxies.dart` 里是 `const`，
-/// 所以这里按 `组名 + 节点名` 拼键把可变部分摊平成一个 Map——比复制整棵
-/// 分组树更省事，也让「只重测某个组」只需改几行键值。
+/// Proxies demo state; latency and selection are mutable while `mock_proxies.dart` is `const`, so
+/// they key a flat map.
 library;
 
 import 'dart:math' as math;
@@ -10,13 +7,12 @@ import 'dart:math' as math;
 import 'package:diting/data/mock_proxies.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 节点在状态里的键。分组与节点名都不含 `\u0000`，拼起来不会撞车。
+/// Key for one node in the state map; names never contain `\u0000`, so no collision.
 String proxyKeyOf(String groupName, String proxyName) =>
     '$groupName\u0000$proxyName';
 
-/* ------------------------------------------------------------------ 样式 */
 
-/// 代理页的六项呈现设置（上游 `ProxiesStyleSetting`）。
+/// The proxies page's six presentation settings (upstream `ProxiesStyleSetting`).
 class ProxiesSettings {
   const ProxiesSettings({
     this.type = ProxiesType.tab,
@@ -27,14 +23,13 @@ class ProxiesSettings {
     this.hideTimeoutProxies = false,
   });
 
-  /// 标签页 / 列表。
   final ProxiesType type;
 
   final ProxiesSortType sortType;
   final ProxiesLayout layout;
   final ProxyCardType cardType;
 
-  /// 只在列表形式下可见，上游亦如此。
+  /// Only visible in list form, as upstream.
   final ProxiesIconStyle iconStyle;
 
   final bool hideTimeoutProxies;
@@ -82,7 +77,6 @@ final proxiesSettingsProvider =
       ProxiesSettingsNotifier.new,
     );
 
-/* -------------------------------------------------------------- 分组状态 */
 
 class ProxiesState {
   const ProxiesState({
@@ -97,11 +91,10 @@ class ProxiesState {
   final Map<String, int?> delays;
   final Map<String, String?> selected;
 
-  /// 正在测速的分组；`testingAll` 为真时所有组都在转圈。
+  /// Groups currently testing; all of them spin while `testingAll` is true.
   final Set<String> testingGroups;
   final bool testingAll;
 
-  /// 列表形式下展开的分组名。
   final Set<String> unfolded;
 
   final String query;
@@ -124,10 +117,10 @@ class ProxiesState {
 }
 
 class ProxiesNotifier extends Notifier<ProxiesState> {
-  /// 测速演示耗时：短到不必等，长到能看清转圈与延迟数字的切换。
+  /// Demo test duration: long enough to show the spinner and latency swap.
   static const testDuration = Duration(milliseconds: 900);
 
-  /// 固定种子：同一次会话里反复点测速的结果稳定，便于截图与回归。
+  /// Fixed seed so repeated tests stay stable for screenshots and regressions.
   final _random = math.Random(20261019);
 
   @override
@@ -174,7 +167,7 @@ class ProxiesNotifier extends Notifier<ProxiesState> {
     state = state.copyWith(unfolded: {...state.unfolded, groupName});
   }
 
-  /// 返回该组是否可选中；负载均衡与链式代理组只做演示反馈。
+  /// Whether the group is selectable; load-balance and relay groups only give demo feedback.
   bool select(String groupName, String proxyName) {
     final group = _groupOf(groupName);
     if (group == null || !group.type.isComputedSelected) {
@@ -229,7 +222,7 @@ class ProxiesNotifier extends Notifier<ProxiesState> {
     );
   }
 
-  /// 自动测速组按「最快且未超时」重排自己的已选节点，像真实 url-test 那样。
+  /// Auto-test groups reorder by fastest non-timeout, like a real url-test group.
   Map<String, String?> _withFastest(
     MockProxyGroup group,
     Map<String, int?> delays, {
@@ -277,9 +270,7 @@ final proxiesProvider = NotifierProvider<ProxiesNotifier, ProxiesState>(
   ProxiesNotifier.new,
 );
 
-/* -------------------------------------------------------------- 派生视图 */
 
-/// 一个节点在页面上的只读快照。
 class ProxyNodeView {
   const ProxyNodeView({
     required this.name,
@@ -294,7 +285,7 @@ class ProxyNodeView {
   bool get isTimeout => delayMs != null && delayMs! < 0;
 }
 
-/// 一个分组在页面上的只读快照（已过滤、已排序）。
+/// Read-only snapshot of one group, already filtered and sorted.
 class ProxyGroupView {
   const ProxyGroupView({
     required this.name,
@@ -311,16 +302,14 @@ class ProxyGroupView {
   final List<ProxyNodeView> nodes;
   final String? selectedName;
 
-  /// 隐藏超时节点前的节点数，用于在头部标注「已隐藏 N 个」。
+  /// Node count before hiding timeouts, for the "N hidden" header label.
   final int totalCount;
 
   int get hiddenCount => totalCount - nodes.length;
 }
 
-/// 过滤（搜索 + 隐藏超时）与排序后的分组列表。
-///
-/// 搜索先于隐藏：搜到的超时节点若被隐藏开关吃掉，用户会以为搜索坏了——
-/// 上游同样是先搜索再过滤。
+/// Filtered and sorted groups; search runs before hiding so a searched timeout node is not
+/// swallowed.
 final visibleProxyGroupsProvider = Provider<List<ProxyGroupView>>((ref) {
   final settings = ref.watch(proxiesSettingsProvider);
   final state = ref.watch(proxiesProvider);
@@ -377,7 +366,7 @@ List<ProxyNodeView> _sorted(List<ProxyNodeView> nodes, ProxiesSortType type) {
       break;
     case ProxiesSortType.delay:
       sorted.sort((a, b) {
-        // 未测与超时沉底，其余按数值升序。
+        // Untested and timed-out nodes sink; the rest sort by latency.
         int rank(ProxyNodeView node) =>
             node.delayMs == null || node.delayMs! < 0 ? 1 : 0;
         final byRank = rank(a).compareTo(rank(b));
@@ -392,9 +381,8 @@ List<ProxyNodeView> _sorted(List<ProxyNodeView> nodes, ProxiesSortType type) {
   return sorted;
 }
 
-/* ------------------------------------------------------------ 外部提供者 */
 
-/// 页面上的一个外部提供者条目（可改可测）。
+/// One external provider entry on the page (editable and testable).
 class ProxyProviderEntry {
   const ProxyProviderEntry({
     required this.name,
@@ -499,7 +487,7 @@ class ProxyProvidersNotifier extends Notifier<List<ProxyProviderEntry>> {
       provider.copyWith(
         isUpdating: false,
         updatedAt: _nowLabel(),
-        // 每次同步回来的条数略有出入，像真实订阅一样。
+        // The synced entry count varies slightly, like a real subscription.
         count: math.max(1, provider.count + _random.nextInt(5) - 2),
       );
 }

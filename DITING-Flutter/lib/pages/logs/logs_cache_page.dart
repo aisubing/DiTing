@@ -7,15 +7,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// DNS 缓存表（1.4.3 `DnsCacheScreen`）。
-///
-/// 数据源是真实表 `dns_cache`（`dnsCacheProvider`）：Go 引擎自己维护内存 LRU、
-/// 没有枚举接口，因此能看到的只有旧版 Room 落盘的那份快照。库空 → 空状态，
-/// 不填演示数字。
-///
-/// 与旧版一致的四处信息：域名 + 记录类型（标题行），`原始 TTL x · 命中 N 次 ·
-/// size B`，`最后命中 <时间>`。旧版还有搜索框与「刷新」按钮，这里同样保留：
-/// 缓存表可能上千行，没有搜索就只能靠翻。
+/// DNS cache table from the real `dns_cache` table. The Go engine keeps its LRU in memory
+/// with no enumeration API, so only the persisted snapshot is visible.
 class LogsCachePage extends ConsumerStatefulWidget {
   const LogsCachePage({super.key});
 
@@ -65,8 +58,8 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
   }
 
   Widget _buildBody(AsyncValue<List<DnsCacheRecord>> asyncEntries) {
-    // 先判 `hasValue`：刷新时 Riverpod 会同时保留旧值与「正在重新获取」，
-    // 只看 `isLoading` 会让列表闪回 loading 态、把滚动位置也丢掉。
+    // Check hasValue first: a refresh keeps the old value alongside isLoading, and
+    // looking at isLoading alone would flash the loading state and lose scroll.
     if (!asyncEntries.hasValue) {
       if (asyncEntries.hasError) {
         return Center(
@@ -83,8 +76,7 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
       return const LogsPageLoading(label: '正在读取缓存表');
     }
     final entries = _visible(asyncEntries.requireValue);
-    // 最后命中时间是独立一列：`DnsCacheRecord` 没带 `lastHitAt`，而那一列
-    // 属于别人的写作用域，这里单独查一次（条件与列表查询完全一致）。
+    // Last-hit time is a separate column because DnsCacheRecord has no lastHitAt.
     final lastHits = ref.watch(cacheLastHitProvider).value ?? const {};
     if (entries.isEmpty) {
       return PageBody(

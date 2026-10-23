@@ -4,8 +4,7 @@ import 'package:diting/ui/surface.dart';
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// The motion a pushed page and a page inside a sheet share: a
-/// [SharedXPageTransition] that a drag back from the edge takes over.
+/// Motion shared by a pushed page and a page inside a sheet; an edge drag takes it over.
 mixin SharedXPageRouteMixin<T> on PageRoute<T>, DragBackRouteMixin<T> {
   bool _overSettledPage = false;
 
@@ -67,9 +66,7 @@ mixin SharedXPageRouteMixin<T> on PageRoute<T>, DragBackRouteMixin<T> {
   }
 }
 
-/// Slides pages by [slide] while they fade. A page fades by laying
-/// [color] over it wherever only that color lies beneath, since an opacity
-/// layer costs Impeller an offscreen pass of the page every frame.
+/// Slides pages by [slide] while they fade with [color]: an opacity layer costs Impeller a pass.
 class SharedXPageTransition extends StatelessWidget {
   const SharedXPageTransition({
     super.key,
@@ -91,16 +88,10 @@ class SharedXPageTransition extends StatelessWidget {
   final Animation<double> secondaryAnimation;
   final Color color;
 
-  /// How far a page travels, as a fraction of its size.
   final Offset slide;
 
-  /// Whether the page below sat still as this one came in, so it fades out on
-  /// this route's animation and leaves only [color] beneath.
   final bool overSettledPage;
 
-  /// Whether a drag on the page above drives [secondaryAnimation]: the page
-  /// then trails the finger and fades in as far as it is uncovered, instead
-  /// of showing only near the end of the drag.
   final bool uncoveredByGesture;
   final Widget child;
 
@@ -114,8 +105,7 @@ class SharedXPageTransition extends StatelessWidget {
     end: 0.0,
   ).chain(CurveTween(curve: _fadeOutCurve));
 
-  // The fades cross a fifth of the way through, both pages a third opaque, and
-  // the page on top shows only on its side of that point so they never double.
+  // The fades cross at a fifth, both pages a third opaque, so they never double.
   static const _handOver = 0.2;
   static final _takeOver = CurveTween(
     curve: const _HandOver(_fadeInCurve, at: _handOver, leaving: false),
@@ -247,8 +237,6 @@ class _Fill extends CustomPainter {
   bool shouldRepaint(_Fill oldDelegate) => color != oldDelegate.color;
 }
 
-/// Fades [child] toward [color] by painting that color over it, and under it
-/// too if [opaque], so nothing beneath shows through.
 class _PageFade extends SingleChildRenderObjectWidget {
   const _PageFade({
     required this.opacity,

@@ -5,8 +5,7 @@ import 'package:diting/ui/context.dart';
 import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Switches the theme in one frame and fades the frame before it out on top,
-/// instead of lerping [ThemeData] and rebuilding every dependent each frame.
+/// Switches the theme in one frame and fades the old frame out on top, no lerping per dependent.
 class ThemeCrossFade extends StatefulWidget {
   const ThemeCrossFade({
     super.key,
@@ -174,10 +173,6 @@ class _RenderThemeCrossFade extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  /// The frame on screen, fade included.
-  ///
-  /// The layer still holds it while the next frame builds; toImageSync
-  /// asserts against a boundary that already needs paint.
   ui.Image? capture(double pixelRatio) {
     final layer = this.layer;
     if (!attached || !hasSize || layer is! OffsetLayer) {
@@ -208,8 +203,7 @@ class _RenderThemeCrossFade extends RenderProxyBox {
     }
     final rect = offset & size;
     final fade = Color.fromRGBO(0, 0, 0, weight);
-    // dstOut then plus mixes premultiplied pixels, so a translucent window
-    // keeps its opacity through the fade where srcOver would raise it.
+    // dstOut then plus keeps a translucent window's opacity, where srcOver would raise it.
     context.canvas
       ..drawRect(
         rect,

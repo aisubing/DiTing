@@ -9,15 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 内网 IP 卡（FlClash `widgets/intranet_ip.dart`）。
-///
-/// 上游是「内网地址大字 + 复制按钮 + 局域网代理开关」。本仓的对应关系：
-/// - **地址**读 `networkInfoProvider`（原生 `DiagnosticsBridge.networkInfo` 的
-///   `localIpv4`），与服务器模式「局域网接入」块同一个来源；
-/// - **开关换成状态行**：DITING 没有「局域网代理」这个开关——服务器模式的
-///   `Engine.startStandalone` 绑定所有网卡，普通/极速模式根本不监听局域网。
-///   因此这里显示的是**当前是否真的在监听**以及端口，而不是一个拨不动的开关。
-///   给一个永远为关的开关比不给更糟：用户会以为点了就能用。
 class IntranetIpCard extends ConsumerWidget {
   const IntranetIpCard({super.key, this.onDetail});
 
@@ -34,7 +25,7 @@ class IntranetIpCard extends ConsumerWidget {
     final scale = DashboardDensityScope.scaleOf(context);
     final colorScheme = context.colorScheme;
     final localIp = snapshot?.localIpv4 ?? '';
-    // 服务器模式下地址后面带上端口才有意义：同一网段的设备要把它填成 DNS。
+    // The port only matters in server mode: peers must enter it as their DNS.
     final listening =
         mode == AppWorkMode.server && serverStatus == ServerStatus.running;
     final address = localIp.isEmpty
@@ -58,7 +49,6 @@ class IntranetIpCard extends ConsumerWidget {
                     ? null
                     : () => _copy(context, address),
               ),
-              // 「详情」的箭头保持在最右，与其他卡片同位置。
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
@@ -135,7 +125,7 @@ class IntranetIpCard extends ConsumerWidget {
     );
   }
 
-  /// 局域网是否可用：只有服务器模式会绑所有网卡，其余模式连本机都只走 127.0.0.1。
+  /// LAN is reachable only in server mode; other modes bind 127.0.0.1 only.
   static String _lanHint(
     AppWorkMode mode,
     bool listening,

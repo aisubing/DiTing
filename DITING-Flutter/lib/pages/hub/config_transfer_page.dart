@@ -9,23 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 备份与迁移（上游 `ConfigTransferScreen`）。
-///
-/// ## 本轮真实化的三件事
-///
-/// 1. **导出真的写文件**。上一轮点「导出」只弹一句「已导出 DITING-config.json」，
-///    磁盘上没有任何文件——用户会以为备份在，换机时才发现没有。
-///    现在走系统「保存文件」选择器（`ACTION_CREATE_DOCUMENT`）。
-/// 2. **导入真的读文件并合并**。上一轮的「导入」不论选什么文件都弹同一份写死的
-///    「新增 9 项，跳过 3 项」——那是彻头彻尾的假报告。
-/// 3. **页顶四格数字来自真实存储**（服务商数 / 订阅数 / 自定义规则数 / 名单应用
-///    数），此前是写死的 `6 / 5 / 23 / 8`。
-///
-/// 分组勾选清单来自 [BackupGroup]（与导出/导入共用同一份定义），不在页面里再
-/// 抄一遍：抄一遍就会在「页面能勾但导出不认」或反向上出问题。
-///
-/// 页尾一组「WebDAV 云同步」：旧版的 WebDAV 是备份页里的一张表单，本仓把它拆成
-/// 独立页面后从这里下钻（[HubPaths.configTransferWebdav]）。
+/// Backup and migration (upstream `ConfigTransferScreen`): export writes through the system
+/// document
+/// picker, import reads and merges the chosen file. Both share the [BackupGroup] checklist.
 class ConfigTransferPage extends ConsumerStatefulWidget {
   const ConfigTransferPage({super.key});
 
@@ -34,10 +20,9 @@ class ConfigTransferPage extends ConsumerStatefulWidget {
 }
 
 class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
-  /// 勾选的分组。默认全选（旧版同样默认全选）。
   final Set<BackupGroup> _selected = {...BackupGroup.values};
 
-  /// 正在执行的动作；非空时禁用两个入口，避免重复打开选择器。
+  /// The running action; while non-null both entries are disabled so no second picker opens.
   String? _busy;
 
   bool get _allSelected => _selected.length == BackupGroup.values.length;
@@ -186,7 +171,6 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
     );
   }
 
-  /// 分组清单：与旧版页面的四组标题逐字一致。
   static List<({String title, List<BackupGroup> groups})> get _sections => [
     (
       title: '应用配置备份',
@@ -222,7 +206,7 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
     ),
   ];
 
-  /// 统计未就绪时给破折号，不显示 0（0 会被读成「本机没有规则」）。
+  /// A dash while the counts load; showing 0 would read as "no rules on this device".
   String _figure(int? value) => value == null ? '—' : '$value';
 
   Widget _metric(BuildContext context, String label, String value) =>
@@ -272,8 +256,8 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
     try {
       result = await ref.read(backupActionsProvider).importFromDocument();
     } finally {
-      // 必须先清掉进度再弹对话框：否则「等待选择备份文件…」会留在对话框背后，
-      // 看起来像导入还没结束。
+      // Clear the progress before the dialog opens, otherwise "waiting for the backup file"
+      // stays behind it and looks like the import is still running.
       if (mounted) setState(() => _busy = null);
     }
     if (!mounted) return;
@@ -297,10 +281,7 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
   }
 }
 
-/// 导入结果明细。**只显示真实发生的事**。
-///
-/// 上一轮这份对话框是写死的常量文案（「新增 9 项，跳过 3 项」+ 五行项目名），
-/// 不论选什么文件都一样。现在逐组列出新增/更新/跳过，失败的分组单独标出。
+/// Reports only what happened: added, updated and skipped counts per group.
 class _ImportResultDialog extends StatelessWidget {
   const _ImportResultDialog({required this.result});
 

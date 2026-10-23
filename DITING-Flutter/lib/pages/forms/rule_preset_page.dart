@@ -1,7 +1,4 @@
-/// 规则预设演示页（`/form/rule-preset`）。
-///
-/// 把 `RulePresetSheet` 的内容摊平成整页：勾选预设、展开看原始规则、按「插入」
-/// 把选中的规则文本拼到下方的文本框里。浮层形态从「表单组件」页的菜单进入。
+/// Rule preset demo page (`/form/rule-preset`): the sheet content laid out as a page.
 library;
 
 import 'package:diting/data/mock_forms.dart';
@@ -11,7 +8,6 @@ import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 规则预设页。
 class RulePresetPage extends StatefulWidget {
   const RulePresetPage({super.key});
 
@@ -200,7 +196,6 @@ class _RulePresetPageState extends State<RulePresetPage> {
   }
 }
 
-/// 一个预设块：勾选行 + 展开后的规则文本。
 class _PresetTile extends StatelessWidget {
   const _PresetTile({
     required this.preset,

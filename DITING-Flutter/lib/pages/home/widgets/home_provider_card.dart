@@ -7,17 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 首页的服务商选择卡。
-///
-/// 单选模式显示当前服务商与地址，竞速模式显示「已选 N 个」摘要；点开只读浮层
-/// 选。候选目录来自旧版 prefs（预设 + `user_providers_json`），再按「服务显示」
-/// 的三组过滤条件剔除；当前选中的服务商永远保留，否则用户会看不到自己正在用
-/// 的那一项。
-///
-/// 浮层末尾另有两条**动作项**（旧版 `MANAGE_PROVIDER_ID` /
-/// `PROVIDER_VISIBILITY_ID`）：管理服务… → `/hub/providers`、服务显示… →
-/// `/hub/provider-visibility`。旧版把它们混在服务商列表末尾、点中就走人，这里
-/// 保留同一位置——用户已经习惯在那里找。
+/// The sheet keeps the active provider even after it left the catalog.
 class HomeProviderCard extends ConsumerWidget {
   const HomeProviderCard({super.key});
 
@@ -47,7 +37,6 @@ class HomeProviderCard extends ConsumerWidget {
   }
 }
 
-/// 服务商选择面板：单选 / 多选两套（上游 `ProviderSelectionDialog`）。
 class _ProviderSheet extends ConsumerWidget {
   const _ProviderSheet();
 
@@ -60,8 +49,7 @@ class _ProviderSheet extends ConsumerWidget {
     return CommonScaffold(
       title: resolution.isSingle ? '选择解析服务商' : '选择竞速服务商',
       body: ListView(
-        // 浮层标题浮在正文之上，不预留这段留白首行（「可选服务商」）就被
-        // 标题压住。
+        // The sheet title floats over the body, so this top padding is required.
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           ListHeader(title: resolution.isSingle ? '可选服务商' : '至少选 2 个'),
@@ -99,9 +87,8 @@ class _ProviderSheet extends ConsumerWidget {
                         .read(raceProvidersProvider.notifier)
                         .toggle(provider.id),
             ),
-          // 两条动作项：与候选服务商同一张列表、同一个位置（旧版把
-          // `MANAGE_PROVIDER_ID` / `PROVIDER_VISIBILITY_ID` 塞进同一个对话框）。
-          // 先关浮层再 push：不关的话返回时会看到浮层还在，像是「点了没反应」。
+          // Two action items share the list and position with the providers. Close the
+          // sheet before pushing, otherwise returning shows it again and looks stuck.
           ListItem(
             leading: const GlyphIcon(AppGlyphs.settings, size: 20),
             title: const Text('管理服务...'),

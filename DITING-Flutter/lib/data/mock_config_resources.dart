@@ -1,15 +1,7 @@
-/// 配置域的「保留资源」演示数据：图标集 / User-Agent / 按需连接。
-///
-/// 上一轮这里是 `part of mock_config.dart`，与过滤器、追加规则、脚本、Clash
-/// 提供者四族数据挤在同一个库里。那四族属于 FlClash 的代理内核，1.4.3 没有
-/// 对应物，已随内核配置页一并删除；本库因此收敛成一个独立 library，只保留
-/// 三张用户要求保留的表。
-///
-/// 只放**初始值**：可变副本由 `lib/state/config_providers_resources.dart` 持有，
-/// 混在一起会让热重载后的「用户改过的状态」污染初始值。
+/// Kept-resource demo data. Initial values only; mutable copies live in
+/// `lib/state/config_providers_resources.dart`.
 library;
 
-/// 图标集（上游 `IconSet`）。
 class MockIconSet {
   const MockIconSet({
     required this.name,
@@ -21,7 +13,6 @@ class MockIconSet {
   final String name;
   final String url;
 
-  /// 集内图标名，预览页按网格铺开。
   final List<String> icons;
   final bool fromUrl;
 }
@@ -71,7 +62,6 @@ const mockIconSets = <MockIconSet>[
   ),
 ];
 
-/// User-Agent 列表。
 class MockUserAgent {
   const MockUserAgent({required this.value, this.isDefault = false});
 
@@ -95,7 +85,6 @@ const mockUserAgents = <MockUserAgent>[
   MockUserAgent(value: 'curl/8.7.1'),
 ];
 
-/// 按需连接的 SSID 白名单条目。
 class MockSsidRule {
   const MockSsidRule({
     required this.ssid,
@@ -108,7 +97,6 @@ class MockSsidRule {
   final bool cellular;
   final bool wifi;
 
-  /// 连接后的等待时间；0 表示立即代理。
   final int delayMs;
 
   MockSsidRule copyWith({bool? cellular, bool? wifi, int? delayMs}) =>
@@ -119,7 +107,6 @@ class MockSsidRule {
         delayMs: delayMs ?? this.delayMs,
       );
 
-  /// 「已连接该 SSID 时是否启用代理」。
   bool get enabled => cellular || wifi;
 }
 

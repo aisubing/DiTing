@@ -1,6 +1,5 @@
 part of 'mock_data.dart';
 
-/// 应用流量排行。
 class MockAppTraffic {
   const MockAppTraffic({
     required this.name,
@@ -62,14 +61,9 @@ const mockAppTraffic = <MockAppTraffic>[
   ),
 ];
 
-/// 已安装应用清单不再有 mock 版本。
-///
-/// `MockInstalledApp` / `mockInstalledApps` 曾给「应用选择页」提供 12 条
-/// `com.example.*` 常量，还带着一个真实数据里不存在的 `category` 字段；接上
-/// `com.haoze.diting/apps` 通道后它已无人引用，留着只会被下一个页面误用，
-/// 因此整段删除。真实数据源见 `lib/state/installed_apps_providers.dart`。
+/// No mock installed-app list: the `com.haoze.diting/apps` channel replaced it.
 
-/// 流量环形图 / 实时速率的采样序列（KB/s）。
+/// Sampled traffic curve for the donut chart and live rate, in KB/s.
 const mockTrafficSamples = <double>[
   182,
   240,
@@ -103,7 +97,7 @@ const mockTrafficSamples = <double>[
   268,
 ];
 
-/// 设置页的五个透明度滑杆值域（0.1–1.0，`steps: 8`）。
+/// Value range of the five transparency sliders (0.1 to 1.0, `steps: 8`).
 const opacitySliderSteps = 8;
 const opacitySliderMin = 0.1;
 const opacitySliderMax = 1.0;

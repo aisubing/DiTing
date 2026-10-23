@@ -6,12 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import java.io.File
 
-/// Persists the Go engine's race callback into the legacy `dns_race_log` table.
-///
-/// Provider names stay null: the Dart layer owns the provider catalog
-/// (`dns_config_builder.dart`) and resolves ids to display names itself, which
-/// keeps custom providers working without passing a second map through the
-/// start intent.
+/// Writes the race callback into `dns_race_log`; provider names stay null, Dart resolves ids.
 object RaceLogWriter {
     private const val TAG = "RaceLogWriter"
 
@@ -69,8 +64,7 @@ object RaceLogWriter {
     private fun open(context: Context, databaseName: String): SQLiteDatabase? {
         val path = context.getDatabasePath(databaseName)
         if (!File(path.path).exists()) {
-            // Fresh installs have no legacy database yet; the Dart layer owns
-            // schema creation, so writing here would race its migrations.
+            // No database yet on a fresh install; writing now would race Dart's schema creation.
             return null
         }
         return runCatching {

@@ -1,16 +1,10 @@
-/// 嵌套表单浮层（上游 `features/form/nested_form_sheet.dart`，113 行）。
-///
-/// 上游要解决的核心问题是「浮层里还有浮层，返回时要不要保存」：`CommonPopScope`
-/// 拦下返回手势，如果表单是 dirty 的就弹「保存 / 放弃 / 继续编辑」。本文件把
-/// 这段逻辑封装成 `NestedFormSheet`，让调用方只管给表单内容。
+/// Nested form sheet (upstream `features/form/nested_form_sheet.dart`).
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 有未保存改动时拦下返回的浮层。
-///
-/// [isDirty] 必须是纯查询（不能有副作用）；每次返回手势都会调它一次。
+/// [isDirty] must be a pure query and is called on every back gesture.
 class NestedFormSheet extends StatefulWidget {
   const NestedFormSheet({
     super.key,
@@ -30,18 +24,15 @@ class NestedFormSheet extends StatefulWidget {
   final Widget child;
   final bool Function() isDirty;
 
-  /// 点「保存」时的动作；它应当关闭浮层并返回结果。
+  /// Save action; it should close the sheet and return the result.
   final VoidCallback? onSave;
 
   final String saveLabel;
   final String discardLabel;
   final String confirmMessage;
 
-  /// 透传给内部 `CommonScaffold` 的顶栏动作。
-  ///
-  /// 编辑器这类「全屏但有工具栏」的页面要保留自己的工具栏（格式化 / 还原 /
-  /// 保存），所以这几个参数原样转下去，而不是让调用方在 `child` 里伪造一条
-  /// 顶栏——那样会与真实的 `CommonScaffold` 顶栏重叠。
+  /// Forwarded to the inner `CommonScaffold` app bar. Full-screen editors keep their own
+  /// toolbar, so these pass through instead of faking a second app bar.
   final List<IconButtonData> iconActions;
   final IconButtonData? confirmationAction;
   final IconButtonData? primaryAction;
@@ -51,10 +42,8 @@ class NestedFormSheet extends StatefulWidget {
 }
 
 class _NestedFormSheetState extends State<NestedFormSheet> {
-  /// 返回 `true` 表示允许这次 pop；`false` 表示拦下。
-  ///
-  /// `CommonPopScope` 的语义是「handler 返回真则放行」，所以这里返回的布尔值
-  /// 与「是否继续退出」同向，不需要再反转。
+  /// `true` allows the pop, `false` blocks it. `CommonPopScope` lets a `true` handler
+  /// through, so the value is not inverted.
   Future<bool> _handleExit(BuildContext context) async {
     if (!widget.isDirty()) {
       return true;
@@ -89,8 +78,8 @@ class _NestedFormSheetState extends State<NestedFormSheet> {
         return true;
       case _ExitChoice.save:
         widget.onSave?.call();
-        // 保存动作自己负责关闭浮层，这里不再放行，否则会连浮层下面的页面
-        // 一起弹掉。
+        // The save action closes the sheet itself; letting this pop through would
+        // also pop the page below.
         return false;
     }
   }
@@ -104,8 +93,8 @@ class _NestedFormSheetState extends State<NestedFormSheet> {
         iconActions: widget.iconActions,
         confirmationAction: widget.confirmationAction,
         primaryAction: widget.primaryAction,
-        // 顶栏是浮在正文之上的（`extendBodyBehindAppBar`），这里的 body 是一整块
-        // 不滚动的 Column，所以要显式让出顶栏高度，否则工具栏和正文会叠在一起。
+        // The app bar floats above the body (`extendBodyBehindAppBar`) and this body
+        // is a non-scrolling Column, so the inset must be added explicitly.
         body: AppBarClearance(child: widget.child),
       ),
     );

@@ -1,18 +1,9 @@
-/// 外观子树共用的小控件：分组卡片里的输入框、滑杆行。
-///
-/// 这些页面（首页句子 / 通知栏 / 首页透明度 / 字号）此前要么用裸
-/// `OutlineInputBorder` 的 `TextField`、要么把滑杆直接铺在页面底色上，与设计
-/// 系统其它页面的「填充圆角输入框 + 卡片分组」完全不是一套视觉。这里统一收口：
-///
-/// - 输入框一律走 [FilledInputTheme]（填充圆角、聚焦时主色描边）；
-/// - 一组输入框/滑杆用一张 [CommonCard] 承载，圆角取 `xl`，与列表分组一致；
-/// - 滑杆行用 [DecorationListItem] 承载，自动获得卡片与行间分隔线。
+/// Shared inputs for the appearance pages: fields and slider rows in grouped cards.
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一张承载若干「标签 + 输入框」的卡片。
 class FieldGroupCard extends StatelessWidget {
   const FieldGroupCard({super.key, required this.children});
 
@@ -32,10 +23,8 @@ class FieldGroupCard extends StatelessWidget {
   }
 }
 
-/// 「上方标签 + 多行输入框」。
-///
-/// [FilledInputTheme] 默认会把浮动标签关掉，因此标签单独放在输入框上方，
-/// 而不是塞进 `InputDecoration.labelText`（那样会和内容叠字）。
+/// Label above a multi-line field. [FilledInputTheme] disables floating labels, so
+/// it cannot live in `InputDecoration.labelText`.
 class LabeledTextField extends StatelessWidget {
   const LabeledTextField({
     super.key,
@@ -79,10 +68,8 @@ class LabeledTextField extends StatelessWidget {
   }
 }
 
-/// 一条「标签 · 百分比 + 滑杆」的卡片行。
-///
-/// 用 [DecorationListItem] 承载而不是裸 `Padding`：这样它和同组的其它行共享
-/// 一张卡片、行间自动出分隔线，也不会在页面底色上「漂浮」。
+/// A card row with a label, a percentage and a slider, hosted in
+/// `DecorationListItem` host so the row shares the group card and dividers.
 class SliderCardRow extends StatelessWidget {
   const SliderCardRow({
     super.key,

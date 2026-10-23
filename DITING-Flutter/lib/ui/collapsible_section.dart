@@ -11,9 +11,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'inherited.dart';
 
-/// A titled section whose header folds its entries away. The entries unfold
-/// with the section, and the ones nearest the middle of what fits on screen
-/// fade in first.
+/// A titled section whose header folds its entries away; those near the middle fade in first.
 class SliverCollapsibleSection extends StatefulWidget {
   final String label;
   final int itemCount;
@@ -37,8 +35,6 @@ class SliverCollapsibleSection extends StatefulWidget {
 
 class _SliverCollapsibleSectionState extends State<SliverCollapsibleSection>
     with SingleTickerProviderStateMixin {
-  // Only orders the fade; a wrong guess shifts which entry leads it, not what
-  // ends up shown.
   static const _estimatedEntryExtent = 64.0;
 
   late var _expanded = widget.initiallyExpanded;
@@ -165,8 +161,7 @@ class _SliverCollapsibleSectionState extends State<SliverCollapsibleSection>
     );
   }
 
-  /// An entry is at least [kMinInteractiveDimension] tall, so these fill the
-  /// screen whatever lies past them.
+  /// An entry is at least [kMinInteractiveDimension] tall, so these fill the screen.
   int _unfoldingCount(int count) {
     final fitting =
         MediaQuery.sizeOf(context).height ~/ kMinInteractiveDimension + 1;
@@ -206,8 +201,7 @@ class _SliverCollapsibleSectionState extends State<SliverCollapsibleSection>
   }
 }
 
-/// An entry unfolding from under its list's header; the entries nearest the
-/// middle of the [visibleCount] that fit on screen fade in first.
+/// An entry unfolding from under its list's header; those near the middle fade in first.
 class UnfoldEntryTransition extends StatelessWidget {
   static const duration = Duration(milliseconds: 240);
   static const _fade = 0.5;

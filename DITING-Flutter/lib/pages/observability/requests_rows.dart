@@ -1,10 +1,7 @@
 part of 'requests_page.dart';
 
-/// 档位对应的配色与图标。
-///
-/// 六档而非三档：`rewritten`（覆写成功）与 `bypassed`（旁路直连）都不是失败，
-/// 套进「成功 / 拦截 / 失败」会把二者一起染红，排查时误判成故障。
-/// 三态都靠颜色 + 图标双重区分，不单靠颜色——红绿色盲用户看图标也能分辨。
+/// Six status tiers, not three: rewritten and bypassed are not failures, and both color
+/// and glyph carry the meaning so color-blind users can tell them apart.
 (Color, Glyph) _statusStyle(BuildContext context, RequestStatus status) {
   final colorScheme = context.colorScheme;
   return switch (status) {
@@ -17,14 +14,14 @@ part of 'requests_page.dart';
   };
 }
 
-/// 时间：`HH:mm:ss`。日期放进标题卡的第二行，列表行只留时分秒。
+/// Time of day as `HH:mm:ss`; the date belongs to the header card.
 String _timeOfDay(int timestamp) {
   final time = DateTime.fromMillisecondsSinceEpoch(timestamp);
   String two(int value) => value.toString().padLeft(2, '0');
   return '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';
 }
 
-/// 完整时间：`yyyy-MM-dd HH:mm:ss`，与旧版 `formatRequestTime` 同格式。
+/// Full timestamp as `yyyy-MM-dd HH:mm:ss`, same format as upstream.
 String _stampOf(int timestamp) {
   final time = DateTime.fromMillisecondsSinceEpoch(timestamp);
   String two(int value) => value.toString().padLeft(2, '0');
@@ -32,7 +29,6 @@ String _stampOf(int timestamp) {
       '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';
 }
 
-/// 一行请求：时间 + 域名 + 来源/状态/包名/耗时。
 class RequestRow extends StatelessWidget {
   const RequestRow({super.key, required this.request, required this.onTap});
 
@@ -43,9 +39,8 @@ class RequestRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final (statusColor, statusGlyph) = _statusStyle(context, request.status);
-    // authority 可能为 null（TLS 早期失败没有域名），而 `ObservedRequest.title`
-    // 对 null 已经是空串；空串直接进 `Text` 会渲染成一行「洞」，所以落成
-    // 破折号。旧版写的是「未取得 authority」，本仓列表行更短，用破折号。
+    // authority can be null when TLS fails early, and title is then an empty string.
+    // An empty Text renders as a hole, so fall back to a dash.
     final title = request.title.isEmpty ? '—' : request.title;
 
     return ListItem(
@@ -120,10 +115,8 @@ class RequestRow extends StatelessWidget {
   }
 }
 
-/// 处理方式说明：把 `outcome` / `message` 翻成人话。
-///
-/// 文案口径照 1.4.3 `RequestLogItem.httpRequestItem` 的 `when (matchedRule)`：
-/// 旁路与失败两类都靠 `matchedRule` 里的原因串区分，不自己造词。
+/// Handling text, translating outcome and message into plain words. Wording follows the
+/// upstream matchedRule switch; no invented categories.
 String _handlingOf(ObservedRequest request) {
   if (request.source == RequestSource.dns) {
     if (request.status == RequestStatus.bypassed) return '直连，未经过 DNS 解析流程';
@@ -142,14 +135,13 @@ String _handlingOf(ObservedRequest request) {
   };
 }
 
-/// 规则命中说明。空值不显示「无」，而是给一句能解释为什么为空的话。
+/// Matched rule text. An empty value gets an explanation rather than "none".
 String _ruleOf(ObservedRequest request) {
   final rule = request.matchedRule?.trim();
   if (rule != null && rule.isNotEmpty) return rule;
   return request.source == RequestSource.https ? '未命中规则（或未记录规则）' : '无';
 }
 
-/// 请求详情（上游标题「请求详情」）。
 class RequestDetailSheet extends StatelessWidget {
   const RequestDetailSheet({super.key, required this.request});
 

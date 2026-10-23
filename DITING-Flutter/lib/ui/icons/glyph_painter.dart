@@ -7,12 +7,10 @@ import 'package:material_ui/material_ui.dart';
 const _grid = Rect.fromLTWH(0, 0, Glyph.size, Glyph.size);
 const _fillStart = Glyph.strokeWidth / 2;
 
-// Details thin away before this point and return as cutouts after it, so a
-// detail never shows as a stroke and a cutout at once.
+// Details thin away before this point and return as cutouts after, so none shows twice.
 const _detailSwap = 0.5;
 
-// Lines have nothing to fill, so they gain weight instead and hold their own
-// beside filled bodies.
+// Lines have nothing to fill, so they gain weight to hold their own beside filled bodies.
 const _filledLineWidth = 2.2;
 
 class GlyphPainter extends CustomPainter {
@@ -47,8 +45,7 @@ class GlyphPainter extends CustomPainter {
         : 1 - fill / _detailSwap;
     canvas.save();
     canvas.scale(size.shortestSide / Glyph.size);
-    // Opaque strokes under one alpha keep a translucent color even on overlaps,
-    // and cutouts clear only the glyph's own layer.
+    // Opaque strokes under one alpha keep a translucent color on overlaps.
     if (color.a < 1 || (cut && detailScale > 0)) {
       canvas.saveLayer(
         _grid,

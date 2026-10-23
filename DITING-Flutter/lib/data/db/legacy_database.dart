@@ -1,9 +1,4 @@
-/// Opens the three legacy SQLite databases, creating them when absent.
-///
-/// An upgraded install keeps the files Room already created, with the same
-/// columns and `user_version`. After a fresh install or a data wipe the files
-/// do not exist, so they are created from [LegacySchema]; both paths yield a
-/// schema identical to the legacy one, which the rest of the app relies on.
+/// Opens the three legacy SQLite databases, creating missing ones from [LegacySchema].
 library;
 
 import 'package:diting/data/db/legacy_schema.dart';
@@ -14,20 +9,17 @@ import 'package:sqflite/sqflite.dart';
 class LegacyDatabase {
   LegacyDatabase._();
 
-    /// Normal (full tunnel) database, version 3.
+  /// Full-tunnel database, `user_version` 3.
   static const mainFile = 'diting_database';
 
-  /// Express-mode database, version 2.
+  /// Express-mode database, `user_version` 2.
   static const expressFile = 'diting_express';
 
-  /// Server-mode rules database, version 3.
+  /// Server-mode rules database, `user_version` 3.
   static const serverFile = 'diting_dns_rules';
 
-    /// Opens [fileName], creating it when absent.
-    ///
-    /// Null means the database could neither be opened nor created, for example
-    /// on a full disk; callers degrade to "no rule database" instead of blocking
-    /// startup.
+  /// Null means [fileName] could neither be opened nor created; callers degrade to "no rule
+  /// database".
   static Future<Database?> open(String fileName, {bool create = true}) async {
     final path = p.join(await getDatabasesPath(), fileName);
     if (!await databaseExists(path)) {
@@ -42,8 +34,8 @@ class LegacyDatabase {
     }
   }
 
-    /// `PRAGMA foreign_keys` is per connection, not stored in the file, so it has
-    /// to be set on every open; without it `*_source` rows are not cascaded.
+  /// `PRAGMA foreign_keys` is per connection, not stored in the file, so it must be set on every
+  /// open; without it `*_source` rows are not cascaded.
   static Future<void> _configure(Database db) async {
     await db.execute('PRAGMA foreign_keys = ON');
   }
@@ -61,16 +53,14 @@ class LegacyDatabase {
           }
         },
         onUpgrade: (db, from, to) async {
-                    // The file exists with a lower `user_version`, which only happens to
-                    // a damaged or externally modified database. Patching is cheaper than
-                    // asking the user to reinstall.
+          // A lower `user_version` means a damaged file; patching beats a reinstall.
           await _createIfMissing(db, statements);
         },
       );
     } on DatabaseException catch (error) {
       debugPrint('legacy database create failed: $fileName ($error)');
-            // Drop the half-built file, otherwise the next launch opens a database
-            // missing tables and fails with "no such column".
+      // Drop the half-built file, or the next launch opens a database missing tables and fails with
+      // "no such column".
       try {
         await deleteDatabase(path);
       } on DatabaseException catch (cleanupError) {
@@ -80,11 +70,8 @@ class LegacyDatabase {
     }
   }
 
-    /// Creates only the missing tables and indexes.
-    ///
-    /// `IF NOT EXISTS` cannot repair a table that exists with different columns;
-    /// that only happens to externally damaged files, where partial recovery is
-    /// all that is possible.
+  /// Creates only missing tables and indexes; `IF NOT EXISTS` cannot repair a table that exists
+  /// with different columns.
   static Future<void> _createIfMissing(
     Database db,
     List<String> statements,
@@ -98,7 +85,6 @@ class LegacyDatabase {
     }
   }
 
-    /// Inserts `IF NOT EXISTS` into a `CREATE TABLE` / `CREATE INDEX` statement.
   static String _withIfNotExists(String statement) {
     if (statement.startsWith('CREATE UNIQUE INDEX ')) {
       return statement.replaceFirst(

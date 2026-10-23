@@ -20,16 +20,13 @@ part 'snap_sheet_a.dart';
 part 'snap_sheet_b.dart';
 part 'snap_sheet_c.dart';
 
-/// Receives the sheet's own scroll controller, or null where the sheet has no
-/// detents to drag between and the content keeps its own controller.
+/// Receives the sheet's own scroll controller, or null with no detents to drag between.
 typedef SnapSheetBuilder =
     Widget Function(BuildContext context, ScrollController? controller);
 
-/// The heights a snap sheet rests at, as a fraction of the space it gets.
 const snapSheetDetents = [9 / 16, 0.9];
 
-/// UIKit's presentation spring, mass 3 and stiffness 1000, which iOS 27 runs
-/// critically damped for every move of a sheet.
+/// UIKit's presentation spring, mass 3 and stiffness 1000, critically damped.
 const _stiffness = 1000 / 3;
 
 final _omega = math.sqrt(_stiffness);
@@ -49,8 +46,7 @@ const _peakEase = 120.0;
 /// [_settleTolerance] for a sheet about 500 pixels tall, in UIKit's 0.5 s.
 const _presentationTolerance = Tolerance(distance: 0.001, velocity: 0.02);
 
-/// Wheel events closer together than this are one turn of the wheel, the
-/// span Chromium latches a wheel sequence to one scroller for.
+/// Wheel events closer than this are one turn, as Chromium latches one wheel sequence.
 const _wheelTurnGap = Duration(milliseconds: 500);
 
 class SnapSheetRoute<T> extends PopupRoute<T> with SheetCoverRouteMixin<T> {
@@ -107,8 +103,7 @@ class SnapSheetRoute<T> extends PopupRoute<T> with SheetCoverRouteMixin<T> {
     controller!.animateWith(_presentation(1, velocity));
   }
 
-  /// Springs back while a guard decides, and leaves from there with
-  /// [velocity] if the sheet closes now, the way UIKit answers a swipe.
+/// Springs back while a guard decides, then closes with [velocity] as UIKit does.
   void _close(double velocity) {
     _restore(0);
     _closingVelocity = velocity;
@@ -201,7 +196,6 @@ class SnapSheetRoute<T> extends PopupRoute<T> with SheetCoverRouteMixin<T> {
   );
 }
 
-/// max(x, 0) with its corner rounded over [-width, width], never below it.
 double _rounded(double x, double width) {
   if (x >= width) {
     return x;

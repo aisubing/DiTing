@@ -10,9 +10,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-/// Dart-facing control plane for the normal-mode tunnel.
-/// `prepare` opens the system consent dialog; its result arrives as an
-/// `onPrepareResult` callback instead of a polled status.
+/// Dart-facing control plane; `prepare` shows the consent dialog, answered via `onPrepareResult`.
 class VpnBridge(
     private val activity: Activity,
     messenger: BinaryMessenger,
@@ -59,8 +57,7 @@ class VpnBridge(
             bypassLan = call.argument<Boolean>("bypassLan") ?: true,
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = excluded,
-            // Package names; the service converts them before calling the
-            // UID-based engine setters.
+            // Package names; the service converts them before calling the UID-based engine setters.
             blockedPackages = call.argument<List<String>>("blockedPackages").orEmpty(),
             inspectionPackages = call.argument<List<String>>("inspectionPackages").orEmpty(),
             // Pre-folded by Dart.

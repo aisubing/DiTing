@@ -1,11 +1,3 @@
-/// 资源入口页：图标集 / User-Agent / 按需连接。
-///
-/// 上一轮这里还挂着「自定义代理 / Clash 提供者 / 过滤器」三行——那三项属于
-/// FlClash 的代理内核，1.4.3 没有对应物，已随内核配置族一并删除。
-///
-/// 剩下三张表都不是旧版界面，属于用户要求保留的项。它们没有旧版入口，因此
-/// 统一收在这一页，由 `/developer` 聚合页进入；设置页与功能中心不出现它们，
-/// 以免把旧版的 6 行设置与 28 张卡片挤变形。
 library;
 
 import 'package:diting/pages/config/config_common.dart';
@@ -15,7 +7,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 自定义资源入口页。
 class CustomResourcesConfigPage extends StatelessWidget {
   const CustomResourcesConfigPage({super.key});
 

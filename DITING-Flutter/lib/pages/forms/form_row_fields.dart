@@ -1,9 +1,7 @@
 part of 'form_page.dart';
 
-/// 表单里的右对齐输入行（上游 `FormRowTextField`）。
-///
-/// 输入框本身没有边框——整行的焦点环就是它的轮廓，这是 iOS/macOS 分组表单的
-/// 做法。光标额外让出几像素，否则行尾的圆角会切到光标。
+/// Right-aligned text field row (upstream `FormRowTextField`). No border: the row's focus ring is
+/// the outline. The cursor gets a few extra pixels so the rounded end does not clip it.
 class FormRowTextField extends StatelessWidget {
   static const double _cursorWidth = 2;
   static const double _caretMargin = 1 + _cursorWidth;
@@ -40,12 +38,11 @@ class FormRowTextField extends StatelessWidget {
   final bool obscureText;
   final bool autofocus;
 
-  /// 地址、端口、路径这类内容用等宽字体，位数对齐才看得清。
+  /// Monospace for addresses, ports and paths so digits line up.
   final bool monospace;
 
   final bool invalid;
 
-  /// 输入框右侧的附属按钮（密码行的眼睛）。它会与输入框一起放进 trailing。
   final Widget? trailingAction;
 
   final ValueChanged<String>? onChanged;
@@ -127,7 +124,7 @@ class FormRowTextField extends StatelessWidget {
   }
 }
 
-/// 密码输入行：右对齐 + 眼睛按钮（上游 `FormRowSecretTextField`）。
+/// Password row with a reveal button (upstream `FormRowSecretTextField`).
 class FormRowSecretTextField extends StatefulWidget {
   const FormRowSecretTextField({
     super.key,
@@ -186,7 +183,7 @@ class _FormRowSecretTextFieldState extends State<FormRowSecretTextField> {
   }
 }
 
-/// 右对齐的纯文本值（不带输入框），如「版本 1.0.0」。
+/// Right-aligned read-only value, such as a version number.
 class FormRowValue extends StatelessWidget {
   const FormRowValue({
     super.key,
@@ -226,7 +223,6 @@ class FormRowValue extends StatelessWidget {
   }
 }
 
-/// 开关行：标题在左、开关在右。
 class FormRowSwitch extends StatelessWidget {
   const FormRowSwitch({
     super.key,

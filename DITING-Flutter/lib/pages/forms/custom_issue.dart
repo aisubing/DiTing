@@ -1,18 +1,10 @@
-/// 表单错误提示（上游 `features/form/custom_issue.dart`）。
-///
-/// 上游区分两种：字段级的 `CustomIssue`（挂在某一行上）与整页的
-/// `CustomIssuesBanner`。本仓的 `FormRow.invalid` 已经承担了字段级提示，
-/// 所以这里只保留两件东西：一条通用 banner（`ErrorBanner`）与一个
-/// 「多个校验问题」的汇总列表（`CustomIssuesBanner`）。
+/// Form issue banners (upstream `features/form/custom_issue.dart`).
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一条提示横幅：图标 + 文本，底色是语义色的淡色。
-///
-/// 三种语义（错误 / 警告 / 一般）共用同一个结构，只换颜色与字形——这是上游
-/// `_Banner` 的做法。分成三个类会让调用点重复三份布局代码。
+/// All three severities share the banner structure and differ only in color and glyph.
 class InfoBanner extends StatelessWidget {
   const InfoBanner({
     super.key,
@@ -23,13 +15,11 @@ class InfoBanner extends StatelessWidget {
     this.actions,
   });
 
-  /// 错误态：红色。
   const InfoBanner.error({super.key, required this.message, this.actions})
     : glyph = AppGlyphs.error,
       color = null,
       foregroundColor = null;
 
-  /// 警告态：琥珀色。
   const InfoBanner.warning({super.key, required this.message, this.actions})
     : glyph = AppGlyphs.warning,
       color = null,
@@ -38,7 +28,7 @@ class InfoBanner extends StatelessWidget {
   final String message;
   final Glyph? glyph;
 
-  /// `null` 表示按 `glyph` 自动推断（错误 / 警告 / 一般）。
+  /// `null` infers the severity from `glyph`.
   final Color? color;
   final Color? foregroundColor;
   final List<Widget>? actions;
@@ -91,7 +81,7 @@ class InfoBanner extends StatelessWidget {
   }
 }
 
-/// 错误条：`InfoBanner.error` 的别名，调用点更短。
+/// Error bar: a shorter alias for `InfoBanner.error`.
 class ErrorBanner extends StatelessWidget {
   const ErrorBanner({super.key, required this.message});
 
@@ -101,10 +91,7 @@ class ErrorBanner extends StatelessWidget {
   Widget build(BuildContext context) => InfoBanner.error(message: message);
 }
 
-/// 多条校验问题的汇总。
-///
-/// 单条的问题挂在行上（`FormRow.invalid`），但「提交时发现有 4 个字段不合规」
-/// 需要一个地方一次说清，否则用户得自己一屏屏找红框。
+/// Per-row hints live on `FormRow.invalid`; a submit finding four fields needs one place.
 class CustomIssuesBanner extends StatelessWidget {
   const CustomIssuesBanner({
     super.key,

@@ -1,12 +1,4 @@
-/// 资源更新页（上游 `views/resources.dart`）。
-///
-/// 上游四类资源（GeoData / IconSet / RuleProvider / Script）都是「远端文件 +
-/// 本地缓存」：每项显示名称、地址、更新时间、体积，可单项更新，也可整体更新。
-/// 本仓按同样结构组织，但把上游的三层入口（分组 → 资源页 → 文件详情）压成
-/// 两层：分组标题 + 行内展开，因为资源详情只有四五个字段，单独开一页太空。
-///
-/// 更新走 `ResourcesNotifier`（900 ms 假延时）：真正的下载在这份演示里没有，
-/// 但「按钮转圈 → 时间刷新」这条反馈链必须真跑一遍，否则用户看不出区别。
+/// Resource update page (upstream `views/resources.dart`).
 library;
 
 import 'dart:async';
@@ -21,7 +13,6 @@ import 'package:material_ui/material_ui.dart';
 
 part 'resources_rows.dart';
 
-/// 资源页。
 class ResourcesPage extends ConsumerStatefulWidget {
   const ResourcesPage({super.key});
 
@@ -30,7 +21,7 @@ class ResourcesPage extends ConsumerStatefulWidget {
 }
 
 class _ResourcesPageState extends ConsumerState<ResourcesPage> {
-  /// 首次加载的假延时：资源清单要先读盘再算体积，真实实现也不是瞬时的。
+  /// Simulated first-load delay: reading the manifest and sizing files is not instant either.
   static const _loadDelay = Duration(milliseconds: 400);
 
   Timer? _loadTimer;
@@ -163,7 +154,7 @@ class _ResourcesPageState extends ConsumerState<ResourcesPage> {
     );
   }
 
-  /// 单项更新：不弹确认框。单项更新代价小、可重复，加一步确认只会变慢。
+  /// Single update, no confirmation: it is cheap and repeatable.
   Future<void> _updateOne(MockObsResource resource) async {
     await ref.read(resourcesProvider.notifier).updateOne(resource.id);
     if (!mounted) {
@@ -172,9 +163,8 @@ class _ResourcesPageState extends ConsumerState<ResourcesPage> {
     showObsTip(context, '${resource.name} 已更新');
   }
 
-  /// 编辑地址：`InputDialog` 自带校验，直接拿返回值写回。
-  ///
-  /// 默认值传 `defaultUrl`，用户点「重置」就能回到内置地址。
+  /// Edit address. InputDialog validates on its own, so the result is written back
+  /// directly; the default is defaultUrl so reset returns to the built-in one.
   Future<void> _editUrl(MockObsResource resource) async {
     final url = await showFloatingDialog<String>(
       context: context,

@@ -24,12 +24,7 @@ import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 import java.io.File
 
-/// Full-tunnel VpnService backed by the unchanged 1.4.3 Go engine.
-///
-/// The Dart layer owns every policy decision; this service only applies the
-/// DNS config / rule snapshot / rewrite map it receives, then hands the TUN
-/// descriptor to `Engine.startFull`. All engine knobs must be set before
-/// `startFull`, because the Go call blocks for the lifetime of the tunnel.
+/// Full-tunnel VpnService: applies the config, then hands the TUN fd to Engine.startFull.
 class DitingVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
     private var engine: Engine? = null
@@ -41,7 +36,6 @@ class DitingVpnService : VpnService() {
     @Volatile
     private var stopping = false
 
-    /// Notification speed-refresh loop; `null` until the tunnel actually starts.
     @Volatile
     private var speedTicker: Thread? = null
 
@@ -176,15 +170,7 @@ class DitingVpnService : VpnService() {
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
 
-            // Data plane: UID attribution for dns_log.packageName plus the two
-            // log tables that had no producer at all. Everything is registered
-            // before startFull, because the Go call blocks for the tunnel's
-            // lifetime and the first DNS query can arrive immediately.
-            //
-            // The field is assigned before the attach calls so a throw below
-            // still reaches closeDataPlane() from the catch block: the writers
-            // own executor threads and a 15s timer, which must not outlive a
-            // failed start.
+            // Attached before startFull and assigned first, so a throw still reaches cleanup.
             val plane = EngineDataPlane(this, logMode)
             dataPlane = plane
             plane.attachResolvers(goEngine)
@@ -197,28 +183,19 @@ class DitingVpnService : VpnService() {
                 goEngine.setBlockedUIDs(blockedUidCsv)
             }
 
-            // HTTPS inspection. Order matters: startStackMitm materialises the
-            // root CA and installs the filter that setMitmAllowedUIDs writes
-            // into; called in the other order the UID list is silently dropped
-            // (engine_mitm.go logs "stack MITM is not active" and returns).
+            // Order matters: reversed, the UID list from setMitmAllowedUIDs is silently dropped.
             if (inspectionEnabled) {
                 val mitmDir = File(filesDir, MITM_DIR).apply { mkdirs() }
                 val caPem = runCatching { goEngine.startStackMitm(mitmDir.absolutePath) }
                     .getOrDefault("")
                 if (caPem.isBlank()) {
-                    // No CA means no filter, so startFull builds a plain
-                    // passthrough stack. Leaving the UID list unset matches that.
+                    // No CA means no filter, so startFull builds a plain passthrough stack.
                     Log.w(TAG, "startStackMitm produced no CA; HTTPS inspection stays off")
                 } else {
                     goEngine.setMitmAllowedUIDs(PackageUids.csv(this, inspectionPackages))
                 }
             } else {
-                // Explicit "inspect nobody". This Engine is fresh, so the list is
-                // already empty; the call is defence in depth for any future
-                // engine reuse. Side effect worth knowing: with no MITM filter
-                // the Go setter logs "MITM: SetAllowedUIDs called but stack MITM
-                // is not active" on GoLog — expected on every inspection-off
-                // start, not a fault.
+                // Inspect nobody: the Go setter logs "stack MITM is not active" - expected.
                 goEngine.setMitmAllowedUIDs("")
             }
         } catch (t: Throwable) {
@@ -231,9 +208,7 @@ class DitingVpnService : VpnService() {
         isRunning = true
         setPersistedRunning(this, true)
         startSpeedTicker()
-        // 1.4.3 started the same sweep from the tunnel: the retention window only
-        // matters while logs are being written, and the foreground service is the
-        // only thing guaranteed to outlive the UI.
+        // The window only matters while logs are written, and this service outlives the UI.
         LogRetention.start(
             context = this,
             databaseName = LOG_DATABASE,
@@ -273,8 +248,7 @@ class DitingVpnService : VpnService() {
         stopSelf()
     }
 
-    /// Flushes the buffered traffic / HTTP rows. Runs after the engine has
-    /// stopped so no callback can append to a writer that is closing.
+    /// Flushes buffered traffic / HTTP rows; runs after the engine stopped, so nothing appends
     private fun closeDataPlane() {
         val plane = dataPlane
         dataPlane = null
@@ -285,14 +259,10 @@ class DitingVpnService : VpnService() {
         runCatching { tun?.close() }
         tun = null
         worker = null
-        // The ticker spins on `isRunning`, but stop it explicitly as well: the
-        // failure path drops straight out of `onStartCommand` where `isRunning`
-        // was never set, and a leaked thread would keep re-notifying.
+        // Stopped too: the failure path returns before `isRunning` is set, leaking a ticker.
         stopSpeedTicker()
         TrafficRateMonitor.reset()
-        // The retention sweep belongs to the tunnel's lifetime. Leaving it running
-        // after a stop would keep pruning tables the user is reading from a
-        // stopped app, and the executor thread would outlive the service.
+        // The sweep belongs to the tunnel's lifetime; otherwise it outlives the service.
         LogRetention.stop()
     }
 
@@ -344,8 +314,7 @@ class DitingVpnService : VpnService() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (t: Throwable) {
-            // Android 12+ requires foreground promotion inside onStartCommand;
-            // a failure here would otherwise surface as a process crash.
+            // Android 12+ requires foreground promotion inside onStartCommand; failing is a crash.
             Log.e(TAG, "startForeground failed", t)
         }
     }
@@ -353,18 +322,7 @@ class DitingVpnService : VpnService() {
     private fun buildNotification(): Notification =
         VpnNotification.build(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP)
 
-    /**
-     * Ticks the notification's speed line while the tunnel runs.
-     *
-     * 1.4.3 used `VpnSpeedMonitor`, a coroutine that polled a `StateFlow` and only
-     * re-notified when the formatted string changed. Same idea here, on a plain
-     * daemon thread because this module has no coroutine dependency:
-     *
-     * - the screen-off interval is longer (nobody reads a notification while the
-     *   display is dark, and waking to redraw it costs battery);
-     * - [VpnNotification.refresh] itself no-ops when 实时速率 is disabled, so the
-     *   loop costs one pref read per tick when the feature is off.
-     */
+    /// Ticks the notification's speed line; a daemon thread, as this module has no coroutines
     private fun startSpeedTicker() {
         if (speedTicker != null) return
         speedTicker = Thread({
@@ -415,10 +373,9 @@ class DitingVpnService : VpnService() {
     companion object {
         private const val TAG = "DitingVpnService"
 
-        /// The normal-mode log file (`AppDatabase`, `RuleDataset.NORMAL`).
         private const val LOG_DATABASE = "diting_database"
 
-        /// `RuleDataset.NORMAL.prefsName()`: `log_retention_days` is dataset-scoped.
+        /// `RuleDataset.NORMAL.prefsName()`: `log_retention_days` is dataset-scoped
         private const val LOG_PREFS = "dns_vpn_prefs"
 
         const val ACTION_START = "com.haoze.diting.START_VPN"
@@ -432,37 +389,29 @@ class DitingVpnService : VpnService() {
         const val EXTRA_IPV6_MODE = "ipv6_mode"
         const val EXTRA_EXCLUDED_PACKAGES = "excluded_packages"
 
-        /// `blocked_app_packages`: converted to UIDs for `setBlockedUIDs`.
+        /// `blocked_app_packages`: converted to UIDs for `setBlockedUIDs`
         const val EXTRA_BLOCKED_PACKAGES = "blocked_packages"
 
-        /// `http_inspection_app_packages`: converted to UIDs for
-        /// `setMitmAllowedUIDs`.
+        /// `http_inspection_app_packages`: converted to UIDs for `setMitmAllowedUIDs`
         const val EXTRA_INSPECTION_PACKAGES = "inspection_packages"
 
-        /// Precomputed by Dart as `https_inspection_ready &&
-        /// http_inspection_enabled && packages.isNotEmpty()`, because the CA must
-        /// be installed before intercepting or every HTTPS request in the
-        /// selected apps breaks.
+        /// Precomputed by Dart: without the CA every HTTPS request in those apps breaks
         const val EXTRA_INSPECTION_ENABLED = "inspection_enabled"
 
         private const val CHANNEL_ID = "diting_vpn"
         private const val NOTIFICATION_ID = 1001
 
-    /// Notification speed refresh cadence: 1 s while the screen is on (the
-    /// readout is a per-second figure), 10 s while it is off.
+    /// Speed refresh cadence: 1 s with the screen on (the readout is per-second), 10 s off
     private const val SCREEN_ON_INTERVAL_MS = 1000L
     private const val SCREEN_OFF_INTERVAL_MS = 10_000L
         private const val PREFS_NAME = "dns_vpn_prefs"
         private const val KEY_VPN_RUNNING = "vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"
 
-        /// Same directory as 1.4.3's `GoInspectionCaManager.certificateDirectory`,
-        /// so an upgraded install keeps using its already-trusted root CA
-        /// instead of minting a new one the user would have to install again.
+        /// Same directory the legacy app used: an upgraded install keeps its trusted root CA
         private const val MITM_DIR = "go-mitm"
 
-        // Outbound proxy is not wired from Flutter yet; an explicit disabled
-        // config keeps the Go side from logging a parse failure on every start.
+        // Not wired from Flutter yet; an explicit disabled config stops Go logging a parse failure.
         private const val DEFAULT_OUTBOUND_PROXY =
             """{"enabled":false,"protocol":"SOCKS5","host":"127.0.0.1","port":7890,"username":"","password":""}"""
 
@@ -472,7 +421,7 @@ class DitingVpnService : VpnService() {
         @Volatile
         private var activeEngine: Engine? = null
 
-        /** Read-only handle for the diagnostics channel; never expose a setter. */
+        /// Read-only handle for the diagnostics channel
         internal fun engineForDiagnostics(): Engine? = activeEngine
 
         @Volatile
@@ -499,14 +448,9 @@ class DitingVpnService : VpnService() {
             "stats" to EngineStats.snapshot(activeEngine),
         )
 
-        /**
-         * Second-resolution TX/RX rates for the dashboard's 实时速率 readout.
-         *
-         * Returns zeros when the tunnel is not running: [TrafficRateMonitor] is
-         * reset on every stop, but a caller racing the stop path could still read
-         * the last tick's numbers, and showing a speed while "已停止" is exactly
-         * the kind of plausible-looking fake this port keeps removing.
-         */
+        /// Second-resolution TX/RX rates; zeros while stopped, or the last tick if racing the stop
+        
+        
         fun trafficRates(): Map<String, Any?> {
             if (!isRunning) {
                 return mapOf("running" to false, "txBps" to 0L, "rxBps" to 0L)

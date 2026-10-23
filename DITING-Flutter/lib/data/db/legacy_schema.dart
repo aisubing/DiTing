@@ -1,36 +1,23 @@
-/// DDL for the three legacy Room databases.
-///
-/// Every statement is transcribed verbatim from the legacy `sqlite_master`, and
-/// the `user_version` values match Room (main=3, express=2, server=3), because
-/// upgraded installs keep databases built from that exact DDL. A mismatch does
-/// not raise an error; it makes reads look right while writes behave
-/// differently. A missing unique index, for instance, lets the same rule be
-/// inserted twice.
+/// DDL for the three legacy Room databases, verbatim from `sqlite_master`. A mismatch raises no
+/// error; it makes reads look right while writes differ (no unique index lets a rule be inserted
+/// twice).
 library;
 
-  /// The tables and indexes each database file should contain.
 abstract final class LegacySchema {
-    /// Version of the normal database.
   static const mainVersion = 3;
 
-    /// Version of the express database.
   static const expressVersion = 2;
 
-    /// Version of the server database.
   static const serverVersion = 3;
 
-    /// `user_version` for a database file.
   static int versionOf(String fileName) => switch (fileName) {
     'diting_express' => expressVersion,
     'diting_dns_rules' => serverVersion,
     _ => mainVersion,
   };
 
-    /// All table and index statements for a database file.
-    ///
-    /// Order matters: `*_source` tables reference the main tables. SQLite does not
-    /// validate that at creation time, but parents first keeps
-    /// `PRAGMA foreign_key_check` output readable.
+  /// Order matters: `*_source` tables reference the main tables, so parents come first to keep
+  /// `PRAGMA foreign_key_check` output readable.
   static List<String> statementsFor(String fileName) => switch (fileName) {
     'diting_dns_rules' => [..._ruleTables, ..._subscriptionTables, ..._ruleIndexes],
     'diting_express' => [
@@ -55,16 +42,14 @@ abstract final class LegacySchema {
     ],
   };
 
-
   static const _blockRule = '''
 CREATE TABLE `block_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, `rawLine` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `groupName` TEXT, `important` INTEGER NOT NULL, `appScope` TEXT, `appInverted` INTEGER NOT NULL, `isWildcard` INTEGER NOT NULL, `denyallow` TEXT, `isRegex` INTEGER NOT NULL, `dnsType` TEXT)''';
 
   static const _blockRuleSource = '''
 CREATE TABLE `block_rule_source` (`ruleId` INTEGER NOT NULL, `source` TEXT NOT NULL, `enabled` INTEGER NOT NULL, PRIMARY KEY(`ruleId`, `source`), FOREIGN KEY(`ruleId`) REFERENCES `block_rule`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )''';
 
-    /// `important` sits in a different position than in `block_rule`, because
-    /// Room emits columns in entity declaration order. A wrong column order would
-    /// shift the positional values of `SELECT *`.
+  /// `important` sits at a different position than in `block_rule`: Room emits columns in
+  /// declaration order, and a wrong order shifts `SELECT *`.
   static const _allowRule = '''
 CREATE TABLE `allow_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pattern` TEXT NOT NULL, `rawLine` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `groupName` TEXT, `appScope` TEXT, `appInverted` INTEGER NOT NULL, `isWildcard` INTEGER NOT NULL, `important` INTEGER NOT NULL, `denyallow` TEXT, `isRegex` INTEGER NOT NULL, `dnsType` TEXT)''';
 
@@ -86,8 +71,7 @@ CREATE TABLE `go_url_rule_source` (`ruleId` INTEGER NOT NULL, `source` TEXT NOT 
   static const _cosmeticRule = '''
 CREATE TABLE `cosmetic_rule` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `domain` TEXT NOT NULL, `selector` TEXT NOT NULL, `rawLine` TEXT NOT NULL, `addedAt` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `isException` INTEGER NOT NULL)''';
 
-    /// The only source table without a foreign key, because the legacy entity
-    /// never declared one.
+  /// The only source table without a foreign key: the legacy entity had none.
   static const _cosmeticRuleSource = '''
 CREATE TABLE `cosmetic_rule_source` (`ruleId` INTEGER NOT NULL, `source` TEXT NOT NULL, `enabled` INTEGER NOT NULL, PRIMARY KEY(`ruleId`, `source`))''';
 
@@ -108,7 +92,6 @@ CREATE TABLE `mirror_template` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     _mirrorTemplate,
   ];
 
-
   static const _subscription = '''
 CREATE TABLE `subscription` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `name` TEXT NOT NULL, `sourceType` TEXT NOT NULL, `kind` TEXT NOT NULL, `enabled` INTEGER NOT NULL, `ruleCount` INTEGER NOT NULL, `lastUpdated` INTEGER NOT NULL, `addedAt` INTEGER NOT NULL, `importState` TEXT NOT NULL, `importError` TEXT, `httpEtag` TEXT, `httpLastModified` TEXT, `ruleSetHash` TEXT, `lastAttemptAt` INTEGER NOT NULL, `consecutiveFailureCount` INTEGER NOT NULL, `mirrorTemplate` TEXT, `mirrorFallback` INTEGER NOT NULL, `groupId` INTEGER)''';
 
@@ -123,7 +106,6 @@ CREATE TABLE `subscription_auto_update_item` (`batchId` TEXT NOT NULL, `subscrip
     _subscriptionGroup,
     _subscriptionAutoUpdateItem,
   ];
-
 
   static const _dnsCache = '''
 CREATE TABLE `dns_cache` (`key` TEXT NOT NULL, `queryName` TEXT NOT NULL, `queryType` INTEGER NOT NULL, `queryClass` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `expiresAt` INTEGER NOT NULL, `lastHitAt` INTEGER, `hitCount` INTEGER NOT NULL DEFAULT 0, `originalTtlSeconds` INTEGER NOT NULL, `ttlOffsets` TEXT NOT NULL, `response` BLOB NOT NULL, `responseSize` INTEGER NOT NULL, PRIMARY KEY(`key`))''';
@@ -150,8 +132,7 @@ CREATE TABLE `http_request_log` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL
   static const _appTrafficDaily = '''
 CREATE TABLE `app_traffic_daily` (`date` TEXT NOT NULL, `package_name` TEXT NOT NULL, `app_name` TEXT NOT NULL, `tx_bytes` INTEGER NOT NULL, `rx_bytes` INTEGER NOT NULL, `updated_at` INTEGER NOT NULL, PRIMARY KEY(`date`, `package_name`))''';
 
-    // The UNIQUE indexes are the only guard against duplicate rules: the importer
-    // checks before inserting, but concurrent imports can still race.
+  // The UNIQUE indexes are the only guard against duplicate rules; imports can still race.
 
   static const _ruleIndexes = <String>[
     'CREATE INDEX `index_block_rule_appScope` ON `block_rule` (`appScope`)',

@@ -34,8 +34,7 @@ import 'package:flutter/widgets.dart';
 
 const Curve _sizeCurve = Curves.easeInOutCubic;
 
-/// Sizes itself to the content of the current route of the [Navigator] below
-/// it, and follows the routes' transitions from one size to the next.
+/// Sizes itself to the current route's content and follows its size transitions.
 class NavigatorResizable extends StatefulWidget {
   const NavigatorResizable({super.key, required this.child});
 
@@ -80,7 +79,6 @@ class _RouteSizesScope extends InheritedWidget {
 mixin ResizableNavigatorRouteMixin<T> on DragBackRouteMixin<T> {
   _RouteSizes? _sizes;
 
-  /// Wraps the page the navigator sizes to while this route is current.
   Widget resizableContent(Widget child) {
     return _ContentBoundary(route: this, child: child);
   }
@@ -258,8 +256,7 @@ class _RouteSizes extends ChangeNotifier implements ValueListenable<Size> {
   void _didChangeNext(Route<dynamic> route, Route<dynamic>? nextRoute) {
     final lostNext =
         nextRoute == null && _nextRouteOf[route] != null && route.isCurrent;
-    // Of the routes that were above, the top one still animating out drives
-    // the way back; one removed without a transition leaves nothing to follow.
+    // Of the routes above, the top one still animating out drives the way back.
     Route<dynamic>? exiting;
     if (lostNext) {
       for (
@@ -384,8 +381,7 @@ class _LazySizeTween extends Animatable<Size?> {
   }
 }
 
-/// The size a linear run toward [start] would have begun at, given it is at
-/// [current] when [t] of it remains.
+/// The size a linear run toward [start] would have begun at, at [current] with [t] remaining.
 Size _lerpEndSize(Size start, Size current, double t) {
   assert(0 < t && t <= 1);
   return Size(
@@ -432,8 +428,7 @@ class _RenderResizableBox extends RenderAligningShiftedBox {
     markNeedsLayout();
   }
 
-  // A page reports its size from its own layout, which runs after this box's
-  // in the same frame, so the new size waits for the next one.
+  // A page reports its size from its own layout, later in the same frame, so it waits a frame.
   void _handlePreferredSizeChange() {
     if (SchedulerBinding.instance.schedulerPhase ==
         SchedulerPhase.persistentCallbacks) {

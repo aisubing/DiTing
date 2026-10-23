@@ -1,10 +1,8 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 part of 'list.dart';
 
-/// Draws a row's bottom separator from where its title starts, and drops it
-/// whenever this row or the one below is highlighted, as iOS grouped lists
-/// do. The row below is found through the render tree, so a list only has to
-/// stack its rows for them to see each other.
+/// Draws a row's bottom separator from its title start, dropped while it or the next is
+/// highlighted.
 class _ListRowSeparator extends SingleChildRenderObjectWidget {
   final bool separated;
   final bool emphasized;
@@ -49,8 +47,7 @@ class _ListRowSeparator extends SingleChildRenderObjectWidget {
       ..color = _color(context)
       ..textDirection = Directionality.of(context)
       ..devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-    // A reorder hands a row a new neighbour below without changing any of
-    // its own properties.
+    // A reorder hands a row a new neighbour below without changing any of its own properties.
     if (separated) {
       renderObject.markNeedsPaint();
     }
@@ -279,9 +276,7 @@ class _RenderListRowSeparator extends RenderProxyBox {
     super.detach();
   }
 
-  /// Null while an ancestor has stopped painting the row, such as a sliver
-  /// that moved it into its keep-alive bucket: its paint transform is then
-  /// all zeros, which [localToGlobal] turns into NaN.
+  /// Null while an ancestor stopped painting the row, where the transform is all zeros (NaN).
   double? _pixelOverhang() {
     final deviceBottom =
         localToGlobal(Offset(0, size.height)).dy * _devicePixelRatio;
@@ -291,9 +286,8 @@ class _RenderListRowSeparator extends RenderProxyBox {
     return deviceBottom - (deviceBottom + 1e-3).floorToDouble();
   }
 
-  /// Returns whether the row needs another frame, either to see it stop
-  /// moving or to repaint: this runs after the frame has painted, when a
-  /// [markNeedsPaint] no longer schedules one.
+  /// Whether the row needs another frame; this runs after paint, when markNeedsPaint schedules
+  /// none.
   bool _realign() {
     final painted = _paintedOverhang;
     if (painted == null) {
@@ -324,7 +318,6 @@ class _RenderListRowSeparator extends RenderProxyBox {
   @override
   void performLayout() {
     super.performLayout();
-    // A lazily built row arrives below a row that has already painted.
     if (_highlighted) {
       _neighbour(below: false)?.markNeedsPaint();
     }
@@ -352,8 +345,7 @@ class _RenderListRowSeparator extends RenderProxyBox {
       TextDirection.ltr => (title?.left ?? 0.0, size.width - _endIndent),
       TextDirection.rtl => (_endIndent, title?.right ?? size.width),
     };
-    // Layout is not snapped to device pixels, and a line straddling pixel rows
-    // renders with faint, blurred edges.
+    // Layout is not snapped to device pixels, and a line straddling pixel rows renders blurred.
     final overhang = _pixelOverhang() ?? 0;
     _paintedOverhang = overhang;
     final bottom = size.height - overhang / _devicePixelRatio;
@@ -364,9 +356,8 @@ class _RenderListRowSeparator extends RenderProxyBox {
   }
 }
 
-/// Scrolling, sheets and transitions move a painted row without repainting
-/// it, which can leave its line between device pixels. Once nothing is moving
-/// any more, a row whose line drifted off the pixel grid paints again.
+/// A row moved without repainting can leave its line between device pixels; once still, it
+/// repaints.
 abstract final class _PixelRealignment {
   static final _rows = <_RenderListRowSeparator>{};
   static var _listening = false;

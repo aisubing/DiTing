@@ -1,6 +1,5 @@
-/// Parser for the preset passthrough whitelist asset, ported from
-/// `DefaultWhitelistSeeder.parseAssetWhitelist` so the seeded rows stay
-/// byte-identical (domain lowercased, trailing dot removed, first wins).
+/// Parser for the preset passthrough whitelist asset; seeded rows must match the legacy seeder:
+/// domains lowercased, trailing dot removed, first occurrence wins.
 library;
 
 typedef PresetEntry = ({String domain, String group});

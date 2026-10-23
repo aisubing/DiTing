@@ -10,7 +10,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-/// Dart-facing control plane for the express-mode (narrow-route) tunnel.
+/// Dart-facing control plane for the express-mode (narrow-route) tunnel
 class ExpressVpnBridge(
     private val activity: Activity,
     messenger: BinaryMessenger,
@@ -30,8 +30,7 @@ class ExpressVpnBridge(
                 result.success(true)
             }
             "status" -> result.success(ExpressVpnService.status(activity))
-            // Express never collects traffic stats, so answer explicitly with
-            // zeros instead of leaving Dart with a MissingPluginException.
+            // Express collects no traffic stats: answer with zeros, not a MissingPluginException.
             "trafficRates" -> result.success(
                 mapOf(
                     "running" to ExpressVpnService.isRunning,
@@ -64,8 +63,7 @@ class ExpressVpnBridge(
             proxyJson = call.argument<String>("outboundProxy").orEmpty(),
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = call.argument<List<String>>("excludedPackages").orEmpty(),
-            // Blocked/inspection packages are not forwarded: the narrow TUN has
-            // no firewall or MITM stage to consume them.
+            // Blocked/inspection packages are not forwarded: this TUN has no firewall or MITM.
         )
         return try {
             ContextCompat.startForegroundService(activity, intent)

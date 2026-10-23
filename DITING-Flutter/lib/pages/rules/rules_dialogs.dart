@@ -1,10 +1,7 @@
 part of 'rules_page.dart';
 
-/// 覆写规则的输入框：域名 + 目标值两个字段。
-///
-/// 覆写规则比另两种多一个目标值，而 [InputDialog] 只能收一个字段；用一个
-/// 双字段对话框而不是「先填域名、再填目标」两次弹框，是因为中途取消第一次
-/// 之后用户不知道自己填到哪一步了。
+/// Input dialog for a rewrite rule: domain plus target value. InputDialog takes one field,
+/// and two chained dialogs would leave the user unsure where they were after cancelling.
 class _RuleDialog extends StatefulWidget {
   const _RuleDialog({
     required this.title,
@@ -17,7 +14,7 @@ class _RuleDialog extends StatefulWidget {
   final String initialPattern;
   final String? initialTarget;
 
-  /// 已存在的规则内容，用于就地报「已存在」，避免关框之后才发现重复。
+  /// Existing patterns, used to report duplicates in place instead of after closing.
   final Set<String> existingPatterns;
 
   @override
@@ -104,10 +101,8 @@ class _RuleDialogState extends State<_RuleDialog> {
   }
 }
 
-/// 统一的二次确认框。返回值 `true` 才执行破坏性操作。
-///
-/// 清空、删除、放宽白名单保护三处都走它：上游把这类确认定为不可降级为提示条
-/// 的一档，因为误触之后没有撤销入口。
+/// Shared confirmation dialog. Only true runs a destructive action. Clear, delete and the
+/// whitelist relax all use it because there is no undo.
 Future<bool> _confirm(
   BuildContext context, {
   required String title,

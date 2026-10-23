@@ -6,12 +6,8 @@ import 'package:diting/state/server_upstream_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 服务器模式自定义上游的增删改。
-///
-/// 这三条语义在界面上看不出错，只有回读 `custom_upstreams` 才能发现：
-/// 1. 自定义 id 必须不是 `preset_` 开头（否则被当成内置、变得不可编辑）；
-/// 2. 非 DoH 地址落盘前去掉 IPv6 方括号（否则引擎拼出 `[[::1]]:53`）；
-/// 3. 删掉当前选中项要回落到第一个内置（否则 selected 指向不存在的记录）。
+/// Add, edit and delete for server-mode custom upstreams: ids must not start with `preset_`,
+/// non-DoH addresses drop IPv6 brackets, and deleting the selected entry falls back to a preset
 void main() {
   late ProviderContainer container;
 

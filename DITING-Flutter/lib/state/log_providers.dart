@@ -24,9 +24,8 @@ final activeLogDatabaseProvider = FutureProvider<Database?>(
   (ref) => LegacyDatabase.open(ref.watch(activeLogDatabaseFileProvider)),
 );
 
-/// All three dashboard views read from the same legacy file; the revision
-/// counter is bumped by "refresh" and "clear" so one action reloads all of
-/// them instead of leaving stale rows in a hidden tab.
+/// All three dashboard views read the same file; "refresh" and "clear" bump the revision so one
+/// action reloads them.
 class DnsLogRevisionNotifier extends Notifier<int> {
   @override
   int build() => 0;
@@ -47,7 +46,7 @@ Future<T> _viaDatabase<T>(
   return db == null ? empty : build(db);
 }
 
-/// 最新行（当前模式的库）。
+/// Latest rows from the active mode's database.
 final dnsLogsProvider = FutureProvider<List<DnsLogRecord>>((ref) async {
   ref.watch(dnsLogRevisionProvider);
   return _viaDatabase(
@@ -56,11 +55,6 @@ final dnsLogsProvider = FutureProvider<List<DnsLogRecord>>((ref) async {
     const <DnsLogRecord>[],
   );
 });
-
-// 「今日计数器」曾经有一个 `dnsLogDailyStatsProvider`，只算 `dns_log` 一张表。
-// 概览块需要 DNS + HTTPS 两表相加、还要按日志模式裁剪，因此搬到了
-// `log_dashboard_overview_providers.dart` 的 `logDashboardProvider`。旧 provider
-// 已删除：留一个「口径相同但少一张表」的入口，下一个人接线时几乎必然选错它。
 
 final dnsCacheProvider = FutureProvider<List<DnsCacheRecord>>((ref) async {
   ref.watch(dnsLogRevisionProvider);
@@ -104,7 +98,6 @@ final raceRankingProvider = FutureProvider<RaceRankingBoard>((ref) async {
   );
 });
 
-/// Ranking rows plus the whole-table summary shown above them.
 class RaceRankingBoard {
   const RaceRankingBoard({required this.summary, required this.entries});
 
@@ -132,7 +125,6 @@ class RaceSummary {
   final int averageLatencyMs;
 }
 
-/// Ranking row after name resolution.
 class RaceRanking {
   const RaceRanking({
     required this.provider,

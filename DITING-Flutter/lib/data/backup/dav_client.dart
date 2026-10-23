@@ -1,6 +1,4 @@
-/// Minimal WebDAV client: PROPFIND probe, MKCOL create, PUT upload, GET download.
-///
-/// Credentials stay in memory and request headers only; they are never persisted.
+/// Minimal WebDAV client: PROPFIND, MKCOL, PUT, GET. Credentials stay in memory.
 library;
 
 import 'dart:convert';
@@ -14,12 +12,10 @@ class DavCredentials {
     required this.path,
   });
 
-  /// Server base URL, e.g. `https://dav.example.com`.
   final String server;
   final String username;
   final String password;
 
-  /// Target directory, always starting and ending with `/`.
   final String path;
 
   DavCredentials normalized() => DavCredentials(
@@ -42,7 +38,7 @@ class DavCredentials {
 
   String fileUrl(String name) => '$server$path$name';
 
-  /// The password is never logged or persisted.
+  /// Never logged or persisted.
   String get basicAuthHeader {
     final raw = '$username:$password';
     return 'Basic ${base64Encode(utf8.encode(raw))}';
@@ -59,10 +55,8 @@ class DavProbeResult {
 
   final bool created;
 
-  /// Failure reason; shown to the user verbatim.
   final String? error;
 
-  /// HTTP status, surfaced in the message to make it actionable.
   final int? statusCode;
 
   bool get succeeded => error == null;
@@ -71,11 +65,9 @@ class DavProbeResult {
 class DavClient {
   const DavClient({this.timeout = const Duration(seconds: 20)});
 
-  /// Per-request timeout. Self-hosted WebDAV answers quickly on a LAN; past
-  /// 20s the server is likely unreachable.
+  /// 20s: a self-hosted LAN server answers quickly; beyond that it is unreachable.
   final Duration timeout;
 
-  /// PROPFIND the directory, creating it with MKCOL if missing.
   Future<DavProbeResult> probe(DavCredentials rawCredentials) async {
     final credentials = rawCredentials.normalized();
     final client = HttpClient()..connectionTimeout = timeout;
@@ -97,7 +89,7 @@ class DavClient {
         statusCode: status,
       );
     } on SocketException catch (error) {
-      // Unreachable address, DNS failure and closed port look the same to users.
+      // Unreachable address, DNS failure and closed port look alike to users.
       return DavProbeResult.failed('无法连接到服务器：${error.message}');
     } on HandshakeException {
       return const DavProbeResult.failed(
@@ -110,7 +102,6 @@ class DavClient {
     }
   }
 
-  /// Upload a text file with `PUT`.
   Future<DavProbeResult> putText(
     DavCredentials rawCredentials, {
     required String name,
@@ -152,7 +143,6 @@ class DavClient {
     }
   }
 
-  /// Download a text file; returns null when it does not exist.
   Future<String?> getText(
     DavCredentials rawCredentials, {
     required String name,
@@ -221,7 +211,6 @@ class DavClient {
     return response.statusCode == 201 || response.statusCode == 405;
   }
 
-  /// Translate a status code into an actionable message.
   String _statusMessage(int status) => switch (status) {
     401 => '认证失败：用户名或密码不正确',
     403 => '服务器拒绝访问：该账号没有读写此目录的权限',

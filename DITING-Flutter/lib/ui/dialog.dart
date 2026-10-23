@@ -23,18 +23,15 @@ const double _actionHeight = 48;
 const double _textInset = 30;
 const double _alertWidth = 348;
 const double _contentMaxWidth = 300;
-// `AlertDialog` 默认 `insetPadding` 是左右各 40；`_dialogInset` 用它把调用方
-// 请求的宽度夹到「屏幕还放得下」的范围内（见 `CommonDialog._resolvedWidth`）。
+// `AlertDialog` insets 40 a side; `_dialogInset` clamps a requested width to what still fits.
 const double _dialogInset = 40;
-// Material 3 sets a filled field's text 4 in past its content padding.
 const double _fieldInputGap = 4;
 const double _pressGrowth = 4;
 const double _pressPull = 3;
 const double _pressedFillShare = 0.4;
 const double _pressedDarkDefaultShare = 0.5;
 
-// UIAlertController on iOS 27 grows in from 1.2 times its size and only fades
-// out, both on one critically damped spring that settles in 0.404 s.
+// iOS 27 grows the alert in from 1.2x and only fades out, on one spring settling in 0.404 s.
 const _alertDuration = Duration(milliseconds: 404);
 const double _alertEntryScale = 1.2;
 final _alertSpring = SpringCurve(
@@ -49,9 +46,7 @@ Future<T?> showFloatingDialog<T>({
   required Widget child,
   bool dismissible = true,
 }) {
-  // 与浮层同一个宿主 navigator：此前用 `Navigator.of(context)`，在底栏页面上
-  // 拿到的是 branch navigator，弹窗的遮罩与卡片都落在 `AppShell` 的
-  // `bottomNavigationBar` 下面，浮条照旧画在弹窗上（与浮层同一类问题）。
+  // Same host navigator as sheets: on a tab page the branch navigator puts the pane under the dock.
   return sheetNavigatorOf(context).push<T>(
     _AlertRoute<T>(
       barrierColor: context.colorScheme.alertScrim,
@@ -108,8 +103,8 @@ class _AlertRoute<T> extends PopupRoute<T>
 mixin AlertMotionRouteMixin<T> on PopupRoute<T> {
   CurvedAnimation? _sprung;
 
-  // The barrier fades on the spring both ways, where `barrierCurve` would
-  // replay it backwards on the way out.
+  // The barrier fades on the spring both ways; `barrierCurve` would replay it backwards on the way
+  // out.
   Animation<double> get _spring => _sprung ??= CurvedAnimation(
     parent: animation!,
     curve: _alertSpring,

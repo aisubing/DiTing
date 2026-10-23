@@ -3,10 +3,8 @@ import 'package:diting/data/rules/rule_models.dart';
 import 'package:diting/data/rules/rule_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 1.4.3 `AdGuardRuleParserTest` 的等价用例。
-///
-/// 这些断言直接照抄旧版测试的期望值：解析器是「把用户的几万条规则变成拦截
-/// 行为」的唯一入口，语义漂移不会崩、只会静默少拦或多拦，所以必须钉住。
+/// Equivalent of 1.4.3's `AdGuardRuleParserTest`: a semantic drift silently blocks too much
+/// or too little
 void main() {
   group('域名 / 修饰符', () {
     test('标准拦截规则与修饰符', () {
@@ -156,8 +154,7 @@ void main() {
 
   group('整份文本', () {
     test('混合文本按族归类', () {
-      // 与 Kotlin 侧 `trimIndent()` 对齐：首尾不保留空行，否则空行会多算
-      // 一条 ignored。
+      // Matches Kotlin's `trimIndent()`: dropped blank lines would add an extra ignored entry
       const text = '! Title: Unified List\n'
           '# Comment line\n'
           '[Adblock Plus 2.0]\n'

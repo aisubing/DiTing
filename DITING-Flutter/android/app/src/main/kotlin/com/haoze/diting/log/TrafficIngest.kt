@@ -12,26 +12,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
-/// Persists the Go engine's per-UID traffic ticks into `app_traffic_daily`.
-///
-/// Source: `TrafficCallback.onTrafficStatsTick(String)` — a JSON array of
-/// `{uid,tx,rx}` deltas, emitted once per second by `traffic_tracker.go`
-/// (`uidDeltaJson`). The counters are swapped to zero on every tick, so each
-/// payload is already a delta and must be ADDED to whatever the row holds.
-///
-/// The write path mirrors 1.4.3 `TrafficStatsManager` + `TrafficDatabaseSyncer`:
-///  - the Go callback thread only parses and accumulates under a lock. SQLite
-///    never runs there: the same dispatch loop also drives DNS and HTTP logging,
-///    and a WAL commit on it would stall packet processing;
-///  - one single-threaded executor serialises every DB write, so two flushes can
-///    never interleave a transaction;
-///  - a flush happens on the 15s timer or once the buffer crosses 1 MB, because
-///    a per-tick transaction would mean one commit per second per session;
-///  - the date key is the LOCAL `yyyy-MM-dd` at tick time, not at flush time. A
-///    session crossing midnight therefore keeps two buckets, and each is written
-///    under its own date: 1.4.3 flushed the old buffer before switching
-///    `todayDateString`, and using the write-time date here would credit the
-///    previous evening's bytes to the new day.
+/// Writes per-UID traffic into `app_traffic_daily`, batched every 15s or 1MB; deltas are ADDED.
 class TrafficIngest(
     private val context: Context,
     private val databaseName: String,
@@ -43,9 +24,7 @@ class TrafficIngest(
         }
     private val lock = Any()
 
-    /// date -> (packageName -> accumulated delta). At most two entries in
-    /// practice (a rollover in flight); the map is keyed by date so a failed
-    /// write can be retried without being mis-dated.
+    /// date -> (packageName -> delta); keyed by date so a retried write is not mis-dated
     private val buckets = LinkedHashMap<String, LinkedHashMap<String, Delta>>()
     private var bufferedBytes = 0L
 
@@ -59,10 +38,6 @@ class TrafficIngest(
         TimeUnit.MILLISECONDS,
     )
 
-    /// Port of `TrafficStatsManager.onGoTrafficTick`, minus the speed EMA and the
-    /// `StateFlow` snapshot: those only fed the 1.4.3 Compose gauge, which has no
-    /// reader in this port. The persistent half — this table — is what the Dart
-    /// traffic page reads.
     fun onTick(jsonDeltas: String) {
         if (jsonDeltas.isBlank() || closed) return
         val array = runCatching { JSONArray(jsonDeltas) }.getOrNull() ?: return
@@ -80,18 +55,12 @@ class TrafficIngest(
                 val tx = obj.optLong("tx", 0L)
                 val rx = obj.optLong("rx", 0L)
                 if (uid <= 0 || (tx <= 0 && rx <= 0)) continue
-                // Rates are a device-wide figure, so they count every delta —
-                // including rows skipped below for lack of a package name. Using
-                // the persisted sum instead would make the notification readout
-                // dip whenever an app's label was still unresolved.
+                // Device-wide rates: every delta counts, including package-less rows.
                 tickTx += tx
                 tickRx += rx
                 val packageName = uidPackageCache.packageForUid(uid)
                 if (packageName.isBlank()) {
-                    // Without a package there is no primary-key value, and the
-                    // Dart reader groups by package name; a synthetic
-                    // "uid:10123" row would render as an app that does not
-                    // exist. Skip it — the next tick retries with a warm cache.
+                    // No package name yet; the next tick retries with a warm cache.
                     continue
                 }
                 val delta = bucket.getOrPut(packageName) { Delta() }
@@ -100,9 +69,7 @@ class TrafficIngest(
                 bufferedBytes += tx + rx
             }
             overThreshold = bufferedBytes > FLUSH_THRESHOLD_BYTES
-            // A persistently failing write must not turn this map into an
-            // unbounded heap leak: past the hard cap the oldest date bucket is
-            // dropped (its bytes are already lost to the same failure).
+            // Past the cap the oldest date bucket is dropped, so a failing write cannot leak.
             if (bufferedBytes > MAX_BUFFERED_BYTES && buckets.size > 1) {
                 val oldest = buckets.keys.first()
                 val dropped = buckets.remove(oldest) ?: LinkedHashMap()
@@ -110,31 +77,18 @@ class TrafficIngest(
                 Log.w(TAG, "Traffic buffer over ${MAX_BUFFERED_BYTES}B; dropped $oldest")
             }
         }
-        // Feed the notification's 实时速率 readout. Outside the lock: the monitor
-        // only stores two numbers, and this callback thread is the one that also
-        // drives packet processing.
+        // Outside the lock: the monitor only stores two numbers.
         TrafficRateMonitor.onTick(tickTx, tickRx)
-        // Enqueue only; the single-threaded executor owns the writing.
         if (overThreshold) submitFlush()
     }
 
-    /// Force-writes the buffer and stops the executor. Every service stop path
-    /// calls this: the 15s timer would otherwise drop up to 15s of deltas when
-    /// the process is torn down. (`am force-stop` never runs `onDestroy`, so the
-    /// exposure is the timer window, not the whole session.)
-    ///
-    /// `closed` gates only the *entry points* (`onTick`, `submitFlush`), never
-    /// [writeBuffered]: the final flush below runs after `closed` is already set,
-    /// and guarding the writer on it would silently discard exactly the tail this
-    /// method exists to save.
+    /// Force-writes the buffer and stops the executor, so the 15s timer cannot drop the tail
     fun close() {
         if (closed) return
         closed = true
         flushTask.cancel(false)
         runCatching {
-            // Explicit Runnable: `submit { }` is ambiguous between the Runnable
-            // and Callable overloads on a Java interface, and the Callable form
-            // would swallow the intent of a fire-and-wait flush.
+            // Explicit Runnable: `submit { }` is ambiguous with the Callable overload.
             executor.submit(Runnable { writeBuffered() }).get(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         }.onFailure { Log.w(TAG, "Final traffic flush did not complete", it) }
         executor.shutdown()
@@ -151,13 +105,9 @@ class TrafficIngest(
     }
 
     private fun writeBuffered() {
-        // Returned from the block rather than assigned to a captured `val`:
-        // the assignment-in-lambda form depends on `synchronized`'s
-        // callsInPlace contract, and this reads the same either way.
+        // Returned from the block, not assigned to a captured `val`: that relies on callsInPlace.
         val snapshot = synchronized(lock) {
-            // `closed` must NOT gate this method: close() sets it before the
-            // final flush runs. requeue() checks it instead, so a failed final
-            // write is dropped rather than parked in a buffer nobody drains.
+            // `closed` must NOT gate this method: close() sets it before the final flush.
             if (buckets.isEmpty()) return
             val copy = buckets.map { it.key to it.value }
             buckets.clear()
@@ -168,17 +118,12 @@ class TrafficIngest(
         val failed = ArrayList<Pair<String, LinkedHashMap<String, Delta>>>(snapshot.size)
         val db = LegacyDb.open(context, databaseName)
         if (db == null) {
-            // Missing file = fresh install (the Dart layer creates the schema
-            // later) or server mode. Retrying cannot help and would buffer every
-            // tick forever, so drop the batch. This is the one loss path with no
-            // retry; it only happens when the destination table does not exist.
+            // No database yet (fresh install) or server mode: retrying would buffer every tick.
             Log.w(TAG, "$databaseName not openable; dropping traffic buffer")
             return
         }
         try {
-            // `diting_express` deliberately has no app_traffic_daily
-            // (ExpressRulesDatabase excludes the entity), so a wrong database
-            // name must be a no-op instead of a "no such table" error per flush.
+            // Express has no app_traffic_daily: a wrong database must be a no-op.
             if (!LegacyDb.hasTable(db, TABLE)) {
                 Log.w(TAG, "$databaseName has no $TABLE; dropping traffic buffer")
                 return
@@ -205,22 +150,10 @@ class TrafficIngest(
         if (failed.isNotEmpty()) requeue(failed)
     }
 
-    /// Applies one delta with `AppTrafficDao.upsertDelta`'s exact semantics:
-    /// add both counters, keep the stored `app_name` when the new one is empty,
-    /// stamp `updated_at`.
-    ///
-    /// Written as UPDATE-then-INSERT instead of the DAO's `ON CONFLICT DO UPDATE`
-    /// because that syntax needs SQLite 3.24 (API 30) while `minSdk` is 24: on
-    /// API 24–29 the UPSERT is a *syntax* error and every flush would fail. The
-    /// two forms produce the same rows, and with a single writer thread (the one
-    /// attached to [executor]) there is no interleaving that could turn the
-    /// UPDATE-missed/INSERT pair into a duplicate-key error. The Dart side only
-    /// reads this table.
+    /// Adds both counters, keeps a stored non-empty `app_name`. ON CONFLICT needs API 30
     private fun applyDelta(db: SQLiteDatabase, date: String, packageName: String, delta: Delta, now: Long) {
         val appName = appLabelFor(packageName)
         val updated = db.compileStatement(UPDATE_SQL).use { statement ->
-            // Bind order follows UPDATE_SQL: the replacement name is bound twice
-            // because the CASE both tests it and assigns it.
             statement.bindString(1, appName)
             statement.bindString(2, appName)
             statement.bindLong(3, delta.tx)
@@ -231,15 +164,12 @@ class TrafficIngest(
             statement.executeUpdateDelete()
         }
         if (updated == 0) {
-            // Explicit <Any>: without it the array's inferred type is an
-            // intersection (Comparable & Serializable) and the compiler warns.
+            // Explicit <Any>: otherwise the array type is inferred as Comparable & Serializable.
             db.execSQL(INSERT_SQL, arrayOf<Any>(date, packageName, appName, delta.tx, delta.rx, now))
         }
     }
 
-    /// Puts an unwritten batch back under its original date so the next flush
-    /// retries it. 1.4.3 kept `pendingDbDeltas` on failure as well: dropping the
-    /// bytes outright would leave a gap the UI cannot explain.
+    /// Puts an unwritten batch back under its original date for the next flush
     private fun requeue(failed: List<Pair<String, LinkedHashMap<String, Delta>>>) {
         synchronized(lock) {
             if (closed) return
@@ -255,9 +185,7 @@ class TrafficIngest(
         }
     }
 
-    /// `app_name` is what the traffic page shows; it comes from
-    /// `PackageManager`, resolved at write time (once per package per flush).
-    /// Empty on failure, and the UPDATE then keeps the previously stored name.
+    /// PackageManager label at write time; empty on failure
     private fun appLabelFor(packageName: String): String = runCatching {
         val pm = context.packageManager
         pm.getApplicationInfo(packageName, 0).loadLabel(pm).toString()
@@ -275,17 +203,9 @@ class TrafficIngest(
         const val FLUSH_THRESHOLD_BYTES = 1024L * 1024L
         const val CLOSE_TIMEOUT_MS = 500L
 
-        /// Safety valve for a write path that keeps failing: without it the
-        /// pending map grows for the whole session.
         const val MAX_BUFFERED_BYTES = 8L * 1024L * 1024L
 
-        /// Same effect as `AppTrafficDao.upsertDelta`
-        /// (`DITING-Legacy/.../data/dao/AppTrafficDao.kt:48-56`) — accumulate both
-        /// counters, keep the stored name when the new one is empty, stamp
-        /// `updated_at` — expressed as UPDATE + INSERT because `ON CONFLICT DO
-        /// UPDATE` requires SQLite 3.24 (API 30) and this app supports API 24.
-        /// The UPDATE binds the app name twice: the CASE both tests it and
-        /// assigns it.
+        /// UPSERT as UPDATE + INSERT. The CASE keeps a non-empty stored name, so it is bound twice
         const val UPDATE_SQL = """
             UPDATE app_traffic_daily SET
                 app_name = CASE WHEN ? != '' THEN ? ELSE app_name END,

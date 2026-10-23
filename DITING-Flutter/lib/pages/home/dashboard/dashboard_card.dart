@@ -3,12 +3,8 @@ import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 仪表盘卡片。
-///
-/// 上游 `views/dashboard/widgets/card.dart:32-85`。比 [CommonCard] 多两件事：
-/// 阴影分级（e1/e2）与桌面/移动两档圆角。之所以不直接复用 [CommonCard]，
-/// 是因为列表卡的圆角在 16–20，而仪表盘卡要到 32+，混用会让两者贴在一起时
-/// 圆角不协调。
+/// Dashboard card, after upstream views/dashboard/widgets/card.dart. Adds elevation tiers
+/// and a larger radius than [CommonCard]: 32+ here against 16-20 for list cards.
 class DashboardCard extends StatelessWidget {
   const DashboardCard({
     super.key,
@@ -23,8 +19,8 @@ class DashboardCard extends StatelessWidget {
   final VoidCallback? onTap;
   final String? semanticLabel;
 
-  /// 默认不裁剪：按下时控件要能稍微胀出卡片边缘；只有内容自己会溢出的卡片
-  /// （图表）才显式裁。
+  /// Not clipped by default so a pressed control can spill over the edge; only
+  /// charts, whose content can overflow, opt in.
   final Clip clipBehavior;
   final Widget child;
 
@@ -43,7 +39,7 @@ class DashboardCard extends StatelessWidget {
               children: [
                 SizedBox(height: DashboardEditBar.height, child: editBar),
                 const SizedBox(height: DashboardEditBar.gap),
-                // 只罩正文：操作条要保持原色，否则会被灰度滤镜洗淡。
+                // Dim the body only, so the edit bar keeps its colors.
                 DisabledMask(status: true, child: child),
               ],
             ),
@@ -76,14 +72,10 @@ class DashboardCard extends StatelessWidget {
   }
 }
 
-/// 编辑态卡片顶部操作条。
-///
-/// 由仪表盘编辑面板注入，[DashboardCard] 在内容上方为它留出独立一行，卡片
-/// 随之变高。徽标因此落在卡片内部，又不会压住标题或右侧动作。
+/// `DashboardCard` reserves a row for the bar above its content.
 class DashboardEditBar extends InheritedWidget {
   const DashboardEditBar({super.key, required this.bar, required super.child});
 
-  /// 操作条高度与它和正文之间的间距。
   static const height = 28.0;
   static const gap = 10.0;
 
@@ -96,9 +88,7 @@ class DashboardEditBar extends InheritedWidget {
   bool updateShouldNotify(DashboardEditBar oldWidget) => bar != oldWidget.bar;
 }
 
-/// 卡片标题行：图标 + 标题 + 右侧动作。
-///
-/// 高 24 是设计定值（`card.dart:97`）：再高会让卡片顶部留白失衡。
+/// Card title row: icon, title, trailing action. Height 24 is the design value.
 class DashboardCardHeader extends StatelessWidget {
   const DashboardCardHeader({
     super.key,
@@ -115,7 +105,6 @@ class DashboardCardHeader extends StatelessWidget {
   final Glyph? glyph;
   final String title;
 
-  /// 紧跟标题之后、把 [trailing] 推到右端之前的空间里。
   final List<Widget> leading;
   final List<Widget> trailing;
   final bool chevron;
@@ -138,9 +127,8 @@ class DashboardCardHeader extends StatelessWidget {
               size: glyphSize,
               color: colorScheme.onSurfaceVariant,
             ),
-          // 标题与 [leading] 同处一个贴左的组里：标题再长也只是自己省略，徽标始终
-          // 紧跟在标题右边（FlClash `DashboardCappedRow` 的 start/end 分栏效果）。
-          // 剩下 `Expanded` 撑满，才把 [trailing] 顶到右端。
+          // The title sits in a left-anchored group, so it truncates on its own and the
+          // badge stays right after it. The trailing Expanded pushes [trailing] to the end.
           Expanded(
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -171,7 +159,6 @@ class DashboardCardHeader extends StatelessWidget {
   }
 }
 
-/// 卡片内部的小块（比卡片底色深一层）。
 class DashboardBlock extends StatelessWidget {
   const DashboardBlock({
     super.key,
@@ -204,9 +191,7 @@ class DashboardBlock extends StatelessWidget {
 
 enum DashboardChipTone { idle, ok, warn }
 
-/// 状态徽标。
-///
-/// [dot] 打一个前置圆点（在线状态），[large] 用于标题旁的主徽标。
+/// Status badge. [dot] adds a leading dot, [large] is used next to titles.
 class DashboardChip extends StatelessWidget {
   const DashboardChip({
     super.key,
@@ -267,10 +252,8 @@ class DashboardChip extends StatelessWidget {
   }
 }
 
-/// 一行「标签 : 数值」，卡片内部用。
-///
-/// 两个 `Text` 都带 `ellipsis` 且外层不设固定宽：320 宽的一行三格时，每格只有
-/// 约 90dp，「1.2 GB」这类值会被省略而不是撑破父级 `Row`。
+/// One `label : value` row. Both texts ellipsize and the row is unfixed, so `1.2 GB`
+/// truncates on a 320dp row.
 class DashboardMetric extends StatelessWidget {
   const DashboardMetric({
     super.key,
@@ -311,9 +294,8 @@ class DashboardMetric extends StatelessWidget {
   }
 }
 
-/// 卡片右上角的圆形图标按钮。
-///
-/// 24 高的标题行会把默认尺寸的圆钮挤成胶囊，因此这里显式溢出对齐。
+/// Round icon button for the card's top-right corner. The 24-high title row would squeeze a
+/// default button, so it overflows explicitly.
 class DashboardIconButton extends StatelessWidget {
   const DashboardIconButton({
     super.key,
@@ -355,12 +337,8 @@ class DashboardIconButton extends StatelessWidget {
   }
 }
 
-/// M3 Expressive 连接按钮组：两端圆、内侧锐，选中项胀成整颗胶囊。
-///
-/// 上游 `dashboard/widgets/card.dart:270-347` 用自定义 RenderFlex 把按下的那颗
-/// 抬高到同级之上绘制，避免被相邻项压住。这里用普通 `Row`：本仓所有卡片都
-/// 不裁剪（`DashboardCard` 默认 `Clip.none`），膨胀只会溢出到卡片外，不会
-/// 被兄弟遮挡，因此不需要那层自定义渲染对象——少一个易碎点。
+/// M3 Expressive connected button group: round ends, sharp inner edges, the selected
+/// segment inflates into a full pill. A plain Row suffices where upstream uses RenderFlex.
 class DashboardConnectedGroup extends StatelessWidget {
   const DashboardConnectedGroup({
     super.key,
@@ -384,7 +362,6 @@ class DashboardConnectedGroup extends StatelessWidget {
   }
 }
 
-/// 连接按钮组中的一颗。
 class DashboardConnectedButton extends StatelessWidget {
   const DashboardConnectedButton({
     super.key,
@@ -468,7 +445,6 @@ class DashboardConnectedButton extends StatelessWidget {
   }
 }
 
-/// 分段式横向切换条（出站模式这类 2–3 项等宽选择）。
 class DashboardSegmentedControl<T> extends StatelessWidget {
   const DashboardSegmentedControl({
     super.key,

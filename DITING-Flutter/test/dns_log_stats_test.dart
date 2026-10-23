@@ -2,9 +2,7 @@ import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Pins the dashboard header contract: every number must come from the same
-/// day window, and the hit ratio denominator must match the Go engine's
-/// `hitRatio` = hits / (hits + misses) rather than "passed rows only".
+/// Pins the dashboard header: one day window for every number, hit ratio hits / (hits + misses)
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -15,8 +13,7 @@ void main() {
 
   setUp(() async {
     db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-    // Subset of `dns_log` that the dashboard reads: result/cached/message are
-    // the only columns `DnsLogRepository.dailyStats` touches.
+    // Subset of `dns_log` that `DnsLogRepository.dailyStats` reads
     await db.execute(
       'CREATE TABLE dns_log (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
       'timestamp INTEGER NOT NULL, queryName TEXT NOT NULL, '
@@ -72,11 +69,11 @@ void main() {
     });
 
     test('命中率分母含上游失败，不含被规则拦截', () async {
-      // 1 hit + 1 miss + 1 upstream failure → 引擎口径 hits/(hits+misses)。
+      // 1 hit + 1 miss + 1 upstream failure -> hits / (hits + misses).
       await insert(result: 'PASSED', cached: true);
       await insert(result: 'PASSED', cached: false);
       await insert(result: 'ERROR', cached: false);
-      // 被规则拦截的行从不查缓存，不能进分母。
+      // Blocked rows never reach the cache, so they stay out of the denominator.
       await insert(result: 'BLOCKED', cached: false);
 
       final stats = await DnsLogRepository(db).dailyStats();
@@ -88,7 +85,7 @@ void main() {
       await insert(result: 'PASSED', cached: false, message: 'elapsed=10ms');
       await insert(result: 'PASSED', cached: false, message: 'elapsed=30ms');
       await insert(result: 'BLOCKED', cached: false);
-      // 昨天的一行：不得进入今日平均，也不得进入计数。
+      // Yesterday's row must not enter today's average or count.
       await insert(
         result: 'PASSED',
         cached: false,

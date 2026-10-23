@@ -6,19 +6,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 订阅规则拦截率（1.4.3 `SubscriptionInterceptionStatsScreen`）。
-///
-/// 结构照抄旧版：时间范围 → 说明句 → 「概览」组的「全部已记录请求」→
-/// 「屏蔽订阅」组（每条订阅一行：名称 + `状态 | 拦截 N 次 | 比例`）。
-///
-/// 数据源是真实表：分母是 `dns_log` + `http_request_log` 的全部行数，分子只算
-/// `result = BLOCKED`（DNS）与 `outcome IN ('blocked','invalid')`（HTTPS）且
-/// `blockSubscriptionId` 非空的行——与旧版 `subscriptionInterceptionStats` 同口径。
-///
-/// 三种缺数据的情形分别处理，都不伪造数字：
-/// 1. 库文件不存在（全新安装）→ 空状态；
-/// 2. 旧库没有 `blockSubscriptionId` 列 → 空状态 + 「当前数据库缺少该列」说明；
-/// 3. 有库无记录 → 概览显示 0、订阅列表显示「暂无屏蔽订阅」。
+/// Subscription rule block rate. Numerator counts BLOCKED DNS rows and blocked/invalid HTTPS
+/// rows carrying a blockSubscriptionId, matching upstream; missing data is never invented.
 class LogsSubscriptionStatsPage extends ConsumerWidget {
   const LogsSubscriptionStatsPage({super.key});
 

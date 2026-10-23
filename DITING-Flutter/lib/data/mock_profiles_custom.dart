@@ -1,9 +1,7 @@
 part of 'mock_profiles.dart';
 
-/// 节点协议（上游 `ProxyField`/`CustomProxy.type` 的常用子集）。
-///
-/// 每一种只保留演示表单里那几项真正有差异的字段；`defaultPort` 用于新建时
-/// 预填端口，否则每加一个节点都要自己去查端口号。
+/// Proxy protocols (subset of upstream `ProxyField` / `CustomProxy.type`); `defaultPort` pre-fills
+/// the port.
 enum ProxyProtocol {
   shadowsocks('Shadowsocks', 'ss', 8388),
   vmess('VMess', 'vmess', 443),
@@ -19,7 +17,6 @@ enum ProxyProtocol {
   final String value;
   final int defaultPort;
 
-  /// 是否支持 TLS 三件套（TLS / SNI / 跳过证书校验）。
   bool get supportsTls => switch (this) {
     shadowsocks || wireguard => false,
     _ => true,
@@ -29,7 +26,6 @@ enum ProxyProtocol {
       this == shadowsocks || this == vmess || this == trojan;
 }
 
-/// 自建节点。
 class MockProxy {
   const MockProxy({
     required this.id,
@@ -59,13 +55,9 @@ class MockProxy {
   final bool skipCertVerify;
   final bool udp;
 
-  /// 卡片副标题：`协议 · server:port`。
   String get endpoint => '${protocol.label} · $server:$port';
 
-  /// 分享链接（演示用，格式与真实协议一致但内容是编的）。
-  ///
-  /// 只用来演示「分享链接 ↔ 表单」的双向填充，不做真实编码：真编码要 base64
-  /// 每种协议自己的 JSON 结构，演示里没有联网可验证的解析器。
+  /// Demo only: real encoding needs per-protocol base64 JSON.
   String get shareLink => switch (protocol) {
     ProxyProtocol.shadowsocks =>
       'ss://${_fakeBase64('${cipher.isEmpty ? 'aes-256-gcm' : cipher}:$password')}'
@@ -108,8 +100,6 @@ class MockProxy {
   }
 }
 
-/// 演示用的「看起来像 base64」的字符串：真 base64 会让链接长得不像自己能读的
-/// 东西，而这里要的是能一眼看出「这段是加密的用户名密码」。
 String _fakeBase64(String input) => 'YWVzLTI1Ni1nY206${_fakeUuid(input)}';
 
 String _fakeUuid(String seed) {
@@ -118,7 +108,6 @@ String _fakeUuid(String seed) {
   return '${hex.substring(0, 8)}-4b1d-9c2e-${hex.substring(0, 4)}-a0f12d3c5e6b';
 }
 
-/// 代理组类型（上游 `GroupType`）。
 enum GroupKind {
   selector('手动选择', 'select', '由用户指定一个出口'),
   urlTest('自动测速', 'url-test', '定期测速，选延迟最低的'),
@@ -132,13 +121,12 @@ enum GroupKind {
   final String value;
   final String description;
 
-  /// 只有自动测速类需要测速地址与间隔。
+  /// Only the auto-probing kinds need a probe URL and interval.
   bool get needsProbe => this == urlTest || this == fallback;
 
   bool get needsStrategy => this == loadBalance;
 }
 
-/// 负载均衡策略（上游 `LoadBalanceStrategy`）。
 enum BalanceStrategy {
   consistentHashing('一致性哈希', 'consistent-hashing'),
   roundRobin('轮询', 'round-robin'),
@@ -150,7 +138,6 @@ enum BalanceStrategy {
   final String value;
 }
 
-/// 代理组。
 class MockProxyGroup {
   const MockProxyGroup({
     required this.id,
@@ -171,7 +158,7 @@ class MockProxyGroup {
   final String name;
   final GroupKind kind;
 
-  /// 组内成员顺序即优先级（fallback / relay 依赖它）。
+  /// Member order is priority order; fallback and relay depend on it.
   final List<String> members;
   final String filter;
   final List<String> useProviders;
@@ -212,7 +199,6 @@ class MockProxyGroup {
   }
 }
 
-/// 自定义规则类型（上游 `RuleAction` 的常用子集）。
 enum CustomRuleType {
   domain('DOMAIN', '完整域名', 'example.com'),
   domainSuffix('DOMAIN-SUFFIX', '域名后缀', 'example.com'),
@@ -229,16 +215,15 @@ enum CustomRuleType {
   final String value;
   final String label;
 
-  /// 内容输入框的占位提示；每种类型的合法内容差别很大。
+  /// Placeholder for the content field; valid content differs per type.
   final String hint;
 
-  /// 域名类规则可以加 `no-resolve` 之外的排查选项；只有 IP 类需要 no-resolve。
+  /// Only the IP-based types support `no-resolve`.
   bool get supportsNoResolve => this == ipCidr || this == geoip;
 
   bool get supportsSrc => this == ipCidr || this == dstPort;
 }
 
-/// 自定义规则（上游 `Rule`）。
 class MockCustomRule {
   const MockCustomRule({
     required this.id,
@@ -258,7 +243,7 @@ class MockCustomRule {
   final bool src;
   final bool disabled;
 
-  /// 规则的一行文本形式，与 YAML 里写法一致，用于快速编辑。
+  /// One-line rule text, same syntax as YAML, for quick editing.
   String get text {
     final flags = [
       if (noResolve) 'no-resolve',
@@ -289,7 +274,6 @@ class MockCustomRule {
   }
 }
 
-/// 代理提供者（上游 `proxy-providers`）。
 class MockProxyProvider {
   const MockProxyProvider({
     required this.id,
@@ -312,7 +296,6 @@ class MockProxyProvider {
   final bool enabled;
 }
 
-/// 规则提供者（上游 `rule-providers`）。
 class MockRuleProvider {
   const MockRuleProvider({
     required this.id,
@@ -328,14 +311,14 @@ class MockRuleProvider {
   final String name;
   final String url;
 
-  /// `domain` / `ipcidr` / `classical`，决定规则内容怎么解析。
+  /// `domain`, `ipcidr` or `classical`; decides how the content is parsed.
   final String behavior;
   final int ruleCount;
   final String updatedAt;
   final String format;
 }
 
-/// 拨号器：把某个节点或组的出站请求再套一层（上游 `dialer-proxy`）。
+/// Dialer: wraps the outbound of a node or group (upstream `dialer-proxy`).
 class MockDialer {
   const MockDialer({required this.proxyName, required this.target});
 

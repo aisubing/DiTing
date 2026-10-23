@@ -1,18 +1,4 @@
-/// 应用独立规则的草稿模型、列表筛选与行组件。
-///
-/// 从 `app_rules_page.dart` 拆出来是因为那个文件本来就有 502 行，再往里加
-/// 「真实数据源 + 持久化 + 过滤排序」必然突破 550 的上限。
-///
-/// 数据源分工（1.4.3 的 `AppRuleViewModel`）：
-/// - **网络层放行域名**（白名单隔离）：`app_allowlist_rules_json`，一个
-///   `Map<包名, Set<域名>>`，引擎侧走 `Engine.setAppAllowlist`；本文件只碰这一份。
-/// - **DNS 专属黑/白名单**：1.4.3 存在 Room 的 `block_rule` / `allow_rule` 里，
-///   靠 `appScope` 列区分应用。现在 `RuleRepository` 已补上按应用读写
-///   （`loadForApp` / `addForApp` / `setFullBlock`），页面用
-///   `appScopedRulesProvider` 读、`AppScopedRulesController` 写；规则随快照的
-///   `appRules[pkg]` 下发，不会泄露成全局拦截。
-/// - **默认拦截全部外联**：上游是往 `block_rule` 注入 `*$app=<包名>`（`setFullBlock`），
-///   由「外联与隔离模式」里的开关真实读写。
+/// Draft model, filtering and rows for per-app rules; split out to stay under the line cap.
 library;
 
 import 'package:diting/data/mock_data.dart';
@@ -23,26 +9,20 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 页面内的可变草稿：总开关 + 每应用的放行域名。
-///
-/// 用可变对象而不是每键复制整张 map：详情面板里增删域名时都改它，保存时才落盘，
-/// 与上游「面板里即时落盘、列表页读回」的行为不同却有同样的可见结果——1.4.3
-/// 的 `SingleAppRulePanel` 也是每次增删立刻写 `setAppAllowlistDomainsForApp`，
-/// 但它同时刷新了 `appAllowlistMap`，所以用户看不出差别。这里选择「保存时一次
-/// 写入」，好处是取消/返回不会留下半改状态。
+/// Mutable draft written once on save, unlike upstream write-through, so cancelling leaves
+/// nothing behind.
 class AppRulesDraft {
   AppRulesDraft({required this.master, required Map<String, Set<String>> rules})
     : _baseline = _copy(rules),
       _baselineMaster = master,
       _rules = _copy(rules);
 
-  /// 从 prefs 建草稿。
   factory AppRulesDraft.load(LegacySettings settings) => AppRulesDraft(
     master: settings.appAllowlistEnabled,
     rules: settings.appAllowlistRules,
   );
 
-  /// `app_allowlist_enabled` 总开关。
+  /// The `app_allowlist_enabled` master switch.
   bool master;
 
   final Map<String, Set<String>> _baseline;
@@ -51,7 +31,6 @@ class AppRulesDraft {
 
   Map<String, Set<String>> get rules => _rules;
 
-  /// 已配置的应用数（只算放行域名非空的）。
   int get configuredApps => _rules.length;
 
   int get totalDomains =>
@@ -76,8 +55,8 @@ class AppRulesDraft {
     }
     domains.remove(domain);
     if (domains.isEmpty) {
-      // 空集合与「没配置」在 1.4.3 里等价（`getAppAllowlistRuleMap` 只保留非空
-      // 项），留着空集合会让列表页把该应用算成「已配置」。
+      // An empty set equals "not configured" in 1.4.3; keeping it would count the app as
+      // configured.
       _rules.remove(packageName);
     }
   }
@@ -86,7 +65,6 @@ class AppRulesDraft {
 
   void clearAll() => _rules.clear();
 
-  /// 草稿是否与落盘值不同（决定「保存」按钮是否可点）。
   bool get dirty {
     if (master != _baselineMaster) {
       return true;
@@ -106,7 +84,6 @@ class AppRulesDraft {
     return false;
   }
 
-  /// 记下新基线（保存成功后调用，让「保存」按钮回到不可点）。
   void commit() {
     _baseline
       ..clear()
@@ -114,7 +91,7 @@ class AppRulesDraft {
     _baselineMaster = master;
   }
 
-  /// 落盘值的指纹，和 [appRulesKey] 同一套编码。
+  /// Fingerprint of the stored value, encoded like [appRulesKey].
   String get baselineKey => appRulesKey(_baselineMaster, _baseline);
 
   static Map<String, Set<String>> _copy(Map<String, Set<String>> source) => {
@@ -122,11 +99,9 @@ class AppRulesDraft {
   };
 }
 
-/// 判断 prefs 上的值是否变了（用于决定要不要丢弃本地草稿）。
-///
-/// 不用 `==` 比 map/set：`LegacySettings` 每次都返回新建的对象，深比较更直观
-/// 也便宜（规则条数是个位数）。签名里包名与域名都排过序，所以「别人的写入」
-/// 与「自己刚保存的值」会被视为同一个状态。
+/// Changed-value check for dropping the local draft. Compares fingerprints because
+/// `LegacySettings` returns fresh objects; the signature sorts keys, so an external write
+/// and our own save look identical.
 String appRulesKey(bool master, Map<String, Set<String>> rules) {
   final parts = <String>[];
   for (final packageName in rules.keys.toList()..sort()) {
@@ -136,10 +111,8 @@ String appRulesKey(bool master, Map<String, Set<String>> rules) {
   return '$master|${parts.join(';')}';
 }
 
-/// 落盘：`app_allowlist_enabled` + `app_allowlist_rules_json`。
-///
-/// 写后必须 `bump()`：`SharedPreferences` 写入不可观察，不 bump 的话其他页面
-/// （以及本页重建后的列表）会一直读旧值。
+/// Persists `app_allowlist_enabled` and `app_allowlist_rules_json`; must `bump()`
+/// afterwards, since `SharedPreferences` writes are not observable.
 void saveAppRules(WidgetRef ref, AppRulesDraft draft) {
   ref.writeSettings((settings) {
     settings.setAppAllowlistEnabled(draft.master);
@@ -147,8 +120,6 @@ void saveAppRules(WidgetRef ref, AppRulesDraft draft) {
   });
 }
 
-/// 列表排序：已配置的排前面（1.4.3 的 `compareByDescending { hasAnyConfig }`），
-/// 其余按选中的 `AppListSort`。
 List<InstalledApp> appRulesVisibleApps({
   required List<InstalledApp> apps,
   required String query,
@@ -176,7 +147,6 @@ List<InstalledApp> appRulesVisibleApps({
   return visible;
 }
 
-/// 应用列表里的一行：名称 + 包名 + 放行域名数。
 class AppRuleAppRow extends StatelessWidget {
   const AppRuleAppRow({
     super.key,
@@ -211,7 +181,6 @@ class AppRuleAppRow extends StatelessWidget {
   }
 }
 
-/// 一条放行域名（详情面板里的一行）。
 class AppAllowDomainRow extends StatelessWidget {
   const AppAllowDomainRow({
     super.key,
@@ -237,7 +206,7 @@ class AppAllowDomainRow extends StatelessWidget {
   }
 }
 
-/// 「添加放行域名」对话框，返回清洗后的域名或 null。
+/// "Add allow domain" dialog, returning a sanitized domain or null.
 Future<String?> showAppAllowDomainDialog(BuildContext context) async {
   return showFloatingDialog<String>(
     context: context,
@@ -245,8 +214,8 @@ Future<String?> showAppAllowDomainDialog(BuildContext context) async {
   );
 }
 
-/// 放行域名输入弹窗；控制器由弹窗自己持有（见 `InputDialog` 的同一套生命周期：
-/// 调用方 `await` 之后立刻 dispose 会在退场动画中途把输入框的依赖弄失效）。
+/// Allow-domain input dialog. The controller is owned by the dialog: disposing it right
+/// after `await` invalidates the field's dependencies mid exit animation.
 class _AllowDomainDialog extends StatefulWidget {
   const _AllowDomainDialog();
 
@@ -298,7 +267,6 @@ class _AllowDomainDialogState extends State<_AllowDomainDialog> {
   }
 }
 
-/// 一条按应用生效的 DNS 规则（黑/白名单）行。
 class AppScopedRuleRow extends StatelessWidget {
   const AppScopedRuleRow({
     super.key,
@@ -345,14 +313,10 @@ class AppScopedRuleRow extends StatelessWidget {
   }
 }
 
-/// 「添加 DNS 规则」对话框的返回值：类型 + 清洗后的域名。
 typedef AppScopedRuleInput = ({RuleKind kind, String pattern});
 
-/// 「添加 DNS 专属规则」对话框：选黑/白名单 + 填裸域名。
-///
-/// 与放行域名对话框同一套输入清洗：只接受裸域名，避免把 `@@||x^` 这类未解析的
-/// 规则串原样写进 `block_rule` / `allow_rule`（引擎读到的会是一个永远匹配不上的
-/// 字符串）。控制器由弹窗自己持有（见 `InputDialog` 的生命周期约定）。
+/// "Add app DNS rule" dialog. Bare domains only: an unparsed rule such as `@@||x^` would
+/// never match in `block_rule` / `allow_rule`. The controller is owned by the dialog.
 Future<AppScopedRuleInput?> showAppScopedRuleDialog(
   BuildContext context,
   String packageName,

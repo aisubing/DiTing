@@ -1,11 +1,6 @@
-/// 全局软件背景层：在整棵界面之下垫一张壁纸，并叠一层与旧版一致的遮罩。
-///
-/// 1.4.3 `AppThemeSurface` 的做法是：开启自定义背景时把页面 `background` 设为透明，
-/// 在 `Surface` 里先画 `ContentScale.Crop` 的壁纸，再叠一层黑色遮罩（深色 0.34，
-/// 浅色 0.16），最后才是页面内容。这里复用同一套参数。
-///
-/// 壁纸路径来自原生缓存（`BackgroundBridge.resolve`），Dart 用 `Image.file` 渲染。
-/// resolve 只做一次并缓存：每次 rebuild 都重新发起原生调用会让壁纸闪一下。
+/// App-wide background layer: a wallpaper under the whole UI plus the same scrim upstream used
+/// (0.34 dark, 0.16 light). The path comes from the native cache (`BackgroundBridge.resolve`) and
+/// is resolved once per URI; re-resolving on rebuild makes the wallpaper flicker.
 library;
 
 import 'dart:io';
@@ -17,7 +12,7 @@ import 'package:material_ui/material_ui.dart';
 class AppBackgroundLayer extends ConsumerStatefulWidget {
   const AppBackgroundLayer({super.key, required this.uri, required this.child});
 
-  /// 当前壁纸的原始 URI（用它去原生侧换本地缓存路径）。
+  /// Original wallpaper URI, exchanged for a local cache path natively.
   final String uri;
   final Widget child;
 
@@ -61,7 +56,7 @@ class _AppBackgroundLayerState extends ConsumerState<AppBackgroundLayer> {
             );
           },
         ),
-        // 遮罩：壁纸偏亮时压暗，保证文字对比度。与旧版 0.34 / 0.16 一致。
+        // Scrim keeps text legible on bright wallpapers.
         ColoredBox(color: Colors.black.withValues(alpha: dark ? 0.34 : 0.16)),
         widget.child,
       ],

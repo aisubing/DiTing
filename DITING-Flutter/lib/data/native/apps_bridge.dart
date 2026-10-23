@@ -1,23 +1,12 @@
-/// Dart side of `com.haoze.diting/apps`: the *real* installed-app inventory.
-///
-/// 1.4.3 enumerated applications through `PackageManager` with
-/// `QUERY_ALL_PACKAGES` (`DITING-Legacy/app/src/main/AndroidManifest.xml`); the
-/// migrated Manifest dropped the permission, so every picker page fell back to
-/// `mockInstalledApps` / `mockPackages` constants. This channel restores the
-/// real list.
-///
-/// The channel is deliberately read-only: selection state stays in
-/// `SharedPreferences` (`blocked_app_packages`, `excluded_app_packages`,
-/// `http_inspection_app_packages`, `app_allowlist_rules_json`), which the
-/// existing `LegacyPrefsBridge` already writes.
+/// Dart side of `com.haoze.diting/apps`: installed-app inventory, read-only, selection state in
+/// `SharedPreferences`. The migrated Manifest dropped `QUERY_ALL_PACKAGES`, so this channel
+/// restores the real list.
 library;
 
 import 'package:flutter/services.dart';
 
 const appsChannelName = 'com.haoze.diting/apps';
 
-/// One installed application, in the shape `InstalledAppPickerComponents`
-/// consumed in 1.4.3.
 class InstalledApp {
   const InstalledApp({
     required this.packageName,
@@ -29,17 +18,13 @@ class InstalledApp {
   final String packageName;
   final String label;
 
-  /// `AppListFilter.SYSTEM` in 1.4.3 was `(applicationInfo.flags and
-  /// FLAG_SYSTEM) != 0`; the picker offered USER / SYSTEM / ALL / SELECTED.
+  /// From `AppListFilter.SYSTEM`; pickers offer USER / SYSTEM / ALL / SELECTED.
   final bool isSystem;
 
-  /// Resolved with `PackageManager.getPackageUid(packageName, 0)`. The engine
-  /// needs UIDs, not package names (`setBlockedUIDs`, `setMitmAllowedUIDs`,
-  /// `setAppAllowlist`), so resolving them once here avoids a second round trip
-  /// per toggle.
+  /// Resolves names to UIDs with `getPackageUid`, since the engine needs UIDs (`setBlockedUIDs`,
+  /// `setMitmAllowedUIDs`); one round trip instead of one per toggle.
   final int uid;
 
-  /// 1.4.3 matched the debounced query against both fields, lowercased.
   bool matches(String query) {
     if (query.isEmpty) return true;
     final needle = query.toLowerCase();
@@ -55,19 +40,15 @@ class InstalledApp {
   );
 }
 
-/// Source of truth for "which apps exist on this device".
 abstract class InstalledAppsSource {
-  /// Sorted by label, exactly like `AppListSort.LABEL_ASC` (the 1.4.3 default).
   Future<List<InstalledApp>> list();
 
-  /// Package name → UID. Missing packages are absent from the map rather than
-  /// mapped to -1, so callers can drop uninstalled selections instead of
-  /// handing the engine an invalid UID.
+  /// Package name to UID; missing packages are absent rather than -1, so callers can drop
+  /// uninstalled selections.
   Future<Map<String, int>> resolveUids(Iterable<String> packages);
 
-  /// True when [packageName] is this app. 1.4.3 refuses to let the user block,
-  /// exclude, inspect or proxy the app itself — blocking 谛听's own UID would
-  /// cut the tunnel's control plane.
+  /// True when [packageName] is this app. Blocking or proxying our own UID would cut the tunnel's
+  /// control plane.
   Future<bool> isSelf(String packageName);
 }
 
@@ -110,10 +91,8 @@ class MethodChannelInstalledAppsSource implements InstalledAppsSource {
       false;
 }
 
-/// Used by widget tests and any non-Android host: an empty device.
-///
-/// Returning an empty list (not throwing) keeps every picker page in its
-/// documented "no apps" state instead of crashing inside `FutureProvider`.
+/// Empty device for widget tests and non-Android hosts, keeping pickers in their "no apps" state
+/// instead of crashing.
 class EmptyInstalledAppsSource implements InstalledAppsSource {
   const EmptyInstalledAppsSource();
 

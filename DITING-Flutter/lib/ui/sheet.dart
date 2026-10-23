@@ -58,8 +58,7 @@ Future<T?> showSheet<T>({
   );
 }
 
-/// Opens a form: a bottom sheet in the mobile layout, and elsewhere a card
-/// centered over the navigator, as iPad and macOS present a form sheet.
+/// Opens a form: a bottom sheet on mobile, elsewhere a card over the navigator, as iPad does.
 Future<T?> showFormSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -129,13 +128,7 @@ Future<T?> showExtend<T>(
   };
 }
 
-/// Opens a sheet the reader can drag between [snapSheetDetents], starting at
-/// the shortest. Where a sheet cannot have detents the
-/// content keeps its own scroll controller and [initialScrollOffset] is the
-/// caller's own business.
-///
-/// The sheet follows the view across the mobile breakpoint: it reopens in the
-/// other form, and the result is whichever form the reader closes.
+/// Opens a sheet the reader can drag between [snapSheetDetents], starting at the shortest.
 Future<T?> showSnapSheet<T>(
   BuildContext context, {
   required SnapSheetBuilder builder,

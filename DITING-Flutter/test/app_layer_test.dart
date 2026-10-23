@@ -11,7 +11,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_vpn_controller.dart';
 
-/// 应用层纯逻辑用例（不挂 UI，因此不受页面实现进度影响）。
 void main() {
   group('AppThemeSpec 值语义', () {
     test('同参构造相等且 hashCode 一致', () {
@@ -35,8 +34,7 @@ void main() {
   });
 
   group('buildAppTheme 装配顺序', () {
-    // 顺序是 load-bearing：纯黑必须在 seededColorScheme 之后、shape/surface/type
-    // 之前，否则 surface 会重新算出带色偏的深色。
+    // Order matters: pure black goes after seededColorScheme, before surface recomputes a tint
     test('纯黑主题的 surface 是纯黑', () {
       final theme = buildAppTheme(
         const AppThemeSpec(
@@ -90,7 +88,7 @@ void main() {
       final theme = buildAppTheme(
         const AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light),
       );
-      // AppShape 把 Card 圆角设成 AppCorner.md，若漏了 withAppShapes 这里会是 M3 默认值。
+      // Without withAppShapes the Card radius stays the M3 default.
       expect(theme.cardTheme.shape, isNotNull);
       expect(theme.textTheme.bodyMedium?.fontFamilyFallback, isNotNull);
     });
@@ -135,7 +133,6 @@ void main() {
     test('system 用默认种子色；blue 就是默认蓝，两者 effectiveSeed 相同', () {
       expect(AppPalette.system.effectiveSeed, defaultPrimaryColor);
       expect(AppPalette.blue.effectiveSeed, defaultPrimaryColor);
-      // 其余色板各有自己的种子色。
       for (final palette in AppPalette.values) {
         if (palette == AppPalette.system || palette == AppPalette.blue) {
           continue;
@@ -185,8 +182,8 @@ void main() {
 
     test('切换色板后 effectiveSeed 跟着变', () {
       final c = container();
-      // 1.4.3 未设置 `theme_color_style` 时回退 SYSTEM（旧枚举的默认值），
-      // Flutter 侧没有 Monet，SYSTEM 退化为默认蓝。
+      // Unset `theme_color_style` falls back to SYSTEM in 1.4.3, which degrades to M3 blue without
+      // Monet
       expect(c.read(paletteProvider), AppPalette.system);
       c.read(paletteProvider.notifier).select(AppPalette.purple);
       expect(c.read(paletteProvider).effectiveSeed, AppPalette.purple.effectiveSeed);
@@ -207,13 +204,11 @@ void main() {
       expect(defaults.length, greaterThanOrEqualTo(2));
       expect(defaults.length, lessThanOrEqualTo(maxDockDestinations));
 
-      // 全部打开：被上限挡住。
       for (final destination in BottomBarDestination.values) {
         notifier.toggle(destination);
       }
       expect(c.read(bottomBarProvider).length, maxDockDestinations);
 
-      // 全部关掉：被 2 项下限挡住。
       for (final destination in BottomBarDestination.values) {
         notifier.toggle(destination);
       }

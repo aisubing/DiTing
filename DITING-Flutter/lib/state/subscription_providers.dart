@@ -1,13 +1,5 @@
-/// 订阅域的真实数据源：读旧库 `subscription` / `subscription_group`，更新走真实
-/// HTTP 下载 + 真实规则解析与入库。
-///
-/// 与演示版的三个关键差别：
-/// 1. 列表来自 `diting_database`（普通/服务器）或 `diting_express`（极速）里
-///    1.4.3 的 Room 表，不再有 `mockSubscriptions` 播种；
-/// 2. 更新是**真发包**（[HttpSubscriptionFetcher]），304 / HTTP 错误 / 超时
-///    分别落成 `ready` / `failed` 三种状态；
-/// 3. 正文下载后经 `lib/data/rules/` 解析成 block/allow/rewrite 并按
-///    `sub_<id>` 来源写进规则表，`ruleCount` 是**真实入库条数**。
+/// Real subscription data from the 1.4.3 Room tables; updates parse the body into rules tagged
+/// `sub_<id>`.
 library;
 
 import 'package:diting/data/db/legacy_database.dart';
@@ -22,7 +14,7 @@ import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// 普通与服务器模式共用 `diting_database`；极速模式有独立文件。
+/// Normal and server mode share `diting_database`; express has its own file.
 final subscriptionDatabaseFileProvider = Provider<String>((ref) {
   final mode = ref.watch(workModeProvider);
   return mode == AppWorkMode.express
@@ -30,12 +22,12 @@ final subscriptionDatabaseFileProvider = Provider<String>((ref) {
       : LegacyDatabase.mainFile;
 });
 
-/// `null` 表示全新安装（旧库文件还不存在），此时列表为空而不是报错。
+/// Null on a fresh install (no legacy file yet), giving an empty list.
 final subscriptionDatabaseProvider = FutureProvider<Database?>(
   (ref) => LegacyDatabase.open(ref.watch(subscriptionDatabaseFileProvider)),
 );
 
-/// 任何写操作后自增，让所有读订阅表的 provider 一起重建。
+/// Bumped by every write so all subscription readers rebuild together.
 class SubscriptionRevisionNotifier extends Notifier<int> {
   @override
   int build() => 0;
@@ -48,18 +40,18 @@ final subscriptionRevisionProvider =
       SubscriptionRevisionNotifier.new,
     );
 
-/// 真实的下载实现；测试用 `overrideWithValue` 注入 fake。
+/// Real fetcher; tests inject a fake with `overrideWithValue`.
 final subscriptionFetcherProvider = Provider<SubscriptionFetcher>(
   (ref) => HttpSubscriptionFetcher(),
 );
 
-/// 规则入库器：与订阅仓库共用同一个库句柄。库不存在时为 null。
+/// Rule importer sharing the repository handle; null without a database.
 final ruleImporterProvider = FutureProvider<RuleImporter?>((ref) async {
   final db = await ref.watch(subscriptionDatabaseProvider.future);
   return db == null ? null : RuleImporter(db);
 });
 
-/// 订阅仓库：没有旧库时返回 null，调用方据此渲染空状态。
+/// Subscription repository; null without a legacy database.
 final subscriptionRepositoryProvider = FutureProvider<SubscriptionRepository?>((
   ref,
 ) async {
@@ -73,13 +65,13 @@ final subscriptionRepositoryProvider = FutureProvider<SubscriptionRepository?>((
   );
 });
 
-/// 一条订阅在 UI 上的展开形态（模型 + 分组名 + 派生文案）。
+/// A subscription as rendered (model plus group name and derived labels).
 class SubscriptionEntry {
   const SubscriptionEntry({required this.record, this.groupName});
 
   final SubscriptionRecord record;
 
-  /// `groupId` 解析出来的分组名；null 表示「未分组」。
+  /// Resolved group name; null means ungrouped.
   final String? groupName;
 
   int get id => record.id;
@@ -95,11 +87,7 @@ class SubscriptionEntry {
   int get lastUpdated => record.lastUpdated;
   int get lastAttemptAt => record.lastAttemptAt;
 
-  /// `ruleCount` 现在是**真实入库条数**（解析后写进 `block_rule` /
-  /// `allow_rule` / `rewrite_rule` / `go_url_rule` 的行数）。
-  ///
-  /// 恒为 `false`：解析链已移植，不再需要「词法行数」的免责说明。保留这个 getter
-  /// 是为了让仍按旧口径写文案的调用点被编译器/测试盯住，而不是让它们悄悄说错话。
+  /// Always false, since the parse chain is ported; kept so tests catch stale callers.
   bool get ruleCountIsLexicalOnly => false;
 
   bool get isRemote => record.isRemote;
@@ -107,13 +95,13 @@ class SubscriptionEntry {
   bool get isImporting =>
       record.importState == SubscriptionImportState.importing;
 
-  /// 分组 chip 的键。`null` 分组统一显示「未分组」。
+  /// Group chip key; a null group is shown as ungrouped.
   String get groupKey => groupName ?? ungroupedLabel;
 
   static const ungroupedLabel = '未分组';
 }
 
-/// 全部订阅 + 全部分组。分组名用它解析，未命中落到「未分组」。
+/// All subscriptions and groups; group names resolve from here.
 final subscriptionEntriesProvider = FutureProvider<List<SubscriptionEntry>>((
   ref,
 ) async {
@@ -131,7 +119,7 @@ final subscriptionEntriesProvider = FutureProvider<List<SubscriptionEntry>>((
   ];
 });
 
-/// 分组列表（`subscription_group` 表，顺序即 `addedAt ASC, name NOCASE ASC`）。
+/// Groups from `subscription_group`, ordered by `addedAt ASC, name NOCASE ASC`.
 final subscriptionGroupsProvider =
     FutureProvider<List<SubscriptionGroupRecord>>((ref) async {
       ref.watch(subscriptionRevisionProvider);
@@ -141,7 +129,7 @@ final subscriptionGroupsProvider =
           : repository.groups();
     });
 
-/// 当前选中的分组 id；`null` 表示「全部」。
+/// Selected group id; null means all groups.
 class SubscriptionGroupFilterNotifier extends Notifier<int?> {
   @override
   int? build() => null;
@@ -154,7 +142,7 @@ final subscriptionGroupFilterProvider =
       SubscriptionGroupFilterNotifier.new,
     );
 
-/// 当前分组下的订阅。筛选放在 provider 里，页面只负责渲染。
+/// Subscriptions in the selected group; filtering stays out of the page.
 final filteredSubscriptionsProvider = Provider<List<SubscriptionEntry>>((ref) {
   final groupId = ref.watch(subscriptionGroupFilterProvider);
   final entries = ref.watch(subscriptionEntriesProvider).value ?? const [];
@@ -167,8 +155,7 @@ final filteredSubscriptionsProvider = Provider<List<SubscriptionEntry>>((ref) {
   ];
 });
 
-/// 更新进度与忙碌标记。三者放一个 notifier：进度和「哪几条正在更新」必须同帧
-/// 变化，拆开会让卡片先转圈、再出进度条，出现一次可见错位。
+/// Update progress and busy flags in one notifier, so they change in the same frame.
 class SubscriptionUpdateState {
   const SubscriptionUpdateState({
     this.updatingIds = const {},
@@ -180,10 +167,10 @@ class SubscriptionUpdateState {
   final Set<int> updatingIds;
   final bool updatingAll;
 
-  /// 0..1，全部更新时按已完成条数推进。
+  /// 0..1, advanced by completed rows during update-all.
   final double progress;
 
-  /// 最近一次批量更新的结果摘要（如「3 个已更新，1 个未变化，1 个失败」）。
+  /// Summary of the last bulk update, e.g. "3 updated, 1 unchanged, 1 failed".
   final String? lastMessage;
 
   bool get isBusy => updatingAll || updatingIds.isNotEmpty;
@@ -206,12 +193,8 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
   @override
   SubscriptionUpdateState build() => const SubscriptionUpdateState();
 
-  /// 单条更新。更新中重复点击直接返回，避免同一行叠加两次下载。
-  ///
-  /// 条目来源是 `subscriptionRepositoryProvider` 的**实时快照**，而不是
-  /// `subscriptionEntriesProvider.value` 的缓存：添加面板刚 `insert` 完就立刻
-  /// 调这里，而列表 provider 可能还没重建完，读缓存会拿到不含新行的旧列表，
-  /// 于是「添加后自动更新一次」静默什么都不做。
+  /// Updates one subscription; re-entry returns immediately. Reads a live snapshot, as `insert`
+  /// leaves the cache stale.
   Future<SubscriptionFetchResult?> updateOne(int id) async {
     if (state.isBusy) {
       return null;
@@ -232,7 +215,7 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
     return result;
   }
 
-  /// 从数据库直接取一条（含分组名），不走列表 provider 的缓存。
+  /// Loads one entry with its group name straight from the database.
   Future<SubscriptionEntry?> _loadEntry(int id) async {
     final repository = await ref.read(subscriptionRepositoryProvider.future);
     if (repository == null) {
@@ -250,10 +233,7 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
     return SubscriptionEntry(record: record, groupName: groupName);
   }
 
-  /// 全部更新：逐条串行，进度按条数推进。
-  ///
-  /// 串行而不是并发：上游走同一条 WorkManager 队列，并发会让「正在更新 2/5」
-  /// 的文案失去意义，也会让连续失败计数在竞争下失真。
+  /// Updates all serially like upstream's single WorkManager queue.
   Future<void> updateAll(List<SubscriptionEntry> targets) async {
     if (state.isBusy || targets.isEmpty) {
       return;
@@ -284,15 +264,14 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
     );
   }
 
-  /// 跑一条，并把结果落库。异常一律转成失败结果，不能让 UI 卡在忙碌态。
+  /// Runs one update and records the result; exceptions become failures so the UI never stays busy.
   Future<SubscriptionFetchResult> _runOne(SubscriptionEntry entry) async {
     final repository = await ref.read(subscriptionRepositoryProvider.future);
     if (repository == null) {
       return const SubscriptionFetchResult.failed('订阅数据库不可用');
     }
     if (!entry.isRemote) {
-      // 本地文件订阅没有可下载的地址，与上游
-      // `SubscriptionUpdateOutcome.Failed("本地文件订阅无法更新")` 一致。
+      // Local-file subscriptions have no URL, matching upstream's failure.
       await repository.markUpdateFailed(
         entry.id,
         error: '本地文件订阅无法更新',
@@ -317,11 +296,10 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
           lastModified: result.lastModified ?? entry.record.httpLastModified,
         );
       case SubscriptionFetchOutcome.content:
-        // 解析 + 入库。条数用**真实写入条数**，不是词法行数。
+        // Parse and import; the count is rows actually written.
         final imported = await _importContent(entry, result.content ?? '');
         if (imported == null) {
-          // 库不可用：正文下载成功但落不了盘，必须报失败，不能显示「已更新」
-          // 而库里一条规则都没有。
+          // A download that cannot be stored must report failure, not "updated".
           await repository.markUpdateFailed(
             entry.id,
             error: '规则库不可用，下载的规则无法入库',
@@ -346,11 +324,8 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
     return result;
   }
 
-  /// 解析正文并写规则表；返回 null 表示规则库不可用。
-  ///
-  /// 先删该订阅的旧规则再导新的：订阅内容是「当前全量」，增量追加会让上一版
-  /// 已经移除的域名永远留在库里。删除只动 `sub_<id>` 来源行，用户手加或别的
-  /// 订阅引用的同一 pattern 不受影响。
+  /// Parses the body and rewrites the rule tables for `sub_<id>` only; null without a rule
+  /// database.
   Future<RuleImportSummary?> _importContent(
     SubscriptionEntry entry,
     String content,
@@ -394,7 +369,7 @@ final subscriptionUpdateProvider =
       SubscriptionUpdateNotifier.new,
     );
 
-/// 添加订阅的结果。失败时带上可读原因，面板据此给字段级提示。
+/// Result of adding a subscription; failures carry a readable reason.
 sealed class AddSubscriptionResult {
   const AddSubscriptionResult();
 }
@@ -409,7 +384,6 @@ class AddSubscriptionFailure extends AddSubscriptionResult {
   final String message;
 }
 
-/// 订阅写操作入口：添加 / 启停 / 重命名 / 删除。
 class SubscriptionActions {
   const SubscriptionActions(this._ref);
 
@@ -459,7 +433,7 @@ class SubscriptionActions {
         ruleCount: 0,
         lastUpdated: 0,
         addedAt: now,
-        // 与上游 `addSubscription` 一致：新行先落 `importing`，下载完成后再改。
+        // Like upstream `addSubscription`: the row starts as `importing`.
         importState: SubscriptionImportState.importing,
         lastAttemptAt: 0,
         consecutiveFailureCount: 0,
@@ -471,11 +445,8 @@ class SubscriptionActions {
     return AddSubscriptionOk(id);
   }
 
-  /// 订阅总开关。
-  ///
-  /// 除了写 `subscription.enabled`，还要把该订阅的**来源行**一起置 0/1：
-  /// 规则是否生效取决于「规则行启用 && 至少一个来源行启用」，只改订阅行会让
-  /// 关掉的订阅继续拦截（规则行仍然是 1）。
+  /// Master switch; also flips its source rows, since a rule is active only when both it and a
+  /// source are enabled.
   Future<void> setEnabled(int id, bool enabled) async {
     await (await _ref.read(subscriptionRepositoryProvider.future))
         ?.setEnabled(id, enabled);
@@ -492,10 +463,7 @@ class SubscriptionActions {
         ?.setName(id, trimmed);
   }
 
-  /// 删除订阅，并清掉它贡献的规则。
-  ///
-  /// 顺序是先删规则再删订阅行：反过来的话，若第二步失败就留下一批没有主的规则
-  /// 继续拦截，用户会看到「订阅已删除但域名还是打不开」。
+  /// Deletes rules first; the other order would leave ownerless rules blocking.
   Future<void> remove(int id) async {
     await (await _ref.read(ruleImporterProvider.future))
         ?.removeRulesBySource(subscriptionSourceTag(id));
@@ -503,7 +471,7 @@ class SubscriptionActions {
         ?.deleteById(id);
   }
 
-  /// 新建分组并返回 id；同名已存在时返回已有 id。
+  /// Creates a group and returns its id, or the existing id on a name clash.
   Future<int?> createGroup(String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
@@ -518,11 +486,9 @@ final subscriptionActionsProvider = Provider<SubscriptionActions>(
   SubscriptionActions.new,
 );
 
-// ---------------------------------------------------------------------------
-// 镜像站模板（mirror_template 表）
-// ---------------------------------------------------------------------------
+// Mirror templates (the mirror_template table).
 
-/// 模板仓库：没有旧库时为 null，页面据此渲染空状态。
+/// Template repository; null without a legacy database.
 final mirrorTemplateRepositoryProvider =
     FutureProvider<MirrorTemplateRepository?>((ref) async {
       final db = await ref.watch(subscriptionDatabaseProvider.future);
@@ -533,7 +499,7 @@ final mirrorTemplateRepositoryProvider =
       );
     });
 
-/// 全部镜像站模板（`addedAt DESC`，与旧版 `observeAll` 同序）。
+/// All mirror templates, ordered by `addedAt DESC` like legacy `observeAll`.
 final mirrorTemplatesProvider = FutureProvider<List<MirrorTemplateRecord>>((
   ref,
 ) async {
@@ -544,8 +510,7 @@ final mirrorTemplatesProvider = FutureProvider<List<MirrorTemplateRecord>>((
       : repository.all();
 });
 
-/// 镜像站模板的增删改。写成功后由仓库的 `onChanged` 自增 revision，
-/// 列表 provider 自动重建。
+/// Mirror-template CRUD; `onChanged` bumps the revision so the list rebuilds.
 class MirrorTemplateActions {
   MirrorTemplateActions(this._ref);
 
@@ -554,11 +519,11 @@ class MirrorTemplateActions {
   Future<MirrorTemplateRepository?> _repository() =>
       _ref.read(mirrorTemplateRepositoryProvider.future);
 
-  /// 返回新行 id；同名或空输入返回 null（调用方据此提示，不静默覆盖）。
+  /// New row id, or null on a name clash or empty input.
   Future<int?> create({required String name, required String template}) async =>
       (await _repository())?.insert(name: name, template: template);
 
-  /// 返回 false 表示同名冲突或输入非法。
+  /// Returns false on a name clash or invalid input.
   Future<bool> update({
     required int id,
     required String name,

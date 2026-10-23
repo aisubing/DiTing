@@ -1,15 +1,8 @@
-/// 表单与特殊页的演示数据：字体族、表单样例、键值对、命名 URL、规则预设、
-/// YAML 文本、错误详情、IP 质量报告。
-///
-/// 全部是常量，页面只读；需要可变的部分（列表顺序、勾选）由页面自己的
-/// `State` 持有——这些数据没有跨页共享的必要。
+/// Demo data for forms and one-off pages: all constants, mutable state lives in the page.
 library;
 
-/// 字体族选项。
-///
-/// 本仓只打包了 JetBrainsMono 与 Twemoji 两个字族，其余取系统字体名：演示层
-/// 不读系统字体表（那要平台通道），选了没有的字族会自然回退到默认字体，
-/// 正好可以演示「fallback」这一行为。
+/// Font family options. Only JetBrainsMono and Twemoji ship with the app; other names fall back to
+/// the system default.
 class MockFontFamily {
   const MockFontFamily({
     required this.family,
@@ -18,12 +11,11 @@ class MockFontFamily {
     this.bundled = false,
   });
 
-  /// 传给 `TextStyle.fontFamily` 的值；`null` 表示系统默认。
+  /// Value for `TextStyle.fontFamily`; null means the system default.
   final String? family;
   final String label;
   final String description;
 
-  /// 是否是本仓打包的字体（一定可用）。
   final bool bundled;
 }
 
@@ -72,7 +64,6 @@ const mockFontFamilies = <MockFontFamily>[
   ),
 ];
 
-/// 规则预设（上游 `features/form/rule_preset.dart`）。
 class MockRulePreset {
   const MockRulePreset({
     required this.title,
@@ -141,7 +132,6 @@ const mockRulePresets = <MockRulePreset>[
   ),
 ];
 
-/// 演示用的 YAML 配置片段（编辑器骨架的初始内容）。
 const mockYamlDocument = '''
 # 谛听演示配置 —— 静态高亮，不接真实解析器
 mixed-port: 7890
@@ -187,7 +177,6 @@ rules:
   - MATCH,自动选择
 ''';
 
-/// 补全候选词（编辑器浮层用）。
 class MockCompletion {
   const MockCompletion({
     required this.label,
@@ -198,7 +187,6 @@ class MockCompletion {
   final String label;
   final String detail;
 
-  /// YAML 顶层键用不同颜色，和值区分开。
   final bool isKey;
 }
 
@@ -225,7 +213,6 @@ const mockCompletions = <MockCompletion>[
   MockCompletion(label: 'REJECT-DROP', detail: '策略'),
 ];
 
-/// 错误页的演示数据。
 class MockErrorDetail {
   const MockErrorDetail({
     required this.code,
@@ -260,14 +247,12 @@ const mockErrorDetail = MockErrorDetail(
 ''',
 );
 
-/// 命名 URL 表单里预置的样例条目。
 const mockNamedUrls = <({String label, String url})>[
   (label: '主订阅', url: 'https://sub.example.com/diting/main'),
   (label: '备用订阅', url: 'https://backup.example.com/diting/backup'),
   (label: '自建规则', url: 'https://rules.example.com/diting/custom.yaml'),
 ];
 
-/// 键值编辑器里预置的样例。
 const mockMapEntries = <String, String>{
   'mixed-port': '7890',
   'allow-lan': 'true',

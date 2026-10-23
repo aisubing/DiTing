@@ -10,15 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 底栏承载的六页共用一个壳：内容 + 浮条。
-///
-/// 用 [StatefulShellRoute.indexedStack]，所以每个 branch 有自己的 `Navigator`
-/// 且切 tab 不销毁——`KeepScope` 在这里是多余的，不能重复套。
-///
-/// **服务器模式是例外**：旧版 `DnsMainScreen` 是另一个 Activity，带自己的三 Tab
-/// 浮条（概览 / 上游服务器 / 模式设置）。因此 `workModeProvider == server` 时
-/// 整棵树换成 [ServerModeShell]，六项浮条不出现——把两套导航叠在一起，用户会
-/// 在「上游服务器」页底下看到「日志 / 流量 / 工具」这些与服务器模式无关的 tab。
+/// Shell for the six dock pages: content plus dock. [StatefulShellRoute.indexedStack] gives
+/// every branch its own `Navigator` that survives tab switches, so `KeepScope` must not be
+/// nested here. Server mode swaps the whole tree for [ServerModeShell].
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.navigationShell});
 
@@ -37,13 +31,11 @@ class AppShell extends ConsumerWidget {
     final selected = _selectedIndex(destinations, navigationShell.currentIndex);
 
     void onSelected(int index) {
-      // 底栏回调给的是 **destinations 下标**，`goBranch` 要的是 **branch 下标**，
-      // 两者不是同一套：branch 固定六项（home/hub/logs/traffic/tools/settings），
-      // 底栏只是它的 2–4 项子集。直接透传会让「网络工具」（底栏第 3 项 = 下标 2）
-      // 落到 2 号 branch（日志仪表盘）、「设置」（下标 3）落到流量统计。
+      // The dock reports a destination index, `goBranch` wants a branch index; the dock is a
+      // subset of the six branches, so passing it through would be wrong.
       final branch = branchIndexOf(destinationLocation(destinations[index]));
       if (branch == navigationShell.currentIndex) {
-        // 重复点当前 tab 回首页（上游行为：回该 branch 的第 0 页）。
+        // Re-tapping the current tab returns to the branch root (upstream).
         navigationShell.goBranch(branch, initialLocation: true);
         return;
       }
@@ -54,7 +46,7 @@ class AppShell extends ConsumerWidget {
     }
 
     return Scaffold(
-      // 内容自己负责底部留白（`DockSpacer`），浮条浮在它上面。
+      // Content adds its own bottom padding (`DockSpacer`); the dock floats over it.
       extendBody: true,
       body: _TabTransitionHost(
         transition: transition,
@@ -72,13 +64,9 @@ class AppShell extends ConsumerWidget {
     );
   }
 
-  /// 底栏是 branch 的子集视图，因此 branch 下标要先换成位置，再回查底栏下标。
-  ///
-  /// 找不到时返回 **-1**，不要兜底成 0。落在底栏之外的 branch（用户把「流量
-  /// 统计」从底栏里删了，却又从首页卡片或功能中心进了 `/traffic`）如果兜底成
-  /// 0，底栏会把「首页」点亮；而点击回调拿 `index != selectedIndex` 判重，点
-  /// 「首页」等于点自己，什么也不发生——用户被卡在这一页，只能靠系统返回键。
-  /// 返回 -1 让底栏不点亮任何项，点哪一项都是真正的切换。
+  /// Maps a branch index to a dock index, or -1 when the branch is not in the dock. Never
+  /// fall back to 0: the dock would light up "home" and tapping it counts as tapping the
+  /// selected item, trapping the user.
   int _selectedIndex(List<BottomBarDestination> destinations, int branchIndex) {
     final location = branchLocationOf(branchIndex);
     final index = destinations.indexWhere(
@@ -88,7 +76,7 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// 底栏项 → 路由。
+/// Dock destination to route.
 String destinationLocation(BottomBarDestination destination) =>
     switch (destination) {
       BottomBarDestination.home => Routes.home,
@@ -122,11 +110,9 @@ class _Dock extends StatelessWidget {
           label: destination.label,
         ),
     ];
-    // 用户可以在外观页把底栏切成普通形态；普通形态本来就是给「项多、浮条挤
-    // 不下」准备的，因此它优先于浮条判定。
+    // The plain bar is meant for many items, so it wins over the floating dock.
     final wantFallback = style == BottomBarStyle.docked;
-    // 浮条最多 5 项；超过后（用户配了 6 项）退回 Material 底栏，避免挤成
-    // 每项 40dp 的不可点目标。
+    // The floating dock holds at most 5 items; beyond that use the Material bar.
     if (wantFallback || !isMobile || items.length > maxDockDestinations) {
       return _FallbackBar(
         destinations: destinations,
@@ -136,7 +122,7 @@ class _Dock extends StatelessWidget {
     }
     return SafeArea(
       top: false,
-      // 浮条自己算底部安全区（`insetOf`），这里不能再加一层。
+      // The dock applies its own bottom inset; do not add another layer here.
       minimum: EdgeInsets.zero,
       child: NavigationDock(
         destinations: items,
@@ -147,16 +133,9 @@ class _Dock extends StatelessWidget {
   }
 }
 
-/// tab 切换动画。
-///
-/// `StatefulShellRoute.indexedStack` 本身不给切 tab 加动画（它只切换 `IndexedStack`
-/// 的 index），所以动画只能在壳这一层做：用 [branchIndex] 作 key，切 tab 时换
-/// 一棵新子树，让入场动画重播。
-///
-/// 注意这**不是**真的交叉淡入——旧 tab 会立刻消失。做成交叉淡入要给每个 branch
-/// 各留一棵树（`AnimatedSwitcher` 的 child 必须带 key，成本是同时挂两份子树），
-/// 而六个 tab 各自持有长列表，同时挂两份会让切 tab 从一帧变成两帧的抖动。
-/// 上游移动端也只在「淡入」档做新页入场，因此这里对齐。
+/// Tab switch animation. `indexedStack` only changes the index, so keying by [branchIndex] remounts
+/// the subtree and replays the entry. Not a true cross-fade on purpose: keeping both trees alive
+/// would turn a one-frame switch into a stutter.
 class _TabTransitionHost extends StatelessWidget {
   const _TabTransitionHost({
     required this.transition,
@@ -172,8 +151,7 @@ class _TabTransitionHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 关掉动画时不要套任何包装：多一层 `KeyedSubtree` 也会让子树在切 tab 时
-    // 重建，与「无动画」的语义不符。
+    // With animations off, wrap nothing: even a `KeyedSubtree` would rebuild it.
     if (transition == TabTransition.none) {
       return child;
     }
@@ -213,9 +191,8 @@ class _FallbackBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NavigationBar(
-      // `NavigationBar` 要求 0 ≤ selectedIndex < length，而落在底栏之外的 branch
-      // 传进来的是 -1。这里退回 0 只是为了让断言过——该形态下每次点击都会回调
-      // `onDestinationSelected`，不存在浮条那种「点已选中项被吞掉」的问题。
+      // `NavigationBar` requires 0 <= selectedIndex < length, but off-dock branches pass -1.
+      // Clamping only satisfies the assert; every tap still fires.
       selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
       onDestinationSelected: onSelected,
       destinations: [

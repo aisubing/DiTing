@@ -2,9 +2,7 @@
 
 part of 'navigation_dock.dart';
 
-/// The pointer's highlight, drawn to the destination under it and leaning a
-/// little toward the cursor, as iPadOS highlights a tab bar item; the item
-/// under it follows the cursor half as far.
+/// The pointer's highlight, drawn to the destination under it and leaning toward the cursor.
 class _HoverHighlight extends StatelessWidget {
   const _HoverHighlight({
     required this.start,
@@ -44,9 +42,8 @@ class _Lens extends StatelessWidget {
   final Rect rect;
   final double lift;
 
-  /// On glass the lens rests as a platter in the secondary hue, sunk in dark
-  /// mode as iOS's tab bar marks its selection, and clears as it lifts into
-  /// the [_GlassLens].
+  /// On glass the lens rests as a platter in the secondary hue, sunk in dark mode as iOS marks a
+  /// tab.
   final bool glass;
 
   @override
@@ -78,8 +75,7 @@ class _Lens extends StatelessWidget {
   }
 }
 
-/// The clear lens a lifted selection becomes on glass. The destinations stand
-/// on it, as iOS draws them over its lens, so it bends only the bar.
+/// The clear lens a lifted selection becomes on glass. The destinations stand on it.
 class _GlassLens extends StatelessWidget {
   const _GlassLens({required this.rect, required this.lift});
 
@@ -121,9 +117,7 @@ List<BoxShadow> _lensShadows(ColorScheme colorScheme, double lift) {
   ];
 }
 
-/// What a lifted lens on glass shows of the destinations under it, over the
-/// [_GlassLens], with a pane of its own that warps only them: they are drawn
-/// offscreen, so that pane reads them and not the bar.
+/// What a lifted lens on glass shows of the destinations under it, with a pane of its own.
 class _LensContent extends StatelessWidget {
   const _LensContent({
     required this.rect,
@@ -227,8 +221,7 @@ class _FloatingBarItem extends StatefulWidget {
   final bool selected;
   final int index;
 
-  /// Only [_LensPart.inside] is drawn bare: it stands over the lens, while
-  /// the destination it copies takes the presses and the focus.
+  /// Only [_LensPart.inside] is drawn bare: it stands over the lens that takes the presses.
   final _LensPart part;
   final _Spring lens;
   final double lensWidth;
@@ -262,7 +255,6 @@ class _FloatingBarItemState extends State<_FloatingBarItem> {
     var tint = colorScheme.primary;
     if (widget.part == _LensPart.inside &&
         LiquidGlassScope.qualityOf(context) == LiquidGlassQuality.standard) {
-      // Without a pane of its own the copy takes the light that one adds.
       final brightness = LiquidGlassStyle.lensContent(colorScheme).brightness;
       tint = Color.from(
         alpha: tint.a,
@@ -273,10 +265,7 @@ class _FloatingBarItemState extends State<_FloatingBarItem> {
     }
     final content = _LensTint(
       part: widget.part,
-      // 没有选中项时镜片停在 0 号位不动，若照常按镜片位置着色，0 号项会被染成
-      // 主色「假装选中」——命中「当前页不在底栏里」的情形。关掉着色，整条底栏
-      // 保持中性灰，用户看得到「当前不在任何 tab 上」。按压时抬起的 inside 副本
-      // 仍着色，拖动手感不受影响。
+      // With no selection the lens rests at index 0, so tinting would read as selected; skip it.
       active: widget.selected || widget.part == _LensPart.inside,
       lens: widget.lens,
       lensWidth: widget.lensWidth,
@@ -346,7 +335,3 @@ class _FloatingBarItemState extends State<_FloatingBarItem> {
   }
 }
 
-/// Paints what lies under the lens in [color], magnified as the lens lifts,
-/// and the rest as it is, cut to the lens's own shape so a destination it
-/// passes over turns part by part. The content leans after the [parallax], in
-/// destinations, while layout and hit testing see it at rest.

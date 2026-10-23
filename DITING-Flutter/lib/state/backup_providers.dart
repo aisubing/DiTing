@@ -1,7 +1,3 @@
-/// 备份与迁移的 provider 层。
-///
-/// 页面只需要三样东西：真实统计、导出动作、导入动作。三者都依赖「当前模式的
-/// 规则库 + prefs」这一对句柄，因此装配放在一处。
 library;
 
 import 'package:diting/data/backup/backup_exporter.dart';
@@ -17,7 +13,6 @@ import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 当前模式规则库里的四项真实计数（页顶四格）。
 class BackupStats {
   const BackupStats({
     required this.providers,
@@ -38,10 +33,8 @@ class BackupStats {
   final int listedApps;
 }
 
-/// 真实统计：服务商取 prefs、订阅取表、自定义规则取规则表、名单应用取三份名单的并集。
-///
-/// 上一轮四格是写死的 `6 / 5 / 23 / 8`。数字与备份内容毫无关系，用户会拿它判断
-/// 「我的规则有没有被备份进去」。
+/// Real stats: providers from prefs, subscriptions and rules from their tables, apps from three
+/// lists.
 final backupStatsProvider = FutureProvider<BackupStats>((ref) async {
   ref.watch(legacySettingsRevisionProvider);
   ref.watch(subscriptionRevisionProvider);
@@ -66,7 +59,7 @@ final backupStatsProvider = FutureProvider<BackupStats>((ref) async {
         final rules = await repository.loadKind(kind);
         customRules += rules.where((rule) => rule.source == RuleSource.user).length;
       } on Exception {
-        // 表缺失时按 0 计：这一格是概览，不该因为一个库不全就整页报错。
+        // A missing table counts as 0: this tile is an overview, not an error.
         continue;
       }
     }
@@ -89,17 +82,14 @@ final backupStatsProvider = FutureProvider<BackupStats>((ref) async {
 
 int _providerCount(String? raw) => parseUserProviders(raw).length;
 
-/// 导出服务。
 final backupExporterProvider = Provider<BackupExporter>(
   (ref) => const BackupExporter(),
 );
 
-/// 导入服务。
 final backupImporterProvider = Provider<BackupImporter>(
   (ref) => const BackupImporter(),
 );
 
-/// 备份动作的执行者：装配句柄、调服务、刷新受影响的页面。
 class BackupActions {
   BackupActions(this._ref);
 
@@ -117,14 +107,14 @@ class BackupActions {
     return result;
   }
 
-  /// 让系统选择器落盘，返回给用户看的结果。
+  /// Saves via the system picker; returns the user-facing result.
   Future<DocumentSaveResult> saveToDocument(BackupExportResult export) =>
       _ref.read(platformBridgeProvider).exportDocument(
         name: export.fileName,
         content: export.content,
       );
 
-  /// 打开系统选择器读文件 → 解析 → 合并。
+  /// Opens the system picker, parses and merges the picked file.
   Future<BackupImportResult> importFromDocument() async {
     final picked = await _ref.read(platformBridgeProvider).importDocument();
     if (picked.cancelled) return const BackupImportResult.cancelled();
@@ -134,7 +124,7 @@ class BackupActions {
     return importText(text, sourceName: picked.name);
   }
 
-  /// 合并一段已有的备份文本（WebDAV 恢复走这里，不经文件选择器）。
+  /// Merges backup text (WebDAV restore path, no file picker).
   Future<BackupImportResult> importText(
     String text, {
     String? sourceName,

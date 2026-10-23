@@ -7,29 +7,16 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.Executors
 
-/**
- * Native side of `com.haoze.diting/dns_latency`: DNS provider speed test.
- *
- * 1.4.3 shipped this as a real feature (`ui/DnsSpeedTestSection.kt` driving
- * `core/dns/DnsLatencyTester`). The Flutter port dropped it, which is why the
- * old network-tools page had a 测速 tab and this one did not.
- *
- * The Dart layer owns the provider catalog and passes host/port/protocol down:
- * the native side has no access to the app's provider inventory and should not
- * grow a second copy of it.
- *
- * Probes block for seconds each (5 s timeout × 3 attempts × N providers), so
- * they run on a worker pool and every answer is posted back to the platform
- * thread — `MethodChannel.Result` may only be touched there.
- */
+/// Native side of `com.haoze.diting/dns_latency`. Dart owns the provider catalog and
+/// passes host/port/protocol down. Probes block for seconds, so they run on a worker
+/// pool and every answer is posted back to the platform thread.
 class DnsLatencyBridge(private val context: Context) :
     MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/dns_latency"
 
-        /** Same shape as `DiagnosticsBridge.workers`: daemon threads so a hung
-         *  probe never keeps the process alive after the user leaves the app. */
+        /// Daemon threads so a hung probe never keeps the process alive
         private val workers = Executors.newCachedThreadPool { runnable ->
             Thread(runnable, "diting-dns-latency").apply { isDaemon = true }
         }
@@ -63,9 +50,7 @@ class DnsLatencyBridge(private val context: Context) :
             return
         }
         workers.execute {
-            // A single provider failing must not abort the whole run: the page
-            // renders a ranked list where failures are rows too. Each probe is
-            // therefore isolated, and only an unexpected throw escapes here.
+            // Each probe is isolated: one failing provider must not abort the run.
             val samples = specs.map { spec ->
                 runCatching { DnsLatencyTester.probeAverage(spec, domain, attempts) }
                     .getOrElse { error ->
@@ -86,12 +71,10 @@ class DnsLatencyBridge(private val context: Context) :
         }
     }
 
-    /** Decodes one provider map; returns null when the required fields are absent. */
     private fun toSpec(map: Map<String, Any?>): DnsLatencyTester.Spec? {
         val id = (map["id"] as? String)?.takeIf { it.isNotBlank() } ?: return null
         val url = (map["url"] as? String).orEmpty()
-        // DoH 服务商在预设目录里只有 url、没有 host；此时 host 允许为空，探测会
-        // 直接用 url。明文 DNS / DoT 必须有 host 才能建 socket。
+        // DoH may carry only a url; plain DNS and DoT need a host to open a socket.
         val host = (map["host"] as? String).orEmpty()
         if (host.isBlank() && url.isBlank()) return null
         return DnsLatencyTester.Spec(

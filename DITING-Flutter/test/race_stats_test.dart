@@ -3,13 +3,8 @@ import 'package:diting/state/log_race_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Pins the two race-stat groups the page gained:「策略概览」与「智能选择首选」。
-///
-/// 这两组的 SQL 逐字移植自 1.4.3 `RaceLogDao.strategyStats` /
-/// `smartSelectionStats`。回归点不是「能不能查」，而是三个口径：
-/// 1. `primaryWins` 必须是「首选即胜出且成功」，不是「只要成功」；
-/// 2. `selectedSuccesses` 必须排除兜底救回（`fallbackUsed = 1`）的查询；
-/// 3. 时间窗口（`since`）要按 `timestamp` 过滤，否则「今日」档会混进历史行。
+/// Pins 1.4.3 `RaceLogDao.strategyStats`: `primaryWins` needs the primary to win and succeed,
+/// `selectedSuccesses` excludes fallback rescues, and `since` filters on `timestamp`
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -20,7 +15,6 @@ void main() {
 
   setUp(() async {
     db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-    // 只建本文件用到的列：策略聚合只需要这几项（与 1.4.3 `dns_race_log` 同名）。
     await db.execute(
       'CREATE TABLE dns_race_log ('
       'id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
@@ -64,14 +58,12 @@ void main() {
 
   group('strategyStats', () {
     test('按策略分组，primaryWins 只算「首选即胜出且成功」', () async {
-      // 智能选择：一次首选命中（首选 = 胜出，成功）。
       await insert(
         strategy: 'smart_prediction',
         success: true,
         selected: 'a',
         winner: 'a',
       );
-      // 智能选择：一次兜底（首选 a 失败，胜出 b）——不计 primaryWin。
       await insert(
         strategy: 'smart_prediction',
         success: true,
@@ -80,9 +72,7 @@ void main() {
         fallbackUsed: true,
         fallbackSuccess: true,
       );
-      // 智能选择：一次失败。
       await insert(strategy: 'smart_prediction', success: false, selected: 'a');
-      // 并行竞速：没有 selectedProviderId，primaryWins 必为 0。
       await insert(strategy: 'parallel_race', success: true, winner: 'c');
 
       final rows = await RaceLogRepository(db).strategyStats();
@@ -118,14 +108,12 @@ void main() {
 
   group('smartSelectionStats', () {
     test('selectedSuccesses 排除兜底救回，且只统计智能选择', () async {
-      // 首选即胜出：计入 selectedSuccesses。
       await insert(
         strategy: 'smart_prediction',
         success: true,
         selected: 'a',
         winner: 'a',
       );
-      // 兜底救回：selectedCount +1，但 selectedSuccesses 不加。
       await insert(
         strategy: 'smart_prediction',
         success: true,
@@ -134,7 +122,6 @@ void main() {
         fallbackUsed: true,
         fallbackSuccess: true,
       );
-      // 别的策略即便有 selectedProviderId 也不进这张表。
       await insert(
         strategy: 'primary_backup',
         success: true,

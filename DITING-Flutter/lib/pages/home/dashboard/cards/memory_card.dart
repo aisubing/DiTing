@@ -7,20 +7,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 内存信息卡（FlClash `widgets/memory_info.dart` 的摘要部分）。
-///
-/// 上游摘要是一行总占用 + 一条进度条 + 两三个图例（应用 / 内核）。本仓分成两个
-/// 量，因为它们回答不同问题：
-/// - 大字是**整进程 PSS**（含映射页与共享库），配一条「占整机内存」的进度条；
-/// - 图例是**堆分配**（Java 堆 / 原生堆），说明内存放在哪。
-///
-/// 两者不能相加：PSS 里还有 `.so` / `.dex` 映射与共享页，堆分配只算分配器给出的
-/// 字节。把堆分配硬拼成 PSS 的分段会得到一条永远填不满的条，看起来像少算了一半。
-///
-/// 内核不单独列：Go 引擎是 in-process 的 AAR，它的分配已经在原生堆里。上游能拆
-/// 「应用 / 内核」是因为它的 core 是独立进程。
-///
-/// 采样由 [processMemoryProvider] 每 2 秒推进，卡片只负责在挂载期持有它。
+/// Memory card, after FlClash widgets/memory_info.dart. The headline is whole-process
+/// PSS, the legend heap allocation; never add them, PSS also counts shared pages.
 class MemoryCard extends ConsumerStatefulWidget {
   const MemoryCard({super.key, this.onDetail});
 
@@ -137,7 +125,6 @@ class _MemoryCardState extends ConsumerState<MemoryCard> {
   }
 }
 
-/// 一段图例：彩点 + 标签 + 字节数。
 class _Legend extends StatelessWidget {
   const _Legend({
     required this.label,
@@ -152,7 +139,7 @@ class _Legend extends StatelessWidget {
   final Color color;
   final bool available;
 
-  /// 给了就把字节数换算成占比一起显示（整机可用内存按总量算才有意义）。
+  /// When set, also shows the byte count as a share of total device memory.
   final int? percentOf;
 
   @override
@@ -184,13 +171,7 @@ class _Legend extends StatelessWidget {
   }
 }
 
-/// 一条按比例分段填充的条，用来显示「PSS 里堆占了多少」。
-///
-/// 段是 `Java 堆 / 原生堆 / 其余（映射与共享页）`：三者相加正好是 PSS，条因此
-/// 总是填满。只画堆、让剩下半截空着会被读成「还有一半没统计到」。
-///
-/// 用 `ClipRSuperellipse` 而不是 `ClipRRect`：本仓圆角一律走超椭圆，`ClipRRect`
-/// 在 `material_ui` 的 `RoundedSuperellipseBorder` 主题下会显出肉眼可见的差异。
+/// Segments sum to PSS so the bar always fills; a half-empty bar reads as missing data.
 class _CompositionBar extends StatelessWidget {
   const _CompositionBar({required this.segments});
 
@@ -213,8 +194,8 @@ class _CompositionBar extends StatelessWidget {
                   for (final segment in segments)
                     if (segment.bytes > 0)
                       Expanded(
-                        // 千分比做 flex：一个 0.3% 的段若按 1 算会被放大成肉眼
-                        // 可见的一条，凑成 1000 才能保住真实比例。
+                        // Flex in per-mille: a 0.3% segment must not be rounded up to a visible
+                        // sliver.
                         flex: (segment.bytes * 1000 ~/ total).clamp(1, 1000),
                         child: ColoredBox(color: segment.color),
                       ),

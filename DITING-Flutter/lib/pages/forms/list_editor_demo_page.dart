@@ -1,14 +1,10 @@
-/// 列表编辑器演示页（`/form/list-editor`）。
-///
-/// 把泛型 `ListEditorPage` 实例化成「定时服务器列表」，用来演示搜索、全选、
-/// 排序与删除。真实页面（规则、订阅）会各自实例化同一个组件。
+/// List editor demo (`/form/list-editor`): `ListEditorPage` as a scheduled server list.
 library;
 
 import 'package:diting/pages/forms/list_editor_page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一条演示用的服务器记录。
 class _DemoServer {
   const _DemoServer(this.name, this.address);
 
@@ -24,7 +20,6 @@ const _seedServers = <_DemoServer>[
   _DemoServer('Cloudflare NTP', 'time.cloudflare.com'),
 ];
 
-/// 列表编辑器演示页。
 class ListEditorDemoPage extends StatefulWidget {
   const ListEditorDemoPage({super.key});
 
@@ -99,12 +94,9 @@ class _ListEditorDemoPageState extends State<ListEditorDemoPage> {
   }
 }
 
-/// 单行输入弹窗。
-///
-/// 控制器由弹窗自己持有：写成「调用方 new 一个 controller、`await` 之后立刻
-/// `dispose()`」时，`pop` 一调用 future 就完成，而退场动画还没跑完、`TextField`
-/// 仍挂在树上，dispose 会让它在动画中途重建到已失效的依赖上，实测整屏红
-/// （`'_dependents.isEmpty': is not true`）。
+/// Single-line input dialog. The controller must be owned by the dialog: disposing it right
+/// after `await` kills it while the exit animation still has a `TextField` mounted, which
+/// fails with '"_dependents.isEmpty": is not true'.
 class _TextFieldDialog extends StatefulWidget {
   const _TextFieldDialog({
     required this.title,

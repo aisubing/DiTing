@@ -1,10 +1,8 @@
 import 'package:diting/ui/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// The Chinese [UiLocalizations] the app runs with.
-///
-/// `UiLocalizations.of` asserts the delegate is registered, so every vendored
-/// widget in `lib/ui` depends on it. The tests keep their own copy.
+/// The Chinese [UiLocalizations] the app runs with. `UiLocalizations.of` asserts the delegate is
+/// registered, so every vendored widget in `lib/ui` depends on it. The tests keep their own copy.
 class AppUiLocalizations extends UiLocalizations {
   AppUiLocalizations();
 

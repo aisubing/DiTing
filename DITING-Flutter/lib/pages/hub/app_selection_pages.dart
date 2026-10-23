@@ -7,11 +7,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 禁止联网应用（上游 `BlockedAppsScreen`）。
-///
-/// 写 `dns_vpn_prefs` 的 `blocked_app_packages` + `blocked_apps_enabled`；普通
-/// 模式启动时会把它换算成 UID 交给 Go 引擎。与「排除应用」「HTTPS 检查应用」
-/// 「应用独立规则」互斥：一处勾选会从另外三处移除，和上游保存时的清洗一致。
+/// Blocked apps (upstream `BlockedAppsScreen`). Writes `blocked_app_packages` and
+/// `blocked_apps_enabled` into `dns_vpn_prefs`; normal mode hands the UIDs to the Go engine.
 class BlockedAppsPage extends ConsumerWidget {
   const BlockedAppsPage({super.key});
 
@@ -31,10 +28,8 @@ class BlockedAppsPage extends ConsumerWidget {
     );
   }
 
-  /// 保存禁止联网名单，并清掉另外三处的同名应用。
-  ///
-  /// 上游 `BlockedAppsScreen.saveBlockedApps` 四件事一起做；少清一处，同一个应用
-  /// 会同时被「禁止联网」和「排除」命中，最终行为由引擎侧判定顺序决定。
+  /// Saves the list and drops those apps from the other three, as upstream does in one save:
+  /// missing one leaves an app both blocked and excluded, decided by engine check order.
   static void _saveBlocked(WidgetRef ref, Set<String> packages, bool enabled) {
     final settings = ref.read(legacySettingsProvider);
     settings.setBlockedApps(packages: packages, enabled: enabled);
@@ -43,11 +38,9 @@ class BlockedAppsPage extends ConsumerWidget {
   }
 }
 
-/// 排除应用（上游 `ExcludedAppsScreen`）。
-///
-/// 写 `excluded_app_packages`；排除后应用使用系统 DNS，不参与本应用的过滤、
-/// 缓存、日志和统计。与 `/apps` 是同一份数据，只是入口不同（`/apps` 带过滤与
-/// 排序菜单，这里是二级页）。
+/// Excluded apps (upstream `ExcludedAppsScreen`). Writes `excluded_app_packages`: these use
+/// the system DNS and skip filtering, caching, logging and statistics. Same data as
+/// `/apps`, different entry point.
 class ExcludedAppsPage extends ConsumerWidget {
   const ExcludedAppsPage({super.key});
 
@@ -71,19 +64,12 @@ class ExcludedAppsPage extends ConsumerWidget {
   }
 }
 
-/// 刚写进哪一份名单——互斥清洗要跳过它。
-///
-/// 清洗不能靠「读回来再差集」：`LegacySettings` 是直接读写 store 的视图，
-/// `setBlockedApps(packages)` 之后再读 `blockedAppPackages` 拿到的就是刚写进去的
-/// 那份，`difference(packages)` 当场变成空集，把用户刚保存的选择清空。
-/// 归属方必须显式传进来。
+/// Which list was just written, so the exclusivity pass can skip it. Passed in because
+/// `LegacySettings` reads through to the store, making `difference` empty after the write.
 enum _Owner { blocked, excluded }
 
-/// 把刚写进某一处名单的应用从**另外三处**移除。
-///
-/// 1.4.3 的三个页面各写一遍这段清洗，其中两处都漏了 `app_allowlist_rules_json`
-/// ——勾了「禁止联网」但应用独立规则还在，引擎会同时收到「拦」和「放行」。这里
-/// 合成一份，四张选择页共用，避免再漂移。
+/// Removes the apps just written to one list from the other three. One shared copy:
+/// upstream repeated it per page and one copy missed `app_allowlist_rules_json`.
 void _dropOverlaps(
   LegacySettings settings,
   Set<String> packages,
@@ -106,8 +92,8 @@ void _dropOverlaps(
   final inspection = settings.httpInspectionPackages.difference(packages);
   settings.setHttpInspectionApps(
     packages: inspection,
-    // 检查清单被清空时必须把总开关一起关掉：留一个「已启用但零目标」的开关，
-    // 引擎会按 `httpsInspectionOperational == false` 直接跳过，UI 却显示开着。
+    // Clearing the list must also clear the master switch: an enabled switch with no
+    // targets is skipped by the engine while the UI still shows it on.
     enabled: settings.httpInspectionEnabled && inspection.isNotEmpty,
   );
   final allowlist = settings.appAllowlistRules;
@@ -138,7 +124,6 @@ class _AppSelectionScaffold extends ConsumerStatefulWidget {
   final String selectionTitle;
   final Glyph icon;
 
-  /// Persisted set the page starts from; edits live locally until "保存".
   final Set<String> selected;
   final bool enabled;
   final bool showToggle;
@@ -154,7 +139,6 @@ class _AppSelectionScaffold extends ConsumerStatefulWidget {
 class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
   final _search = TextEditingController();
 
-  /// 上一次同步的落盘值，用来识别「别人改了同一份键」。
   Set<String> _initial = const {};
   Set<String> _selected = const {};
   bool _synced = false;
@@ -167,10 +151,8 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
     super.dispose();
   }
 
-  /// prefs 是唯一真相源：落盘值变了就丢弃本地草稿。
-  ///
-  /// 同一个应用可能被 `/apps`、HTTPS 检查页或应用独立规则页从某份名单里删掉；
-  /// 本页若继续用旧草稿，用户点「保存」会把对方刚删掉的项写回去。
+  /// Prefs are the only source of truth: a changed stored value discards the local draft,
+  /// otherwise saving would resurrect entries another page just removed.
   void _sync(Set<String> persisted) {
     if (!_synced) {
       _synced = true;
@@ -210,8 +192,8 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
     _sync(widget.selected);
     final snapshot = ref.watch(installedAppsProvider);
     final apps = snapshot.value?.apps ?? const <InstalledApp>[];
-    // 这两页在 1.4.3 里也是「用户应用」优先（`initialFilter` 默认 USER），但
-    // 排序与过滤菜单在 `/apps`，这里只做搜索，两组都在列表里分节展示。
+    // Both pages default to user apps, but sorting and filtering live on `/apps`, so only
+    // search is offered here.
     final visible = visibleInstalledApps(
       apps: apps,
       query: _query,
@@ -261,8 +243,8 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
               child: Center(child: CommonCircleLoading()),
             )
           else if (snapshot.value?.error case final error?)
-            // 读不到应用列表时的错误串长度不可控，写死 260 会把说明裁掉，
-            // 下面的「保存」按钮就压在被裁掉的文字上（真机上两段叠着）。
+            // The error text has no fixed length, so a hard-coded 260 clips the description
+            // and puts the save button on top of it.
             EmptyStateBox(
               minHeight: 260,
               child: NullStatus(

@@ -18,8 +18,7 @@ pluginManagement {
     }
 }
 
-// Plugins declare their own `buildscript` repositories, so the mirror must be
-// injected before those blocks run.
+// Plugins declare their own `buildscript` repositories; the mirror must be injected first.
 gradle.beforeProject {
     buildscript.repositories {
         maven("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/")

@@ -8,13 +8,8 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Pins the backup round trip: export must produce a parseable file, and import
-/// must merge it into a *different* store, reporting what it actually did.
-///
-/// The page this replaces popped a hard-coded 「新增 9 项，跳过 3 项」 regardless
-/// of the selected file — a widget test cannot catch that (the dialog looked
-/// right), so the assertions here inspect the serialized JSON and the resulting
-/// prefs/database rows.
+/// Pins the backup round trip: export parses, import merges into a different store and reports what
+/// it did
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -110,7 +105,6 @@ void main() {
       expect(decoded['version'], BackupFormat.version);
       expect(decoded['exportedAt'], isA<int>());
       expect(decoded['data'], isA<Map>());
-      // 文件名带时间戳，便于用户区分多次备份。
       expect(result.fileName, startsWith(BackupFormat.fileNamePrefix));
       expect(result.fileName, endsWith('.json'));
     });
@@ -126,7 +120,6 @@ void main() {
 
       expect(data.keys.toSet(), {'system', 'blocked'});
       expect(result.included.toSet(), {BackupGroup.system, BackupGroup.blocked});
-      // 未勾选的分组不能偷偷出现在 selection 里。
       expect(
         (decoded['selection'] as List).toSet(),
         {'system', 'blocked'},
@@ -144,7 +137,6 @@ void main() {
       );
 
       expect(result.content, contains('h.test'));
-      // 凭据绝不能进备份：它是 AndroidKeyStore 加密的，导出成明文等于泄露。
       expect(result.content, isNot(contains('outbound_proxy_password')));
       expect(result.content, isNot(contains('outbound_proxy_username')));
       expect(result.content, contains('credentialsExcluded'));
@@ -197,7 +189,6 @@ void main() {
   });
 
   group('导入', () {
-    /// 导出一份全量，再导进一个空 store，验证真实合并。
     Future<BackupImportResult> roundTrip(
       Set<BackupGroup> groups, {
       MemoryLegacyPrefsStore? into,
@@ -246,7 +237,6 @@ void main() {
         settings.blockedAppPackages,
         containsAll(<String>['com.local.only', 'com.blocked.one']),
       );
-      // 备份里这一项是开的，本机是关的 → 取并集打开。
       expect(settings.blockedAppsEnabled, isTrue);
     });
 
@@ -255,7 +245,6 @@ void main() {
       await roundTrip({BackupGroup.httpInspection}, into: target);
       final settings = LegacySettings(target);
       expect(settings.httpInspectionPackages, contains('com.inspect.one'));
-      // 名单进来了，但开关必须保持本机的 false。
       expect(settings.httpInspectionEnabled, isFalse);
     });
 
@@ -271,7 +260,6 @@ void main() {
         exportSource(seededStore()),
         groups: {BackupGroup.domainRules},
       );
-      // 清空后导入，验证真的写进去了。
       await db.delete('block_rule_source');
       await db.delete('block_rule');
 
@@ -318,7 +306,7 @@ void main() {
         exportSource(seededStore()),
         groups: {BackupGroup.rewriteDomain},
       );
-      // 本机改成另一个目标值，导入应把备份里的值写回来。
+      // Local value changed; import must write the backup's value back.
       await db.update(
         'rewrite_rule',
         {'targetValue': '9.9.9.9'},
@@ -358,12 +346,11 @@ void main() {
       expect(result.subscriptionCount, 1);
       final rows = await db.query('subscription');
       expect(rows, hasLength(1));
-      // 导入的是地址而不是内容：条数/时间/ETag 必须从零开始。
+      // Only the address is imported, so count, timestamp and ETag start empty.
       expect(rows.single['ruleCount'], 0);
       expect(rows.single['lastUpdated'], 0);
       expect(rows.single['httpEtag'], isNull);
 
-      // 同一份再导一次 → 跳过，不产生第二行。
       final again = await const BackupImporter().import(
         export.content,
         BackupImportTarget(store: MemoryLegacyPrefsStore(), database: db),

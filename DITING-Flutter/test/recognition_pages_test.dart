@@ -13,12 +13,7 @@ import 'package:material_ui/material_ui.dart';
 import 'support/app_host.dart';
 import 'support/test_hooks.dart';
 
-/// 名单页的显示守门。
-///
-/// 这一轮修的核心缺陷是「头像根本不是图片，而是昵称首字拼的彩色圆圈」，
-/// 光看「页面能构建」的旧测试是发现不了的——所以这里断言：每一行都渲染了
-/// [RecognitionAvatar]、排序按钮能真的反转顺序，以及拿不到头像字节时
-/// 画的是人形占位而不是字母圆圈。
+/// Guards the member page: avatars, sort reversal, and the placeholder glyph for a missing avatar
 void main() {
   installGlobalTestHooks();
 
@@ -73,7 +68,7 @@ void main() {
       3,
     );
 
-    // 顺序：甲 → 乙 → 丙（顶到底）。
+    // Order: A, B, C from top to bottom.
     final firstY = tester.getTopLeft(find.text('甲')).dy;
     final lastY = tester.getTopLeft(find.text('丙')).dy;
     expect(firstY, lessThan(lastY));
@@ -91,7 +86,7 @@ void main() {
       ),
     );
 
-    // 假仓库永远返回 null 字节，因此三行都应落到占位 glyph。
+    // The fake repository always returns null bytes, so all rows fall back.
     expect(find.byType(Image), findsNothing);
     expect(
       find.descendant(
@@ -143,7 +138,7 @@ List<RecognitionMember> _sponsors(RecognitionMembers value) => value.sponsors;
 List<RecognitionMember> _coBuilders(RecognitionMembers value) =>
     value.coBuilders;
 
-/// 内存仓库：不碰网络、不碰 prefs、不碰原生缓存，只为验证渲染与交互。
+/// In-memory repository: no network, prefs or native cache, just rendering.
 class _FakeRepository extends RecognitionMembersRepository {
   _FakeRepository({required this.members})
     : super(store: MemoryLegacyPrefsStore());

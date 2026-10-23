@@ -15,18 +15,15 @@ import 'package:material_ui/material_ui.dart';
 part 'rules_dialogs.dart';
 part 'rules_rows.dart';
 
-/// 搜索防抖。上游三张规则表都是 250ms，这里保持一致，慢一点会让「边打边筛」
-/// 失去意义，快一点则每次按键都要重建整张列表。
+/// Search debounce, 250 ms like all three upstream rule tables: slower makes live
+/// filtering pointless, faster rebuilds the whole list on every keystroke.
 const _searchDebounce = Duration(milliseconds: 250);
 
-/// 规则页：黑名单 / 白名单 / 覆写共用一套骨架，只有标题、统计项与行内容不同。
-///
-/// 三页结构一致是刻意的——上游也是同一个 `RuleListScreen` 加 dataset 参数，
-/// 拆成三个页面会让「搜索框在哪、计数头在哪」在三种规则间漂移。
+/// Rule page: block, allow and rewrite share one skeleton, differing only in title, stats
+/// and row content, matching the single upstream RuleListScreen with a dataset parameter.
 class RulesPage extends ConsumerStatefulWidget {
   const RulesPage({super.key, required this.kind});
 
-  /// 路由参数：block / allow / rewrite。
   final String kind;
 
   @override
@@ -37,7 +34,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   late final _search = TextEditingController();
   Timer? _debounce;
 
-  /// 防抖后的关键词。输入框本身不受防抖影响，否则打字会卡。
+  /// Debounced keyword. The text field itself is not debounced, or typing would lag.
   var _query = '';
   RuleSourceFilter _sourceFilter;
 
@@ -64,7 +61,6 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     });
   }
 
-  /// 过滤后的规则：来源 chip 与关键词是「与」关系。
   List<MockRule> _visibleRules(List<MockRule> rules) => [
     for (final rule in rules)
       if ((_sourceFilter == null || rule.source == _sourceFilter) &&
@@ -74,11 +70,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
         rule,
   ];
 
-  /// 弹一次输入框，返回「规则内容 + 目标」。
-  ///
-  /// 黑名单与白名单只有一个字段，直接复用 [InputDialog]；覆写规则要同时收
-  /// 域名与目标值，[InputDialog] 收不下，才走 [_RuleDialog]。让两种规则共用
-  /// 一个自建对话框，等于给普通规则也加上一个用不到的输入框。
+  /// Prompt once for pattern plus optional target; rewrite needs two fields, which is what
+  /// _RuleDialog exists for.
   Future<({String pattern, String? target})?> _promptRule({
     required String title,
     required String initialPattern,
@@ -208,8 +201,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     await ref.read(rulesProvider.notifier).resetPreset(kind);
   }
 
-  /// 只读行被点时的提示。用确认框而不是提示条：提示条会随页面滚动消失，而
-  /// 用户需要知道的是「去哪开开关」，这段信息不该一闪而过。
+  /// Hint when a read-only row is tapped. A dialog rather than a snackbar: the
+  /// message tells the user where to enable editing and must not scroll away.
   Future<void> _showProtectedHint() => showFloatingDialog<void>(
     context: context,
     child: CommonDialog(
@@ -337,8 +330,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
             child: Text(
-              // 计数头始终报数，即使为 0：空状态里已经有一句「没有匹配的规则」，
-              // 两处说同一句话会让这块区域读起来像重复渲染。
+              // The counter always reports a number, even zero: the empty state already says
+              // there are no matching rules, and repeating it would read as double rendering.
               '共 ${visible.length} 条 · 启用 '
               '${visible.where((rule) => rule.enabled).length}',
               style: context.listCaptionStyle,
@@ -381,10 +374,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   }
 }
 
-/// 来源筛选 chip 行：全部 / 用户自定义 / 规则订阅 / 内置预设。
-///
-/// 这一行的形态（定高 32、横向滚动、间距 8、内边距由调用方给 16）就是全站
-/// chip 行的参照实现，现已抽成 [ChipRow] + [FilterPill]，其余页面共用同一份。
+/// Source filter chips: all, user, subscription, built-in preset. This row is the reference
+/// chip-row shape for the whole app, now extracted into ChipRow plus FilterPill.
 class _SourceChips extends StatelessWidget {
   const _SourceChips({required this.value, required this.onChanged});
 
@@ -410,10 +401,8 @@ class _SourceChips extends StatelessWidget {
   }
 }
 
-/// 规则列表：按来源分组，组内行用 `generateSection` 生成，分隔线才对得上。
-///
-/// 分组而不是平铺：三种来源的处置语义不同（预设可能只读、订阅会被下次更新
-/// 覆盖），混排时用户看不出某一行属于哪一类。
+/// Rule list grouped by source, rows built with generateSection so dividers align. Presets
+/// may be read-only and subscriptions get overwritten, so grouping carries meaning.
 class _RuleList extends StatelessWidget {
   const _RuleList({
     required this.rules,

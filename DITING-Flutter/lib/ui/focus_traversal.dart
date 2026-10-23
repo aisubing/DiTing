@@ -1,10 +1,8 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 part of 'focus.dart';
 
-/// Once a page has no target in a direction, the search continues among the
-/// nodes outside the page (sidebar, navigation bar) from the focused control's
-/// own rect, so left lands on the sidebar item beside it instead of wrapping.
-/// On a remote a row ends at its last control instead of jumping out of band.
+/// With no target in a direction the search continues outside the page, so left lands on the
+/// sidebar.
 class PageTraversalPolicy extends ReadingOrderTraversalPolicy
     with _CrossScopeFocus {
   @override
@@ -79,9 +77,8 @@ class PageTraversalPolicy extends ReadingOrderTraversalPolicy
       _isUncovered(node, level);
 }
 
-/// What a remote does outside the pages: a row or column ends at its last
-/// control, and only a move into another region, as from the sidebar into the
-/// page, may leave the row's band, for the nearest control on screen.
+/// Outside the pages a row ends at its last control; only a move into another region leaves its
+/// band.
 class _RemoteTraversalPolicy extends ReadingOrderTraversalPolicy
     with _CrossScopeFocus {
   @override
@@ -122,8 +119,7 @@ class _RemoteTraversalPolicy extends ReadingOrderTraversalPolicy
 }
 
 mixin _CrossScopeFocus on FocusTraversalPolicy {
-  // Each policy keeps a history per scope so that reversing a move returns to
-  // where it started; a jump between scopes would leave both histories stale.
+  // Each policy keeps a history per scope so reversing a move returns where it started.
   void _focusAcross(
     FocusScopeNode from,
     FocusNode target,

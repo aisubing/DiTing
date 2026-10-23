@@ -4,42 +4,29 @@ import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 日志仪表盘的通用块原语。
-///
-/// 对应旧版 `ModernLogDashboardComponents.kt` 的 `ResultDonut` / `LegendRow` /
-/// `RateRow` / `DashboardListRow` / `DashboardListCard`：三种日志模式与首页卡片
-/// 用的是同一套件，所以这些形状只在这里定义一次——各卡片自己再画一遍圆环，圆环
-/// 的线宽与留白迟早会分叉。
 
-/// 环形图的一段：值 + 颜色。值为 0 的段由调用方先过滤掉。
+/// Shared log-dashboard block primitives, defined once so ring width and padding cannot
+/// drift between cards.
+/// One donut segment. Callers filter out zero-value segments first.
 typedef DonutSegment = ({int value, Color color});
 
-/// 百分比：`12.3%`，末尾 `.0` 去掉（旧版 `formatPercent`：先四舍五入到
-/// 一位小数，整数不带小数点）。
+/// Percent text: `12.3%`, trailing `.0` dropped.
 String dashboardPercent(double ratio) {
   final rounded = (ratio.clamp(0.0, 1.0) * 1000).round() / 10;
   return rounded % 1 == 0 ? '${rounded.toInt()}%' : '$rounded%';
 }
 
-/// 毫秒：`38 ms`（旧版 `formatMs` 直接四舍五入到整数）。
 String dashboardLatency(double milliseconds) => '${milliseconds.round()} ms';
 
-/// 剩余时长：`57 分钟` / `3 小时`（旧版 `formatDuration` 只到三级）。
-///
-/// 与 `formatDuration` 一样**不取余**：`3420` 秒显示「57 分钟」，够用且与旧版
-/// 逐字一致；再细分秒数会让这一列在窄卡里换行。
+/// Duration text that truncates instead of rounding up, so 3420s reads as 57 min.
 String dashboardDuration(int seconds) {
   if (seconds >= 3600) return '${seconds ~/ 3600} 小时';
   if (seconds >= 60) return '${seconds ~/ 60} 分钟';
   return '$seconds 秒';
 }
 
-/// 字节数（1024 进制、两位小数），与旧版 `formatBytes` 逐字一致。
-///
-/// 与 `dashboard_style.dart` 的 [dashboardTraffic]（1000 进制）刻意不同：这两处
-/// 数字分别出现在「流量监控卡」与「网络速率卡」里，前者对齐旧版 1.4.3，
-/// 后者对齐流量页。改其中一处会立刻让两卡口径不一致——所以都只在调用点选，
-/// 不做「统一」。
+/// Bytes in base 1024, two decimals. Deliberately not [dashboardTraffic] (base 1000):
+/// one feeds the traffic card, the other the speed card.
 String dashboardBinaryBytes(num bytes) {
   const k = 1024.0;
   final value = bytes.toDouble();
@@ -58,7 +45,7 @@ String dashboardBinaryBytes(num bytes) {
   return '${value.round()} B';
 }
 
-/// 速率：`1.8 MB/s`（旧版 `formatSpeed`）。
+/// Speed text, e.g. `1.8 MB/s`.
 String dashboardBinarySpeed(num bytesPerSecond) {
   const k = 1024.0;
   final value = bytesPerSecond.toDouble();
@@ -67,11 +54,7 @@ String dashboardBinarySpeed(num bytesPerSecond) {
   return '${value.round()} B/s';
 }
 
-/// 结果环形图（旧版 `ResultDonut`）。
-///
-/// 自绘而不是引第三方图表库：形状只有一个圆环 + 一段中心文字，
-/// `lib/ui/line_chart.dart` 同样是 `CustomPainter`，这里与它保持同一路数。
-/// 环宽、留白比例照抄旧版：`stroke = 18dp`、内孔直径 = `0.72 * 直径`。
+/// Hand-drawn like `lib/ui/line_chart.dart`; ring stroke and hole ratio mirror upstream.
 class DashboardResultDonut extends StatelessWidget {
   const DashboardResultDonut({
     super.key,
@@ -82,7 +65,7 @@ class DashboardResultDonut extends StatelessWidget {
 
   final List<DonutSegment> segments;
 
-  /// 环中心显示的总数；为 0 时画一整圈描边色（「还没有数据」的视觉）。
+  /// Center total. Zero draws a full ring in the outline color.
   final int total;
   final double diameter;
 
@@ -160,7 +143,7 @@ class _DonutPainter extends CustomPainter {
       canvas.drawArc(rect, start, sweep, false, paint..color = segment.color);
       start += sweep;
     }
-    // 内孔用卡片底色盖住，形成真正的环而不是描边圆。
+    // Paint the hole with the card color so it reads as a ring, not a stroked circle.
     canvas.drawCircle(
       size.center(Offset.zero),
       diameter * 0.72 / 2,
@@ -176,7 +159,6 @@ class _DonutPainter extends CustomPainter {
       oldDelegate.segments != segments;
 }
 
-/// 图例一行：彩点 + 名称 + 右侧同色数值（旧版 `LegendRow`）。
 class DashboardLegendRow extends StatelessWidget {
   const DashboardLegendRow({
     super.key,
@@ -226,7 +208,6 @@ class DashboardLegendRow extends StatelessWidget {
   }
 }
 
-/// 比率一行：标题 + 右侧数值 + 进度条（旧版 `RateRow` / `ProgressBar`）。
 class DashboardRateRow extends StatelessWidget {
   const DashboardRateRow({
     super.key,
@@ -238,7 +219,7 @@ class DashboardRateRow extends StatelessWidget {
   final String label;
   final String value;
 
-  /// 0..1；超出范围会被钳住，不抛断言。
+  /// 0..1; clamped, never asserts.
   final double progress;
 
   @override
@@ -293,7 +274,6 @@ class DashboardRateRow extends StatelessWidget {
   }
 }
 
-/// 列表卡里的一行：标题 / 副标题 / 右侧徽标（旧版 `DashboardListRow`）。
 class DashboardLogRow extends StatelessWidget {
   const DashboardLogRow({
     super.key,
@@ -370,10 +350,7 @@ class DashboardLogRow extends StatelessWidget {
   }
 }
 
-/// 「标题 + 详情入口 + 空态或行列表」的列表卡（旧版 `DashboardListCard`）。
-///
-/// [rows] 为空时显示 [emptyText]，而不是一张只有标题的空卡——旧版三种模式在
-/// 无数据时都是这句灰字。
+/// List card: title, detail link, then rows or [emptyText].
 class DashboardLogListCard extends StatelessWidget {
   const DashboardLogListCard({
     super.key,

@@ -14,12 +14,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// App root.
-///
-/// Layer order matters: [ThemeCrossFade] lives in `builder` and relies on
-/// [ThemeData] comparing unequal on every rebuild, so themes must come from
-/// [AppThemeCache]. [AppScopes] must also sit above the `Navigator` (i.e. in
-/// `builder`), otherwise overlay routes cannot resolve their scopes.
+/// App root. Layer order matters: [ThemeCrossFade] relies on [ThemeData] comparing unequal on every
+/// rebuild, so themes come from [AppThemeCache]; [AppScopes] must sit above the `Navigator` (in
+/// `builder`), else overlay routes cannot resolve their scopes.
 class DitingApp extends ConsumerStatefulWidget {
   const DitingApp({super.key, this.initialLocation});
 
@@ -36,11 +33,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     initialLocation: widget.initialLocation ?? Routes.home,
   );
 
-  /// Foreground catch-up for auto update (upstream used a WorkManager job).
-  ///
-  /// Runs on both start and resume: start-only would starve long-backgrounded
-  /// users, resume-only would skip the first launch. `_autoUpdateChecking` is
-  /// just a debounce; the real due check lives in [AutoUpdateRunner].
+  /// Foreground catch-up for auto update on start and resume: start-only starves backgrounded
+  /// users, resume-only skips the first launch. `_autoUpdateChecking` is only a debounce; the due
+  /// check lives in [AutoUpdateRunner].
   AppLifecycleListener? _lifecycle;
   bool _autoUpdateChecking = false;
 
@@ -106,23 +101,18 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       darkTheme: _themes.of(pair.darkSpec),
       localizationsDelegates: const [
         AppUiLocalizations.delegate,
-        // `DefaultMaterialLocalizations` is English only; zh_CN needs the
-        // generated globals or AppBar throws "No MaterialLocalizations".
+        // `DefaultMaterialLocalizations` is English only; zh_CN needs the generated globals or
+        // AppBar throws "No MaterialLocalizations".
         ...GlobalMaterialLocalizations.delegates,
       ],
       supportedLocales: const [Locale('zh', 'CN')],
       locale: const Locale('zh', 'CN'),
       builder: (context, child) {
-        // `child` is the Navigator; all scopes must sit above it.
-        //
-        // `LiquidGlassScope` and `LiquidGlassHost` are a pair: the host captures
-        // what sits behind each glass pane during compositing. Without it panes
-        // fall back to tint + border only, which looks like glass is off. The
-        // first-launch agreement gate lives here too so it covers overlay
-        // routes; once accepted it returns `child` with no extra layout.
+        // `child` is the Navigator; all scopes sit above it. `LiquidGlassScope` and
+        // `LiquidGlassHost` are a pair, else panes fall back to tint + border. The agreement
+        // gate lives here so it also covers overlay routes.
         final glass = ref.watch(liquidGlassModeProvider);
-        // The background sits below the Navigator so every page's transparent
-        // fill shows the same wallpaper, and it fades with the theme cross-fade.
+        // Below the Navigator, so every page's transparent fill shows the same wallpaper.
         final content = child ?? const SizedBox.shrink();
         return ThemeCrossFade(
           child: AppSystemUi(

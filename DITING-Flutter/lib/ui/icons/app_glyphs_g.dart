@@ -1,12 +1,8 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
-//
-// 站点徽标。四个品牌标识取自 Simple Icons（CC0-1.0，仅商标归各品牌所有），
-// 与 FlClash 的做法一致：它在 `assets/images/services/*.svg` 里放同一批品牌图形。
-// 这里不引入 `flutter_svg`，而是把 `path d` 交给已有的 `GlyphPath` 解析——
-// 仓内所有图标都走这一条渲染路径，多一个 SVG 运行时只会多一份主题染色逻辑。
+// Brand marks from Simple Icons (CC0-1.0; trademarks belong to their owners). The `path d` goes
+// through `GlyphPath` rather than `flutter_svg`, so every icon shares one render and theming path.
 part of 'app_glyphs.dart';
 
-/// 百度。
 const _g_baidu_ = Glyph([
   GlyphPath(
     'M9.154 0C7.71 0 6.54 1.658 6.54 3.707c0 2.051 1.171 3.71 2.615 3.71 '
@@ -30,7 +26,7 @@ const _g_baidu_ = Glyph([
   ),
 ]);
 
-/// 抖音。字节跳动给抖音和 TikTok 用的是同一枚「音符」标识，这里取该音符轮廓。
+/// Douyin. ByteDance uses the same note mark for Douyin and TikTok.
 const _g_douyin_ = Glyph([
   GlyphPath(
     'M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 '
@@ -44,7 +40,6 @@ const _g_douyin_ = Glyph([
   ),
 ]);
 
-/// 哔哩哔哩。
 const _g_bilibili_ = Glyph([
   GlyphPath(
     'M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 '
@@ -60,7 +55,6 @@ const _g_bilibili_ = Glyph([
   ),
 ]);
 
-/// 网易云音乐。
 const _g_neteaseMusic_ = Glyph([
   GlyphPath(
     'M13.046 9.388a3.919 3.919 0 0 0-.66.19c-.809.312-1.447.991-1.666 '

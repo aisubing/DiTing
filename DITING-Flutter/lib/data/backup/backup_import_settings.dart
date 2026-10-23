@@ -2,7 +2,6 @@ part of 'backup_importer.dart';
 
 /// Merges appearance and system setting groups; local values win.
 extension _BackupImportSettings on BackupImporter {
-  /// Skip items that already have a local value.
   BackupGroupOutcome _importAppearance(
     Object? value,
     BackupImportTarget target,
@@ -69,8 +68,8 @@ extension _BackupImportSettings on BackupImporter {
       }
     }
 
-    // This build has one shared `componentOpacity`; old backups held five
-    // separate keys, so each present value is written back to its legacy key.
+    // This build has one shared `componentOpacity`; old backups held five separate keys, so each
+    // present value is written back to its legacy key.
     final component = _decimal(value['componentOpacity']);
     for (final entry in const {
       'homePowerButtonOpacity': 'home_power_button_opacity',
@@ -122,10 +121,8 @@ extension _BackupImportSettings on BackupImporter {
     );
   }
 
-  /// Opacity needs a tolerance.
-  ///
-  /// Android stores floats as Java `float`, so `putFloat(0.8)` reads back as
-  /// `0.800000011920929`; exact comparison would report these as added forever.
+  /// Opacity needs a tolerance: Android stores Java `float`, so `putFloat(0.8)` reads back as
+  /// `0.800000011920929`.
   bool _sameOpacity(double current, double incoming) =>
       (current - incoming).abs() < 0.001;
 
@@ -135,10 +132,8 @@ extension _BackupImportSettings on BackupImporter {
     return null;
   }
 
-  /// System settings: skip keys whose value is unchanged.
-  ///
-  /// Compare against the current local value, not against whether the key was
-  /// ever written, so re-importing the same backup reports nothing new.
+  /// Skips unchanged keys, comparing against the current local value so re-importing the same
+  /// backup reports nothing new.
   BackupGroupOutcome _importSystem(Object? value, BackupImportTarget target) {
     if (value is! Map) {
       throw const BackupFormatException('系统设置分组应为对象');
@@ -380,7 +375,6 @@ extension _BackupImportSettings on BackupImporter {
   }
 }
 
-/// String set from JSON; accepts a list or a map shape.
 Set<String> _stringSet(Object? value) {
   if (value is List) {
     return {

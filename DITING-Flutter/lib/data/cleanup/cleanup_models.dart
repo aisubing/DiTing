@@ -1,6 +1,5 @@
 library;
 
-/// Cleanup actions; declaration order is the on-screen order.
 enum CleanupAction {
   logs('删除请求日志'),
   traffic('删除流量统计'),
@@ -23,9 +22,7 @@ enum CleanupAction {
 
   final String title;
 
-  /// Whether the process must exit after this action.
-  ///
-  /// These two also clear `initial_agreement_accepted`.
+  /// Whether the process must exit after this action; both also clear `initial_agreement_accepted`.
   bool get exitsApp => this == settingsGuides || this == allData;
 
   /// Whether the engine must reload afterwards, or it keeps using the stale copy.
@@ -38,11 +35,9 @@ enum CleanupAction {
   }.contains(this);
 }
 
-/// Outcome of one cleanup action.
 class CleanupResult {
   const CleanupResult({required this.action, required this.removed, this.detail});
 
-  /// Failed result; [detail] is the reason.
   const CleanupResult.failed(this.action, String this.detail) : removed = 0;
 
   final CleanupAction action;
@@ -50,7 +45,6 @@ class CleanupResult {
   /// Removed rows / files / keys. Zero is a valid result, not a failure.
   final int removed;
 
-  /// Extra note; the reason when the action failed.
   final String? detail;
 
   bool get failed => detail != null && removed == 0;

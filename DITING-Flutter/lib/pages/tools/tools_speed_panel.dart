@@ -1,13 +1,8 @@
 part of 'tools_page.dart';
 
-/// 测速页签：真实 DNS 查询耗时测量（旧版 `DnsSpeedTestSection`）。
-///
-/// 三个必须如实呈现的点：
-/// 1. **不可用态先说清楚**。通道不存在时（桌面 / 测试宿主）页面显示「当前设备
-///    不支持测速」并禁用按钮，绝不用假数字顶替；
-/// 2. 成功项的耗时来自原生侧的真实往返（3 次查询取成功样本平均），失败项显示
-///    `全部失败（N 次）` + 原因，不参与最快徽标；
-/// 3. 结果按「成功优先 → 平均耗时升序」排序，名次就是列表下标 + 1。
+/// Speed test tab measuring real DNS query latency (legacy `DnsSpeedTestSection`). A missing
+/// channel
+/// disables the button instead of faking numbers; failed entries never win the fastest badge.
 class _SpeedTestPanel extends ConsumerStatefulWidget {
   const _SpeedTestPanel();
 
@@ -18,7 +13,6 @@ class _SpeedTestPanel extends ConsumerStatefulWidget {
 class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
   final _domain = TextEditingController();
 
-  /// 只在首帧把 provider 里的域名灌进输入框，之后由用户输入驱动。
   var _domainBound = false;
 
   @override
@@ -71,8 +65,8 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
               hintText: '用于测速的域名',
               glyph: AppGlyphs.language,
               enabled: !state.running && !unavailable,
-              // 必须边输边写回 provider：`_run` 读的是 provider 里的域名，
-              // 只改输入框文字会让测速打在上一次的域名上。
+              // Write back on every keystroke: `_run` reads the provider value, so a
+              // controller-only change would test the previous domain.
               onChanged: (value) =>
                   ref.read(latencyDomainProvider.notifier).setDomain(value),
               onSubmitted: (_) => _run(),
@@ -139,12 +133,9 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
             ),
           ),
         if (state.results.isNotEmpty) ...[
-          // 结果行用 `generateSection` 而不是自己套 `CommonCard` + `Column`：
-          // 旧版 `DnsSpeedTestSection` 每行之间有 0.5dp 的 `HorizontalDivider`，
-          // 而 `lib/ui` 的行分隔线由 `ItemPosition` 驱动（`list_row_separator`）——
-          // 它按设备像素比取整到真正的发丝线，并在高亮/聚焦时自动收线。
-          // 自己画一条 `Divider(height: 0.5)` 会得到 1 逻辑像素（粗一倍），且与
-          // 其它列表页的线条粗细不一致。
+          /// Rows go through `generateSection`, not a hand-rolled `CommonCard` + `Column`: `lib/ui`
+          /// drives separators from `ItemPosition`, while `Divider(height: 0.5)` is a full logical
+          /// pixel.
           generateSection(
             title: '查询耗时结果',
             items: [
@@ -185,7 +176,7 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
   }
 }
 
-/// 一行测速结果：名次 + 名称 + 协议徽标 + 最快徽标 + 耗时条 + 成功率 + 样本。
+/// Rank, name, protocol badge, fastest badge, latency bar, success rate and sample count.
 class _SpeedResultRow extends StatelessWidget {
   const _SpeedResultRow({
     required this.sample,

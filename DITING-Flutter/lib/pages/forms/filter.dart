@@ -1,23 +1,15 @@
-/// 过滤器输入（上游 `features/form/filter.dart`，57 行）。
-///
-/// 上游的过滤器是一个反引号分隔的字符串，逐段拼成正则；输入框下面实时显示
-/// 命中数，让用户边打边看结果。这里保留「反引号分隔 + 实时校验」的语义，
-/// 但把正则从页面里抽出来单独做高亮渲染（`FilterRegexText`）。
+/// Filter input (upstream `features/form/filter.dart`).
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 把反引号分隔的过滤串拆成若干段，去掉空白段。
-///
-/// 为什么用反引号而不是逗号：域名与正则里都可能出现逗号，反引号在两者里都
-/// 极少见，不需要转义。
+/// Backticks rather than commas because domains and regexes can contain commas.
 List<String> parseFilterParts(String raw) => [
   for (final part in raw.split('`'))
     if (part.trim().isNotEmpty) part.trim(),
 ];
 
-/// 一行的过滤器输入：左侧是放大镜字形，右侧是输入框。
 class FilterField extends StatefulWidget {
   const FilterField({
     super.key,
@@ -48,8 +40,8 @@ class _FilterFieldState extends State<FilterField> {
   @override
   void didUpdateWidget(FilterField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 外部重置（「清空筛选」按钮）时同步文本框，但不能在用户输入过程中
-    // 覆盖光标，所以只在值真的不同且不是本次输入造成的时候写回。
+    // Sync the field on an external reset, but never clobber the cursor mid-typing,
+    // so write back only when the value really differs.
     if (widget.value != _controller.text && widget.value != oldWidget.value) {
       _controller.value = TextEditingValue(
         text: widget.value,
@@ -108,16 +100,14 @@ class _FilterFieldState extends State<FilterField> {
   }
 }
 
-/// 把过滤串按段渲染成小标签，让用户看清「现在有哪几个条件」。
-///
-/// 反引号在输入框里看不见边界，尤其是段里有空格时；单独渲染一遍比在输入框
-/// 里加高亮简单，也更容易读。
+/// Render the filter as chips so the active conditions are visible; backtick
+/// boundaries are invisible in the field, especially with spaces inside a segment.
 class FilterRegexText extends StatelessWidget {
   const FilterRegexText({super.key, required this.raw, this.onRemove});
 
   final String raw;
 
-  /// 点掉某一或多段后的回调；`null` 表示只读展示。
+  /// Called with the removed segments; `null` means read-only.
   final ValueChanged<String>? onRemove;
 
   @override

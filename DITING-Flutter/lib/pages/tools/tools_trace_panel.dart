@@ -1,10 +1,7 @@
 part of 'tools_page.dart';
 
-/// 路由追踪面板：逐跳列表。
-///
-/// 数据源是 `DiagnosticsRunner.traceRoute`（原生 `NetworkTraceRouteTool`）。
-/// 逐跳结果一次性返回（旧版的渐进回调跨 Flutter 重建边界不可复现），一次
-/// traceroute 在手机上只需几秒，因此按结果整体渲染。
+/// Traceroute panel with a per-hop list from `DiagnosticsRunner.traceRoute`. Hops arrive in
+/// one batch: the legacy progressive callbacks cannot survive Flutter rebuilds.
 class _TraceroutePanel extends ConsumerStatefulWidget {
   const _TraceroutePanel();
 
@@ -68,8 +65,7 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
             onSubmitted: (_) => _run(),
           ),
         ),
-        // 档位逐字照抄旧版 `TracerouteSection` 的 `hopOptions`：只有 15 / 30 两档，
-        // 默认 15。
+        // Same hop options as the legacy `TracerouteSection`: 15 and 30, defaulting to 15.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: SegmentedControl<int>(

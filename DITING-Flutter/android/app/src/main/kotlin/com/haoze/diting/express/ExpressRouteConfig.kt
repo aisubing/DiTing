@@ -6,8 +6,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.haoze.diting.normal.VpnRouteConfig
 
-/// Narrow-route TUN: only the DNS server subnet and well-known public DNS
-/// addresses enter the tunnel, so ordinary traffic keeps the OS routing path.
+/// Narrow-route TUN: only DNS subnet and public resolvers enter it; other traffic keeps OS routing.
 object ExpressRouteConfig {
     private const val TAG = "ExpressRouteConfig"
 

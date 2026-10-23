@@ -2,11 +2,7 @@
 
 part of 'scaffold.dart';
 
-/// What the surface a scaffold sits on asks of its chrome.
-///
-/// A sheet page is a pushed route and wears a page's chrome. A bottom sheet
-/// floats its bar over the body and searches from a field docked over its
-/// foot instead of a button that takes the bar over.
+/// What the surface under a scaffold asks of its chrome; a bottom sheet docks search below.
 class _SheetForm {
   const _SheetForm({
     required this.isCompact,
@@ -34,7 +30,6 @@ class _SheetForm {
           : _SheetPop.of(
               context,
               provider,
-              // A bottom sheet docks its search at its foot, not in the bar.
               hasActions: hasActions || searchState != null && !isCompact,
               hasPrimaryAction: hasPrimaryAction,
               hasConfirmationAction:
@@ -51,8 +46,7 @@ class _SheetForm {
   bool get hasDockedSearch => dockedSearch != null;
 }
 
-/// How a sheet's own pop button reads: [useCloseIcon] where it dismisses the
-/// sheet, and [asSuffix] where it ends the bar, alone or with a primary action.
+/// How a sheet's pop button reads: [useCloseIcon] to dismiss, [asSuffix] to end the bar.
 class _SheetPop {
   const _SheetPop({
     required this.useCloseIcon,
@@ -92,8 +86,6 @@ const double _barButtonGap = 8;
 const double _headerOverhang = 16;
 const double _iconButtonTapPadding = 4;
 
-/// Where a filled button sits from the app bar edge, leading included: the
-/// layout margin iOS gives a compact and a regular width.
 double appBarActionInset(bool compact) => compact ? 16 : 20;
 
 double _iconActionInset(bool isMobileView) => isMobileView ? 4 : 8;
@@ -101,7 +93,6 @@ double _iconActionInset(bool isMobileView) => isMobileView ? 4 : 8;
 double appBarLeadingWidth(bool compact) =>
     TonalButtonSize.bar.button + appBarActionInset(compact) * 2;
 
-/// A phone view or a sheet: an iOS compact width.
 bool _isCompactBar(BuildContext context, bool isMobileView) {
   final sheet = SheetProvider.of(context)?.type;
   return isMobileView || (sheet != null && sheet != SheetType.page);
@@ -122,7 +113,6 @@ enum AppBarActionEdge {
   };
 }
 
-/// Only the touch platforms ask for the 48 dp target that pads the container out.
 double _tapPaddingOf(BuildContext context) =>
     Theme.of(context).materialTapTargetSize == MaterialTapTargetSize.padded
     ? _iconButtonTapPadding
@@ -172,8 +162,7 @@ class AppBarInsetScope extends StatelessWidget {
   }
 }
 
-/// A route over the home page on the root navigator fills the window, with
-/// neither the window header nor the sidebar keeping it off the buttons.
+/// A home page route on the root navigator fills the window, clear of header and sidebar.
 class _TitleMenuButton extends StatelessWidget {
   const _TitleMenuButton({
     required this.title,
@@ -187,8 +176,7 @@ class _TitleMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // No ink: the padding it needs would move the title off its place in the
-    // bar, and a press turns the title into its menu at once.
+    // No ink: its padding would move the title, and a press turns the title into its menu.
     return InkWell(
       onTap: onPressed,
       customBorder: AppShape.sm,

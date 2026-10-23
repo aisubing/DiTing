@@ -9,13 +9,11 @@ import 'package:material_ui/material_ui.dart';
 import 'inherited.dart';
 import 'list.dart';
 
-/// Each entry runs on a controller of its own, so a change made while another
-/// entry still moves leaves that one running.
+/// Each entry runs on its own controller, so moving one leaves another running.
 class EntryTransitions<K> {
   final TickerProvider vsync;
 
-  /// Runs once [K] has collapsed, outside the frame that finished it, so the
-  /// owner may drop the entry with setState even while being built.
+  /// Runs once [K] collapsed, after the frame that finished it, so the owner may setState.
   final ValueChanged<K> onLeft;
 
   final _controllers = <K, AnimationController>{};
@@ -30,7 +28,6 @@ class EntryTransitions<K> {
 
   Iterable<K> get leaving => _leaving;
 
-  /// Moves [entries] to [next], keeping the ones it drops while they leave.
   List<T> sync<T>(
     List<T> entries,
     List<T> next,
@@ -55,8 +52,8 @@ class EntryTransitions<K> {
     return keepLeaving(entries, next, keyOf);
   }
 
-  /// Places the staying [keys] in one run of rounded rows, ahead of
-  /// [trailing] rows that close it; a leaving key keeps the place it had.
+  /// Places the staying [keys] in one run of rounded rows ahead of [trailing]; a leaver keeps its
+  /// place.
   void place(Iterable<K> keys, {int trailing = 0}) {
     final staying = keys.where((key) => !isLeaving(key)).toList();
     final count = staying.length + trailing;
@@ -159,8 +156,7 @@ class EntryTransition extends StatelessWidget {
   }
 }
 
-/// With [grouped], a child collapsing out keeps its place in the run of
-/// rounded rows while the others close up around it.
+/// With [grouped], a child collapsing out keeps its place while the others close up.
 class AnimatedEntries extends StatefulWidget {
   final List<Widget> children;
   final bool grouped;

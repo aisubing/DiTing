@@ -3,11 +3,7 @@ import 'dart:io';
 import 'package:diting/data/recognition/recognition_members.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 名单解析的守门测试。
-///
-/// 这份 JSON 由维护者手工推到 GitHub，写错的可能性集中在三处：名字重复、
-/// 头像文件名不合规、数组/根字段缺失。解析器必须把这些判成「整份不可用」，
-/// 否则页面会渲染半份坏名单（或一个空头像的洞）。
+/// Guards list parsing: duplicate names, bad avatar names and missing fields must void the file
 void main() {
   group('parseRecognitionMembers', () {
     test('解析合法配置并保持数组顺序', () {
@@ -74,8 +70,7 @@ void main() {
     });
 
     test('仓库根目录的那份名单可以被解析', () {
-      // 打包不内置名单，但仓库根目录这份就是要推到 GitHub 的原始文件：
-      // 解析不过说明发出去的配置会让所有客户端降级，属于发布前必须挡住的错。
+      // This file is pushed to GitHub: a parse failure downgrades every client
       final raw = File(
         '../recognition_members.json',
       ).readAsStringSync();

@@ -21,7 +21,7 @@ class FakeVpnController implements VpnController {
   VpnStartRequest? lastRequest;
   VpnStatus statusValue = const VpnStatus(running: false, persisted: false);
 
-  /// 下一次 [trafficRates] 的返回值；测试要验证「速率来自原生」时改它。
+  /// Return value of the next [trafficRates] call; change it to test native rates.
   VpnTrafficRates ratesValue = const VpnTrafficRates.idle();
   int trafficRatesCalls = 0;
 

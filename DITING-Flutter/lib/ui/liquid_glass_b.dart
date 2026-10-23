@@ -76,8 +76,7 @@ class LiquidGlassStyle {
           );
   }
 
-  /// Thicker than [LiquidGlassStyle.regular], for rows that read over anything.
-  /// It takes its rim from a [LiquidGlassRim].
+  /// Thicker than [LiquidGlassStyle.regular], for rows over anything; it takes a [LiquidGlassRim].
   factory LiquidGlassStyle.menu(ColorScheme colorScheme) {
     final dark = colorScheme.brightness == Brightness.dark;
     return dark
@@ -151,16 +150,12 @@ class LiquidGlassStyle {
 
   final Color tint;
 
-  /// How far the tint thickens toward opaque over content much darker, or if
-  /// negative much lighter, than it, so what sits on the glass stays legible.
   final double contrast;
   final double blur;
 
-  /// The share of the backdrop seen through [hazeBlur] rather than [blur].
   final double haze;
   final double hazeBlur;
 
-  /// Negative for a raised lens, which reads outward all around its rim.
   final double refraction;
   final double bevel;
   final double saturation;
@@ -171,10 +166,8 @@ class LiquidGlassStyle {
 
   final double rimTail;
 
-  /// 0 dims [rim] round the ends as on iOS's tab bar, 1 as on its controls.
   final double rimFocus;
 
-  /// The share of [rim] added as light rather than screened toward white.
   final double rimAdded;
 
   final double endShade;
@@ -506,8 +499,7 @@ class LiquidGlassRim {
   int get hashCode => Object.hash(side, corner, flat, shine);
 }
 
-/// Light a press casts on a pane, in its coordinates: [strength] at [center],
-/// falling off over [reach] to [wash] of it across the rest of the pane.
+/// Light a press casts on a pane: [strength] at [center], falling off to [wash] over [reach].
 @immutable
 class LiquidGlassGlow {
   const LiquidGlassGlow({
@@ -540,7 +532,3 @@ class LiquidGlassGlow {
   int get hashCode => Object.hash(center, reach, strength, wash);
 }
 
-/// A pane of glass behind [child], after iOS's Liquid Glass, a pill unless
-/// [clipper] shapes it. It casts [shadows] only outside itself, as one
-/// under it would show through. Without Impeller's shader filters it frosts
-/// but does not bend.

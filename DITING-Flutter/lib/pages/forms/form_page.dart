@@ -1,12 +1,4 @@
-/// 表单族的基础构件（上游 `features/form/form_page.dart` + `form_row.dart`）。
-///
-/// 这一族解决的是同一个问题：一页里有多行「标题 + 右侧值」，值可能是纯文本、
-/// 输入框、密码、开关、选项或跳转。上游把它们拆成 `FormRow` 的三种派生
-/// （`FormRowTextField` / `FormRowSecretTextField`）+ `FormPage` 容器；本仓照抄
-/// 这个分层，只是把 `FormRow` 的内边距换成 `DecorationListItem`，与列表行同源。
-///
-/// 按 550 行上限拆成库根 + part：本文件是 `FormPage` 与 `FormRow`，
-/// 输入框派生在 `form_row_fields.dart`。
+/// Form building blocks (upstream `form_page.dart` / `form_row.dart`).
 library;
 
 import 'package:diting/pages/forms/custom_issue.dart';
@@ -16,11 +8,8 @@ import 'package:material_ui/material_ui.dart';
 
 part 'form_row_fields.dart';
 
-/// 表单页容器：一个标题 + 若干 `FormRow` + 顶部的错误条与保存动作。
-///
-/// 上游把「保存」放在 `CommonScaffold.confirmationAction` 里（一个对勾图标），
-/// 保存中显示 loading、失败时在页首显示错误条。这里保持同样的语义，但把
-/// 保存按钮做成可配置的文字按钮——演示页里它常常需要「测试连接」这类文案。
+/// Form page container: title, `FormRow`s, a top error bar and a save action. The save
+/// label is configurable because demo pages need text such as "test connection".
 class FormPage extends StatelessWidget {
   const FormPage({
     super.key,
@@ -37,12 +26,12 @@ class FormPage extends StatelessWidget {
   final String title;
   final List<Widget> children;
 
-  /// `null` 表示只读表单，底部不给动作。
+  /// `null` renders a read-only form without a bottom action.
   final VoidCallback? onSave;
 
   final String saveLabel;
 
-  /// 顶部错误条；非空时自动展开，不需要调用方再判断。
+  /// Top error bar; it expands itself when non-empty.
   final String? error;
 
   final bool saving;
@@ -65,8 +54,8 @@ class FormPage extends StatelessWidget {
             spacing: 4,
             children: [
               if (title.isNotEmpty) ListHeader(title: title),
-              // 横向留白由外层 [padding] 统一给（组头、组脚和它对齐），
-              // `generateSection` 再给一次会让卡片比标题缩进一倍。
+              // Horizontal padding comes from the outer [padding] so the card aligns
+              // with its header and footer.
               generateSection(padding: EdgeInsets.zero, items: children),
               if (footer case final footer?) ListFooter(text: footer),
             ],
@@ -87,10 +76,7 @@ class FormPage extends StatelessWidget {
   }
 }
 
-/// 一行表单：左标题、右值。
-///
-/// 有 trailing 时标题最多占一半宽度——否则一个长标题会把值挤成省略号，
-/// 而值往往才是用户要核对的内容。
+/// With a trailing widget the title is capped at half width so the value is not ellipsized.
 class FormRow extends StatelessWidget {
   static const double _spacing = 16;
   static const double _titleMaxWidthFactor = 0.5;
@@ -111,12 +97,10 @@ class FormRow extends StatelessWidget {
   final Widget? leading;
   final Widget? trailing;
 
-  /// 校验失败：整行用错误色描边（上游 `invalid`）。
   final bool invalid;
 
   final VoidCallback? onPressed;
 
-  /// 标题下的一行说明；`FormRow` 本身不伸进 `subtitle`，需要时用它。
   final String? description;
 
   @override
@@ -189,7 +173,7 @@ class FormRow extends StatelessWidget {
   }
 }
 
-/// 「+ / −」圆形按钮（上游 `EntryButton`）。
+/// Round "+ / -" button (upstream `EntryButton`).
 class EntryButton extends StatelessWidget {
   const EntryButton.add({super.key, required this.onPressed}) : _add = true;
 
@@ -213,9 +197,8 @@ class EntryButton extends StatelessWidget {
   }
 }
 
-/// 一个「这里有说明」的小图标按钮，点开弹消息（上游 `InfoMessageButton`）。
-///
-/// 用在「这一行看起来不对，但原因不方便一直显示」的场合：图标常驻，说明按需。
+/// Small info button that opens a message (upstream `InfoMessageButton`), for rows
+/// whose explanation should not be permanently visible.
 class InfoMessageButton extends StatelessWidget {
   const InfoMessageButton({super.key, required this.message});
 
@@ -238,7 +221,6 @@ class InfoMessageButton extends StatelessWidget {
   }
 }
 
-/// 纯文本消息弹窗。
 Future<void> showMessageDialog(BuildContext context, String message) =>
     showFloatingDialog<void>(
       context: context,

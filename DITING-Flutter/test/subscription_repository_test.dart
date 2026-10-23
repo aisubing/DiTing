@@ -3,13 +3,7 @@ import 'package:diting/data/db/subscription_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// 订阅仓库对着 1.4.3 的真实表结构跑 SQL。
-///
-/// schema 是逐列手写的（不是 `CREATE TABLE ... AS`），列名、`NOT NULL`、
-/// 唯一索引、外键 `ON DELETE CASCADE` 都与设备上 `subscription` /
-/// `subscription_group` / `subscription_auto_update_item` 三张表一致——只有这样才能
-/// 证明仓库里的 `ORDER BY`、唯一冲突与级联删除真的成立，而不是被宽松的测试库
-/// 静默放过（判据要落在真实结构上，不能落在测试库的宽容行为上）。
+/// Runs the subscription SQL against the real 1.4.3 tables: `ORDER BY`, conflicts, cascades
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -80,7 +74,6 @@ void main() {
 
   tearDown(() => db.close());
 
-  /// 插入一条订阅；[addedAt] 用来验证 `ORDER BY addedAt DESC`。
   Future<int> insertSub({
     String url = 'https://example.com/rules.txt',
     String name = '示例订阅',
@@ -155,7 +148,6 @@ void main() {
         hasLength(1),
       );
       expect(await repository.allRemote(), hasLength(2));
-      // 库里存的是小写枚举值；异常值一律回落 domain。
       expect(
         SubscriptionKind.normalize('HOSTS'),
         SubscriptionKind.hosts,
@@ -222,7 +214,6 @@ void main() {
       final rows = await db.query('subscription');
       expect(rows, hasLength(1));
       expect(rows.single['name'], '原始');
-      // 冲突命中时不算一次写入。
       expect(writeCount, 1);
     });
 
@@ -335,7 +326,6 @@ void main() {
       );
 
       final record = (await repository.byId(id))!;
-      // 304 不清条数：内容没变，上次的条数仍然成立。
       expect(record.ruleCount, 900);
       expect(record.lastUpdated, 4000);
       expect(record.lastAttemptAt, 9000);
@@ -362,7 +352,6 @@ void main() {
       expect(record.httpEtag, isNull);
       expect(record.httpLastModified, isNull);
       expect(record.ruleSetHash, isNull);
-      // 状态不动：清规则不影响「这条订阅本身是否可用」。
       expect(record.importState, SubscriptionImportState.ready);
     });
 
@@ -407,7 +396,6 @@ void main() {
 
       final record = (await repository.byId(id))!;
       expect(record.importState, SubscriptionImportState.importing);
-      // error 传 null → 清空。
       expect(record.importError, isNull);
     });
   });
@@ -418,7 +406,6 @@ void main() {
 
       expect(record.id, 0);
       expect(record.url, '');
-      // 缺 enabled 时回落到「启用」：上游默认 true。
       expect(record.enabled, isTrue);
       expect(record.mirrorFallback, isTrue);
       expect(record.kind, SubscriptionKind.domain);
@@ -441,7 +428,6 @@ void main() {
       );
       expect(SubscriptionAutoUpdateStatus.success.storageValue, 'success');
       expect(SubscriptionAutoUpdateStatus.failed.storageValue, 'failed');
-      // displayName 照抄 SubscriptionKind.displayName。
       expect(SubscriptionKind.domain.displayName, '黑白名单规则');
       expect(SubscriptionKind.hosts.displayName, 'hosts 规则');
     });

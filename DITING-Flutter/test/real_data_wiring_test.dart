@@ -10,18 +10,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/legacy_schema.dart';
 
-/// 「真实数据接线」的**数据库侧**守卫。
-///
-/// 这一轮把首页 / 日志仪表盘上一批写死的数字换成了旧库聚合。最容易回归的不是
-/// SQL 写错（`legacy_repository_test.dart` 已覆盖），而是：
-/// 1. 聚合层又把某个桶算进「通过」（口径漂移）；
-/// 2. 没有数据时回退成演示值（`0` 与 `—` 分不清）；
-/// 3. 「仅拦截与错误」「关闭日志」两个模式的裁剪被漏掉；
-/// 4. 镜像站模板又变成内存常量（重启就丢）。
-///
-/// 纯函数与 prefs 键的守卫在 `real_data_mapping_test.dart`；拆开是因为两边
-/// 的生命周期不同：这边要建库、那边不用，混在一个文件里会让「只想跑映射」的
-/// 人也被迫付 ffi 初始化的代价（也让文件越过 550 行）。
+/// Guards real-data wiring in the database: no bucket counted as passed, no demo fallback
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -33,7 +22,6 @@ void main() {
   setUp(() async {
     db = await databaseFactory.openDatabase(inMemoryDatabasePath);
     await createLegacySchema(db);
-    // 概览还会读这五张表：它们不在共享 DDL 里，因为只有本文件需要。
     await db.execute(
       'CREATE TABLE dns_cache ('
       'id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
@@ -72,11 +60,6 @@ void main() {
 
   tearDown(() => db.close());
 
-  /// 概览 provider 的容器：把两个库 provider 都指向上面的内存库。
-  ///
-  /// 两个都要覆盖：概览会同时读 `activeLogDatabaseProvider`（DNS）与
-  /// `mainLogDatabaseProvider`（HTTPS）。只覆盖一个的话另一半会去开真实文件，
-  /// 在测试宿主上拿到 null，于是断言「HTTPS 侧也算进去了」会静默失效。
   ProviderContainer containerFor({bool filtered = false}) {
     final container = ProviderContainer(
       overrides: [
@@ -102,7 +85,6 @@ void main() {
       expect(snapshot.raceWinners, isEmpty);
       expect(snapshot.bootstrapIps, isEmpty);
       expect(snapshot.subscriptionBlocks, isEmpty);
-      // 没有计时样本时平均延迟必须是 null（页面画破折号），不是 0ms。
       expect(snapshot.quality.averageLatencyMs, isNull);
       expect(snapshot.quality.latencySamples, 0);
     });
@@ -136,7 +118,6 @@ void main() {
       await insertHttpRow(db, timestamp: stamp, outcome: 'invalid');
 
       final snapshot = await containerFor().read(logDashboardProvider.future);
-      // passed = DNS 2 + HTTPS 1；blocked = DNS 1 + HTTPS 2；bypassed = HTTPS 1。
       expect(snapshot.breakdown.passed, 3);
       expect(snapshot.breakdown.blocked, 3);
       expect(snapshot.breakdown.bypassed, 1);
@@ -145,7 +126,6 @@ void main() {
       expect(snapshot.breakdown.total, 7);
       expect(snapshot.quality.averageLatencyMs, 15);
       expect(snapshot.quality.latencySamples, 2);
-      // 命中率分母是 passed + error（DNS 侧），不是全部行。
       expect(snapshot.quality.cacheHitRate, closeTo(1 / 2, 1e-9));
     });
 
@@ -160,10 +140,7 @@ void main() {
       await insertHttpRow(db, timestamp: yesterday, outcome: 'allowed');
 
       final snapshot = await containerFor().read(logDashboardProvider.future);
-      // 计数是「今日」窗口。
       expect(snapshot.breakdown.total, 0);
-      // 「最近请求」不是今日窗口：旧版 `dnsLogRepository.recentLogs(RECENT_LOG_LIMIT)`
-      // 取的是最新几行，跨天也要显示（凌晨开机时列表不该是空的）。
       expect(snapshot.recentRequests, hasLength(2));
     });
 
@@ -213,7 +190,6 @@ void main() {
       );
       expect(snapshot.cacheHotspots.first.queryType, 'A');
       expect(snapshot.offMode.cacheEntries, 2);
-      // 累计命中不过期过滤：过期行的命中确实发生过（旧版同口径）。
       expect(snapshot.offMode.cacheHits, 109);
     });
 
@@ -253,7 +229,6 @@ void main() {
       expect(snapshot.race.successes, 1);
       expect(snapshot.race.successRate, 0.5);
       expect(snapshot.raceWinners, hasLength(1));
-      // 目录里 preset_alidns_dns 的显示名是「阿里云」，不是裸 id。
       expect(snapshot.raceWinners.single.name, '阿里云');
       expect(snapshot.bootstrap.attempts, 1);
       expect(snapshot.bootstrap.successRate, 1);
@@ -273,8 +248,6 @@ void main() {
         'ruleCount': 100,
         'addedAt': stamp,
       });
-      // 两条 BLOCKED 行：一条挂现存订阅，一条挂已删除的 id 7。
-      // helper 不收 `blockSubscriptionId`，因此直接写行。
       for (final (name, subscriptionId) in [
         ('ad.example', 1),
         ('gone.example', 7),
@@ -297,7 +270,6 @@ void main() {
       expect(names, containsAll(['广告拦截', '已删除订阅 #7']));
       final deleted = blocks.firstWhere((block) => block.deleted);
       expect(deleted.statusLabel, '已删除');
-      // 占比分母是两张表的当日全部行数。
       expect(blocks.first.rate, closeTo(1 / 2, 1e-9));
     });
 
@@ -335,9 +307,7 @@ void main() {
       expect(snapshot.breakdown.passed, 0);
       expect(snapshot.breakdown.cached, 0);
       expect(snapshot.breakdown.blocked, 2);
-      // 通过数归零后命中率必须跟着归零，否则会出现「通过 0、命中率 100%」。
       expect(snapshot.quality.cacheHitRate, 0);
-      // 通过行被筛掉：只剩 DNS 的拦截行与 HTTPS 的拦截行两条。
       expect(snapshot.recentRequests, hasLength(2));
       final names = [for (final row in snapshot.recentRequests) row.name];
       expect(names, containsAll(['bad.example', 'blocked.example']));
@@ -371,12 +341,10 @@ void main() {
       );
       addTearDown(container.dispose);
       final snapshot = await container.read(logDashboardProvider.future);
-      // 关闭日志时旧版 `dailyStats = null`，四格全零、列表为空。
       expect(snapshot.breakdown.total, 0);
       expect(snapshot.recentRequests, isEmpty);
       expect(snapshot.subscriptionBlocks, isEmpty);
       expect(snapshot.quality.averageLatencyMs, isNull);
-      // 但缓存表照旧（隐私模式只停日志，不停解析）。
       expect(snapshot.offMode.cacheEntries, 1);
       expect(snapshot.offMode.cacheHits, 3);
     });
@@ -461,13 +429,11 @@ void main() {
   });
 }
 
-/// 强制「仅拦截与错误」模式的 notifier。
 class _FilteredLogMode extends LogModeNotifier {
   @override
   LegacyLogMode build() => LegacyLogMode.blockedAndErrors;
 }
 
-/// 强制「关闭日志」模式的 notifier。
 class _OffLogMode extends LogModeNotifier {
   @override
   LegacyLogMode build() => LegacyLogMode.off;

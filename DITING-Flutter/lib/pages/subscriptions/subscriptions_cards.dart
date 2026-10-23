@@ -1,13 +1,7 @@
 part of 'subscriptions_page.dart';
 
-/// 订阅卡片。
-///
-/// 用 `CommonCard` + `ListItem` 而不是自绘卡片：卡片本体的圆角、按下态、明暗两
-/// 套填充都由设计系统管，页面只负责往里放内容，换主题时不会漏掉一块。
-///
-/// 三态视觉（`SubscriptionImportState`）：`ready` 正常、`importing` 顶部不确定
-/// 进度条、`failed` 卡片 `isError` + 错误色文案。三态之外的状态一律按 `ready`
-/// 处理（`fromStorage` 的回落），不会出现「未知状态渲染成失败」这种误报。
+/// Built from `CommonCard` + `ListItem` so the design system owns radius, pressed state and
+/// fills. `SubscriptionImportState` drives three looks: `ready`, `importing` and `failed`.
 class _SubscriptionCard extends StatelessWidget {
   const _SubscriptionCard({
     required this.entry,
@@ -21,10 +15,10 @@ class _SubscriptionCard extends StatelessWidget {
 
   final SubscriptionEntry entry;
 
-  /// 这一条正在更新（真实下载在进行）。
   final bool isUpdating;
 
-  /// 有任意更新在跑：此时禁用所有更新入口，避免并发打同一份数据。
+  /// Any update is running, so every update entry point is disabled to avoid concurrent
+  /// writes to the same data.
   final bool busy;
   final ValueChanged<bool> onToggle;
   final VoidCallback onUpdate;
@@ -37,7 +31,8 @@ class _SubscriptionCard extends StatelessWidget {
     final hasError = entry.isFailed;
     return CommonCard(
       isError: hasError,
-      // 停用的订阅整卡压暗：只在开关上体现会让「规则没生效」看起来像 bug。
+      // A disabled subscription dims the whole card: showing it only on the switch makes
+      // "rules not applied" look like a bug.
       child: Opacity(
         opacity: entry.enabled ? 1 : 0.6,
         child: Column(
@@ -164,7 +159,6 @@ class _SubscriptionCard extends StatelessWidget {
     );
   }
 
-  /// 真实入库条数（解析后写进规则表的行数）。
   static String _lineCountLabel(SubscriptionEntry entry) =>
       '${_formatCount(entry.ruleCount)} 条';
 
@@ -176,10 +170,8 @@ class _SubscriptionCard extends StatelessWidget {
   }
 }
 
-/// epoch ms → `MM-dd HH:mm`。
-///
-/// 只保留到分钟：订阅更新是小时级动作，秒数没有信息量，还会让同一分钟内两次
-/// 更新的卡片看起来「没变」。
+/// Epoch milliseconds to `MM-dd HH:mm`. Minutes are enough because updates happen on an
+/// hourly scale, and seconds would make two updates in the same minute look identical.
 String _formatTimestamp(int epochMs) {
   final time = DateTime.fromMillisecondsSinceEpoch(epochMs);
   String two(int value) => value.toString().padLeft(2, '0');

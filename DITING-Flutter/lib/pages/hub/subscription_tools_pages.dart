@@ -10,22 +10,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 规则订阅自动更新（上游 `SubscriptionAutoUpdateIntervalScreen`）。
-///
-/// ## 这里没有本地 state
-/// 旧版把总开关与间隔写在数据集 prefs 里（`subscription_auto_update_enabled` /
-/// `subscription_auto_update_interval_hours`），分组开关写在
-/// `subscription_group.autoUpdateEnabled` 列里。页面上一轮的 `_enabled` /
-/// `_hours` / `_groups` 是内存变量：退出再进来就回到「已开启 · 每 6 小时」，
-/// 与规则控制页显示的数字也对不上。现在全部读 [autoUpdateSettingsProvider] 与
-/// [autoUpdateGroupsProvider]，写入口在 [autoUpdateActionsProvider]。
-///
-/// ## 关于「后台调度」
-/// 旧版写完设置会调 `SubscriptionAutoUpdateScheduler.sync()` 去重排 WorkManager
-/// 的周期任务。本仓原生侧没有移植那个调度器，因此执行侧改成了**前台补跑**
-/// （[AutoUpdateRunner]）：启动与每次回到前台时按 `lastAttemptAt` 判断是否到期，
-/// 到期就复用「全部更新」那条真实链路跑一轮。页脚据此如实说明「应用完全退出
-/// 期间不会更新」，并显示下次预计更新时刻与上次执行结果。
+/// Subscription auto-update (upstream `SubscriptionAutoUpdateIntervalScreen`). No local state: the
+/// switch and interval live in `subscription_auto_update_enabled` / `..._interval_hours`.
 class AutoUpdateSettingsPage extends ConsumerWidget {
   const AutoUpdateSettingsPage({super.key});
 
@@ -162,11 +148,8 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
     }
   }
 
-  /// 「下次预计更新」的一行文案。
-  ///
-  /// 三种情形分开说，都不猜：开关关着 / 还没有候选订阅 / 按最早到期的那条算。
-  /// 到期时刻由 [AutoUpdateRunner.nextDueAt] 用真实 `lastAttemptAt` 推出，
-  /// 不是「现在 + 间隔」这种与库无关的估算。
+  /// The "next update" line, covering switch off, no candidates and the earliest due one;
+  /// [AutoUpdateRunner.nextDueAt] derives it from the real `lastAttemptAt`.
   String _nextUpdateText(
     bool enabled,
     AutoUpdateSettings settings,
@@ -208,8 +191,8 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
   }
 }
 
-/// 自定义更新间隔弹窗；控制器由弹窗自己持有，不在 `await` 之后立刻 dispose
-/// （退场动画期间 `TextField` 仍在树上，提前释放会踩 framework 断言）。
+/// Custom interval dialog. The controller is owned by the dialog: disposing it right after
+/// `await` trips a framework assertion while the exit animation still shows the `TextField`.
 class _IntervalDialog extends StatefulWidget {
   const _IntervalDialog({required this.initial});
 
@@ -263,11 +246,8 @@ class _IntervalDialogState extends State<_IntervalDialog> {
   }
 }
 
-/// 镜像站模板（上游 `MirrorTemplateScreen`）。
-///
-/// 模板存在旧库 `mirror_template` 表里（`id` / `name` / `template` / `addedAt`），
-/// 由 `MirrorTemplateRepository` 读写。上一轮这里是三条内存常量
-/// （GitHub 镜像 / Cloudflare 加速 / 内网镜像），刷新就回来、重启就丢。
+/// Mirror templates (upstream `MirrorTemplateScreen`), stored in the legacy
+/// `mirror_template` table through `MirrorTemplateRepository` so they survive a restart.
 class MirrorTemplatesPage extends ConsumerWidget {
   const MirrorTemplatesPage({super.key});
 
@@ -366,7 +346,8 @@ class MirrorTemplatesPage extends ConsumerWidget {
         .read(mirrorTemplateActionsProvider)
         .create(name: result.name, template: result.template);
     if (id == null && context.mounted) {
-      // 同名唯一索引会拒绝插入：明确告知，而不是静默什么都不发生。
+      // The unique index on the name rejects the insert; report it instead of silently
+      // doing nothing.
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         const SnackBar(
           content: Text('同名模板已存在，请换一个名称'),
@@ -440,11 +421,8 @@ class MirrorTemplatesPage extends ConsumerWidget {
   }
 }
 
-/// 镜像站模板编辑弹窗。
-///
-/// 控制器由弹窗自己持有。原来写成调用方 new 两个 controller、`whenComplete`
-/// 里 dispose：`pop` 一调用 future 就完成，退场动画期间 `TextField` 仍在树上，
-/// 提前释放会让它在动画中途重建到已失效的依赖上（实测整屏红）。
+/// Mirror template editor. The controller is owned by the dialog: disposing it from
+/// `whenComplete` fires on `pop` while the `TextField` is still animating out.
 class _TemplateDialog extends StatefulWidget {
   const _TemplateDialog({this.initial});
 

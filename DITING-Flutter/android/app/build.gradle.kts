@@ -6,9 +6,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing: keys come from android/key.properties, or from
-// DITING_KEYSTORE_FILE / DITING_KEYSTORE_PASSWORD / DITING_KEY_ALIAS /
-// DITING_KEY_PASSWORD in CI. Neither file nor keystore is committed.
+// Release signing: android/key.properties or the DITING_KEY* env vars in CI; neither is committed.
 val keystorePropertiesFile: File = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -25,8 +23,7 @@ val releaseKeyAlias: String? = keystoreProperties.getProperty("keyAlias")
 val releaseKeyPassword: String? = keystoreProperties.getProperty("keyPassword")
     ?: System.getenv("DITING_KEY_PASSWORD")
 
-// Relative paths are tried against the key.properties dir, the android root,
-// then the app dir, so any of those bases resolves.
+// Relative paths resolve against the key.properties dir, then the android root, then the app dir.
 val releaseKeystoreFile: File? = releaseStoreFilePath?.let { path ->
     val fromPropDir = File(keystorePropertiesFile.parentFile, path)
     val fromAndroidRoot = rootProject.file(path)
@@ -44,9 +41,7 @@ val hasReleaseSigning: Boolean = releaseKeystoreFile != null &&
     !releaseStorePassword.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank()
 
-// -PsignDebugWithRelease signs debug builds with the release key (on by
-// default): a debug APK must replace an installed release build, otherwise
-// INSTALL_FAILED_UPDATE_INCOMPATIBLE. Without a keystore it falls back to debug.
+// Debug signed with the release key: else INSTALL_FAILED_UPDATE_INCOMPATIBLE over a release build.
 val signDebugWithRelease: Boolean =
     project.findProperty("signDebugWithRelease")?.toString()?.let {
       it.isBlank() || it == "true" || it == "1"
@@ -66,8 +61,7 @@ android {
         applicationId = "com.haoze.diting"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        // Version code from pubspec.yaml; split APKs add 1000 * ABI_VERSION
-        // unless -Pforce-version-code-ignoring-abi=true is passed.
+        // Version code from pubspec.yaml; split APKs add 1000 * ABI_VERSION unless overridden.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -93,8 +87,7 @@ android {
             }
         }
         release {
-            // Release key when available; otherwise debug so `flutter run
-            // --release` still works on a bare checkout.
+            // Release key when available, else debug so `flutter run --release` works.
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
@@ -104,11 +97,9 @@ android {
     }
 }
 
-// The bundled Go engine (libs/tunnel.aar) only ships an arm64-v8a libgojni.so,
-// while flutter build also packs unusable armeabi-v7a/x86_64 copies (~25MB).
-// Excluded at jniLibs packaging rather than via defaultConfig.ndk.abiFilters,
-// because FlutterPlugin.configureAbiWithoutSplits overwrites abiFilters at the
-// variant stage. Skipped with --split-per-abi so 32-bit split APKs keep their so.
+// libs/tunnel.aar is arm64-only; drop the other ABIs at jniLibs, abiFilters gets overwritten.
+
+
 val splitPerAbi: Boolean =
     project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
 androidComponents {
@@ -128,8 +119,7 @@ kotlin {
     }
 }
 
-// Copies each assembled base APK to a versioned name, so successive releases do
-// not overwrite app-<buildType>.apk. Version comes from pubspec.yaml only.
+// Copies each assembled APK to a versioned name, so releases do not overwrite the base one.
 val apkVersionName: String = project.findProperty("ditingApkVersionName")?.toString()
     ?: run {
         val pubspec = rootProject.file("../pubspec.yaml")
@@ -156,8 +146,7 @@ if (!splitPerAbi) {
 }
 
 dependencies {
-    // Go userspace tunnel (gomobile AAR). x86_64 emulators need an amd64 build;
-    // pass -PtunnelAar=libs/tunnel-debug.aar instead of editing this file.
+    // Go userspace tunnel (gomobile AAR); x86_64 emulators need -PtunnelAar=libs/tunnel-debug.aar.
     val tunnelAar = project.findProperty("tunnelAar")?.toString() ?: "libs/tunnel.aar"
     implementation(files(tunnelAar))
 }

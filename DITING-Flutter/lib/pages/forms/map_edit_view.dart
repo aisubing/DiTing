@@ -1,8 +1,3 @@
-/// 键值对编辑器（上游 `features/form/map_edit_view.dart`，317 行）。
-///
-/// 上游是一个「表格状」的编辑视图：每行两个输入框（键 / 值）+ 删除按钮，底部
-/// 还有批量输入。本仓照这个结构实现，但用 `FormRow` 的两段式布局而不是真表格：
-/// 表格在窄屏上要么横向滚动、要么挤成一团，两段式在任何宽度下都可读。
 library;
 
 import 'package:diting/pages/forms/batch_section.dart';
@@ -10,7 +5,6 @@ import 'package:diting/pages/forms/form_page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一条键值对的可变记录。
 class MapEntryDraft {
   MapEntryDraft({required this.key, required this.value});
 
@@ -18,7 +12,6 @@ class MapEntryDraft {
   String value;
 }
 
-/// 键值对编辑视图（不含脚手架，供页面或浮层内嵌）。
 class MapEditView extends StatefulWidget {
   const MapEditView({
     super.key,
@@ -32,7 +25,7 @@ class MapEditView extends StatefulWidget {
 
   final List<MapEntryDraft> entries;
 
-  /// 每次增删改都会回调完整的新列表：调用方是唯一的真相源。
+  /// Every change reports the full new list; the caller owns the state.
   final ValueChanged<List<MapEntryDraft>> onChanged;
 
   final String keyHint;
@@ -48,7 +41,7 @@ class _MapEditViewState extends State<MapEditView> {
   final _batch = TextEditingController();
   late List<MapEntryDraft> _entries = [...widget.entries];
 
-  /// 每个键一个控制器，按对象身份缓存：重建时不能重置光标。
+  /// One controller per key, cached by identity so rebuilds keep the cursor.
   final _keyControllers = <MapEntryDraft, TextEditingController>{};
   final _valueControllers = <MapEntryDraft, TextEditingController>{};
 
@@ -108,7 +101,7 @@ class _MapEditViewState extends State<MapEditView> {
     ]);
   }
 
-  /// 批量解析：每行 `键=值`，忽略空行与不含 `=` 的行。
+  /// Batch parse: one `key=value` per line, skipping blanks and lines without `=`.
   void _importBatch() {
     final lines = _batch.text.split('\n');
     final added = <MapEntryDraft>[];
@@ -241,7 +234,6 @@ class _MapEditViewState extends State<MapEditView> {
   }
 }
 
-/// 一行键值：两个输入框 + 删除。
 class _MapEntryRow extends StatelessWidget {
   const _MapEntryRow({
     required this.keyController,
@@ -306,7 +298,6 @@ class _MapEntryRow extends StatelessWidget {
   }
 }
 
-/// 无边框输入框。
 class _BareField extends StatelessWidget {
   const _BareField({
     required this.controller,

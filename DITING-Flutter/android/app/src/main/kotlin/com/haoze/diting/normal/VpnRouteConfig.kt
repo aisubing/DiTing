@@ -9,9 +9,7 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import java.net.Inet6Address
 
-/// TUN parameters and routing, copied verbatim from 1.4.3
-/// (`DnsVpnTunnelManager.establishVpnInterface`). MTU must stay in sync with
-/// the Go engine's `defaultTunMTU`.
+/// TUN parameters and routing. MTU must stay in sync with the Go engine's `defaultTunMTU`
 object VpnRouteConfig {
     private const val TAG = "VpnRouteConfig"
 

@@ -5,11 +5,9 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// DNS 缓存设置（上游 `CacheSettingsScreen`）。
-///
-/// 开关与三档预设直接读写旧版 `dns_cache_*_v2` 九个键：引擎按这份 policy
-/// 工作，只改一个「预设名」不会生效。3 档是上游的完整枚举——常见的四档
-/// 列表是演示数据，和 1.4.3 不一致。
+/// DNS cache settings (upstream `CacheSettingsScreen`). The switch and presets write the
+/// nine legacy `dns_cache_*_v2` keys directly, because the engine follows that policy; the
+/// level list is demo data.
 class CacheSettingsPage extends ConsumerWidget {
   const CacheSettingsPage({super.key});
 

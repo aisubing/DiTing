@@ -7,15 +7,9 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Pins the data-cleanup contract: every action must actually delete rows,
-/// not just report success.
-///
-/// The page this replaces popped 「已删除 X」 for all sixteen actions while
-/// touching nothing. A widget test cannot catch that (the SnackBar text was
-/// correct), so the assertions here are made **against the database**.
+/// Pins the data-cleanup contract: every action must delete rows, so assertions go against the DB
 void main() {
-  // 原生通道在本测试里落到「未注册 → 返回 null → 桥接层退化成 0」，这正是非
-  // Android 宿主的行为；先初始化 binding 才能走到那条路而不是抛异常。
+  // The native channel is unregistered, so the bridge degrades to 0 as on a non-Android host
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
@@ -26,10 +20,8 @@ void main() {
   late Database main;
   late MemoryLegacyPrefsStore prefs;
 
-  /// 播种标记用的版本号。真实值来自 `pubspec.yaml`，单测只需要一个稳定值。
   const seedVersionCode = 20001;
 
-  /// Minimal slice of the 1.4.3 schema that the cleanup touches.
   Future<void> createSchema(Database db, {bool withRuntime = true}) async {
     if (withRuntime) {
       for (final table in ['dns_log', 'dns_cache', 'dns_race_log', 'bootstrap_log']) {
@@ -111,7 +103,7 @@ void main() {
     appVersionCode: seedVersionCode,
     openDatabase: (fileName) async =>
         fileName == LegacyDatabase.mainFile ? main : null,
-    // 预设白名单资产在单测里不存在；空表意味着「跳过播种」而不是清空。
+      // The preset whitelist asset is absent: an empty table means skip seeding, not clear all
     loadPresetAsset: () async => '',
   );
 
@@ -139,7 +131,6 @@ void main() {
       final result = await buildService().run(CleanupAction.traffic);
       expect(result.removed, 1);
       expect(await main.query('app_traffic_daily'), isEmpty);
-      // 日志表不受影响：两档是独立动作。
       expect(await main.query('dns_log'), hasLength(1));
     });
 
@@ -198,11 +189,9 @@ void main() {
       for (final table in ['block_rule', 'allow_rule', 'cosmetic_rule']) {
         expect(await main.query(table), isEmpty, reason: table);
       }
-      // IPv4 覆写被删，CNAME 留着（它属于地址规则）。
       final rewrites = await main.query('rewrite_rule');
       expect(rewrites, hasLength(1));
       expect(rewrites.single['targetType'], 'CNAME');
-      // 地址规则完全不动。
       expect(await main.query('go_url_rule'), hasLength(1));
     });
 
@@ -233,7 +222,6 @@ void main() {
       expect(await main.query('subscription'), isEmpty);
       expect(await main.query('subscription_group'), isEmpty);
       expect(await main.query('subscription_auto_update_item'), isEmpty);
-      // 订阅来源的规则被删、手动的留着——这是旧版确认文案承诺的行为。
       final rules = await main.query('block_rule');
       expect(rules, hasLength(1));
       expect(rules.single['pattern'], 'mine.test');
@@ -254,7 +242,6 @@ void main() {
       ]) {
         expect(prefs.read(LegacySettings.uiContainer, key), isNull, reason: key);
       }
-      // 壁纸相关键不属于这一档。
       expect(
         prefs.read(LegacySettings.uiContainer, 'custom_background_enabled'),
         isNotNull,
@@ -263,7 +250,7 @@ void main() {
 
     test('清除自定义背景缓存清三个键', () async {
       final result = await buildService().run(CleanupAction.customBackground);
-      expect(result.removed, 1); // 只有 uri 存在
+      expect(result.removed, 1); // only rows with a uri
       expect(
         prefs.read(LegacySettings.uiContainer, 'custom_background_uri'),
         isNull,
@@ -284,7 +271,6 @@ void main() {
         prefs.read('mode_permission_preferences', 'recommendation_dismissed_vpn'),
         isNull,
       );
-      // 完成标记不是「不再提醒」，旧版也不清它。
       expect(
         prefs.read('mode_permission_preferences', 'onboarding_completed_normal'),
         isNotNull,

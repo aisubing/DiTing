@@ -8,10 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 解析模式首页（上游 `ResolutionModeHomeScreen`）。
-///
-/// 当前模式 + 内置服务协议 + 四张模式配置卡。模式本身沿用本仓已有的
-/// `ResolutionMode` 状态，避免出现两套解析模式开关。
+/// Resolution mode home (upstream `ResolutionModeHomeScreen`): current mode, built-in
+/// protocol and four mode cards, all driven by the existing `ResolutionMode` state.
 class ResolutionModePage extends ConsumerStatefulWidget {
   const ResolutionModePage({super.key});
 
@@ -170,7 +168,6 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
   }
 }
 
-/// 单模式配置页（上游四条 `RESOLUTION_*` 路由合并为一个参数化页面）。
 class ResolutionModeConfigPage extends ConsumerStatefulWidget {
   const ResolutionModeConfigPage({super.key, required this.modeId});
 
@@ -244,8 +241,7 @@ class _ResolutionModeConfigPageState
       final item = _order.removeAt(index);
       _order.insert(target, item);
     });
-    // Primary→backup order is persisted (the engine tries providers in list
-    // order), so a drag must write back, not just re-sort the local view.
+    // Primary-to-backup order is persisted (the engine tries providers in list order).
     ref.read(raceProvidersProvider.notifier).reorder(_order);
   }
 

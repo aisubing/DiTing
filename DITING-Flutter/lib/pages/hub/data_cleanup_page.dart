@@ -7,19 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 数据清理（上游 `DataCleanupScreen`，1.4.3 `DataCleanupManager`）。
-///
-/// 十六个动作**全部真实执行**。上一轮这一页每个动作都只弹一句
-/// 「已删除 X」然后什么都不做——那是本仓最坏的一种占位：文案描述的是后果，
-/// 用户据此以为数据没了，实际磁盘上一个字节都没动。
-///
-/// 每个动作的确认文案逐字照抄旧版（`CleanupAction` 的 `message`），因为用户
-/// 实际同意的是这段文本。
-///
-/// ## 为什么动作清单在 `state/cleanup_providers.dart`
-///
-/// 分组顺序与「哪些动作要动引擎」都是数据，不是布局。放在页面里会让
-/// `DataCleanupService` 的对照关系（哪个枚举值对应哪个 DAO 操作）散落到 UI 层。
+/// Data cleanup (upstream `DataCleanupScreen`, 1.4.3 `DataCleanupManager`). All sixteen actions
+/// really run; confirmation copy is verbatim from the legacy `CleanupAction.message`.
 class DataCleanupPage extends ConsumerWidget {
   const DataCleanupPage({super.key});
 
@@ -76,8 +65,8 @@ class DataCleanupPage extends ConsumerWidget {
                       style: TextStyle(color: context.colorScheme.error),
                     ),
                     subtitle: Text(_descriptionOf(action)),
-                    // 执行中禁用整张列表：两个动作并发删同一张表会让
-                    // `DELETE` 互相阻塞，也让「已删除 N 项」的数字失去意义。
+                    // The whole list is disabled while running: two actions deleting the
+                    // same table block each other and make the counts meaningless.
                     onTap: running == null
                         ? () => _confirm(context, ref, action)
                         : null,
@@ -118,8 +107,8 @@ class DataCleanupPage extends ConsumerWidget {
     final result = await ref.read(cleanupRunnerProvider).run(action);
     if (!context.mounted) return;
 
-    // 失败与「可清理项为 0」都用 SnackBar 说明原因：静默成功是最坏的结果，
-    // 用户下次打开还会看到同样的数据，却不知道自己被提示过「已删除」。
+    // Failures and "nothing to clean" both explain themselves in a SnackBar: a silent
+    // success is the worst outcome, since the data would still be there next time.
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
         content: Text(result.message),
@@ -127,17 +116,16 @@ class DataCleanupPage extends ConsumerWidget {
       ),
     );
 
-    // 旧版这两个动作 `onExitApp()`：它们清掉了首启协议标记，留在前台会出现
-    // 「应用还在跑，但下次启动要重新同意协议」的分裂状态。
+    // The legacy version exits the app for these two: they clear the first-run agreement
+    // flag, and staying alive would split "running" from "must agree again".
     if (action.exitsApp && context.mounted) {
       await _exitApp(context);
     }
   }
 
-  /// 退出应用（旧版 `onExitApp`）。
-  ///
-  /// 用 `SystemNavigator.pop()` 而不是 `exit(0)`：后者跳过 Android 的生命周期
-  /// 回调，前台服务不会被正常停止，通知栏会留下一条指向已退出进程的常驻项。
+  /// Exits the app (legacy `onExitApp`). `SystemNavigator.pop()` rather than `exit(0)`: the
+  /// latter skips Android lifecycle callbacks, so foreground services keep running and a
+  /// stale notification stays.
   Future<void> _exitApp(BuildContext context) async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
@@ -159,7 +147,6 @@ class DataCleanupPage extends ConsumerWidget {
     }
   }
 
-  /// 每行的副标题（逐字照抄旧版 `CleanupAction` 的表意）。
   static String _descriptionOf(CleanupAction action) => switch (action) {
     CleanupAction.logs => '清除 DNS、HTTP 请求日志、竞速统计及 Bootstrap 解析日志',
     CleanupAction.traffic => '清除所有应用的历史流量统计记录与实时统计状态',
@@ -179,7 +166,6 @@ class DataCleanupPage extends ConsumerWidget {
     CleanupAction.allData => '深度清空所有日志、缓存、规则、订阅、证书与配置，应用将退出',
   };
 
-  /// 确认框正文（逐字照抄旧版 `CleanupAction` 的 `message`）。
   static String _confirmTextOf(CleanupAction action) => switch (action) {
     CleanupAction.logs =>
       '确定要删除所有 DNS、HTTP 请求日志、竞速统计和 Bootstrap DNS 解析统计吗？',

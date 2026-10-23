@@ -1,9 +1,5 @@
-/// Dart side of `com.haoze.diting/vpn`.
-///
-/// The controller is intentionally transport-thin: every policy decision is
-/// prepared by the Dart layer, and the platform side only applies it to the Go
-/// engine. Keeping it abstract lets widget and state tests run without a
-/// device.
+/// Dart side of `com.haoze.diting/vpn`. Dart decides policy, the platform side applies it; abstract
+/// so state tests need no device.
 library;
 
 import 'package:flutter/services.dart';
@@ -32,23 +28,17 @@ class VpnStartRequest {
   final bool bypassLan;
   final String ipv6Mode;
 
-  /// `excluded_app_packages`: handed to `Builder.addDisallowedApplication`, so
-  /// these apps bypass the TUN entirely and resolve with the system DNS.
+  /// `excluded_app_packages`: bypass the TUN via `addDisallowedApplication`.
   final List<String> excludedPackages;
 
-  /// `blocked_app_packages`: resolved to UIDs natively and passed to
-  /// `Engine.setBlockedUIDs`. 1.4.3 sends UIDs, not package names, because the
-  /// engine sees UIDs on the packet path.
+  /// `blocked_app_packages`: resolved to UIDs for `Engine.setBlockedUIDs`.
   final List<String> blockedPackages;
 
-  /// `http_inspection_app_packages`: resolved to UIDs and passed to
-  /// `Engine.setMitmAllowedUIDs`. Only these apps are intercepted; everything
-  /// else is forwarded untouched.
+  /// `http_inspection_app_packages`: resolved to UIDs for `Engine.setMitmAllowedUIDs`.
   final List<String> inspectionPackages;
 
-  /// `http_inspection_enabled` AND `https_inspection_ready`. Both must hold
-  /// before MITM starts: without the CA installed in the user trust store,
-  /// intercepting would break every HTTPS request in the selected apps.
+  /// `http_inspection_enabled` AND `https_inspection_ready`: without the CA in the user trust
+  /// store, MITM would break every HTTPS request.
   final bool inspectionEnabled;
 }
 
@@ -85,8 +75,7 @@ class VpnStatus {
   final bool persisted;
   final String? error;
 
-  /// Engine counters (`queries`, `blocked`, `cacheHits`, ...); empty when the
-  /// tunnel has not started or the platform has no Engine instance.
+  /// Engine counters; empty when the tunnel has not started.
   final Map<String, Object?> stats;
 
   factory VpnStatus.fromMap(Object? raw) {
@@ -101,12 +90,8 @@ class VpnStatus {
   }
 }
 
-/// 一个瞬时速率采样（字节/秒）。
-///
-/// [unsupported] 表示「这条通道压根没有流量统计」——极速模式的窄 TUN 不注册
-/// `EngineDataPlane.attachTraffic`，`diting_express` 也没有 `app_traffic_daily`
-/// 表。它与「有统计但当前是 0 B/s」是两件事：前者页面上要说明缺失，后者是真实
-/// 的空闲。
+/// One traffic sample in bytes per second. [unsupported] means no counters at all, which differs
+/// from an idle 0 B/s.
 class VpnTrafficRates {
   const VpnTrafficRates({
     required this.running,
@@ -139,11 +124,10 @@ class VpnTrafficRates {
 }
 
 abstract class VpnController {
-  /// Called after the system VPN consent dialog closes.
   void Function(bool granted)? onPrepareResult;
 
-  /// Returns true when the app already holds VPN permission; otherwise opens
-  /// the system dialog and returns false.
+  /// True when the app already holds VPN permission; otherwise opens the system dialog and returns
+  /// false.
   Future<bool> prepare();
 
   Future<VpnStartResult> start(VpnStartRequest request);
@@ -152,11 +136,7 @@ abstract class VpnController {
 
   Future<VpnStatus> status();
 
-  /// 实时上下行速率（`TrafficRateMonitor.snapshot()`）。
-  ///
-  /// 单独一个方法而不是塞进 [status]：仪表盘每秒轮询一次速率，而 `status` 还要
-  /// 序列化引擎的计数器 JSON，用同一个调用会让 1 Hz 的读秒变成每秒一次重活。
-  /// 通道缺失（桌面宿主 / 单元测试）时返回 [VpnTrafficRates.idle]，不抛异常。
+  /// Live up/down rates, polled at 1 Hz. A missing channel returns idle rates.
   Future<VpnTrafficRates> trafficRates();
 }
 
@@ -170,8 +150,8 @@ class MethodChannelVpnController implements VpnController {
   @override
   void Function(bool granted)? onPrepareResult;
 
-  /// Installing the handler needs an initialized binding; provider tests build
-  /// this object without one, so defer it until the first platform call.
+  /// Installing the handler needs an initialized binding, so it waits for the first platform call
+  /// (provider tests build this without one).
   void _ensureHandler() {
     if (_handlerInstalled) return;
     _channel.setMethodCallHandler(_handleCall);
@@ -227,8 +207,7 @@ class MethodChannelVpnController implements VpnController {
       final raw = await _channel.invokeMethod<Object?>('trafficRates');
       return VpnTrafficRates.fromMap(raw);
     } on MissingPluginException {
-      // 没有原生实现（桌面宿主 / 组件画廊 / 纯 Dart 测试）：既不是「0 B/s」也
-      // 不是错误，而是「这台设备没有这个数据源」。
+      // No native implementation (desktop host, tests): not 0 B/s and not an error.
       return const VpnTrafficRates(
         running: false,
         txBps: 0,

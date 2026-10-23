@@ -53,8 +53,7 @@ class BottomInsetScope extends InheritedWidget {
   }
 }
 
-/// The room content still has to leave at its top, where the scaffold has
-/// already placed something of its own there.
+/// The room content still leaves at its top, where the scaffold placed something of its own.
 class TopInsetScope extends InheritedWidget {
   final double inset;
 
@@ -134,7 +133,6 @@ class SheetProvider<T> extends InheritedWidget {
   final SheetType type;
   final void Function([T? result])? nestedNavigatorPop;
 
-  /// The close button's way out of the sheet; [nestedNavigatorPop] only pops.
   final VoidCallback? onClose;
 
   const SheetProvider({
@@ -239,9 +237,7 @@ class SheetDismissScope extends InheritedWidget {
       handler != oldWidget.handler;
 }
 
-/// Makes a scroll controller that hands drags to the sheet, one per route
-/// inside it: a controller shared by pages kept alive together fails the
-/// scrollbar's single position check.
+/// A scroll controller handing drags to the sheet, one per route: a shared one fails the scrollbar.
 class SheetScrollScope extends InheritedWidget {
   final SheetScrollControllerFactory createController;
 

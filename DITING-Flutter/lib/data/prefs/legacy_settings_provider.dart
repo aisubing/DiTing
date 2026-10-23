@@ -2,21 +2,17 @@ import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Re-exported so a page that reads [legacySettingsProvider] also gets the type
-/// and its extension accessors from one import.
+/// Re-exported so a page reading [legacySettingsProvider] gets the type and its extensions at once.
 export 'package:diting/data/prefs/legacy_settings.dart';
 
-/// Loaded once in `main()` and overridden with the Android snapshot. The
-/// default memory store lets tests and non-Android hosts start with the
-/// documented defaults instead of crashing on a missing plugin.
+/// Overridden with the Android snapshot in `main()`; the memory default lets tests and non-Android
+/// hosts start with the documented defaults.
 final legacyPrefsStoreProvider = Provider<LegacyPrefsStore>(
   (ref) => MemoryLegacyPrefsStore(),
 );
 
-/// Bumped after any write through [LegacySettings].
-///
-/// Writes are fire-and-forget and nothing is observable, so pages reading a
-/// setting must depend on this counter to see edits made on other screens.
+/// Bumped after any write through [LegacySettings]; writes are fire-and-forget, so pages must
+/// depend on it.
 class LegacySettingsRevision extends Notifier<int> {
   @override
   int build() => 0;
@@ -32,9 +28,7 @@ final legacySettingsProvider = Provider<LegacySettings>((ref) {
   return LegacySettings(ref.watch(legacyPrefsStoreProvider));
 });
 
-/// Convenience for `ref.read(legacySettingsProvider) + write + bump()`.
 extension LegacySettingsWrite on WidgetRef {
-  /// Runs [write] against the current settings and notifies every reader.
   void writeSettings(void Function(LegacySettings settings) write) {
     write(read(legacySettingsProvider));
     read(legacySettingsRevisionProvider.notifier).bump();

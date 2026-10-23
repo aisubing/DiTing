@@ -1,10 +1,6 @@
 part of 'mock_profiles.dart';
 
-/// 档案类型（上游 `enum ProfileType { file, url, custom }`）。
-///
-/// `merged` 对应上游的 `custom`：它不是「第三种来源」，而是把订阅节点与本地
-/// 节点合并后由用户自己维护的一份档案，因此界面上叫「合并」比「自定义」更能
-/// 说明它和另外两种的关系。
+/// `merged` is upstream `custom`: a merge, not a third source.
 enum ProfileKind {
   local('本地', '从文件导入，只在导入时读取一次', 'importFile'),
   remote('远程', '按更新周期自动拉取订阅', 'cloudSync'),
@@ -15,17 +11,13 @@ enum ProfileKind {
   final String label;
   final String description;
 
-  /// `AppGlyphs` 的常量名，由 `glyphByName` 解析（数据层不依赖 widget 层）。
   final String glyph;
 
   bool get isRemote => this == remote;
   bool get isMerged => this == merged;
 }
 
-/// 自动更新周期（上游是一个分钟数输入框 + 开关）。
-///
-/// 演示版只给四档：任意分钟数在没有真实定时器时无法验证，而「从不 / 6 / 12 /
-/// 24 小时」正好覆盖用户的四种真实意图。
+/// Four fixed values: arbitrary minutes need a real timer.
 enum AutoUpdateInterval {
   off('从不', null),
   hours6('每 6 小时', Duration(hours: 6)),
@@ -38,7 +30,6 @@ enum AutoUpdateInterval {
   final Duration? interval;
 }
 
-/// 远程档案的订阅用量；本地/合并档案为 null。
 class MockSubscription {
   const MockSubscription({
     required this.usedGb,
@@ -53,7 +44,6 @@ class MockSubscription {
   double get progress => totalGb == 0 ? 0 : (usedGb / totalGb).clamp(0, 1);
 }
 
-/// 一条配置档案。
 class MockProfile {
   const MockProfile({
     required this.id,
@@ -76,7 +66,6 @@ class MockProfile {
   final String name;
   final ProfileKind kind;
 
-  /// 人类可读的更新时间（上游是 `DateTime` + `LastUpdateTimeText`）。
   final String updatedAt;
   final int ruleCount;
   final int proxyCount;
@@ -87,15 +76,12 @@ class MockProfile {
   final String userAgent;
   final MockSubscription? subscription;
 
-  /// 非空表示正在下载，取值 0–1。
   final double? downloadProgress;
 
-  /// 进度条是否画成波浪。演示数据里只给一条，用来对照两种进度条。
   final bool wavyProgress;
 
   bool get isDownloading => downloadProgress != null;
 
-  /// 卡片副标题：上游按类型给「远程 / 本地 / 自定义」，远程有用量时给流量。
   String get subtitle => switch (kind) {
     ProfileKind.remote when subscription != null =>
       '${_gb(subscription!.usedGb)} / ${_gb(subscription!.totalGb)}',
@@ -139,7 +125,6 @@ class MockProfile {
 
 String _gb(double value) => '${value.toStringAsFixed(value >= 10 ? 0 : 1)} GB';
 
-/// 档案覆写项（上游 `ProfileOverrides` 的 4 个开关在演示里的可见子集）。
 enum ProfileOverride {
   dns('覆写 DNS', '使用本档案自己的 DNS 配置'),
   tun('覆写 TUN', '使用本档案自己的 TUN 设置'),
@@ -152,7 +137,6 @@ enum ProfileOverride {
   final String description;
 }
 
-/// 初始档案列表：4 条覆盖三种类型，其中一条正在下载（验证进度条与禁用态）。
 const mockProfiles = <MockProfile>[
   MockProfile(
     id: 'p-sub',
@@ -203,7 +187,6 @@ const mockProfiles = <MockProfile>[
   ),
 ];
 
-/// 各档案默认的 User-Agent（编辑页下拉可选）。
 const mockUserAgents = <String>[
   'clash-verge/v2.4.2',
   'clash.meta',
@@ -212,5 +195,4 @@ const mockUserAgents = <String>[
   'ClashforWindows/0.20.39',
 ];
 
-/// 演示版的档案数量上限（上游没有硬上限，这里给个数字让统计卡有内容）。
 const mockMaxProfilesCount = 32;

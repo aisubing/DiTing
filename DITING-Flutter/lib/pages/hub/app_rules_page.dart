@@ -13,15 +13,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 应用独立规则（上游 `AppRuleManagementScreen` + `SingleAppRulePanel`）。
-///
-/// 列表页：总开关、搜索、已配置应用；点进某个应用后在同一路由内切换到详情面板
-/// （上游也是 `BackHandler` 返回列表，而不是新路由）。
-///
-/// 数据源与持久化见 `app_rules_store.dart` 的文件头：网络层放行域名接
-/// `app_allowlist_rules_json`；DNS 专属黑白名单与「默认拦截全部外联」接规则库的
-/// `appScope` 列（`appScopedRulesProvider` 读、`AppScopedRulesController` 写），
-/// 规则随快照的 `appRules[pkg]` 下发。
+/// Per-app rules (upstream `AppRuleManagementScreen`): master switch, search and configured
+/// apps; picking an app swaps to the detail panel within the same route.
 class AppRulesPage extends ConsumerStatefulWidget {
   const AppRulesPage({super.key});
 
@@ -35,15 +28,12 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
   final _search = TextEditingController();
   Timer? _debounce;
 
-  /// 防抖后的关键词；输入框不受防抖影响，否则打字会掉字。
   String _query = '';
 
   String? _selected;
 
-  /// 跨 prefs 版本的草稿：只在首次 build 时按落盘值构建，之后由本页维护。
   AppRulesDraft? _draft;
 
-  /// 上次见到的落盘值指纹；用来识别「别人写了同一份键」。
   String? _lastKey;
 
   @override
@@ -63,11 +53,8 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     });
   }
 
-  /// 取草稿；prefs 被别处改过时以落盘值为准重建。
-  ///
-  /// `/apps`（排除应用）在勾选「排除」时会把这台应用从 `app_allowlist_rules_json`
-  /// 里删掉。本页若继续用旧草稿，用户会看到一条已经不存在的放行规则，点保存还会
-  /// 把它写回去——正是 1.4.3 里互斥清洗要防的那种「自我复活」。
+  /// Rebuilds the draft from prefs when another page changed the keys. `/apps` deletes apps from
+  /// `app_allowlist_rules_json`, and a stale draft would write a removed allow rule back on save.
   AppRulesDraft _draftOf(LegacySettings settings) {
     final key = appRulesKey(
       settings.appAllowlistEnabled,
@@ -104,9 +91,8 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     final draft = _draftOf(settings);
     final snapshot = ref.watch(installedAppsProvider);
     final apps = snapshot.value?.apps ?? const <InstalledApp>[];
-    // 选中的应用在列表刷新后消失（被卸载）时退回列表，避免卡在空面板。这里
-    // 只改本地字段而不 `setState`：`build` 里禁止再排一帧，而下一帧读到的
-    // 列表就是这一份。
+    // Fall back to the list when the selected app disappears after uninstall. Only a local
+    // field is set: scheduling a frame from `build` is not allowed.
     final app = _selected == null
         ? null
         : apps.where((item) => item.packageName == _selected).firstOrNull;
@@ -401,7 +387,6 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     setState(() => draft.addDomain(packageName, domain));
   }
 
-  /// DNS 专属黑/白名单的行。规则库不可用时显示错误，而不是「没规则」。
   List<Widget> _buildScopedRuleItems(InstalledApp app) {
     final rules = ref.watch(appScopedRulesProvider(app.packageName));
     if (rules.isLoading) {

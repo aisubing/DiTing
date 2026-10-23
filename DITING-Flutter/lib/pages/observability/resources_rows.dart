@@ -1,6 +1,5 @@
 part of 'resources_page.dart';
 
-/// 概览卡：四类资源各自的条数与总体积，外加全部更新的进度条。
 class ResourcesSummaryCard extends StatelessWidget {
   const ResourcesSummaryCard({super.key, required this.state});
 
@@ -57,7 +56,6 @@ class ResourcesSummaryCard extends StatelessWidget {
   }
 }
 
-/// 一行资源：名称 + 地址 + 更新时间 / 体积，右侧「更新」与「改地址」。
 class ResourceRow extends StatelessWidget {
   const ResourceRow({
     super.key,
@@ -151,7 +149,6 @@ class ResourceRow extends StatelessWidget {
   }
 }
 
-/// 资源种类对应的图标。
 Glyph _kindGlyph(ObsResourceKind kind) => switch (kind) {
   ObsResourceKind.geoData => AppGlyphs.dataUsage,
   ObsResourceKind.iconSet => AppGlyphs.iconTile,

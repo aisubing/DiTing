@@ -8,9 +8,7 @@ const _defaultDuration = Duration(milliseconds: 300);
 // Rows sized towards zero all fit the viewport, so each one is laid out.
 const _maxAnimatedChanges = 50;
 
-/// A lazily built vertical list that diffs [items] by key: removed items
-/// collapse out, inserted items grow in, and items whose key survives slide
-/// from their previous slot to the new one.
+/// A lazily built vertical list diffing [items] by key: removals collapse out, additions grow in.
 class KeyedAnimatedList<T> extends StatefulWidget {
   final List<T> items;
   final Object Function(T item) keyOf;
@@ -50,8 +48,7 @@ class _KeyedAnimatedListState<T> extends State<KeyedAnimatedList<T>>
   List<_Entry<T>> _entries = [];
   int _generation = 0;
 
-  // One controller drives every row entering or leaving in an update, so a
-  // refresh that touches rows far off screen still runs a single ticker.
+  // One controller drives every row entering or leaving, so a refresh runs a single ticker.
   late final AnimationController _transition =
       AnimationController(vsync: this, duration: widget.duration)
         ..addStatusListener((status) {
@@ -274,11 +271,7 @@ class _SlideOnMoveRenderWidget extends SingleChildRenderObjectWidget {
   }
 }
 
-/// Tracks the child's scroll-content offset on every paint; when the list
-/// generation changes the last painted offset becomes the slide origin, since
-/// the sliver clears a moved child's layoutOffset before it can be read.
-/// Sits above its own [RepaintBoundary] so paint runs on every frame while the
-/// row content stays cached.
+/// Tracks the child's scroll offset on every paint, making the last painted one the slide origin.
 class _RenderSlideOnMove extends RenderProxyBox {
   int _generation;
   AnimationController _controller;

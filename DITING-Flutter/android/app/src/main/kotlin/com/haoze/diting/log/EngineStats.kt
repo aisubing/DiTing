@@ -3,7 +3,7 @@ package com.haoze.diting.log
 import org.json.JSONObject
 import tunnel.Engine
 
-/// Reads the Go engine's counters in the shape the Dart layer expects.
+/// Reads the Go engine's counters in the shape the Dart layer expects
 object EngineStats {
     fun snapshot(engine: Engine?): Map<String, Any?> {
         if (engine == null) return emptyMap()

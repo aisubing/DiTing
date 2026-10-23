@@ -2,11 +2,7 @@
 
 part of 'navigation_dock.dart';
 
-/// A floating pill of destinations whose selection is a lens that springs
-/// between them, after iOS's tab bar. Pressing swells the bar as
-/// [ElasticPress] does and lifts the lens under the finger; dragging slides
-/// the lens across the bar, selecting where it is let go, and stretches the
-/// bar past either end.
+/// A floating pill of destinations with a lens that springs between them, after iOS's tab bar.
 class FloatingNavigationBar extends StatefulWidget {
   const FloatingNavigationBar({
     super.key,
@@ -56,9 +52,8 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
 
   int get _selectedIndex => widget.selectedIndex.clamp(0, _lastIndex);
 
-  /// 当前页不在底栏里（例如用户把「流量统计」从底栏删掉后从首页卡片进来）。
-  /// 此时 `AppShell` 传 -1：底栏不点亮任何项，镜片也不画；点任意一项都提交，
-  /// 不会被「点的是已选中项」的判断吞掉。
+  /// The current page is not in the dock. `AppShell` passes -1: nothing lights up, and a tap
+  /// commits.
   bool get _hasSelection =>
       widget.destinations.isNotEmpty && widget.selectedIndex >= 0;
 
@@ -123,8 +118,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
     }
   }
 
-  // UIKit lights the bar from the finger, washing over the rest of it, and
-  // spreads the light out as it fades on release.
+  // UIKit lights the bar from the finger, washing over the rest, and spreads it as it fades.
   void _shine() {
     final glow = _glow.value;
     _touchGlow.value = LiquidGlassGlow(
@@ -244,8 +238,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
   }
 
   void _handleHover(PointerHoverEvent event) {
-    // The engine synthesizes a hover before a touch lands, and the touch
-    // pointer lingers until removed, so a tap would leave the highlight on.
+    // The engine synthesizes a hover before a touch lands, so a tap would leave the highlight on.
     if (event.kind == PointerDeviceKind.touch) {
       return;
     }
@@ -347,8 +340,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
     }
   }
 
-  /// Carries a drag let go mid-flick on to the next destination, at most one
-  /// past the one under the finger.
+  /// Carries a drag let go mid-flick on to the next destination, at most one past.
   void _fling(double velocityX) {
     final pressed = _pressedIndex;
     if (!_dragging || pressed == null) {
@@ -421,8 +413,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
             ? Colors.transparent
             : SurfaceLevel.floatingOf(colorScheme).colorOf(colorScheme),
         shape: AppShape.full,
-        // Raw pointers rather than recognizers: a drag has nothing to win the
-        // arena from, and a tap waiting on one lifts the lens late.
+        // Raw pointers rather than recognizers: a tap waiting on the arena lifts the lens late.
         child: Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: _handlePointerDown,
@@ -434,8 +425,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
             onExit: _handleExit,
             child: Padding(
               padding: const EdgeInsets.all(_barPadding),
-              // Above the LayoutBuilder: rebuilding anything under one relays
-              // it out, and that repaint would otherwise reach the whole dock.
+              // Above the LayoutBuilder: rebuilding under one relays it out over the whole dock.
               child: RepaintBoundary(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -550,6 +540,3 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
   }
 }
 
-/// The pointer's highlight, drawn to the destination under it and leaning a
-/// little toward the cursor, as iPadOS highlights a tab bar item; the item
-/// under it follows the cursor half as far.

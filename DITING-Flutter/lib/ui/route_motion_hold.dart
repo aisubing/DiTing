@@ -53,8 +53,7 @@ class _RouteMotion {
 /// Whether a route transition or a drag moves this page or covers it.
 bool isRouteMoving(BuildContext context) => _RouteMotion(context).isMoving;
 
-/// Holds list refreshes while the page's route is pushed, popped, covered,
-/// uncovered or dragged back, and replays the latest one once it settles.
+/// Holds list refreshes while the page's route moves, replaying the latest once it settles.
 mixin RouteMotionHoldMixin<T extends StatefulWidget> on State<T> {
   ModalRoute<Object?>? _route;
   _RouteMotion? _motion;

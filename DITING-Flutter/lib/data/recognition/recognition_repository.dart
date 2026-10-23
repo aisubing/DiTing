@@ -1,7 +1,5 @@
-/// Fetches, caches and validates the member list and avatars.
-///
-/// Nothing is bundled: a frozen copy would never update, and a config that
-/// fails validation never overwrites the cached good one.
+/// Fetches, caches and validates the member list and avatars. Nothing is bundled; a config failing
+/// validation never overwrites the cache.
 library;
 
 import 'dart:async';
@@ -40,13 +38,10 @@ class RecognitionMembersRepository {
   /// In-process avatar bytes; avoids re-reading the disk on scroll.
   final Map<String, Uint8List> _avatarMemoryCache = {};
 
-  /// In-flight downloads, one per file name.
   final Map<String, Future<Uint8List?>> _avatarInFlight = {};
 
-  /// Tail of the serial queue.
   Future<void> _avatarQueue = Future<void>.value();
 
-  /// Cached list; null when absent or corrupt.
   RecognitionMembers? loadCached() {
     final raw = store.read(container, _configKey);
     if (raw is! String || raw.trim().isEmpty) return null;
@@ -58,17 +53,14 @@ class RecognitionMembersRepository {
     }
   }
 
-  /// Time of the last successful fetch.
   DateTime? loadCachedAt() {
     final raw = store.read(container, _savedAtKey);
     if (raw is! int) return null;
     return DateTime.fromMillisecondsSinceEpoch(raw);
   }
 
-    /// Fetches a new list from the server.
-    ///
-    /// Null means not modified (HTTP 304); any other failure throws and the
-    /// caller keeps what it has. Retried, as handshake errors are intermittent.
+  /// Null means not modified (HTTP 304); any other failure throws and the caller keeps what it has.
+  /// Retried, as handshake errors are intermittent.
   Future<RecognitionMembers?> refresh() async {
     Object? lastError;
     for (var attempt = 0; attempt < 3; attempt++) {
@@ -112,9 +104,7 @@ class RecognitionMembersRepository {
     }
   }
 
-    /// Avatar bytes: memory first, then disk cache, then download.
-    ///
-    /// Null means the avatar is unavailable.
+  /// Memory first, then disk cache, then download; null means unavailable.
   Future<Uint8List?> loadAvatarBytes(String avatarFileName) {
     final cached = _avatarMemoryCache[avatarFileName];
     if (cached != null) return Future.value(cached);
@@ -125,10 +115,8 @@ class RecognitionMembersRepository {
     return future.whenComplete(() => _avatarInFlight.remove(avatarFileName));
   }
 
-    /// Serializes avatar downloads.
-    ///
-    /// A dozen concurrent TLS handshakes get dropped mid-flight on emulators and
-    /// weak networks.
+  /// Serializes avatar downloads: a dozen concurrent TLS handshakes get dropped mid-flight on
+  /// emulators and weak networks.
   Future<T> _enqueue<T>(Future<T> Function() task) {
     final previous = _avatarQueue;
     final completer = Completer<void>();
@@ -143,14 +131,14 @@ class RecognitionMembersRepository {
       return stored;
     }
     final url = recognitionAvatarBaseUrl + avatarFileName;
-        // TLS handshakes are occasionally cut mid-flight
-        // (`HandshakeException: ...handshake`) and an immediate retry usually works.
+    // TLS handshakes are occasionally cut mid-flight (`HandshakeException: ...handshake`) and an
+    // immediate retry usually works.
     for (var attempt = 0; attempt < 3; attempt++) {
       try {
         final bytes = await _download(url);
         if (bytes.isEmpty || bytes.length > maxAvatarBytes) return null;
         _avatarMemoryCache[avatarFileName] = bytes;
-                // A failed write only costs a re-download.
+        // A failed write only costs a re-download.
         await _avatars.write(avatarFileName, bytes);
         return bytes;
       } on Object catch (error) {
@@ -202,8 +190,8 @@ class RecognitionMembersRepository {
 
   void _writeCache(String raw, String? etag) {
     store.putString(container, _configKey, raw);
-        // Millisecond timestamps (~1.7e12) overflow 32 bits, so putLong is
-        // required; putInt truncates to a 1970 date.
+    // Millisecond timestamps (~1.7e12) overflow 32 bits, so putLong is required; putInt truncates
+    // to a 1970 date.
     store.putLong(container, _savedAtKey, DateTime.now().millisecondsSinceEpoch);
     if (etag != null && etag.isNotEmpty) {
       store.putString(container, _etagKey, etag);

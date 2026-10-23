@@ -7,20 +7,12 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 流量监控卡（旧版 `TrafficMonitorDashboardCard`）。
-///
-/// 左边「今日代理流量」、右边「实时速率」，两列用 `SpaceBetween` 分开——
-/// 旧版就是这样并排的，卡片高度固定在一行数字，不抢下面的概览块。
-///
-/// ## 两列各有各的诚实边界
-/// - **今日代理流量**读 `app_traffic_daily` 的当日行；库还没打开时显示 `—`，
-///   而不是 `0 B`——`0 B` 是「今天确实没流量」，与「还没读到」不是一回事。
-/// - **实时速率**来自原生 `TrafficRateMonitor` 的每秒快照。极速模式与没有原生
-///   通道的宿主拿不到，此时显示「本模式不统计」而不是 `0 B/s` 的假读数。
+/// Today's traffic: each column reports its own missing-data state instead of showing a
+/// fake `0 B` or `0 B/s`.
 class TrafficMonitorCard extends ConsumerWidget {
   const TrafficMonitorCard({super.key, this.onDetail});
 
-  /// 右上角「详情」的落点；首页没有流量统计页时传 null，按钮不出现。
+  /// Detail target; null hides the button when the home page has no stats page.
   final VoidCallback? onDetail;
 
   @override
@@ -106,7 +98,6 @@ class TrafficMonitorCard extends ConsumerWidget {
   }
 }
 
-/// 一格指标：标签在上、数字在下（旧版 `MetricCard`）。
 class DashboardMetricCell extends StatelessWidget {
   const DashboardMetricCell({
     super.key,
@@ -147,12 +138,7 @@ class DashboardMetricCell extends StatelessWidget {
   }
 }
 
-/// 一张「四格指标」卡：两行两列。
-///
-/// 旧版把四个 `MetricCard` 平铺成两行，每格是独立卡片；本仓的仪表盘卡片本身
-/// 就有圆角与阴影，四格再各套一层会叠成两层边框，因此合成一张卡、格与格之间
-/// 只留间距。视觉层级与「大卡里的小格」一致（`DashboardCard` + `DashboardBlock`
-/// 是同一族的做法）。
+/// Merged into one card so the dashboard card border is not doubled per cell.
 class DashboardMetricQuadCard extends StatelessWidget {
   const DashboardMetricQuadCard({
     super.key,
@@ -166,7 +152,7 @@ class DashboardMetricQuadCard extends StatelessWidget {
   final Glyph glyph;
   final String title;
 
-  /// 恰好四项：`(标签, 数值, 颜色)`。少于四项时按顺序填，空位不占宽。
+  /// Exactly four cells as (label, value, color); fewer leave the slots unfilled.
   final List<({String label, String value, Color color})> cells;
   final VoidCallback? onDetail;
   final Widget? trailing;

@@ -1,16 +1,5 @@
-/// MITM root-CA state, shared by the HTTPS-inspection page and the CA page.
-///
-/// The status shown here comes from `Engine.startStackMitm`, never from a
-/// hardcoded string: 1.4.3 computed `available` (a certificate exists) and
-/// `installed` (its SHA-256 is in the Android **user** trust store) separately,
-/// and the old Flutter port replaced both with a constant fingerprint, so the CA
-/// page could not tell "not generated yet" from "generated but not trusted".
-///
-/// Write-back rule (1.4.3's `checkAndUpdateHttpsInspectionReady`): after every
-/// inspect, `https_inspection_ready` becomes `ready` (= available AND installed),
-/// and when the certificate is not installed the master
-/// `http_inspection_enabled` switch is forced to false — enabling interception
-/// without a trusted CA makes every handshake fail.
+/// MITM root-CA state: `available` and `installed` are separate, and an untrusted CA disables
+/// inspection.
 library;
 
 import 'package:diting/data/native/ca_bridge.dart';
@@ -18,15 +7,12 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Overridden in `main()` with [MethodChannelCaCertificateService].
-///
-/// The default reports a missing certificate, which is the truthful answer on any
-/// host without the engine.
+/// Overridden in `main()`; the default reports a missing certificate, true of any host without the
+/// engine.
 final caCertificateServiceProvider = Provider<CaCertificateService>(
   (ref) => const UnavailableCaCertificateService(),
 );
 
-/// Bumped to force a re-inspect (the pull-to-refresh path).
 class CaCertificateRevision extends Notifier<int> {
   @override
   int build() => 0;
@@ -37,12 +23,8 @@ class CaCertificateRevision extends Notifier<int> {
 final caCertificateRevisionProvider =
     NotifierProvider<CaCertificateRevision, int>(CaCertificateRevision.new);
 
-/// Current CA state plus the three actions 1.4.3 exposes on the CA page.
-///
-/// The actions go through the controller instead of the raw service so the new
-/// state lands in [state] without a second `inspect()`: minting the certificate
-/// loads the Go engine (`libgojni.so` + a fresh CA), which is far too slow to run
-/// twice for one tap.
+/// Current CA state plus the three page actions; they go through the controller to avoid a second
+/// `inspect()`.
 class CaCertificateController extends AsyncNotifier<CaCertificateState> {
   @override
   Future<CaCertificateState> build() async {
@@ -53,8 +35,7 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     return state;
   }
 
-  /// Deletes `ca.crt` / `ca.key` and mints a new pair. Every previously trusted
-  /// certificate stops matching, so `https_inspection_ready` drops to false.
+  /// Deletes `ca.crt`/`ca.key` and mints a new pair, so `https_inspection_ready` drops.
   Future<CaCertificateState> regenerate() async {
     final service = ref.read(caCertificateServiceProvider);
     final state = await _guard(() => service.inspect(regenerate: true));
@@ -62,8 +43,7 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     return state;
   }
 
-  /// Re-reads the CA without regenerating it (used after the user returns from
-  /// the system "install certificate" screen).
+  /// Re-reads the CA without regenerating it, e.g. after the "install certificate" screen.
   Future<CaCertificateState> refresh() async {
     final service = ref.read(caCertificateServiceProvider);
     final state = await _guard(service.inspect);
@@ -71,21 +51,18 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     return state;
   }
 
-  /// Writes the PEM to a URI handed back by the system save-file picker.
+  /// Writes the PEM to a URI from the system save-file picker.
   Future<void> exportTo(String uri) async {
     try {
       await ref.read(caCertificateServiceProvider).exportTo(uri);
     } on MissingPluginException {
-      // Nothing to report: no picker, no channel, no export (see the page note
-      // about the copyable PEM fallback).
+      // Nothing to report: no picker, no channel, no export.
     } on PlatformException {
-      // The service surfaces the reason through `inspect()`'s `error` on the
-      // next refresh; swallowing here keeps the page from throwing.
+      // The reason surfaces via `inspect()`'s `error`; swallowing keeps the page from throwing.
     }
   }
 
-  /// Opens Android's "install a certificate" screen; returns false when the
-  /// platform refused to launch it.
+  /// Opens Android's "install a certificate" screen; false if it refused to launch.
   Future<bool> openInstallSettings() async {
     try {
       return await ref.read(caCertificateServiceProvider).openInstallSettings();
@@ -99,13 +76,11 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
   void _publish(CaCertificateState next) {
     state = AsyncData(next);
     _syncLegacyFlags(next);
-    // SharedPreferences writes are unobservable; every screen reading the
-    // HTTPS switches must be told explicitly.
+    // SharedPreferences writes are unobservable; every reader must be invalidated.
     ref.read(legacySettingsRevisionProvider.notifier).bump();
   }
 
-  /// Folds channel failures into the state instead of throwing: a page cannot
-  /// render an exception, and the CA page has a dedicated `error` row.
+  /// Folds channel failures into the state; the CA page has an `error` row.
   Future<CaCertificateState> _guard(
     Future<CaCertificateState> Function() call,
   ) async {
@@ -127,10 +102,8 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     }
   }
 
-  /// `https_inspection_ready` ← `ready`, and drop the master switch when the
-  /// certificate is not trusted. Idempotent, so running it on every inspect is
-  /// safe; it deliberately does not bump the legacy revision itself (that would
-  /// invalidate this provider and loop).
+  /// Drops the master switch while the CA is untrusted; never bumps the legacy revision, which
+  /// would loop.
   void _syncLegacyFlags(CaCertificateState state) {
     final settings = ref.read(legacySettingsProvider);
     if (settings.httpsInspectionReady != state.ready) {
@@ -150,7 +123,7 @@ final caCertificateStateProvider =
       CaCertificateController.new,
     );
 
-/// Reads the CA without throwing; `null` until the first inspect finishes.
+/// Reads the CA without throwing; false until the first inspect completes.
 final caReadyProvider = Provider<bool>((ref) {
   return ref.watch(caCertificateStateProvider).value?.ready ?? false;
 });

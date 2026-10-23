@@ -1,10 +1,6 @@
-/// 扫码页骨架（上游 `pages/scan.dart`，840 行）。
-///
-/// 只做骨架：取景框 + 扫描线动画、手电筒 / 相册按钮、权限被拒状态。**不接
-/// 真实相机**，也不识别任何码——相机要平台通道与权限声明，本阶段只做 UI。
-///
-/// 上游把扫描窗口限制在「不超过 400dp，也不超过短边的 0.67」，本文件照抄这个
-/// 规则：窗口太大时四角会跑出屏幕，太小又对不准。
+/// Scanner skeleton (upstream `pages/scan.dart`): viewfinder, animation, torch and gallery,
+/// no real camera. The scan window is capped at 400dp and at 0.67 of the short side, the
+/// upstream rule.
 library;
 
 import 'dart:math' as math;
@@ -13,7 +9,6 @@ import 'package:diting/pages/system/demo_page_notice.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 扫码页。
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
 
@@ -28,10 +23,10 @@ class _ScanPageState extends State<ScanPage>
     duration: const Duration(milliseconds: 1800),
   )..repeat(reverse: true);
 
-  /// 手电筒状态（纯 UI，不接硬件）。
+  /// Torch state, UI only, not wired to hardware.
   var _torch = false;
 
-  /// 权限状态：演示层可切换，方便审查被拒时的样子。
+  /// Permission state; switchable in the demo to review the denied layout.
   var _permissionDenied = false;
 
   @override
@@ -52,8 +47,8 @@ class _ScanPageState extends State<ScanPage>
 
   @override
   Widget build(BuildContext context) {
-    // 扫码界面固定深色：相机预览在浅色背景上永远看不清，而且 QR 识别的对比度
-    // 依赖暗底。
+    // The scanner is always dark: a camera preview is unreadable on a light background
+    // and QR contrast depends on a dark surround.
     return Theme(
       data: ThemeData(
         brightness: Brightness.dark,
@@ -101,7 +96,7 @@ class _ScanPageState extends State<ScanPage>
   }
 }
 
-/// 取景布局：中央扫描窗口 + 下方提示与按钮（上游 `_ScanLayout`）。
+/// Viewfinder layout: centered scan window with hints below (upstream `_ScanLayout`).
 class _ScanLayout extends StatelessWidget {
   const _ScanLayout({
     required this.animation,
@@ -115,7 +110,7 @@ class _ScanLayout extends StatelessWidget {
   final VoidCallback onTorchToggle;
   final VoidCallback onAlbum;
 
-  /// 扫描窗口边长：不超过 400，也不超过短边的 0.67。
+  /// Scan window side: at most 400 and at most 0.67 of the short side.
   static double _windowSize(Size size) =>
       math.min(400, size.shortestSide * 0.67);
 
@@ -127,8 +122,7 @@ class _ScanLayout extends StatelessWidget {
       builder: (context, constraints) {
         return Column(
           children: [
-            // 正文从屏幕 y=0 起排（`extendBodyBehindAppBar`），先让出顶栏高度，
-            // 否则「演示页」标注会被浮着的顶栏压住。
+            // The body starts at y=0 (`extendBodyBehindAppBar`), so reserve the app bar first.
             SizedBox(height: context.appBarInset),
             const DemoPageNotice(dark: true),
             Expanded(
@@ -139,8 +133,6 @@ class _ScanLayout extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // 取景「预览」：没有相机，用一块深灰渐变占位，避免看起来像
-                      // 页面没加载出来。
                       Positioned.fill(
                         child: DecoratedBox(
                           decoration: ShapeDecoration(
@@ -161,7 +153,6 @@ class _ScanLayout extends StatelessWidget {
                           painter: _ScanEffectPainter(animation: animation),
                         ),
                       ),
-                      // 四角括号：告诉用户「把码放进这个框」，比纯边框清楚。
                       Positioned.fill(
                         child: Padding(
                           padding: const EdgeInsets.all(2),
@@ -222,7 +213,6 @@ class _ScanLayout extends StatelessWidget {
   }
 }
 
-/// 一个圆形动作按钮。
 class _RoundAction extends StatelessWidget {
   const _RoundAction({
     required this.glyph,
@@ -273,7 +263,7 @@ class _RoundAction extends StatelessWidget {
   }
 }
 
-/// 权限被拒状态（上游 `_ScannerError` 的权限分支）。
+/// Denied permission state (the permission branch of upstream `_ScannerError`).
 class _PermissionDenied extends StatelessWidget {
   const _PermissionDenied({required this.onRetry});
 
@@ -306,7 +296,7 @@ class _PermissionDenied extends StatelessWidget {
   }
 }
 
-/// 扫描线效果：边框渐亮 + 一条上下扫的光带（上游 `_ScanEffectPainter`）。
+/// Scan effect: a brightening border plus a sweeping light band (upstream `_ScanEffectPainter`).
 class _ScanEffectPainter extends CustomPainter {
   _ScanEffectPainter({required this.animation}) : super(repaint: animation);
 
@@ -325,7 +315,6 @@ class _ScanEffectPainter extends CustomPainter {
       ..save()
       ..clipPath(shape);
 
-    // 光带：一条上下移动的半透明渐变。
     final beamY = size.height * animation.value;
     final beam = Rect.fromLTWH(0, beamY - 24, size.width, 48);
     canvas.drawRect(
@@ -348,7 +337,6 @@ class _ScanEffectPainter extends CustomPainter {
   bool shouldRepaint(_ScanEffectPainter old) => false;
 }
 
-/// 四角括号。
 class _CornerBracketPainter extends CustomPainter {
   const _CornerBracketPainter({required this.color});
 

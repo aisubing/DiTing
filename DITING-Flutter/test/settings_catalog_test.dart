@@ -11,16 +11,8 @@ import 'package:diting/state/settings_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 设置域与路由表的**静态**守门。
-///
-/// 这里刻意不挂 widget 树：它守的是「值对不对」（键名、默认值、路由形状、
-/// 枚举基数），不是「渲染成什么样」。渲染由 `app_shell_test.dart` 与
-/// `route_catalog_test.dart` 覆盖，两边不重复。
-///
-/// 之所以需要这一组，是因为本轮改动里最危险的一类错误**不会**被渲染测试抓到：
-/// 键名写错一个字母，设置照样存、界面照样显示，只有升级/降级后才丢设置。
-/// 不触达原生通道的替身：`remove` 会顺手 `release` 解码缓存，走真通道要
-/// 求 Flutter binding（且单测环境没有原生实现），这里只记录调用。
+/// Static guard for the settings domain and route table: a misspelled key still saves and
+/// displays fine, only losing settings on upgrade
 class _FakeBackgroundBridge extends BackgroundBridge {
   final List<String> released = [];
 
@@ -44,9 +36,7 @@ void main() {
     test('日志模式默认 all，且写在数据集容器里', () {
       expect(settings.dnsLogModeRaw, 'all');
       settings.setDnsLogModeRaw('blocked_and_errors');
-      // 普通模式 dnsContainer 就是 dns_vpn_prefs。
       expect(store.read('dns_vpn_prefs', 'dns_log_mode'), 'blocked_and_errors');
-      // 极速模式实例换容器、键名不变：这是 1.4.3 的数据集设计。
       final express = LegacySettings(
         store,
         dnsContainer: LegacySettings.expressContainer,
@@ -83,7 +73,6 @@ void main() {
       expect(settings.appLanguageModeRaw, 'system');
       settings.setAppLanguageModeRaw('chinese');
       expect(settings.appLanguageModeRaw, 'chinese');
-      // 旧版枚举里预留了英文但没有文案资源，界面上不存在——本轮不臆造。
       expect(AppLanguageMode.values.length, 2);
     });
 
@@ -99,7 +88,6 @@ void main() {
       settings.setNotificationPersistent(false);
       settings.setNotificationSpeed(true);
       settings.setNotificationTexts(running: '守护中', stopped: '已停止');
-      // 容器写错的话，前台服务读不到——界面上完全看不出来。
       expect(store.read('notification_settings_prefs', 'persistent'), isFalse);
       expect(store.read('notification_settings_prefs', 'speed'), isTrue);
       expect(
@@ -138,13 +126,11 @@ void main() {
   });
 
   group('设置态 provider（内存 store）', () {
-    // 每个用例前重置，方便用例断言「确实调到了原生通道」。
     _FakeBackgroundBridge? bridge;
 
     ProviderContainer container() {
       final fake = _FakeBackgroundBridge();
       bridge = fake;
-      // 背景桥默认会走 MethodChannel；换成替身后这组用例彻底不碰原生。
       final c = ProviderContainer(
         overrides: [backgroundBridgeProvider.overrideWithValue(fake)],
       );
@@ -204,14 +190,12 @@ void main() {
       state = c.read(customBackgroundProvider);
       expect(state.uris, ['content://1']);
       expect(state.currentUri, 'content://1');
-      // 移除的那张要顺手释放原生解码缓存，否则私有目录里越攒越多。
       expect(bridge!.released, ['content://2']);
     });
   });
 
   group('底栏上限回到旧版的 4', () {
     test('maxDockDestinations 与 LegacySettings.bottomBarMaxCount 一致', () {
-      // 两个常量分别服务 UI 与解析，漂移会让「能配 5 项但存回去只剩 4 项」。
       expect(maxDockDestinations, LegacySettings.bottomBarMaxCount);
       expect(maxDockDestinations, 4);
     });
@@ -232,9 +216,7 @@ void main() {
       for (final path in paths) {
         expect(path, startsWith('/theme/'));
       }
-      // 字体是保留项，不挂在 /theme 下（旧版没有此项，避免污染旧版路径空间）。
       expect(SystemPaths.fontFamily, '/font-family');
-      // 字号是「字体设置」下的二级页，同样不污染 /theme 命名空间。
       expect(SystemPaths.fontSize, '/font-size');
     });
 
@@ -250,8 +232,6 @@ void main() {
     });
 
     test('配置域只剩四条资源路由', () {
-      // FlClash 的 general/network/tun/dns/ntp/sniffer/override/filters/rules/
-      // scripts/providers/advanced 十二条已删除：1.4.3 没有内核配置这个概念。
       for (final path in [
         ConfigPaths.customResources,
         ConfigPaths.iconSets,
@@ -274,8 +254,8 @@ void main() {
     });
 
     test('功能中心路由全部以 /hub 或跨域绝对路径开头', () {
-      // 功能中心的卡片混用两种：本域页（/hub/…）与跨域页（/rules/…、/theme 等）。
-      // 后者必须是绝对路径，否则会在当前 branch 下相对解析成不存在的地址。
+      // Hub cards mix `/hub/...` with cross-domain pages, which must be absolute or they
+      // resolve under the current branch
       for (final path in [
         HubPaths.providerManagement,
         HubPaths.cache,

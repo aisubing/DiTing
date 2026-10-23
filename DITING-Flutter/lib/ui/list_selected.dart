@@ -104,8 +104,8 @@ class _DecorationListItemState extends State<DecorationListItem> {
     if (!proxyDecorator) {
       return row;
     }
-    // A change of the card's shape eases in over the button's own animation
-    // duration, which would trail the lift; the clip follows it frame by frame.
+    // A change of the card's shape eases over the button's own duration, which would trail the
+    // lift.
     return ClipRSuperellipse(
       borderRadius: AppRadius.all(AppCorner.xl * proxy!.lift),
       child: row,

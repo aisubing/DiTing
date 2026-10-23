@@ -1,11 +1,4 @@
-/// User-Agent 页（上游 `views/config/user_agents.dart`，235 行）。
-///
-/// UA 列表是「一组候选 + 当前选中的一条」：选中的那条写进订阅下载请求，其余只是
-/// 备选。上游把「不覆写」做成列表首项，本仓照做——否则用户没有办法回到「跟随
-/// 订阅/内核默认」。
-///
-/// 选中值放在 `configResourcesProvider` 里而不是通用配置：那一族（FlClash 的
-/// 内核配置）随页面一起删除，为一行保留项拖回整套通用配置不划算。
+/// User-Agent page (upstream `views/config/user_agents.dart`).
 library;
 
 import 'package:diting/data/mock_config_resources.dart';
@@ -19,7 +12,6 @@ import 'package:material_ui/material_ui.dart';
 
 part 'user_agents_dialog.dart';
 
-/// UA 列表页。
 class UserAgentsConfigPage extends ConsumerWidget {
   const UserAgentsConfigPage({super.key});
 

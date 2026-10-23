@@ -4,8 +4,7 @@ import 'package:material_ui/material_ui.dart';
 typedef WidthWidgetBuilder =
     Widget Function(BuildContext context, double width);
 
-/// A bottom sheet lays its content out at each height it is dragged through,
-/// where a [LayoutBuilder] would rebuild every row below it on every frame.
+/// Lays content out at each drag height, where a [LayoutBuilder] rebuilds every row each frame.
 class WidthBuilder extends StatefulWidget {
   final WidthWidgetBuilder builder;
 

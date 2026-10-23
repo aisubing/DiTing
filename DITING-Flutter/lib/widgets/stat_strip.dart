@@ -1,10 +1,7 @@
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 页面通用的「统计带」：一行 N 个数字 + 标签，等宽分栏。
-///
-/// 黑名单统计卡、日志概览、服务器统计、流量汇总都用它，保证同一类信息在
-/// 不同页面长得一样——这正是设计系统要解决的问题，不该每页各写一遍。
+/// A row of equally wide value/label cells, shared by every stats page.
 class StatStrip extends StatelessWidget {
   const StatStrip({
     super.key,
@@ -16,7 +13,7 @@ class StatStrip extends StatelessWidget {
   final List<StatItem> stats;
   final EdgeInsets padding;
 
-  /// 相邻两栏之间是否画竖线。
+  /// Whether to draw a divider between cells.
   final bool separator;
 
   @override
@@ -41,7 +38,7 @@ class StatStrip extends StatelessWidget {
   }
 }
 
-/// 一栏统计。
+/// One cell of a [StatStrip].
 class StatItem {
   const StatItem({
     required this.label,
@@ -54,7 +51,7 @@ class StatItem {
   final String value;
   final String? unit;
 
-  /// 非空时数值用该颜色（如拦截数用 error、命中率用 success）。
+  /// Value colour, e.g. error for blocked counts, success for hit rates.
   final Color? color;
 }
 
@@ -112,7 +109,7 @@ class _StatCell extends StatelessWidget {
   }
 }
 
-/// 键值行（`label: value`），用于「当前上游」「监听端口」这类只读信息。
+/// A read-only `label: value` row.
 class KeyValueRow extends StatelessWidget {
   const KeyValueRow({
     super.key,
@@ -124,7 +121,7 @@ class KeyValueRow extends StatelessWidget {
   final String label;
   final String value;
 
-  /// 地址、端口、包名这类内容用等宽字体，位数对齐才看得清。
+  /// Monospace for addresses, ports and package names.
   final bool monospace;
 
   @override
@@ -164,10 +161,8 @@ class KeyValueRow extends StatelessWidget {
   }
 }
 
-/// 一行小标题 + 内容的分组容器，页面正文里反复出现。
-///
-/// 横向留白只加在 [child]（卡片）上，不加在整列上：`ListHeader`/`ListFooter`
-/// 自带 16 的横向内边距，外层再套一次会让这一组的标题比别组缩进 32。
+/// A titled group: header, [child], optional footer. Horizontal padding applies to [child] only;
+/// `ListHeader`/`ListFooter` already carry 16, and doubling it indents the title by 32.
 class SectionBlock extends StatelessWidget {
   const SectionBlock({
     super.key,
@@ -205,7 +200,7 @@ class SectionBlock extends StatelessWidget {
   }
 }
 
-/// 底部留白：给浮条让位。列表页统一挂在滚动内容的末尾。
+/// Bottom spacer that clears the floating dock; appended to scrollable pages.
 class DockSpacer extends StatelessWidget {
   const DockSpacer({super.key, this.extra = 0});
 
@@ -217,15 +212,9 @@ class DockSpacer extends StatelessWidget {
   }
 }
 
-/// 可滚动的页面正文，统一带顶栏浮位、底部浮条留白与滚动条。
-///
-/// 顶部留白必须显式取 `context.appBarInset`：`CommonScaffold` 走
-/// `extendBodyBehindAppBar`，正文从屏幕 y=0 起排，不预留就会整片画到顶栏
-/// 底下（标题压行、首个分组头藏进状态栏）。
-///
-/// 留白放在 `ListView.padding` 里而不是套一层 `Padding`：视口必须从 y=0
-/// 开始，内容才能滚到浮动的半透明顶栏底下并透过遮罩渐隐；若用外层
-/// `Padding`，视口被裁在顶栏下沿，滚动时内容会被硬生生切断。
+/// Scrollable page body with the app bar inset, dock spacer and scrollbar. The inset must come from
+/// `context.appBarInset` and go into `ListView.padding`, not an outer `Padding`: the scaffold uses
+/// `extendBodyBehindAppBar`, so otherwise the viewport is clipped instead of scrolling behind it.
 class PageBody extends StatelessWidget {
   const PageBody({
     super.key,

@@ -261,8 +261,7 @@ class ListItem<T> extends StatelessWidget {
         return _buildListTile(
           context,
           position: position,
-          // As an iOS pop-up row does, a tap anywhere on the row opens the
-          // menu out of its value.
+          // As an iOS pop-up row does, a tap anywhere on the row opens its menu.
           onTap: () => openMenu?.call(),
           trailing: CommonPopupBox(
             targetBuilder: (open) {

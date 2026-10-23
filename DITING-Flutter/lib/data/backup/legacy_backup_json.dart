@@ -1,19 +1,17 @@
-/// Lenient JSON accessors for legacy backup data; each returns null instead
-/// of throwing on malformed input.
+/// Lenient JSON accessors for legacy backup data; each returns null instead of throwing on
+/// malformed input.
 library;
 
 abstract final class BackupJson {
   static Map<Object?, Object?>? map(Object? value) =>
       value is Map ? Map<Object?, Object?>.from(value) : null;
 
-  /// Blank strings count as missing.
   static String? text(Object? value) {
     if (value is! String) return null;
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  /// Numeric string is accepted too.
   static int? integer(Object? value) => switch (value) {
     int() => value,
     num() => value.round(),

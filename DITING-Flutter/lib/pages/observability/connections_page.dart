@@ -1,11 +1,4 @@
-/// 连接列表（上游 `views/connection/connections.dart`）。
-///
-/// 上游每秒轮询核心拿连接表，本仓没有核心：`mockConnections` 在首次进入时
-/// 「加载」一次，之后列表只在用户关闭连接时变化——演示页不做假的心跳，
-/// 否则速率列会不停跳动，截图与快照都没法比对。
-///
-/// 排序放在溢出菜单里而不是顶栏的拖动排序模式：连接列表不是可重排的用户
-/// 配置（`canSort` 那套适用于底部栏 / 卡片编排），它要的是「按哪一列排」。
+/// Connection list (upstream `views/connection/connections.dart`).
 library;
 
 import 'dart:async';
@@ -21,7 +14,7 @@ import 'package:material_ui/material_ui.dart';
 
 part 'connections_rows.dart';
 
-/// 排序字段。文案取 [label]，不要插值枚举名。
+/// Sort field. Labels come from [label], never from the enum name.
 enum ConnectionSort {
   duration('按持续时间'),
   download('按下载量'),
@@ -33,7 +26,6 @@ enum ConnectionSort {
   final String label;
 }
 
-/// 连接页。
 class ConnectionsPage extends ConsumerStatefulWidget {
   const ConnectionsPage({super.key});
 
@@ -42,7 +34,7 @@ class ConnectionsPage extends ConsumerStatefulWidget {
 }
 
 class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
-  /// 首次加载的假延时：只为了让骨架/空态与真实数据的切换有一次可见的过渡。
+  /// Simulated first-load delay, only so the skeleton-to-data transition is visible.
   static const _loadDelay = Duration(milliseconds: 420);
 
   Timer? _loadTimer;

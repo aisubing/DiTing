@@ -1,15 +1,9 @@
-/// 赞助者名单 / 共建者名单（上游 `SponsorListScreen` / `CoBuilderListScreen`）。
-///
-/// 两页共用 [RecognitionListPage]：数据来自云端 `recognition_members.json`，
-/// 头像是真实图片（内置资源优先，云端新增的联网取，失败退回默认头像）。
-/// 上一轮这里是写死的名字列表 + 用昵称首字拼的彩色字母圆——头像从来不是图片，
-/// 名单也和服务器无关。
+/// Sponsor and co-builder lists (upstream `SponsorListScreen`), from remote JSON.
 library;
 
 import 'package:diting/pages/hub/recognition_common.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 赞助者名单。
 class SponsorListPage extends StatelessWidget {
   const SponsorListPage({super.key});
 
@@ -27,7 +21,6 @@ class SponsorListPage extends StatelessWidget {
   }
 }
 
-/// 共建者名单。
 class CoBuildersPage extends StatelessWidget {
   const CoBuildersPage({super.key});
 

@@ -1,13 +1,7 @@
 part of 'demo_page.dart';
 
-/// 反馈分区：验证 [CommonCircleLoading]、[NullStatus] 四种插画、
-/// [SkeletonText] / [SkeletonPill] 骨架、[LineChart] 曲线，
-/// 以及 [StatStrip] / [KeyValueRow] / [SectionBlock] 三个拼装件。
-///
-/// 这一区里的加载环与骨架屏都是**无限循环动画**：只要它们所在的 ticker 是活的，
-/// 之后任何 `pumpAndSettle` 都永远等不到静止，整页会变成一个「测试黑洞」。
-/// 所以整区套一层 [TickerMode]，默认关闭动画（首帧仍然是正确的静态形态），
-/// 想看动效时点一下开关即可。
+/// Spinner and skeletons animate forever, so they stay behind a [TickerMode] switch, off by
+/// default, to keep `pumpAndSettle` from hanging.
 class _DemoFeedbackSection extends StatefulWidget {
   const _DemoFeedbackSection();
 
@@ -69,8 +63,7 @@ class _DemoFeedbackSectionState extends State<_DemoFeedbackSection> {
   void _toggleLoading() => setState(() => _isLoading = !_isLoading);
 }
 
-/// 循环动画总开关。默认关：`TickerMode(enabled: false)` 会让加载环与骨架屏
-/// 停在首帧，既能看到正确的静态形态，又不会让 `pumpAndSettle` 卡死。
+/// Animation master switch, off by default; `TickerMode` freezes the first frame.
 class _DemoAnimateSwitch extends StatelessWidget {
   const _DemoAnimateSwitch({required this.value, required this.onChanged});
 
@@ -111,8 +104,7 @@ class _DemoAnimateSwitch extends StatelessWidget {
   }
 }
 
-/// 自绘滚动条：拖动时变粗、可抓取，`onScrub` 上报当前拖动速率。
-/// 这里把速率显示出来，验证回调确实在拖动期间持续触发。
+/// Custom scrollbar: thickens while dragged and reports its rate via `onScrub`.
 class _DemoScrollBar extends StatefulWidget {
   const _DemoScrollBar();
 
@@ -185,7 +177,6 @@ class _DemoScrollBarState extends State<_DemoScrollBar> {
   }
 }
 
-/// 加载环四种尺寸与页面级用法。点按切换「加载中」以便观察动画起停。
 class _DemoLoadings extends StatelessWidget {
   const _DemoLoadings({required this.loading, required this.onToggle});
 
@@ -266,8 +257,8 @@ class _DemoLoadings extends StatelessWidget {
   }
 }
 
-/// 四种插画：data / search / error / wifi。空态的插画是入场动画（只播一次），
-/// 所以它们放进 `pumpAndSettle` 也是安全的。
+/// Four illustrations: data, search, error and wifi. The art animates in once, so
+/// The art animates in once, so it is safe under `pumpAndSettle`.
 class _DemoNullStatuses extends StatelessWidget {
   const _DemoNullStatuses();
 
@@ -299,8 +290,8 @@ class _DemoNullStatuses extends StatelessWidget {
   }
 }
 
-/// 四种插画 + 各自该出现的文案。空态是「用户唯一会盯着看很久」的界面，
-/// 所以文案要写清楚下一步做什么，而不是只说「暂无数据」。
+/// Four illustrations with captions: an empty state is stared at, so the text says
+/// what to do next instead of only "no data".
 const _nullStatusSamples = <(NullStatusIllustration, String, String)>[
   (NullStatusIllustration.data, '还没有任何记录', '连接建立后，这里会按时间列出每一条请求。'),
   (NullStatusIllustration.search, '没有匹配的结果', '换一个关键词，或者清空搜索条件再试一次。'),
@@ -308,7 +299,7 @@ const _nullStatusSamples = <(NullStatusIllustration, String, String)>[
   (NullStatusIllustration.wifi, '网络不可用', '当前没有可用的网络接口。'),
 ];
 
-/// 骨架屏：文本行用 [SkeletonText]（宽度决定行宽），块用 [SkeletonPill]。
+/// `SkeletonText` for lines (width sets length) and `SkeletonPill` for blocks.
 class _DemoSkeletons extends StatelessWidget {
   const _DemoSkeletons();
 
@@ -353,8 +344,7 @@ class _DemoSkeletons extends StatelessWidget {
   }
 }
 
-/// 折线图：两条不同容量的曲线并排，验证 capacity 只影响横轴密度，
-/// 不影响曲线本身的平滑度（Catmull-Rom + 高斯模糊）。
+/// Line charts: two capacities side by side. Capacity only changes axis density, not smoothing.
 class _DemoLineChart extends StatelessWidget {
   const _DemoLineChart();
 
@@ -401,7 +391,6 @@ class _DemoLineChart extends StatelessWidget {
   }
 }
 
-/// 三个拼装件：指标条、键值行、带标题的内容块。
 class _DemoStats extends StatelessWidget {
   const _DemoStats();
 

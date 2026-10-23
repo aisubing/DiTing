@@ -5,9 +5,7 @@ part of 'popup.dart';
 class _CommonPopupMenuState extends State<CommonPopupMenu>
     with SingleTickerProviderStateMixin {
 
-  /// Where the top sub menu stands, from its item at 0 to its card at 1; one
-  /// spring drives every part of the move, so a fold caught mid-unfold turns
-  /// around with the speed it had.
+  /// 0 at the item to 1 at its card, on one spring, so a fold mid-unfold turns around.
   late final _unfold = AnimationController.unbounded(vsync: this, value: 1);
   late final Animation<double> _items = _unfold.drive(const _Span(0.05, 0.4));
   late final Animation<double> _arrow = _unfold.drive(_arrowTurns);
@@ -23,13 +21,9 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
   final _checkedKey = GlobalKey();
   ScrollController? _lazyController;
 
-  /// The row of the top level under a finger that pressed one, or
-  /// [_headerIndex] for its header.
   int? _pressed;
   Timer? _dwell;
 
-  /// Whether the press rests where a sub menu it opened or folded left it,
-  /// the header standing on its item, so letting go there changes nothing.
   bool _landed = false;
   bool _carrying = false;
 
@@ -67,8 +61,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
     super.dispose();
   }
 
-  /// A menu given its own cap builds only the rows in view, since building
-  /// them all costs its first frame a row each; its rows share one height.
+  /// A capped menu builds only the rows in view, so its rows must share one height.
   bool _buildsLazily(_MenuLevel level) =>
       widget.maxVisibleItems != null &&
       level.owner == null &&
@@ -101,8 +94,6 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
   }
 
 
-  /// What the rows would take at their intrinsic width, measured from the
-  /// labels as the rows lay them out.
   double _lazyWidthOf(BuildContext context, List<CommonPopupMenuItem> items) {
     final style = AppTextStyle.subheadline.of(context);
     final root = DefaultTextStyle.of(context).style.merge(style);
@@ -137,7 +128,6 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
     final height = math.min(items.length, visible + 0.5) * extent;
     final controller = _lazyController ??= () {
       final checked = items.indexWhere((item) => item.checked == true);
-      // Whole rows above, as _revealChecked leaves them.
       return ScrollController(
         initialScrollOffset: ((checked - visible ~/ 2) * extent).clamp(
           0.0,
@@ -251,7 +241,6 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
       setState(() {
         _folding = false;
         final step = _path.removeLast();
-        // The header stood on the item that opened its sub menu.
         if (_pressed == _headerIndex) {
           _pressed = step.index;
         }
@@ -260,8 +249,6 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
     });
   }
 
-  /// The header stands on the item that opened its sub menu, so tapping it
-  /// mid-fold reads as tapping that item again.
   void _toggleTop() {
     if (!_folding) {
       _pop();
@@ -403,8 +390,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
           _pop();
         }
       },
-      // The platter clips the menu while it opens and does not swell with it,
-      // so a swell then would cut the menu's edges until the platter left.
+      // The platter clips the menu as it opens and does not swell, so a swell would cut its edges.
       child: ValueListenableBuilder<bool>(
         valueListenable: _platter ?? const AlwaysStoppedAnimation(false),
         builder: (_, platter, child) =>

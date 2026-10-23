@@ -1,12 +1,6 @@
-/// YAML 编辑器骨架（上游 `pages/editor.dart`，1260 行）。
-///
-/// 本轮只做骨架：行号栏、静态语法高亮、输入时的补全浮层、保存 / 格式化按钮，
-/// 以及一段假 YAML。**不接真实解析器、不做错误检查、不落盘**——上游那一千多行
-/// 里大半是增量解析与撤销栈，本阶段不做。
-///
-/// 高亮通过覆写 `TextEditingController.buildTextSpan` 实现：这样光标、选区、
-/// 输入法组合都还是 Flutter 原生的行为，只需要把「一行文本」换成「一行的
-/// 多个带色片段」。比在 `Text` 上叠一个透明 `TextField` 稳得多。
+/// YAML editor skeleton (upstream `pages/editor.dart`): line numbers, static highlighting,
+/// completion popup, save and format over mock YAML. Highlighting overrides
+/// `buildTextSpan`, so IME stays native.
 library;
 
 import 'package:diting/data/mock_forms.dart';
@@ -18,7 +12,7 @@ import 'package:material_ui/material_ui.dart';
 
 part 'editor_completion_popup.dart';
 
-/// 代码行的行高；行号栏与正文必须共用同一个值才对齐。
+/// Line height shared by the gutter and the text, which must match to stay aligned.
 const _lineHeight = 19.5;
 const _codeFontSize = 13.0;
 const _codeStyle = TextStyle(
@@ -27,11 +21,10 @@ const _codeStyle = TextStyle(
   height: _lineHeight / _codeFontSize,
 );
 
-/// 带高亮的文本控制器。
 class YamlEditingController extends TextEditingController {
   YamlEditingController({super.text, required this.palette});
 
-  /// 高亮配色；主题变化时由页面重建控制器或直接改这个字段再触发重绘。
+  /// Highlight colors; the page rebuilds or mutates this on theme change.
   HighlightPalette palette;
 
   @override
@@ -53,9 +46,7 @@ class YamlEditingController extends TextEditingController {
   }
 }
 
-/// 编辑器页。
-///
-/// [readOnly] 为真时隐藏所有改动入口——同一套视图也用来「查看」配置文件。
+/// A true [readOnly] hides every edit entry, so the same view can display a config file.
 class EditorPage extends StatefulWidget {
   const EditorPage({
     super.key,
@@ -77,10 +68,8 @@ class _EditorPageState extends State<EditorPage> {
   final _scroll = ScrollController();
   final _focus = FocusNode();
 
-  /// 上次保存的内容，用来判断 dirty。
   late String _saved;
 
-  /// 补全候选项；空表示浮层收起。
   var _completions = const <MockCompletion>[];
 
   @override
@@ -93,7 +82,7 @@ class _EditorPageState extends State<EditorPage> {
     )..addListener(_onChanged);
   }
 
-  /// `initState` 里拿不到 `Theme`，先给一套占位配色，`build` 时再换成当前主题。
+  /// `initState` cannot read `Theme`, so placeholders stand in until `build`.
   static const _fallbackScheme = ColorScheme.light();
 
   @override
@@ -112,7 +101,6 @@ class _EditorPageState extends State<EditorPage> {
     setState(() => _completions = _suggestions());
   }
 
-  /// 根据光标前最后一个词给出补全候选。
   List<MockCompletion> _suggestions() {
     final selection = _controller.selection;
     if (!selection.isValid || !selection.isCollapsed) {
@@ -143,7 +131,6 @@ class _EditorPageState extends State<EditorPage> {
         char == '_';
   }
 
-  /// 用候选词替换光标前的那个词。
   void _applyCompletion(MockCompletion item) {
     final selection = _controller.selection;
     if (!selection.isValid || !selection.isCollapsed) {
@@ -163,7 +150,6 @@ class _EditorPageState extends State<EditorPage> {
     _focus.requestFocus();
   }
 
-  /// 极简格式化：去掉行尾空格、把 tab 换成两个空格、统一列表缩进。
   void _format() {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final lines = _controller.text.split('\n');
@@ -171,7 +157,7 @@ class _EditorPageState extends State<EditorPage> {
     for (final line in lines) {
       final expanded = line.replaceAll('\t', '  ');
       final trimmedRight = expanded.replaceAll(RegExp(r'\s+$'), '');
-      // 列表项的 `- ` 后若有多余空格，收敛成一个。
+      // Collapse extra spaces after a `- ` list marker into one.
       final neat = trimmedRight.replaceFirst(RegExp(r'^- +'), '- ');
       formatted.add(neat);
     }
@@ -211,9 +197,8 @@ class _EditorPageState extends State<EditorPage> {
     final colorScheme = context.colorScheme;
     _controller.palette = HighlightPalette.of(colorScheme);
     final lines = _controller.text.split('\n').length;
-    // 编辑器是「全屏路由」而不是浮层，但脏值保护的需求与浮层一致：Android 的
-    // 返回手势会直接弹掉页面，未保存的改动就没了。`NestedFormSheet` 的
-    // `CommonPopScope` 正是干这个的，复用它而不是再写一遍拦截逻辑。
+    // A full-screen route still needs the dirty-value guard: the Android back gesture
+    // would pop it and lose unsaved edits. Reuses `NestedFormSheet`'s `CommonPopScope`.
     return NestedFormSheet(
       title: widget.title,
       isDirty: () => _dirty,
@@ -308,11 +293,7 @@ class _EditorPageState extends State<EditorPage> {
   }
 }
 
-/// 行号栏。
-///
-/// 只渲染视口内的行号，并用 `scroll.offset` 反推位移——这样长文件不会一次建
-/// 出几千个 `Text`，滚动时行号也与正文严丝合缝。`_lineHeight` 必须与正文共享
-/// 同一个常数，否则两边会越滚越偏。
+/// Builds only visible numbers from `scroll.offset` and shares `_lineHeight` with the text.
 class _LineGutter extends StatelessWidget {
   const _LineGutter({required this.lineCount, required this.scroll});
 
@@ -343,10 +324,8 @@ class _LineGutter extends StatelessWidget {
                 final last = (first + visible).clamp(0, lineCount);
                 return Transform.translate(
                   offset: Offset(0, first * _lineHeight - offset),
-                  // 上下各多备一行做补边，交给 `OverflowBox` 放开高度限制：
-                  // 否则这一行补边会把 Column 撑得比视口高，真机上直接报
-                  // `RenderFlex overflowed by 63 pixels`，而多出来的行本来就被
-                  // 外层 `ClipRect` 裁掉。
+                  // One padded line above and below; `OverflowBox` relaxes the height
+                  // limit, otherwise the Column overflows the viewport by 63 pixels.
                   child: OverflowBox(
                     alignment: Alignment.topCenter,
                     minHeight: 0,
@@ -373,16 +352,8 @@ class _LineGutter extends StatelessWidget {
   }
 }
 
-/// 补全浮层。
-///
-/// 上游把浮层定位到光标下方（`TextPainter` 量出光标矩形再 `CompositedTransform`
-/// 过去）。演示层把浮层放在编辑器底部：位置差一点，但「哪些候选、按什么顺序、
-/// 点了插什么」这些真正要验证的东西都还在，而定位代码是上游 216 行里最不
-/// 可复用的部分。
-///
-/// 实现见 `editor_completion_popup.dart`（本文件已到 550 行上限）。
 
-/// 底部状态栏：行列统计、保存 / 格式化按钮。
+/// Completion popup; lives in `editor_completion_popup.dart`, since this file is at the line cap.
 class _EditorStatusBar extends StatelessWidget {
   const _EditorStatusBar({
     required this.lineCount,
@@ -451,9 +422,7 @@ class _EditorStatusBar extends StatelessWidget {
   }
 }
 
-/// 页面外壳：演示入口用（`/editor` 路由直接建 `EditorPage`）。
-///
-/// 标注画在 `EditorPage` 正文顶部（见其 `build`），这一层只是历史入口的别名。
+/// Page shell for the demo entry; the notice is drawn by `EditorPage` itself.
 class EditorDemoPage extends StatelessWidget {
   const EditorDemoPage({super.key});
 

@@ -1,10 +1,6 @@
 part of 'mock_data.dart';
 
-/// 功能中心的一张卡。
-///
-/// 上游 `FeatureHubScreen.kt` 的卡片只有图标与标题；本仓的卡片组件多一行
-/// 副标题，因此复用同一个 `description` 作为副标题，隐藏功能管理页也用它
-/// 作为说明文案，避免两份文案漂移。
+/// One card; `description` is shared with the hidden-features page.
 class MockFeatureCard {
   const MockFeatureCard({
     required this.title,
@@ -21,19 +17,16 @@ class MockFeatureCard {
   final String glyphName;
   final String route;
 
-  /// 隐藏功能键；为空表示固定常驻、不可隐藏（隐藏功能管理卡自己）。
+  /// Empty means the card is fixed.
   final String? featureKey;
 
-  /// 极速模式是否保留这张卡（上游 18 项门控 + 1 张固定卡）。
   final bool expressVisible;
 
-  /// 长按动作；上游只有「日志」卡有。
   final String? longPressRoute;
 
   bool get isFixed => featureKey == null;
 }
 
-/// 功能中心的一个分类（上游 7 类 28 卡）。
 class MockFeatureCategory {
   const MockFeatureCategory({required this.title, required this.cards});
 
@@ -41,11 +34,7 @@ class MockFeatureCategory {
   final List<MockFeatureCard> cards;
 }
 
-/// 功能中心分类。
-///
-/// 路由全部写成字面量而不是引用 `lib/routes/routes.dart` 的常量：本文件是
-/// `mock_data.dart` 的 part，不能 import。**改路由常量时必须同步这里**，
-/// `test/route_catalog_test.dart` 会校验两者一致，漏改会红。
+/// Routes are literals here; `test/route_catalog_test.dart` keeps them in sync.
 const mockFeatureCategories = <MockFeatureCategory>[
   MockFeatureCategory(
     title: 'DNS 服务',
@@ -289,7 +278,6 @@ const mockFeatureCategories = <MockFeatureCategory>[
   ),
 ];
 
-/// 一个可被隐藏的功能（隐藏功能管理页的数据源）。
 class MockHiddenFeature {
   const MockHiddenFeature({
     required this.key,
@@ -310,7 +298,6 @@ class MockHiddenFeature {
   final String route;
 }
 
-/// 全部可隐藏功能，顺序与功能中心卡片一致；固定卡不在其中。
 final List<MockHiddenFeature> mockHiddenFeatures = [
   for (final category in mockFeatureCategories)
     for (final card in category.cards)
@@ -326,7 +313,6 @@ final List<MockHiddenFeature> mockHiddenFeatures = [
         ),
 ];
 
-/// 按分类分组后的隐藏功能，供管理页按上游顺序渲染。
 Map<String, List<MockHiddenFeature>> hiddenFeaturesByCategory({
   required bool express,
 }) {
@@ -340,7 +326,6 @@ Map<String, List<MockHiddenFeature>> hiddenFeaturesByCategory({
   return result;
 }
 
-/// 当前模式可见的分类（已过滤隐藏键，并剔除空分类）。
 List<MockFeatureCategory> visibleFeatureCategories({
   required bool express,
   required Set<String> hiddenKeys,

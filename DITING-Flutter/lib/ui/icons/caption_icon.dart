@@ -38,8 +38,7 @@ class _CaptionGlyphPainter extends CustomPainter {
       ..strokeWidth = 1
       ..strokeJoin = StrokeJoin.round;
     const corner = Radius.circular(1);
-    // Every coordinate sits on a half pixel so a one pixel stroke covers a
-    // single device pixel at 100% scaling.
+    // Every coordinate sits on a half pixel so a one pixel stroke covers one device pixel.
     final box = (Offset.zero & size).deflate(0.5);
     switch (glyph) {
       case CaptionGlyph.minimize:

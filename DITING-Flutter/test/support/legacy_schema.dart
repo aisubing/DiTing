@@ -1,20 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// The exact 1.4.3 table layout, read off the device with `sqlite3 .schema`.
-///
-/// Kept in `test/support/` rather than inline because all three observability
-/// repositories are exercised against the same database: duplicating the DDL
-/// per test file is how a column name silently drifts in one copy only.
-///
-/// Notes that matter for the assertions:
-/// - `http_request_log.id` is `INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL`, and
-///   `authority` / `matchedRule` / `blockSubscriptionId` are nullable while
-///   `outcome` / `protocol` are not — 1.4.3 reports "未取得 authority" for the
-///   nullable case, so nulls must be representable here.
-/// - `dns_log.cached` is `INTEGER NOT NULL DEFAULT 0` (Room stores booleans as
-///   0/1); the repository reads it with `== 1`, not as a bool.
-/// - `app_traffic_daily` is keyed by `(date, package_name)`; `date` is a
-///   `yyyy-MM-dd` string, so `>=` / `<=` on it are date comparisons.
+/// The exact 1.4.3 table layout, read off the device with `sqlite3 .schema`. `authority`,
+/// `matchedRule` and `blockSubscriptionId` are nullable; `dns_log.cached` is INTEGER read `== 1`
 Future<void> createLegacySchema(Database db) async {
   await db.execute(
     'CREATE TABLE http_request_log ('
@@ -63,9 +50,7 @@ Future<void> createLegacySchema(Database db) async {
   );
 }
 
-/// Inserts one `http_request_log` row. Defaults mirror what `HttpRequestLogger`
-/// writes: `protocol` is always present, `authority` may be null (TLS failed
-/// before the request line was parsed).
+/// Inserts one `http_request_log` row; `authority` is null when TLS failed before the request line.
 Future<int> insertHttpRow(
   Database db, {
   required int timestamp,
@@ -85,8 +70,7 @@ Future<int> insertHttpRow(
   'blockSubscriptionId': blockSubscriptionId,
 });
 
-/// Inserts one `dns_log` row. `queryType` defaults to 1 (A record) because 0
-/// is reserved for connection log lines (`TCP 1.2.3.4:443`).
+/// Inserts one `dns_log` row; `queryType` defaults to 1 (A) because 0 marks connection log lines.
 Future<int> insertDnsRow(
   Database db, {
   required int timestamp,

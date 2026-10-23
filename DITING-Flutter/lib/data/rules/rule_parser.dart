@@ -1,12 +1,10 @@
-/// 整份规则文本的解析入口（1.4.3 `AdGuardRuleParser` 的 `parseCategorized` /
-/// `parseCategorizedLine` / `extractBadfilterKeys` 移植）。
 library;
 
 import 'package:diting/data/rules/adblock_line_parser.dart';
 import 'package:diting/data/rules/hosts_parser.dart';
 import 'package:diting/data/rules/rule_models.dart';
 
-/// 解析一行，不做跨行状态（流式导入用）。
+/// Parses one line without cross-line state (for streaming imports).
 CategorizedLine parseCategorizedLine(String originalLine) {
   final line = originalLine.trim().replaceFirst(RegExp('^\uFEFF'), '');
   if (line.isEmpty ||
@@ -16,33 +14,25 @@ CategorizedLine parseCategorizedLine(String originalLine) {
     return const CategorizedLine(ignoredCount: 1);
   }
 
-  // 1. dnsmasq：address=/domain/ip 或 server=/domain/ip
   if (line.startsWith('address=/') || line.startsWith('server=/')) {
     return parseDnsmasqLine(line, originalLine);
   }
 
-  // 2. hosts：IP domain1 [domain2 ...]
   final hosts = parseHostsLineDetailed(line, originalLine);
   if (hosts != null) {
     return hosts;
   }
 
-  // 3. AdGuard / ABP / 裸域名 / cosmetic / URL
   final allow = line.startsWith('@@');
   return parseAdblockOrDomainLine(line, originalLine, allow);
 }
 
-/// 以 `#` 开头的行只有在**不是**元素隐藏规则时才是注释。
-///
-/// 通用规则（`##.ad`、`#@#.ad`）同样以 `#` 开头，所以必须先识别 cosmetic
-/// 分隔符再判注释。
+/// `#` starts a comment only when the line is not element-hiding, so cosmetic delimiters must be
+/// checked first.
 bool _isCommentLine(String line) =>
     line.startsWith('#') && !isCosmeticRuleLine(line);
 
-/// 扫描全文收集 `$badfilter` 去重键。
-///
-/// 必须先扫一遍全文：`$badfilter` 的作用是「关掉同键的规则」，且不保证出现在
-/// 目标规则之后，单趟流式处理会漏掉反向顺序。
+/// Scans for `$badfilter` keys; the disabler may appear before the rule it disables.
 Set<String> extractBadfilterKeys(String text) {
   final keys = <String>{};
   for (final line in text.split('\n')) {
@@ -54,9 +44,8 @@ Set<String> extractBadfilterKeys(String text) {
   return keys;
 }
 
-/// 解析整份文本，按族归类并按去重键去重（后出现的重复行计入 duplicate）。
-///
-/// [badfilterKeys] 传入时会剔除命中的规则；不传则内部先扫一遍全文。
+/// Parses a document, groups by family, dedupes by key. [badfilterKeys] removes matches; when null
+/// it is scanned first.
 CategorizedRules parseCategorized(
   String text, {
   Set<String>? badfilterKeys,
@@ -127,7 +116,7 @@ CategorizedRules parseCategorized(
   );
 }
 
-/// 首次出现返回 0，重复返回 1（用于累计 duplicateCount）。
+/// Returns 0 on first insert and 1 on a repeat, to accumulate duplicateCount.
 int _addUnique<T>(Map<String, T> map, String key, T value) {
   if (map.containsKey(key)) {
     return 1;
@@ -146,7 +135,6 @@ int _removeKeys<T>(Map<String, T> map, Set<String> keys) {
   return removed;
 }
 
-/// 解析单条规则（用户手工添加用）。非 allow 时拒绝 `@@` 行。
 ParsedRule? parseRule(String line) {
   final trimmed = line.trim().replaceFirst(RegExp('^\uFEFF'), '');
   if (trimmed.startsWith('@@')) {
@@ -155,7 +143,7 @@ ParsedRule? parseRule(String line) {
   return parseCategorizedLine(line).blockRules.firstOrNull;
 }
 
-/// 解析单条放行规则。裸域名（不带 `@@`）也接受，等价于手填白名单。
+/// Parses one allow rule; a bare domain without `@@` is accepted too.
 ParsedRule? parseAllowRule(String line) {
   final trimmed = line.trim().replaceFirst(RegExp('^\uFEFF'), '');
   if (!trimmed.startsWith('@@')) {

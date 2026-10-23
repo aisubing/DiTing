@@ -1,8 +1,4 @@
-/// 键值编辑器演示页（`/form/map-edit`）。
-///
-/// 把 `MapEditView` 装进页面：顶部是当前键值对的实时摘要，下面是编辑器本体。
-/// 页脚的「保存」会先做一次重复键检查——这正是 `MapEditView` 把去重留给调用
-/// 方的原因：不同页面去重策略不同（覆盖 / 保留第一个 / 报错）。
+/// Key-value editor demo (`/form/map-edit`): a live summary on top, the editor below.
 library;
 
 import 'package:diting/data/mock_forms.dart';
@@ -12,7 +8,6 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 键值编辑器演示页。
 class MapEditDemoPage extends StatefulWidget {
   const MapEditDemoPage({super.key});
 

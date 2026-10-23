@@ -12,7 +12,7 @@ import 'support/fake_vpn_controller.dart';
 void main() {
   test('未收到授权回调时不会永远停在启动中', () {
     fakeAsync((async) {
-      // prepared: false → 系统弹授权框，回调正常情况下由 MainActivity 送回。
+      // prepared: false -> the system shows the auth prompt, answered by MainActivity.
       final controller = FakeVpnController(prepared: false);
       final store = MemoryLegacyPrefsStore({
         'diting_settings': {'app_work_mode': 'normal'},
@@ -30,13 +30,13 @@ void main() {
       async.flushMicrotasks();
       expect(c.read(powerProvider), PowerState.starting);
 
-      // 回调丢失（Activity 重建等）：必须自己收敛，否则电源键永久不可用。
+      // A lost callback (activity recreated) must converge, or the power key stays dead.
       async.elapse(const Duration(seconds: 95));
       expect(c.read(powerProvider), PowerState.error);
       expect(c.read(powerProvider.notifier).lastError, '没有获得 VPN 授权');
       expect(c.read(legacySettingsProvider).vpnRunning, isFalse);
 
-      // 错误态允许再次点击。
+      // The error state allows another tap.
       expect(c.read(powerProvider).isBusy, isFalse);
     });
   });
@@ -60,7 +60,7 @@ void main() {
 
       expect(c.read(powerProvider), PowerState.starting);
       async.elapse(const Duration(seconds: 1));
-      // 原生说自己没在跑 → 直接收敛为已停止，不进入错误态。
+      // Native says it is not running: settle on stopped instead of error.
       expect(c.read(powerProvider), PowerState.stopped);
       expect(c.read(legacySettingsProvider).vpnRunning, isFalse);
     });
@@ -85,7 +85,7 @@ void main() {
       async.flushMicrotasks();
       expect(c.read(powerProvider), PowerState.running);
 
-      // status() 一直说 running，watchdog 过期也不能把状态改坏。
+      // `status()` keeps saying running, so an expired watchdog must not corrupt state.
       controller.statusValue = const VpnStatus(running: true, persisted: true);
       async.elapse(const Duration(seconds: 120));
       expect(c.read(powerProvider), PowerState.running);

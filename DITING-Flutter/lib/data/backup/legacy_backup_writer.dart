@@ -1,13 +1,5 @@
-/// 把 2.0 的分组备份翻译成 1.4.3 认识的平铺结构。
-///
-/// 用户反馈的核心症状之一：新版导出的备份文件导回旧版时「内容为空」。原因是
-/// 1.4.3 `ConfigTransferParser` 只认根节点上平铺的 `formatVersion` 与各组字段，
-/// 读不到就一律按默认值处理，不报错也不提示。
-///
-/// 导出时把同一份数据同时写成 `{format, version, data}` 与平铺两套键，于是
-/// 一个文件既能被新版自己再次导入，也能被 1.4.3 直接导入。
-///
-/// 字段名逐字对齐 1.4.3 `ConfigExporter`，改名会让老版本再次读不到。
+/// Translates the grouped backup into the flat structure the legacy app reads; field names must
+/// match the legacy exporter exactly.
 library;
 
 import 'package:diting/data/backup/backup_models.dart';
@@ -15,15 +7,11 @@ import 'package:diting/data/backup/legacy_backup_json.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 
 abstract final class LegacyBackupWriter {
-  /// 1.4.3 `ConfigTransferParser.FORMAT_VERSION`。
+  /// The legacy `ConfigTransferParser.FORMAT_VERSION`.
   static const int formatVersion = 10;
 
-  /// 把新版 `data` 翻译成 1.4.3 认识的平铺根节点字段。
-  ///
-  /// 只翻译文件里真实存在的分组：用户没勾的分组不能凭空写成默认值，否则旧版
-  /// 会把「本来没导出」读成「导出了默认配置」。少数分组（外观、系统设置）的
-  /// 字段在旧版解析器里没有缺省分支，缺失字段会被写成默认值反过来冲掉用户的
-  /// 长相，因此这几项回落到 [settings] 当前值。
+  /// Flat legacy root fields for the groups present; appearance and system settings fall back to
+  /// [settings].
   static Map<String, Object?> toLegacy(
     Map<String, Object?> data,
     LegacySettings settings,
@@ -120,8 +108,7 @@ abstract final class LegacyBackupWriter {
     if (presetIds is List) {
       root['bootstrapPresetIds'] = BackupJson.strings(presetIds);
     }
-    // 旧版「内容为空」的一半原因就是这类数组键整个缺失：解析器虽然能容忍，
-    // 但用户在导入汇总里看不到任何条目会误以为备份是空的。
+    // Always write the array: a missing key reads as an empty backup.
     final custom = bootstrap['custom'];
     if (custom is List) {
       final entries = <Object?>[];
@@ -157,8 +144,7 @@ abstract final class LegacyBackupWriter {
     };
   }
 
-  /// 出站代理：凭据从不进备份，写出 `credentialsOmitted` 让旧版知道「这里是
-  /// 故意空的」而不是漏导。
+  /// Credentials never enter a backup; `credentialsOmitted` says so explicitly.
   static void _putOutbound(Map<String, Object?> root, Object? value) {
     final outbound = BackupJson.map(value);
     if (outbound == null) return;
@@ -175,8 +161,7 @@ abstract final class LegacyBackupWriter {
   static void _putSubscriptions(Map<String, Object?> root, Object? value) {
     final subscriptions = BackupJson.map(value);
     if (subscriptions == null) return;
-    // 一律写出数组（哪怕是空数组）：旧版导入汇总按条目计数，键整个缺失时
-    // 用户会看到「什么都不见了」的错觉；空数组至少是诚实的「本机没有」。
+    // Always write the arrays, even empty: a missing key looks like data loss.
     root['mirrorTemplates'] = _templates(subscriptions['mirrorTemplates']);
     root['subscriptionGroups'] = _groups(subscriptions['groups']);
     root['subscriptions'] = _subscriptionItems(subscriptions['items']);
@@ -232,8 +217,7 @@ abstract final class LegacyBackupWriter {
     return result;
   }
 
-  /// 域名规则：新版把 block 与 allow 放在同一组里用 `kind` 区分，旧版是两个
-  /// 独立数组。按 kind 拆开写，黑白名单的语义才不会被旧版当成同一种规则。
+  /// Block and allow share one list here, split by `kind`; legacy keeps two arrays.
   static void _putDomainRules(Map<String, Object?> root, Object? value) {
     if (value is! List) return;
     final block = <Object?>[];
@@ -331,8 +315,7 @@ abstract final class LegacyBackupWriter {
     }
   }
 
-  /// 拦截/订阅相关的几个开关在 1.4.3 里是**平铺在根节点**的（不在
-  /// `systemSettings` 里），`NetworkFeatureConfigImporter` 直接读根节点。
+  /// Flat root keys in the legacy format, not inside `systemSettings`.
   static void _putFlatSwitches(Map<String, Object?> root, Object? value) {
     final system = BackupJson.map(value);
     root['domainRulesEnabled'] = system?['domainRulesEnabled'] != false;
@@ -374,8 +357,7 @@ abstract final class LegacyBackupWriter {
     return result;
   }
 
-  /// 外观：备份里有值就用备份的，缺失时回落到本机当前值——旧版解析器把这些
-  /// 字段当作「一定存在」，缺一个就会用默认值冲掉用户的长相。
+  /// Backup value, else the local one: the legacy parser defaults missing keys.
   static void _putAppearance(
     Map<String, Object?> root,
     Object? value,
@@ -413,7 +395,7 @@ abstract final class LegacyBackupWriter {
     };
   }
 
-  /// 系统设置：同上，缺字段回落到本机值，避免旧版导入后把用户的设置改回默认。
+  /// Same fallback, so a legacy import does not reset settings.
   static void _putSystem(
     Map<String, Object?> root,
     Object? value,

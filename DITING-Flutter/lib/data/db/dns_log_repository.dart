@@ -1,7 +1,5 @@
-/// Read/delete access to the legacy `dns_log` table.
-///
-/// Rows are written natively through [DnsLogWriter], so this repository only
-/// reads apart from clearing the table.
+/// Read/delete access to the legacy `dns_log` table; rows are written natively through
+/// [DnsLogWriter].
 library;
 
 import 'package:sqflite/sqflite.dart';
@@ -40,12 +38,7 @@ class DnsLogRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-    /// Today's counters: PASSED and REWRITTEN count as passed, cached rows are
-    /// counted separately, BLOCKED and ERROR keep their own buckets.
-    ///
-    /// Latency comes from the same scan, because `message` carries
-    /// `elapsed=NNms`; the header must never mix today's rows with the recent
-    /// list.
+  /// PASSED and REWRITTEN count as passed; latency comes from the same scan as the list.
   Future<DnsLogDailyStats> dailyStats({DateTime? since}) async {
     final start = (since ?? _startOfToday()).millisecondsSinceEpoch;
     final rows = await _db.query(
@@ -89,9 +82,7 @@ class DnsLogRepository {
     );
   }
 
-    /// Reads `elapsed=123ms` out of the persisted `message`, or null when there
-    /// is no timing. The writer only emits the token for positive durations, so
-    /// sub-millisecond queries drop out instead of counting as `0ms`.
+  /// Reads `elapsed=123ms`; the writer only emits it for positive durations.
   static int? elapsedMsOf(String? message) {
     if (message == null || message.isEmpty) return null;
     final match = _elapsedPattern.firstMatch(message);
@@ -119,7 +110,6 @@ class DnsLogRepository {
   );
 }
 
-  /// Today's aggregates shown on the dashboard header.
 class DnsLogDailyStats {
   const DnsLogDailyStats({
     required this.total,
@@ -146,21 +136,13 @@ class DnsLogDailyStats {
   final int error;
   final int cached;
 
-    /// Mean `elapsed=` over timed rows only; rule-blocked rows have no timing
-    /// and must not drag the average down.
+  /// Mean `elapsed=` over timed rows only; rule-blocked rows carry no timing.
   final int averageLatencyMs;
 
-    /// Number of rows behind [averageLatencyMs]. Zero means no data, which the
-    /// header renders as a dash rather than `0ms`.
   final int latencySamples;
 
-    /// Mirrors the engine's `hitRatio` = hits/(hits+misses). The denominator is
-    /// [passed] plus error rows, since the cache lookup happens before the
-    /// upstream call fails while rule-blocked rows never reach the cache;
-    /// using [passed] alone would read high.
-    ///
-    /// Known approximation: a stale-while-revalidate reply is logged with
-    /// `cached=1` but the engine counts it as a stale hit, not a normal one.
+  /// Mirrors engine `hitRatio`: errors join the denominator (cache lookup precedes upstream
+  /// failure) and a stale-while-revalidate reply counts as a stale hit.
   double get cacheHitRate {
     final lookups = passed + error;
     return lookups == 0 ? 0 : cached / lookups;

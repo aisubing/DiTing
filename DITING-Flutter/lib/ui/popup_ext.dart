@@ -2,7 +2,7 @@
 
 part of 'popup.dart';
 
-// 按项目单文件 ≤550 行规范，从 _CommonPopupMenuState 拆出的构建方法（同库扩展，私有成员经库级可见性直接访问）。
+// Build methods split out of _CommonPopupMenuState to stay under the file line cap.
 const _headerIndex = -1;
 const _levelWidthScale = 1.12;
 const _levelScaleStep = 0.05;
@@ -47,8 +47,7 @@ Widget _buildRow(
       color: foregroundColor,
     );
   }
-  // A press is the menu's to follow across the rows, so the row's own ink
-  // only shows hover and focus.
+  // A press is the menu's to follow across the rows, so the row's ink shows hover and focus only.
   final child = InkWell(
     customBorder: AppShape.all(_itemRadius),
     onTap: onTap,
@@ -141,8 +140,7 @@ Widget _buildContent(
       : -1;
   final items = [
     for (var index = 0; index < level.items.length; index++)
-      // The item a sub menu stands on hides under its header, which draws
-      // it again; on glass the two would show through each other.
+      // The item a sub menu stands on hides under its header, which redraws it.
       Opacity(
         key: index == checked ? _checkedKey : null,
         opacity: index == covered ? 0 : 1,

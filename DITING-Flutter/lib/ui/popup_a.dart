@@ -30,8 +30,7 @@ const _dismissDuration = Duration(milliseconds: 300);
 
 const _shrinkDuration = Duration(milliseconds: 200);
 
-/// How far a popup with no control to return into shrinks toward its anchor
-/// as it fades, as an iOS context menu does.
+/// How far a popup with no control to return into shrinks toward its anchor as it fades.
 const _dismissScale = 0.8;
 
 double _secondsOf(Duration duration) =>
@@ -114,25 +113,19 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
 
   final WidgetBuilder builder;
 
-  /// Resolves the rect of the control the popup grows out of.
   final PopupAnchorResolver anchorOf;
   final PopupPlacement placement;
 
-  /// Whether the popup opens from a sheet's [ElevatedSurfaceTheme], which
-  /// lies below the navigator the popup is pushed on.
+  /// Whether the popup opens from a sheet's [ElevatedSurfaceTheme], below its navigator.
   final bool elevated;
 
-  /// The background of the source control, which the platter starts from.
   final Color sourceColor;
 
-  /// A snapshot of the source control, drawn inside the platter while the
-  /// control itself is hidden; null while it is still being taken.
+  /// A snapshot of the source control, drawn inside the platter while the control is hidden.
   final ValueListenable<ui.Image?>? sourceImage;
 
-  /// Off, focus stays on the page and touches outside pass through to it.
   final bool modal;
 
-  /// A rect the popup keeps clear of when there is room above or below it.
   final Rect? avoid;
 
   @override
@@ -173,8 +166,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
 
   final _unfolded = ValueNotifier<bool>(false);
 
-  /// Whether the platter shows rather than the cards, which on glass stand
-  /// bare meanwhile so that one pane, the platter's, bends what lies behind.
+  /// Whether the platter shows rather than the cards, which on glass stand bare meanwhile.
   final _platter = ValueNotifier<bool>(true);
 
   final _pin = _PopupPin();
@@ -194,8 +186,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
 
   void _updatePlatter() {
     final animation = this.animation!;
-    // A popup with a control to return into does so on the platter; one
-    // without dissolves as it stood when it began to close.
+    // A popup with a control to return into does so on the platter; one without dissolves.
     if (animation.status == AnimationStatus.reverse) {
       if (sourceImage != null) {
         _platter.value = true;
@@ -226,8 +217,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
     }
   }
 
-  /// A popup that returns into its control runs a picked item once landed,
-  /// so nothing the item rebuilds changes under the returning platter.
+  /// A popup that returns into its control runs a picked item once landed, so nothing rebuilds.
   void _runPicked(VoidCallback action) {
     if (sourceImage == null) {
       action();

@@ -11,11 +11,7 @@ import 'package:material_ui/material_ui.dart';
 import 'support/app_host.dart';
 import 'support/test_hooks.dart';
 
-/// 网络工具的三类判据：
-/// 1. host 清洗要逐条对上 `NetworkPingTool.sanitizeHost`（含 `[::1]:53` 与
-///    `2001:db8::1` 的反例——端口规则最容易误伤 IPv6）；
-/// 2. `fromMap` 缺字段时必须是「结构完整的空结果」，不能让 `null` 冒到 UI；
-/// 3. 面板要能在成功 / 失败 / fallback 三态下渲染出对应文案。
+/// Network-tool judging rules: host sanitizing, a sparse `fromMap`, and every panel state
 void main() {
   installGlobalTestHooks();
 
@@ -36,13 +32,10 @@ void main() {
       expect(sanitizeProbeHost('[::1]:53'), '::1');
       expect(sanitizeProbeHost('[2001:db8::1]'), '2001:db8::1');
       expect(sanitizeProbeHost('https://[::1]:8080/x'), '::1');
-      // 没有右括号时原样保留（与 Kotlin 一致：`endIndex > 0` 才剥），
-      // 交给原生报错，而不是吐一个半截 host。
       expect(sanitizeProbeHost('[::1'), '[::1');
     });
 
     test('裸 IPv6 不被端口规则误伤', () {
-      // 这条是守卫条件（不含 "::" 且恰好一个冒号）的反例：双冒号地址必须原样保留。
       expect(sanitizeProbeHost('2001:db8::1'), '2001:db8::1');
       expect(sanitizeProbeHost('::1'), '::1');
       expect(sanitizeProbeHost('fe80::1'), 'fe80::1');
@@ -51,7 +44,6 @@ void main() {
     test('单冒号 + 全数字才当端口剥', () {
       expect(sanitizeProbeHost('example.com:8080'), 'example.com');
       expect(sanitizeProbeHost('10.0.0.1:53'), '10.0.0.1');
-      // 冒号后不是纯数字 → 保留（域名里不会出现，但别把 a:b 吃掉）。
       expect(sanitizeProbeHost('example.com:abc'), 'example.com:abc');
     });
 
@@ -117,7 +109,6 @@ void main() {
 
       final lookup = DnsLookupResult.fromMap(const {});
       expect(lookup.answers, isEmpty);
-      // 缺 source 时回落 'error'：不能默认成 upstream（那是「真的打到了上游」）。
       expect(lookup.source, 'error');
       expect(lookup.success, isFalse);
       expect(lookup.elapsedMs, 0);
@@ -162,7 +153,6 @@ void main() {
 
   group('runner 守卫', () {
     test('平台异常转成可读失败结果，不冒到调用方', () async {
-      // EmptyUnavailable 走的是真实默认实现：四个方法都应返回失败形态。
       const runner = UnavailableDiagnosticsRunner();
 
       expect((await runner.ping('example.com')).success, isFalse);
@@ -185,12 +175,6 @@ void main() {
   });
 
   group('Ping 面板', () {
-    /// 打开 Ping 页签。
-    ///
-    /// 页签文案是「Ping 测试」而不是「Ping」：逐字照抄旧版
-    /// `NetworkToolMode.PING("Ping 测试")`。默认页签本来就是 ping
-    /// （`NetworkToolsViewModel._toolMode` 初值），点它只是为了让用例「先切走
-    /// 再回来」这类扩展不需要改桩。
     Future<void> openPing(WidgetTester tester) async {
       await tester.tap(find.text('Ping 测试'));
       await tester.pumpAndSettle();
@@ -223,16 +207,13 @@ void main() {
       expect(find.text('4 / 4'), findsOneWidget);
       expect(find.text('0.0 %'), findsOneWidget);
       expect(find.text('10.0 ms / 12.5 ms / 18.0 ms'), findsOneWidget);
-      // 逐条 reply 在首屏之外：`PageBody` 是懒构建的 ListView，
-      // `jumpTo(maxScrollExtent)` 在内容刚追加的那一帧拿到的是旧上界，滚不到位，
-      // 所以这里用多次拖拽把尾部滚进视口。
+      // `PageBody` builds lazily, so `jumpTo(maxScrollExtent)` sees a stale bound; drag instead
       for (var i = 0; i < 4; i++) {
         await tester.drag(find.text('目标'), const Offset(0, -400));
         await tester.pumpAndSettle();
       }
       expect(find.text('第 1 个包'), findsOneWidget);
       expect(find.text('第 4 个包'), findsOneWidget);
-      // 成功态不出现 fallback 提示。
       expect(find.textContaining('TCP 回退测量'), findsNothing);
     });
 
@@ -315,12 +296,10 @@ void main() {
 
       expect(find.text('93.184.216.34'), findsWidgets);
       expect(find.text('3 / 最多 15'), findsOneWidget);
-      // 逐跳列表在首屏之外：`PageBody` 懒构建，滚动后再断言。
       for (var i = 0; i < 4; i++) {
         await tester.drag(find.text('目标'), const Offset(0, -400));
         await tester.pumpAndSettle();
       }
-      // 第 2 跳没有应答：显示占位而不是伪造地址。
       expect(find.text('* * *'), findsOneWidget);
       expect(find.text('无响应'), findsOneWidget);
     });
@@ -359,7 +338,6 @@ void main() {
   });
 
   group('DNS 解析的服务器模式', () {
-    /// 打开「DNS 解析」页签。
     Future<void> openDns(
       WidgetTester tester,
       _FakeRunner runner, {
@@ -391,10 +369,7 @@ void main() {
       await tester.tap(find.text('开始查询'));
       await tester.pumpAndSettle();
 
-      // 1.4.3 的 `DnsServerMode.SYSTEM`：问本机解析器，没有指定服务器。
       expect(runner.dnsLookupServers, [null]);
-      // 「跟随系统」在选择器和结果行里各出现一次：结果区必须写明本次问了谁，
-      // 否则用户改过输入框后会以为结果来自新填的服务器。
       expect(find.text('跟随系统'), findsNWidgets(2));
     });
 
@@ -402,12 +377,10 @@ void main() {
       final runner = _FakeRunner(pingResult: _successfulPing);
       await openDns(tester, runner);
 
-      // 两档服务器选择器是旧版 `DnsServerMode` 的原样，上一轮迁移时丢了。
       expect(find.text('跟随系统'), findsOneWidget);
       await tester.tap(find.text('自定义'));
       await tester.pumpAndSettle();
 
-      // 输入框顺序：域名 → 服务器 IP。
       await tester.enterText(find.byType(TextField).first, 'example.com');
       await tester.enterText(find.byType(TextField).at(1), '1.1.1.1');
       await tester.pump();
@@ -432,7 +405,6 @@ void main() {
       await tester.tap(find.text('开始查询'));
       await tester.pumpAndSettle();
 
-      // 空服务器若被放过去，原生侧会当成「系统」——用户在测 A、实际测的是 B。
       expect(find.text('请输入自定义 DNS 服务器 IP'), findsOneWidget);
       expect(runner.dnsLookupServers, isEmpty);
     });
@@ -442,14 +414,11 @@ void main() {
       await openDns(
         tester,
         runner,
-        // `dnsLookupViaTunnel` 走 prefs，预置成已开启省去一次点击。
         store: MemoryLegacyPrefsStore({
           networkToolsContainer: {dnsLookupViaTunnelKey: true},
         }),
       );
 
-      // 隧道模式下服务器不可选，两档控件应当不存在而不是灰掉——灰掉会让人以为
-      // 「启用后就能选」，实际永远不会。
       expect(find.text('自定义'), findsNothing);
       expect(find.text('跟随系统'), findsNothing);
     });
@@ -497,7 +466,6 @@ class _FakeRunner implements DiagnosticsRunner {
   final TraceResult traceResult;
   final List<String> pingCalls = [];
 
-  /// 每次 DNS 查询收到的服务器参数，用来验证「自定义服务器」真的传到了通道。
   final List<String?> dnsLookupServers = [];
 
   @override

@@ -25,7 +25,6 @@ class SelectionBadge extends StatelessWidget {
     : glyph = AppGlyphs.check,
       tonal = false;
 
-  /// The proxy a URLTest or Fallback group prefers, mihomo's `fixed`.
   const SelectionBadge.preferred({
     super.key,
     this.size = 22,

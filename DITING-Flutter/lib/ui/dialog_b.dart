@@ -2,8 +2,7 @@
 
 part of 'dialog.dart';
 
-/// Two actions side by side when both labels fit half the width; any other
-/// count, or labels too long, stacked in order with the first one at the
+/// Two actions side by side when both labels fit half the width, else stacked with the first at the
 /// bottom.
 class _AlertActions extends MultiChildRenderObjectWidget {
   const _AlertActions({required super.children});

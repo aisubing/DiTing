@@ -1,8 +1,4 @@
-/// 命名 URL 表单（上游 `features/form/named_url_form.dart`，324 行）。
-///
-/// 上游的 `NamedUrl = ({String label, String url, String ageSecretKey})`：一条
-/// 「名字 + 地址 + 密钥」。表单支持单条编辑与批量粘贴两种模式，批量模式下
-/// 逐行校验并在底部汇总。
+/// Named URL form: name, URL and optional secret; batch paste validated per line.
 library;
 
 import 'package:diting/data/mock_forms.dart';
@@ -12,13 +8,10 @@ import 'package:diting/pages/forms/form_page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一条命名 URL。
 typedef NamedUrl = ({String label, String url, String ageSecretKey});
 
-/// 校验一条记录，返回问题列表（空表示通过）。
-///
-/// 抽成顶层函数而不是方法：批量模式下要对几十条各校验一次，纯函数更容易在
-/// 演示页里被单独调用与测试。
+/// Validate one record and return its issues. A top-level function because batch mode
+/// validates dozens of records and a pure function is easier to test.
 List<String> validateNamedUrl(NamedUrl value) {
   final issues = <String>[];
   if (value.label.trim().isEmpty) {
@@ -33,7 +26,6 @@ List<String> validateNamedUrl(NamedUrl value) {
   return issues;
 }
 
-/// 命名 URL 表单。
 class NamedUrlForm extends StatefulWidget {
   const NamedUrlForm({
     super.key,
@@ -84,7 +76,7 @@ class _NamedUrlFormState extends State<NamedUrlForm> {
     }
   }
 
-  /// 批量解析结果：每行 `名称,地址`，可选第三段密钥。
+  /// Batch result: one `name,url` per line, with an optional third secret field.
   List<({String raw, NamedUrl? value, List<String> issues})> get _parsed => [
     for (final line in _batch.text.split('\n'))
       if (line.trim().isNotEmpty)

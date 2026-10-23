@@ -1,8 +1,5 @@
-/// The three DNS cache presets of DITING 1.4.3 (`DnsCachePreset`).
-///
-/// Each preset overwrites nine `dns_cache_*_v2` keys; the engine reads that
-/// policy directly, so the UI must write exactly these values instead of a
-/// single "preset name".
+/// The three DNS cache presets. Each overwrites nine `dns_cache_*_v2` keys the engine reads
+/// directly, so the UI must write exactly these values.
 library;
 
 import 'package:diting/data/prefs/legacy_settings.dart';
@@ -66,7 +63,6 @@ enum DnsCachePreset {
   final String summary;
   final String description;
 
-  /// `dns_cache_preset_v3` value.
   final String storageValue;
   final String mode;
   final int maxTtlSeconds;
@@ -83,8 +79,8 @@ enum DnsCachePreset {
     return null;
   }
 
-  /// `DnsCachePreset.fromPolicy` semantics: derive a preset from the raw keys so
-  /// installs that predate `dns_cache_preset_v3` still show a sensible option.
+  /// Derive a preset from the raw keys so installs predating `dns_cache_preset_v3` still show a
+  /// sensible option.
   static DnsCachePreset fromPolicy(LegacySettings settings) {
     if (settings.cacheModeRaw == 'follow_dns_ttl' &&
         !settings.cacheMinTtlEnabled &&
@@ -121,7 +117,6 @@ enum DnsCachePreset {
   }
 }
 
-/// One-line cache summary for the settings row (`标准：最长 1 小时…`).
 String cacheSummaryOf(LegacySettings settings) {
   if (!settings.cacheEnabled) return '已关闭 · 每次解析都会请求上游';
   final preset = DnsCachePreset.current(settings);

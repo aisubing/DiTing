@@ -1,9 +1,5 @@
-/// Access to the SharedPreferences files written by DITING 1.4.3.
-///
-/// File names and keys are part of the upgrade contract. Only the platform API
-/// can open these files (the `shared_preferences` plugin uses its own
-/// container and prefix), so Android goes through the channel and everything
-/// else falls back to memory.
+/// Access to the SharedPreferences files written by the legacy DITING app. File names and keys are
+/// part of the upgrade contract, and only the platform API can open them.
 library;
 
 import 'dart:async';
@@ -11,14 +7,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Canonical channel implemented by `LegacyPrefsBridge.kt`.
 const legacyPrefsChannel = MethodChannel('com.haoze.diting/legacy_prefs');
 
-/// Containers loaded once at startup; keep in sync with the native
-/// `LegacyPrefsBridge.CONTAINERS` allowlist.
-///
-/// A missing entry still accepts writes, but the next cold start cannot read
-/// them back, so settings silently revert to defaults.
+/// Loaded once at startup; keep in sync with the native `LegacyPrefsBridge.CONTAINERS` allowlist,
+/// or writes are accepted here and lost on the next cold start.
 const legacyPrefContainers = <String>[
   'dns_vpn_prefs',
   'diting_express_prefs',
@@ -31,11 +23,10 @@ const legacyPrefContainers = <String>[
   'diting_crash_state',
   'network_tools_settings',
   'recognition_members',
-  // Own container, no 1.4.3 counterpart: icon sets, UA, on-demand.
+  // Own container, no legacy counterpart: icon sets, UA, on-demand.
   'diting_config_resources',
 ];
 
-/// Reads and writes the legacy preference containers.
 abstract class LegacyPrefsStore {
   Map<String, Object?> readAll(String container);
 
@@ -56,7 +47,7 @@ abstract class LegacyPrefsStore {
   void remove(String container, String key);
 }
 
-/// Used on non-Android hosts, in tests, and when the channel is unavailable.
+/// Used on non-Android hosts, in tests and when the channel is unavailable.
 class MemoryLegacyPrefsStore implements LegacyPrefsStore {
   MemoryLegacyPrefsStore([Map<String, Map<String, Object?>>? seed])
     : _values = {
@@ -107,8 +98,7 @@ class MemoryLegacyPrefsStore implements LegacyPrefsStore {
   }
 }
 
-/// Android implementation: a snapshot loaded once at startup, with every
-/// mutation mirrored to the real file through the channel.
+/// Snapshot loaded at startup; every mutation is mirrored to the real file through the channel.
 class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
   MethodChannelLegacyPrefsStore(
     this._snapshot, {
@@ -136,8 +126,8 @@ class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
             'value': value,
           })
           .catchError((Object error) {
-                        // A dropped write is data loss, and this log is the only trace:
-                        // it must name the container/key pair.
+            // A dropped write is data loss: this log is the only trace, so it must name the
+            // container and key.
             debugPrint('legacy prefs write failed: $container/$key ($error)');
           }),
     );
@@ -180,8 +170,8 @@ class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
   }
 }
 
-/// Loads every legacy container once, before the first frame. On platforms
-/// without the bridge the app still starts, with defaults.
+/// Loads every legacy container once before the first frame; without the bridge the app starts with
+/// defaults.
 Future<LegacyPrefsStore> loadLegacyPrefsStore({
   MethodChannel channel = legacyPrefsChannel,
 }) async {

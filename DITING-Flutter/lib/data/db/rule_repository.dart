@@ -1,9 +1,5 @@
-/// Read/write access to the rule tables of the 1.4.3 `AppDatabase`.
-///
-/// The SQL mirrors `BlockRuleDao` / `AllowRuleDao` / `RewriteRuleDao`: the
-/// `*_source` join tables carry the provenance (`preset`, `useradd`, `sub_<id>`)
-/// and a rule is only in effect when both the rule and one of its sources are
-/// enabled.
+/// Read/write access to the legacy rule tables; `*_source` join tables carry provenance (`preset`,
+/// `useradd`, `sub_<id>`) and a rule applies only when it and one of its sources are enabled.
 library;
 
 import 'dart:io';
@@ -28,7 +24,7 @@ class RuleRepository {
     RuleKind.rewrite: 'rewrite_rule_source',
   };
 
-  /// Source labels that clearCustom may delete; `preset` and `sub_*` stay.
+  /// Sources that [clearUser] may delete; `preset` and `sub_*` are kept.
   static const userSources = ['useradd', 'local_import', 'local_hosts'];
 
   Future<Map<RuleKind, List<MockRule>>> loadAll() async {
@@ -122,8 +118,7 @@ class RuleRepository {
     return null;
   }
 
-  /// Inserts a user rule and its `useradd` source, reusing an existing row with
-  /// the same identity the way `insertForSource` does.
+  /// Inserts a user rule and its `useradd` source, reusing a row with the same identity.
   Future<MockRule> add(RuleKind kind, String pattern, {String? target}) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final id = await _db.transaction<int>((txn) async {
@@ -213,8 +208,8 @@ class RuleRepository {
     whereArgs: [id],
   );
 
-  /// Edits the rule; `promotePreset` mirrors the old whitelist behaviour where
-  /// changing a preset turns it into a user rule so resets cannot revert it.
+  /// [promotePreset] turns a preset rule into a user rule, so a preset reset cannot revert the
+  /// edit.
   Future<void> update(
     RuleKind kind,
     int id,
@@ -262,7 +257,7 @@ class RuleRepository {
   Future<void> delete(RuleKind kind, int id) =>
       _db.delete(_ruleTables[kind]!, where: 'id = ?', whereArgs: [id]);
 
-  /// Removes user-owned sources and the rules left without any source.
+  /// Removes user-owned sources and any rules left without a source.
   Future<int> clearUser(RuleKind kind) async {
     final table = _ruleTables[kind]!;
     final sources = _sourceTables[kind]!;
@@ -286,7 +281,6 @@ class RuleRepository {
     });
   }
 
-  /// Replaces the preset whitelist with [entries] (`domain`, `group`).
   Future<int> resetPresetWhitelist(
     List<({String domain, String group})> entries,
   ) {
@@ -322,12 +316,7 @@ class RuleRepository {
     });
   }
 
-  /// SQL fragment matching `appScope` for [packageName].
-  ///
-  /// `appScope` is a `|`-separated package list, so a rule applies to this app
-  /// when the column equals the package, or the package appears at the start,
-  /// middle, or end of that list. Mirrors `BlockRuleDao.pagedByAppScope`'s
-  /// `(appScope = :appScope OR appScope LIKE :appScope || '|%' OR …)`.
+  /// `appScope` is a `|`-separated list, so the package may be the whole value or a slice.
   static String _scopeClause(String scopeColumn) =>
       '($scopeColumn = ? OR $scopeColumn LIKE ? OR $scopeColumn LIKE ? '
       'OR $scopeColumn LIKE ?)';
@@ -339,11 +328,7 @@ class RuleRepository {
     '%|$packageName',
   ];
 
-  /// All user-facing rules scoped to [packageName] (both block and allow),
-  /// excluding the `*` full-block marker, which the panel surfaces as a switch.
-  ///
-  /// Reads the rule + source tables together so a rule whose sources are all
-  /// disabled comes back as `enabled == false`, exactly like [_loadKind].
+  /// Excludes the `*` full-block marker; sources are read, so all-disabled yields false.
   Future<List<MockRule>> loadForApp(String packageName) async {
     final subscriptions = await _subscriptionNames();
     final result = <MockRule>[];
@@ -382,11 +367,8 @@ class RuleRepository {
     return result;
   }
 
-  /// Adds a user rule scoped to [packageName] (`block` or `allow`).
-  ///
-  /// Returns the created row, or null when an identical scoped rule already
-  /// exists (same pattern + kind + appScope), matching the legacy dedupe where
-  /// `insertForSource` reuses the existing identity.
+  /// Returns the new row, or null when an identical scoped rule already exists; that duplicate is
+  /// re-enabled and gets a `useradd` source.
   Future<MockRule?> addForApp(
     RuleKind kind,
     String pattern,
@@ -409,7 +391,7 @@ class RuleRepository {
       );
       if (existing.isNotEmpty) {
         final id = existing.first['id'] as int;
-        // Re-enable a previously disabled duplicate instead of silently no-oping.
+        // Re-enable a disabled duplicate instead of silently no-oping.
         await txn.update(
           _ruleTables[kind]!,
           {'enabled': 1},
@@ -454,7 +436,7 @@ class RuleRepository {
     );
   }
 
-  /// Whether the app currently has the `*` full-block rule (`*$app=<pkg>`).
+  /// Whether the app has the `*` full-block rule (`*$app=<pkg>`).
   Future<bool> hasFullBlock(String packageName) async {
     final rows = await _db.query(
       'block_rule',
@@ -468,11 +450,7 @@ class RuleRepository {
     return rows.isNotEmpty;
   }
 
-  /// Turns the app's full-block marker on or off by inserting/removing a
-  /// `pattern = '*'` rule scoped to the package. Returns the new state.
-  ///
-  /// Mirrors `AppRuleViewModel.toggleFullBlockTemplate`: enabling adds
-  /// `*$app=<pkg>`, disabling deletes the existing marker.
+  /// Enables or removes the app's `pattern = '*'` full-block rule; returns the new state.
   Future<bool> setFullBlock(String packageName, bool enabled) async {
     final existing = await _db.query(
       'block_rule',

@@ -1,26 +1,4 @@
-/// 外观设置页（旧版 `APPEARANCE_SETTINGS`，3 组 8 项菜单）。
-///
-/// 1.4.3 的 `AppearanceSettingsScreen.kt` 是一页菜单，不是一屏控件：
-///
-/// | 组 | 项 | 落点 |
-/// |---|---|---|
-/// | 界面显示 | 日夜模式 | `/theme/day-night` |
-/// | | 主题色配置 | `/theme/color` |
-/// | | 首页透明度 | `/theme/home-opacity` |
-/// | | 底栏自定义 | `/theme/bottom-bar` |
-/// | 首页内容 | 首页句子 | `/theme/home-sentence` |
-/// | | 通知栏设置 | `/theme/notification` |
-/// | 背景与动效 | 软件背景 | `/theme/background` |
-/// | | 底栏触感反馈 | 内联开关 |
-///
-/// 上一轮这一页是「实时预览 + 九个控件同屏」，与旧版层级完全不同。本轮按旧版
-/// 拆成菜单 + 二级页；大预览（`MiniScreen` 手机框）保留在菜单顶部——它是既有的
-/// 设计资产，且 `MiniScreen` 在九个二级页的缩略图里仍被复用。
-///
-/// **保留项的落点**（用户要求保留、旧版无对应项）：纯黑、字号、字体都并入
-/// 「界面显示」组，排在旧版四项之后，旧版项的文案、顺序、落盘键一字不动；
-/// 底栏样式 / tab 动画 / 液态玻璃放进「背景与动效」组同样排在最后。这样既满足
-/// 「旧版项严格对齐」，也不新增菜单层级。
+/// Appearance settings menu, mirroring the legacy `APPEARANCE_SETTINGS`.
 library;
 
 import 'package:diting/app/theme/colors.dart';
@@ -36,7 +14,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一个演示用主题（种子色 + 明暗），预览与缩略图都用它推导角色色。
 ColorScheme demoColorScheme({
   required Color seed,
   required Brightness brightness,
@@ -45,10 +22,8 @@ ColorScheme demoColorScheme({
   AppThemeSpec(seedColor: seed, brightness: brightness, pureBlack: pureBlack),
 ).colorScheme;
 
-/// 把一组预览需要的明暗两套色板算出来，供各选项的缩略图复用。
-///
-/// 上游每个条目各自 `ref.watch(genColorSchemeProvider(...))`；这里合成一处，
-/// 避免同一屏里为同一组参数反复建 `ThemeData`（`buildAppTheme` 不便宜）。
+/// Light and dark schemes for one preview, computed once so the same parameters do
+/// not rebuild `ThemeData` on every row.
 ({ColorScheme light, ColorScheme dark}) previewSchemes({
   required Color seed,
   required bool pureBlack,
@@ -61,7 +36,6 @@ ColorScheme demoColorScheme({
   ),
 );
 
-/// 缩略图：给一组选择项用的固定尺寸容器。
 Widget miniScreenThumb({
   required ColorScheme colorScheme,
   required bool floatingBar,
@@ -82,7 +56,6 @@ Widget miniScreenThumb({
   ),
 );
 
-/// 外观设置页：三组菜单。
 class ThemePage extends ConsumerWidget {
   const ThemePage({super.key});
 
@@ -97,13 +70,12 @@ class ThemePage extends ConsumerWidget {
       title: '外观设置',
       body: PageBody(
         children: [
-          // 大预览：旧版没有整页预览，但它是上一轮既有的设计资产，且九个二级页
-          // 的缩略图都建立在同一套 MiniScreen 上，删掉等于把缩略图也一起废掉。
+          // Large preview: the legacy app has none, but all nine sub pages build
+          // their thumbnails on the same MiniScreen.
           const _ThemePreview(),
           generateSection(
             title: '界面显示',
             items: [
-              // —— 旧版四项：文案与顺序一字不动 ——
               _MenuRow(
                 glyph: AppGlyphs.sun,
                 title: '日夜模式',
@@ -129,7 +101,7 @@ class ThemePage extends ConsumerWidget {
                     '已选 ${ref.watch(bottomBarProvider).length} 项，可配置 2–4 项',
                 route: SystemPaths.bottomBar,
               ),
-              // —— 保留项：纯黑 / 字号 / 字体，排在旧版项之后 ——
+              // Retained entries, after the legacy ones.
               ListItem.toggle(
                 title: const Text('纯黑'),
                 subtitle: Text(dark ? '深色表面折叠为纯黑，OLED 更省电' : '切到深色模式后才可开启'),
@@ -184,7 +156,7 @@ class ThemePage extends ConsumerWidget {
                 onChanged: (value) =>
                     ref.read(hapticProvider.notifier).toggle(value),
               ),
-              // —— 保留项：底栏样式 / tab 动画 / 液态玻璃 ——
+              // Retained entries, after the legacy ones.
               ListItem<BottomBarStyle>.options(
                 title: const Text('底栏样式'),
                 subtitle: Text(barStyle.isFloating ? '浮在页面之上' : '贴底排列'),
@@ -230,7 +202,6 @@ class ThemePage extends ConsumerWidget {
   };
 }
 
-/// 一行菜单入口。
 class _MenuRow extends StatelessWidget {
   const _MenuRow({
     required this.glyph,
@@ -256,7 +227,6 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
-/// 顶部大预览：手机框里的迷你界面，随外观选择实时变化。
 class _ThemePreview extends ConsumerStatefulWidget {
   const _ThemePreview();
 

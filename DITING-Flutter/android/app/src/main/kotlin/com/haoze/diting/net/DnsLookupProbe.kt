@@ -6,49 +6,17 @@ import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
 
-/**
- * One manual DNS lookup, in the shape `DnsLookupResult.fromMap` reads:
- * `{domain,source,answers,elapsedMs,error}` with `answers` entries of
- * `{type,value,ttl}` and `source` in `upstream` / `rewrite` / `blocked` /
- * `error` (the Dart model also documents `cache`, which this path never
- * produces — see below).
- *
- * Two backends:
- * - **tunnel** (`viaTunnel=true`): `Engine.resolveDomain(domain, ipv4)`, i.e. the
- *   running tunnel's own decision path — rewrite map, then policy blocking, then
- *   the configured upstream. The JSON contract is the engine's
- *   (`source ∈ {rewrite, blocked, upstream, nodata}` or `{error:...}`), parsed the
- *   same way 1.4.3's `TunnelDiagnosticsResolver` parsed it.
- * - **system** (`viaTunnel=false`): `InetAddress.getAllByName`, i.e. whatever the
- *   device resolver answers. TTL is unavailable there, so answers report `ttl: 0`
- *   rather than inventing a value.
- *
- * `cache` is never reported: `Engine.resolveDomain` consults the rewrite map and
- * policy engine, then goes straight to the upstream resolver — it does not read
- * the DNS cache, so claiming a cache hit would be a fabrication.
- */
+/// One manual lookup in the shape `DnsLookupResult.fromMap` reads: tunnel or system resolver.
 internal object DnsLookupProbe {
 
     fun lookup(domain: String, viaTunnel: Boolean, ipv4: Boolean): Map<String, Any?> {
         val host = NetHost.sanitize(domain)
-        // `domain` in the result names what was actually looked up, so the empty
-        // case reports "" rather than echoing the raw input back.
+        // `domain` names what was actually looked up, so the empty case reports "".
         if (host.isEmpty()) return error("", "请输入要查询的域名")
         return if (viaTunnel) tunnelLookup(host, ipv4) else systemLookup(host, ipv4)
     }
 
-    /**
-     * Queries a user-specified resolver over UDP (1.4.3's `DnsServerMode.CUSTOM`).
-     *
-     * Shares the result shape with [lookup] so the page renders both modes
-     * identically; only the transport differs. `source` is reported as
-     * `upstream` because the answer really did come from an upstream resolver —
-     * labelling it `cache` or `rewrite` would claim a code path that never ran.
-     *
-     * [server] must be an IP literal: 1.4.3 validated it the same way
-     * (`DnsProvider.isIpLiteral`), so a typo fails loudly instead of being
-     * silently resolved through the very resolver the user is trying to bypass.
-     */
+    /// UDP query to a user-specified resolver, same shape as `lookup`; server is an IP
     fun customServerLookup(domain: String, server: String, ipv4: Boolean): Map<String, Any?> {
         val host = NetHost.sanitize(domain)
         if (host.isEmpty()) return error("", "请输入要查询的域名")
@@ -72,13 +40,7 @@ internal object DnsLookupProbe {
         )
     }
 
-    /**
-     * True for an IPv4 / IPv6 literal (optionally bracketed).
-     *
-     * Hand-rolled rather than `InetAddress.getByName` + null check: `getByName`
-     * resolves hostnames too, so `"dns.google"` would come back as a valid
-     * address and pass the very check that exists to reject hostnames.
-     */
+    /// Hand-rolled: `getByName` also resolves hostnames, so "dns.google" would pass it
     private fun isIpLiteral(value: String): Boolean {
         val text = value.removePrefix("[").removeSuffix("]")
         if (text.isEmpty()) return false
@@ -109,8 +71,7 @@ internal object DnsLookupProbe {
         val json = runCatching { JSONObject(raw) }.getOrNull()
             ?: return error(host, "隧道解析结果无效", elapsed)
 
-        // Error object wins over everything else: the engine returns
-        // `{"error":"tunnel resolver not active"}` when there is no upstream yet.
+        // Error object wins: with no upstream yet the engine returns a bare error object.
         json.optString("error").takeIf { it.isNotEmpty() }?.let { message ->
             return error(host, translateEngineError(message), elapsed)
         }
@@ -121,10 +82,7 @@ internal object DnsLookupProbe {
 
         return when (source) {
             "rewrite", "upstream", "blocked" -> result(host, source, answers, elapsed, null)
-            // `nodata` is "the resolver answered, but with no address record".
-            // The Dart model has no such label; reporting it as `upstream` would
-            // claim an answer that does not exist, so it is surfaced as an error
-            // whose text names the actual rcode.
+            // `nodata`: no address record; the Dart model has no label for it, so report the rcode.
             else -> error(host, noDataMessage(reason), elapsed)
         }
     }
@@ -146,8 +104,7 @@ internal object DnsLookupProbe {
             }
         }
         if (answers.isEmpty()) return error(host, "系统解析未返回对应记录", elapsed)
-        // The OS resolver did reach *a* resolver (possibly the tunnel's own DNS
-        // when the VPN is up); that is what `upstream` means in this contract.
+        // The OS resolver did reach one (possibly the tunnel DNS): that is `upstream`.
         return result(host, "upstream", answers, elapsed, null)
     }
 
@@ -161,8 +118,8 @@ internal object DnsLookupProbe {
                 mapOf(
                     "type" to type,
                     "value" to value,
-                    // TTLs are optional in the engine payload; 0 means "not
-                    // reported", never "expired".
+                    // TTLs are optional in the payload; 0 means not reported, never expired.
+                    
                     "ttl" to (ttls?.optInt(index, 0) ?: 0),
                 ),
             )
@@ -173,7 +130,7 @@ internal object DnsLookupProbe {
     private fun answer(type: String, value: String): Map<String, Any?> =
         mapOf("type" to type, "value" to value, "ttl" to 0)
 
-    /** Same wording 1.4.3's `errorLabel()` used for the one token users hit. */
+    /// Same wording the legacy app's `errorLabel()` used for the one token users hit
     private fun translateEngineError(raw: String): String = when (raw) {
         "tunnel resolver not active" -> "隧道解析器未就绪（DNS 尚未生效）"
         "empty domain" -> "请输入要查询的域名"

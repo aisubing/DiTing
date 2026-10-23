@@ -4,19 +4,10 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/app_host.dart';
 
-/// 守住「scopes 必须在 `Navigator` 之上」这条不变量。
-///
-/// 这里曾被误判过两次：旧版 `test/support/app_host.dart` 与更早的注释
-/// 都声称 scopes 要装在 `home:`，理由是
-/// 「装 `builder` 会让浮层报 `Navigator operation requested with a context
-/// that does not include a Navigator`」。实测两个方向都能 push，真正的差别
-/// 在**浮层内容能不能读到 scope**：`showSheet` / `showFloatingDialog` 的
-/// 监听器是挂在根 `Navigator` 上的、与 `home:` **平级**的兄弟路由，所以
-/// `home:` 里的 scopes 覆盖不到它，浮层内一读 `ViewScope` 就 assert。
-///
-/// 下面两条用例把两种装法的行为差异钉住，防止有人再把它改回 `home:`。
+/// Guards that the scopes sit above the `Navigator`: mounted in `home:` they only cover the
+/// first route, and overlay content reading `ViewScope` asserts
 void main() {
-  /// 浮层内容里主动读 `ViewScope`；只有在 scopes 位于 Navigator 之上时才会成功。
+  /// Reads `ViewScope` from overlay content; only works with scopes above Navigator.
   Widget sheetBodyThatReadsScopes() => Builder(
     builder: (context) {
       final isMobile = ViewScope.isMobileOf(context);
@@ -51,12 +42,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    // 411 是 AppHost 的默认宽度。
+    // 411 is the default AppHost width.
     expect(find.text('sheet:true:411.0'), findsOneWidget);
   });
 
   testWidgets('反例：scopes 装 home: 时浮层读 scope 会 assert', (tester) async {
-    // 故意复刻错误装法，证明这条用例确实能抓到回归。
+    // Reproduces the wrong placement on purpose, proving this catches the regression.
     await tester.pumpWidget(
       MaterialApp(
         theme: demoTheme(Brightness.light),

@@ -15,24 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 首页 / 仪表盘。
-///
-/// 结构对齐 1.4.3 的 `MainScreenContent.kt`（`DnsHomeContent`）：
-/// 电源区 → 首页句子 → 服务商选择 → 解析模式（含当前解析地址）→ 可编排卡片区。
-///
-/// 与旧版的三处差异，都是产品决策：
-/// 1. 旧版首页只有固定块，本仓保留了「卡片编排 + 编辑模式」
-///    （`dashboard_board.dart`）；卡片集前五块照 FlClash 0.9.1 的仪表盘
-///    （状态 / 网络速度 / 网络测速 / 内存 / 内网 IP），其余是 1.4.3 真实存在的
-///    统计块；
-/// 2. 旧版把「DNS 服务详情」画成解析模式按钮**下面**的一段裸文字；这里并进
-///    解析模式卡内（`home_resolution_card.dart`），地址与它所属的模式不再分家；
-/// 3. 旧版没有快捷入口与顶栏菜单——上一轮的 `HomeQuickEntries` 与服务统计条、
-///    以及「工作模式 / 三步引导 / 代理 / 配置档案 / 外观 / 组件画廊」六项菜单
-///    已在本轮删除（FlClash 遗留，1.4.3 无对应物）。
-///
-/// 服务器模式**不在这里分支**：`lib/shell/app_shell.dart` 在壳这一层就把整棵树
-/// 换成了 `ServerModeShell`，这里再套一层会出现两套底栏。
+/// Home page / dashboard: power, tagline, provider, resolution mode, cards. Server mode
+/// does not branch here: app_shell swaps the whole tree and would double the bottom bar.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
@@ -42,20 +26,16 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage>
     with WidgetsBindingObserver {
-  /// 进页面时抓住 notifier 引用。
-  ///
-  /// `dispose()` 里不能 `ref.read`——Riverpod 3 会抛「Using ref when a widget is
-  /// about to or has been unmounted」。缓存在字段里是官方推荐的写法。
+  /// Capture the notifier while mounted: dispose() cannot call ref.read, Riverpod 3
+  /// throws when ref is used on an unmounted widget.
   SpeedSeriesNotifier? _speed;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // 速率曲线由 provider 自己的定时器推进（`SpeedSeriesNotifier.attachPolling`）：
-    // 首页与 `/traffic` 共用一条序列，谁在树上谁「持有」它，两处各起一个定时器
-    // 会让 60 点窗口缩短一半。测试里 `debugDisableDashboardLiveUpdates` 关掉了
-    // 自动推进，否则 `pumpAndSettle` 永远等不到静止。
+    // The provider's own timer drives the curve; home and /traffic share one series,
+    // and a second timer would halve the 60-point window. Tests disable it.
     _speed = ref.read(speedSeriesProvider.notifier);
     _speed!.attachPolling();
   }
@@ -66,7 +46,7 @@ class _HomePageState extends ConsumerState<HomePage>
       // The notification action can stop the tunnel while the app is in the
       // background; re-read the native status instead of trusting local state.
       ref.read(powerProvider.notifier).syncStatus();
-      // 服务器模式同样可能在后台被停止（通知栏或系统回收）。
+      // Server mode can likewise be stopped in the background.
       ref.read(serverStatusProvider.notifier).syncStatus();
     }
   }
@@ -94,8 +74,8 @@ class _HomePageState extends ConsumerState<HomePage>
           tooltip: editing ? '完成' : '编辑仪表盘',
           onPressed: () => ref.read(dashboardEditingProvider.notifier).toggle(),
         ),
-        // 模式已在标题里写明，顶栏不再放文字胶囊——它夹在两个圆形按钮之间
-        // 显得突兀。改用同尺寸圆形图标，两种动作保持同一种形状。
+        // The mode is already in the title, so the bar uses a round icon of the same
+        // size as its neighbour instead of a text pill wedged between two buttons.
         actions: [
           if (!editing)
             IconButton(
@@ -106,7 +86,8 @@ class _HomePageState extends ConsumerState<HomePage>
         ],
         body: PageBody(
           children: [
-            // 编辑态藏掉固定区：上游编辑模式只显示卡片，让「拖什么」一目了然。
+            // Edit mode hides the fixed blocks so only cards remain and the drag targets
+            // are obvious.
             if (!editing) ...[
               SizedBox(height: 8 * scale),
               Opacity(
@@ -176,7 +157,6 @@ class _HomePageState extends ConsumerState<HomePage>
   };
 }
 
-/// 句子按电源状态二选一；运行/启动中显示「运行」那句。
 extension on ({String running, String stopped}) {
   String? forState(PowerState state) =>
       state.isRunning || state == PowerState.starting ? running : stopped;

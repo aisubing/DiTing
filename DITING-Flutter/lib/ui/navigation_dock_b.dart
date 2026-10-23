@@ -37,11 +37,7 @@ class _RenderHitSlop extends RenderProxyBox {
   }
 }
 
-/// Grows under a press and stretches after a dragging finger, springing back
-/// on release, as the bar's lens does.
-///
-/// The press only paints: layout, hit testing, and anything anchored to the
-/// child, such as a popup menu or a tooltip, see it at rest.
+/// Grows under a press and stretches after a drag, as the bar's lens does; the press only paints.
 class ElasticPress extends StatefulWidget {
   const ElasticPress({
     super.key,
@@ -66,7 +62,6 @@ class ElasticPress extends StatefulWidget {
   final double maxGrowth;
   final double? maxPull;
 
-  /// Where the pressed panel lies in this box, when the box is larger.
   final Rect Function(RenderBox box)? panelOf;
 
   final Widget child;
@@ -74,7 +69,6 @@ class ElasticPress extends StatefulWidget {
   static ElasticPressHandle? maybeOf(BuildContext context) =>
       context.findAncestorStateOfType<_ElasticPressState>();
 
-  /// Where [box] paints under the presses around it, in its own coordinates.
   static Rect paintBoundsOf(RenderBox box) {
     final bounds = Offset.zero & box.size;
     var painted = Matrix4.identity();
@@ -148,8 +142,7 @@ class _ElasticPressState extends State<ElasticPress>
     _swell(event.localPosition);
   }
 
-  // A pointer's events keep reaching the hit-test path recorded at its down,
-  // so a press removed mid-gesture still hears its moves and release.
+  // A press removed mid-gesture still hears its moves and release.
   void _handlePointerMove(PointerMoveEvent event) {
     if (!mounted || event.pointer != _pointer) {
       return;
@@ -187,8 +180,7 @@ class _ElasticPressState extends State<ElasticPress>
     _settle();
   }
 
-  // A tap lets go before the swell has risen; it rises all the way first, as
-  // UIKit lifts the tab bar's lens all the way on a tap.
+  // A tap lets go before the swell rises; it rises fully first, as UIKit does.
   void _settle() {
     if (!_releasing || _lift.value < _liftSnap) {
       return;
@@ -236,8 +228,7 @@ class _ElasticPressState extends State<ElasticPress>
   }
 }
 
-/// Leaves a press on the filled button inside to [ElasticPress]; one whose
-/// style sets a foreground color merges [ElasticPress.buttonStyle].
+/// Leaves the press inside to [ElasticPress]; a foreground color merges its buttonStyle.
 class ElasticButton extends StatelessWidget {
   const ElasticButton({super.key, this.enabled = true, required this.child});
 
@@ -367,9 +358,3 @@ class _RenderPressTransform extends RenderProxyBox {
     );
   }
 }
-
-/// A floating pill of destinations whose selection is a lens that springs
-/// between them, after iOS's tab bar. Pressing swells the bar as
-/// [ElasticPress] does and lifts the lens under the finger; dragging slides
-/// the lens across the bar, selecting where it is let go, and stretches the
-/// bar past either end.

@@ -5,12 +5,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- 1.4.3 enumerated every installed app for the block / exclude / HTTPS
-         inspection pickers. Without these the platform silently returns only
-         this app's own packages and every picker falls back to its empty state. -->
+    <!-- Needed to enumerate installed apps for the block / exclude / inspection
+         pickers; without it the platform returns only this app's own packages. -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="com.android.permission.GET_INSTALLED_APPS" />
-    <!-- 应用内更新：下载 APK 后调起系统安装器。1.4.3 同样声明了这一条。 -->
+    <!-- In-app update: hands the downloaded APK to the system installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:label="谛听"
@@ -25,10 +24,8 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <!-- Specifies an Android theme to apply to this Activity as soon as
-                 the Android process has started. This theme is visible to the user
-                 while the Flutter UI initializes. After that, this theme continues
-                 to determine the Window background behind the Flutter UI. -->
+            <!-- Theme applied while the process starts and the Flutter UI
+                 initialises, then behind the Flutter UI. -->
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
@@ -38,13 +35,12 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <!-- Required by the Flutter tool to generate GeneratedPluginRegistrant.java. -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <!-- 应用内更新：把 filesDir/app-update 下的 APK 以 content:// 交给系统安装器。
-             authority 与 1.4.3 一致，路径见 res/xml/file_paths.xml。 -->
+        <!-- In-app update: serves APKs from filesDir/app-update as content:// URIs to
+             the system installer. Paths are declared in res/xml/file_paths.xml. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -54,7 +50,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        <!-- 1.4.3 full-tunnel service; the Go AAR owns the data plane. -->
+        <!-- Full tunnel; the Go AAR owns the data plane. -->
         <service
             android:name=".normal.DitingVpnService"
             android:exported="false"
@@ -80,7 +76,7 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="vpn" />
         </service>
-        <!-- 1.4.3 standalone LAN DNS server (server mode). -->
+        <!-- Standalone LAN DNS server (server mode). -->
         <service
             android:name=".server.DitingDnsServerService"
             android:exported="false"
@@ -90,11 +86,8 @@
                 android:value="dns_server" />
         </service>
     </application>
-    <!-- Required to query activities that can process text, see:
-         https://developer.android.com/training/package-visibility and
-         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
-
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <!-- Package visibility for ACTION_PROCESS_TEXT, which the Flutter engine's
+         ProcessTextPlugin queries. See https://developer.android.com/training/package-visibility -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

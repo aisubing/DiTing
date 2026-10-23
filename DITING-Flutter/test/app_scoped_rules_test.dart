@@ -1,8 +1,5 @@
-// 应用作用域规则的数据层行为。
-//
-// 之前页面把「DNS 专属黑/白名单」「默认拦截全部外联」写成「尚未接通」的只读
-// 说明位；这一版把它们接到规则库的 appScope。这里验证 provider 把仓储的
-// 结果分好类、并在规则库不可用时如实返回「不可用」而不是伪造空白。
+// Data-layer behavior of app-scoped rules: providers classify results, reporting "unavailable" not
+// empty
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
@@ -140,8 +137,7 @@ void main() {
   });
 
   test('全局规则页不展示带 appScope 的规则', () {
-    // `RulesNotifier` 必须把应用作用域规则过滤掉，否则「黑名单」里会出现一条只
-    // 对某个 app 生效的规则，被当成全局拦截。
+    // RulesNotifier must drop app-scoped rules, or the blacklist treats an app rule as global
     final container = ProviderContainer(
       overrides: [
         initialRulesProvider.overrideWithValue({

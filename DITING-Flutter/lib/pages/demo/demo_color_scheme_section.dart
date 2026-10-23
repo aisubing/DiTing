@@ -1,10 +1,7 @@
 part of 'demo_page.dart';
 
-/// ColorScheme 角色色分区：验证前景/背景成对角色、项目扩展的三个语义色，
-/// 以及色块上的自动对比字色。
-///
-/// 每个角色都成对出现（primary 挨着 onPrimary），因为对比度回归只有并排才
-/// 看得出：单独看 primary 永远是「一个蓝色」，看不出它上面的字是否已经糊了。
+/// ColorScheme roles: foreground/background pairs, the three project semantic
+/// colors, and automatic contrast text on swatches.
 class _DemoSchemeSection extends StatelessWidget {
   const _DemoSchemeSection();
 
@@ -26,7 +23,6 @@ class _DemoSchemeSection extends StatelessWidget {
   }
 }
 
-/// ColorScheme 的主要角色：前景/背景成对排，才能看出对比度是否成立。
 class _DemoSchemeRoles extends StatelessWidget {
   const _DemoSchemeRoles();
 
@@ -86,8 +82,7 @@ class _DemoSchemeRoles extends StatelessWidget {
   }
 }
 
-/// 一对角色色：左边大色块，右边色块内写对方角色的名字，用对方色当字色——
-/// 对比度不足时字会糊在底色里，一眼可见。
+/// A role pair: the counterpart name is drawn in the counterpart color, exposing weak contrast.
 class _DemoColorPairRow extends StatelessWidget {
   const _DemoColorPairRow({
     required this.label,
@@ -143,8 +138,8 @@ class _DemoColorPairRow extends StatelessWidget {
   }
 }
 
-/// Material 没有、但项目处处在用的三个语义色，以及按延迟取色的
-/// [delayColor]——后者是日志/服务商列表的共同判据。
+/// The three semantic colors Material lacks, plus [delayColor], the shared latency
+/// threshold for logs and provider lists.
 class _DemoExtraRoles extends StatelessWidget {
   const _DemoExtraRoles();
 
@@ -198,7 +193,6 @@ class _DemoExtraRoles extends StatelessWidget {
   }
 }
 
-/// 通用小色块：色 + 名字 + hex，颜色分区的积木。
 class _DemoColorTile extends StatelessWidget {
   const _DemoColorTile({
     required this.label,
@@ -247,12 +241,11 @@ class _DemoColorTile extends StatelessWidget {
   }
 }
 
-/// 色块上的文字：按亮度选黑或白，别让深色底上的深色字消失。
+/// Swatch text: pick black or white by luminance so dark-on-dark never disappears.
 Color _readableOn(Color background) => background.computeLuminance() > 0.5
     ? const Color(0xFF000000)
     : const Color(0xFFFFFFFF);
 
-/// 带名字的色点，用于语义色一览。
 class _DemoSwatch extends StatelessWidget {
   const _DemoSwatch({
     required this.label,

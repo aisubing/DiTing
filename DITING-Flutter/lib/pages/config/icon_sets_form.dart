@@ -1,6 +1,6 @@
 part of 'icon_sets_page.dart';
 
-/// 打开图标集表单；[existing] 为空表示新增。
+/// Open the icon set form; an empty [existing] means a new set.
 Future<void> showIconSetForm(
   BuildContext context,
   WidgetRef ref, {

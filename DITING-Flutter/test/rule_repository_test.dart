@@ -4,8 +4,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Exercises the SQL against the exact 1.4.3 table layout (subset of
-/// `AppDatabase` v3) so column names and source-table semantics cannot drift.
+/// Exercises the SQL against the exact 1.4.3 layout, a subset of `AppDatabase` v3
 void main() {
   setUpAll(() {
     sqfliteFfiInit();

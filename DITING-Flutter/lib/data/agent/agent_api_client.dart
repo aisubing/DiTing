@@ -1,37 +1,20 @@
-/// OpenAI 兼容的对话接口客户端（照抄 1.4.3 `AgentApiClient.kt` 用到的那部分）。
-///
-/// ## 上一轮是什么
-///
-/// `/hub/agent` 的「分析一个域名」「分析最近流量」点下去弹一份**写死的**对话框：
-/// 「风险等级：中」「该域名包含明显的统计参数与第三方追踪特征」。厂商、密钥、
-/// 温度、系统提示词全在内存里（`AgentApiNotifier`），杀进程就没了；两个「测试」
-/// 按钮不发任何请求。页面自己也写着「本演示不会真正发起网络请求」——这是本仓
-/// 唯一一种**明确承认是假的**的入口，但它占着旧版真实能力的位子。
-///
-/// ## 端点推导逐字照抄旧版
-///
-/// `AgentApiClient.resolveChatCompletionsEndpoint` / `resolveModelsEndpoint` 里
-/// 那几个分支都是有来历的：DeepSeek 的 Base URL 是 `https://api.deepseek.com`，
-/// 智谱是 `.../api/paas/v4`，硅基流动是 `.../v1`。拼错一段的表现是 404 +
-/// 一段服务端 JSON，用户只会看到「请求失败」。
+/// OpenAI-compatible chat client. Endpoints: DeepSeek `https://api.deepseek.com`, Zhipu
+/// `.../api/paas/v4`, SiliconFlow `.../v1`.
 library;
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-/// 一条对话消息。
 class AgentChatMessage {
   const AgentChatMessage({required this.role, required this.content});
 
-  /// `system` / `user` / `assistant`。
   final String role;
   final String content;
 
   Map<String, Object?> toJson() => {'role': role, 'content': content};
 }
 
-/// 一次对话返回。
 class AgentChatResult {
   const AgentChatResult({
     required this.content,
@@ -50,7 +33,6 @@ class AgentChatResult {
   bool get hasUsage => totalTokens > 0;
 }
 
-/// 请求失败，`message` 是可以直接展示给用户的那一句。
 class AgentApiException implements Exception {
   const AgentApiException(this.message);
 
@@ -60,7 +42,6 @@ class AgentApiException implements Exception {
   String toString() => message;
 }
 
-/// 生效中的 AI 配置（对应旧版 `AgentApiConfig`）。
 class AgentChatConfig {
   const AgentChatConfig({
     required this.baseUrl,
@@ -79,7 +60,6 @@ class AgentChatConfig {
   bool get hasKey => apiKey.trim().isNotEmpty;
 }
 
-/// OpenAI 兼容客户端。
 class AgentApiClient {
   const AgentApiClient({
     this.connectTimeout = const Duration(seconds: 15),
@@ -91,8 +71,7 @@ class AgentApiClient {
   final Duration readTimeout;
   final Duration modelsTimeout;
 
-  /// `Base URL` → `/chat/completions`。逐条照抄旧版
-  /// `resolveChatCompletionsEndpoint`。
+  /// Base URL to `/chat/completions`; OpenAI and DeepSeek need the `/v1` segment.
   static String resolveChatCompletionsEndpoint(String rawBaseUrl) {
     final trimmed = rawBaseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
     if (trimmed.isEmpty) {
@@ -109,7 +88,6 @@ class AgentApiClient {
     return '$trimmed/chat/completions';
   }
 
-  /// `Base URL` → `/models`。逐条照抄旧版 `resolveModelsEndpoint`。
   static String resolveModelsEndpoint(String rawBaseUrl) {
     final trimmed = rawBaseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
     if (trimmed.isEmpty) {
@@ -128,11 +106,8 @@ class AgentApiClient {
     return '$trimmed/models';
   }
 
-  /// 拉模型列表。
-  ///
-  /// 旧版把「模型候选」完全交给在线拉取，因为硬编码型号会过期。这里保持同一
-  /// 取舍，并把三种响应形态（`data` / `models` / `result`）都认下来：国内几家
-  /// 兼容实现并不完全一致。
+  /// Model list. Never hardcoded (it goes stale); `data`, `models` and `result` shapes are all
+  /// accepted.
   Future<List<String>> fetchModels({
     required String baseUrl,
     required String apiKey,
@@ -174,7 +149,7 @@ class AgentApiClient {
     return ids.toList()..sort();
   }
 
-  /// 一次连通性测试：发一句极短的话，确认密钥与模型名都能用。
+  /// Connectivity probe: one very short message, to check key and model name.
   Future<AgentChatResult> testConnection(AgentChatConfig config) {
     if (!config.hasKey) {
       throw const AgentApiException('API Key 不能为空');
@@ -193,7 +168,6 @@ class AgentApiClient {
     );
   }
 
-  /// 对话补全。
   Future<AgentChatResult> chat(
     AgentChatConfig config,
     List<AgentChatMessage> messages, {
@@ -219,8 +193,6 @@ class AgentApiClient {
     return _parseChat(body, fallbackModel: config.model);
   }
 
-  // ------------------------------------------------------------------ 内部
-
   AgentChatResult _parseChat(String body, {required String fallbackModel}) {
     final decoded = jsonDecode(body);
     if (decoded is! Map) {
@@ -235,7 +207,7 @@ class AgentApiClient {
         if (message is Map && message['content'] is String) {
           content = (message['content'] as String).trim();
         } else if (first['text'] is String) {
-          // 少数实现（补全式端点）把正文直接放在 `choices[].text`。
+          // Completion-style endpoints put the text in `choices[].text`.
           content = (first['text'] as String).trim();
         }
       }
@@ -258,7 +230,6 @@ class AgentApiClient {
     );
   }
 
-  /// 一次请求 + 错误归一。状态码翻成可操作的话，而不是把服务端 JSON 原样抛给用户。
   Future<String> _sendJson({
     required String method,
     required String url,
@@ -318,7 +289,7 @@ class AgentApiClient {
     }
   }
 
-  /// HTTP 状态 + 服务端 `error.message` → 一句能照着做的话。
+  /// HTTP status plus server `error.message` becomes an actionable sentence.
   static String _describe({required int status, required String body}) {
     var serverMessage = '';
     try {
@@ -332,7 +303,7 @@ class AgentApiClient {
         }
       }
     } on FormatException {
-      // 非 JSON 响应（网关 HTML 页）不阻塞下面的状态码映射。
+      // A non-JSON body (gateway HTML page) still maps by status code below.
     }
     final hint = switch (status) {
       401 => 'API Key 无效或已过期',

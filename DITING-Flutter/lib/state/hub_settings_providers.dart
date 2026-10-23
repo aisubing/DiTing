@@ -1,24 +1,5 @@
-/// AI 分析（Agent API）的设置与调用状态。
-///
-/// ## 上一轮是什么
-///
-/// 整页「演示」：厂商列表、密钥、温度、系统提示词全在一个 Notifier 的内存里
-/// （`AgentApiNotifier`），杀进程就回到写死的两条预置；两个「功能测试」入口弹的是
-/// 一份写死的研判；页脚写着「本演示不会真正发起网络请求」。
-///
-/// ## 现在
-///
-/// 1. **落盘**：九个键与厂商 JSON 走 1.4.3 `AgentApiSettingsStore` 的原键名
-///    （见 `legacy_settings_parity.dart` 的 AI 分析段），容器是全局
-///    `dns_vpn_prefs`。升级用户在这里能看到自己原来那家厂商与密钥。
-/// 2. **真实请求**：分析走 `AgentApiClient`，模型名可在线拉取
-///    （`GET /models`），连通性测试真发一次 `chat/completions`。
-/// 3. **上下文来自真表**：`agent_analysis.dart` 从 `dns_log` /
-///    `http_request_log` 汇总最近窗口，模型对着真实数据下结论。
-///
-/// 密钥在厂商 JSON 里用旧版同一套 `KeyObfuscator` 混淆；只有「当前生效配置」
-/// 那四个平铺键（`agent_api_key` 等）沿用旧版的明文写法——旧版就是这么存的，
-/// 单方面改成密文会让回退到 1.4.3 的用户读不到自己的 Key。
+/// AI analysis settings and call state under the 1.4.3 `AgentApiSettingsStore` keys in
+/// `dns_vpn_prefs`.
 library;
 
 import 'dart:convert';
@@ -27,11 +8,7 @@ import 'package:diting/data/agent/key_obfuscator.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ---------------------------------------------------------------------------
-// 厂商模型（旧版 `AiProvider` / `AiProviderPreset`）
-// ---------------------------------------------------------------------------
-
-/// 一条已配置的 AI 厂商。`presetId` 非空表示它由内置预设创建。
+/// A configured AI provider; a non-empty `presetId` means it came from a preset.
 class AiProviderConfig {
   const AiProviderConfig({
     required this.id,
@@ -48,12 +25,12 @@ class AiProviderConfig {
   final String model;
   final String presetId;
 
-  /// 混淆后的密钥（`KeyObfuscator.seal` 的输出）。空串表示未配置。
+  /// Obfuscated key (`KeyObfuscator.seal`). Empty when unset.
   final String sealedKey;
 
   bool get hasKey => sealedKey.isNotEmpty;
 
-  /// 明文密钥，仅用于构造请求头；不要写进日志或界面。
+  /// Plain key for request headers only; never log or display it.
   String get apiKey => openApiKey(sealedKey);
 
   AiProviderConfig copyWith({
@@ -80,7 +57,7 @@ class AiProviderConfig {
     'presetId': presetId,
   };
 
-  /// 解析一条厂商；字段缺失按旧版 `decodeAiProviders` 的宽松方式处理。
+  /// Parses one provider leniently, like the legacy `decodeAiProviders`.
   static AiProviderConfig? fromJson(Object? raw) {
     if (raw is! Map) return null;
     final id = '${raw['id'] ?? ''}'.trim();
@@ -99,7 +76,7 @@ class AiProviderConfig {
   }
 }
 
-/// 内置厂商预设：只登记名称与接口地址，模型名一律在线拉取。
+/// Built-in preset: name and base URL only; models are fetched online.
 class AiProviderPreset {
   const AiProviderPreset({
     required this.id,
@@ -118,7 +95,7 @@ const aiProviderPresetMainland = '国内厂商';
 const aiProviderPresetOverseas = '海外厂商';
 const aiProviderPresetAggregator = '聚合与本地部署';
 
-/// 照抄旧版 `AiProviderPresets.all`（16 条）：地址均核对自厂商官方文档。
+/// Mirrors the legacy `AiProviderPresets.all` (16 entries).
 const aiProviderPresets = <AiProviderPreset>[
   AiProviderPreset(
     id: 'deepseek',
@@ -218,11 +195,6 @@ const aiProviderPresets = <AiProviderPreset>[
   ),
 ];
 
-// ---------------------------------------------------------------------------
-// 状态
-// ---------------------------------------------------------------------------
-
-/// AI 分析设置（旧版 `AgentApiSettingsStore`）。
 class AgentApiState {
   const AgentApiState({
     this.enabled = true,
@@ -238,7 +210,7 @@ class AgentApiState {
   final String systemPrompt;
   final double temperature;
 
-  /// 当前生效厂商：找不到 id 时回落到第一条（旧版 `getActiveProvider`）。
+  /// Active provider; falls back to the first entry like legacy `getActiveProvider`.
   AiProviderConfig? get activeProvider {
     if (providers.isEmpty) return null;
     for (final provider in providers) {
@@ -267,11 +239,8 @@ class AgentApiState {
   );
 }
 
-/// 读旧版九个键 + 厂商 JSON。
-///
-/// 厂商 JSON 缺失时按旧版 `performInitialMigration` 播种：曾经配过 Key 或改过地址
-/// 的用户得到一条「已配置厂商」，其余得到一条 DeepSeek 空密钥条目。这样升级后
-/// 「我的厂商」不会是一张空列表——而那正是最容易被误当成「设置丢了」的样子。
+/// Reads the legacy keys plus provider JSON; missing JSON seeds one migrated or keyless DeepSeek
+/// entry.
 AgentApiState loadAgentApiState(LegacySettings settings) {
   final rawProviders = settings.agentAiProvidersJson;
   final providers = decodeAiProviders(rawProviders);
@@ -288,7 +257,7 @@ AgentApiState loadAgentApiState(LegacySettings settings) {
   );
 }
 
-/// 解析厂商 JSON；损坏时返回空列表（由调用方决定是否播种）。
+/// Decodes the provider JSON; an empty list means corrupt, so the caller decides whether to seed.
 List<AiProviderConfig> decodeAiProviders(String? raw) {
   if (raw == null || raw.trim().isEmpty) return const [];
   try {
@@ -331,16 +300,12 @@ List<AiProviderConfig> seedProviders(LegacySettings settings, bool firstRun) {
   ];
 }
 
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
-
 class AgentApiNotifier extends Notifier<AgentApiState> {
   LegacySettings get _settings => ref.read(legacySettingsProvider);
 
   @override
   AgentApiState build() {
-    // 读其他页面/其他进程写入的值：`legacySettingsRevisionProvider` 一变就重建。
+    // Rebuild when other pages or processes write the legacy settings.
     ref.watch(legacySettingsRevisionProvider);
     return loadAgentApiState(ref.watch(legacySettingsProvider));
   }
@@ -358,11 +323,7 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
     _bump();
   }
 
-  /// 旧版 `syncProviderToConfig`：把生效厂商的地址/密钥/模型写进四个平铺键。
-  ///
-  /// 这四个键是**旧版真正的读取来源**（`getAgentApiConfig`），不同步的话：
-  /// 本仓界面显示新厂商，旧版分析仍在用上一个。`temperature` 与 `system_prompt`
-  /// 是独立的全局项，不在这里覆盖。
+  /// Legacy `syncProviderToConfig`: mirrors the active provider into the flat keys 1.4.3 reads.
   void _syncActiveToFlatKeys(List<AiProviderConfig> providers, String activeId) {
     final settings = _settings;
     AiProviderConfig? active;
@@ -404,7 +365,7 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
     _saveProviders(state.providers, id);
   }
 
-  /// 新增或更新一条厂商。[plainKey] 非空时才覆盖密钥（编辑时留空=保留原密钥）。
+  /// Adds or updates a provider; a non-empty [plainKey] replaces the key, empty keeps it.
   void saveProvider(AiProviderConfig provider, {String? plainKey}) {
     final sealed = (plainKey == null || plainKey.trim().isEmpty)
         ? provider.sealedKey
@@ -428,7 +389,7 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
     _saveProviders(list, nextActive);
   }
 
-  /// 恢复默认：清空厂商、密钥、提示词与温度（旧版「恢复出厂默认配置」）。
+  /// Restores defaults by clearing providers, key, prompt and temperature.
   void reset() {
     final settings = _settings;
     final store = ref.read(legacyPrefsStoreProvider);

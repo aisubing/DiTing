@@ -50,8 +50,7 @@ class _LiquidGlassLayer extends Layer {
     _addFrost(builder);
   }
 
-  /// The uniforms from the pane's shape on, after where it and its texture
-  /// lie.
+  /// The uniforms from the pane's shape on, after where it and its texture lie.
   List<double> _look(LiquidGlassStyle style) => [
     rect.width,
     rect.height,
@@ -106,8 +105,7 @@ class _LiquidGlassLayer extends Layer {
     builder.pop();
   }
 
-  /// Draws the pane from [atlas], where a host laid out what lies behind it,
-  /// until the next pass of the host; [mapping] places the pane's slot.
+  /// Draws the pane from [atlas] until its next pass; [mapping] places the slot.
   void _captureFrom(
     int pass,
     ui.Image atlas,
@@ -161,8 +159,7 @@ class _LiquidGlassLayer extends Layer {
     _captureKey = (atlas, outline, blendMode, program, uniforms);
   }
 
-  /// Frosts the pane, without bending it, from the part of [atlas] behind it,
-  /// which holds its blur already.
+  /// Frosts the pane without bending it, from the part of [atlas] behind it, which holds its blur.
   void _frostFrom(
     Canvas canvas,
     ui.Image atlas,
@@ -201,8 +198,7 @@ class _LiquidGlassLayer extends Layer {
     canvas.restore();
   }
 
-  /// Draws nothing until the next pass of the host, as nothing of the pane
-  /// shows.
+  /// Draws nothing until the host's next pass, as nothing of the pane shows.
   void _captureNothing(int pass) {
     _capturedPass = pass;
     _dropCaptured();
@@ -220,8 +216,7 @@ class _LiquidGlassLayer extends Layer {
     return recorder.endRecording();
   }
 
-  /// Thickens the tint to stand in for the frost, unless the pane lies
-  /// [overCapture], which holds the blur.
+  /// Thickens the tint to stand in for the frost unless the pane lies [overCapture].
   void _drawFrost(Canvas canvas, {bool overCapture = false}) {
     final tint = style.tint;
     final fill = Paint()
@@ -266,8 +261,7 @@ class _LiquidGlassLayer extends Layer {
   }
 }
 
-/// How far [outline] reaches from [center] along [_profileTurns] even turns,
-/// the first toward +x and the rest toward +y, as the shader reads it.
+/// How far [outline] reaches from [center] on the even turns the shader reads, first toward +x.
 @visibleForTesting
 List<double> liquidGlassProfile(Path outline, Offset center) {
   const step = 2 * math.pi / _profileTurns;
@@ -339,8 +333,7 @@ List<double> _cornerCurve(double halfWidth, double halfHeight, double radius) {
 
 typedef _Octant = ({double n, Offset joint, Offset center, double radius});
 
-/// ComputeOctant in impeller/geometry/round_superellipse_param.cc, which the
-/// shader's cornerInset follows.
+/// ComputeOctant in impeller/geometry/round_superellipse_param.cc, which cornerInset follows.
 _Octant _superellipseOctant(double a, double radius) {
   if (radius <= 1e-3) {
     return (n: 0, joint: Offset.zero, center: Offset.zero, radius: 0);

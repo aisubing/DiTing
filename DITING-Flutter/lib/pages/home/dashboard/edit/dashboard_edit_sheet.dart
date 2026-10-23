@@ -4,10 +4,7 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 「添加卡片」浮层（上游 `dashboard/edit.dart` 的添加区）。
-///
-/// 列出还没上屏的卡片，点一项立刻追加到末尾并关闭。已上屏的不出现在列表里，
-/// 因此不需要「已添加」的禁用态——上游也是这么做的。
+/// Tapping appends the card at the end and closes, so no disabled state is needed.
 class DashboardEditSheet extends ConsumerWidget {
   const DashboardEditSheet({super.key});
 
@@ -38,7 +35,7 @@ class DashboardEditSheet extends ConsumerWidget {
               ),
             )
           : ListView(
-              // 浮层标题浮在正文之上，不预留这段留白首行就被标题压住。
+              // The sheet title floats over the body, so this top padding is required.
               padding: EdgeInsets.only(
                 top: context.contentTopPadding,
                 bottom: 24,
@@ -97,10 +94,8 @@ class DashboardEditSheet extends ConsumerWidget {
   };
 }
 
-/// 编辑态的退出确认条（顶栏「完成」按钮旁的提示）。
-///
-/// 上游编辑模式退出时不再询问（改了就生效），这里保持一致，只在首次进入时
-/// 用一条 SnackBar 说明手势。
+/// Edit-mode hint. Exiting asks no confirmation, matching upstream; a SnackBar explains the
+/// gestures once.
 class DashboardEditingHint extends StatelessWidget {
   const DashboardEditingHint({super.key});
 

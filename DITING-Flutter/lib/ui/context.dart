@@ -25,7 +25,6 @@ extension BuildContextExtension on BuildContext {
 
   bool get isInCompactSheet => SheetProvider.of(this)?.type.isCompact ?? false;
 
-  /// Where a page's app bar ends, for a body built outside the scaffold's.
   double get appBarInset =>
       FloatingBarScope.of(this) ??
       (isInCompactSheet

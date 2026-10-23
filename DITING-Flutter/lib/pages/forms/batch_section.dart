@@ -1,16 +1,11 @@
-/// 批量输入区（上游 `features/form/batch_section.dart`，49 行）。
-///
-/// 一个多行输入框套在 `DecorationListItem` 里：标题在左、输入框在右。上游用它
-/// 在「添加规则」「编辑键值对」这类场合一次粘进几十行，逐行敲没有意义。
+/// Batch input section (upstream `features/form/batch_section.dart`) in a `DecorationListItem`.
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 批量输入行。
-///
-/// 与 `FormRow` 的区别是它占据整行高度：多行输入框不能和单行标题挤在同一
-/// 行里，所以标题在上、输入框在下。
+/// Batch input row. Unlike `FormRow` it takes the full row height: a multiline title sits
+/// above the field.
 class BatchSection extends StatelessWidget {
   const BatchSection({
     super.key,
@@ -28,7 +23,7 @@ class BatchSection extends StatelessWidget {
   final String hintText;
   final String title;
 
-  /// 输入框下的提示；批量输入几乎都需要说明分隔符。
+  /// Hint below the field; batch input almost always needs the separator spelled out.
   final String? footer;
 
   final int minLines;

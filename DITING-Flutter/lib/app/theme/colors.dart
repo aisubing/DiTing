@@ -4,10 +4,8 @@ import 'package:material_ui/material_ui.dart';
 /// palette from HCT, so changing this cannot break contrast assumptions.
 const defaultPrimaryColor = Color(0xFF007AFF);
 
-/// The nine palette choices on the settings page.
-///
-/// `system` follows platform dynamic colour and falls back to
-/// [defaultPrimaryColor]. `gold` keeps the legacy storage value `indigo`.
+/// The nine palette choices on the settings page. `system` follows platform dynamic colour and
+/// falls back to [defaultPrimaryColor]. `gold` keeps the legacy storage value `indigo`.
 enum AppPalette {
   system('跟随系统', 'system', null),
   purple('鸢尾紫', 'purple', Color(0xFFAF52DE)),

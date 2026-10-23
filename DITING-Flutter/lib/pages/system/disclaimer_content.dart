@@ -1,16 +1,3 @@
-/// 免责声明正文：一处定义，多处引用。
-///
-/// 旧版 1.4.3 的免责文本出现在两处，但都是「用户真正同意过的法律文本」：
-/// 1. 首次启动的 `使用须知与免责声明` 弹窗（`ui/MainActivityDialogs.kt`）；
-/// 2. 域名规则引导的第二步「免责条款与合规声明」（`ui/SettingsGuide.kt`）。
-///
-/// 本仓首启弹窗在应用层（`lib/app/initial_agreement.dart` 的
-/// `InitialAgreementDialog`），回看入口在关于页。两边如果各存一份文案，任何一次
-/// 措辞修订都只会改一处——用户同意过的版本与之后读到的版本就此分叉。
-///
-/// 因此这里**不复制文本**：直接引用 `InitialAgreementDialog.message`（那份是
-/// 用户实际点过「同意」的字面文本），只负责把它排成可读的卡片。[DisclaimerTermCard]
-/// 则渲染十段条款（`mock_system.dart` 的 `mockDisclaimerTerms`）。
 library;
 
 import 'package:diting/app/initial_agreement.dart';
@@ -19,7 +6,6 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 整页阅读用的页首：定位说明 + 一条醒目提醒。
 class DisclaimerIntroCard extends StatelessWidget {
   const DisclaimerIntroCard({super.key});
 
@@ -88,10 +74,7 @@ class DisclaimerIntroCard extends StatelessWidget {
   }
 }
 
-/// 首启须知正文（关于页 / 免责声明页的回看入口用）。
-///
-/// 文本来自 `InitialAgreementDialog.message`——与首启弹窗共用同一份常量，
-/// 页面上不做任何改写或摘录。
+/// Read verbatim from `InitialAgreementDialog.message`, with no rewriting.
 class InitialAgreementCard extends StatelessWidget {
   const InitialAgreementCard({super.key});
 
@@ -101,9 +84,8 @@ class InitialAgreementCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: CommonCard(
-        // 左侧 14 的内缩对「标题 + 一行说明」是够的，但对一整块连续正文太窄：
-        // 卡片本身已经因页面左右各 16 的边距而收窄，正文再收 14，411dp 屏上
-        // 每行只剩 ~140 个字符宽度里的一半。这里改成 18，并把行距交给 1.6。
+        // The default 14 inset suits a one-line description, not a block of prose the card already
+        // narrows by 16 per side. 18 is used instead, with line height 1.6.
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +123,6 @@ class InitialAgreementCard extends StatelessWidget {
   }
 }
 
-/// 一段条款：标题 + 正文。
 class DisclaimerTermCard extends StatelessWidget {
   const DisclaimerTermCard({super.key, required this.term});
 

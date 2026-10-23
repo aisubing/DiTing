@@ -9,15 +9,13 @@ import io.flutter.plugin.common.MethodChannel
 import java.util.Locale
 import java.util.concurrent.Executors
 
-/// Read-only installed-app inventory; selection state lives in
-/// SharedPreferences, written by LegacyPrefsBridge.
+/// Read-only installed-app inventory; selection state lives in SharedPreferences
 class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler {
 
     companion object {
         const val CHANNEL = "com.haoze.diting/apps"
 
-        /// Enumeration takes hundreds of ms, so it runs off the platform thread.
-        /// A single worker also keeps concurrent enumerations from interleaving.
+        /// Enumeration takes hundreds of ms, so one serial worker off the platform thread
         private val worker = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "diting-apps").apply { isDaemon = true }
         }
@@ -40,9 +38,7 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
         }
     }
 
-    /// An empty result is reported as an error: some ROMs (MIUI/ColorOS/EMUI)
-    /// gate the list behind a runtime permission and still return only this
-    /// app, which the UI must show as "allow access", not "no apps installed".
+    /// An empty list means a denied runtime permission (MIUI/ColorOS/EMUI), not "no apps"
     private fun listInstalledChecked(): Result<List<Map<String, Any?>>> = runCatching {
         val apps = listInstalled()
         if (apps.isEmpty()) {
@@ -51,7 +47,7 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
         apps
     }
 
-    /// Every app except this one, sorted by normalized label then package name.
+    
     private fun listInstalled(): List<Map<String, Any?>> {
         val packageManager = context.packageManager
         @Suppress("DEPRECATION")
@@ -77,8 +73,7 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
             .toList()
     }
 
-    /// Package name -> UID, omitting uninstalled packages so the caller never
-    /// hands the engine an invalid UID.
+    /// Package name -> UID, omitting uninstalled ones so the engine never sees an invalid UID
     private fun resolveUids(packages: List<String>): Map<String, Int> {
         if (packages.isEmpty()) return emptyMap()
         val output = HashMap<String, Int>(packages.size)
@@ -93,7 +88,7 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
     private fun isSelf(packageName: String): Boolean =
         packageName.isNotEmpty() && packageName == context.packageName
 
-    /// -1 when the package is gone or the platform refuses to answer.
+    /// -1 when the package is gone or the platform refuses to answer
     private fun uidOf(packageName: String): Int = runCatching {
         context.packageManager.getPackageUid(packageName, 0)
     }.getOrDefault(-1)
@@ -102,6 +97,7 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
         (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 }
 
-/// Result may only be touched on the platform thread.
+/// Result may only be touched on the platform thread
+
 private fun <T> Result<T>.ship(result: MethodChannel.Result) =
     ChannelResults.ship(result, this, "apps_unavailable")

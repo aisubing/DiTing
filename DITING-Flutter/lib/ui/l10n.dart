@@ -1,8 +1,7 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'package:flutter/widgets.dart';
 
-/// The text the components in `lib/ui` show of their own. The app loads it
-/// from its ARB strings through a delegate it registers on the app.
+/// The text the components in `lib/ui` show of their own; the app loads it from its ARB strings.
 abstract class UiLocalizations {
   static UiLocalizations of(BuildContext context) {
     final localizations = Localizations.of<UiLocalizations>(

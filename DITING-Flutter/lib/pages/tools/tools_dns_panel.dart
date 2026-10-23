@@ -1,16 +1,7 @@
 part of 'tools_page.dart';
 
-/// DNS 查询面板。
-///
-/// 数据源是 `DiagnosticsRunner.lookupDns`。与旧版 `DnsLookupSection` 一致的三点：
-/// 1. **DNS 服务器两态**：`SYSTEM`（问本机解析器）/ `CUSTOM`（向指定 IP 发真实
-///    UDP 查询）。旧版就是这两档 + 「自定义 DNS 服务器 IP」输入框——问「某个具体
-///    服务器会怎么答」正是这类工具存在的意义，上一轮的迁移把它丢了；
-/// 2. `viaTunnel` 决定问隧道引擎（`Engine.resolveDomain`，走本软件自己的规则与
-///    缓存），此时服务器选择被忽略（隧道不接受指定服务器）；
-/// 3. 结果必须标 `source`：只有 `upstream` 表示真的打到了上游解析器，
-///    `cache` / `rewrite` / `blocked` 都是隧道自己给的答案。把 `blocked` 显示成
-///    「解析成功」会让用户以为域名正常。
+/// DNS lookup panel backed by `DiagnosticsRunner.lookupDns`. Server mode is `SYSTEM` or `CUSTOM`
+/// (real UDP query); `viaTunnel` asks the tunnel engine. Every result carries its `source`.
 class _DnsLookupPanel extends ConsumerStatefulWidget {
   const _DnsLookupPanel();
 
@@ -18,7 +9,6 @@ class _DnsLookupPanel extends ConsumerStatefulWidget {
   ConsumerState<_DnsLookupPanel> createState() => _DnsLookupPanelState();
 }
 
-/// 与旧版 `DnsServerMode` 同名的两档。
 enum _DnsServerMode {
   system('跟随系统'),
   custom('自定义');
@@ -54,12 +44,12 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
       return;
     }
     final viaTunnel = ref.read(networkToolFlagsProvider).dnsLookupViaTunnel;
-    // 只有「非隧道 + 自定义」才带服务器；其余两种情况走系统解析器。
+    // Only the custom non-tunnel case carries a server; the rest use the system resolver.
     final server = !viaTunnel && _serverMode == _DnsServerMode.custom
         ? _server.text.trim()
         : null;
-    // 空的自定义服务器会在原生侧被当成「系统」，那样用户以为在测 A 服务器、
-    // 实际测的是系统——必须在发出请求前就拦住。
+    // An empty custom server is treated as "system" natively, so reject it before the
+    // request: the user would think they tested their own server.
     if (server != null && server.isEmpty) {
       setState(() => _hostError = '请输入自定义 DNS 服务器 IP');
       return;
@@ -90,8 +80,8 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
   Widget build(BuildContext context) {
     final flags = ref.watch(networkToolFlagsProvider);
     final result = _result;
-    // 隧道模式下服务器由隧道决定，两档选择器没有意义——隐藏而不是禁用：
-    // 灰掉的控件会让人以为「启用后就能选」，实际永远不会。
+    // In tunnel mode the tunnel picks the server, so the switcher is hidden rather than
+    // disabled: a greyed control implies it becomes usable later.
     final showServerMode = !flags.dnsLookupViaTunnel;
     return PageBody(
       children: [
@@ -158,8 +148,6 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
             ),
           ],
         ),
-        // 按钮文案逐字照抄旧版 `DnsLookupSection`：idle「开始查询」、
-        // running「查询中...」。
         _RunButton(
           glyph: AppGlyphs.search,
           label: '开始查询',
@@ -240,14 +228,13 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
     );
   }
 
-  /// 本次查询实际问了谁。
-  ///
-  /// 必须在结果区显式写出：用户改过服务器输入框但没重新查询时，结果还是上一次
-  /// 的——只看「自定义」两个字会以为是刚输入的那台。
+  /// Who this query actually asked; it must be spelled out, since after editing the server
+  /// field without re-running the result still belongs to the previous server.
   String _serverLabel(bool viaTunnel) {
     if (viaTunnel) return '隧道引擎';
     if (_serverMode == _DnsServerMode.custom) return _server.text.trim();
-    // 系统的具体地址不在结果里（原生只回答案），如实说明而不是编一个。
+    // The system's address is not part of the result (the native side returns only the
+    // answer), so say so rather than inventing one.
     return '跟随系统';
   }
 }

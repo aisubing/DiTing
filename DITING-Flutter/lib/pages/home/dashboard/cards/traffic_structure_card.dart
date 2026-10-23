@@ -8,9 +8,7 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 流量结构的一段，标题与顺序照抄旧版：
-/// `AllModeDashboard` 是 通过/过滤/失败/旁路/缓存，`FilteredModeDashboard`
-/// 是 过滤/失败/旁路。哪一种由 [TrafficStructureMode] 决定。
+/// One legend segment. Order follows the mode, see [TrafficStructureMode].
 class TrafficStructureLegend {
   const TrafficStructureLegend({
     required this.label,
@@ -23,7 +21,6 @@ class TrafficStructureLegend {
   final Color color;
 }
 
-/// 比率行（竞速成功率 / Bootstrap 成功率 / 拦截率 / 缓存率）。
 class TrafficStructureRate {
   const TrafficStructureRate({
     required this.label,
@@ -36,20 +33,13 @@ class TrafficStructureRate {
   final double progress;
 }
 
-/// 流量结构卡的两种形态。
 enum TrafficStructureMode {
-  /// 记录全部：五段图例 + 四条比率。
   all,
 
-  /// 仅拦截与错误：三段图例（过滤/失败/旁路）+ 三条比率（末条是「拦截占比」）。
   filtered,
 }
 
-/// 今日流量结构卡（旧版 `今日流量结构` / `重点流量结构`）。
-///
-/// 环形图 + 右侧图例是一行（旧版 `Row(IntrinsicSize.Min)`），下面接若干比率行。
-/// 本卡只负责排版，数字与文案由调用方（首页 / 日志页）按模式算好传进来——
-/// 「今天」这个窗口的口径必须只有一个来源，卡片里再取一次就可能跨零点错位。
+/// Layout only; callers compute the numbers so the card cannot drift across midnight.
 class TrafficStructureCard extends StatelessWidget {
   const TrafficStructureCard({
     super.key,
@@ -66,12 +56,11 @@ class TrafficStructureCard extends StatelessWidget {
   final String title;
   final int total;
 
-  /// 环形图的段，顺序与 [legends] 一致；值为 0 的段已在调用方过滤。
+  /// Donut segments, same order as [legends]; zero-value segments are filtered.
   final List<DonutSegment> segments;
   final List<TrafficStructureLegend> legends;
   final List<TrafficStructureRate> rates;
 
-  /// 标题右侧的胶囊文案：记录全部是「实时汇总」，重点模式也是「实时汇总」。
   final String badgeLabel;
 
   @override
@@ -96,7 +85,7 @@ class TrafficStructureCard extends StatelessWidget {
               DashboardResultDonut(
                 segments: segments,
                 total: total,
-                // 三段图例时环形图略小，右侧三行文字才不会比环还高。
+                // Smaller donut for three-row legends so the text does not outgrow it.
                 diameter: compact ? 108 : 128,
               ),
               Expanded(
@@ -130,17 +119,8 @@ class TrafficStructureCard extends StatelessWidget {
   }
 }
 
-/// 从真实聚合快照取数的流量结构卡。
-///
-/// 图例顺序与比率行逐字照抄旧版：
-/// - `all`：通过 / 过滤 / 失败 / 旁路 / 缓存，比率是 竞速成功率 / Bootstrap
-///   成功率 / 拦截率 / 缓存率；
-/// - `filtered`：过滤 / 失败 / 旁路，比率是 竞速成功率 / Bootstrap 成功率 /
-///   **拦截占比**（旧版在过滤模式里把「拦截率」改名成「拦截占比」，不是笔误，
-///   因为那一档的分母只剩重点记录）。
-///
-/// 数字来自 `logDashboardProvider`（今日窗口的真实表聚合）。快照未就绪时整卡
-/// 显示空环与破折号，而不是先画一组 0：0% 的环形图会被读成「今天没有流量」。
+/// Traffic structure card backed by the real aggregate snapshot. A not-ready snapshot
+/// renders an empty ring and dashes, never 0%, which would read as "no traffic today".
 class LogTrafficStructureCard extends ConsumerWidget {
   const LogTrafficStructureCard({super.key, required this.mode});
 

@@ -1,13 +1,8 @@
 part of 'subscriptions_page.dart';
 
-/// 添加订阅面板。
-///
-/// 用 `showSheet` + `CommonScaffold` 而不是对话框：表单有四个字段，对话框在键盘
-/// 弹起后会被压到只剩一行，而 sheet 自带滚动与「取消 / 保存」工具栏。
-///
-/// 保存分两步：先落库（`importState = importing`，与上游 `addSubscription` 一致），
-/// 再立刻发起一次真实下载把状态推进到 `ready` / `failed`。第二步失败不回滚记录，
-/// 与旧版一致——用户能看到这条订阅和它的错误原因，可以手动重试。
+/// Add-subscription sheet: a sheet rather than a dialog because the four-field form would
+/// be crushed once the keyboard opens. Saving inserts with `importState = importing`, then
+/// a real download settles it.
 class _AddSubscriptionSheet extends ConsumerStatefulWidget {
   const _AddSubscriptionSheet();
 
@@ -45,7 +40,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     switch (result) {
       case AddSubscriptionFailure(:final message):
         setState(() => _submitting = false);
-        // 地址重复不关面板：用户刚粘的地址要留在框里改，关掉等于让他重粘一遍。
+        // A duplicate address keeps the sheet open so the pasted text stays editable.
         ScaffoldMessenger.maybeOf(context)?.showSnackBar(
           SnackBar(
             content: Text(message),
@@ -54,7 +49,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
           ),
         );
       case AddSubscriptionOk(:final id):
-        // 先发起一次下载，再关面板：关掉之后订阅页已经在转圈，用户看得到反应。
+        // Start the download before closing so the list spins as the sheet disappears.
         final updated = ref.read(subscriptionUpdateProvider.notifier);
         Navigator.of(context).pop();
         await updated.updateOne(id);
@@ -146,10 +141,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
   }
 }
 
-/// 表单行：左标签 + 右输入框。
-///
-/// 不复用 `ListItem.input` 是因为那个自带一个点击弹出的对话框，而这里是面板内
-/// 联编辑，行为完全不同。
+/// `ListItem.input` is not reused: it opens a dialog on tap, unlike inline editing.
 class _FieldRow extends StatelessWidget {
   const _FieldRow({required this.label, required this.child});
 

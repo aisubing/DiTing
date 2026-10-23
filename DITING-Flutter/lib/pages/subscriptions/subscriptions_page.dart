@@ -11,17 +11,9 @@ import 'package:material_ui/material_ui.dart';
 part 'subscriptions_cards.dart';
 part 'subscriptions_sheet.dart';
 
-/// 订阅页：分组筛选 → 汇总 → 订阅卡片列表。
-///
-/// 分组放在页面顶部而不是每张卡片的标签里：订阅按用途分组后，用户平时只想看
-/// 某一组，顶部一行 chip 比逐张卡片阅读快得多。分组数据来自 1.4.3 的
-/// `subscription_group` 表（`addedAt ASC, name COLLATE NOCASE ASC`）。
-///
-/// ## 数据口径
-/// 更新是真实 HTTP 下载，正文随后经 `lib/data/rules/` 解析成 block / allow /
-/// rewrite 并按 `sub_<id>` 来源写进规则表，所以卡片上的数字是**真实入库条数**
-/// （可以当「N 条规则生效」）。解析出来但本仓不入库的只有元素隐藏（cosmetic）
-/// 规则——引擎没有注入通道，这部分在更新结果里单独说明，不计入条数。
+/// Subscriptions page: group filter, summary and card list. Groups sit at the top because
+/// users usually watch one group; data comes from the legacy `subscription_group` table
+/// ordered by `addedAt`.
 class SubscriptionsPage extends ConsumerWidget {
   const SubscriptionsPage({super.key});
 
@@ -218,8 +210,8 @@ class SubscriptionsPage extends ConsumerWidget {
             ),
           ),
           if (entries.isEmpty && !asyncEntries.isLoading)
-            // 只给下限，不写死 300：说明有两行、按钮又排在下面，固定高度会把
-            // 它裁掉（真机上「添加订阅」只剩一条蓝边，页脚压在原位置）。
+            // Minimum height only, never a fixed 300: the description wraps to two lines
+            // and the button sits below, so a fixed height clips them.
             EmptyStateBox(
               minHeight: 300,
               child: NullStatus(
@@ -269,8 +261,8 @@ class SubscriptionsPage extends ConsumerWidget {
                   '同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。',
             ),
           ),
-          // 底部留白由 `PageBody` 自己补的 `DockSpacer` 负责，这里不再加一份
-          // ——加两份会在列表末尾留下约 2 倍浮条高度的空白。
+        // `PageBody` already adds a `DockSpacer`, so no extra bottom padding here: doubling
+        // it leaves roughly twice the dock height of empty space.
         ],
       ),
     );
@@ -301,7 +293,6 @@ class SubscriptionsPage extends ConsumerWidget {
   }
 }
 
-/// 分组 chip 行：全部 + 每个分组 + 新建。
 class _GroupChips extends StatelessWidget {
   const _GroupChips({
     required this.groups,
@@ -313,7 +304,6 @@ class _GroupChips extends StatelessWidget {
 
   final List<SubscriptionGroupRecord> groups;
 
-  /// `null` 表示「全部」。
   final int? value;
   final int totalCount;
   final ValueChanged<int?> onSelect;
@@ -334,7 +324,7 @@ class _GroupChips extends StatelessWidget {
             selected: groupId == value,
             onPressed: () => onSelect(groupId),
           ),
-        // 「+ 分组」不是筛选档，是管理入口，因此不参与选中态。
+        // The create chip is a management entry, not a filter, so it is never selected.
         TonalChip(
           label: '+ 分组',
           color: context.raisedSurfaceLevel.colorOf(colorScheme),
@@ -346,7 +336,8 @@ class _GroupChips extends StatelessWidget {
   }
 }
 
-/// 千分位。行数是这里唯一的大数字，`48213` 读起来比 `48,213` 慢得多。
+/// Thousands separators: the rule count is the only large number here and `48,213` reads
+/// faster than `48213`.
 String _formatCount(int value) {
   final digits = value.abs().toString();
   final buffer = StringBuffer(value < 0 ? '-' : '');

@@ -2,8 +2,8 @@
 
 part of 'dialog.dart';
 
-/// An [AlertDialog] takes only a color, so the pane goes where its [Material]
-/// lays out its [PhysicalShape].
+/// [AlertDialog] takes only a color, so the pane goes where its [Material] lays out its
+/// [PhysicalShape].
 class _AlertGlass extends SingleChildRenderObjectWidget {
   const _AlertGlass({
     required this.style,
@@ -99,36 +99,20 @@ class CommonDialog extends StatelessWidget {
   final Widget? trailing;
   final Widget? child;
 
-  /// Text buttons, laid out as an iOS alert lays out its own: the last one
-  /// is the default action and is filled, and the first one, the cancel action
-  /// by convention, ends a stack.
+  /// Text buttons laid out as an iOS alert does: last is the filled default, first (cancel) ends a
+  /// stack.
   final List<Widget>? actions;
   final EdgeInsets? padding;
 
-  /// Sets the fields in [child] as an iOS alert does: as wide as its buttons.
   final bool hasFields;
 
   /// The last action destroys data: red on the plain fill, as in UIKit.
   final bool destructive;
 
-  /// The width the pane should take, in dp.
-  ///
-  /// iOS sizes an alert from its content (min 270, max 270 on compact), which is
-  /// right for one short question. Long-form text — the first-run agreement, a
-  /// licence — needs the opposite: the pane should fill the width the insets
-  /// leave, or the paragraph turns into a narrow ribbon 6–8 characters wide per
-  /// line and the reader scrolls four times as far.
-  ///
-  /// `null` keeps the alert's own intrinsic sizing. A value here is clamped to
-  /// what the screen can show, so a caller can ask for a generous width without
-  /// measuring the device first.
+  /// Pane width in dp; `null` keeps the alert's intrinsic sizing. Clamped to what the screen shows.
   final double? width;
 
-  /// The margin between the pane and the screen edge.
-  ///
-  /// `null` keeps [AlertDialog]'s own (40 a side), which is right for an alert
-  /// whose pane is already narrow. Long-form panes want to spend that margin on
-  /// text instead.
+  /// Margin between pane and screen edge; `null` keeps [AlertDialog]'s own 40 a side.
   final EdgeInsets? insetPadding;
 
   const CommonDialog({
@@ -165,9 +149,8 @@ class CommonDialog extends StatelessWidget {
     final dialog = AlertDialog(
       backgroundColor: glass ? Colors.transparent : null,
       insetPadding: insetPadding,
-      // 固定宽度必须落在 `AlertDialog.constraints` 上：`content` 的 `maxWidth`
-      // 只约束内容，对话框本身仍按内容取固有宽度，于是「内容上限 288」的结果是
-      // 面板只有 283dp（真机 411dp 宽的屏上占 69%）。
+      // A fixed width must go on `AlertDialog.constraints`; a `maxWidth` on `content` is not
+      // enough.
       constraints: resolvedWidth == null
           ? null
           : BoxConstraints(minWidth: resolvedWidth, maxWidth: resolvedWidth),
@@ -395,7 +378,6 @@ class AlertActions extends StatelessWidget {
 
   final List<Widget> actions;
 
-  /// The plain buttons' fill, in place of the raised surface's.
   final Color? fill;
 
   final bool destructive;
@@ -484,6 +466,3 @@ class _AlertAction extends StatelessWidget {
   }
 }
 
-/// Two actions side by side when both labels fit half the width; any other
-/// count, or labels too long, stacked in order with the first one at the
-/// bottom.

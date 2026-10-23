@@ -5,15 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 三步引导：选模式 → 权限说明 → 上手要点。
-///
-/// 上游是 Activity 级的三步流程（`ModeOnboardingScreen`），每步水平滑入、顶部
-/// 三段进度条、最后一步双按钮。演示层保留这套结构，但把「申请权限」换成
-/// 「解释权限」：本阶段没有任何真实权限可申请，假装申请反而会让人以为
-/// 点完按钮系统会弹窗。
-///
-/// 用 [PageView] 而不是 `IndexedStack`：三步是严格线性的前进/后退，PageView
-/// 自带手势与位移，进度条可以直接读 `PageController.page`。
+/// Three-step onboarding: choose mode, explain permissions, key tips. Upstream applies for
+/// permissions; this build only explains them, as none can be requested yet.
 class ModeOnboardingPage extends ConsumerStatefulWidget {
   const ModeOnboardingPage({super.key});
 
@@ -44,11 +37,8 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
     );
   }
 
-  /// 结束引导：写完成标记并回首页。
-  ///
-  /// 用 `go(Routes.home)` 而不是 `pop()`：引导可能由模式选择页 `pushReplacement`
-  /// 进来，也可能由设置页 push 进来，`pop` 的落点不确定；回首页是唯一确定的
-  /// 语义（上游也是 CLEAR_TOP 回主界面）。
+  /// Finish onboarding: write the flag and return home. go(Routes.home) rather than pop,
+  /// because this page is reached both by pushReplacement and by push.
   void _finish() {
     ref.read(onboardingProvider.notifier).complete();
     ref.read(workModeSelectedProvider.notifier).markSelected();
@@ -71,9 +61,9 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
           },
         ),
       ],
-      // 顶栏浮在正文之上（`extendBodyBehindAppBar`），正文从 y=0 起排。这一页
-      // 的 body 是裸 `Column` 而不是 `PageBody`，不预留栏高就会把三段进度条画进
-      // 状态栏、把首步的大圆钮画到顶栏底下（真机上量到内容起点 y=30 < 栏底 96）。
+      // The app bar floats over the body (extendBodyBehindAppBar) and this page uses a bare Column,
+      // so
+      // without this clearance the progress bar and hero icon would be drawn under the status bar.
       body: AppBarClearance(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,9 +113,7 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
   }
 }
 
-/// 三段进度条：已过 40% 透明、当前主色、未至表面色。
-///
-/// 不做「第 1/3 步」文字：三段条本身已经是读数，再写一遍反而挤掉标题。
+/// Three-segment progress bar: passed 40% opaque, current primary, pending surface.
 class _StepIndicator extends StatelessWidget {
   const _StepIndicator({required this.steps, required this.current});
 
@@ -162,10 +150,7 @@ class _StepIndicator extends StatelessWidget {
   }
 }
 
-/// 第 ① 步：确认工作模式。
-///
-/// 只展示、不在此页切换：引导的语义是「你已经选好了，现在告诉你它意味着
-/// 什么」，再给一次选择入口会让上一步的点击显得没生效。
+/// Step 1: confirm the work mode. Display only, since the mode was already chosen.
 class _ChooseModeStep extends StatelessWidget {
   const _ChooseModeStep({required this.mode});
 
@@ -204,11 +189,8 @@ class _ChooseModeStep extends StatelessWidget {
   };
 }
 
-/// 第 ② 步：权限说明。
-///
-/// 权限清单按模式不同——服务器模式不建隧道，所以没有 VPN 权限这一项。把
-/// 「为什么需要」和「拒绝会怎样」都写出来，是因为演示层没有真实申请流程，
-/// 文案是用户唯一能判断后果的地方。
+/// Step 2: permission explanation. The list depends on the mode: server mode creates no
+/// tunnel, so no VPN entry. Denial consequences are spelled out, as nothing is requested.
 class _PermissionStep extends ConsumerWidget {
   const _PermissionStep();
 
@@ -249,7 +231,6 @@ class _PermissionStep extends ConsumerWidget {
   }
 }
 
-/// 第 ③ 步：上手要点。
 class _FinishStep extends StatelessWidget {
   const _FinishStep({required this.mode});
 
@@ -290,12 +271,7 @@ class _FinishStep extends StatelessWidget {
   }
 }
 
-/// 三步共用外壳：大图标 + 标题 + 说明 + 内容列表（可滚动）。
-///
-/// 内容整体在可视区里垂直居中：底部按钮是钉在屏底的，若内容贴着顶栏排，
-/// 三步里最矮的那一步会在内容和按钮之间留下约 400dp 的死白（真机上量到
-/// 406dp）。`SliverFillRemaining(hasScrollBody: false)` 给「至少一屏」的高度
-/// 让 `Column` 有居中余地，内容超过一屏时又照常滚动。
+/// Centered because the buttons are pinned to the bottom.
 class _StepScaffold extends StatelessWidget {
   const _StepScaffold({
     required this.glyph,
@@ -363,7 +339,6 @@ class _StepScaffold extends StatelessWidget {
   }
 }
 
-/// 一条要点卡片。
 class _TipCard extends StatelessWidget {
   const _TipCard({
     required this.glyph,
@@ -415,7 +390,6 @@ class _TipCard extends StatelessWidget {
   }
 }
 
-/// 一条权限：图标 + 名称 + 等级徽章 + 说明。
 class _PermissionRow extends StatelessWidget {
   const _PermissionRow({
     required this.glyph,

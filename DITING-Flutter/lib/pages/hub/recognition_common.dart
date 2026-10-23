@@ -1,15 +1,4 @@
-/// 名单页的公共实现：头像、行、列表骨架。
-///
-/// 赞助者名单与共建者名单在旧版是两块几乎一样的界面（同一份 JSON、同一套
-/// 头像仓库、同一个列表组件），差异只有标题、说明文案与「能否按时间排序」。
-/// 因此抽成 [RecognitionListPage] 一个实现，两个页面各自传参即可——两份复制
-/// 的列表代码早就开始漂移（一处有徽标、一处没有），是显示不一致的根源。
-///
-/// ## 头像从哪来
-///
-/// 只从云端 `avatars/<name>_avatar.jpg` 下载（本地磁盘缓存，见
-/// `RecognitionMembersRepository`）。**不在 APK 里内置头像**：头像与名单一样
-/// 由维护者在 GitHub 上更新，内置副本只会固化成发版那一刻的旧图。
+/// Shared avatar, row and list skeleton for the recognition lists, so they cannot drift apart.
 library;
 
 import 'package:diting/data/recognition/recognition_members.dart';
@@ -20,11 +9,7 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 圆形头像：从云端下载（本地磁盘缓存），拿不到时画人形占位。
-///
-/// 占位符不写成「昵称首字」的彩色圆圈：那会让人误以为头像已经加载成功，也
-/// 让不同成员之间只能靠颜色区分。这里统一用人形 glyph + 中性底色，一眼就能
-/// 看出「这张头像还没到」。
+/// Circular avatar from the cloud, cached on disk, with a person glyph when unavailable.
 class RecognitionAvatar extends ConsumerWidget {
   const RecognitionAvatar({super.key, required this.member, this.size = 48});
 
@@ -79,7 +64,6 @@ class RecognitionAvatar extends ConsumerWidget {
   }
 }
 
-/// 一位成员的一行：头像 + 昵称。
 class RecognitionMemberRow extends StatelessWidget {
   const RecognitionMemberRow({super.key, required this.member});
 
@@ -94,8 +78,8 @@ class RecognitionMemberRow extends StatelessWidget {
   }
 }
 
-/// 名单页骨架。两个名单页只差 [title]、[intro]、[sectionTitle]、[select]
-/// 与 [sortable]。
+/// List page skeleton; the two pages differ only in `title`, `intro`, `sectionTitle` and
+/// `sortable`.
 class RecognitionListPage extends ConsumerStatefulWidget {
   const RecognitionListPage({
     super.key,
@@ -110,10 +94,8 @@ class RecognitionListPage extends ConsumerStatefulWidget {
   final String intro;
   final String sectionTitle;
 
-  /// 从整份配置里取出本页要展示的成员（赞助者 / 共建者）。
   final List<RecognitionMember> Function(RecognitionMembers) select;
 
-  /// 是否在顶栏提供「由早到晚 / 由晚到早」切换。
   final bool sortable;
 
   @override
@@ -128,7 +110,7 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
   @override
   void initState() {
     super.initState();
-    // 缓存为空时也要主动拉一次，否则首次安装会一直停在「暂无名单」。
+    // Fetch once even with an empty cache, otherwise a fresh install stays on "no list".
     WidgetsBinding.instance.addPostFrameCallback((_) => _ensureFresh());
   }
 
@@ -151,7 +133,8 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
     final async = ref.watch(recognitionMembersProvider);
     final data = async.value;
     final state = data ?? const RecognitionState();
-    // 数据首次到达后触发一次静默刷新（缓存超过 freshWindow 才会真的联网）。
+    // A silent refresh runs once after the first data arrives; it only hits the network
+    // when the cache is older than `freshWindow`.
     if (!_requestedFirstLoad && data != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _ensureFresh());
     }
@@ -239,10 +222,8 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
   }
 }
 
-/// 页脚：说明当前数据来自哪里、上次何时更新。
-///
-/// 刷新失败时如实写「正在显示本地缓存」，而不是静默当作成功——上一轮顶栏
-/// 刷新只弹一句「已更新」，服务器根本没连上也照弹。
+/// Footer stating where the data came from and when it updated. A failed refresh says
+/// "showing the local cache" instead of pretending to succeed.
 class _StatusFooter extends StatelessWidget {
   const _StatusFooter({required this.state});
 

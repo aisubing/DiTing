@@ -7,21 +7,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 竞速统计（1.4.3 `RaceStatsScreen`）。
-///
-/// 结构照抄旧版：时间范围选择器 → 「概览」组（请求 / 成功 / 失败 / 平均耗时）
-/// → 「策略概览」组（每种策略的请求数、成功率、平均耗时；智能选择额外显示
-/// 首选命中率与兜底次数）→ 「胜出服务商」组 → 「智能选择首选」组。
-///
-/// 数据源是真实表 `dns_race_log`（[raceStatsProvider]，按窗口聚合）。库空时
-/// 各组都是空状态、概览四格是破折号——不塞演示数字。
-///
-/// 四组都能算，是因为原生 [RaceLogWriter] 一直在写策略列：`strategy`、
-/// `fallbackUsed` / `fallbackSuccess`、`selectedProviderId` /
-/// `selectedElapsedMs` 与 `winnerProviderId` 都随 Go 引擎的竞速回调落库。
-/// 上一轮误以为「原生写入侧未落地」而删掉了后两组，实际上那三列从第一次竞速
-/// 就有值；补回的 SQL 逐字照搬旧版 `RaceLogDao.strategyStats` /
-/// `smartSelectionStats`。
+/// Race stats from the real `dns_race_log` table, aggregated per time window. An empty
+/// table leaves every section empty and the overview at a dash, never demo numbers.
 class LogsRacePage extends ConsumerWidget {
   const LogsRacePage({super.key});
 
@@ -211,7 +198,7 @@ class LogsRacePage extends ConsumerWidget {
     );
   }
 
-  /// 策略行的副标题，只对智能选择追加「首选命中率 + 兜底次数」（旧版同形）。
+  /// Row subtitle; only smart selection appends primary hit rate and fallbacks.
   static String _strategySubtitle(RaceStrategyDisplay item) {
     final parts = <String>[
       '成功 ${percentOf(item.successRate)}',
@@ -231,5 +218,3 @@ class LogsRacePage extends ConsumerWidget {
     _ => AppGlyphs.shuffle,
   };
 }
-
-/// 三档时间范围由 `logs_shared.dart` 的 `LogStatsRangeSelector` 统一渲染。

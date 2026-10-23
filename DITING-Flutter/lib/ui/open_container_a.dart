@@ -27,9 +27,7 @@ class _OpenContainerRoute<T> extends ModalRoute<T>
 
   final ShapeBorderTween _shapeTween;
 
-  // The closed child stays in this route from the push until the route is
-  // dismissed or dragged back, so it moves between its tile and the route
-  // twice per cycle rather than at every status change.
+  // The closed child stays in this route from push to dismiss; it moves twice per cycle.
   final _closedRect = ValueNotifier<Rect?>(null);
   final _hostsClosed = ValueNotifier<bool>(false);
   late final Listenable _closedChanges = Listenable.merge([
@@ -55,9 +53,6 @@ class _OpenContainerRoute<T> extends ModalRoute<T>
     return (_closing ? _reverseCurve : _curve).transform(t);
   }
 
-  /// How far the open page and the container color have faded in. Both
-  /// change over a fifth of the transition: the second fifth on the way in,
-  /// the fourth on the way out.
   double get _fade {
     if (_settled) {
       return 1;
@@ -215,8 +210,7 @@ class _OpenContainerRoute<T> extends ModalRoute<T>
                         child: Builder(
                           key: closedBuilderKey,
                           builder: (BuildContext context) {
-                            // Use dummy "open container" callback
-                            // since we are in the process of opening.
+                            // Dummy open-container callback: still opening.
                             return closedBuilder(context, () {});
                           },
                         ),

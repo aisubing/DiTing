@@ -1,11 +1,7 @@
 part of 'demo_page.dart';
 
-/// 按钮分区：验证 [TonalButton] 三档尺寸、[TonalButtonGroup] 的共享胶囊底、
-/// Material 三种原生按钮在本主题下的形态，以及 [MoreActionButton] 的
-/// 「更多操作」整行入口。
-///
-/// 三档尺寸并排是必要的：44/36/32 的差异靠单看一张截图判断不出来，
-/// 但并排时一旦有一档高度漂移，胶囊的垂直居中会立刻歪。
+/// Buttons: the three [TonalButton] sizes, the shared capsule of
+/// [TonalButtonGroup], the Material buttons and [MoreActionButton].
 class _DemoButtonSection extends StatelessWidget {
   const _DemoButtonSection();
 
@@ -30,7 +26,7 @@ class _DemoButtonSection extends StatelessWidget {
   }
 }
 
-/// 三档尺寸：bar 44（工具栏）、section 36（卡片底部）、compact 32（行内）。
+/// Three sizes: bar 44 (toolbars), section 36 (card footers), compact 32 (inline).
 class _DemoTonalSizes extends StatelessWidget {
   const _DemoTonalSizes();
 
@@ -71,7 +67,7 @@ class _DemoTonalSizes extends StatelessWidget {
   }
 }
 
-/// 带字形的三种：字形按 size 自动取 24/20/20。
+/// The three glyph variants; the glyph follows size at 24/20/20.
 class _DemoTonalGlyphs extends StatelessWidget {
   const _DemoTonalGlyphs();
 
@@ -105,8 +101,6 @@ class _DemoTonalGlyphs extends StatelessWidget {
   }
 }
 
-/// 按钮组：三档各一组。组内按钮的按下反馈由组统一接管（同按一个按钮），
-/// 所以连按边缘时不该出现两个按钮同时亮起。
 class _DemoTonalGroups extends StatelessWidget {
   const _DemoTonalGroups();
 
@@ -163,8 +157,6 @@ class _DemoTonalGroups extends StatelessWidget {
   }
 }
 
-/// Material 原生三种按钮：由 [TonalButtonTheme] 之外的默认主题渲染，
-/// 用来确认本项目的 theme 没有把它们改成胶囊之外的怪形状。
 class _DemoMaterialButtons extends StatelessWidget {
   const _DemoMaterialButtons();
 
@@ -251,7 +243,7 @@ class _DemoMaterialButtons extends StatelessWidget {
   }
 }
 
-/// 禁用态：前景应降到 38% 不透明度，且不响应点按。
+/// Disabled state: foreground drops to 38% opacity and taps are ignored.
 class _DemoDisabledButtons extends StatelessWidget {
   const _DemoDisabledButtons();
 
@@ -281,7 +273,6 @@ class _DemoDisabledButtons extends StatelessWidget {
   }
 }
 
-/// 「更多操作」整行：本身就是一张卡片 + 一行列表，所以单独占满宽度。
 class _DemoMoreActions extends StatelessWidget {
   const _DemoMoreActions();
 
@@ -306,8 +297,7 @@ class _DemoMoreActions extends StatelessWidget {
   }
 }
 
-/// 画廊里所有「点了应该发生点什么」的地方统一走这里：只弹一个 SnackBar，
-/// 不导航、不改全局状态，避免验收时误触进别的页面。
+/// Shared gallery tap handler: a SnackBar only, so reviewing never navigates away.
 void _demoToast(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(

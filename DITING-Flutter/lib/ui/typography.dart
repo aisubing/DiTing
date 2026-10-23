@@ -1,9 +1,7 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'package:material_ui/material_ui.dart';
 
-/// Apple's iOS Dynamic Type scale at its default size, a dp per point, with
-/// two steps it lacks: [display] for a dashboard figure, [pageTitle] for an app
-/// bar.
+/// Apple's iOS Dynamic Type scale at its default size, plus [display] and [pageTitle].
 enum AppTextStyle {
   display(40, 44, emphasizedWeight: FontWeight.w700),
   largeTitle(34, 41, emphasizedWeight: FontWeight.w700),
@@ -34,7 +32,6 @@ enum AppTextStyle {
   TextStyle of(BuildContext context, {bool emphasized = false}) =>
       _apply(_slotOf(Theme.of(context).textTheme)!, emphasized: emphasized);
 
-  /// For text sized to the shape it marks, such as a letter in an icon.
   static TextStyle custom(
     BuildContext context, {
     required double size,
@@ -53,8 +50,7 @@ enum AppTextStyle {
     );
   }
 
-  // Typography.blackCupertino draws these slots with SF Pro Display and the
-  // rest with SF Pro Text, which Apple switches between at 20 pt.
+  // Typography.blackCupertino draws these slots with SF Pro Display, the rest with SF Pro Text.
   TextStyle? _slotOf(TextTheme theme) => switch (this) {
     display || largeTitle => theme.headlineLarge,
     title1 => theme.headlineMedium,

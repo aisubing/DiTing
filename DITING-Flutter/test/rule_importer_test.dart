@@ -6,10 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite/sqflite.dart' show Sqflite;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// 入库器对着 1.4.3 的真实表结构跑，钉住三件事：
-/// 1. 规则确实写进 `*_rule` 且带 `sub_<id>` 来源行；
-/// 2. 重复导入不会让行数翻倍（设备库上没有唯一索引，必须靠 SELECT 查重）；
-/// 3. 删除来源后规则失效、孤儿规则行被清掉。
+/// Runs the importer against the real 1.4.3 tables: rules land in `*_rule` with a `sub_<id>`
+/// source row, re-imports do not duplicate, and deleting a subscription drops orphan rules
 void main() {
   setUpAll(() {
     sqfliteFfiInit();
@@ -130,11 +128,11 @@ void main() {
       kind: 'domain',
       enabled: true,
     );
-    // 同一来源重复写：来源行已存在，insert 被 ignore，条数为 0。
+    // Same source again: the source row exists, so the insert is ignored.
     expect(second.blockCount, 0);
     expect(await count('block_rule'), 1, reason: '设备库没有唯一索引，必须靠查重复用');
 
-    // 另一个订阅引用同一 pattern：复用规则行，新增一条来源行。
+    // Another subscription with the same pattern reuses the rule row.
     final other = await importer.import(
       parsed,
       source: subscriptionSourceTag(2),
@@ -213,7 +211,7 @@ void main() {
     await importer.setSourceEnabled(subscriptionSourceTag(9), false);
     var source = (await db.query('block_rule_source')).single;
     expect(source['enabled'], 0);
-    // 规则行仍为 1：同一行可能被别的来源引用，改它会让那些来源一起失效。
+    // The rule row stays: other sources may reference it.
     final rule = (await db.query('block_rule')).single;
     expect(rule['enabled'], 1);
 
@@ -265,7 +263,7 @@ void main() {
       kind: 'domain',
       enabled: true,
     );
-    // 丢掉作用域会把它变成全局 URL 拦截，宁可放弃这一条。
+    // Dropping the scope would turn it into a global URL block, so skip the rule.
     expect(summary.urlBlockCount, 0);
     expect(await count('go_url_rule'), 0);
   });

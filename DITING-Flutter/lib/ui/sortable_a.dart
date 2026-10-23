@@ -2,12 +2,7 @@
 
 part of 'sortable.dart';
 
-/// The handle springs in from the row's trailing edge, where the card clips
-/// it, while the trailing it replaces shrinks away and the title gives up the
-/// width; leaving, the handle slides back out before the trailing pops back.
-/// Only a change of width relayouts the row: the motion itself is painted,
-/// since a rebuild here would relayout the row from its [LayoutBuilder] and a
-/// fade would put it on a layer of its own.
+/// Springs in from the row trailing edge, where the card clips it; only a width change relayouts.
 class SortableTrailing extends StatefulWidget {
   const SortableTrailing({super.key, required this.item, this.child});
 

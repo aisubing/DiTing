@@ -1,4 +1,5 @@
-/// 服务器模式的状态与端口：与 VPN 电源状态分开，避免两种模式互相污染。
+/// Server-mode state and port, separate from the VPN power state so the two modes cannot
+/// contaminate each other.
 library;
 
 import 'dart:async';
@@ -13,7 +14,6 @@ import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 服务器模式的监听端口。
 class ServerPortNotifier extends Notifier<int> {
   @override
   int build() => ref.read(legacySettingsProvider).serverPort;
@@ -29,7 +29,7 @@ final serverPortProvider = NotifierProvider<ServerPortNotifier, int>(
   ServerPortNotifier.new,
 );
 
-/// 服务器模式的 5 态状态卡。
+/// Five-state server-mode status card.
 enum ServerStatus {
   stopped('已停止'),
   starting('启动中'),
@@ -43,20 +43,15 @@ enum ServerStatus {
 }
 
 class ServerStatusNotifier extends Notifier<ServerStatus> {
-  /// Deadline for a start/stop attempt.
-  ///
-  /// Both commands answer as soon as the foreground service is scheduled, so a
-  /// longer wait means the platform round-trip is wedged. Without this the card
-  /// would sit on 「启动中」/「停止中」 forever, and [toggle] ignores taps in
-  /// those states — the user could not even stop a stuck service.
+  /// Deadline for a start/stop attempt: both commands answer once scheduled, so a longer wait means
+  /// a wedged round trip.
   static const Duration _guardTimeout = Duration(seconds: 30);
 
   bool _disposed = false;
   Timer? _statsTimer;
   Timer? _guardTimer;
 
-  /// Last native failure, kept for diagnostics without changing the five-state
-  /// UI contract.
+  /// Last native failure, kept for diagnostics only.
   String? lastError;
 
   @override
@@ -66,8 +61,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       _statsTimer?.cancel();
       _guardTimer?.cancel();
     });
-    // Leaving server mode must not leave a LAN DNS listener behind; the UI
-    // would otherwise show another mode while the port stays bound.
+    // Leaving server mode must not leave a LAN DNS listener behind while the UI shows another mode.
     ref.listen(workModeProvider, (previous, next) {
       if (next != AppWorkMode.server &&
           (state == ServerStatus.running || state == ServerStatus.starting)) {
@@ -75,8 +69,8 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       }
     });
     if (ref.read(legacySettingsProvider).serverServiceActive) {
-      // The flag survives process death; confirm with the native side before
-      // claiming the listener is up, and do not wait on it forever.
+      // The flag survives process death; confirm with the native side before claiming the listener
+      // is up.
       scheduleMicrotask(syncStatus);
       _armGuard();
       return ServerStatus.starting;
@@ -113,8 +107,8 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
   }
 
   Future<void> toggle() async {
-    // 「启动中 / 停止中」时忽略点击：这两个中间态各有一个等待原生确认的
-    // Future，重复点击会让第二条命令与第一条交错，最终状态取决于谁先回来。
+    // Ignore taps in the two transient states; each already awaits native confirmation, so a second
+    // would interleave.
     if (state == ServerStatus.starting || state == ServerStatus.stopping) {
       return;
     }
@@ -196,10 +190,8 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     _guardTimer?.cancel();
   }
 
-  /// Arms (or re-arms) the deadline for the current transient state.
-  ///
-  /// Firing asks the native side what is actually running and, when the state
-  /// is still transient, surfaces a real failure instead of spinning forever.
+  /// Arms the deadline for the current transient state; on expiry it asks the native side what is
+  /// actually running.
   void _armGuard() {
     _guardTimer?.cancel();
     _guardTimer = Timer(_guardTimeout, () {
@@ -226,8 +218,8 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
           ? <RuleKind, List<MockRule>>{}
           : await repository.loadAll();
     } catch (_) {
-      // A missing/locked legacy DB must not prevent the server from starting;
-      // upstream resolution still works with an empty per-dataset rule set.
+      // A missing or locked legacy DB must not prevent the server from starting; an empty rule set
+      // still resolves.
       return <RuleKind, List<MockRule>>{};
     }
   }

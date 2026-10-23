@@ -4,16 +4,10 @@ import 'dart:io';
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pins the IP-quality checker against real HTTP responses.
-///
-/// `IpQualityNotifier.detect()` used to be `await Future.delayed(1000ms)` with the
-/// report hard-coded (`203.0.113.24` / `AS64500` / 「风险」). These tests decide each
-/// branch from an actual response, including the "only one source answered" and
-/// "nothing answered" cases.
+/// Pins the checker against real HTTP replies, including the partial and empty cases
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // `flutter_test` blocks real sockets by default; these tests use loopback.
   setUpAll(() => HttpOverrides.global = null);
 
   late HttpServer server;
@@ -28,8 +22,6 @@ void main() {
     base = 'http://127.0.0.1:${server.port}';
     server.listen((request) async {
       await utf8.decoder.bind(request).join();
-      // 请求路径带参数（`/ip-api/1.2.3.4`、`/ipinfo/1.2.3.4/json`），
-      // 所以按 stub 键做前缀匹配，而不是精确相等。
       final path = request.uri.path;
       String? key;
       for (final candidate in routes.keys) {
@@ -48,7 +40,6 @@ void main() {
 
   tearDown(() => server.close(force: true));
 
-  /// Checker pointed at the fake server.
   IpQualityChecker checker() => IpQualityChecker(
     probeUrls: ['$base/ip'],
     ipApiUrl: '$base/ip-api',
@@ -88,8 +79,8 @@ void main() {
     });
 
     test('第一个探测端点不通时用下一个，而不是整次检测失败', () async {
-      // 实测（emulator-5554）：`api.ipify.org` 被重置（curl 000），同服务的
-      // `api64.ipify.org` 是 200。单端点实现会把「一个域名不通」报成「网络不可达」。
+      // `api.ipify.org` was reset while `api64.ipify.org` answered 200: one endpoint would report
+      // down
       stubAll(ip: '9.9.9.9');
       statuses['/ip'] = 500;
       routes['/ip2'] = jsonEncode({'ip': '8.8.8.8'});
@@ -104,8 +95,7 @@ void main() {
     });
 
     test('探测端点回一段 HTML 时不把整段当成 IP', () async {
-      // 门户劫持 / 运营商插播 / 限流页都会回 200 + HTML。把 HTML 当出口 IP
-      // 拿去查三个源，结果是一屏「失败」而没有一句能读懂的原因。
+      // Captive portals answer 200 with HTML; reading that as the egress IP fails every source
       stubAll();
       routes['/ip'] = '<html><body>blocked</body></html>';
       final outcome = await checker().detect();
@@ -122,11 +112,9 @@ void main() {
       stubAll();
       final outcome = await checker().detect() as IpQualitySuccess;
       final report = outcome.report;
-      // Google 属于机房：不能报成「住宅」，否则用户以为 IP 很干净。
       expect(report.ipType, '机房');
       expect(report.level, '风险');
       expect(report.asn, 'AS15169');
-      // 组织取第一个命中的非空值；ip-api 给的 isp 是 `Google`。
       expect(report.organization, 'Google');
       expect(report.hitCount, 3);
     });
@@ -148,7 +136,6 @@ void main() {
       final report = (await checker().detect() as IpQualitySuccess).report;
       final ipApi = report.sources.firstWhere((s) => s.name == 'ip-api.com');
       expect(ipApi.status, '限流');
-      // 另外两个照常命中。
       expect(report.hitCount, 2);
       expect(report.level, '风险');
     });
@@ -176,11 +163,9 @@ void main() {
   });
 
   group('分类规则', () {
-    /// 用单源命中跑一次，避免三源互相稀释。
     Future<String> typeFor(String isp) async {
       stubAll(
         ipApi: jsonEncode({'status': 'success', 'as': 'AS1 $isp', 'isp': isp}),
-        // 让另外两个源给同样的判断，确保汇总取到的就是被测文本的结论。
         ipWho: jsonEncode({
           'success': true,
           'connection': {'asn': 1, 'isp': isp},
@@ -202,7 +187,6 @@ void main() {
     });
 
     test('未知组织兜底为商业，不默认成住宅', () async {
-      // 把机房误标成住宅会让用户以为 IP 很干净，这是更危险的错误方向。
       expect(await typeFor('Some Random ISP'), '商业');
     });
   });

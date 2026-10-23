@@ -1,8 +1,4 @@
-/// 规则预设多选浮层（上游 `features/form/rule_preset.dart`，145 行）。
-///
-/// 七个常用规则预设，勾选后一次插入。上游的 `RulePreset` 枚举里带字形与原始
-/// 规则文本；这里把规则文本放数据层（`mock_forms.dart`），枚举只承担「分类 +
-/// 显示名」，因为规则文本是内容而不是 UI 常量。
+/// Rule preset sheet; preset text lives in `mock_forms.dart` because it is content.
 library;
 
 import 'package:diting/data/mock_forms.dart';
@@ -11,7 +7,6 @@ import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 规则预设多选浮层。返回选中的预设标题列表。
 class RulePresetSheet extends StatefulWidget {
   const RulePresetSheet({super.key, this.initial = const {}});
 
@@ -24,7 +19,6 @@ class RulePresetSheet extends StatefulWidget {
 class _RulePresetSheetState extends State<RulePresetSheet> {
   late final _selected = {...widget.initial};
 
-  /// 选中的预设展开后能看到原始规则；未选中的收起。
   final _expanded = <String>{};
   int get _ruleCount => _selected.fold(
     0,
@@ -123,7 +117,6 @@ class _RulePresetSheetState extends State<RulePresetSheet> {
   }
 }
 
-/// 一个预设行：勾选框 + 标题 + 规则条数 + 展开箭头。
 class _PresetRow extends StatelessWidget {
   const _PresetRow({
     required this.preset,

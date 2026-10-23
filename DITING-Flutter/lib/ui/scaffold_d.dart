@@ -2,8 +2,7 @@
 
 part of 'scaffold.dart';
 
-// 按项目单文件 ≤550 行规范，从 CommonScaffoldState 拆出的构建方法（同库扩展，
-// 私有成员经库级可见性直接访问，语义与类内方法完全一致）。
+// Build methods split out of CommonScaffoldState, under the file line cap.
 extension CommonScaffoldStateBuild on CommonScaffoldState {
   Widget _buildDockedSearch(AppBarSearchState searchState) {
     final colorScheme = context.colorScheme;
@@ -324,8 +323,7 @@ extension CommonScaffoldStateBuild on CommonScaffoldState {
 
   Widget _buildFloatingHeader(Widget appBar) {
     final top = MediaQuery.paddingOf(context).top;
-    // 渐隐起点压在工具栏下方（约 72% 高）：正文从栏底透出才有半透明感，若从
-    // 状态栏下就开始淡出，滚动中的大号数字会直接叠在标题与动作上。
+    // The fade starts below the toolbar, where the body shows through.
     const fadeUntil = 0.72;
     return FloatingHeader(
       backgroundColor:

@@ -9,31 +9,13 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 日志仪表盘的列表类卡片。
-///
-/// 五张卡（最近请求 / 缓存热点 / 竞速胜出 / Bootstrap DNS / 规则拦截）在旧版
-/// 三种模式下**文案与副标题逐字相同**，只有出现与否和入口不同，因此共用这里的
-/// 实现：首页与 `/logs` 三套组合都直接引用，不各写一份（`ModernLogDashboardModeViews.kt`
-/// 里那五段重复代码正是重构前的样子）。
-///
-/// 每张卡右下角都不放动作：入口统一在标题行右侧的「详情」，与旧版
-/// `PillLink(text = "详情")` 的位置一致，`DashboardIconButton` 是设计系统里
-/// 现成的对应物。
-///
-/// ## 数字的来源与「还没读到」的表示
-/// 所有数字来自 [logDashboardProvider] 对旧库真实表的聚合（见
-/// `state/log_dashboard_overview_providers.dart`）。快照是 `FutureProvider`，
-/// 首次加载与读取失败时 `value` 为 null：
-/// - 四格数字显示 `—`，而不是 `0`——`0` 会被读成「今天没有请求」，而那是另一
-///   种事实；
-/// - 列表卡显示各自的空态文案（`DashboardLogListCard` 自带）。
+/// List-style cards of the log dashboard, shared by home and `/logs`. A null snapshot means
+/// not loaded yet, so cells show a dash, not `0`.
 LogDashboardSnapshot? _snapshotOf(WidgetRef ref) =>
     ref.watch(logDashboardProvider).value;
 
-/// 四格里的一格：快照未就绪时给破折号。
 String _figure(int? value) => value == null ? '—' : dashboardCount(value);
 
-/// 「今日请求 / 通过 / 过滤 / 缓存命中」四格（旧版两行 `MetricCard`）。
 class RequestOverviewCard extends ConsumerWidget {
   const RequestOverviewCard({super.key, this.title = '请求概览', this.onDetail});
 
@@ -74,7 +56,6 @@ class RequestOverviewCard extends ConsumerWidget {
   }
 }
 
-/// 重点记录四格（旧版 `FilteredModeDashboard` 的两行 `MetricCard`）。
 class FilteredHighlightCard extends ConsumerWidget {
   const FilteredHighlightCard({super.key, this.title = '重点记录', this.onDetail});
 
@@ -117,7 +98,6 @@ class FilteredHighlightCard extends ConsumerWidget {
   }
 }
 
-/// 关闭日志模式下的四格（旧版 `OffModeDashboard`）。
 class OffModeMetricCard extends ConsumerWidget {
   const OffModeMetricCard({super.key, this.onDetail});
 
@@ -157,7 +137,6 @@ class OffModeMetricCard extends ConsumerWidget {
   }
 }
 
-/// 最近请求（旧版 `最近请求` 卡）。
 class RecentRequestsLogCard extends ConsumerWidget {
   const RecentRequestsLogCard({super.key, this.onDetail});
 
@@ -185,10 +164,6 @@ class RecentRequestsLogCard extends ConsumerWidget {
   }
 }
 
-/// 最近拦截与错误（旧版 `最近拦截与错误` 卡）。
-///
-/// 与 [RecentRequestsLogCard] 共用行的形状，只是空态文案与标题不同——旧版也是
-/// 同一段 `RequestLogRow` 循环，换成另一句 `EmptyText`。
 class FilteredRecentLogCard extends ConsumerWidget {
   const FilteredRecentLogCard({super.key, this.onDetail});
 
@@ -198,7 +173,7 @@ class FilteredRecentLogCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final all = _snapshotOf(ref)?.recentRequests ?? const [];
     final colorScheme = context.colorScheme;
-    // 只保留拦截 / 失败 / 旁路：这就是「仅拦截与错误」模式会落库的那几条。
+    // Keep only blocked / failed / bypass: the rows this mode actually persists.
     final rows = [
       for (final row in all)
         if (row.status != LogRowStatus.passed &&
@@ -223,7 +198,6 @@ class FilteredRecentLogCard extends ConsumerWidget {
   }
 }
 
-/// 缓存热点（旧版 `缓存热点` 卡）。
 class CacheHotspotsCard extends ConsumerWidget {
   const CacheHotspotsCard({super.key, this.onDetail});
 
@@ -254,7 +228,6 @@ class CacheHotspotsCard extends ConsumerWidget {
   }
 }
 
-/// 竞速胜出（旧版 `竞速胜出` 卡）。
 class RaceWinnersCard extends ConsumerWidget {
   const RaceWinnersCard({super.key, this.onDetail});
 
@@ -282,7 +255,6 @@ class RaceWinnersCard extends ConsumerWidget {
   }
 }
 
-/// Bootstrap DNS（旧版 `Bootstrap DNS` 卡）。
 class BootstrapDnsCard extends ConsumerWidget {
   const BootstrapDnsCard({super.key, this.onDetail});
 
@@ -312,7 +284,6 @@ class BootstrapDnsCard extends ConsumerWidget {
   }
 }
 
-/// 规则拦截（旧版 `规则拦截` 卡）。
 class RuleBlocksCard extends ConsumerWidget {
   const RuleBlocksCard({super.key, this.onDetail});
 
@@ -342,7 +313,6 @@ class RuleBlocksCard extends ConsumerWidget {
   }
 }
 
-/// 关闭日志模式的说明卡（旧版 `隐私模式保护中`）。
 class PrivacyModeCard extends StatelessWidget {
   const PrivacyModeCard({super.key});
 
@@ -374,13 +344,8 @@ class PrivacyModeCard extends StatelessWidget {
   }
 }
 
-/// 解析效能概况（旧版 `解析效能概况` 卡：四条比率行）。
-///
-/// 旧版这一卡只有竞速与 Bootstrap 两行；本仓补了 DNS 侧两行（平均延迟 /
-/// 缓存命中率），因为它们来自**同一批** `dns_log` 当日行、同一次扫描，而
-/// 「关闭日志」模式下正需要它们说明「不记明细但解析仍在跑」。
-///
-/// 平均延迟没有计时样本时显示 `—`（不是 `0 ms`）：后者会被读成「解析飞快」。
+/// Resolution efficiency card. Average latency shows a dash when there is no timing sample,
+/// not `0 ms`.
 class ResolutionPerfCard extends ConsumerWidget {
   const ResolutionPerfCard({super.key});
 
@@ -409,8 +374,7 @@ class ResolutionPerfCard extends ConsumerWidget {
                 ? '— · 今日暂无计时样本'
                 : '${dashboardLatency(latency)} · '
                       '${dashboardCount(quality.latencySamples)} 个样本',
-            // 延迟不是比率，进度条按「越小越好」无法归一，因此给 0 让这一行
-            // 只显示文字（组件在 progress 为 0 时不画条）。
+            // Latency is not a ratio, so pass 0 to render text only (no bar at progress 0).
             progress: 0,
           ),
           SizedBox(height: 14 * scale),

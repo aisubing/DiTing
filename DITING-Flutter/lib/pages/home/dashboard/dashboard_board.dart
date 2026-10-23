@@ -16,11 +16,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 仪表盘卡片的落点回调。
-///
-/// 统一成一个对象而不是给 `buildDashboardCard` 加十个可选参数：卡片集以后还会
-/// 增删，每加一张就改一次函数签名会让编辑态与普通态两个调用点同时漂移。没给
-/// 回调的卡片就不显示「详情」按钮。
+/// Where dashboard cards navigate to. One object instead of ten optional parameters, so
+/// adding a card does not change the signature. No action means no detail button.
 class DashboardCardActions {
   const DashboardCardActions({
     this.onOpenRequests,
@@ -31,7 +28,7 @@ class DashboardCardActions {
     this.onOpenTraffic,
   });
 
-  /// 无入口（编辑态用）：所有卡片都不显示「详情」。
+  /// No targets (edit mode): no card shows a detail button.
   static const none = DashboardCardActions();
 
   final VoidCallback? onOpenRequests;
@@ -40,15 +37,12 @@ class DashboardCardActions {
   final VoidCallback? onOpenBootstrap;
   final VoidCallback? onOpenSubscriptionStats;
 
-  /// `/traffic`：网络速度与流量监控两张卡的落点。
+  /// `/traffic`: target for the speed and traffic monitor cards.
   final VoidCallback? onOpenTraffic;
 }
 
-/// 仪表盘卡片注册表。
-///
-/// 十四张卡分两族：前五张对齐 FlClash 0.9.1 首页仪表盘（状态 / 网络速度 /
-/// 服务状态 / 内存 / 内网 IP），后九张来自 1.4.3 的
-/// `ModernLogDashboardModeViews.kt`。
+/// Dashboard card registry. First five cards follow FlClash 0.9.1, the rest the upstream
+/// log dashboard views.
 Widget buildDashboardCard(
   DashboardWidget widget,
   DashboardCardActions actions,
@@ -95,13 +89,8 @@ Widget buildDashboardCard(
   };
 }
 
-/// 仪表盘卡片编排区。
-///
-/// 普通态：单列按 `dashboardWidgetsProvider` 顺序渲染，卡片之间统一 12 间距。
-/// 编辑态：每张卡右上角出现移除徽标、可拖拽换位，末尾出现「添加卡片」行。
-///
-/// 移动端是单列（上游 `dashboard.dart:290-357` 的移动分支）；桌面多列布局
-/// 在 Android 上没有意义，因此刻意不实现。
+/// Dashboard card board: one column in dashboardWidgetsProvider order, plus a remove
+/// badge, drag reordering and an add row in edit mode. Single column: Android has no room.
 class DashboardBoard extends ConsumerWidget {
   const DashboardBoard({super.key, this.actions = DashboardCardActions.none});
 
@@ -135,11 +124,7 @@ class DashboardBoard extends ConsumerWidget {
   }
 }
 
-/// 卡片入场：透明度 + 轻微上移。
-///
-/// 上游卡片是逐张淡入的（`dashboard.dart` 的 `StaggeredEntrance`）。这里用
-/// `TweenAnimationBuilder` 做一次性入场，不引入额外动画控制器——滚动时不重播，
-/// 刷新列表时才会因为 key 变化重播。
+/// Card entrance: fade plus a small rise, played once per list refresh.
 class _CardEntrance extends StatelessWidget {
   const _CardEntrance({super.key, required this.child});
 
@@ -185,7 +170,6 @@ class _EmptyBoard extends ConsumerWidget {
   }
 }
 
-/// 编辑态：可拖拽、可移除、可添加。
 class _EditingBoard extends ConsumerWidget {
   const _EditingBoard({required this.widgets, required this.side});
 
@@ -201,7 +185,6 @@ class _EditingBoard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: dashboardCardGap,
         children: [
-          // 编辑提示条：说明当前处于编辑模式、手势怎么用。
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: ShapeDecoration(
@@ -238,7 +221,7 @@ class _EditingBoard extends ConsumerWidget {
             )
           else
             ReorderableListView.builder(
-              // 外层已有滚动容器，这里不能再滚，否则拖拽会与它抢手势。
+              // The outer scrollable already exists; nesting one would steal drag gestures.
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
@@ -258,9 +241,9 @@ class _EditingBoard extends ConsumerWidget {
                 return Padding(
                   key: ValueKey(widget),
                   padding: const EdgeInsets.only(bottom: 12),
-                  // 操作条注入卡片内部：卡片顶部多出独立一行，徽标不再与
-                  // 标题、右侧动作抢同一块空间。正文的禁用遮罩由卡片施加，
-                  // 这样操作条不会被一起灰度化。
+                  // Injected inside the card so the badge does not compete with the title and
+                  // trailing action. The
+                  // card dims the body only, keeping the bar at full color.
                   child: DashboardEditBar(
                     bar: Row(
                       children: [
@@ -276,8 +259,7 @@ class _EditingBoard extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    // 编辑态不给落点：点进下钻页会让「拖不动」的误判变成
-                    // 「刚拖完又被跳走」。
+                    // No target in edit mode: navigating away mid-drag reads as a lost drag.
                     child: buildDashboardCard(
                       widget,
                       DashboardCardActions.none,
@@ -342,7 +324,6 @@ class _DragBadge extends StatelessWidget {
   }
 }
 
-/// 编辑态末尾的「添加卡片」行。
 class _AddCardRow extends ConsumerWidget {
   const _AddCardRow({required this.side});
 

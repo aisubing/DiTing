@@ -1,14 +1,4 @@
-/// 外观子树的二级页（上半）：日夜模式 / 首页透明度 / 底栏自定义 / 首页句子。
-///
-/// 1.4.3 的 `APPEARANCE_SETTINGS` 是「3 组 8 项」的菜单，每项点进自己的二级页。
-/// 上一轮这些项几乎全堆在 `/theme` 一屏里，与旧版层级完全不同。本轮按旧版拆开：
-///
-/// - 界面显示：日夜模式 / 主题色配置 / 首页透明度 / 底栏自定义（+ 保留的细节项）
-/// - 首页内容：首页句子 / 通知栏设置
-/// - 背景与动效：软件背景 / 底栏触感反馈
-///
-/// 主题色在 `appearance_color_page.dart`；通知栏 / 背景 / 前后台行为 / 语言在
-/// `settings_parity_pages.dart`。拆成两个文件的唯一原因是 550 行上限。
+/// Appearance sub pages: day/night, opacity, dock, sentences. Rest in `settings_parity_pages`.
 library;
 
 import 'package:diting/app/theme/colors.dart';
@@ -24,11 +14,7 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-// ---------------------------------------------------------------------------
-// 日夜模式（旧版「界面显示」第一项）
-// ---------------------------------------------------------------------------
 
-/// 日夜模式：跟随系统 / 浅色 / 深色，各配一张缩略图。
 class ThemeDayNightPage extends ConsumerWidget {
   const ThemeDayNightPage({super.key});
 
@@ -95,27 +81,18 @@ class ThemeDayNightPage extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 首页透明度（旧版 HomeComponentOpacityScreen）
-// ---------------------------------------------------------------------------
 
-/// 首页元素透明度：交互组件三项 + 文字两项，共五条滑杆。
-///
-/// 旧版按「交互组件 / 文字」两组渲染，顺序与文案照抄；每条键取自
-/// [HomeLayer.storageKey]（`home_*_opacity`）。第 5 项
-/// `home_dns_detail_opacity` 是本轮才补上的——上一轮 `HomeLayer` 少了它，
-/// 滑杆与首页的「DNS 服务详情」块都无从谈起。
+/// Home element opacity. Keys come from [HomeLayer.storageKey] (`home_*_opacity`);
+/// `home_dns_detail_opacity` is not a [HomeLayer] but the DNS detail block requires it.
 class ThemeHomeOpacityPage extends ConsumerWidget {
   const ThemeHomeOpacityPage({super.key});
 
-  /// 旧版分组：交互组件 3 条。
   static const _interactive = [
     HomeLayer.powerButton,
     HomeLayer.providerSelector,
     HomeLayer.modeButton,
   ];
 
-  /// 旧版分组：文字 2 条。
   static const _text = [HomeLayer.poem, HomeLayer.dnsDetail];
 
   @override
@@ -155,11 +132,8 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 底栏自定义（旧版 BottomBarCustomizationScreen）
-// ---------------------------------------------------------------------------
 
-/// 底栏六项的一句话说明。旧版底栏页每行带副标题，枚举里没有这个字段。
+/// One-line description per dock destination; the enum has no such field.
 const _destinationSubtitles = {
   BottomBarDestination.home: '首页与仪表盘',
   BottomBarDestination.featureHub: '全部功能入口',
@@ -169,10 +143,8 @@ const _destinationSubtitles = {
   BottomBarDestination.settings: '全部设置项',
 };
 
-/// 底栏自定义：六项开关，至少 2 项、最多 4 项。
-///
-/// 上限来自 [maxDockDestinations]（本轮从 5 改回旧版的 4）。被拒绝时给一句话
-/// 说明——否则用户只看到开关弹回去，会以为点坏了。
+/// Dock customization: six switches, at least 2 and at most 4 enabled
+/// ([maxDockDestinations]). Rejections must explain themselves.
 class ThemeBottomBarPage extends ConsumerWidget {
   const ThemeBottomBarPage({super.key});
 
@@ -228,11 +200,8 @@ class ThemeBottomBarPage extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 首页句子（旧版 HomeSentenceScreen）
-// ---------------------------------------------------------------------------
 
-/// 首页句子：运行 / 停止两态各一条，留空即不显示。
+/// Home sentences: one each for running and stopped; empty hides them.
 class ThemeHomeSentencePage extends ConsumerStatefulWidget {
   const ThemeHomeSentencePage({super.key});
 
@@ -294,14 +263,9 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 两个文件共用的小部件
-// ---------------------------------------------------------------------------
 
-/// 一次性的 SnackBar 提示。
-///
-/// 设置页的大量动作是「改了就生效」，被规则拒绝时除了开关弹回去没有任何痕迹，
-/// 用户会以为点坏了——必须补一句说明。
+/// One-shot SnackBar notice for rule rejections, which otherwise leave no trace
+/// beyond the switch bouncing back.
 void showSettingHint(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(

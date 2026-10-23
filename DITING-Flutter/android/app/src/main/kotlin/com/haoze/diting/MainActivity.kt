@@ -42,16 +42,14 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Relaunching from the app icon recreates the task entry, which silently
-        // resets excludeFromRecents.
+        // Relaunching from the app icon recreates the task entry, resetting excludeFromRecents.
         platformBridge?.reapplyRecentsPrivacy()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (vpnBridge?.onActivityResult(requestCode, resultCode) == true) return
-        // Request codes do not overlap with the VPN ones; this one also reads
-        // data.data, the VPN handlers only look at resultCode.
+        // Codes never collide with the VPN ones: this reads data.data, those read only resultCode.
         if (platformBridge?.onActivityResult(requestCode, resultCode, data) == true) return
         if (backgroundBridge?.onActivityResult(requestCode, resultCode, data) == true) return
         expressVpnBridge?.onActivityResult(requestCode, resultCode)

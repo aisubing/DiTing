@@ -7,8 +7,7 @@ import tunnel.HttpLogCallback
 import tunnel.TrafficCallback
 import tunnel.UIDResolver
 
-/// Owns the engine callbacks that feed the log tables: resolvers, traffic and
-/// HTTP. Split per capability because express mode registers only resolvers.
+/// Owns the engine callbacks that feed the log tables; express mode registers only resolvers
 class EngineDataPlane(
     private val context: Context,
     private val logMode: String,
@@ -25,7 +24,7 @@ class EngineDataPlane(
     private var trafficAttached = false
     private var httpAttached = false
 
-    /// UID -> package lookup for DNS/HTTP attribution and the firewall.
+    /// UID -> package lookup for DNS/HTTP attribution and the firewall
     fun attachResolvers(engine: Engine) {
         engine.setUIDResolver(object : UIDResolver {
             override fun resolveUID(
@@ -41,11 +40,9 @@ class EngineDataPlane(
         })
     }
 
-    /// Per-UID byte deltas into `app_traffic_daily` (buffered 15s / 1MB).
-    /// Full-tunnel only; the express database has no such table.
+    /// Per-UID byte deltas into `app_traffic_daily` (buffered 15s / 1MB). Full tunnel only
     fun attachTraffic(engine: Engine) {
-        // Flag first: touching `traffic` starts its executor and timer, so a
-        // throw from setTrafficCallback must still leave it reachable by close().
+        // Flag first: touching `traffic` starts its executor; a throw must leave it reachable.
         val writer = traffic
         trafficAttached = true
         engine.setTrafficCallback(object : TrafficCallback {
@@ -55,8 +52,7 @@ class EngineDataPlane(
         })
     }
 
-    /// MITM request events into `http_request_log` (buffered 10 rows / 500ms).
-    /// The engine only emits them while a stack MITM filter is installed.
+    /// MITM events into `http_request_log` (10 rows / 500ms), only while a MITM filter is installed
     fun attachHttp(engine: Engine) {
         val writer = http
         httpAttached = true
@@ -73,8 +69,7 @@ class EngineDataPlane(
         })
     }
 
-    /// Flushes what was attached and releases the callback targets. Every stop
-    /// path calls this after the engine has stopped.
+    /// Flushes what was attached and releases the callback targets; called after the engine stops
     fun close() {
         if (trafficAttached) runCatching { traffic.close() }
         if (httpAttached) runCatching { http.close() }

@@ -1,18 +1,9 @@
-/// YAML 静态高亮（演示层自己的极简分词器）。
-///
-/// 上游编辑器接的是真实语法树 + 补全引擎；本阶段只做骨架，所以这里用逐行的
-/// 简单规则给三种东西上色：注释、键、值。它不追求正确性——`{{ }}` 模板、
-/// 多行标量、锚点都会被当成普通文本，这在演示里可接受，而且规则简单到一眼
-/// 能看不出意外。
-///
-/// 为什么不用 `flutter_highlight`：多一个依赖只为给十几行 YAML 上色不划算，
-/// 而且那个包按语言注册语法，包体积比这段代码大两个数量级。
+/// Minimal static YAML highlighter; `flutter_highlight` is not worth its grammar payload here.
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一段被着色的文本。
 class HighlightSpan {
   const HighlightSpan({required this.text, required this.kind});
 
@@ -20,10 +11,9 @@ class HighlightSpan {
   final TokenKind kind;
 }
 
-/// 词法分类。
 enum TokenKind { comment, key, string, number, keyword, punctuation, plain }
 
-/// 一组颜色：由调用方按当前主题给出，高亮器本身不碰 `Theme`。
+/// A color set supplied by the caller; the highlighter never reads `Theme`.
 class HighlightPalette {
   const HighlightPalette({
     required this.comment,
@@ -35,10 +25,8 @@ class HighlightPalette {
     required this.plain,
   });
 
-  /// 从当前配色推导一套高亮色。
-  ///
-  /// 键用主色、字符串用成功色、数字用警告色，这三组在深浅两个主题下都能与
-  /// 背景拉开距离；注释与标点用低对比度的 `onSurfaceVariant`。
+  /// Derives a palette from the color scheme: keys primary, strings success, numbers
+  /// warning, comments and punctuation the low-contrast `onSurfaceVariant`.
   factory HighlightPalette.of(ColorScheme colorScheme) => HighlightPalette(
     comment: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
     key: colorScheme.primary,
@@ -68,7 +56,7 @@ class HighlightPalette {
   };
 }
 
-/// YAML 里需要单独上色的布尔 / 空值 / 常用枚举。
+/// YAML booleans, nulls and common enums that get their own color.
 const _keywords = {
   'true',
   'false',
@@ -86,13 +74,9 @@ const _keywords = {
   'error',
 };
 
-/// 把一行 YAML 切成带分类的片段。
-///
-/// 规则（按优先级）：
-/// 1. `#` 之后全是注释——YAML 的字符串里 `#` 不该被当注释，但演示数据没有
-///    这种写法，为它加状态机会让代码翻倍；
-/// 2. `键:` 的键部分用主色；
-/// 3. 值里的引号串用成功色，纯数字用警告色，布尔/枚举用 tertiary，其余原色。
+/// Splits one YAML line into categorized spans. Everything after `#` is a comment (the demo
+/// data never quotes a `#`); the key before `:` uses primary, quoted values success, plain
+/// numbers warning, booleans and enums tertiary.
 List<HighlightSpan> highlightYamlLine(String line) {
   if (line.trimLeft().startsWith('#')) {
     return [HighlightSpan(text: line, kind: TokenKind.comment)];
@@ -118,7 +102,7 @@ List<HighlightSpan> highlightYamlLine(String line) {
     }
     return spans;
   }
-  // 列表项前缀：`- ` 属于标点，单独上色。
+  // The `- ` list marker counts as punctuation and is colored separately.
   var rest = body;
   if (rest.startsWith('- ')) {
     spans.add(const HighlightSpan(text: '- ', kind: TokenKind.punctuation));
@@ -144,7 +128,7 @@ List<HighlightSpan> highlightYamlLine(String line) {
   return spans;
 }
 
-/// 找到行内注释的起点；引号里的 `#` 不算。
+/// Start of the inline comment; a `#` inside quotes does not count.
 int _commentIndex(String line) {
   var quote = '';
   for (var i = 0; i < line.length; i++) {
@@ -166,7 +150,8 @@ int _commentIndex(String line) {
   return -1;
 }
 
-/// 找键后的冒号：必须是「冒号 + 空格或结尾」，避免把 `https://` 里的冒号当分隔。
+/// Finds the key separator: a colon followed by a space or end of line, so the one in
+/// `https://` is not treated as a separator.
 int _keySeparatorIndex(String body) {
   for (var i = 0; i < body.length - 1; i++) {
     if (body[i] == ':' && (body[i + 1] == ' ' || i == body.length - 1)) {
@@ -179,7 +164,6 @@ int _keySeparatorIndex(String body) {
   return -1;
 }
 
-/// 给一段值上色（可能包含空格分隔的多个片段）。
 void _appendValue(List<HighlightSpan> spans, String value) {
   if (value.isEmpty) {
     return;
@@ -216,7 +200,7 @@ TokenKind _kindOf(String text) {
   return TokenKind.plain;
 }
 
-/// 把整行渲染成 `TextSpan`。
+/// Renders the whole line as a `TextSpan`.
 TextSpan buildHighlightSpan(
   String line,
   HighlightPalette palette,

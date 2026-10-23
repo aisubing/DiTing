@@ -1,9 +1,7 @@
 part of 'connections_page.dart';
 
-/// 一行活动连接：域名 + 目标地址 + 链路 + 上下行 + 时长 + 关闭按钮。
-///
-/// 用 `ListItem` 而不是自绘行：行高、分隔线、按下态都由设计系统给，和全站
-/// 其他列表一致；表格式的列对齐在窄屏上本来就摆不下，两行式信息密度更高。
+/// One active connection: domain, target, chain, rates, duration and close button.
+/// `ListItem` so height, dividers and press state match the rest of the app.
 class ConnectionRow extends StatelessWidget {
   const ConnectionRow({
     super.key,
@@ -135,7 +133,6 @@ class ConnectionRow extends StatelessWidget {
   }
 }
 
-/// 一个方向上的速率：箭头 + 数字。
 class ObsSpeedText extends StatelessWidget {
   const ObsSpeedText({
     super.key,
@@ -166,11 +163,8 @@ class ObsSpeedText extends StatelessWidget {
   }
 }
 
-/// 连接详情：基本信息 → 地址 → 代理链路 → 底部「关闭连接」。
-///
-/// 对应上游 `TrackerInfoDetailView`（`tracker_info_item.dart:206`）的三段
-/// `generateSection`；上游第三段只有「代理」信息，这里把「规则命中」并进链路
-/// 段，因为本仓没有 `RecordTable` 那一层的列分组可用。
+/// Connection detail: basics, addresses, proxy chain, close button. Rule matches fold into
+/// the chain section because this repo has no RecordTable column grouping.
 class ConnectionDetailSheet extends ConsumerWidget {
   const ConnectionDetailSheet({
     super.key,
@@ -190,7 +184,7 @@ class ConnectionDetailSheet extends ConsumerWidget {
     if (connection == null) {
       return CommonScaffold(
         title: '连接详情',
-        // 空态是居中件，正文从 y=0 起排会顶进浮着的顶栏底部。
+        // The empty state is centered, so it would otherwise start under the app bar.
         body: AppBarClearance(
           child: obsEmpty(
             label: '连接已关闭',
@@ -317,7 +311,6 @@ class ConnectionDetailSheet extends ConsumerWidget {
   }
 }
 
-/// 详情顶部：域名 + 一句话状态 + 上下行速率条。
 class ConnectionHeaderCard extends StatelessWidget {
   const ConnectionHeaderCard({super.key, required this.connection});
 

@@ -1,13 +1,4 @@
-/// 请求列表（上游 `views/connection/requests.dart`）。
-///
-/// 数据来自两张旧库表：`http_request_log`（HTTPS）与 `dns_log`（DNS）。合并口径
-/// 与筛选条件复刻 1.4.3 的 `RequestLogRepository.load()` —— 两个查询各自
-/// `LIMIT n` 后按 `timestamp` 倒序并集，所以「共 N 条」与本页筛选是同一套
-/// SQL 算出来的，不在 Dart 侧二次过滤。
-///
-/// 上游是「时间正序 + 自动滚到底」的流水账；本仓没有核心轮询，列表不会自己
-/// 长高，所以改成时间倒序（最新在上）——静态列表里倒序比正序更容易看到刚
-/// 发生的事，也不用为了看见最新一条而先滚到底。
+/// Request list (upstream `views/connection/requests.dart`): `http_request_log` + `dns_log`.
 library;
 
 import 'dart:async';
@@ -23,7 +14,6 @@ import 'package:material_ui/material_ui.dart';
 
 part 'requests_rows.dart';
 
-/// 请求页。
 class RequestsPage extends ConsumerStatefulWidget {
   const RequestsPage({super.key});
 
@@ -32,8 +22,7 @@ class RequestsPage extends ConsumerStatefulWidget {
 }
 
 class _RequestsPageState extends ConsumerState<RequestsPage> {
-  /// 旧版 `RequestLogViewModel.setQuery` 的 250 ms 防抖：每次按键都会发一条
-  /// `LIKE` 查询，不防抖的话长列表下输入会明显卡顿。
+  /// 250 ms search debounce, as upstream: every keystroke would otherwise issue a LIKE query.
   static const _searchDebounce = Duration(milliseconds: 250);
 
   Timer? _searchTimer;
@@ -125,8 +114,8 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
   }
 
   Widget _buildBody(AsyncValue<RequestFeed> asyncFeed, String filterLabel) {
-    // 先判 `hasValue`：刷新时 Riverpod 会同时保留旧值与「正在重新获取」标志，
-    // 只看 `isLoading` 会让列表在每次刷新时闪回 loading 态、把滚动位置也丢掉。
+    // Check hasValue first: a refresh keeps the old value alongside isLoading, and
+    // looking at isLoading alone would flash the loading state and lose scroll.
     if (asyncFeed.hasValue) return _body(asyncFeed.requireValue, filterLabel);
     if (asyncFeed.hasError) {
       return ObsFailure(

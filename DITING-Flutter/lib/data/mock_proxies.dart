@@ -1,10 +1,7 @@
-/// 代理域演示数据：分组、节点、外部提供者。
-///
-/// 独立成库而不是 `mock_data.dart` 的 part：那个文件在并行期冻结，且代理
-/// 页的数据自成一域（节点还要按延迟排序、按超时过滤），放一起会互相牵连。
+/// Proxy demo data: groups, nodes, external providers. Separate library because this domain sorts
+/// by latency and filters by timeout.
 library;
 
-/// 代理协议（上游 `Proxy.type`）。
 enum ProxyProtocol {
   ss('Shadowsocks'),
   vmess('VMess'),
@@ -18,7 +15,6 @@ enum ProxyProtocol {
   final String label;
 }
 
-/// 代理列表的呈现形式（上游 `ProxiesType`）。
 enum ProxiesType {
   tab('标签页'),
   list('列表');
@@ -28,7 +24,6 @@ enum ProxiesType {
   final String label;
 }
 
-/// 节点排序方式（上游 `ProxiesSortType`）。
 enum ProxiesSortType {
   none('默认'),
   delay('延迟'),
@@ -39,7 +34,6 @@ enum ProxiesSortType {
   final String label;
 }
 
-/// 分组标签页的列密度（上游 `ProxiesLayout`）。
 enum ProxiesLayout {
   tight('紧凑'),
   standard('标准'),
@@ -50,7 +44,6 @@ enum ProxiesLayout {
   final String label;
 }
 
-/// 节点卡片的尺寸档（上游 `ProxyCardType`）。
 enum ProxyCardType {
   loose('宽松'),
   standard('标准'),
@@ -61,7 +54,6 @@ enum ProxyCardType {
   final String label;
 }
 
-/// 分组图标样式（上游 `ProxiesIconStyle`，仅列表形式可用）。
 enum ProxiesIconStyle {
   filled('色块'),
   plain('纯图标'),
@@ -72,7 +64,6 @@ enum ProxiesIconStyle {
   final String label;
 }
 
-/// 策略组类型（上游 `GroupType`）。
 enum ProxyGroupType {
   selector('select', '手动选择', true),
   urlTest('url-test', '自动测速', true),
@@ -82,27 +73,25 @@ enum ProxyGroupType {
 
   const ProxyGroupType(this.raw, this.label, this.isComputedSelected);
 
-  /// mihomo 配置里的原始类型名，只在需要与配置对齐时使用。
+  /// Raw type name from the mihomo config, used when aligning with it.
   final String raw;
 
   final String label;
 
-  /// 只有这三类组的组内选择是用户语义上的「当前节点」。
+  /// Only these groups' in-group choice is the user's "current node".
   final bool isComputedSelected;
 }
 
-/// 一个节点。
 class MockProxy {
   const MockProxy({required this.name, required this.protocol, this.delayMs});
 
   final String name;
   final ProxyProtocol protocol;
 
-  /// 上一次测速结果：`null` 未测试，负数代表超时。
+  /// Last latency test: null is untested, negative means timeout.
   final int? delayMs;
 }
 
-/// 一个策略组。
 class MockProxyGroup {
   const MockProxyGroup({
     required this.name,
@@ -115,19 +104,17 @@ class MockProxyGroup {
   final String name;
   final ProxyGroupType type;
 
-  /// 列表形式的组图标名，解析在 `lib/widgets/glyph_lookup.dart`。
+  /// List-layout icon name, resolved in `lib/widgets/glyph_lookup.dart`.
   final String glyphName;
 
   final List<MockProxy> proxies;
 
-  /// 组内当前选中的节点名。
   final String? selectedName;
 }
 
-/// 测速用的探测地址（上游默认 `https://www.gstatic.com/generate_204`）。
+/// Probe URL (upstream default `https://www.gstatic.com/generate_204`).
 const mockProxyTestUrl = 'https://www.gstatic.com/generate_204';
 
-/// 6 个策略组，节点数 3–9 不等，覆盖全部协议与四种延迟档。
 const mockProxyGroups = <MockProxyGroup>[
   MockProxyGroup(
     name: '🚀 节点选择',
@@ -238,7 +225,6 @@ const mockProxyGroups = <MockProxyGroup>[
   ),
 ];
 
-/// 一个外部提供者（上游 `ExternalProvider`）。
 class MockProxyProvider {
   const MockProxyProvider({
     required this.name,
@@ -252,20 +238,16 @@ class MockProxyProvider {
   final String name;
   final String url;
 
-  /// 提供者里的节点条数。
   final int count;
 
-  /// 上次更新的展示时间。
   final String updatedAt;
 
-  /// 自动更新的间隔小时数，0 表示不自动更新。
   final int intervalHours;
 
-  /// mihomo 的节点名过滤正则，空表示不过滤。
+  /// mihomo node-name filter regex; empty means no filtering.
   final String? filter;
 }
 
-/// 4 个演示用外部提供者。
 const mockProxyProviders = <MockProxyProvider>[
   MockProxyProvider(
     name: '机场主订阅',

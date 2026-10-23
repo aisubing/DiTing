@@ -1,22 +1,4 @@
-/// 流量统计：时间窗口 + 应用流量排行（读旧库 `app_traffic_daily`）。
-///
-/// 结构对齐 1.4.3 `normal/ui/AppTrafficStatsScreen.kt`：
-/// 时间窗口切换 → 概览数字 → 实时速率位 → 归因说明入口 → 筛选条
-/// （搜索 / 排序 / 隐藏系统应用）→ `AppTrafficRankItem` 排行 →
-/// `AppTrafficDetailDialog`（点行看归因）→ 空态「暂无流量数据」。
-///
-/// ## 哪些数字是真的
-/// 排行与三格合计全部来自 `app_traffic_daily`：一包一天一行，窗口由顶部
-/// 档位选择，`today` 走 `byDate`，其余走 `dateRange` / `allHistory`
-/// （SQL 与 `AppTrafficDao` 逐字一致，见 `app_traffic_repository.dart`）。
-/// 搜索、排序、隐藏系统应用都在 Dart 侧过滤，见 `_ranked`。
-///
-/// ## 两档没有数据源，做成禁用项而不是删掉
-/// 旧版 `TrafficTimeRange` 有「本次会话」档、`TrafficSortMode` 有「按实时速率」
-/// 档，两者都需要内核按会话回报累计值 / 按秒回报速率序列；本仓的按天表只存
-/// 「日期 + 包名 + 上下行累计字节」，没有这两列。旧版这里还有一张
-/// `TrafficGaugeCard` 实时速率卡——本仓的原生侧**有** `TrafficRateMonitor`，
-/// 因此那一格换成了真实读数（见 `_LiveRateCard`），只有极速模式如实说明缺失。
+/// Traffic stats: time window plus per-app ranking, read from `app_traffic_daily`.
 library;
 
 import 'package:diting/data/db/app_traffic_repository.dart';
@@ -33,7 +15,6 @@ import 'package:material_ui/material_ui.dart';
 part 'traffic_filters.dart';
 part 'traffic_rows.dart';
 
-/// 流量页。
 class TrafficPage extends ConsumerStatefulWidget {
   const TrafficPage({super.key});
 
@@ -44,13 +25,13 @@ class TrafficPage extends ConsumerStatefulWidget {
 class _TrafficPageState extends ConsumerState<TrafficPage> {
   final _search = TextEditingController();
 
-  /// 进页面时抓住 notifier 引用：`dispose()` 里不能再 `ref.read`。
+  /// Grab the notifier on entry: dispose() cannot call ref.read.
   SpeedSeriesNotifier? _speed;
 
   @override
   void initState() {
     super.initState();
-    // 这一页也显示实时速率，与首页共用同一条序列（引用计数在 provider 里）。
+    // Shares the same rate series as the home page; the provider ref-counts it.
     _speed = ref.read(speedSeriesProvider.notifier);
     _speed!.attachPolling();
   }
@@ -146,8 +127,8 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          // 档位行统一走 [ChipRow]：`Wrap` 不给交叉轴约束，`TonalChip` 会停在
-          // 18dp 的文本行高上；放不下时还会换行，把下面的卡片整列推低。
+          // Range chips go through ChipRow: a bare Wrap gives no cross-axis constraint and
+          // wraps, pushing every card below it down.
           child: ChipRow(
             children: [
               for (final option in _rangeOptions)
@@ -246,8 +227,7 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
     );
   }
 
-  /// 空态说明：区分「真的没有流量」「被搜索过滤掉」「被隐藏系统应用过滤掉」。
-  /// 三者混成一句会让用户以为统计坏了。
+  /// Empty-state text, distinguishing no data from filtered-out and hidden-system.
   static String _emptyDescription({
     required String search,
     required bool hideSystemApps,
@@ -267,7 +247,7 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
         '换个时间窗口或启动隧道产生流量后再看。';
   }
 
-  /// 禁用档位的说明。用提示条而不是静默无反应：用户点了一定要得到答案。
+  /// Disabled option explanation. A hint bar rather than silence: a tap must answer.
   void _explainUnavailable(String label, String? reason) {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
@@ -277,11 +257,8 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
     );
   }
 
-  /// 清除历史：确认框文案逐字照抄旧版
-  /// （`AppTrafficStatsScreen` 的 `showClearConfirmDialog`）。
-  ///
-  /// 用传入的 `context.mounted` 而不是 `State.mounted` 做异步守卫：两者在这里
-  /// 恰好指向同一个 element，但 analyzer 需要与「用哪个 context」配对的那个判断。
+  /// Clear history: the confirmation wording is copied verbatim from upstream. The async
+  /// guard uses the passed context.mounted, which pairs with the context the analyzer sees.
   Future<void> _confirmClear(BuildContext context) async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
@@ -333,11 +310,9 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
   }
 }
 
-/// 排序 + 关键词过滤 + 隐藏系统应用。
-///
-/// 全部在 Dart 侧做（不走第二份 SQL）：行数等于「应用数 × 天数」，一个月的
-/// 完整历史也就几百行，直接在内存里筛比再发一次查询快，也不会与排行 SQL
-/// 的 `ORDER BY` 产生两套排序口径。
+/// Sort, keyword filter and system-app hiding, all in Dart rather than a second SQL pass: a
+/// month of history is a few hundred rows, and one sort definition avoids disagreeing with
+/// the ranking query's ORDER BY.
 List<AppTrafficDaily> _ranked(
   List<AppTrafficDaily> rows,
   TrafficSort sort,
@@ -359,7 +334,7 @@ List<AppTrafficDaily> _ranked(
       TrafficSort.download => a.rxBytes.compareTo(b.rxBytes),
       TrafficSort.upload => a.txBytes.compareTo(b.txBytes),
     };
-    // 倒序：SQL 也是 DESC，正序会让「第 1 个应用」变成用得最少的那个。
+    // Descending, matching the SQL: ascending would put the least-used app first.
     return -result;
   });
   return filtered;

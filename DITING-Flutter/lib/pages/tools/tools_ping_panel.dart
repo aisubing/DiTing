@@ -1,12 +1,8 @@
 part of 'tools_page.dart';
 
-/// Ping 面板：目标 + 次数 + 真实 ICMP 结果。
-///
-/// 数据源是 `DiagnosticsRunner.ping`（原生 `NetworkPingTool`）。三件事必须如实呈现：
-/// 1. `success=false` 时渲染失败提示，不能把 0% 丢包当成通过；
-/// 2. `measuredWithFallback=true` 时必须提示「系统 ICMP 受限，已用 TCP 回退测量」——
-///    此时的时延是握手耗时，与 ICMP RTT 不可比；
-/// 3. 逐条 reply 的超时包标「超时」，不参与 min/avg/max（原生侧已排除）。
+/// Ping panel: target, count and real ICMP results from `DiagnosticsRunner.ping`.
+/// `success=false` renders a failure, `measuredWithFallback=true` means the latency is TCP
+/// handshake time, not ICMP RTT.
 class _PingPanel extends ConsumerStatefulWidget {
   const _PingPanel();
 
@@ -70,7 +66,7 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
             onSubmitted: (_) => _run(),
           ),
         ),
-        // 次数档位与旧版 `PingSection` 的 `countOptions` 一致：只有 4 / 10 两档。
+        // Same count options as the legacy `PingSection`: 4 and 10 only.
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: SegmentedControl<int>(

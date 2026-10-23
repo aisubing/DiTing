@@ -2,8 +2,7 @@
 import 'package:diting/ui/color.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// `.agents/surfaces.md` explains the levels and why dark mode never steps
-/// back down.
+/// `.agents/surfaces.md` explains the levels and why dark mode never steps down.
 enum SurfaceLevel {
   page,
   card,
@@ -200,8 +199,7 @@ extension AppSurfaceThemeExt on ThemeData {
 const _focusRingWidth = 2.0;
 const _focusRingGap = 1.0;
 
-/// The focus ring of `.agents/surfaces.md`; one that [standsOff] clears the
-/// edge, which a primary fill or a button's own glass would hide it on.
+/// The focus ring of `.agents/surfaces.md`; [standsOff] clears an edge that would hide it.
 BorderSide focusRingSide(ColorScheme colorScheme, {bool standsOff = false}) =>
     BorderSide(
       color: colorScheme.primary,
@@ -218,7 +216,6 @@ ButtonStyle focusRingStyle(ColorScheme colorScheme, {bool standsOff = false}) =>
       }),
     );
 
-/// [focusRingSide] on [shape] while focus is in [child], for ink not a button.
 class FocusRing extends StatefulWidget {
   const FocusRing({
     super.key,

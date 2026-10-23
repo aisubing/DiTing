@@ -17,9 +17,6 @@ class _OpenOpacity extends Animation<double>
 
 enum _Slot { closed, open }
 
-/// Grows the container from the closed child's rect to the whole route by
-/// painting alone: the open page is laid out once at its final size and
-/// moved under a clip, and the closed child is scaled to the rect's width.
 class _ContainerTransition
     extends SlottedMultiChildRenderObjectWidget<_Slot, RenderBox> {
   const _ContainerTransition({
@@ -167,7 +164,6 @@ class _RenderContainerTransition extends RenderBox
 
   Rect? get _closedRect => _route._closedRect.value;
 
-  /// The container's rect, or null once the route has settled.
   Rect? get _rect {
     if (_route._settled) {
       return null;

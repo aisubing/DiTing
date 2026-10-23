@@ -54,7 +54,6 @@ final _flatProfile = List<double>.unmodifiable(
 /// How much of iOS's glass the panes draw (.agents/architecture.md).
 enum LiquidGlassQuality { standard, ultra }
 
-/// Whether the navigation dock and the buttons of a page's bar are glass.
 class LiquidGlassScope extends InheritedWidget {
   const LiquidGlassScope({
     super.key,
@@ -79,8 +78,7 @@ class LiquidGlassScope extends InheritedWidget {
       enabled != oldWidget.enabled || quality != oldWidget.quality;
 }
 
-/// Lengths are dp. The shader shrinks [bevel] and [refraction] to fit a pane
-/// too small for them, so that a button bends in proportion to the dock.
+/// Lengths are dp. The shader shrinks [bevel] and [refraction] to fit a small pane.
 @immutable
 class LiquidGlass extends StatelessWidget {
   const LiquidGlass({
@@ -95,22 +93,18 @@ class LiquidGlass extends StatelessWidget {
 
   final LiquidGlassStyle style;
 
-  /// Shapes the pane to its path in place of the pill. The glass bends
-  /// to the path by how far it reaches from the pane's center in each
-  /// direction, so it must meet every ray from the center once.
+  /// Shapes the pane to its path instead of the pill; the path must meet every ray once.
   final CustomClipper<Path>? clipper;
 
   final List<BoxShadow> shadows;
 
   final bool pressed;
 
-  /// Lights the pane in place of the glow [pressed] lights at its center.
   final LiquidGlassGlow? glow;
 
   final Widget? child;
 
-  /// Builds the scenes of [capture] without panes, for a snapshot: offscreen
-  /// a pane has no backdrop to bend and comes out a flat tint.
+  /// Builds the scenes of [capture] without panes, for a snapshot: offscreen a pane only tints.
   static T withoutPanes<T>(T Function() capture) {
     _LiquidGlassLayer._skipped++;
     try {
@@ -120,7 +114,6 @@ class LiquidGlass extends StatelessWidget {
     }
   }
 
-  /// Replaces a button's fill with glass.
   static ButtonStyle buttonStyle(
     LiquidGlassStyle Function(Set<WidgetState> states) styleOf,
   ) {
@@ -179,7 +172,6 @@ final class LiquidGlassCorners extends LiquidGlassShape {
   final BorderRadius radius;
 }
 
-/// A path laid out from the pane's top left, as [LiquidGlass.clipper] gives.
 final class LiquidGlassOutline extends LiquidGlassShape {
   const LiquidGlassOutline(this.path);
 
@@ -196,7 +188,7 @@ class LiquidGlassPane {
   Path? _profiled;
   List<double> _profile = _flatProfile;
 
-  /// A pane moving within [hold] keeps one capture (.agents/architecture.md).
+  /// A pane moving within [hold] keeps one capture.
   void paint(
     PaintingContext context,
     Rect rect, {
@@ -298,8 +290,7 @@ abstract final class _GlassProgram {
   static ui.FragmentProgram? _program;
   static Future<void>? _loading;
 
-  /// Final: a bundled shader that failed once fails again, and every attempt
-  /// loads synchronously on the UI isolate.
+  /// Final: a shader that failed once fails again, and every attempt loads on the UI isolate.
   static var _failed = false;
   static final _waiting = <VoidCallback>{};
 

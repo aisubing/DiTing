@@ -28,14 +28,7 @@ const double _barPadding = 4;
 const double _edgeMargin = 21;
 const double _shadowRoom = 8;
 
-/// The quiet space [NavigationDock.insetOf] reserves between the last line of
-/// scrolling content and the top of the floating bar.
-///
-/// Without it the content's foot stops level with the bar's glass, which on a
-/// tall device reads as "the last card is cut off by the bottom bar" — the
-/// shadow spread eats the little room [_shadowRoom] leaves. This is a page
-/// concern, so it lives in the inset rather than in the bar's own footprint:
-/// the bar still floats exactly where it did, only the content stops earlier.
+/// Quiet space [NavigationDock.insetOf] keeps below content, clear of the bar's shadow.
 const double dockContentGap = 16;
 const double _hitSlop = 8;
 const double _maxItemExtent = 86;
@@ -120,7 +113,6 @@ double _rubberBand(double overshoot, double limit) {
 
 double _saturate(double value) => 1 - 2 / (math.exp(2 * value) + 1);
 
-/// The lens's box, measured from the start edge of the destination at 0.
 Rect _lensRect({
   required double position,
   required double stretch,
@@ -140,8 +132,7 @@ Rect _lensRect({
   );
 }
 
-/// Spaces destinations as iOS's tab bar does: the resting lens overhangs its
-/// destination by [_barPadding] and never narrows below [_minLensWidth].
+/// Spaces destinations as iOS's tab bar does, overhanging by [_barPadding].
 ({double pitch, double lens, double inset}) _dockLayout(
   double span,
   int count,

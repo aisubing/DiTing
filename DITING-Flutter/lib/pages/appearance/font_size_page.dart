@@ -1,13 +1,3 @@
-/// 字号设置页（「字体设置 → 字号」的二级页）。
-///
-/// 旧版把字号做成外观设置里的一段滑杆，与「纯黑」「字体」同屏；用户要求把它
-/// 收进「字体设置」这个二级页底下，让外观页只留入口、字号页只放一段可控的
-/// 预览 + 滑杆。
-///
-/// 滑杆本身复用 [SliderCardRow]，与外观子树其它输入行同一套视觉；范围取
-/// `minTextScale`–`maxTextScale`（0.8–1.4），并给出 0.1 的刻度——和
-/// `clampTextScale` 的夹取边界一致，超过这个范围的输入在 provider 里会被夹回，
-/// 这里不重复夹。
 library;
 
 import 'package:diting/app/theme/layout.dart';
@@ -18,7 +8,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 字号设置页。
 class FontSizePage extends ConsumerWidget {
   const FontSizePage({super.key});
 
@@ -57,10 +46,7 @@ class FontSizePage extends ConsumerWidget {
   }
 }
 
-/// 顶部预览：用当前字号渲染一段示例，改动滑杆时立刻能看出大小。
-///
-/// `MediaQuery` 在全局已按 `textScaleProvider` 缩放整棵树，所以这里不再手动
-/// 乘缩放系数——否则预览会比实际界面大两倍。
+/// `MediaQuery` already scales from `textScaleProvider`; multiplying again would double it.
 class _SizePreview extends StatelessWidget {
   const _SizePreview();
 

@@ -1,9 +1,5 @@
-/// Block response settings of DITING 1.4.3: fixed mode + dynamic policy.
-///
-/// Fixed mode stores `block_response_mode`; the dynamic policy (disabled by
-/// default upstream) stores four further keys with hard clamps. `buildDnsConfig`
-/// publishes both, so the page must edit these keys directly rather than local
-/// snapshot state.
+/// Block response settings: the fixed mode in `block_response_mode` plus the dynamic policy keys
+/// with hard clamps; `buildDnsConfig` publishes both.
 library;
 
 import 'package:diting/data/prefs/legacy_settings.dart';
@@ -20,7 +16,6 @@ enum BlockResponseMode {
 
   const BlockResponseMode(this.storageValue, this.label, this.description);
 
-  /// Value stored in `block_response_mode`.
   final String storageValue;
   final String label;
   final String description;
@@ -33,7 +28,6 @@ enum BlockResponseMode {
   }
 }
 
-/// Immutable view of the persisted dynamic policy.
 class DynamicBlockPolicy {
   const DynamicBlockPolicy({
     required this.enabled,
@@ -47,7 +41,6 @@ class DynamicBlockPolicy {
   final int windowSeconds;
   final int nxDomainDurationSeconds;
 
-  /// Upstream defaults: off, 5 requests / 60 s / 300 s.
   static const defaults = DynamicBlockPolicy(
     enabled: false,
     requestThreshold: 5,

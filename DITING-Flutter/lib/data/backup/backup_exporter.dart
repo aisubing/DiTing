@@ -1,21 +1,5 @@
-/// 备份导出：把勾选的分组序列化成一份 JSON。
-///
-/// ## 数据来源
-///
-/// | 分组 | 来源 |
-/// |---|---|
-/// | providers / bootstrap / cache / outbound / appearance / system | prefs（`LegacySettings`） |
-/// | subscriptions | `subscription` + `subscription_group` 表 |
-/// | domainRules / rewriteDomain / rewriteCname / addressRules | 四张规则表 |
-/// | excluded / blocked / allowlist / httpInspection | prefs 里的四份名单 |
-///
-/// ## 不导出什么
-///
-/// - **出站代理的账号密码**：旧版页面就写着「不含账号密码」，因为密码由
-///   AndroidKeyStore 加密，导出到明文 JSON 等于把凭据写到用户随便能翻的地方。
-/// - **日志 / 流量 / 缓存内容**：备份的是配置，不是运行数据。旧版同样不导。
-/// - **CA 私钥**：`ca.key` 只在应用私有目录里，导出它等于让任何拿到文件的人
-///   能对用户的 HTTPS 流量做中间人。
+/// Backup export: serializes the selected groups into one JSON document. Proxy credentials and the
+/// CA private key are never exported.
 library;
 
 import 'dart:convert';
@@ -32,7 +16,6 @@ import 'package:diting/data/vpn/provider_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// 导出上下文：一个已打开的规则库 + prefs 视图。
 class BackupExportSource {
   const BackupExportSource({
     required this.settings,
@@ -42,14 +25,11 @@ class BackupExportSource {
 
   final LegacySettings settings;
 
-  /// 规则/订阅所在的库；`null` 表示全新安装（这些分组导出为空表）。
   final Database? database;
 
-  /// 某张表读取失败时的回调（用于在结果里如实报告跳过了什么）。
   final void Function(String message)? onSkip;
 }
 
-/// 一次导出的结果。
 class BackupExportResult {
   const BackupExportResult({
     required this.content,
@@ -59,15 +39,13 @@ class BackupExportResult {
     this.skipped = const [],
   });
 
-  /// 完整 JSON 文本。
   final String content;
   final String fileName;
   final List<BackupGroup> included;
 
-  /// 每个分组导出的条目数，用于在导出后告诉用户「备份里到底有什么」。
   final Map<BackupGroup, int> counts;
 
-  /// 读取失败的项（表缺失、列缺失），如实上报而不是静默当 0。
+  /// Entries that could not be read, reported rather than counted as zero.
   final List<String> skipped;
 
   int get totalItems => counts.values.fold(0, (sum, value) => sum + value);
@@ -75,13 +53,12 @@ class BackupExportResult {
   bool get isEmpty => totalItems == 0;
 }
 
-/// 备份序列化器。
 class BackupExporter {
   const BackupExporter();
 
   static const _encoder = JsonEncoder.withIndent('  ');
 
-  /// 只序列化 [groups] 里的分组；不传表示全部分组。
+  /// Serializes [groups] only; all groups when null.
   Future<BackupExportResult> export(
     BackupExportSource source, {
     Set<BackupGroup>? groups,
@@ -100,8 +77,7 @@ class BackupExporter {
         counts[group] = _countOf(value);
         included.add(group);
       } catch (error) {
-        // 单组失败不中断整份备份：其余分组仍然可用，而一个「导出了 12/15 组」
-        // 的备份比「导出失败，什么都没有」有用得多。
+        // One failing group must not abort the backup; a partial backup beats none.
         debugPrint('backup export skipped ${group.key}: $error');
         skipped.add('${group.title}：$error');
         source.onSkip?.call('${group.title}：$error');
@@ -115,9 +91,7 @@ class BackupExporter {
       'exportedAt': now.millisecondsSinceEpoch,
       'selection': [for (final group in included) group.key],
       'data': data,
-      // 同时在根节点平铺一份 1.4.3 认识的字段：同一份文件既能被 2.0 再次
-      // 导入，也能直接导回 1.4.3。旧版解析器读不到 `format`/`data` 会忽略
-      // 它们，反之亦然，所以两套键共存不会互相干扰。
+      // Legacy flat fields are written too, so both readers accept the file.
       ...LegacyBackupWriter.toLegacy(data, source.settings),
     };
 
@@ -131,7 +105,7 @@ class BackupExporter {
     );
   }
 
-  /// 一个分组的 JSON 值。返回 `Map`（结构化配置）或 `List`（规则/订阅行）。
+  /// One group as JSON: a `Map` for structured config, a `List` for rules.
   Future<Object?> _valueOf(
     BackupGroup group,
     BackupExportSource source,
@@ -166,11 +140,6 @@ class BackupExporter {
     BackupGroup.system => _system(source),
   };
 
-  /// 自定义服务商 + 选择状态。
-  ///
-  /// 1.4.3 把「选了哪个服务商、用哪种解析模式、各模式的候选列表」平铺在备份
-  /// 根节点，2.0 之前的导出只写了 `user_providers_json`，于是这些选择只能靠
-  /// 用户重装后再手点一遍。这里把它们一并收进服务商分组。
   Object? _providers(BackupExportSource source) {
     final settings = source.settings;
     final raw = settings.userProvidersJson;
@@ -180,18 +149,14 @@ class BackupExporter {
         final decoded = jsonDecode(raw);
         if (decoded is List) items = decoded;
       } on FormatException {
-        // 坏 JSON 如实跳过：塞进备份只会把损坏传给下一次恢复。
+        // Skip corrupt JSON rather than propagate the damage to a restore.
         throw const BackupFormatException('服务商配置不是合法 JSON');
       }
     }
     return {'items': items, 'selection': _providerSelection(settings)};
   }
 
-  /// 服务商选择状态（对应 1.4.3 的 `selectedProvider` / `resolutionMode` /
-  /// 各模式引用列表 / 主页可见性过滤）。
-  ///
-  /// 引用里带 `name` 与 `protocol`：旧版按 `(name, protocol)` 回退匹配，只有
-  /// id 的引用在本机找不到时会整个丢掉。
+  /// Provider selection; references carry `name` and `protocol` so they resolve on another device.
   Map<String, Object?> _providerSelection(LegacySettings settings) {
     final catalog = _providerCatalog(settings);
     final selectedId = settings.selectedProviderId;
@@ -231,7 +196,6 @@ class BackupExporter {
     };
   }
 
-  /// id → (名称, 协议) 的查表，预设与自定义合并。
   Map<String, ({String name, String protocol})> _providerCatalog(
     LegacySettings settings,
   ) {
@@ -301,7 +265,7 @@ class BackupExporter {
     };
   }
 
-  /// 出站代理：只导出协议/主机/端口/目标应用，**不含账号密码**。
+  /// Outbound proxy: protocol, host, port and target app only; no credentials.
   Object? _outbound(BackupExportSource source) {
     final settings = source.settings;
     return {
@@ -310,8 +274,7 @@ class BackupExporter {
       'host': settings.rawValue('outbound_proxy_host'),
       'port': settings.rawValue('outbound_proxy_port'),
       'proxyAppPackage': settings.rawValue('outbound_proxy_app'),
-      // 明确写进备份：让用户在导入侧看到「这里本来就没有凭据」，
-      // 而不是以为导入漏了。
+      // Written explicitly so their absence does not look like a lost field.
       'credentialsExcluded': true,
     };
   }
@@ -322,9 +285,7 @@ class BackupExporter {
     final repository = SubscriptionRepository(db);
     final groups = await repository.groups();
     final rows = await repository.all();
-    // 镜像模板表没有仓储层，直接读：订阅行只记名字，模板内容是另一张表。
-    // 1.4.x 早期库可能还没有这张表（也没有自定义模板可导），缺表不该让整组
-    // 订阅导出失败，所以这里单独兜住。
+    // `mirror_template` has no repository layer; early databases may lack the table.
     var templates = const <Map<String, Object?>>[];
     if (await _hasTable(db, 'mirror_template')) {
       templates = await db.query(
@@ -378,12 +339,8 @@ class BackupExporter {
     return null;
   }
 
-  /// 域名规则：黑白名单放在同一组，用每条规则的 `kind` 区分。
-  ///
-  /// 2.0 早期的导出只写了 `pattern`/`enabled`/`important`/`group`，把
-  /// `appScope`（只对某个应用生效）、`appInverted`（对该应用反选）与
-  /// `rawLine`（原始规则行，AdGuard 语法里的 `$app=`、`@@` 都在这里）全丢了，
-  /// 于是「只屏蔽某个 App」的规则恢复后会变成全局屏蔽。
+  /// Block and allow rules share one group, split by each rule's `kind`; `appScope`, `appInverted`
+  /// and `rawLine` must be kept.
   Future<Object?> _rules(BackupExportSource source, BackupGroup group) async {
     final db = source.database;
     if (db == null) return const [];
@@ -396,8 +353,7 @@ class BackupExporter {
       final userRuleIds = await _userRuleIds(db, sourceTable);
       final rows = await db.query(table, orderBy: 'id DESC');
       for (final row in rows) {
-        // 只导出用户自己加的：预设由应用自带、订阅由订阅链接重建，
-        // 备份它们会让恢复时产生重复行。
+        // User-added only: presets ship with the app, subscriptions rebuild.
         if (!userRuleIds.contains(row['id'] as int)) continue;
         exported.add({
           'pattern': row['pattern'],
@@ -414,7 +370,7 @@ class BackupExporter {
     return exported;
   }
 
-  /// 用户来源的规则 id 集合（source 表里 `useradd`/`local_import`/`local_hosts`）。
+  /// Ids of user-origin rules (`useradd`/`local_import`/`local_hosts`).
   Future<Set<int>> _userRuleIds(Database db, String sourceTable) async {
     final rows = await db.query(sourceTable, columns: ['ruleId', 'source']);
     return {
@@ -424,7 +380,7 @@ class BackupExporter {
     };
   }
 
-  /// 覆写规则（按 targetType 分两档：IPv4/IPv6 与 CNAME）。
+  /// Rewrite rules, split by `targetType` into IPv4/IPv6 and CNAME.
   Future<Object?> _rewriteRules(
     BackupExportSource source,
     Set<String> targetTypes,
@@ -447,7 +403,6 @@ class BackupExporter {
     ];
   }
 
-  /// 用户来源的覆写规则 id 集合（`rewrite_rule_source.source` 为 `useradd` 等）。
   Future<Set<int>> _userRewriteRuleIds(Database db) async {
     final rows = await db.query(
       'rewrite_rule_source',
@@ -499,8 +454,7 @@ class BackupExporter {
       'hapticEnabled': settings.hapticEnabled,
       'bottomBarIds': settings.bottomBarIds,
       'customBackgroundEnabled': settings.customBackgroundEnabled,
-      // 1.4.3 的首页每个组件有自己的透明度，2.0 统一成一个滑块；
-      // 备份仍按旧键逐个写出，老版本才认得出这份文件。
+      // One opacity slider now; per-widget keys are still written for older versions.
       'homePowerButtonOpacity': _opacity(
         settings.homeOpacity('home_power_button_opacity'),
       ),
@@ -520,10 +474,8 @@ class BackupExporter {
     };
   }
 
-  /// 透明度取两位小数再写出。
-  ///
-  /// 安卓用 Java `float` 存透明度，`0.8` 读回来是 `0.800000011920929`；直接
-  /// 写进备份文件既难看，也让「同一份备份再导入」的比较更难对齐。
+  /// Rounds opacity to two decimals; Android stores it as a Java `float` (`0.8` reads back as
+  /// `0.800000011920929`).
   double _opacity(double value) => (value * 100).roundToDouble() / 100;
 
   Object? _system(BackupExportSource source) {
@@ -567,7 +519,6 @@ class BackupExporter {
     };
   }
 
-  /// 条数统计：`List` 数元素、`Map` 数键（配置类的「条目数」就是设置项数）。
   static int _countOf(Object? value) => switch (value) {
     null => 0,
     List() => value.length,
@@ -575,7 +526,7 @@ class BackupExporter {
     _ => 1,
   };
 
-  /// `Set<String>` → 排序后的列表；排序让两份等价的备份逐字节相同。
+  /// `Set<String>` to a sorted list; sorting makes equal backups byte-identical.
   static List<String> _stringList(Iterable<String> values) =>
       values.toList()..sort();
 }

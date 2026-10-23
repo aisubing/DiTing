@@ -1,14 +1,9 @@
-/// 带缩略图的选择组：每一项左边是一张缩略图，右边是名称与选中标记。
-///
-/// 上游 `views/theme_preview.dart` 的 `PreviewChoiceGroup` / `PreviewChoice`。
-/// 外观类的选项几乎都是「看效果才知道选什么」（浮条还是普通底栏、淡入还是
-/// 滑动），所以这里不放纯文字的单选行。
+/// Choice group with thumbnails (upstream `PreviewChoiceGroup`).
 library;
 
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 一个候选项。
 class PreviewChoice<T> {
   const PreviewChoice({
     required this.value,
@@ -20,14 +15,13 @@ class PreviewChoice<T> {
   final T value;
   final String label;
 
-  /// 左侧缩略图；调用方负责限制尺寸。
+  /// Thumbnail on the left; the caller constrains its size.
   final Widget pictogram;
 
-  /// 可选的一行说明，只在文字标签不足以区分时给。
+  /// Optional one-line note when the label alone cannot tell items apart.
   final String? description;
 }
 
-/// 标题 + 一组候选项。
 class PreviewChoiceGroup<T> extends StatelessWidget {
   const PreviewChoiceGroup({
     super.key,
@@ -50,8 +44,8 @@ class PreviewChoiceGroup<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InfoHeader(info: info),
-        // 横向留白交给 `generateSection`/`ListFooter` 自己给（它们各自带 16），
-        // 外层再加一次会让组头比别组缩进 32。
+        // Horizontal padding comes from `generateSection`/`ListFooter`, which each
+        // add 16; adding it here too would indent the header by 32.
         Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Column(

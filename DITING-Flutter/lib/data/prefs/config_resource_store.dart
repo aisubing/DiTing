@@ -1,8 +1,5 @@
-/// Persists icon sets, user agents and on-demand SSID rules as JSON blobs.
-///
-/// These lists are always replaced as a whole, so one JSON value per table
-/// replaces three tables, DAOs and migrations. They live in their own
-/// container to stay apart from the legacy-compatible keys of `LegacySettings`.
+/// Icon sets, user agents and on-demand SSID rules as whole JSON blobs, in a container of their
+/// own.
 library;
 
 import 'dart:convert';
@@ -11,11 +8,10 @@ import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:flutter/foundation.dart';
 
-/// Reads and writes the three tables.
 class ConfigResourceStore {
   const ConfigResourceStore(this._store);
 
-  /// Own container; deliberately not one of the legacy names.
+  /// Deliberately not one of the legacy container names.
   static const container = 'diting_config_resources';
 
   static const _iconSetsKey = 'icon_sets_json';
@@ -26,8 +22,7 @@ class ConfigResourceStore {
 
   final LegacyPrefsStore _store;
 
-  /// Reads the tables; each group falls back to its defaults independently, so
-  /// one corrupt blob does not reset the others.
+  /// Each group falls back to its defaults independently, so one corrupt blob resets nothing else.
   ConfigResourceSnapshot load() {
     final iconSets = _decodeList(_iconSetsKey, _iconSetFromMap);
     final userAgents = _decodeList(_userAgentsKey, _userAgentFromMap);
@@ -37,8 +32,8 @@ class ConfigResourceStore {
     return ConfigResourceSnapshot(
       iconSets: iconSets ?? mockIconSets,
       userAgents: userAgents ?? mockUserAgents,
-      // Empty string means "no override" was chosen; a missing key means never set.
-      // Both read as null.
+      // An empty string means "no override" was chosen, a missing key was never set. Both read as
+      // null.
       selectedUserAgent: selected == null || selected.isEmpty ? null : selected,
       ssidRules: ssidRules ?? mockSsidRules,
       onDemand: _store.read(container, _onDemandKey) == true,
@@ -68,7 +63,7 @@ class ConfigResourceStore {
     ]),
   );
 
-  /// Null means no override; an empty string is written to tell it from unset.
+  /// An empty string is written to tell "no override" from unset.
   void saveSelectedUserAgent(String? value) => _store.putString(
     container,
     _selectedUaKey,
@@ -91,9 +86,7 @@ class ConfigResourceStore {
 
   void saveOnDemand(bool value) => _store.putBool(container, _onDemandKey, value);
 
-  /// Decodes one group; a missing key returns null so defaults are used.
-  ///
-  /// An empty array is valid and must not be replaced by the defaults.
+  /// A missing key returns null so defaults are used; an empty array is valid and stays.
   List<T>? _decodeList<T>(
     String key,
     T? Function(Map<String, Object?>) decode,
@@ -156,7 +149,6 @@ class ConfigResourceStore {
   }
 }
 
-/// Snapshot of all three tables.
 class ConfigResourceSnapshot {
   const ConfigResourceSnapshot({
     required this.iconSets,

@@ -1,11 +1,5 @@
-/// 配置域的「保留资源」状态：图标集 / User-Agent / 按需连接。
-///
-/// 上一轮这里是 `part of config_providers.dart`，与通用 / 网络 / 覆写 / 策略表 /
-/// 嗅探五族配置共库。那五族属于 FlClash 的内核配置，1.4.3 没有对应界面，已随
-/// 内核配置页一并删除；本库因此独立出来，只保留用户要求保留的三张表。
-///
-/// 一个 notifier 管三组数据而不是三个 notifier：三者操作都是「整表替换」，没有
-/// 交叉逻辑，拆开只会多出三份几乎相同的 boilerplate。
+/// Icon sets, user agents and on-demand connection in one notifier: every operation replaces a
+/// whole table.
 library;
 
 import 'package:diting/data/mock_config_resources.dart';
@@ -13,7 +7,6 @@ import 'package:diting/data/prefs/config_resource_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 资源配置域的整表快照。
 class ConfigResources {
   const ConfigResources({
     required this.iconSets,
@@ -26,10 +19,7 @@ class ConfigResources {
   final List<MockIconSet> iconSets;
   final List<MockUserAgent> userAgents;
 
-  /// 当前选中的 UA；null 表示「不覆写」（沿用订阅或内核默认）。
-  ///
-  /// 上一轮这一位放在 `generalConfigProvider` 里，而那一族随内核配置删除。
-  /// 一行保留项不值得拖回整套通用配置，因此并入本快照。
+  /// Selected user agent; null means no override (subscription or engine default).
   final String? selectedUserAgent;
   final List<MockSsidRule> ssidRules;
   final bool onDemand;
@@ -53,13 +43,7 @@ class ConfigResources {
 }
 
 class ConfigResourcesNotifier extends Notifier<ConfigResources> {
-  /// 每次改动后把对应那一组写回 prefs。
-  ///
-  /// 上一轮这三张表只活在内存里：加完图标集、切完按需连接，杀进程就全没了，
-  /// 而界面没有任何提示说「不保存」——用户会以为设置生效了。
-  ///
-  /// 写回时机放在 setter 里而不是 `state` 的监听着，是为了让「哪一组变了」显式
-  /// 可见：一个监听器分不清 `iconSets` 与 `ssidRules` 的差异，会把三组都重写一遍。
+  /// Writes one table back to prefs; a `state` listener cannot tell which table changed.
   ConfigResourceStore get _store =>
       ConfigResourceStore(ref.read(legacyPrefsStoreProvider));
 
@@ -79,10 +63,8 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
 
   void _put(ConfigResources next) => state = next;
 
-  // —— 图标集 ——
-
-  /// [originalName] 为空表示新增。图标集按名字被引用，因此重名要就地覆盖而不是
-  /// 追加一份（列表页按名字删改，重名会让「删哪一份」变成不确定）。
+  /// An empty [originalName] adds a set; sets are keyed by name, so a duplicate overwrites in
+  /// place.
   void putIconSet(String? originalName, MockIconSet iconSet) {
     final next = state.copyWith(
       iconSets: originalName == null
@@ -107,9 +89,7 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
     _store.saveIconSets(next.iconSets);
   }
 
-  // —— User-Agent ——
-
-  /// 返回 false 表示空值或重复，调用方给一句提示。
+  /// Returns false for an empty or duplicate value; the caller shows a message.
   bool addUserAgent(String value) {
     final trimmed = value.trim();
     if (trimmed.isEmpty ||
@@ -135,8 +115,7 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
         )) {
       return false;
     }
-    // 选中态的判断必须在 `_put` 之前取：之后 `state.selectedUserAgent` 已是新值，
-    // 「原来选中的是不是这一条」就永远问不出来。
+    // Read the selection before `_put`: afterwards it already holds the new value.
     final selectedWasOriginal = state.selectedUserAgent == original;
     final next = state.copyWith(
       userAgents: [
@@ -145,7 +124,7 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
               ? MockUserAgent(value: trimmed, isDefault: item.isDefault)
               : item,
       ],
-      // 改的正好是当前选中的那条时同步切换，否则选中项会指向一个不存在的值。
+      // Follow the rename when the edited entry was selected, or it points at nothing.
       selectedUserAgent: selectedWasOriginal ? trimmed : null,
     );
     _put(next);
@@ -154,7 +133,7 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
     return true;
   }
 
-  /// 内置 UA 不可删：删掉之后内核回落到默认值，用户会以为「设置没生效」。
+  /// Built-in agents cannot be removed: the engine falls back and the setting looks unapplied.
   void removeUserAgent(String value) {
     if (state.userAgents.any((item) => item.value == value && item.isDefault)) {
       return;
@@ -169,12 +148,11 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
     );
     _put(next);
     _store.saveUserAgents(next.userAgents);
-    // 删掉的正是选中项：选中态必须一起落盘，否则重启后会指向一个不存在的 UA
-    // 而界面显示「已选中」。
+    // Persist the cleared selection too, or a restart shows "selected" for a missing agent.
     if (selectedWasRemoved) _store.saveSelectedUserAgent(null);
   }
 
-  /// null 表示「不覆写」。
+
   void selectUserAgent(String? value) {
     _put(
       state.copyWith(
@@ -184,8 +162,6 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
     );
     _store.saveSelectedUserAgent(value);
   }
-
-  // —— 按需连接 ——
 
   void setOnDemand(bool value) {
     _put(state.copyWith(onDemand: value));

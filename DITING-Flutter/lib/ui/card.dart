@@ -117,7 +117,6 @@ class CommonCard extends StatelessWidget {
     required this.child,
   }) : isSelected = isSelected ?? false;
 
-  /// Ignores presses in the enabled colors, so toggling it animates nothing.
   final bool inert;
   final bool enterAnimated;
   final bool enterActionsOnRight;
@@ -264,8 +263,7 @@ class CommonCard extends StatelessWidget {
   }
 }
 
-/// A focus node left out of the traversal that walks between cards: a card
-/// that must not be a stop, or an action inside a card reached by arrow right.
+/// A focus node left out of the traversal between cards: a card that must not be a stop.
 class SkipTraversalFocusNode extends FocusNode {
   @override
   bool get skipTraversal => true;

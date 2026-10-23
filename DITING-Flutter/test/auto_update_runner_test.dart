@@ -2,11 +2,8 @@ import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/state/auto_update_runner.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 自动更新的**到期判定**。
-///
-/// 这里只测纯函数：`isDue` / `nextDueAt` 决定「要不要发包」，判错了要么永远不
-/// 更新（间隔算成 0）、要么每次回前台都全量下载一遍（间隔算成无限大）。这两条
-/// 都不是崩溃，而是很难在界面上看出来的错误，所以判据必须钉住。
+/// Due-time logic for shipping a release; a mistake silently never updates or re-downloads each
+/// foreground
 void main() {
   SubscriptionRecord record({
     int id = 1,
@@ -80,7 +77,6 @@ void main() {
         record(id: 2, lastAttemptAt: now - 20 * hour),
         record(id: 3, lastAttemptAt: now - 10 * hour),
       ];
-      // 第 2 条上次尝试在 20 小时前，24 小时间隔下还有 4 小时到期，最早。
       expect(AutoUpdateRunner.nextDueAt(records, 24, now), now + 4 * hour);
     });
 

@@ -1,16 +1,7 @@
 part of 'mock_data.dart';
 
-/// 服务统计（服务器模式 / 日志概览共用）。
-///
-/// 只由 `ServiceStatsNotifier.applyNative` 从原生引擎的真实计数器填充。
-///
-/// 这个文件曾经装着一整套演示订阅（5 条 `mockSubscriptions` + 4 个分组名）、
-/// 40 条 `mockLogs` 与 `mockServiceStats`（28471 次查询 / 21930 次命中 / 3h42m）。
-/// 它们在本轮接线后**全部没有消费方**，已删除：真正读订阅的地方走
-/// `subscription` 表（`subscription_providers.dart`），真正读日志的地方走
-/// `dns_log` / `http_request_log`（`log_dashboard_overview_providers.dart`），
-/// 服务统计走引擎计数器。留着这些常量不会让任何页面变好，只会让下一次
-/// 「先补一个演示值」变得顺手——而那正是本轮要修的病。
+/// Service stats shared by server mode and the log overview, filled only from the real engine
+/// counters by `ServiceStatsNotifier.applyNative`.
 class ServiceStats {
   const ServiceStats({
     required this.queries,

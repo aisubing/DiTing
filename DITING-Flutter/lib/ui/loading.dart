@@ -66,8 +66,6 @@ class _CometRingPainter extends CustomPainter {
   _CometRingPainter({required this.turns, required this.color})
     : super(repaint: turns);
 
-  // A glyph keeps its outline within 20 of its 24 grid, so the ring standing
-  // in for one reads at the same size.
   static const _liveArea = 20 / 24;
   static const _minStrokeWidth = 1.5;
   static const _tail = 0.72;

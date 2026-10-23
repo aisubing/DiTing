@@ -1,37 +1,22 @@
-/// 读取 1.4.3 的平铺备份（`formatVersion: 10`）。
-///
-/// 1.4.3 的 `ConfigExporter` 把每个字段直接 `root.put(...)` 平铺在根节点，
-/// 靠 `formatVersion` 标识版本；2.0 换成 `{format, version, data: {...}}` 分组
-/// 结构。两者互不认账：新版导入旧备份会报「这不是谛听的备份文件」，旧版导入
-/// 新版备份读不到任何顶层键，界面显示「内容为空」。
-///
-/// 这里把旧版平铺结构翻译成新版 `data`，之后走 importer 同一套合并逻辑，
-/// 于是「旧备份导入新版」与「新备份导入新版」只有解析入口不同。
-///
-/// 字段名逐字对齐 1.4.3 `ConfigTransferParser`，改名会让老版本再次读不到。
+/// Reads the legacy flat backup (`formatVersion: 10`) into the current grouped `data` map, so both
+/// formats share the importer's merge logic.
 library;
 
 import 'package:diting/data/backup/backup_models.dart';
 import 'package:diting/data/backup/legacy_backup_json.dart';
 
 abstract final class LegacyBackupReader {
-  /// 1.4.3 `ConfigTransferParser.FORMAT_VERSION`。
+  /// The legacy `ConfigTransferParser.FORMAT_VERSION`.
   static const int formatVersion = 10;
 
-  /// 1.4.3 能读的最低版本。
   static const int minFormatVersion = 1;
 
-  /// 根节点是不是 1.4.3 的平铺格式。
   static bool looksLegacy(Map<Object?, Object?> root) {
     final version = root['formatVersion'];
     return version is num && version >= minFormatVersion;
   }
 
-  /// 把旧版平铺备份翻译成新版 `data`。
-  ///
-  /// [providerId] 按序号生成自定义服务商的 id：旧版的服务商没有 id，运行期
-  /// 才由 `DnsProvider.addUserProvider` 分配；新版把 id 写进
-  /// `user_providers_json`，缺了它 `readUserProviders` 会整条丢弃。
+  /// Translates a legacy flat backup; [providerId] derives an id per index.
   static Map<String, Object?> toGroups(
     Map<Object?, Object?> root, {
     required String Function(int index) providerId,
@@ -68,8 +53,7 @@ abstract final class LegacyBackupReader {
       _addressRules(root['customAddressRules']),
     );
 
-    // 旧版即使一个应用都没拉黑也会写这两个字段，空数组同样代表「本机就是空的」，
-    // 所以这里无条件写入而不是判空。
+    // The legacy app writes these keys even with nothing blocked.
     _put(data, BackupGroup.excluded, BackupJson.strings(root['excludedApps']));
     if (root.containsKey('blockedApps')) {
       _put(data, BackupGroup.blocked, {
@@ -113,7 +97,6 @@ abstract final class LegacyBackupReader {
     data[group.key] = value;
   }
 
-  /// 服务商：自定义条目 + 选择状态（首选服务商、解析模式、各模式的引用列表）。
   static Object? _providers(
     Map<Object?, Object?> root,
     String Function(int index) providerId,
@@ -239,8 +222,7 @@ abstract final class LegacyBackupReader {
     'preset': cache['preset'],
   };
 
-  /// 出站代理：旧版平铺的是 `proxyAppPackage`，新版内部键是
-  /// `outbound_proxy_app`，翻译时只统一外部字段名。
+  /// The legacy file spells the app package `proxyAppPackage`; only the name differs.
   static Map<String, Object?> _outbound(Map<Object?, Object?> outbound) => {
     'enabled': outbound['enabled'] == true,
     'protocol': BackupJson.text(outbound['protocol']),
@@ -315,8 +297,7 @@ abstract final class LegacyBackupReader {
     return result;
   }
 
-  /// 域名规则：旧版分 `customBlockRules` / `customAllowRules` 两个数组，新版
-  /// 合并成一组，用每条规则的 `kind` 区分黑白名单。
+  /// Legacy has separate `customBlockRules`/`customAllowRules`; merge into `kind`.
   static List<Object?> _rules(Object? value, String kind) {
     if (value is! List) return const [];
     final result = <Object?>[];

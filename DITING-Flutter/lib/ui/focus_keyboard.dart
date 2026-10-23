@@ -5,7 +5,6 @@ part of 'focus.dart';
 const _floatingKeyboardShare = 0.5;
 const _maxRevealFrames = 30;
 
-/// A text field the remote focuses opens the keyboard only on select.
 class _RemoteKeyboard extends StatefulWidget {
   const _RemoteKeyboard({required this.floatingKeyboard, required this.child});
 
@@ -59,8 +58,8 @@ class _RemoteKeyboardState extends State<_RemoteKeyboard> {
     _outgoing = node?..addListener(_holdKeyboard);
   }
 
-  // The node losing primary focus hears of it before the field gaining it, whose
-  // own listener opens the keyboard on its token or on an invalid selection.
+  // The node losing focus hears of it before the field gaining it, whose listener opens the
+  // keyboard.
   void _holdKeyboard() {
     final focus = FocusManager.instance.primaryFocus;
     if (focus == _outgoing || !_usingRemote || _keyboardShown) {
@@ -138,8 +137,7 @@ class _RemoteKeyboardState extends State<_RemoteKeyboard> {
       return KeyEventResult.ignored;
     }
     _usingRemote = true;
-    // The keyboard takes the remote's keys while it is up, so one reaching the
-    // app means BACK has closed it.
+    // The keyboard takes the remote's keys while up, so one reaching the app means BACK closed it.
     _openedKeyboard = false;
     if (!remoteSelectKeys.contains(event.logicalKey) || _keyboardShown) {
       return KeyEventResult.ignored;

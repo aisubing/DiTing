@@ -1,6 +1,5 @@
 part of 'mock_observability.dart';
 
-/// 资源种类。分组标题直接用 [label]。
 enum ObsResourceKind {
   geoData('GeoData', '本机 GeoIP / GeoSite 数据文件'),
   iconSet('图标集', '策略组与节点图标'),
@@ -13,7 +12,6 @@ enum ObsResourceKind {
   final String description;
 }
 
-/// 一个可刷新的资源。
 class MockObsResource {
   const MockObsResource({
     required this.id,
@@ -33,10 +31,8 @@ class MockObsResource {
   final String updatedAt;
   final int sizeBytes;
 
-  /// 规则 / 图标条数；详情里作为「内容量」显示。
   final int lineCount;
 
-  /// 「重置为默认地址」用的原始地址。
   final String defaultUrl;
 }
 
@@ -176,7 +172,6 @@ List<MockObsResource> _resourcesOf(
     ),
 ];
 
-/// 四类资源，按页面分组顺序排列。
 final mockObsResources = <MockObsResource>[
   ..._resourcesOf(ObsResourceKind.geoData, 'geo', _geoRows),
   ..._resourcesOf(ObsResourceKind.iconSet, 'icon', _iconRows),

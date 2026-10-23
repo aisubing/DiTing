@@ -1,9 +1,4 @@
-/// 表单族演示入口（上游没有这一页，是 DITING-Flutter 自己的组件展厅）。
-///
-/// 表单族组件（`FormPage` / `FormRow` / `BatchSection` / `SelectionSheet` /
-/// `NamedUrlForm` / `NestedFormSheet` / `CustomIssuesBanner`）平时分散在规则、
-/// 订阅、WebDAV 等页面里，没有一个地方能看到全部形态。这一页把它们排在一屏，
-/// 既方便对照「同一种行在不同类型下的样子」，也让并行开发期能独立验收。
+/// Form family demo page (no upstream counterpart): the form widgets are otherwise scattered.
 library;
 
 import 'dart:async';
@@ -21,7 +16,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 表单族演示页。
 class FormsDemoPage extends StatefulWidget {
   const FormsDemoPage({super.key});
 
@@ -30,7 +24,6 @@ class FormsDemoPage extends StatefulWidget {
 }
 
 class _FormsDemoPageState extends State<FormsDemoPage> {
-  // —— 表单字段示例的本地状态 ——
   final _label = TextEditingController(text: '北京时间');
   final _server = TextEditingController(text: 'ntp.aliyun.com');
   final _port = TextEditingController(text: '123');
@@ -41,11 +34,10 @@ class _FormsDemoPageState extends State<FormsDemoPage> {
   var _enabled = true;
   var _protocol = 'UDP';
 
-  /// 校验问题：空表示通过。提交时才算，不边打边标红。
+  /// Validation issues; empty means valid. Computed on submit, not while typing.
   var _issues = <String>[];
   var _saving = false;
 
-  /// 单次提交是否成功（用于演示错误条）。
   String? _error;
 
   @override

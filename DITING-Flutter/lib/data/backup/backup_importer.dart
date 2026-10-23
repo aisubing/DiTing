@@ -1,8 +1,5 @@
-/// Backup import: parse, validate and merge a backup file.
-///
-/// Accepts both this app's `{format, version, data}` form and the legacy flat
-/// root translated by [LegacyBackupReader]. Missing entries are added, identical
-/// ones skipped, and differing ones updated for rules but skipped for settings.
+/// Backup import: parse, validate and merge this app's `{format, version, data}` form and the
+/// legacy flat root read by [LegacyBackupReader].
 library;
 
 import 'dart:convert';
@@ -39,7 +36,7 @@ class BackupGroupOutcome {
   final int skipped;
   final int updated;
 
-  /// Why the whole group failed; when set, the counters are meaningless.
+  /// Why the whole group failed; when set the counters are meaningless.
   final String? error;
 
   bool get failed => error != null;
@@ -88,7 +85,6 @@ class BackupImportResult {
   /// Number of subscriptions touched, used to prompt a rule refresh.
   final int subscriptionCount;
 
-  /// The file used the legacy flat format; the success message can say so.
   final bool legacyFormat;
 
   bool get failed => fatalError != null;
@@ -97,7 +93,6 @@ class BackupImportResult {
   int get skipped => outcomes.fold(0, (sum, item) => sum + item.skipped);
   int get updated => outcomes.fold(0, (sum, item) => sum + item.updated);
 
-  /// Groups that actually changed, for the summary.
   List<BackupGroupOutcome> get changed => [
     for (final outcome in outcomes)
       if (outcome.added + outcome.updated > 0) outcome,
@@ -120,14 +115,11 @@ class BackupImportTarget {
   LegacySettings get settings => LegacySettings(store);
 }
 
-/// 备份导入器。
 class BackupImporter {
   const BackupImporter();
 
-  /// 解析并合并 [content]。
-  ///
-  /// 格式错误收成 [BackupImportResult.failed] 而不是抛出：调用点在系统文件选择器
-  /// 之后，用户刚挑了一个文件，需要看到「这个文件为什么不能用」，而不是红屏。
+  /// Parses and merges [content]; errors become [BackupImportResult.failed] instead of throwing,
+  /// since the caller must explain the problem.
   Future<BackupImportResult> import(
     String content,
     BackupImportTarget target, {
@@ -145,7 +137,7 @@ class BackupImporter {
 
     for (final group in BackupGroup.values) {
       final value = data[group.key];
-      // 没出现在文件里的分组不是错误：用户导出时可能没勾它。
+      // A group absent from the file is not an error; it may be unselected.
       if (value == null) continue;
       try {
         final outcome = await _applyGroup(group, value, target);
@@ -159,8 +151,8 @@ class BackupImporter {
       }
     }
 
-    // 服务商分组里的选择状态（首选服务商、解析模式、各模式候选列表）在
-    // 1.4.3 里是独立字段，放在这里统一落盘，避免和「新增/更新」计数纠缠。
+    // Legacy backups keep the provider selection in separate top-level fields; apply it here so it
+    // stays out of the added/updated counters.
     final providers = data[BackupGroup.providers.key];
     if (providers is Map && providers['selection'] is Map) {
       try {
@@ -179,12 +171,8 @@ class BackupImporter {
     );
   }
 
-  // ------------------------------------------------------------------ 解析
-
-  /// 校验并解出 `data` 与 `exportedAt`。
-  ///
-  /// 2.0 的文件走 `format` 魔数校验，1.4.3 的文件没有魔数、只有
-  /// `formatVersion`，所以先认旧格式再认新格式，两种都不是才拒绝。
+  /// Validates and extracts `data` and `exportedAt`. Current files carry the `format` magic; legacy
+  /// files are recognized by `formatVersion`.
   _ParsedBackup _parse(String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) {
@@ -205,7 +193,7 @@ class BackupImporter {
         : null;
     final format = decoded['format'];
     if (format != BackupFormat.magic) {
-      // 旧版备份：平铺根节点，靠 `formatVersion` 标识。
+      // Legacy backup: flat root identified by `formatVersion`.
       if (LegacyBackupReader.looksLegacy(decoded)) {
         return _ParsedBackup(
           data: LegacyBackupReader.toGroups(
@@ -241,11 +229,9 @@ class BackupImporter {
     );
   }
 
-  /// 旧版服务商没有 id，运行期才分配；这里按序号生成，让同一份旧备份反复
-  /// 导入时得到同样的 id（否则每次导入都会多出一批「新」服务商）。
+  /// Legacy providers have no runtime id; derive one from the index so re-importing the same old
+  /// backup yields the same ids.
   String _legacyProviderId(int index) => 'user_legacy_$index';
-
-  // ------------------------------------------------------------------ 合并
 
   Future<BackupGroupOutcome> _applyGroup(
     BackupGroup group,
@@ -280,7 +266,6 @@ class BackupImporter {
   };
 }
 
-/// 解析出来的两段。
 class _ParsedBackup {
   const _ParsedBackup({
     required this.data,

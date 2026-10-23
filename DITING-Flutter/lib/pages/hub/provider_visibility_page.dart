@@ -6,10 +6,8 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 服务显示（上游 `HomeProviderVisibilityScreen`）。
-///
-/// 关闭竞速时，首页解析服务下拉框只显示这里选中的服务；当前正在使用的
-/// 服务会始终保留。
+/// Provider visibility (upstream `HomeProviderVisibilityScreen`). With racing off the home provider
+/// dropdown only lists the providers selected here; the one in use always stays visible.
 class ProviderVisibilityPage extends ConsumerStatefulWidget {
   const ProviderVisibilityPage({super.key});
 
@@ -20,7 +18,6 @@ class ProviderVisibilityPage extends ConsumerStatefulWidget {
 
 class _ProviderVisibilityPageState
     extends ConsumerState<ProviderVisibilityPage> {
-  /// Mirror of the persisted filter; edits write straight back to prefs.
   late Set<String> _visibleProtocols;
   late Set<String> _hiddenProviders;
   late Set<String> _explicitVisible;
@@ -50,8 +47,8 @@ class _ProviderVisibilityPageState
       ? !_hiddenProviders.contains(provider.id)
       : _explicitVisible.contains(provider.id);
 
-  /// Toggles one provider. Under a visible protocol it is a "hide" flag; under
-  /// a hidden protocol it is the explicit allow-list the upstream keeps.
+  /// Toggles one provider. Under a visible protocol it is a "hide" flag; under a hidden
+  /// protocol it is the explicit allow-list upstream keeps.
   void _toggleProvider(ProviderProtocol protocol, MockProvider provider) {
     setState(() {
       if (_visibleProtocols.contains(protocol.name.toUpperCase())) {

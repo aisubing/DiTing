@@ -1,8 +1,5 @@
-/// 演示用状态：外观（主题 / 色板 / 字号 / 透明度 / 首页句子 / 底栏）。
-///
-/// 主题、色板、首页透明度/句子、底栏与触感直接读写旧版 `dns_vpn_prefs`
-/// 的同名键，保证 1.4.3 用户升级后设置原样保留；其余（纯黑、字号）是
-/// Flutter 版新增项，暂不落盘。
+/// Appearance state: theme, palette, text scale, opacity, home text and bottom bar, under the 1.4.3
+/// keys.
 library;
 
 import 'package:diting/app/theme/colors.dart';
@@ -13,7 +10,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
-/// 日夜模式。
 class ThemeModeNotifier extends Notifier<AppThemeMode> {
   @override
   AppThemeMode build() =>
@@ -29,7 +25,6 @@ final themeModeProvider = NotifierProvider<ThemeModeNotifier, AppThemeMode>(
   ThemeModeNotifier.new,
 );
 
-/// 主题色九选一。
 class PaletteNotifier extends Notifier<AppPalette> {
   @override
   AppPalette build() => AppPalette.fromStorageValue(_settings(ref).paletteRaw);
@@ -44,7 +39,6 @@ final paletteProvider = NotifierProvider<PaletteNotifier, AppPalette>(
   PaletteNotifier.new,
 );
 
-/// 纯黑（仅深色模式生效）。
 class PureBlackNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -56,7 +50,7 @@ final pureBlackProvider = NotifierProvider<PureBlackNotifier, bool>(
   PureBlackNotifier.new,
 );
 
-/// 用户选的文本缩放，进 [clampTextScale] 前是原始值。
+/// Raw user text scale, before [clampTextScale].
 class TextScaleNotifier extends Notifier<double> {
   @override
   double build() => 1;
@@ -68,15 +62,7 @@ final textScaleProvider = NotifierProvider<TextScaleNotifier, double>(
   TextScaleNotifier.new,
 );
 
-/// 首页五类元素的透明度（`home_*_opacity`，0.1–1.0）。
-///
-/// 1.4.3 `HomeComponentOpacityScreen` 把这几项分成两组渲染：
-/// 「交互组件」= 启动按钮 / 解析服务选择框 / 模式切换按钮，
-/// 「文字」= 首页古诗 / DNS 服务详情。
-///
-/// 上一轮漏了第 5 项 `dnsDetail`（`home_dns_detail_opacity`）：首页没有
-/// 「DNS 服务详情」那一块，滑杆自然也无从谈起。补这一项时两边要同时到位，
-/// 否则会留下「有滑杆没内容」或「有内容没滑杆」的半截状态。
+/// Opacity of the five home widgets (`home_*_opacity`); keep `dnsDetail` in step with its widget.
 enum HomeLayer {
   powerButton('启动按钮', 'home_power_button_opacity'),
   providerSelector('解析服务选择框', 'home_provider_selector_opacity'),
@@ -88,7 +74,7 @@ enum HomeLayer {
 
   final String label;
 
-  /// 旧版 `AppearanceSettingsStore` 的键名。
+  /// Legacy `AppearanceSettingsStore` key names.
   final String storageKey;
 }
 
@@ -130,7 +116,7 @@ final homeOpacityProvider =
       HomeOpacityNotifier.new,
     );
 
-/// 首页句子：运行 / 停止两态各一条，留空即不显示。
+/// Home sentence per run state (running / stopped); empty hides it.
 class HomeSentenceNotifier
     extends Notifier<({String running, String stopped})> {
   @override
@@ -160,7 +146,7 @@ final homeSentenceProvider =
       HomeSentenceNotifier.new,
     );
 
-/// 底栏可选项。上游 6 选 2–4；这里允许 2–[maxDockDestinations]。
+/// Selectable bottom bar tabs: 2 to [maxDockDestinations].
 enum BottomBarDestination {
   home('首页', 'home', AppGlyphs.dashboard),
   featureHub('功能中心', 'feature_hub', AppGlyphs.puzzle),
@@ -173,7 +159,7 @@ enum BottomBarDestination {
 
   final String label;
 
-  /// 旧版 `bottom_bar_destinations` 数组里的 id。
+  /// Ids as stored in the legacy `bottom_bar_destinations` array.
   final String storageValue;
 
   final Glyph glyph;
@@ -210,7 +196,7 @@ class BottomBarNotifier extends Notifier<List<BottomBarDestination>> {
     ]);
   }
 
-  /// 至少留 2 项，最多 [maxDockDestinations] 项；越界的操作被忽略。
+  /// Keeps 2 to [maxDockDestinations] items; out-of-range edits are ignored.
   bool toggle(BottomBarDestination destination) {
     final current = state;
     if (current.contains(destination)) {
@@ -240,7 +226,6 @@ final bottomBarProvider =
       BottomBarNotifier.new,
     );
 
-/// 底栏触感反馈开关。
 class HapticNotifier extends Notifier<bool> {
   @override
   bool build() => _settings(ref).hapticEnabled;
@@ -255,7 +240,7 @@ final hapticProvider = NotifierProvider<HapticNotifier, bool>(
   HapticNotifier.new,
 );
 
-/// 解析模式：单服务商 / 多路竞速（上游 `ResolutionSettingsStore`）。
+/// Resolution mode: single resolver or race (upstream `ResolutionSettingsStore`).
 enum ResolutionMode {
   single('单服务商', 'single'),
   smart('智能选择', 'smart_prediction'),
@@ -266,7 +251,7 @@ enum ResolutionMode {
 
   final String label;
 
-  /// 旧版 `dns_resolution_mode` 的落盘值；枚举名与落盘值并不同名。
+  /// Legacy `dns_resolution_mode` values; enum names differ from stored values.
   final String storageValue;
 
   bool get isSingle => this == single;

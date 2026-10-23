@@ -24,8 +24,7 @@ import tunnel.Engine
 import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 
-/// Express-mode VpnService: same Go engine as normal mode, but the TUN only
-/// owns DNS routes.
+/// Express-mode VpnService: same Go engine as normal mode, but the TUN only owns DNS routes.
 class ExpressVpnService : VpnService() {
     private var tun: ParcelFileDescriptor? = null
     private var engine: Engine? = null
@@ -160,8 +159,7 @@ class ExpressVpnService : VpnService() {
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
 
-            // Resolvers only: the narrow TUN counts no user traffic and has no
-            // MITM stage, so traffic and HTTP logs do not exist in this mode.
+            // Resolvers only: no user traffic crosses the narrow TUN and there is no MITM stage.
             val plane = EngineDataPlane(this, logMode)
             dataPlane = plane
             plane.attachResolvers(goEngine)
@@ -214,7 +212,7 @@ class ExpressVpnService : VpnService() {
         stopSelf()
     }
 
-    /// Drops the resolver callbacks; no log writers are attached in this mode.
+    /// Drops the resolver callbacks; no log writers are attached in this mode
     private fun closeDataPlane() {
         val plane = dataPlane
         dataPlane = null
@@ -333,10 +331,10 @@ class ExpressVpnService : VpnService() {
     companion object {
         private const val TAG = "ExpressVpnService"
 
-        /// Log database of this mode (RuleDataset.EXPRESS, version 2).
+        /// Log database of this mode (RuleDataset.EXPRESS, version 2)
         private const val LOG_DATABASE = "diting_express"
 
-        /// Separate retention window; not shared with normal mode.
+        /// Separate retention window; not shared with normal mode
         private const val LOG_PREFS = "diting_express_prefs"
 
         const val ACTION_START = "com.haoze.diting.express.START_VPN"
@@ -365,7 +363,7 @@ class ExpressVpnService : VpnService() {
         @Volatile
         private var activeEngine: Engine? = null
 
-        /// Read-only handle for diagnostics.
+        
         internal fun engineForDiagnostics(): Engine? = activeEngine
 
         @Volatile

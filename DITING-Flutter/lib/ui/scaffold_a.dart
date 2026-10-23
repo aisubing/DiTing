@@ -213,11 +213,9 @@ class CommonScaffoldState extends State<CommonScaffold> {
     );
     final isCompact = form.isCompact;
     final bottomInset = BottomInsetScope.of(context);
-    // A detent sheet fills the height its detent gives it and clips its own
-    // corners; any other bottom sheet sizes to its content and brings both.
+    // A detent sheet fills its detent and clips its own corners; any other sizes to content.
     final hugsContent = isCompact && !SheetOverhangScope.fillsDetentOf(context);
-    // The page's bar floats over its body, which leaves the bar's height at
-    // its top through MediaQuery padding, as extendBodyBehindAppBar does.
+    // The bar floats over the body, leaving its height at the top through MediaQuery padding.
     final barFloats = !isCompact;
     final sortableBody = SortModeScope(sorting: _sorting, child: widget.body);
     final body = SafeArea(
@@ -231,13 +229,10 @@ class CommonScaffoldState extends State<CommonScaffold> {
             });
           }
           final hasKeywords = keywords.isNotEmpty;
-          // 状态栏高度只能从 `View` 上取：外层 shell 的 Scaffold 已经把
-          // `MediaQuery.padding/viewPadding` 消费成 0，用它算占位会算出 0，
-          // 正文于是整片画进顶栏底下。正文侧读到的 `padding.top` 恰好等于
-          // 「状态栏 + 工具栏」，所以这里必须凑出同一个数。
+          // The status bar height must come from the `View`: the outer Scaffold consumed it to 0.
           final view = View.of(context);
           final barInset = view.viewPadding.top / view.devicePixelRatio;
-          // 浮在正文之上的顶栏总占位 = 状态栏 + 工具栏。
+          // Total inset of the floating bar: status bar + toolbar.
           final overlap = barFloats
               ? barInset + pageToolbarHeight
               : isCompact
@@ -305,10 +300,7 @@ class CommonScaffoldState extends State<CommonScaffold> {
         : body;
     if (!isCompact) {
       final media = MediaQuery.of(context);
-      // 底栏壳会把浮条高度写进 `padding.bottom`；页面用 `DockSpacer` 自己
-      // 给浮条让位，正文只该保留系统安全区。否则 `SafeArea` 会在浮条上沿
-      // 截断滚动视口，浮条背后露出一条页面背景。键盘弹出时取 min 归零，
-      // 不会多留一条系统栏。
+      // The dock shell writes the dock height into `padding.bottom`, cleared by `DockSpacer`.
       final pagePadding = media.padding.copyWith(
         bottom: math.min(media.padding.bottom, media.viewPadding.bottom),
       );

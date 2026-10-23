@@ -1,15 +1,4 @@
-/// 赞助页（对齐旧版 `ui/SponsorScreen.kt`，并补上真实的收款码）。
-///
-/// 旧版只讲「做什么、怎么帮、不捐也行」，没有任何支付入口，只给一个
-/// GitHub README 外链——用户在 App 内根本看不到收款码，得跳浏览器再翻 README。
-/// 本轮把 README 里那两张真实收款码（`docs/assets/alipay_code.png` /
-/// `wechatpay_code.png`）直接放进页面，点开可放大到全屏对话框，长按/扫码都够清楚。
-///
-/// 不写任何档位与金额：旧版没有商业承诺，上一轮虚构的「¥30/月」档位已删除，
-/// 这里只保留「每一份支持都同样珍贵」的说法。
-///
-/// 旧版外链是 `ACTION_VIEW` 开浏览器；本仓不引 `url_launcher`，统一改为
-/// 复制地址 + SnackBar 提示。
+/// Sponsor page, aligned with `ui/SponsorScreen.kt`; QR codes come from the README.
 library;
 
 import 'package:diting/pages/system/app_info.dart';
@@ -19,7 +8,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 赞助页。
 class SponsorPage extends StatelessWidget {
   const SponsorPage({super.key});
 
@@ -95,10 +83,8 @@ class SponsorPage extends StatelessWidget {
   }
 }
 
-/// 页首卡片：图标 + 标题 + 说明 + 标签。
-///
-/// 用卡片而不是裸文字，是为了和「应用信息」等页面的页首保持一致——上一版这里是
-/// 三段左对齐文字直接压在背景上，与全站「卡片承载信息块」的视觉规则不符。
+/// Header card: icon, title, description and tags. A card rather than bare text keeps the
+/// header consistent with the app info page.
 class _SponsorHero extends StatelessWidget {
   const _SponsorHero();
 
@@ -175,7 +161,6 @@ class _SponsorHero extends StatelessWidget {
   }
 }
 
-/// 两张收款码并排，点击放大大图。
 class _PaymentSection extends StatelessWidget {
   const _PaymentSection();
 
@@ -212,7 +197,7 @@ class _PaymentSection extends StatelessWidget {
   }
 }
 
-/// 一张收款码卡片：白底（二维码必须有浅色底才扫得出来）+ 名称。
+/// One QR code card: white background, since a code needs a light surround to scan, plus its name.
 class _PaymentCard extends StatelessWidget {
   const _PaymentCard({
     required this.asset,
@@ -238,7 +223,8 @@ class _PaymentCard extends StatelessWidget {
               aspectRatio: 1,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                // 二维码需要静止的浅色底，不跟随深色主题反色，否则扫不出来。
+                // A code needs a static light background and must not follow dark theme
+                // inversion, or it cannot be scanned.
                 child: ColoredBox(
                   color: Colors.white,
                   child: Image.asset(
@@ -299,7 +285,7 @@ class _PaymentCard extends StatelessWidget {
   }
 }
 
-/// 一条带圆点的列表项：旧版 `SponsorList` 的「•」+ 文本。
+/// A bulleted list row matching the legacy `SponsorList`.
 class _BulletRow extends StatelessWidget {
   const _BulletRow({required this.text});
 

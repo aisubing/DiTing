@@ -1,10 +1,7 @@
 part of 'demo_page.dart';
 
-/// 排版分区：验证 13 档字号的字号、行高、字重，以及 [AppTextStyle.custom]
-/// 按容器尺寸临时取字的能力。
-///
-/// 每行同时给出「档名 / 示例字 / 尺寸」，因为字号回归最难用肉眼判断——
-/// 17 和 16 摆在一起看不出来，但「body 17/22」这行字会立刻暴露。
+/// Typography: the 13 steps with size, line height and weight, plus [AppTextStyle.custom]. Each row
+/// prints its numbers, since 17 next to 16 is invisible while "body 17/22" exposes a regression.
 class _DemoTypeSection extends StatelessWidget {
   const _DemoTypeSection();
 
@@ -32,7 +29,6 @@ class _DemoTypeSection extends StatelessWidget {
   }
 }
 
-/// 单档字号：左边档名，中间示例，右边尺寸与字重。
 class _DemoTypeRow extends StatelessWidget {
   const _DemoTypeRow({required this.style});
 
@@ -88,13 +84,12 @@ class _DemoTypeRow extends StatelessWidget {
     );
   }
 
-  /// 整数尺寸不写小数点，省下两列宽度给示例字。
+  /// Integer sizes drop the decimal point to save two columns for the sample.
   static String _trim(double value) =>
       value == value.roundToDouble() ? '${value.toInt()}' : '$value';
 }
 
-/// 自定义字号：容器多高，字就多大——这是 [AppTextStyle.custom] 的用途，
-/// 也是图标内嵌字母、圆形徽标数字唯一正确的取字方式。
+/// The text follows the container height, the only correct way to size glyph letters.
 class _DemoCustomTypeRow extends StatefulWidget {
   @override
   State<_DemoCustomTypeRow> createState() => _DemoCustomTypeRowState();

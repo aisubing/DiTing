@@ -1,16 +1,10 @@
-/// Read/delete access to the legacy `http_request_log` table.
-///
-/// Rows are written natively, so this repository only reads apart from clearing
-/// the table. The filter clauses mirror the legacy request log repository, so
-/// the counts match what it showed.
+/// Read/delete access to the legacy `http_request_log` table; rows are written natively and the
+/// filter clauses mirror the legacy repository.
 library;
 
 import 'package:sqflite/sqflite.dart';
 
-/// Request outcome buckets.
-///
-/// Six buckets instead of success / blocked / failed, because `rewritten` and
-/// `bypassed` are neither; the page maps each bucket to a color.
+/// Outcome buckets: `rewritten` and `bypassed` are neither success, blocked nor failed.
 enum RequestStatus {
   all('全部', '显示所有请求记录'),
   passed('通过', '请求正常放行，未命中拦截规则'),
@@ -25,7 +19,6 @@ enum RequestStatus {
   final String explanation;
 }
 
-  /// Which log table a request came from.
 enum RequestSource {
   all('全部'),
   dns('DNS'),
@@ -52,19 +45,18 @@ class HttpRequestRecord {
   final int timestamp;
   final String packageName;
 
-    /// Null when no authority is known, e.g. an early TLS failure.
+  /// Null when no authority is known, e.g. an early TLS failure.
   final String? authority;
 
-    /// `h2`, `http/1.1`, ... as reported by the engine.
   final String protocol;
 
-    /// Raw stored value, not a bucket; see [statusOfOutcome].
+  /// Raw stored value, not a bucket; see [statusOfOutcome].
   final String outcome;
   final String? matchedRule;
   final int? blockSubscriptionId;
 
-    /// Bucket for this record. Unlisted outcomes count as `error`, including
-    /// failure types the engine may add later.
+  /// Bucket for this record; unlisted outcomes count as `error`, including failure types the engine
+  /// may add later.
   RequestStatus get status => statusOfOutcome(outcome);
 }
 
@@ -86,7 +78,7 @@ class HttpRequestDailyStats {
 
   final int total;
 
-    /// Keys are raw outcome values, not buckets.
+  /// Keys are raw outcome values, not buckets.
   final Map<String, int> byOutcome;
 
   int countFor(RequestStatus status) {
@@ -104,9 +96,8 @@ class HttpRequestRepository {
 
   final Database _db;
 
-    /// Patterns are lower-cased. SQLite `LIKE` is ASCII case-insensitive and
-    /// `authority` is stored lower-cased, so a mixed-case `matchedRule` is the
-    /// only field this can miss.
+  /// Lower-cased: `LIKE` is ASCII case-insensitive and `authority` is stored lower-cased, so a
+  /// mixed-case `matchedRule` is the only miss.
   Future<List<HttpRequestRecord>> recent({
     int limit = 200,
     RequestStatus status = RequestStatus.all,
@@ -155,8 +146,8 @@ class HttpRequestRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-    /// Today's per-outcome counts. One scan yields both the groups and their sum,
-    /// so the total and the buckets can never disagree across midnight.
+  /// One scan yields both the groups and their sum, so the total and the buckets can never disagree
+  /// across midnight.
   Future<HttpRequestDailyStats> dailyStats({DateTime? since}) async {
     final start = (since ?? _startOfToday()).millisecondsSinceEpoch;
     final rows = await _db.rawQuery(

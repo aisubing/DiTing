@@ -10,22 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 服务器模式「模式设置」Tab（上游 `server/ui/DnsSettingsScreen.kt`，215 行）。
-///
-/// 五组、顺序与组名逐字照旧版：
-///
-/// | 组 | 项 |
-/// |---|---|
-/// | 代理与解析设置 | 缓存设置 / 规则控制 / 本地监听端口 |
-/// | 规则管理 | 黑名单 / 白名单 / Hosts 覆写 |
-/// | 数据与重置 | 清空缓存 / 重置运行统计 |
-/// | 后台稳定性 | 忽略电池优化 |
-/// | 运行模式 | 使用向导 / 重新选择工作模式 |
-///
-/// 副标题同样沿用旧版文案；「已开启 / 已关闭」这类状态句跟着落盘值走，不写死。
-/// 旧版的设置页只有「重置运行统计」一条，任务要求补上「清空缓存」——引擎侧确有
-/// `clearDNSCache`，只是原生方法还没接上，因此这一行在通道缺失时明确提示而不是
-/// 假装成功。
+/// Server mode "settings" tab (upstream `server/ui/DnsSettingsScreen.kt`), five groups in upstream
+/// order: proxy and resolution, rule management, data and reset, background stability, run mode.
 class ServerSettingsPage extends ConsumerStatefulWidget {
   const ServerSettingsPage({super.key});
 
@@ -99,9 +85,8 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
       return;
     }
     setState(() => _clearingCache = false);
-    // 失败只有两种原因：服务没在跑（没有缓存可清）或引擎清空抛异常。两者对用户
-    // 的结论相同——这次没清成功——所以给一条可操作的提示，而不是「尚未接入」
-    // （那条文案在通道补上 `clearCache` 之前是准确的，之后就成了谎报）。
+    // Only two causes: the service is not running (nothing to clear) or the engine threw.
+    // Both mean "not cleared", so the hint is actionable rather than "not wired yet".
     showServerHint(
       context,
       cleared ? '缓存已清空' : '清空失败：请先启动解析服务再试',
@@ -129,8 +114,8 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
                 subtitle: Text(cacheSummary),
                 leading: const GlyphIcon(AppGlyphs.memory),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                // 服务器模式的缓存键在 `diting_dns_mode_prefs`，与缓存设置页的
-                // 普通模式数据集不是同一套；入口只做跳转，不改写。
+                // Server-mode cache keys live in `diting_dns_mode_prefs`, a different set
+                // from the normal-mode cache page, so this entry only navigates.
                 onTap: () => context.push(HubPaths.cache),
               ),
               ListItem(
@@ -179,8 +164,8 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
                 subtitle: const Text('将指定域名解析到配置的 IP 或 CNAME'),
                 leading: const GlyphIcon(AppGlyphs.dns),
                 trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                // 旧版的 `REWRITELIST_MANAGEMENT` 就是覆写规则表；本仓规则页的
-                // 三种 kind 是 block / allow / rewrite，覆写对应 `rewrite`。
+                // The legacy `REWRITELIST_MANAGEMENT` is the rewrite table; of the three
+                // rule kinds here it maps to `rewrite`.
                 onTap: () => context.push(Routes.rulesOf('rewrite')),
               ),
             ],
@@ -241,9 +226,8 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     );
   }
 
-  /// 忽略电池优化：旧版是一条可点行（未授权时点它发起请求，已授权时置灰并显示
-  /// 「已忽略」）。通道缺失（桌面宿主、原生未接入）时同样置灰，但文案必须换成
-  /// 「当前设备不可用」——把「没做成」说成「不支持」是两件不同的事。
+  /// Battery optimization: tappable while not granted, greyed out once granted. A missing
+  /// channel also greys it out but must say "unavailable on this device".
   Widget _batteryRow(BuildContext context) {
     final colorScheme = context.colorScheme;
     final (subtitle, value, enabled) = switch (_battery) {

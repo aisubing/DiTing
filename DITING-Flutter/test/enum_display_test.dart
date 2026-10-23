@@ -5,14 +5,9 @@ import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// 守住「枚举上屏必须取 `.label`」这条。
-///
-/// 背景：`ProviderProtocol` 是个裸枚举，插值进文案会渲染成
-/// `ProviderProtocol.doh · 1.1.1.1`——analyze 和路由冒烟都拦不住，只有真跑
-/// 到那一屏才看得见。两个页面各自踩过一次，所以这里对**所有**会产出用户可见
-/// 文案的枚举做一次全量扫描。
+/// Guards enums reach the screen through `.label`; a bare enum renders `ProviderProtocol.doh`
 void main() {
-  /// 源码标识符「EnumType.value」不该出现在任何展示文案里。
+  /// A source identifier like "EnumType.value" must never appear in user text.
   void expectNoRawEnumLiteral(String text, String what) {
     expect(
       RegExp(r'\b[A-Z][A-Za-z]*\.[a-z][A-Za-z]*\b').hasMatch(text),
@@ -21,7 +16,7 @@ void main() {
     );
   }
 
-  // 1.4.3 的预设服务商以 `preset_*` id 存在，展示层必须走同一份目录。
+  // 1.4.3's preset providers live under `preset_*` ids; the UI must use that catalog.
   final catalog = defaultProviderCatalog();
 
   group('providerEndpointOf', () {

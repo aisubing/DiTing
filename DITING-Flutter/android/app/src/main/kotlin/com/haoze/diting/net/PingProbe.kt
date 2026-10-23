@@ -6,20 +6,9 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import kotlin.math.abs
 
-/**
- * ICMP ping probe, ported from 1.4.3 `NetworkPingTool`.
- *
- * Preferred path: the system `ping` / `ping6` binary, parsed for per-reply
- * latency, TTL and the summary block. Fallback path (binary missing or its
- * output unparsable): `InetAddress.isReachable` plus a TCP handshake against
- * ports 53 / 443 / 80. The fallback measures a *handshake*, not an ICMP echo, so
- * it always sets `measuredWithFallback=true` and the UI must say so.
- *
- * Results are emitted in the exact shape `PingSummary.fromMap` reads:
- * `target,resolvedAddress,addressFamily,transmitted,received,lossPercent,minMs,
- * avgMs,maxMs,jitterMs,replies,success,message,measuredWithFallback`, with each
- * reply carrying `{sequence,elapsedMs,ttl,error}`.
- */
+/// ICMP ping probe. Preferred path: the system `ping` / `ping6` binary, parsed for
+/// per-reply latency, TTL and the summary block. Fallback when it is missing or unparsable:
+/// `InetAddress.isReachable` plus a TCP handshake on 53/443/80, sets `measuredWithFallback`.
 internal object PingProbe {
 
     const val DEFAULT_COUNT = 4
@@ -43,8 +32,7 @@ internal object PingProbe {
         if (output != null) {
             parseSummary(output, host, resolved, family)?.let { return it }
         }
-        // Reaching here means "no system ping" or "output shape unknown": both
-        // are reasons to measure with the fallback, not to report a failure.
+        // Reaching here means no system ping or unknown output shape: measure with the fallback.
         return reachableFallback(address, host, family, clampedCount)
     }
 
@@ -67,12 +55,7 @@ internal object PingProbe {
         }
     }
 
-    /**
-     * Parses the summary block. Returns null when the output has no
-     * `N% packet loss` line at all — that is the signal the caller uses to
-     * switch to the fallback (a binary printing `Usage:` or `Operation not
-     * permitted` lands here too, which is what 1.4.3 relied on).
-     */
+    /// Null when there is no `N% packet loss` line, which tells the caller to use its fallback
     private fun parseSummary(
         output: String,
         target: String,
@@ -85,8 +68,7 @@ internal object PingProbe {
                 put("sequence", match.groupValues[2].toIntOrNull())
                 put("elapsedMs", match.groupValues[4].toDoubleOrNull())
                 put("ttl", match.groupValues[3].toIntOrNull())
-                // `fromAddress` is not part of the Dart contract; the reply
-                // address is already reported once as `resolvedAddress`.
+                // `fromAddress` is not in the Dart contract; it is reported as `resolvedAddress`
                 put("error", null)
             }
         }.toList()
@@ -99,17 +81,7 @@ internal object PingProbe {
             ?: if (transmitted > 0) (transmitted - received) * 100.0 / transmitted else 100.0
         val rtt = RTT_REGEX.find(output)?.groupValues
 
-        // Emit one row per transmitted sequence so a lost packet stays visible as
-        // a gap in the list instead of silently shortening it.
-        //
-        // The numbering base is NOT fixed: iputils prints `icmp_seq=1` for the
-        // first reply while busybox prints `seq=0`. Assuming 1-based (which is
-        // what 1.4.3 did) drops the first busybox reply and shifts every later
-        // row by one, so a 2-of-3 run rendered as "2 timeouts + 1 reply" —
-        // contradicting the `received` count derived from the same output. A
-        // zero sequence number is therefore taken as proof of 0-based numbering;
-        // when no reply arrived at all the base is irrelevant and 1 is used so
-        // the rows read naturally.
+        // One row per sequence, so a lost packet stays a gap. iputils starts at 1, busybox at 0.
         val bySequence = replies.associateBy { (it["sequence"] as? Int) ?: -1 }
         val base = if (bySequence.containsKey(0)) 0 else 1
         val allReplies: List<Map<String, Any?>> = (base until base + transmitted).map { sequence ->
@@ -141,7 +113,6 @@ internal object PingProbe {
         )
     }
 
-    /** Same order as 1.4.3: `isReachable` first, then TCP 53 → 443 → 80. */
     private fun reachableFallback(
         address: InetAddress,
         target: String,
@@ -240,28 +211,7 @@ internal object PingProbe {
     private const val TCP_TIMEOUT_MS = 1000
     private const val PROBE_GAP_MS = 200L
 
-    /**
-     * One ICMP echo reply.
-     *
-     * `ttl` is optional because `ping6` does not print it: IPv6 replies read
-     * `64 bytes from 2001:db8::1: icmp_seq=1 time=1.2 ms`. An earlier version of
-     * this regex required `ttl=`, which made every IPv6 run report
-     * `received: 4` next to four "timeout" rows — the summary and the reply list
-     * contradicted each other on screen.
-     *
-     * Lines that must NOT be read as replies (they are the negative cases the
-     * parser is pinned against):
-     * - `From 192.168.1.1: icmp_seq=1 Time to live exceeded` — capital `From`,
-     *   no `time=`, so it is a traceroute hop, not an echo reply;
-     * - `4 packets transmitted, 4 received, 0% packet loss, time 3004ms` — the
-     *   summary block, no `from`;
-     * - `rtt min/avg/max/mdev = 12.3/14.5/16.7/1.2 ms` — the RTT block, no `from`;
-     * - `ping: unknown host example.invalid` — no reply and no loss line, so
-     *   [parseSummary] returns null and the caller falls back;
-     * - `64 bytes from 1.2.3.4: icmp_seq=1 ttl=57 time=12.3 ms (DUP!)` — a
-     *   duplicate reply for a sequence already recorded; `associateBy` keeps the
-     *   first, so the duplicate does not double-count.
-     */
+    /// `ttl` is optional (`ping6` omits it); lines without `from` and `time=` cannot match
     private val REPLY_REGEX = Regex(
         "from\\s+(\\S+):\\s+(?:icmp_seq|seq)=(\\d+)(?:.*?ttl=(\\d+))?.*?time=([0-9.]+)\\s*ms",
     )

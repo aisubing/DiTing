@@ -57,8 +57,7 @@ class _RenderBodyBoundary extends RenderProxyBox {
   }
 }
 
-/// Flutter reveals a focused control against the viewport alone, which runs
-/// under a floating bar, so keyboard and remote traversal would park it there.
+/// Flutter reveals focus against the viewport alone, which runs under a floating bar.
 class _FocusClearOfBar extends StatefulWidget {
   const _FocusClearOfBar({required this.inset, required this.child});
 
@@ -193,8 +192,7 @@ class _OverflowMenuButton extends StatelessWidget {
   }
 }
 
-/// An app bar action from [IconButtonData], standing in a spinner while the
-/// action runs.
+/// An app bar action from [IconButtonData], showing a spinner while it runs.
 class AppBarActionButton extends StatelessWidget {
   const AppBarActionButton({super.key, required this.data});
 
@@ -221,9 +219,3 @@ class AppBarActionButton extends StatelessWidget {
     );
   }
 }
-
-/// What the surface a scaffold sits on asks of its chrome.
-///
-/// A sheet page is a pushed route and wears a page's chrome. A bottom sheet
-/// floats its bar over the body and searches from a field docked over its
-/// foot instead of a button that takes the bar over.

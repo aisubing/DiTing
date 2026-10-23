@@ -1,7 +1,4 @@
-/// `mini_screen.dart` 的绘制实现（part 文件）。
-///
-/// 拆出来的原因只有一个：控件 + 绘制合计 560+ 行，超过 550 行上限。几何类
-/// `_MiniGeometry` 留在主体文件里，因为它同时被控件（点击热区）和绘制使用。
+/// Painting for `mini_screen.dart`, split out to stay under the line cap.
 part of 'mini_screen.dart';
 
 class _MiniScreenPainter extends CustomPainter {
@@ -280,7 +277,7 @@ class _MiniScreenPainter extends CustomPainter {
     canvas.drawRect(bar, Paint()..color = fill);
   }
 
-  /// 玻璃浮条：把页面模糊后垫在下面，再叠半透明玻璃与高光描边。
+  /// Glass floating bar: blur the page behind it, then layer glass and a highlight.
   void _paintGlassBar(Canvas canvas, _MiniGeometry geometry) {
     final bar = geometry.bar;
     final unit = geometry.unit;
@@ -333,7 +330,6 @@ class _MiniScreenPainter extends CustomPainter {
     }
   }
 
-  // —— 颜色与绘制小工具 ——
 
   Color _surface(SurfaceLevel level, double opacity) =>
       level.colorOf(colorScheme).withValues(alpha: opacity);

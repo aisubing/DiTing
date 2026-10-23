@@ -12,12 +12,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// 引导解析设置（上游 `BootstrapSettingsScreen`）。
-///
-/// 开关与节点直接读写 `dns_vpn_prefs` 的 `bootstrap_enabled` /
-/// `bootstrap_preset_ids` / `bootstrap_custom_json`；引擎通过 `buildDnsConfig`
-/// 消费同一组键。节点行的样本与延迟来自旧版 `bootstrap_log` 的 24 小时聚合，
-/// 没有记录时如实显示「暂无样本」，不再伪造数字。
+/// Bootstrap resolution settings (upstream `BootstrapSettingsScreen`). Reads and writes
+/// `bootstrap_enabled`, `bootstrap_preset_ids` and `bootstrap_custom_json` in
+/// `dns_vpn_prefs`; counts come from `bootstrap_log`.
 class BootstrapSettingsPage extends ConsumerWidget {
   const BootstrapSettingsPage({super.key});
 
@@ -152,8 +149,8 @@ class BootstrapSettingsPage extends ConsumerWidget {
     ref.read(legacySettingsRevisionProvider.notifier).bump();
   }
 
-  /// `bootstrap_custom_json` is a JSON array of `{id,name,ip,enabled}`; entries
-  /// without an IP are dropped like `BootstrapDnsSettingsStore` does.
+  /// `bootstrap_custom_json` is a JSON array of `{id,name,ip,enabled}`; entries without an
+  /// IP are dropped like `BootstrapDnsSettingsStore` does.
   static List<BootstrapEntry> _readCustom(String? raw) {
     if (raw == null || raw.isEmpty) return const [];
     final Object? decoded;
@@ -183,8 +180,8 @@ class BootstrapSettingsPage extends ConsumerWidget {
   }
 }
 
-/// 24-hour aggregate of the legacy `bootstrap_log`; empty on a fresh install or
-/// when bootstrap probing never ran.
+/// 24-hour aggregate of the legacy `bootstrap_log`; empty on a fresh install or when
+/// bootstrap probing never ran.
 final bootstrapStatsProvider = FutureProvider<List<BootstrapIpStat>>((
   ref,
 ) async {

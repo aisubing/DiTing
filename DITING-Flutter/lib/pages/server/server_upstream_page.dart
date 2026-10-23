@@ -9,28 +9,9 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 服务器模式「上游服务器」Tab（上游 `server/ui/DnsServersScreen.kt`）。
-///
-/// 上游按协议分段（DNS / DoH / DoT）列出「内置 / 自定义」两组，内置项可选中，
-/// 自定义项还可编辑与删除。这一屏照此实现：
-///
-/// - 协议分段用 `SegmentedControl`（设计系统里同一层的切换件）；
-/// - 内置与自定义分开成两组，组标题逐字沿用上游「内置 DNS 服务商 / 自定义 DNS
-///   服务商」；
-/// - 选中即写入 `diting_dns_mode_prefs/selected_upstream_id`，服务重启后生效。
-///
-/// 上游的「按延迟排序」是 `ProviderManagementListContent` 的附带能力，但服务器
-/// 模式只有一家上游、且本页没有测速存储，硬造一个排序开关等于给用户一个假控件。
-/// 真实测速入口在首页「服务状态」卡片的刷新（原生 `dns_latency` 通道）与网络工具
-/// 页的「测速」页签，本页不重复。
-///
-/// ## 自定义服务商的增删改
-/// 上一轮这一组只列只读，副标题写着「自定义上游在旧版设置页添加，本仓尚未接入
-/// 编辑入口」——旧版 `DnsMainScreen` 的 `onAddUpstream` / `onUpdateUpstream` /
-/// `onDeleteUpstream` 三个回调都在这一屏上，缺的是本仓的实现。现在补上：
-/// 内置项只能选中（由应用维护），自定义项可长按弹出「编辑 / 删除」，右上角
-/// 加号新增、行尾「更多」出编辑/删除。三条落盘语义（id 前缀、IPv6 去括号、删选中项回落）在
-/// [ServerUpstreamActions] 里。
+/// Server mode "upstream server" tab (upstream `server/ui/DnsServersScreen.kt`), segmented
+/// by protocol. A selection writes `diting_dns_mode_prefs/selected_upstream_id`, effective
+/// after a restart. No latency sort: a single upstream would make it a fake control.
 class ServerUpstreamPage extends ConsumerStatefulWidget {
   const ServerUpstreamPage({super.key});
 
@@ -53,10 +34,8 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     );
   }
 
-  /// 新增（[existing] 为 null）或编辑一条自定义服务商。
-  ///
-  /// 校验失败时对话框自己保留并给出字段级提示，不在这里弹第二个提示——两处都
-  /// 报会让用户看到两个重复的错误。
+  /// Adds (when [existing] is null) or edits a custom upstream. Validation failures stay in
+  /// the dialog with field-level hints; a second message here would duplicate the error.
   Future<void> _edit(ServerUpstream? existing) async {
     final result = await showFloatingDialog<ServerUpstream>(
       context: context,
@@ -80,7 +59,7 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     if (!mounted) {
       return;
     }
-    // 新增后切到它所在的协议分段，否则刚加完在别的分段里看不见。
+    // Switch to the new entry's protocol segment, otherwise it stays out of sight.
     setState(() => _protocol = saved.protocol);
     showServerHint(
       context,
@@ -88,10 +67,8 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     );
   }
 
-  /// 删除一条自定义服务商。
-  ///
-  /// 删除会真的改 `custom_upstreams`；若它正是当前选中项，[ServerUpstreamActions.remove]
-  /// 会把 `selected_upstream_id` 回落到第一个内置项，与旧版一致。
+  /// Deletes a custom upstream. [ServerUpstreamActions.remove] falls back to the first
+  /// built-in entry when the deleted one was selected.
   Future<void> _delete(ServerUpstream upstream) async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
@@ -152,9 +129,8 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
       ],
       body: PageBody(
         children: [
-          // 上游 `ProviderManagementListContent` 的 activeItemText：「当前用于解析
-          // DNS：(DNS) 阿里云」。放在协议分段之上，因为它描述的是**整页**的当前
-          // 选择，不是当前分段内的选择——切到 DoH 时它仍应显示那家 DNS 上游。
+          // Upstream's activeItemText, above the protocol segments because it describes the
+          // page-wide selection and stays visible when switching to DoH.
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Text(
@@ -231,13 +207,13 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     );
   }
 
-  /// 自定义项从 `custom_upstreams` 里解析出来，没有单独的 `isCustom` 标记；
-  /// 内置 id 一律带 `preset_` 前缀（上游 `DnsUpstreamServer.PRESETS` 同约定）。
+  /// Custom entries come from `custom_upstreams` with no `isCustom` flag; built-in ids
+  /// carry a `preset_` prefix (same convention as upstream `DnsUpstreamServer.PRESETS`).
   static bool _isCustom(ServerUpstream upstream) =>
       !upstream.id.startsWith('preset_');
 
-  /// 协议显示名。`DnsProtocol.storageValue` 是 `DNS`/`DOH`/`DOT` 的大写存储值，
-  /// 直接上屏会是「(DOH)」，与旧版 `DnsModeProtocol.label` 的「DoH」不一致。
+  /// Protocol display name. `DnsProtocol.storageValue` is the upper-case stored form, so
+  /// showing it directly would read "(DOH)" instead of the legacy "DoH".
   static String _protocolLabel(DnsProtocol protocol) => switch (protocol) {
     DnsProtocol.dns => 'DNS',
     DnsProtocol.doh => 'DoH',
@@ -258,7 +234,6 @@ class _UpstreamRow extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  /// 自定义项才传；内置项由应用维护，没有编辑/删除入口。
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -294,11 +269,8 @@ class _UpstreamRow extends StatelessWidget {
   }
 }
 
-/// 行尾的「更多」菜单：编辑 / 删除。
-///
-/// 点图标直接弹菜单，而不是依赖 `ContextMenuRegion` 的长按：后者在 `ListItem`
-/// 的 `onTap` 之下，实测点图标会先被整行点击吃掉（只弹「已选择 X」）。
-/// 直接 push [CommonPopupRoute] 与长按走的是同一条路由，视觉一致且点击即可用。
+/// Trailing "more" menu with edit / delete. Tapping pushes [CommonPopupRoute] directly: a
+/// `ContextMenuRegion` long-press sits under the `ListItem.onTap`, which swallows the icon tap.
 class _RowMenu extends StatelessWidget {
   const _RowMenu({
     required this.name,

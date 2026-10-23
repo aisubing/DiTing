@@ -1,10 +1,7 @@
 part of 'demo_page.dart';
 
-/// 标签与选择标记分区：验证 [CommonChip]、[TonalChip]、[MetaChip] 三种标签的
-/// 高度与字号差异，以及 [SelectionCheck] / [SelectionBadge] 两套勾选标记。
-///
-/// 三者的区别只在「一像素级」的 padding 与字号（caption1 强调 vs caption2
-/// 强调），必须并排在同一行才看得出谁该用在哪里。
+/// Chips and selection marks: [CommonChip], [TonalChip], [MetaChip], [SelectionCheck] and
+/// [SelectionBadge], which differ only in padding and caption emphasis.
 class _DemoChipSection extends StatelessWidget {
   const _DemoChipSection();
 
@@ -33,7 +30,6 @@ class _DemoChipSection extends StatelessWidget {
   }
 }
 
-/// 普通标签：单个、带删除、长文本截断、以及一条能换行的标签流。
 class _DemoCommonChips extends StatelessWidget {
   const _DemoCommonChips();
 
@@ -75,7 +71,7 @@ class _DemoCommonChips extends StatelessWidget {
   }
 }
 
-/// 色调标签：底色与前景色成对传入，用于延迟/协议/类型这类需要按值着色的场合。
+/// Background + foreground pair, for where the color encodes latency, protocol or type.
 class _DemoTonalChips extends StatelessWidget {
   const _DemoTonalChips();
 
@@ -141,7 +137,6 @@ class _DemoTonalChips extends StatelessWidget {
   }
 }
 
-/// 元信息标签：列表行里跟在标题后的最小标签（协议、类型、计数）。
 class _DemoMetaChips extends StatelessWidget {
   const _DemoMetaChips();
 
@@ -174,10 +169,7 @@ class _DemoMetaChips extends StatelessWidget {
   }
 }
 
-/// 选择标记：单勾、圆形徽标、preferred 两种状态（tonal / 实心）。
-///
-/// 用 [Wrap] 而不是 [Row]：四枚标记加说明文字在窄屏放不下一行，Wrap 会换行，
-/// 而 Row 只会溢出。
+/// [Wrap] instead of [Row] because four marks do not fit one narrow line.
 class _DemoSelectionMarks extends StatelessWidget {
   const _DemoSelectionMarks();
 

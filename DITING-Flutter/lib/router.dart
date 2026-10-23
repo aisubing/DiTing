@@ -17,18 +17,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-/// 路由表。
-///
-/// 结构：
-/// - 底栏六个 tab 各占一个 [StatefulShellBranch]（`indexedStack` 天然保活，
-///   切 tab 不重建，因此不再需要额外的 `KeepScope`）；
-/// - 二级页面挂在 root navigator 上普通 push，全屏、无底栏，转场用安卓系统
-///   默认动画（见 [androidDefaultPage]）；
-/// - 模式切换页与引导页**不在** shell 里：它们要全屏、没有底栏。
-///
-/// 1.4.3 的底栏是六项（`BottomBarDestination`），可选 2–4 个；这里的六个 branch
-/// 与它一一对应。上一轮多出来的 `/agent`、`/apps` 已删除：前者与
-/// `/hub/agent` 重复，后者在旧版是「排除应用名单」（`/hub/excluded-apps`）。
+/// Route table: one shell branch per bottom-bar tab (the indexed stack keeps them alive), secondary
+/// pages pushed full screen on the root navigator, mode and onboarding pages outside the shell.
 abstract final class Routes {
   static const home = '/';
   static const hub = '/hub';
@@ -44,14 +34,12 @@ abstract final class Routes {
   static const modeSelect = '/mode/select';
   static const modeOnboarding = '/mode/onboarding';
 
-  /// 规则页按种类分三份，同一个 widget 三种数据源。
+  /// Rule pages share one widget and differ only by kind.
   static String rulesOf(String kind) => '$rules/$kind';
 }
 
-/// 底栏 tab 与 branch 下标的对应关系。
-///
-/// branch 顺序固定（不随用户配置变化），底栏只是它的一个子集视图；否则
-/// 用户改一次底栏配置，`goBranch` 的下标就会整体错位。
+/// Branch order is fixed so `goBranch` indices stay stable when the user customises
+/// which tabs the bottom bar shows.
 const _branchOrder = <String>[
   Routes.home,
   Routes.hub,
@@ -61,24 +49,16 @@ const _branchOrder = <String>[
   Routes.settings,
 ];
 
-/// 把位置映射到 branch 下标。
-///
-/// **必须按最长前缀匹配，不能 `indexWhere(startsWith)` 取第一个命中**：首页的
-/// 路径是 `/`，它对任何绝对路径都 `startsWith` 为真，于是 `/hub`、`/logs` 全都
-/// 会被判成 0 号 branch。这个问题在「只有测试调用」时不可见，一旦有人用它做
-/// `goBranch` 的入参，在任何非首页的位置点一下都会跳回首页。
-///
-/// 未命中时返回 0（首页）：兜底到首页比抛异常安全，调用点都在导航路径上。
+/// Maps a location to its branch index. Must match the longest prefix: `/` prefixes every
+/// absolute path, so the first hit would map `/hub` and `/logs` to home. Falls back to 0
+/// (home), which is safer than throwing on a navigation path.
 int branchIndexOf(String location) {
   var bestIndex = 0;
   var bestLength = -1;
   for (var index = 0; index < _branchOrder.length; index++) {
     final prefix = _branchOrder[index];
     if (!location.startsWith(prefix)) continue;
-    // `/logs` 与 `/logs/cache` 都命中 `/logs`；`/` 与 `/hub` 都命中 `/`。
-    // 取最长的那条，`/logs/cache` 因此落在 logs branch 上。
-    //
-    // 前缀后必须紧跟 `/` 或结束，否则 `/logsomething` 会命中 `/logs`。
+    // The prefix must end at a `/` boundary, or `/logsomething` would match `/logs`.
     final isBoundary =
         location.length == prefix.length ||
         prefix.endsWith('/') ||
@@ -92,19 +72,13 @@ int branchIndexOf(String location) {
   return bestIndex;
 }
 
-/// branch 下标 → 该 branch 的根路径。
-///
-/// 供壳层把 `navigationShell.currentIndex` 反查成位置用。之前 `app_shell.dart`
-/// 自己抄了一份 `_branchOrder`，两份顺序一旦有偏差，`goBranch` 的下标就会整体
-/// 错位而且看不出来（见 `branchIndexOf` 注释）。现在只保留这一份。
+/// Root path of a branch, used by the shell to translate `currentIndex` back into a
+/// location. The only copy of the order.
 String branchLocationOf(int index) =>
     index >= 0 && index < _branchOrder.length ? _branchOrder[index] : Routes.home;
 
-/// 这个位置本身是不是某个底栏 tab 的根（`/`、`/hub`、`/logs`、`/traffic`、
-/// `/tools`、`/settings`）。
-///
-/// 用来区分「跳到另一个 tab」与「打开一个二级页」：两者在跳转 API 上不能混用，
-/// 见 [goToBranch]。
+/// Whether the location is a tab root rather than a sub page; this distinguishes
+/// switching tabs from pushing, and the two APIs are not interchangeable.
 bool isBranchRoot(String location) {
   for (final root in _branchOrder) {
     if (root == location) return true;
@@ -112,16 +86,9 @@ bool isBranchRoot(String location) {
   return false;
 }
 
-/// 跳到 [location] 所在的底栏 tab（而不是把它 push 成一张独立页面）。
-///
-/// 为什么不直接 `context.push('/traffic')`：`/traffic` 等路径是
-/// `StatefulShellBranch` 的根，push 它会在当前 branch 之上再叠一个页面，而这个
-/// 页面里**同样画着一条底栏**。那条底栏不在 `StatefulShellRoute` 之内，点它切
-/// 不动 branch——用户被卡在复制出来的这一页上，只能按返回键退出，这正是
-/// 「底栏点了没反应 / 跳到错误页」的同一类问题。
-///
-/// 命中 shell 时返回 true（调用方不要再 push）；不在 shell 里（罕见，例如引导
-/// 期无壳）返回 false，调用方才回退到普通 push。
+/// Switches to the tab that owns [location] instead of pushing it. Pushing a branch root such as
+/// `/traffic` would stack a second copy with a bottom bar outside the `StatefulShellRoute`. Returns
+/// false without a shell (before mounting), so the caller falls back to a plain push.
 bool goToBranch(BuildContext context, String location) {
   final shell = StatefulNavigationShell.maybeOf(context);
   if (shell == null) {
@@ -131,10 +98,8 @@ bool goToBranch(BuildContext context, String location) {
   return true;
 }
 
-/// 打开 [location]：目标是底栏 tab 就切 tab，否则正常 push 一张二级页。
-///
-/// 首页卡片、功能中心卡片这类「可能指向 tab、也可能指向二级页」的入口统一走
-/// 这里，免得每个调用点各自判断，漏掉一处就又复制出一条无法切换的底栏。
+/// Opens [location]: switches tabs when it is a branch root, pushes otherwise. Entry
+/// points that may hit either (home, hub cards) must go through here.
 void openLocation(BuildContext context, String location) {
   if (isBranchRoot(location) && goToBranch(context, location)) {
     return;
@@ -239,8 +204,8 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
         pageBuilder: (context, state) =>
             androidDefaultPage(state, const ModeOnboardingPage()),
       ),
-      // —— 第二轮按领域拆分的路由，各自在 `lib/routes/<domain>_routes.dart` 里
-      // 定义；这里只负责拼接。新增领域 = 新增一个 `...<domain>Routes()`。
+      // Domain routes live in `lib/routes/<domain>_routes.dart`; a new domain
+      // means one more `...<domain>Routes()` entry here.
       ...dashboardRoutes(),
       ...hubRoutes(),
       ...logsRoutes(),
@@ -248,12 +213,8 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
       ...configRoutes(),
       ...systemRoutes(),
     ],
-    // 兜底页：没有它，未匹配的路由会被 `GoRouter` 静默当成「无页面」——
-    // 真机上是一片空白，测试里因为没有抛异常反而会**通过**，这条路由就永远
-    // 不会被发现是漏注册的。挂上 `UnknownRoutePage` 后：
-    // - 用户看到「页面不存在 + 返回」，不是空白；
-    // - `route_catalog_test.dart` 靠 `find.byType(UnknownRoutePage)` 把漏注册
-    //   变成硬失败。
+    // Without this, unmatched routes render a blank page instead of failing, so a missing
+    // registration goes unnoticed. `UnknownRoutePage` shows "page not found".
     errorBuilder: (context, state) =>
         UnknownRoutePage(location: state.uri.toString()),
   );

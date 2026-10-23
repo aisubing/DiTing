@@ -15,8 +15,7 @@ import 'package:material_ui/material_ui.dart';
 import 'focus.dart';
 part 'sortable_a.dart';
 
-/// The sort mode a [CommonScaffold] keeps for its body, or a section keeps
-/// for its own rows.
+/// The sort mode a [CommonScaffold] keeps for its body, or a section for its own rows.
 class SortModeScope extends InheritedWidget {
   const SortModeScope({super.key, required this.sorting, required super.child});
 
@@ -32,9 +31,7 @@ class SortModeScope extends InheritedWidget {
 
 typedef SortableItemData = ({int index, bool sorting});
 
-/// While the [SortModeScope] above sorts, [DecorationListItem] and
-/// [ContextMenuRegion] below give up their taps and menus, and the trailing
-/// turns into a [SortHandle].
+/// While a scope above sorts, rows below give up taps and menus for a [SortHandle].
 class SortableItem extends StatelessWidget {
   const SortableItem({super.key, required this.index, required this.child});
 
@@ -69,8 +66,6 @@ class _SortableItemScope extends InheritedWidget {
       data != oldWidget.data;
 }
 
-/// Marks a row whose tap opens a page, sized like the handle that replaces it
-/// in sort mode so the two share a center.
 class DisclosureIndicator extends StatelessWidget {
   const DisclosureIndicator({super.key});
 
@@ -83,9 +78,7 @@ class DisclosureIndicator extends StatelessWidget {
   }
 }
 
-/// The trailing button of a row whose tap does something else, held to the
-/// [DisclosureIndicator]'s box since a desktop's compact density would shrink
-/// a bare [IconButton] and pull its glyph off the column.
+/// A row's trailing button doing something else, held to the [DisclosureIndicator]'s box.
 class DetailButton extends StatelessWidget {
   const DetailButton({
     super.key,
@@ -113,8 +106,7 @@ class DetailButton extends StatelessWidget {
   }
 }
 
-/// Drags on press; with focus, a select key lifts the row and the up and down
-/// keys move it, so a remote or a keyboard can sort without a pointer.
+/// Drags on press; with focus, the select key lifts the row and up/down move it.
 class SortHandle extends StatefulWidget {
   const SortHandle({super.key, required this.index});
 

@@ -1,12 +1,7 @@
-/// 1.4.3 `subscription` / `subscription_group` / `subscription_auto_update_item`
-/// 三张表的 Dart 模型与枚举常量。
-///
-/// 枚举值逐字照抄 `data/entity/SubscriptionEntity.kt` 与
-/// `SubscriptionAutoUpdateItemEntity.kt`：这些字符串直接写进数据库，任何大小写
-/// 或拼写偏差都会让升级用户的行读不出来（`kind` 还参与 `(url, kind)` 唯一索引）。
+/// Models for the legacy subscription tables; the `storageValue` strings are persisted verbatim, so
+/// any case or spelling change makes legacy rows unreadable.
 library;
 
-/// `SubscriptionSourceType`：行来自网络订阅还是本地文件。
 enum SubscriptionSourceType {
   remote('remote', '网络订阅'),
   local('local', '本地文件');
@@ -20,10 +15,7 @@ enum SubscriptionSourceType {
       value == local.storageValue ? local : remote;
 }
 
-/// `SubscriptionKind`：一条订阅只承载一种规则类型。
-///
-/// `displayNameOf` 与上游 `SubscriptionKind.displayName` 逐字一致
-/// （「黑白名单规则」/「hosts 规则」），`normalize` 的回落也是 `domain`。
+/// A subscription carries exactly one rule type; [normalize] falls back to [domain].
 enum SubscriptionKind {
   domain('domain', '黑白名单规则'),
   hosts('hosts', 'hosts 规则');
@@ -32,7 +24,6 @@ enum SubscriptionKind {
 
   final String storageValue;
 
-  /// 用户可见名称，照抄 `SubscriptionKind.displayName`。
   final String displayName;
 
   static SubscriptionKind normalize(String? value) =>
@@ -43,7 +34,6 @@ enum SubscriptionKind {
       value?.trim().toLowerCase() == hosts.storageValue;
 }
 
-/// `SubscriptionImportState`：三态视觉的数据来源。
 enum SubscriptionImportState {
   ready('ready'),
   importing('importing'),
@@ -60,7 +50,6 @@ enum SubscriptionImportState {
   };
 }
 
-/// `SubscriptionAutoUpdateItemStatus`。
 enum SubscriptionAutoUpdateStatus {
   pendingRetry('pending_retry'),
   success('success'),
@@ -78,8 +67,7 @@ enum SubscriptionAutoUpdateStatus {
       };
 }
 
-/// 一行 `subscription`。字段与表列一一对应；`enabled` / `mirrorFallback` 在库里
-/// 是 INTEGER 0/1，这里统一成 bool。
+/// One `subscription` row; flags are stored as INTEGER 0/1 and exposed as bool.
 class SubscriptionRecord {
   const SubscriptionRecord({
     required this.id,
@@ -110,10 +98,9 @@ class SubscriptionRecord {
   final SubscriptionKind kind;
   final bool enabled;
 
-  /// 上一次成功导入的规则条数。本轮口径见 [SubscriptionLineCount] 的注释。
   final int ruleCount;
 
-  /// 上次成功导入的时间（epoch ms）；0 表示从未成功。
+  /// Epoch milliseconds of the last successful import; 0 means never.
   final int lastUpdated;
   final int addedAt;
   final SubscriptionImportState importState;
@@ -122,10 +109,10 @@ class SubscriptionRecord {
   final String? httpLastModified;
   final String? ruleSetHash;
 
-  /// 上次尝试（成功 / 304 / 失败）的时间（epoch ms）。
+  /// Epoch milliseconds of the last attempt, whatever its outcome.
   final int lastAttemptAt;
 
-  /// 连续失败次数，成功或 304 后清零；UI 用它提示「连续失败 N 次」。
+  /// Consecutive failures, reset on success or 304.
   final int consecutiveFailureCount;
   final String? mirrorTemplate;
   final bool mirrorFallback;
@@ -168,7 +155,6 @@ class SubscriptionRecord {
   };
 }
 
-/// 一行 `subscription_group`。
 class SubscriptionGroupRecord {
   const SubscriptionGroupRecord({
     required this.id,
@@ -192,7 +178,6 @@ class SubscriptionGroupRecord {
       );
 }
 
-/// 一行 `subscription_auto_update_item`（后台批量更新的逐条结果）。
 class SubscriptionAutoUpdateItemRecord {
   const SubscriptionAutoUpdateItemRecord({
     required this.batchId,

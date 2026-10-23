@@ -39,12 +39,10 @@ enum NullStatusIllustration {
 }
 
 class NullStatusSwitcher extends StatefulWidget {
-  /// Only the first load is held back; later loads keep what is on screen.
   final bool isLoading;
   final bool isEmpty;
   final bool isSearching;
 
-  /// Shown in place of a first load still running after a route transition.
   final NullStatus? loadingStatus;
   final NullStatus? nullStatus;
   final Widget child;
@@ -118,10 +116,7 @@ class _NullStatusSwitcherState extends State<NullStatusSwitcher> {
           alignment: Alignment.center,
           child: Stack(
             alignment: Alignment.center,
-            // 只有父级给了确定高度时才铺满：放进 `ListView` 这类无界高度的
-            // 滚动视图里，`StackFit.expand` 会要求无限高，直接
-            // 「BoxConstraints forces an infinite height」，整棵空状态子树
-            // 布局失败——页面上就是顶栏下面一片空白（/config/dns 等四页）。
+            // Fill only with a bounded height: `StackFit.expand` forces infinite height otherwise.
             fit: constraints.hasBoundedHeight
                 ? StackFit.expand
                 : StackFit.loose,

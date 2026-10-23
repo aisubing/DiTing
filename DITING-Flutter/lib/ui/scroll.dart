@@ -23,8 +23,7 @@ const _crossAxisMargin = 2.0;
 const _minThumbLength = 48.0;
 const _bottomInsetGap = 8.0;
 
-// Every band the pointer strays sideways from where it grabbed the thumb
-// halves how far the content moves per pixel of thumb travel.
+// Each band the pointer strays sideways from the thumb halves the content's travel.
 const _scrubBandWidth = 48.0;
 const _scrubRates = [1.0, 0.5, 0.25, 0.125];
 
@@ -34,7 +33,6 @@ class CommonScrollBar extends StatelessWidget {
   final bool thumbVisibility;
   final EdgeInsets padding;
 
-  /// Reports the scrub rate while the thumb is held, and null on release.
   final ValueChanged<double?>? onScrub;
 
   final bool _hidesAmbientBar;
@@ -48,7 +46,6 @@ class CommonScrollBar extends StatelessWidget {
     this.onScrub,
   }) : _hidesAmbientBar = true;
 
-  /// The bar a scroll behavior adds, which has no other bar to hide.
   const CommonScrollBar.ambient({
     super.key,
     required this.child,
@@ -82,8 +79,7 @@ class CommonScrollBar extends StatelessWidget {
     if (padding == EdgeInsets.zero) {
       return _buildScrollBar(context, child);
     }
-    // Scrollbar insets its track by MediaQuery padding, so the inset reaches it
-    // through a MediaQuery of its own and the child keeps the original one.
+    // Scrollbar insets its track by MediaQuery padding; give it its own and not the child.
     final mediaQuery = MediaQuery.of(context);
     return MediaQuery(
       data: mediaQuery.copyWith(padding: mediaQuery.padding + padding),
@@ -95,15 +91,13 @@ class CommonScrollBar extends StatelessWidget {
   }
 }
 
-/// What of the floating bar over the scroll view MediaQuery padding leaves to
-/// cover: a page's bar pads its body, a bottom sheet's header does not.
+/// What of the floating bar MediaQuery padding leaves to cover.
 double _barClearance(BuildContext context) {
   final overlap = FloatingBarScope.of(context) ?? 0;
   return max(0.0, overlap - MediaQuery.paddingOf(context).top);
 }
 
-/// The ambient behavior less the bar it would stack on the scrollable that
-/// [controller] drives, so lists nested inside keep theirs.
+/// The ambient behavior less the bar it would stack on the scrollable [controller] drives.
 class _OwnBarScrollBehavior extends ScrollBehavior {
   const _OwnBarScrollBehavior({
     required this.ambient,

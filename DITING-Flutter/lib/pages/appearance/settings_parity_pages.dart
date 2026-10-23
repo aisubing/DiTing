@@ -1,11 +1,4 @@
-/// 外观与设置的对齐二级页（下半）：通知栏 / 软件背景 / 前后台行为 / 语言。
-///
-/// 这四页走的是旧版**设置域**的键，而不是外观域的视觉偏好：
-/// - 通知栏四键在 `notification_settings_prefs`（前台服务读那一份）；
-/// - 后台隐藏 / 绕过局域网 / IPv6 在 `ui/settings/SystemSettingsStore.kt`；
-/// - 语言只有「跟随系统 / 中文」两项。
-///
-/// 与 `appearance_shared_pages.dart` 拆开的唯一原因是 550 行上限。
+/// Notifications, background and language sub pages; keys in `notification_settings_prefs`.
 library;
 
 import 'dart:io';
@@ -17,14 +10,9 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-// ---------------------------------------------------------------------------
-// 通知栏设置（旧版 NotificationSettingsScreen，四个键）
-// ---------------------------------------------------------------------------
 
-/// 通知栏设置：常驻通知 / 实时速率 / 两条自定义文案 / 系统通知权限。
-///
-/// 四个键都在 `notification_settings_prefs` 容器里（不是 `dns_vpn_prefs`）：
-/// 前台服务读的是那一份，写错容器界面上看不出区别，通知栏却毫无变化。
+/// Notification settings. The four keys live in `notification_settings_prefs`: the
+/// foreground service reads that container, so writing elsewhere silently does nothing.
 class ThemeNotificationPage extends ConsumerStatefulWidget {
   const ThemeNotificationPage({super.key});
 
@@ -120,10 +108,7 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
   }
 }
 
-/// 「上标签 + 下输入框」的内联编辑行。
-///
-/// 不复用 `ListItem.input`：那个自带点击弹出的对话框，而这里是内联编辑，
-/// 行为完全不同。
+/// Inline edit row; `ListItem.input` opens a dialog on tap instead.
 void _hint(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(
@@ -134,14 +119,9 @@ void _hint(BuildContext context, String message) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// 软件背景（旧版软件背景页）
-// ---------------------------------------------------------------------------
 
-/// 软件背景：启用开关 + 添加图片 + 已添加壁纸缩略图网格。
-///
-/// 选图要走原生 `PickVisualMedia`（通道由 Lead 提供）。通道缺失时这一页仍然可用
-/// ——开关与清单照样读写，只是「添加图片」会给出明确提示，而不是弹出假缩略图。
+/// App background. Picking goes through the native `PickVisualMedia` channel; without
+/// it the page still works and only "add image" reports that it is unavailable.
 class ThemeBackgroundPage extends ConsumerWidget {
   const ThemeBackgroundPage({super.key});
 
@@ -206,7 +186,6 @@ class ThemeBackgroundPage extends ConsumerWidget {
   }
 }
 
-/// 壁纸缩略图网格：每行三张，点选切换、长按删除。
 class _WallpaperGrid extends StatelessWidget {
   const _WallpaperGrid({
     required this.uris,
@@ -222,7 +201,7 @@ class _WallpaperGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 缩略图接近手机比例（9:16），三列排布。
+    // Thumbnails use a phone-like 9:16 ratio in three columns.
     const aspectRatio = 9 / 16;
     final rows = <Widget>[];
     for (var i = 0; i < uris.length; i += 3) {
@@ -259,8 +238,8 @@ class _WallpaperGrid extends StatelessWidget {
       context: context,
       child: CommonDialog(
         title: '删除壁纸',
-        // 最后一个动作是破坏性的：`destructive` 让它在填充底上呈红色，
-        // 与其它确认弹窗一致（手写红字会得到「蓝底红字」的错误配色）。
+        // The last action is destructive: `destructive` tints it red on a filled
+        // background, consistent with the other confirmation dialogs.
         destructive: true,
         actions: [
           TextButton(
@@ -279,7 +258,7 @@ class _WallpaperGrid extends StatelessWidget {
   }
 }
 
-/// 单张壁纸缩略图；从原生缓存路径加载，选中时右上角打勾。
+/// One wallpaper thumbnail, checked when selected.
 class _WallpaperThumbnail extends StatefulWidget {
   const _WallpaperThumbnail({
     required this.uri,
@@ -366,11 +345,7 @@ class _WallpaperThumbnailState extends State<_WallpaperThumbnail> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 前后台行为（旧版 FOREGROUND_BACKGROUND_SETTINGS）
-// ---------------------------------------------------------------------------
 
-/// 前后台行为：后台隐藏 / 绕过局域网 / IPv6 三档 / 忽略电池优化。
 class SettingsBackgroundPage extends ConsumerWidget {
   const SettingsBackgroundPage({super.key});
 
@@ -435,14 +410,8 @@ class SettingsBackgroundPage extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// 语言设置（旧版 LANGUAGE_SETTINGS：只有跟随系统 / 中文）
-// ---------------------------------------------------------------------------
 
-/// 语言设置。
-///
-/// 旧版枚举里预留了英文但没有文案资源，界面上只有两项。本轮照旧只做两项，
-/// 并如实说明英文尚未提供——不臆造一个点了没反应的选项。
+/// The legacy enum reserves English but ships no strings, so only two options are offered.
 class SettingsLanguagePage extends ConsumerWidget {
   const SettingsLanguagePage({super.key});
 

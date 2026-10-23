@@ -1,6 +1,6 @@
 part of 'profiles_providers.dart';
 
-/// 扩展模式：按档案 id 记，切换档案时各自的模式互不影响。
+/// Extension mode, keyed by profile id so each profile keeps its own mode.
 class ExtendModesNotifier extends Notifier<Map<String, ExtendMode>> {
   @override
   Map<String, ExtendMode> build() => const {};
@@ -18,14 +18,14 @@ final extendModesProvider =
       ExtendModesNotifier.new,
     );
 
-/// 每个档案选中的脚本。
+/// Script selected for each profile.
 class ScriptSelectionNotifier extends Notifier<Map<String, String?>> {
   @override
   Map<String, String?> build() => const {};
 
   String? scriptOf(String profileId) => state[profileId];
 
-  /// 再点一次取消选中（上游 `state.scriptId == scriptId ? null : scriptId`）。
+  /// Tapping again deselects, as upstream `scriptId == scriptId ? null : scriptId`.
   void select(String profileId, String scriptId) {
     state = {
       ...state,
@@ -39,7 +39,7 @@ final scriptSelectionProvider =
       ScriptSelectionNotifier.new,
     );
 
-/// 每个档案的匹配目标（`null` 表示跟随档案默认）。
+/// Match target per profile; null follows the profile default.
 class MatchTargetsNotifier extends Notifier<Map<String, String?>> {
   @override
   Map<String, String?> build() => const {};
@@ -56,7 +56,6 @@ final matchTargetsProvider =
       MatchTargetsNotifier.new,
     );
 
-/// 档案里追加的规则（扩展页「已追加规则」）。
 class AddedRulesNotifier extends Notifier<List<MockCustomRule>> {
   var _sequence = 0;
 
@@ -112,7 +111,7 @@ final addedRulesProvider =
       AddedRulesNotifier.new,
     );
 
-/// 全局追加规则的启停（扩展页「控制全局追加规则」）。
+
 class GlobalRulesNotifier extends Notifier<List<MockGlobalRule>> {
   @override
   List<MockGlobalRule> build() => [...mockGlobalRules];

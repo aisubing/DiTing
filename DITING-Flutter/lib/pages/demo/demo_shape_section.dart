@@ -1,10 +1,7 @@
 part of 'demo_page.dart';
 
-/// 形状分区：验证 [AppCorner] 九档、[AppRadius] 与 [AppShape] 的对应关系，
-/// 以及 [AppInputBorder] 的描边/内边距。
-///
-/// 圆角是最容易「看起来差不多」的回归点：md 16 被写成 12，肉眼几乎看不出来，
-/// 但把九档并排、标上数值，任何一档掉队都会立刻破坏等差数列的观感。
+/// Shapes: the nine [AppCorner] steps, [AppRadius] to [AppShape] and the [AppInputBorder]
+/// stroke. Corners are the easiest regression to miss, so all nine sit side by side.
 class _DemoShapeSection extends StatelessWidget {
   const _DemoShapeSection();
 
@@ -31,8 +28,7 @@ class _DemoShapeSection extends StatelessWidget {
   }
 }
 
-/// 九档圆角：每格一个方块 + 档名 + 数值。full 用 1000 表示「取短边一半」，
-/// 所以它和 circle 视觉上一致，但语义不同（前者是圆角上限，后者是圆）。
+/// `full` uses 1000 for half the short side, so it looks circular but means the corner limit.
 class _DemoCornerGrid extends StatelessWidget {
   const _DemoCornerGrid();
 
@@ -49,7 +45,7 @@ class _DemoCornerGrid extends StatelessWidget {
   }
 }
 
-/// 九档的 (名字, 数值) 表。数值直接取 [AppCorner] 常量，不抄字面量。
+/// The nine (name, value) pairs, taken from [AppCorner] rather than copied.
 const _demoCorners = <(String, double)>[
   ('none', AppCorner.none),
   ('xs', AppCorner.xs),
@@ -106,7 +102,6 @@ class _DemoCornerCell extends StatelessWidget {
   }
 }
 
-/// 只圆一边/两边的组合：卡片拼接（列表首行只圆上边）与分段控件都靠它。
 class _DemoRadiusCombos extends StatelessWidget {
   const _DemoRadiusCombos();
 
@@ -160,7 +155,6 @@ class _DemoRadiusCombos extends StatelessWidget {
   }
 }
 
-/// 圆、胶囊、输入框描边三种特殊形状。
 class _DemoSpecialShapes extends StatelessWidget {
   const _DemoSpecialShapes();
 

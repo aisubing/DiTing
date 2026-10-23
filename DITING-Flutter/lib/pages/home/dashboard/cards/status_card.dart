@@ -9,19 +9,11 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 状态卡（FlClash `widgets/current_outbound.dart` 的形态）。
-///
-/// 上游那张卡的主体是「出口 IP 大字 + 国家徽标 + 质量胶囊 + 运行时长 / IP 归属
-/// 两格」。DITING 没有出口节点这个概念——它是个 DNS 服务，`状态`要回答的是
-/// 「内核在不在跑、跑了多久、走哪个服务商、今天解析了多少」。
-///
-/// 因此大字号位置放**运行时长**，下面两格是**当前服务商**与**今日查询**：
-/// 结构（大字 + 两格）与上游一致，每个数字仍然来自真实状态机与引擎计数器。
-/// 未运行时时长显示 `—` 而不是 `0秒`：没跑过就没有时长，这不是「刚启动」。
+/// Status card, after FlClash widgets/current_outbound.dart. Uptime shows a dash when
+/// stopped, not `0s`: not started is not the same as just started.
 class StatusCard extends ConsumerWidget {
   const StatusCard({super.key, this.onDetail});
 
-  /// 右上角「详情」的落点。
   final VoidCallback? onDetail;
 
   @override
@@ -98,14 +90,13 @@ class StatusCard extends ConsumerWidget {
   }
 }
 
-/// 「标签 / 主值 / 副值」一格。
 class _StatusCell extends StatelessWidget {
   const _StatusCell({required this.label, required this.value, this.hint});
 
   final String label;
   final String value;
 
-  /// 主值下面的小字；没有就整行不出现，不留空。
+  /// Sub-line under the main value; omitted entirely when null.
   final String? hint;
 
   @override

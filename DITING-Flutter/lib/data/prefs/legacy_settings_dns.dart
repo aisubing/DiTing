@@ -1,10 +1,7 @@
 part of 'legacy_settings.dart';
 
-/// DNS-domain settings: providers, cache policy, block response, bootstrap and
-/// the inspection switches.
-///
-/// A part of the same library so an extension can still reach the private
-/// store and helpers of [LegacySettings].
+/// DNS-domain settings: providers, cache policy, block response, bootstrap and the inspection
+/// switches.
 extension LegacyDnsSettings on LegacySettings {
 
   bool get vpnRunning =>
@@ -33,8 +30,7 @@ extension LegacyDnsSettings on LegacySettings {
 
   String? get userProvidersJson => _string(dnsContainer, 'user_providers_json');
 
-    /// `provider_health_json` as recorded by the Go resolver. Values are EWMA
-    /// milliseconds; a provider without history is absent.
+  /// As recorded by the Go resolver: EWMA milliseconds, absent without history.
   Map<String, int> get providerLatenciesMs {
     final raw = _string(dnsContainer, 'provider_health_json');
     if (raw == null || raw.isEmpty) return const {};
@@ -56,8 +52,7 @@ extension LegacyDnsSettings on LegacySettings {
     return result;
   }
 
-    /// Written verbatim; the array shape (`id`/`name`/`protocol`/`url`/`host`/
-    /// `port`) is the legacy contract.
+  /// Written verbatim; the legacy contract expects `id`/`name`/`protocol`/`url`/`host`/`port`.
   void setUserProvidersJson(String json) =>
       _store.putString(dnsContainer, 'user_providers_json', json);
 
@@ -70,14 +65,12 @@ extension LegacyDnsSettings on LegacySettings {
   List<String> get primaryBackupProviderIds =>
       _idList('primary_backup_provider_ids');
 
-    /// `race_provider_ids`, a separate historical key from
-    /// `parallel_race_provider_ids`; backups must keep the original name.
+  /// A separate historical key from `parallel_race_provider_ids`; backups must keep the name.
   List<String> get raceProviderIds => _idList('race_provider_ids');
 
   void setRaceProviderIds(List<String> ids) =>
       _store.putString(dnsContainer, 'race_provider_ids', jsonEncode(ids));
 
-    /// `latency_test_provider_ids`. No screen edits it, but backups carry it.
   List<String> get latencyTestProviderIds =>
       _idList('latency_test_provider_ids');
 
@@ -87,17 +80,15 @@ extension LegacyDnsSettings on LegacySettings {
     jsonEncode(ids),
   );
 
-    /// `preset_dns_service`: only `DNS` / `DoT` / `DoH` are accepted. No screen
-    /// exposes it any more, but backups must carry it or a restore falls back to
-    /// `DNS` and the chosen race protocol is lost.
+  /// Only `DNS` / `DoT` / `DoH`; a restore without it falls back to `DNS` and loses the race
+  /// protocol.
   String get presetDnsServiceRaw =>
       _string(dnsContainer, 'preset_dns_service') ?? 'DNS';
 
   void setPresetDnsServiceRaw(String value) =>
       _store.putString(dnsContainer, 'preset_dns_service', value);
 
-    /// `race_test_domain`, the home race probe domain; default `mihoyo.com`.
-    /// Backups must carry the effective value, not an empty string.
+  /// Home race probe domain; backups must carry the effective value, not an empty string.
   String get raceTestDomain => _string(dnsContainer, 'race_test_domain') ?? 'mihoyo.com';
 
   void setRaceTestDomain(String domain) =>
@@ -121,8 +112,7 @@ extension LegacyDnsSettings on LegacySettings {
     jsonEncode(ids),
   );
 
-    /// Candidate list edited by the resolution UI. Single mode has none: its
-    /// selection lives in `selected_provider_id`.
+  /// Single mode has no candidate list: the selection lives in `selected_provider_id`.
   List<String> providerIdsOf(String resolutionMode) => switch (resolutionMode) {
     'smart_prediction' => smartPredictionProviderIds,
     'parallel_race' => parallelRaceProviderIds,
@@ -143,8 +133,7 @@ extension LegacyDnsSettings on LegacySettings {
     }
   }
 
-    /// Home visibility filter; all three values are stored as sorted JSON
-    /// arrays, like the legacy `writeStringSet`.
+  /// Stored as sorted JSON arrays, like the legacy `writeStringSet`.
   Set<String> get homeVisibleProtocols =>
       _stringSet('home_visible_protocols') ?? const {'DNS', 'DOH', 'DOT'};
 
@@ -176,7 +165,6 @@ extension LegacyDnsSettings on LegacySettings {
     );
   }
 
-
   bool get cacheEnabled => _bool(dnsContainer, 'dns_cache_enabled_v2', true);
 
   String get cacheModeRaw =>
@@ -200,11 +188,10 @@ extension LegacyDnsSettings on LegacySettings {
   int get cacheStaleFallbackSeconds =>
       _int(dnsContainer, 'dns_cache_stale_fallback_seconds_v2', 300);
 
-    /// `dns_cache_preset_v3`; absent on installs that predate presets, where the
-    /// UI derives the preset from the stored policy.
+  /// Absent on installs predating presets, where the UI derives the preset from the stored policy.
   String? get cachePresetRaw => _string(dnsContainer, 'dns_cache_preset_v3');
 
-    /// Writes all nine keys so the engine reads a consistent policy.
+  /// Writes all nine keys so the engine reads a consistent policy.
   void applyCachePreset({
     required String storageValue,
     required bool enabled,
@@ -251,8 +238,6 @@ extension LegacyDnsSettings on LegacySettings {
   void setCacheEnabled(bool value) =>
       _store.putBool(dnsContainer, 'dns_cache_enabled_v2', value);
 
-
-    /// Raw value: `nxdomain` / `nodata` / `refused` / `zero_address`.
   String get blockResponseModeRaw =>
       _string(dnsContainer, 'block_response_mode') ?? 'nxdomain';
 
@@ -271,8 +256,7 @@ extension LegacyDnsSettings on LegacySettings {
   int get dynamicBlockNxDomainDurationSeconds =>
       _int(dnsContainer, 'dynamic_block_nxdomain_duration_seconds', 300);
 
-    /// Clamps to 2-100 / 10-300 / 60-3600; out-of-range input must never reach
-    /// the engine.
+  /// Clamps to 2-100 / 10-300 / 60-3600; out-of-range input must never reach the engine.
   void setDynamicBlockPolicy({
     required bool enabled,
     required int requestThreshold,
@@ -297,13 +281,11 @@ extension LegacyDnsSettings on LegacySettings {
     );
   }
 
-    /// `domain_rules_enabled`, default true.
   bool get domainRulesEnabled =>
       _bool(dnsContainer, 'domain_rules_enabled', true);
 
   void setDomainRulesEnabled(bool value) =>
       _store.putBool(dnsContainer, 'domain_rules_enabled', value);
-
 
   bool get bootstrapEnabled => _bool(dnsContainer, 'bootstrap_enabled', true);
 
@@ -318,7 +300,7 @@ extension LegacyDnsSettings on LegacySettings {
   void setBootstrapEnabled(bool value) =>
       _store.putBool(dnsContainer, 'bootstrap_enabled', value);
 
-    /// The caller filters ids against the built-in catalog before writing.
+  /// The caller filters ids against the built-in catalog before writing.
   void setBootstrapPresetIds(Set<String> ids) => _store.putString(
     dnsContainer,
     'bootstrap_preset_ids',
@@ -328,8 +310,7 @@ extension LegacyDnsSettings on LegacySettings {
   void setBootstrapCustomJson(String json) =>
       _store.putString(dnsContainer, 'bootstrap_custom_json', json);
 
-    /// Inspection switches: global rather than dataset-scoped, default false.
-    /// Only the CA flow turns `http_inspection_enabled` on.
+  /// Global rather than dataset-scoped; only the CA flow turns `http_inspection_enabled` on.
   bool get http3InspectionEnabled =>
       _bool(LegacySettings.uiContainer, 'http3_inspection_enabled', false);
 
@@ -339,7 +320,6 @@ extension LegacyDnsSettings on LegacySettings {
     false,
   );
 
-    /// Address (CNAME/URL) rules, the second half of HTTPS inspection.
   bool get addressRulesEnabled =>
       _bool(LegacySettings.uiContainer, 'address_rules_enabled', true);
 
@@ -365,12 +345,10 @@ extension LegacyDnsSettings on LegacySettings {
     );
   }
 
-    /// Written by the native CA flow; pages only read it.
+  /// Written by the native CA flow; pages only read it.
   bool get httpsInspectionReady =>
       _bool(LegacySettings.uiContainer, 'https_inspection_ready', false);
 
-    /// View over the express dataset: UI keys stay global, DNS keys move to
-    /// `diting_express_prefs`.
   LegacySettings forExpress() =>
       LegacySettings(_store, dnsContainer: LegacySettings.expressContainer);
 }

@@ -1,19 +1,4 @@
-/// 日志仪表盘**下钻页**的数据层（时间范围选择器 + 竞速 / Bootstrap / 订阅拦截）。
-///
-/// 概览块（首页与 `/logs` 顶部的统计卡）搬到了
-/// `log_dashboard_overview_providers.dart`：它的聚合要一次扫描五张表，与这里的
-/// 单表窗口查询不是同一件事，混在一个文件里只会让两边都读不懂。
-///
-/// 两类数据仍然刻意分开：
-/// - **概览块**读旧库真实表（见概览文件的注释）；
-/// - **四个下钻页**也读真实表：竞速 `dns_race_log`、Bootstrap `bootstrap_log`、
-///   缓存 `dns_cache`（`dnsCacheProvider`）、订阅拦截 `dns_log` /
-///   `http_request_log` 的 `blockSubscriptionId` 列。库空 → 空状态，缺列 →
-///   空状态 + 说明，绝不拿演示值冒充。
-///
-/// 竞速相关（策略概览 / 智能选择首选 / 胜出排行 / 窗口选择）已拆到
-/// `log_race_providers.dart`：那一块模型多、SQL 多，与本文件的 Bootstrap /
-/// 缓存 / 订阅拦截不是同一份职责，也避免本文件逼近 600 行上限。
+/// Data layer for the drill-down pages; overview cards and race queries live in their own files.
 library;
 
 import 'package:diting/data/db/bootstrap_log_repository.dart';
@@ -21,14 +6,8 @@ import 'package:diting/state/log_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
-
-
-// ---------------------------------------------------------------------------
-// 下钻页：时间范围
-// ---------------------------------------------------------------------------
-
-/// 竞速 / Bootstrap 页的时间范围（旧版 `RaceStatsRange` 与
-/// `BootstrapStatsRange` 同形：今日 / 7 天 / 全部）。
+/// Range for the race and bootstrap pages, matching legacy `RaceStatsRange` and
+/// `BootstrapStatsRange`.
 enum LogStatsRange {
   today('今日'),
   sevenDays('7 天'),
@@ -38,7 +17,7 @@ enum LogStatsRange {
 
   final String label;
 
-  /// 窗口起点。`null` 表示不设下限（全部）。
+  /// Window start; null means no lower bound.
   DateTime? startOf(DateTime now) {
     final dayStart = DateTime(now.year, now.month, now.day);
     return switch (this) {
@@ -49,8 +28,8 @@ enum LogStatsRange {
   }
 }
 
-/// 订阅拦截页的时间范围（旧版 `SubscriptionInterceptionStatsRange`：今日 /
-/// 近 7 天 / 全部，文案与旧版逐字一致）。
+/// Range for the subscription interception page, with the legacy
+/// `SubscriptionInterceptionStatsRange` labels.
 enum SubscriptionStatsRange {
   today('今日'),
   sevenDays('近 7 天'),
@@ -72,7 +51,6 @@ enum SubscriptionStatsRange {
   }
 }
 
-/// 页面上当前选中的 Bootstrap 窗口。
 class BootstrapStatsRangeNotifier extends Notifier<LogStatsRange> {
   @override
   LogStatsRange build() => LogStatsRange.today;
@@ -88,7 +66,7 @@ final bootstrapStatsRangeProvider =
       BootstrapStatsRangeNotifier.new,
     );
 
-/// 页面上当前选中的订阅拦截窗口。
+/// Selected subscription interception window.
 class SubscriptionStatsRangeNotifier extends Notifier<SubscriptionStatsRange> {
   @override
   SubscriptionStatsRange build() => SubscriptionStatsRange.today;
@@ -104,18 +82,8 @@ final subscriptionStatsRangeProvider =
       SubscriptionStatsRangeNotifier.new,
     );
 
-// ---------------------------------------------------------------------------
-// 下钻页：缓存表的「最后命中」
-// ---------------------------------------------------------------------------
-
-/// `dns_cache.lastHitAt` 的一列补充查询。
-///
-/// 为什么不在 `DnsCacheRepository` 里加：那个文件不是本域的写作用域。这里单独
-/// 查一列，条件与 `DnsCacheRepository.entries` 完全一致（`expiresAt > now`），
-/// 因此两次查询取到的是同一批行；键是 `domain|queryType`，与列表行一一对应。
-///
-/// 值为 `null` 表示这一行**从没被命中过**（旧库该列可为 NULL），页面上显示
-/// 「尚未命中」，而不是拿 `now` 冒充时间。
+/// Supplementary `dns_cache.lastHitAt` query matching `DnsCacheRepository.entries`; null means
+/// never hit.
 final cacheLastHitProvider = FutureProvider<Map<String, int?>>((ref) async {
   ref.watch(dnsLogRevisionProvider);
   final db = await ref.watch(activeLogDatabaseProvider.future);
@@ -138,11 +106,6 @@ final cacheLastHitProvider = FutureProvider<Map<String, int?>>((ref) async {
 });
 
 
-// ---------------------------------------------------------------------------
-// 下钻页：Bootstrap（真实表 bootstrap_log）
-// ---------------------------------------------------------------------------
-
-/// Bootstrap 24 小时聚合里的一个节点。
 class BootstrapStatsSnapshot {
   const BootstrapStatsSnapshot({
     required this.attempts,
@@ -163,7 +126,7 @@ class BootstrapStatsSnapshot {
   final int successes;
   final int failures;
 
-  /// 各节点按尝试次数加权后的平均耗时；没有样本时为 0。
+  /// Attempt-weighted average elapsed time; 0 when there are no samples.
   final double averageElapsedMs;
   final List<BootstrapIpStat> ips;
 
@@ -178,8 +141,7 @@ final bootstrapStatsProvider = FutureProvider<BootstrapStatsSnapshot>((
   final db = await ref.watch(activeLogDatabaseProvider.future);
   if (db == null) return const BootstrapStatsSnapshot.empty();
 
-  // `BootstrapLogRepository.recentStats` 只接受「窗口长度」：把「今日」翻译成
-  // 「从今天零点到现在的时长」，正好等价于旧版 `statsRangeStartMillis(TODAY)`。
+  // `recentStats` takes a window length, so "today" is time since midnight.
   final now = DateTime.now();
   final start = range.startOf(now);
   final window = start == null
@@ -206,11 +168,6 @@ final bootstrapStatsProvider = FutureProvider<BootstrapStatsSnapshot>((
   );
 });
 
-// ---------------------------------------------------------------------------
-// 下钻页：订阅拦截（真实表 dns_log / http_request_log）
-// ---------------------------------------------------------------------------
-
-/// 一条订阅的拦截统计。
 class SubscriptionInterceptionItem {
   const SubscriptionInterceptionItem({
     required this.id,
@@ -225,11 +182,11 @@ class SubscriptionInterceptionItem {
   final String name;
   final bool enabled;
 
-  /// 订阅已从 `subscription` 表删掉，但日志里还留着它的命中。
+  /// The subscription was deleted but its hits remain in the logs.
   final bool deleted;
   final int hits;
 
-  /// 占全部已记录请求的比例（0..1）。
+  /// Share of all recorded requests (0..1).
   final double rate;
 
   String get statusLabel {
@@ -238,7 +195,6 @@ class SubscriptionInterceptionItem {
   }
 }
 
-/// 订阅拦截统计的整体结果。
 class SubscriptionInterceptionSnapshot {
   const SubscriptionInterceptionSnapshot({
     required this.totalRequests,
@@ -251,21 +207,16 @@ class SubscriptionInterceptionSnapshot {
       items = const [],
       missingColumn = false;
 
-  /// 窗口内 DNS + HTTPS 的全部已记录请求数（拦截率的分母）。
+  /// All recorded DNS and HTTPS requests in the window (the rate denominator).
   final int totalRequests;
   final List<SubscriptionInterceptionItem> items;
 
-  /// 旧库缺 `blockSubscriptionId` 列（未升级到 1.4.3 的库版本）。
-  /// 这时不能算出任何拦截率，页面必须走空状态并说明，而不是显示 0%。
+  /// The legacy database lacks `blockSubscriptionId`, so no rate can be computed.
   final bool missingColumn;
 }
 
-/// 订阅拦截统计。
-///
-/// SQL 与旧版 `DnsLogDao.subscriptionInterceptionStats` /
-/// `HttpRequestLogDao.subscriptionInterceptionStats` 同口径：
-/// 分母是两张表的全部行数，分子只统计 `result = BLOCKED` 且
-/// `blockSubscriptionId` 非空的行。
+/// Legacy SQL: the denominator is every row of both tables, the numerator only `result = BLOCKED`
+/// rows.
 final subscriptionInterceptionProvider =
     FutureProvider<SubscriptionInterceptionSnapshot>((ref) async {
       ref.watch(dnsLogRevisionProvider);
@@ -298,8 +249,7 @@ final subscriptionInterceptionProvider =
           hits[id] = (hits[id] ?? 0) + ((row['hits'] as num?)?.toInt() ?? 0);
         }
 
-        // 极速模式没有 `http_request_log` 表：查它会抛 `no such table`，
-        // 这里捕获后按「没有 HTTPS 记录」处理，不影响 DNS 侧的统计。
+        // Express has no `http_request_log`: no HTTPS records, DNS side unaffected.
         var httpsAvailable = true;
         try {
           final httpsTotal = await db.rawQuery(
@@ -331,8 +281,7 @@ final subscriptionInterceptionProvider =
           return const SubscriptionInterceptionSnapshot.empty();
         }
 
-        // 订阅名与会话状态从 `subscription` 表取；命中里有、表里没有的 id
-        // 就是「已删除订阅」，旧版同样保留并标灰。
+        // Hits with no `subscription` row belong to deleted subscriptions; keep them.
         final subscriptions = await db.query(
           'subscription',
           columns: ['id', 'name', 'enabled'],
@@ -371,8 +320,8 @@ final subscriptionInterceptionProvider =
           items: items,
         );
       } on DatabaseException catch (error) {
-        // 旧库版本偏旧时这两列不存在（`subscriptionId` 是 1.4.3 才加的）。
-        // 页面上要如实说明「当前库没有这一列」，而不是显示一张全 0 的表。
+        // Older databases lack `subscriptionId` (added in 1.4.3); report the gap instead of an
+        // all-zero table.
         if (error.toString().contains('no such column')) {
           return const SubscriptionInterceptionSnapshot(
             totalRequests: 0,

@@ -23,10 +23,7 @@ import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
-/// 功能中心的二级 / 三级页面（上游 `FeatureHubScreen.kt` 各卡片落点）。
-///
-/// 集中放在 `/hub/*` 下，避免与已有的内核配置、系统设置路由混在一起；功能
-/// 中心之外没有任何入口引用这些路径。
+/// Feature hub sub pages under `/hub/*`, one per `FeatureHubScreen.kt` card.
 abstract final class HubPaths {
   static const providerManagement = '/hub/providers';
   static const bootstrap = '/hub/bootstrap';

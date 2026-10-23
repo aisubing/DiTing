@@ -1,14 +1,5 @@
-/// 名单页的状态：一份名单 + 刷新节奏 + 头像可用性。
-///
-/// ## 为什么把「缓存优先、后台刷新」写在这里而不是 build 里 await 网络
-///
-/// 旧版的体验是「先把上次的名单画出来，再静默拉一遍，变了就替换」。若在
-/// `build()` 里直接 await 网络，弱网时列表页会先转 15 秒圈才出内容，等于把
-/// 缓存的意义抹掉。因此 [RecognitionController.build] 只读本地缓存，
-/// 网络刷新由页面进入时的 [RecognitionController.ensureFresh] 触发。
-///
-/// 两个名单页共用同一个 provider：数据源相同，进入任一页都会拉起刷新，另一页
-/// 直接复用结果，不会各自下载一遍。
+/// Recognition list state: cache-first, so `build` only reads the local cache and `ensureFresh`
+/// refreshes on entry.
 library;
 
 import 'dart:async';
@@ -19,7 +10,6 @@ import 'package:diting/data/recognition/recognition_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 一次加载后的快照。
 @immutable
 class RecognitionState {
   const RecognitionState({
@@ -30,19 +20,19 @@ class RecognitionState {
     this.fromCache = false,
   });
 
-  /// 当前可展示的名单；null 表示还没有拿到任何数据（首次进入且缓存为空）。
+  /// Displayable list; null until any data is available.
   final RecognitionMembers? members;
 
-  /// 上一次成功从云端更新的时间；null 表示从未成功过。
+  /// Last successful cloud update; null if never.
   final DateTime? updatedAt;
 
-  /// 是否正在拉取云端配置（页面据此显示顶栏刷新按钮的 loading 态）。
+  /// Whether a cloud fetch is in flight, driving the refresh button's spinner.
   final bool isRefreshing;
 
-  /// 最近一次刷新的失败原因；成功后清空。非空时页面在页脚如实提示。
+  /// Last refresh failure, cleared on success; shown in the page footer.
   final String? error;
 
-  /// 当前名单是否来自本地缓存（而非本次会话拉取的新数据）。
+  /// Whether the list came from the local cache rather than this session.
   final bool fromCache;
 
   bool get hasMembers => members != null;
@@ -66,7 +56,7 @@ class RecognitionState {
   static const _keep = Object();
 }
 
-/// 仓库实例。测试可以 override 掉它注入内存假数据。
+/// Repository instance; tests override it with in-memory data.
 final recognitionRepositoryProvider = Provider<RecognitionMembersRepository>((
   ref,
 ) {
@@ -74,7 +64,7 @@ final recognitionRepositoryProvider = Provider<RecognitionMembersRepository>((
 });
 
 class RecognitionController extends AsyncNotifier<RecognitionState> {
-  /// 每次进入页面都会问一次；60 秒内刚成功拉过就不再打扰服务器。
+  /// Called on every page entry; a success within 60 seconds is reused.
   static const freshWindow = Duration(seconds: 60);
 
   Future<void>? _inFlight;
@@ -90,12 +80,12 @@ class RecognitionController extends AsyncNotifier<RecognitionState> {
     );
   }
 
-  /// 页面挂载时调用：需要时发起一次静默刷新（不等待结果）。
+  /// Called when the page mounts: starts a silent refresh if needed.
   void ensureFresh() {
     final current = state.value;
     if (current == null) return;
     if (current.isRefreshing || _inFlight != null) return;
-    // 还没拿到任何名单时必须刷新；已有缓存则按 freshWindow 节流。
+    // Always refresh without a cached list; otherwise throttle by freshWindow.
     final updatedAt = current.updatedAt;
     if (current.hasMembers &&
         updatedAt != null &&
@@ -105,7 +95,7 @@ class RecognitionController extends AsyncNotifier<RecognitionState> {
     unawaited(refresh());
   }
 
-  /// 用户点刷新按钮 / 主动重试时调用。
+  /// Called by the refresh button and by explicit retries.
   Future<void> refresh() {
     final existing = _inFlight;
     if (existing != null) return existing;
@@ -121,7 +111,7 @@ class RecognitionController extends AsyncNotifier<RecognitionState> {
     try {
       final fresh = await repo.refresh();
       if (fresh == null) {
-        // 304：服务器说没变，更新一下「最近检查时间」即可。
+        // 304: nothing changed, only the last-checked time moves.
         state = AsyncData(
           current.copyWith(
             isRefreshing: false,
@@ -130,7 +120,8 @@ class RecognitionController extends AsyncNotifier<RecognitionState> {
             error: null,
           ),
         );
-        // 名单没变不代表每张头像都下到了：重挂 family 让上次失败的补一次。
+        // An unchanged list does not mean every avatar arrived, so re-mount the family to retry the
+        // failed ones.
         ref.invalidate(recognitionAvatarProvider);
         return;
       }
@@ -142,11 +133,10 @@ class RecognitionController extends AsyncNotifier<RecognitionState> {
           fromCache: false,
         ),
       );
-      // 名单变了就重挂头像 family：上一轮下载失败的（握手被打断/超时）这次重试，
-      // 已经拿到字节的走内存缓存，不会重下。
+      // Re-mount the family so failed downloads retry; fetched bytes are cached.
       ref.invalidate(recognitionAvatarProvider);
     } on Object catch (error) {
-      // 刷新失败不清空已有名单：旧数据仍然可读，只是页脚提示「用的是缓存」。
+      // A failed refresh keeps the old list readable; the footer flags it cached.
       if (!ref.mounted) return;
       final latest = state.value ?? current;
       state = AsyncData(
@@ -184,10 +174,8 @@ final recognitionMembersProvider =
       RecognitionController.new,
     );
 
-/// 单张头像的字节：`null` 表示确实拿不到（页面退回默认头像）。
-///
-/// 用 family 把结果按文件名记忆化：列表滚动重建时不会重复下载，
-/// 两个名单页共享同一份缓存。
+/// Bytes of one avatar; `null` falls back to the default image, and the family memoizes by file
+/// name.
 final recognitionAvatarProvider = FutureProvider.family<Uint8List?, String>((
   ref,
   avatarFileName,

@@ -1,15 +1,5 @@
-/// 系统域状态：免责声明 / 开发者模式 / WebDAV 连接 / 应用更新 / IP 质量。
-///
-/// 这里已经是真实实现，不再是「全内存模拟」：
-/// - **应用更新**走 GitHub `releases/latest` 真实请求（`AppUpdateChecker`）；
-/// - **IP 质量**先取出口 IP 再并发查三个公开情报源（`IpQualityChecker`）；
-/// - **WebDAV** 的连接/上传/下载由真实 `dav_client.dart` 完成，本文件只保存
-///   连接状态机。
-///
-/// 曾经的 `AccessControl*`（访问控制白/黑名单草稿）在本轮删除：它只有内存状态、
-/// 没有任何页面读它，也没有落盘——是「看起来像功能」的死代码。真正的应用访问
-/// 控制在 `app_selection_pages.dart`（落 `dns_vpn_prefs`）与 `app_rules_page`
-/// （落规则库 `appScope`），它们才是引擎真正消费的那份数据。
+/// System domain: disclaimer, developer mode, WebDAV, app updates and IP quality; access control
+/// lives in the pages.
 library;
 
 import 'dart:async';
@@ -21,7 +11,6 @@ import 'package:diting/data/update/app_update_checker.dart';
 import 'package:diting/state/app_version_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// WebDAV 连接状态机。
 enum DavStatus {
   idle('未连接'),
   connecting('连接中'),
@@ -33,7 +22,6 @@ enum DavStatus {
   final String label;
 }
 
-/// WebDAV 表单与连接结果。
 class DavState {
   const DavState({
     this.server = '',
@@ -50,7 +38,7 @@ class DavState {
   final String path;
   final DavStatus status;
 
-  /// 失败原因；只在 [status] 为 [DavStatus.failed] 时非空。
+  /// Failure reason; non-null only while [status] is [DavStatus.failed].
   final String? message;
 
   bool get isConfigured => server.isNotEmpty && username.isNotEmpty;
@@ -73,7 +61,7 @@ class DavState {
   );
 }
 
-/// WebDAV 连接状态机；[DavNotifier.test] 发起真实请求。
+/// WebDAV connection state machine; [DavNotifier.test] performs a real request.
 class DavNotifier extends Notifier<DavState> {
   @override
   DavState build() => const DavState();
@@ -81,11 +69,7 @@ class DavNotifier extends Notifier<DavState> {
   void update(DavState Function(DavState state) update) =>
       state = update(state);
 
-  /// 真连一次：`PROPFIND` 探测目录，不存在就 `MKCOL` 建。
-  ///
-  /// 上一轮这里是 `await Future.delayed(1.2s)` + 「地址里有没有 fail 字样」——
-  /// 服务器倒着也会显示「连接成功」，用户据此以为云备份可用。现在成败由服务器
-  /// 的真实响应决定，失败时带上状态码与可操作的原因。
+  /// Connects for real: `PROPFIND` probes, `MKCOL` creates; failures carry status and reason.
   Future<void> test() async {
     if (!state.isConfigured) {
       state = state.copyWith(
@@ -118,8 +102,7 @@ class DavNotifier extends Notifier<DavState> {
 
   void reset() => state = const DavState();
 
-  /// 云端的备份文件名。固定一个名字 = 「覆盖上一份」，与旧版 WebDAV 表单的语义一致
-  /// （它是同步而不是归档，每台设备只保留最新一份）。
+  /// Fixed name, so an upload overwrites the previous copy: sync, not archive.
   static const remoteFileName = 'diting-config.json';
 
   DavCredentials get credentials => DavCredentials(
@@ -129,7 +112,7 @@ class DavNotifier extends Notifier<DavState> {
     path: state.path,
   );
 
-  /// 上传：`PUT` 到 `<path>/diting-config.json`。
+  /// Uploads with `PUT` to `<path>/diting-config.json`.
   Future<DavProbeResult> upload(String content) async {
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
     final result = await const DavClient().putText(
@@ -143,7 +126,7 @@ class DavNotifier extends Notifier<DavState> {
     return result;
   }
 
-  /// 下载：`GET` 云端备份；云端没有文件时返回 `null`（不是失败）。
+  /// Downloads the cloud backup with `GET`; null when no file exists.
   Future<String?> download() async {
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
     try {
@@ -167,7 +150,7 @@ class DavNotifier extends Notifier<DavState> {
 
 final davProvider = NotifierProvider<DavNotifier, DavState>(DavNotifier.new);
 
-/// 免责声明的阶段：未同意 / 已同意；部分页面要求在同意前复述一段文字。
+/// Disclaimer stage; some pages require restating a passage before accepting.
 class DisclaimerNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -181,7 +164,7 @@ final disclaimerAcceptedProvider = NotifierProvider<DisclaimerNotifier, bool>(
   DisclaimerNotifier.new,
 );
 
-/// 开发者模式总开关；关掉时选项区整体禁用（上游行为）。
+/// Developer-mode master switch; when off the option section is disabled.
 class DeveloperModeNotifier extends Notifier<bool> {
   @override
   bool build() => false;
@@ -193,7 +176,6 @@ final developerModeProvider = NotifierProvider<DeveloperModeNotifier, bool>(
   DeveloperModeNotifier.new,
 );
 
-/// 应用更新的演示阶段。
 enum UpdateStage {
   idle('未检查'),
   checking('检查中'),
@@ -209,7 +191,7 @@ enum UpdateStage {
   bool get isBusy => this == checking || this == downloading;
 }
 
-/// 应用更新的状态机；[UpdateNotifier.check] 发起真实的 GitHub Releases 请求。
+/// App-update state machine; [UpdateNotifier.check] queries GitHub Releases.
 class UpdateState {
   const UpdateState({
     this.stage = UpdateStage.idle,
@@ -222,19 +204,19 @@ class UpdateState {
 
   final UpdateStage stage;
 
-  /// 0–1；只在 [UpdateStage.downloading] 时有意义。
+  /// 0-1; meaningful only while [UpdateStage.downloading].
   final double progress;
 
-  /// 发现的新版本；只有 [UpdateStage.available] 及之后才有值。
+  /// New version found; set from [UpdateStage.available] onwards.
   final UpdateInfo? info;
 
-  /// 本机版本，用于「当前 x → 最新 y」。
+  /// Local version, for the "current x to latest y" label.
   final String? currentVersion;
 
-  /// 检查失败的原因；[UpdateStage.idle] 且非空表示上一次检查失败。
+  /// Failure reason; non-null while idle means the last check failed.
   final String? error;
 
-  /// 已下载安装包的绝对路径；只有 [UpdateStage.downloaded] 时有值。
+  /// Absolute path of the downloaded package; set once downloaded.
   final String? apkPath;
 
   UpdateState copyWith({
@@ -257,20 +239,11 @@ class UpdateState {
   );
 }
 
-/// 检查更新走真实 `releases/latest` 请求；不再「永远发现新版本」。
-///
-/// 上一轮 `check()` 是 `await Future.delayed(900ms)` 然后直接置
-/// `UpdateStage.available`——与服务器无关，永远提示有更新，引导用户去下载一个
-/// 不存在的安装包。
 class UpdateNotifier extends Notifier<UpdateState> {
   @override
   UpdateState build() => const UpdateState();
 
-  /// 本机版本，取自 `pubspec.yaml`（见 [appVersionProvider]）。
-  ///
-  /// 上一轮先读 prefs 的 `app_version_name`、读不到回落 `'2.0.1'`：这个键没有任何
-  /// 代码写入，回落值又得跟着发版手改，于是「改了 pubspec、更新检查仍按旧版本比较」。
-  /// 现在只剩一处来源。
+  /// Local version from `pubspec.yaml` ([appVersionProvider]), the only source.
   String get _currentVersion => ref.read(appVersionProvider).name;
 
   Future<void> check() async {
@@ -286,8 +259,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
     );
     final result = await ref.read(appUpdateCheckerProvider).check(current);
     if (result.failed) {
-      // 失败回到 idle 并带上原因：停在「检查中」会让页面永远转圈，
-      // 而伪装成「已是最新」会让用户错过真正的更新。
+      // Back to idle with the reason; staying "checking" spins forever.
       state = state.copyWith(
         stage: UpdateStage.idle,
         error: result.error,
@@ -299,10 +271,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
         : state.copyWith(stage: UpdateStage.upToDate, clearInfo: true);
   }
 
-  /// 真实下载：原生侧把 APK 写进应用私有目录，进度通过通道回推。
-  ///
-  /// 上一轮这里只回一句「本机尚未接入安装包下载器」——那是诚实的占位，但用户
-  /// 真正需要的是装上新版。现在下载与安装都接上了（见 `UpdateBridge`）。
+  /// Real download: the native side writes the APK and reports progress (`UpdateBridge`).
   Future<void> download() async {
     if (state.stage.isBusy) return;
     final info = state.info;
@@ -322,7 +291,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
           url: info.downloadUrl,
           version: info.version,
           onProgress: (progress) {
-            // 下载期间用户可能已经离开或重新检查：只在仍处于 downloading 时更新。
+            // The user may leave or re-check mid-download, so only update while still downloading.
             if (state.stage != UpdateStage.downloading) return;
             state = state.copyWith(progress: progress.fraction ?? 0);
           },
@@ -342,7 +311,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
     );
   }
 
-  /// 调起系统安装器安装已下载的包。返回是否成功唤起。
+  /// Launches the system installer for the downloaded package.
   Future<bool> install() async {
     final path = state.apkPath;
     if (path == null) {
@@ -360,19 +329,18 @@ class UpdateNotifier extends Notifier<UpdateState> {
   void reset() => state = const UpdateState();
 }
 
-/// 更新检查器（可在测试里覆盖端点）。
+/// Update checker; tests may override the endpoint.
 final appUpdateCheckerProvider = Provider<AppUpdateChecker>(
   (ref) => const AppUpdateChecker(),
 );
 
-/// 更新下载/安装通道（可在测试里替换为假实现）。
+/// Update download/install channel, replaceable in tests.
 final updateBridgeProvider = Provider<UpdateBridge>((ref) => UpdateBridge());
 
 final updateProvider = NotifierProvider<UpdateNotifier, UpdateState>(
   UpdateNotifier.new,
 );
 
-/// IP 质量检测阶段。
 enum IpQualityStage {
   idle('未检测'),
   loading('检测中'),
@@ -384,7 +352,6 @@ enum IpQualityStage {
   final String label;
 }
 
-/// 当前 IP 质量检测的状态。
 class IpQualityState {
   const IpQualityState({
     this.stage = IpQualityStage.idle,
@@ -394,10 +361,9 @@ class IpQualityState {
 
   final IpQualityStage stage;
 
-  /// 最近一次成功的报告；失败时保留上一份，便于对照。
+  /// Last successful report; kept on failure for comparison.
   final IpQualityReport? report;
 
-  /// 失败原因。
   final String? error;
 
   IpQualityState copyWith({
@@ -412,11 +378,7 @@ class IpQualityState {
   );
 }
 
-/// 当前 IP 质量浮层要显示的地址与阶段；每次打开浮层重新检测一次。
-/// IP 质量检测：真查出口 IP 与三个公开情报源。
-///
-/// 上一轮 `detect()` 只有 `await Future.delayed(1000ms)`，报告本身是写死的
-/// `mockIpQualityReport`——点「重新检测」只有转圈在动，数字与结论从不变化。
+/// Address and stage shown by the IP-quality overlay, re-detected on each open.
 class IpQualityNotifier extends Notifier<IpQualityState> {
   @override
   IpQualityState build() => const IpQualityState();
@@ -439,7 +401,7 @@ class IpQualityNotifier extends Notifier<IpQualityState> {
   }
 }
 
-/// IP 质量检测器（测试里可替换端点）。
+/// IP-quality checker; tests may override the endpoints.
 final ipQualityCheckerProvider = Provider<IpQualityChecker>(
   (ref) => const IpQualityChecker(),
 );

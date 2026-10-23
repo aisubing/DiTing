@@ -3,18 +3,14 @@ import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// 新增 / 编辑自定义上游的对话框（上游 `AddUpstreamDialog`）。
-///
-/// 校验复用数据层的 [validateServerUpstream]，不在对话框里另写一套：两套校验
-/// 迟早会分叉成「对话框放过了、写盘时被拒」的静默失败。校验不过时对话框保留，
-/// 并在字段下方给出原因。
+/// Add/edit custom upstream dialog (upstream `AddUpstreamDialog`). Validation reuses
+/// [validateServerUpstream] so it cannot drift; a failure keeps the dialog open with the
+/// reason under the field.
 class UpstreamDialog extends StatefulWidget {
   const UpstreamDialog({super.key, this.initial, required this.protocol});
 
-  /// 编辑时传入既有项；新增时为 null。
   final ServerUpstream? initial;
 
-  /// 新增时的默认协议：跟随页面当前分段，省一次点击。
   final DnsProtocol protocol;
 
   @override
@@ -94,7 +90,7 @@ class _UpstreamDialogState extends State<UpstreamDialog> {
             value: _protocol,
             onChanged: (value) => setState(() {
               _protocol = value;
-              // 切协议时端口跟着换成该协议的默认值，避免「DoT 却还是 53」。
+              // Switching protocol also swaps in that protocol's default port.
               _port.text = '${_defaultPort(value)}';
               _error = null;
             }),

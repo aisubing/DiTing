@@ -1,20 +1,14 @@
-/// 域名归一化与字面量 IP 判定（1.4.3 `AdGuardDomainUtils` 的移植）。
-///
-/// 旧版用 `android.net.InetAddresses` / `java.net.IDN` 做校验，Dart 里对应
-/// `InternetAddress.tryParse` 与 `Uri` 的 IDNA 处理。两者的边界不完全相同，
-/// 因此这里对**宽松方向**做了取舍：判定不出来的按「非法」处理（返回 null），
-/// 让规则被计入 invalid 而不是带着一个坏 pattern 入库——坏 pattern 进了库会
-/// 变成引擎侧一条永远匹配不上的规则，比丢弃更难排查。
+/// Domain normalization and literal IP checks; anything undecidable returns null so the rule counts
+/// as invalid instead of never matching.
 library;
 
 import 'dart:io';
 
-/// 黑洞地址：这些 hosts 目标表示「拦截」而不是「改写」。
+/// Sinkhole addresses: these hosts targets mean "block", not "rewrite".
 const sinkholeAddresses = {'0', '0.0.0.0', '127.0.0.1', '::', '::1'};
 
 final _domainLabel = RegExp(r'^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$');
 
-/// `$dnstype=` 允许的取值（`AdGuardDomainUtils.VALID_DNS_TYPES`）。
 const validDnsTypes = {
   'A',
   'AAAA',
@@ -33,10 +27,8 @@ const validDnsTypes = {
   'DNSKEY',
 };
 
-/// 只对 HTTP(S) 有意义、对 DNS 层没有意义的修饰符前缀。
-///
-/// 命中这些的行整行忽略（计入 ignored 而不是 unsupported）：它们不是坏规则，
-/// 只是本应用（DNS 层）不消费。
+/// Modifier prefixes that only matter for HTTP(S), not for DNS; such lines are valid rules the DNS
+/// layer ignores.
 const _webOnlyModifierPrefixes = [
   'domain=',
   '~domain=',
@@ -117,7 +109,6 @@ bool isWebOnlyModifier(String lower) {
   return _webOnlyModifierPrefixes.any(lower.startsWith);
 }
 
-/// 是否是字面量 IP（含 `0` 这种黑洞写法）。
 bool looksLikeLiteralIp(String value) {
   final trimmed = value.trim();
   if (trimmed.isEmpty || trimmed.length > 45) {
@@ -129,7 +120,6 @@ bool looksLikeLiteralIp(String value) {
   return InternetAddress.tryParse(trimmed) != null;
 }
 
-/// 把字面量 IP 归一成 `hostAddress` 形态（IPv6 会压缩），非 IP 返回 null。
 String? parseNumericAddressSafe(String value) {
   final trimmed = value.trim();
   if (trimmed.isEmpty || trimmed.length > 45) {
@@ -139,9 +129,6 @@ String? parseNumericAddressSafe(String value) {
   return address?.address;
 }
 
-/// 普通域名归一化：拒绝带 `/`、`:`、空格、无点号、字面量 IP、超长与非法标签。
-///
-/// 返回 null 表示这条规则该被计入 invalid。
 String? normalizeDomain(String value) {
   final candidate = value.trim().replaceFirst(RegExp(r'\.+$'), '');
   if (candidate.isEmpty ||
@@ -165,7 +152,6 @@ String? normalizeDomain(String value) {
   return ascii;
 }
 
-/// 通配域名归一化：额外允许 `*` 与 `_`，且不要求含点号（`*` 单独合法）。
 String? normalizeWildcardDomain(String value) {
   final candidate = value.trim().replaceFirst(RegExp(r'\.+$'), '');
   if (candidate.isEmpty ||
@@ -196,7 +182,6 @@ String? normalizeWildcardDomain(String value) {
   return lower;
 }
 
-/// 覆写目标归一化：IP 走 IP 归一，其余走域名归一。
 String? normalizeDomainForRewrite(String value) {
   final candidate = value.trim().replaceFirst(RegExp(r'\.+$'), '');
   if (candidate.isEmpty) {
@@ -208,9 +193,6 @@ String? normalizeDomainForRewrite(String value) {
   return normalizeDomain(candidate);
 }
 
-/// IDN → ASCII 并小写。非 ASCII 走 `Uri` 的 IDNA 处理。
-///
-/// 失败返回 null（对应 Kotlin 侧 `IDN.toASCII` 抛 `IllegalArgumentException`）。
 String? _toAsciiLower(String value) {
   var isAscii = true;
   for (final unit in value.codeUnits) {
@@ -220,7 +202,7 @@ String? _toAsciiLower(String value) {
     }
   }
   if (isAscii) {
-    // ASCII 域名仍要挡掉 ST3 之外的控制字符与空格（空格已在上面挡过）。
+    // ASCII domains still reject control characters and spaces.
     for (final unit in value.codeUnits) {
       if (unit < 0x21 || unit == 0x7f) {
         return null;
@@ -229,7 +211,7 @@ String? _toAsciiLower(String value) {
     return value.toLowerCase();
   }
   try {
-    // `Uri.parse` 会对非 ASCII 主机做 IDNA 转写；取回 host 即为 punycode。
+    // `Uri.parse` applies IDNA to non-ASCII hosts; the returned host is punycode.
     final uri = Uri.parse('http://$value/');
     final host = uri.host;
     if (host.isEmpty) {

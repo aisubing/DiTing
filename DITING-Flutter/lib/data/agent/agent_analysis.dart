@@ -1,30 +1,17 @@
-/// 把「日志里的真实数据」整理成给模型看的上下文与提示词。
-///
-/// 照抄 1.4.3 `AgentAnalysisSheet.kt` 的两个分支：
-/// - 域名分析：先查该域名的最近 5 条 `dns_log` 当上下文；
-/// - 流量分析：取最近 40 条 `dns_log` + 30 条 `http_request_log`，统计总数、
-///   拦截/覆写/缓存命中、高频域名，再拼成摘要正文。
-///
-/// ## 为什么上下文必须来自真实表
-///
-/// 上一轮这两个入口弹的是一份写死的研判（「风险等级：中」）。让模型对着**真实**
-/// 日志下结论，用户才能验证它说得对不对；对着编出来的摘要，模型再对也只是把假话
-/// 复述一遍。所以这里的 `summary` 一个字都不编：表为空就明确写「没有记录」，
-/// 由提示词要求模型说明「样本不足」。
+/// Builds AI prompts from real log rows: 5 `dns_log` rows for domain analysis, 40 plus 30
+/// `http_request_log` for traffic.
 library;
 
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
 
-/// 分析对象。
 sealed class AgentAnalysisTarget {
   const AgentAnalysisTarget();
 
-  /// 标题（旧版 `AnalysisTarget` 的界面文案）。
   String get title;
 }
 
-/// 分析一个域名；[contextLogs] 是调用方已经拿到的额外上下文（可选）。
+/// One domain; [contextLogs] is extra context the caller already holds.
 class AgentDomainTarget extends AgentAnalysisTarget {
   const AgentDomainTarget(this.domain, {this.contextLogs = const []});
 
@@ -35,7 +22,6 @@ class AgentDomainTarget extends AgentAnalysisTarget {
   String get title => '域名安全分析';
 }
 
-/// 分析最近流量。
 class AgentTrafficTarget extends AgentAnalysisTarget {
   const AgentTrafficTarget();
 
@@ -43,7 +29,6 @@ class AgentTrafficTarget extends AgentAnalysisTarget {
   String get title => '网络流量分析';
 }
 
-/// 一次分析的输入：系统提示词 + 用户提示词。
 class AgentAnalysisRequest {
   const AgentAnalysisRequest({required this.systemPrompt, required this.userPrompt});
 
@@ -51,12 +36,10 @@ class AgentAnalysisRequest {
   final String userPrompt;
 }
 
-/// 默认系统提示词（旧版 `AgentApiClient.analyzeDomain` 里的兜底值）。
 const defaultAgentSystemPrompt =
     '你是一名资深网络安全与 DNS 分析专家。你的任务是对用户给定的域名进行客观、'
     '准确、深入的安全分析。';
 
-/// 汇总最近日志，供流量分析使用。
 class RecentTrafficSummary {
   const RecentTrafficSummary({
     required this.dnsSamples,
@@ -75,20 +58,19 @@ class RecentTrafficSummary {
   final int rewrittenDns;
   final int cachedDns;
 
-  /// 按请求次数降序的前 8 个域名。
   final List<({String domain, int count})> topDomains;
 
   final int httpSamples;
   final int blockedHttp;
   final int bypassedHttp;
 
-  /// 表不可用（极速库没有 `http_request_log` 等）时的原因；只影响 HTTPS 段。
+  /// Why the tables are unavailable (the express DB has no `http_request_log`).
   final String? unavailableReason;
 
   bool get isEmpty => dnsSamples == 0 && httpSamples == 0;
 
-  /// 给模型看的正文。空数据时明说「没有记录」而不是省略这一段——
-  /// 省略会让模型以为「没提就是没问题」。
+  /// Text for the model. Empty data says "no records" instead of omitting the section, which would
+  /// read as "nothing mentioned means nothing wrong".
   String render() {
     final buffer = StringBuffer()
       ..writeln('【近期 DNS 监控统计】')
@@ -122,10 +104,8 @@ class RecentTrafficSummary {
   }
 }
 
-/// 从两张真实日志表汇总最近一段窗口。
-///
-/// [httpRepository] 为 null 表示该工作模式没有 HTTPS 检查面（极速模式明确排除
-/// `http_request_log`），这一步不能当成失败——首页与仪表盘也是这么处理的。
+/// Aggregates both real log tables. A null [httpRepository] means this mode has no HTTPS surface,
+/// which is not a failure.
 Future<RecentTrafficSummary> summarizeRecentTraffic({
   required DnsLogRepository dnsRepository,
   HttpRequestRepository? httpRepository,
@@ -165,8 +145,8 @@ Future<RecentTrafficSummary> summarizeRecentTraffic({
         if (outcome == 'passthrough' || outcome == 'bypassed') bypassedHttp++;
       }
     } on Object catch (error) {
-      // 极速库没有这张表时抛 `no such table`；那说明「这一面不存在」，
-      // 而不是「没有流量」，两者在提示词里必须分开说。
+      // The express DB lacks this table and throws `no such table`: the surface does not exist, not
+      // that there was no traffic.
       unavailable = '$error';
     }
   }
@@ -187,8 +167,7 @@ Future<RecentTrafficSummary> summarizeRecentTraffic({
   );
 }
 
-/// 拼出一次分析请求。提示词的四个小节照抄旧版，因为下游用户已经习惯了那份结构
-/// （域名归属 / 风险评估 / 处置建议 / 简要总结）。
+/// Builds a domain analysis request with the four prompt sections users expect.
 AgentAnalysisRequest buildDomainAnalysisRequest({
   required String domain,
   required String systemPrompt,
@@ -231,7 +210,6 @@ AgentAnalysisRequest buildDomainAnalysisRequest({
   );
 }
 
-/// 拼出流量分析请求。
 AgentAnalysisRequest buildTrafficAnalysisRequest({
   required RecentTrafficSummary summary,
   required String systemPrompt,
@@ -243,7 +221,7 @@ AgentAnalysisRequest buildTrafficAnalysisRequest({
     ..writeln('---')
     ..writeln();
   if (summary.isEmpty) {
-    // 空样本必须显式要求模型别编：这是唯一能让模型诚实回答的办法。
+    // Empty samples must explicitly tell the model not to invent anything.
     buffer.writeln(
       '注意：以上采样窗口内没有任何记录。请明确说明「样本不足，无法研判」，'
       '不要编造域名或请求特征。',

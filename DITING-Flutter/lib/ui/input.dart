@@ -322,7 +322,6 @@ class FilledInputTheme extends StatelessWidget {
   final BorderRadius borderRadius;
   final EdgeInsetsGeometry? contentPadding;
 
-  /// In place of the raised surface's.
   final Color? fillColor;
   final Widget child;
 

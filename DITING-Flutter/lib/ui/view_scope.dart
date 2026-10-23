@@ -15,7 +15,6 @@ class ViewScope extends InheritedModel<ViewScopeAspect> {
   final Size size;
   final bool isMobile;
 
-  /// Caption controls the window draws over a page's top trailing corner.
   final Size windowControls;
 
   static ViewScope _of(BuildContext context, ViewScopeAspect aspect) {

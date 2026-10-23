@@ -1,29 +1,10 @@
-/// 把解析后的规则写进 1.4.3 规则表（`CategorizedRuleStreamImporter` +
-/// `BlockListManager.addRulesBatch` / `AllowListManager` / `RewriteRuleManager` /
-/// `SubscriptionRuleStorage` 的合并移植）。
-///
-/// ## 来源标记
-/// 每条规则在 `*_rule_source` 里带一个来源标签：订阅是 `sub_<id>`，用户手加是
-/// `useradd`，内置预设是 `preset`。一条规则只有在**规则行**和**至少一个来源行**
-/// 都启用时才生效——这是旧版的设计，删除订阅时只删来源行就能让规则失效。
-///
-/// ## 为什么必须显式查重
-/// 1.4.3 的实体上声明了 `(pattern, important, appScope, appInverted, dnsType,
-/// isRegex)` 唯一索引，`insert` 用 `OnConflictStrategy.IGNORE` 靠冲突回落。但
-/// 实测设备上的 `diting_database` **没有**这个索引（表结构里没有 UNIQUE 约束，
-/// `sqlite_master` 里也没有对应索引）——老版本建库时就没建。只依赖索引冲突会让
-/// 每次更新都往表里追加一整份副本，几轮之后规则数翻倍、引擎加载变慢。所以这里
-/// 先按同一组维度 SELECT，命中就复用既有行、只补来源行。
-///
-/// ## 分块
-/// 每 1000 条提交一次（`chunkSize`）：一次性把几万条塞进一个事务会让低端机在
-/// 导入时长时间无响应，而且失败要整体回滚。
+/// Writes parsed rules into the rule tables. Active = row and a source row enabled; dedupe is
+/// explicit because older databases lack the unique index.
 library;
 
 import 'package:diting/data/rules/rule_models.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// 一次导入的结果，字段与 `RuleImportSummary` 对齐。
 class RuleImportSummary {
   const RuleImportSummary({
     this.blockCount = 0,
@@ -51,8 +32,7 @@ class RuleImportSummary {
   final int typeSkippedCount;
   final int badfilteredCount;
 
-  /// 真正写进规则表（或复用了既有行）的条数。这是唯一可以上屏当
-  /// 「已导入 N 条」的数字。
+  /// Rules written or reused; the only count safe to show as "N imported".
   int get insertedCount =>
       blockCount +
       allowCount +
@@ -60,19 +40,16 @@ class RuleImportSummary {
       urlBlockCount +
       urlAllowCount;
 
-  /// 解析出来了但本仓不入库的条数（cosmetic：引擎没有注入通道）。
+  /// Parsed but not stored: the engine has no injection path for cosmetic rules.
   int get notAppliedCount => cosmeticCount;
 
   bool get isEmpty => insertedCount == 0;
 }
 
-/// 订阅来源标签。
 String subscriptionSourceTag(int subscriptionId) => 'sub_$subscriptionId';
 
-/// 导入时目标表的选择：`domain` 写 block/allow，`hosts` 写 rewrite。
-///
-/// 与 `CategorizedRuleStreamImporter.acceptsDomainOnlyFamilies` 一致：hosts 类型
-/// 的订阅不接收 allow/url/cosmetic 族（hosts 文件表达不了这些）。
+/// Families the target table accepts: `domain` rows take block/allow, `hosts` subs take none of the
+/// allow/url/cosmetic families.
 bool _acceptsDomainOnlyFamilies(String kind) => kind != 'hosts';
 
 class RuleImporter {
@@ -81,10 +58,8 @@ class RuleImporter {
   final Database _db;
   final int chunkSize;
 
-  /// 导入一份已解析的规则，来源标签为 [source]。
-  ///
-  /// [kind] 是 `SubscriptionKind.storageValue`（`domain` / `hosts`）；
-  /// [enabled] 是订阅总开关，关掉的订阅其规则行与来源行都置 0。
+  /// Imports parsed rules under [source]; [kind] is `SubscriptionKind.storageValue`, [enabled] the
+  /// subscription switch.
   Future<RuleImportSummary> import(
     CategorizedRules parsed, {
     required String source,
@@ -196,7 +171,6 @@ class RuleImporter {
       rewriteCount: insertedRewrite,
       urlBlockCount: insertedUrlBlock,
       urlAllowCount: insertedUrlAllow,
-      // cosmetic 一族：解析出来了，但本仓不入库（引擎没有注入通道）。
       cosmeticCount: domainOnly ? parsed.cosmeticRules.length : 0,
       duplicateCount: parsed.duplicateCount,
       invalidCount: parsed.invalidCount,
@@ -206,10 +180,7 @@ class RuleImporter {
     );
   }
 
-  /// 删除某个来源的全部规则（订阅删除 / 更新前清旧数据）。
-  ///
-  /// 删来源行而不是删规则行：同一条规则可能还被用户手加或别的订阅引用，
-  /// 直接删规则行会把那些来源一起弄失效。
+  /// Deletes one source's rules. Only source rows go: a rule row may be shared.
   Future<void> removeRulesBySource(String source) async {
     await _db.transaction((txn) async {
       for (final table in const [
@@ -224,10 +195,7 @@ class RuleImporter {
     });
   }
 
-  /// 订阅总开关：把该来源的所有来源行一起置 0/1。
-  ///
-  /// 规则行本身的 `enabled` 不动：同一行可能还有别的来源在用，改规则行会让
-  /// 那些来源一起失效。
+  /// Sets `enabled` on all source rows of [source]; the shared rule row keeps its own flag.
   Future<void> setSourceEnabled(String source, bool enabled) async {
     final value = enabled ? 1 : 0;
     await _db.transaction((txn) async {
@@ -247,7 +215,7 @@ class RuleImporter {
     });
   }
 
-  /// 没有任何来源引用的规则行——留着只会让「规则总数」虚高。
+  /// Drops rule rows that no source references; they would only inflate counts.
   Future<void> _deleteOrphanRules(DatabaseExecutor txn) async {
     for (final entry in const {
       'block_rule': 'block_rule_source',
@@ -286,7 +254,6 @@ class RuleImporter {
     enabled: enabled,
   );
 
-  /// block / allow 共用的写入：两表列集合完全一致，只有表名不同。
   Future<int> _insertDomainRules(
     List<ParsedRule> rules, {
     required String table,
@@ -330,14 +297,13 @@ class RuleImporter {
     return inserted;
   }
 
-  /// 按唯一索引的同一组维度找既有行。
   Future<int?> _findDomainRule(
     DatabaseExecutor txn,
     String table,
     ParsedRule rule,
   ) async {
-    // `IS ?` 绑定 null 会让 sqflite 打出「Invalid argument null」警告（未来版本
-    // 直接抛异常），所以可空列按「有值用 =，无值用 IS NULL」拆开拼。
+    // sqflite warns about `IS ?` with null (and will throw later), so nullable columns use `= ?`
+    // when set and `IS NULL` otherwise.
     final where = <String>['pattern = ?', 'important = ?'];
     final args = <Object?>[rule.pattern, rule.important ? 1 : 0];
     final appScope = rule.appScope;
@@ -409,11 +375,8 @@ class RuleImporter {
     return inserted;
   }
 
-  /// URL / 路径规则写 `go_url_rule`。
-  ///
-  /// 这张表**没有** `appScope` 列（旧版实体也没有），所以带 `$app=` 的 URL 规则
-  /// 会丢掉作用域。这里如实丢掉并计入 typeSkipped 之外的统计——不伪造一列，
-  /// 也不把「只对某 app 生效」的规则写成全局 URL 拦截。
+  /// URL and path rules go to `go_url_rule`, which has no `appScope` column, so a `$app=` rule is
+  /// skipped rather than stored as a global block.
   Future<int> _insertUrlRules(
     List<ParsedUrlRule> rules, {
     required String source,
