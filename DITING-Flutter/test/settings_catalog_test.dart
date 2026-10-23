@@ -231,10 +231,9 @@ void main() {
       }
     });
 
-    test('配置域只剩四条资源路由', () {
+    test('配置域只剩三条资源路由', () {
       for (final path in [
         ConfigPaths.customResources,
-        ConfigPaths.iconSets,
         ConfigPaths.userAgents,
         ConfigPaths.onDemand,
       ]) {
@@ -242,10 +241,8 @@ void main() {
       }
     });
 
-    test('观测域只剩连接 / 请求 / 资源三条', () {
-      expect(ObservabilityPaths.connections, '/connections');
+    test('观测域只剩请求一条', () {
       expect(ObservabilityPaths.requests, '/requests');
-      expect(ObservabilityPaths.resources, '/resources');
     });
 
     test('设置子页两条', () {

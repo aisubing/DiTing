@@ -15,18 +15,12 @@ void main() {
   installGlobalTestHooks();
 
   const viaDeveloper = <String, String>{
-    '活动连接': '/connections',
-    '资源更新': '/resources',
     'IP 质量': SystemPaths.ipQuality,
     '自定义资源': '/config/custom-resources',
     '组件画廊': SystemPaths.demo,
-    '表单演示页': SystemPaths.formDemo,
-    '扫码': SystemPaths.scan,
-    '编辑器': SystemPaths.editor,
   };
 
   const viaOtherPage = <String>[
-    '/config/icon-sets',
     '/config/user-agents',
     '/config/on-demand',
     SystemPaths.fontFamily,

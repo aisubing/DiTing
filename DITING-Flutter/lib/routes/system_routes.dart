@@ -5,23 +5,15 @@ import 'package:diting/pages/appearance/font_size_page.dart';
 import 'package:diting/pages/appearance/settings_parity_pages.dart';
 import 'package:diting/pages/appearance/theme_page.dart';
 import 'package:diting/pages/demo/demo_page.dart';
-import 'package:diting/pages/forms/forms_demo_page.dart';
-import 'package:diting/pages/forms/list_editor_demo_page.dart';
-import 'package:diting/pages/forms/map_edit_demo_page.dart';
-import 'package:diting/pages/forms/named_url_page.dart';
-import 'package:diting/pages/forms/rule_preset_page.dart';
-import 'package:diting/pages/forms/selection_demo_page.dart';
 import 'package:diting/pages/system/app_update_page.dart';
 import 'package:diting/pages/system/developer_page.dart';
-import 'package:diting/pages/system/editor_page.dart';
 import 'package:diting/pages/system/ip_quality_page.dart';
-import 'package:diting/pages/system/scan_page.dart';
 import 'package:diting/pages/system/sponsor_page.dart';
 import 'package:diting/routes/page.dart';
 import 'package:diting/ui/navigator.dart';
 import 'package:go_router/go_router.dart';
 
-/// Appearance, settings sub pages, system and form routes.
+/// Appearance, settings sub pages and system routes.
 abstract final class SystemPaths {
   static const theme = '/theme';
   static const dayNight = '/theme/day-night';
@@ -50,22 +42,14 @@ abstract final class SystemPaths {
   static const sponsor = '/sponsor';
   static const appUpdate = '/app-update';
 
-  // Retained pages: no upstream UI, kept at the user's request.
+  /// Retained page: no upstream UI, kept at the user's request.
   static const ipQuality = '/ip-quality';
-  static const editor = '/editor';
-  static const scan = '/scan';
 
-  // Demo pages: component gallery and form family.
+  /// Component gallery.
   static const demo = '/demo';
-  static const formDemo = '/form';
-  static const formListEditor = '/form/list-editor';
-  static const formMapEdit = '/form/map-edit';
-  static const formNamedUrl = '/form/named-url';
-  static const formSelection = '/form/selection';
-  static const formRulePreset = '/form/rule-preset';
 }
 
-/// Appearance, settings, system and form routes, assembled by `lib/router.dart`. All set
+/// Appearance, settings and system routes, assembled by `lib/router.dart`. All set
 /// `parentNavigatorKey: rootNavigatorKey`: they are full pages covering the whole tree, so the
 /// nested navigator would keep the bottom dock visible.
 List<RouteBase> systemRoutes() => <RouteBase>[
@@ -162,67 +146,19 @@ List<RouteBase> systemRoutes() => <RouteBase>[
         androidDefaultPage(state, const AppUpdatePage()),
   ),
 
-  // Retained pages.
+  // Retained page.
   GoRoute(
     path: SystemPaths.ipQuality,
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const IpQualityPage()),
   ),
-  GoRoute(
-    path: SystemPaths.editor,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const EditorPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.scan,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const ScanPage()),
-  ),
 
-  // Demo pages.
+  // Component gallery.
   GoRoute(
     path: SystemPaths.demo,
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const DemoPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.formDemo,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const FormsDemoPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.formListEditor,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const ListEditorDemoPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.formMapEdit,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const MapEditDemoPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.formNamedUrl,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const NamedUrlPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.formSelection,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const SelectionDemoPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.formRulePreset,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const RulePresetPage()),
   ),
 ];

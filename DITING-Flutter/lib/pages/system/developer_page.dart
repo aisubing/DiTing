@@ -1,24 +1,80 @@
-/// Developer options hub, which has no 1.4.3 counterpart.
+/// Developer options hub, which has no 1.4.3 counterpart. Every action here talks to the real
+/// database, native channels or the cleanup service; nothing is simulated.
 library;
 
-import 'package:diting/data/mock_system.dart';
+import 'dart:io';
+import 'dart:math';
+
+import 'package:diting/data/cleanup/data_cleanup_service.dart';
+import 'package:diting/data/db/legacy_database.dart';
 import 'package:diting/routes/config_routes.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/routes/observability_routes.dart';
 import 'package:diting/routes/system_routes.dart';
+import 'package:diting/state/cleanup_providers.dart';
+import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-class DeveloperPage extends ConsumerWidget {
+/// Rows in the stress action; one batch, so the UI never freezes mid-way.
+const _stressRowCount = 1000;
+
+/// The four actions that do real work. `title` doubles as the running indicator.
+enum _DeveloperAction {
+  stressLogs(
+    title: '日志压测',
+    subtitle: '向当前模式的日志库真实写入 $_stressRowCount 条 DNS 日志',
+    glyphName: 'logs',
+  ),
+  reportError(
+    title: '错误上报自检',
+    subtitle: '通过 FlutterError 上报一条测试异常，验证错误链路',
+    glyphName: 'error',
+  ),
+  clearAllData(
+    title: '清空全部数据',
+    subtitle: '删除配置、规则与日志，恢复出厂状态',
+    glyphName: 'clearAll',
+    destructive: true,
+  ),
+  vacuum(
+    title: '压缩数据库',
+    subtitle: '对三个本地库执行 VACUUM，回收已删除记录占用的空间',
+    glyphName: 'memory',
+  );
+
+  const _DeveloperAction({
+    required this.title,
+    required this.subtitle,
+    required this.glyphName,
+    this.destructive = false,
+  });
+
+  final String title;
+  final String subtitle;
+  final String glyphName;
+  final bool destructive;
+}
+
+class DeveloperPage extends ConsumerStatefulWidget {
   const DeveloperPage({super.key});
 
-  Future<void> _run(BuildContext context, MockDeveloperAction action) async {
-    final messenger = ScaffoldMessenger.maybeOf(context);
+  @override
+  ConsumerState<DeveloperPage> createState() => _DeveloperPageState();
+}
+
+class _DeveloperPageState extends ConsumerState<DeveloperPage> {
+  /// Non-null while an action runs; disables the whole list instead of only one row.
+  _DeveloperAction? _running;
+
+  Future<void> _handle(_DeveloperAction action) async {
+    if (_running != null) return;
     if (action.destructive) {
       final confirmed = await showFloatingDialog<bool>(
         context: context,
@@ -35,25 +91,138 @@ class DeveloperPage extends ConsumerWidget {
               child: const Text('执行'),
             ),
           ],
-          child: Text('${action.subtitle}\n\n该动作会改写演示状态，执行后需要手动恢复。'),
+          child: Text('${action.subtitle}\n\n该操作会真正改写本机数据，无法撤销。'),
         ),
       );
-      if (confirmed != true) {
-        return;
+      if (confirmed != true || !mounted) return;
+    }
+    setState(() => _running = action);
+    String message;
+    try {
+      message = switch (action) {
+        _DeveloperAction.stressLogs => await _stressLogs(),
+        _DeveloperAction.reportError => _reportError(),
+        _DeveloperAction.clearAllData => await _clearAllData(),
+        _DeveloperAction.vacuum => await _vacuum(),
+      };
+    } catch (error) {
+      message = '${action.title}失败：$error';
+    } finally {
+      if (mounted) setState(() => _running = null);
+    }
+    if (!mounted) return;
+    _toast(message);
+    // "Clear all data" also wipes the first-run agreement, so the app must restart; staying alive
+    // would leave "running" split from "must agree again" (same rule as the cleanup page).
+    if (action == _DeveloperAction.clearAllData && mounted) {
+      await _offerRestart();
+    }
+  }
+
+  /// Writes real rows into the active `dns_log`; the revision bump makes the log pages re-query.
+  Future<String> _stressLogs() async {
+    final fileName = ref.read(activeLogDatabaseFileProvider);
+    final db = await LegacyDatabase.open(fileName);
+    if (db == null) return '日志压测失败：无法打开日志数据库';
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final random = Random();
+    final batch = db.batch();
+    for (var index = 0; index < _stressRowCount; index++) {
+      batch.insert('dns_log', {
+        'timestamp': now - index * 1000,
+        'queryName': 'stress-${index.toString().padLeft(4, '0')}.example.com',
+        'queryType': 1,
+        'result': index.isEven ? 'PASSED' : 'BLOCKED',
+        'message': 'developer stress test',
+        'cached': random.nextBool() ? 1 : 0,
+        'packageName': 'com.haoze.diting',
+      });
+    }
+    final inserted = (await batch.commit(noResult: true)).length;
+    ref.read(dnsLogRevisionProvider.notifier).bump();
+    return '日志压测完成：写入 $inserted 条到 $fileName';
+  }
+
+  /// Goes through the same handler the framework uses, so it exercises a real error path without
+  /// tearing the app down.
+  String _reportError() {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: StateError('开发者选项触发的测试异常'),
+        library: 'diting.developer',
+        context: ErrorDescription('错误上报自检'),
+      ),
+    );
+    return '已上报一条 FlutterError：开发者选项触发的测试异常';
+  }
+
+  Future<String> _clearAllData() async {
+    final result = await ref
+        .read(cleanupRunnerProvider)
+        .run(CleanupAction.allData);
+    return result.message;
+  }
+
+  /// `VACUUM` on every existing database file; the difference in file size is the real gain.
+  Future<String> _vacuum() async {
+    var freed = 0;
+    final touched = <String>[];
+    for (final fileName in const [
+      LegacyDatabase.mainFile,
+      LegacyDatabase.expressFile,
+      LegacyDatabase.serverFile,
+    ]) {
+      final db = await LegacyDatabase.open(fileName, create: false);
+      if (db == null) continue;
+      try {
+        final file = File(db.path);
+        final before = await file.length();
+        await db.execute('VACUUM');
+        freed += before - await file.length();
+        touched.add(fileName);
+      } finally {
+        await db.close();
       }
     }
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    messenger?.showSnackBar(
+    if (touched.isEmpty) return '压缩数据库失败：本机还没有数据库文件';
+    final kb = (freed / 1024).round();
+    return '已压缩 ${touched.join('、')}，回收 ${kb < 0 ? 0 : kb} KB';
+  }
+
+  Future<void> _offerRestart() async {
+    final confirmed = await showFloatingDialog<bool>(
+      context: context,
+      child: CommonDialog(
+        title: '需要重启',
+        destructive: true,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('稍后'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('立即退出'),
+          ),
+        ],
+        child: const Text('全部数据已清空，需要重新启动应用才能从出厂状态进入。'),
+      ),
+    );
+    if (confirmed == true) await SystemNavigator.pop();
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('${action.title}：已完成（演示）'),
+        content: Text(message),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 1600),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final enabled = ref.watch(developerModeProvider);
     return CommonScaffold(
       title: '开发者选项',
@@ -69,22 +238,28 @@ class DeveloperPage extends ConsumerWidget {
                 title: '诊断与观测',
                 items: [
                   _Entry(
-                    glyph: AppGlyphs.connections,
-                    title: '活动连接',
-                    subtitle: '按应用与目标地址查看当前连接与流量',
-                    route: ObservabilityPaths.connections,
-                  ),
-                  _Entry(
-                    glyph: AppGlyphs.resources,
-                    title: '资源更新',
-                    subtitle: '规则订阅、图标集等资源的下载与更新时间',
-                    route: ObservabilityPaths.resources,
-                  ),
-                  _Entry(
                     glyph: AppGlyphs.target,
                     title: 'IP 质量',
                     subtitle: '实测出口地址与三个公开情报源的类型判断',
                     route: SystemPaths.ipQuality,
+                  ),
+                  _Entry(
+                    glyph: AppGlyphs.requests,
+                    title: '请求日志',
+                    subtitle: '合并 http_request_log 与 dns_log 的实时请求记录',
+                    route: ObservabilityPaths.requests,
+                  ),
+                  _Entry(
+                    glyph: AppGlyphs.logs,
+                    title: '日志保留',
+                    subtitle: '日志容量上限、崩溃日志的查看与导出',
+                    route: HubPaths.logRetention,
+                  ),
+                  _Entry(
+                    glyph: AppGlyphs.broom,
+                    title: '数据清理',
+                    subtitle: '按类别删除日志、权重、规则与缓存',
+                    route: HubPaths.dataCleanup,
                   ),
                 ],
               ),
@@ -94,14 +269,8 @@ class DeveloperPage extends ConsumerWidget {
                   _Entry(
                     glyph: AppGlyphs.resources,
                     title: '自定义资源',
-                    subtitle: '图标集 / User-Agent / 按需连接三张表的入口页',
+                    subtitle: 'User-Agent、按需连接等配置资源入口',
                     route: ConfigPaths.customResources,
-                  ),
-                  _Entry(
-                    glyph: AppGlyphs.photos,
-                    title: '图标集',
-                    subtitle: '分组卡片用的「图标名 → 图片」映射',
-                    route: ConfigPaths.iconSets,
                   ),
                   _Entry(
                     glyph: AppGlyphs.account,
@@ -119,8 +288,6 @@ class DeveloperPage extends ConsumerWidget {
                     glyph: AppGlyphs.cloudSync,
                     title: 'WebDAV 云同步',
                     subtitle: '把备份真实上传到自建的 WebDAV 服务',
-                    // The WebDAV form is now a sub page of "backup and migration", so this
-                    // row points straight at it instead of adding a directory hop.
                     route: HubPaths.configTransferWebdav,
                   ),
                 ],
@@ -135,33 +302,15 @@ class DeveloperPage extends ConsumerWidget {
                     route: SystemPaths.fontFamily,
                   ),
                   _Entry(
-                    glyph: AppGlyphs.pureBlack,
-                    title: '纯黑',
-                    subtitle: '深色表面折叠为纯黑；在外观设置「界面显示」组内联开关',
-                    route: SystemPaths.theme,
-                  ),
-                  _Entry(
                     glyph: AppGlyphs.textSize,
                     title: '字号',
                     subtitle: '全局文字缩放；在外观设置「界面显示」组内联滑杆',
                     route: SystemPaths.theme,
                   ),
                   _Entry(
-                    glyph: AppGlyphs.liquidGlass,
-                    title: '液态玻璃',
-                    subtitle: '浮条与卡片的玻璃质感；在外观设置「背景与动效」组内联选项',
-                    route: SystemPaths.theme,
-                  ),
-                  _Entry(
                     glyph: AppGlyphs.motion,
                     title: 'Tab 动画',
                     subtitle: '切换底部标签时的入场动画；在外观设置「背景与动效」组内联选项',
-                    route: SystemPaths.theme,
-                  ),
-                  _Entry(
-                    glyph: AppGlyphs.dashboard,
-                    title: '底栏样式',
-                    subtitle: '浮条 / 普通底栏二选一；在外观设置「背景与动效」组内联选项',
                     route: SystemPaths.theme,
                   ),
                 ],
@@ -175,39 +324,25 @@ class DeveloperPage extends ConsumerWidget {
                     subtitle: '设计系统全部组件与字形目录',
                     route: SystemPaths.demo,
                   ),
-                  _Entry(
-                    glyph: AppGlyphs.compose,
-                    title: '表单演示页',
-                    subtitle: '表单族组件的输入、校验与提交范式',
-                    route: SystemPaths.formDemo,
-                  ),
-                  _Entry(
-                    glyph: AppGlyphs.qrCode,
-                    title: '扫码',
-                    subtitle: '相机取景与二维码识别（演示页，不调用真实相机）',
-                    route: SystemPaths.scan,
-                  ),
-                  _Entry(
-                    glyph: AppGlyphs.code,
-                    title: '编辑器',
-                    subtitle: 'YAML 高亮编辑器的交互与性能演示',
-                    route: SystemPaths.editor,
-                  ),
                 ],
               ),
               generateSection(
                 title: '实验动作',
                 items: [
-                  for (final action in mockDeveloperActions)
+                  for (final action in _DeveloperAction.values)
                     _ActionRow(
                       action: action,
-                      enabled: enabled,
-                      onTap: enabled ? () => _run(context, action) : null,
+                      enabled: enabled && _running == null,
+                      running: _running == action,
+                      onTap: enabled && _running == null
+                          ? () => _handle(action)
+                          : null,
                     ),
                 ],
                 footer:
-                    '「崩溃核心」只会弹一个致命错误对话框，不会真的让进程退出；'
-                    '「清空全部数据」在演示层只重置本页状态。',
+                    '这些动作直接作用于本机的数据库、prefs 与 native 通道：'
+                    '日志压测会真的写入 $_stressRowCount 条日志，压缩数据库执行的是 SQLite VACUUM，'
+                    '清空全部数据会删除所有本地数据并要求重启。',
               ),
               const ListFooter(
                 text:
@@ -286,8 +421,8 @@ class _DeveloperModeCard extends ConsumerWidget {
                   ),
                   Expanded(
                     child: Text(
-                      '这些动作会直接改写内存状态，可能让界面进入不一致的样子；'
-                      '它们只用于验证 UI 的异常分支，不要在生产环境打开。',
+                      '这里的动作会真的改写本机数据（日志库、prefs、数据库文件），'
+                      '其中「清空全部数据」不可撤销，不要在生产环境打开。',
                       style: AppTextStyle.footnote
                           .of(context)
                           .copyWith(color: colorScheme.onWarningContainer),
@@ -332,11 +467,13 @@ class _ActionRow extends StatelessWidget {
   const _ActionRow({
     required this.action,
     required this.enabled,
+    required this.running,
     required this.onTap,
   });
 
-  final MockDeveloperAction action;
+  final _DeveloperAction action;
   final bool enabled;
+  final bool running;
   final VoidCallback? onTap;
 
   @override
@@ -354,9 +491,16 @@ class _ActionRow extends StatelessWidget {
             ? TextStyle(color: colorScheme.error)
             : null,
       ),
-      subtitle: Text(action.subtitle),
-      leading: GlyphIcon(glyphByName(action.glyphName), color: glyphColor),
-      trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+      subtitle: Text(running ? '执行中…' : action.subtitle),
+      leading: running
+          ? const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : GlyphIcon(glyphByName(action.glyphName), color: glyphColor),
+      trailing: running
+          ? null
+          : const GlyphIcon(AppGlyphs.chevronForward, size: 20),
       onTap: onTap,
     );
   }

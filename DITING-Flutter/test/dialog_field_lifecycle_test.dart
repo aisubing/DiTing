@@ -1,5 +1,4 @@
 // Regression: disposing the controller right after `showFloatingDialog` returns kills the field
-import 'package:diting/pages/system/demo_page_notice.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -47,11 +46,6 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(submitted, 'api.example.com');
-  });
-
-  testWidgets('演示页标注文案只有一处定义', (tester) async {
-    // Five pages share this wording; it drifted once, so pin it.
-    expect(DemoPageNotice.label, '演示页：不属于旧版 1.4.3 的界面');
   });
 }
 
