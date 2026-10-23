@@ -81,14 +81,25 @@ ThemeData buildAppTheme(
   final transparent = spec.transparentPage;
   return ThemeData(
     useMaterial3: true,
+    // 二级页转场：安卓用**系统默认**动画，即
+    // `PredictiveBackPageTransitionsBuilder`（手势返回时跟着手势走，普通
+    // push/pop 退化成 Android 16 的 FadeForwards）。这正是
+    // `material_ui` 的 `PageTransitionsTheme` 默认给 android 的那一个，写出来
+    // 是为了显式压过下面的自定义项。
+    //
+    // 不能只是「删掉 android 那一项」：这张表缺项时 `buildTransitions` 兜底到
+    // `ZoomPageTransitionsBuilder`，那是 Android 10 的老动画，不是系统默认。
+    //
+    // 其余平台继续用 SharedAxis（桌面端有 `DragBackRouteMixin` 配套，iOS 按
+    // 原样保留）。不写 `fuchsia`：它没有专属 builder，缺省同样落到 Zoom，
+    // 硬塞 SharedAxis 反而偏离系统默认。
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: commonSharedXPageTransitions,
+        TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
         TargetPlatform.iOS: commonSharedXPageTransitions,
         TargetPlatform.windows: commonSharedXPageTransitions,
         TargetPlatform.macOS: commonSharedXPageTransitions,
         TargetPlatform.linux: commonSharedXPageTransitions,
-        TargetPlatform.fuchsia: commonSharedXPageTransitions,
       },
     ),
     actionIconTheme: ActionIconThemeData(

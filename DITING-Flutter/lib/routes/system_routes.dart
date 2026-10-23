@@ -17,6 +17,7 @@ import 'package:diting/pages/system/editor_page.dart';
 import 'package:diting/pages/system/ip_quality_page.dart';
 import 'package:diting/pages/system/scan_page.dart';
 import 'package:diting/pages/system/sponsor_page.dart';
+import 'package:diting/routes/page.dart';
 import 'package:diting/ui/navigator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -85,134 +86,159 @@ List<RouteBase> systemRoutes() => <RouteBase>[
   GoRoute(
     path: SystemPaths.theme,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemePage()),
   ),
   GoRoute(
     path: SystemPaths.dayNight,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeDayNightPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeDayNightPage()),
   ),
   GoRoute(
     path: SystemPaths.colorStyle,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeColorPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeColorPage()),
   ),
   GoRoute(
     path: SystemPaths.homeOpacity,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeHomeOpacityPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeHomeOpacityPage()),
   ),
   GoRoute(
     path: SystemPaths.bottomBar,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeBottomBarPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeBottomBarPage()),
   ),
   GoRoute(
     path: SystemPaths.homeSentence,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeHomeSentencePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeHomeSentencePage()),
   ),
   GoRoute(
     path: SystemPaths.notification,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeNotificationPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeNotificationPage()),
   ),
   GoRoute(
     path: SystemPaths.background,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ThemeBackgroundPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ThemeBackgroundPage()),
   ),
   GoRoute(
     path: SystemPaths.fontFamily,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const FontFamilyPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const FontFamilyPage()),
   ),
   GoRoute(
     path: SystemPaths.fontSize,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const FontSizePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const FontSizePage()),
   ),
 
   // —— 设置子页 ——
   GoRoute(
     path: SystemPaths.foregroundBackground,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const SettingsBackgroundPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const SettingsBackgroundPage()),
   ),
   GoRoute(
     path: SystemPaths.language,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const SettingsLanguagePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const SettingsLanguagePage()),
   ),
 
   // —— 系统 ——
   GoRoute(
     path: SystemPaths.developer,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const DeveloperPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const DeveloperPage()),
   ),
   GoRoute(
     path: SystemPaths.sponsor,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const SponsorPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const SponsorPage()),
   ),
   GoRoute(
     path: SystemPaths.appUpdate,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const AppUpdatePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const AppUpdatePage()),
   ),
 
   // —— 保留页 ——
   GoRoute(
     path: SystemPaths.ipQuality,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const IpQualityPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const IpQualityPage()),
   ),
   GoRoute(
     path: SystemPaths.editor,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const EditorPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const EditorPage()),
   ),
   GoRoute(
     path: SystemPaths.scan,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ScanPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ScanPage()),
   ),
 
   // —— 演示页 ——
   GoRoute(
     path: SystemPaths.demo,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const DemoPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const DemoPage()),
   ),
   GoRoute(
     path: SystemPaths.formDemo,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const FormsDemoPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const FormsDemoPage()),
   ),
   GoRoute(
     path: SystemPaths.formListEditor,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ListEditorDemoPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ListEditorDemoPage()),
   ),
   GoRoute(
     path: SystemPaths.formMapEdit,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const MapEditDemoPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const MapEditDemoPage()),
   ),
   GoRoute(
     path: SystemPaths.formNamedUrl,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const NamedUrlPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const NamedUrlPage()),
   ),
   GoRoute(
     path: SystemPaths.formSelection,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const SelectionDemoPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const SelectionDemoPage()),
   ),
   GoRoute(
     path: SystemPaths.formRulePreset,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const RulePresetPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const RulePresetPage()),
   ),
 ];

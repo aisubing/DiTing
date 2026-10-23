@@ -5,6 +5,8 @@
 ///
 /// 约定：
 /// - 二级页面一律 `parentNavigatorKey: rootNavigatorKey`（全屏、无底栏）；
+/// - 每条 `GoRoute` 用 `pageBuilder: ... => androidDefaultPage(state, 页面)`，
+///   转场走安卓系统默认动画（原因见 `page.dart`，`builder:` 会退化成无转场）；
 /// - 路由字符串写在各自领域文件顶部的 `abstract final class XxxPaths` 里，
 ///   页面内部只引用常量，不写字面量；
 /// - 新领域 = 新增一个 `lib/routes/<domain>_routes.dart` + 在 `lib/router.dart`
@@ -16,4 +18,5 @@ export 'dashboard_routes.dart';
 export 'hub_routes.dart';
 export 'logs_routes.dart';
 export 'observability_routes.dart';
+export 'page.dart';
 export 'system_routes.dart';

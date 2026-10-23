@@ -2,6 +2,7 @@ import 'package:diting/pages/config/custom_resources_page.dart';
 import 'package:diting/pages/config/icon_sets_page.dart';
 import 'package:diting/pages/config/on_demand_page.dart';
 import 'package:diting/pages/config/user_agents_page.dart';
+import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -28,21 +29,25 @@ List<RouteBase> configRoutes() => [
   GoRoute(
     path: ConfigPaths.customResources,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const CustomResourcesConfigPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const CustomResourcesConfigPage()),
   ),
   GoRoute(
     path: ConfigPaths.iconSets,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const IconSetsConfigPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const IconSetsConfigPage()),
   ),
   GoRoute(
     path: ConfigPaths.userAgents,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const UserAgentsConfigPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const UserAgentsConfigPage()),
   ),
   GoRoute(
     path: ConfigPaths.onDemand,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const OnDemandConfigPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const OnDemandConfigPage()),
   ),
 ];

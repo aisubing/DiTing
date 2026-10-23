@@ -19,6 +19,7 @@ import 'package:diting/pages/hub/recognition_pages.dart';
 import 'package:diting/pages/hub/resolution_mode_page.dart';
 import 'package:diting/pages/hub/rule_control_page.dart';
 import 'package:diting/pages/hub/subscription_tools_pages.dart';
+import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -63,148 +64,179 @@ List<RouteBase> hubRoutes() => [
   GoRoute(
     path: HubPaths.providerManagement,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ProviderManagementPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ProviderManagementPage()),
   ),
   GoRoute(
     path: HubPaths.bootstrap,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const BootstrapSettingsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const BootstrapSettingsPage()),
   ),
   GoRoute(
     path: HubPaths.resolution,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ResolutionModePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ResolutionModePage()),
   ),
   GoRoute(
     path: '${HubPaths.resolution}/:modeId',
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => ResolutionModeConfigPage(
-      modeId: state.pathParameters['modeId'] ?? 'single',
+    pageBuilder: (context, state) => androidDefaultPage(
+      state,
+      ResolutionModeConfigPage(
+        modeId: state.pathParameters['modeId'] ?? 'single',
+      ),
     ),
   ),
   GoRoute(
     path: HubPaths.cache,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const CacheSettingsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const CacheSettingsPage()),
   ),
   GoRoute(
     path: HubPaths.ruleControl,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const RuleControlPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const RuleControlPage()),
   ),
   GoRoute(
     path: HubPaths.blockResponse,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const BlockResponsePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const BlockResponsePage()),
   ),
   GoRoute(
     path: HubPaths.autoUpdate,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const AutoUpdateSettingsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const AutoUpdateSettingsPage()),
   ),
   GoRoute(
     path: HubPaths.mirrorTemplates,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const MirrorTemplatesPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const MirrorTemplatesPage()),
   ),
   GoRoute(
     path: HubPaths.appRules,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const AppRulesPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const AppRulesPage()),
   ),
   GoRoute(
     path: HubPaths.blockedApps,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const BlockedAppsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const BlockedAppsPage()),
   ),
   GoRoute(
     path: HubPaths.excludedApps,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ExcludedAppsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ExcludedAppsPage()),
   ),
   GoRoute(
     path: HubPaths.httpInspection,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const HttpInspectionPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const HttpInspectionPage()),
   ),
   GoRoute(
     path: HubPaths.httpInspectionApps,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const HttpInspectionAppsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const HttpInspectionAppsPage()),
   ),
   GoRoute(
     path: HubPaths.caCertificate,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const CaCertificatePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const CaCertificatePage()),
   ),
   GoRoute(
     path: HubPaths.caGuide,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const CaCertificateGuidePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const CaCertificateGuidePage()),
   ),
   GoRoute(
     path: HubPaths.outboundProxy,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const OutboundProxyPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const OutboundProxyPage()),
   ),
   GoRoute(
     path: HubPaths.outboundProxyApps,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const OutboundProxyAppsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const OutboundProxyAppsPage()),
   ),
   GoRoute(
     path: HubPaths.agentApi,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const AgentApiPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const AgentApiPage()),
   ),
   GoRoute(
     path: HubPaths.agentProviders,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const AgentProvidersPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const AgentProvidersPage()),
   ),
   GoRoute(
     path: HubPaths.agentParams,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const AgentParamsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const AgentParamsPage()),
   ),
   GoRoute(
     path: HubPaths.providerVisibility,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ProviderVisibilityPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ProviderVisibilityPage()),
   ),
   GoRoute(
     path: HubPaths.hiddenFeatures,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const HiddenFeaturesPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const HiddenFeaturesPage()),
   ),
   GoRoute(
     path: HubPaths.logRetention,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const LogRetentionPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const LogRetentionPage()),
   ),
   GoRoute(
     path: HubPaths.dataCleanup,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const DataCleanupPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const DataCleanupPage()),
   ),
   GoRoute(
     path: HubPaths.configTransfer,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ConfigTransferPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ConfigTransferPage()),
   ),
   GoRoute(
     path: HubPaths.configTransferWebdav,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ConfigTransferWebdavPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ConfigTransferWebdavPage()),
   ),
   GoRoute(
     path: HubPaths.sponsorList,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const SponsorListPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const SponsorListPage()),
   ),
   GoRoute(
     path: HubPaths.coBuilders,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const CoBuildersPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const CoBuildersPage()),
   ),
 ];

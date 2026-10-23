@@ -2,6 +2,7 @@ import 'package:diting/pages/logs/logs_bootstrap_page.dart';
 import 'package:diting/pages/logs/logs_cache_page.dart';
 import 'package:diting/pages/logs/logs_race_page.dart';
 import 'package:diting/pages/logs/logs_subscription_stats_page.dart';
+import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -33,21 +34,25 @@ List<RouteBase> logsRoutes() => [
   GoRoute(
     path: LogPaths.cache,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const LogsCachePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const LogsCachePage()),
   ),
   GoRoute(
     path: LogPaths.race,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const LogsRacePage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const LogsRacePage()),
   ),
   GoRoute(
     path: LogPaths.bootstrap,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const LogsBootstrapPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const LogsBootstrapPage()),
   ),
   GoRoute(
     path: LogPaths.subscriptionStats,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const LogsSubscriptionStatsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const LogsSubscriptionStatsPage()),
   ),
 ];

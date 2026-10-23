@@ -1,6 +1,7 @@
 import 'package:diting/pages/observability/connections_page.dart';
 import 'package:diting/pages/observability/requests_page.dart';
 import 'package:diting/pages/observability/resources_page.dart';
+import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,16 +26,19 @@ List<RouteBase> observabilityRoutes() => [
   GoRoute(
     path: ObservabilityPaths.connections,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ConnectionsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ConnectionsPage()),
   ),
   GoRoute(
     path: ObservabilityPaths.requests,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const RequestsPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const RequestsPage()),
   ),
   GoRoute(
     path: ObservabilityPaths.resources,
     parentNavigatorKey: rootNavigatorKey,
-    builder: (context, state) => const ResourcesPage(),
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const ResourcesPage()),
   ),
 ];

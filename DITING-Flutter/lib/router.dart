@@ -22,8 +22,8 @@ import 'package:go_router/go_router.dart';
 /// 结构：
 /// - 底栏六个 tab 各占一个 [StatefulShellBranch]（`indexedStack` 天然保活，
 ///   切 tab 不重建，因此不再需要额外的 `KeepScope`）；
-/// - 二级页面挂在 root navigator 上普通 push，走
-///   `commonSharedXPageTransitions`（已在主题里统一）；
+/// - 二级页面挂在 root navigator 上普通 push，全屏、无底栏，转场用安卓系统
+///   默认动画（见 [androidDefaultPage]）；
 /// - 模式切换页与引导页**不在** shell 里：它们要全屏、没有底栏。
 ///
 /// 1.4.3 的底栏是六项（`BottomBarDestination`），可选 2–4 个；这里的六个 branch
@@ -204,33 +204,40 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
       GoRoute(
         path: Routes.batchEditor,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const BatchEditorPage(),
+        pageBuilder: (context, state) =>
+            androidDefaultPage(state, const BatchEditorPage()),
       ),
       GoRoute(
         path: '${Routes.rules}/:kind',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            RulesPage(kind: state.pathParameters['kind'] ?? 'block'),
+        pageBuilder: (context, state) => androidDefaultPage(
+          state,
+          RulesPage(kind: state.pathParameters['kind'] ?? 'block'),
+        ),
       ),
       GoRoute(
         path: Routes.subscriptions,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SubscriptionsPage(),
+        pageBuilder: (context, state) =>
+            androidDefaultPage(state, const SubscriptionsPage()),
       ),
       GoRoute(
         path: Routes.about,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AboutPage(),
+        pageBuilder: (context, state) =>
+            androidDefaultPage(state, const AboutPage()),
       ),
       GoRoute(
         path: Routes.modeSelect,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ModeSelectPage(),
+        pageBuilder: (context, state) =>
+            androidDefaultPage(state, const ModeSelectPage()),
       ),
       GoRoute(
         path: Routes.modeOnboarding,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ModeOnboardingPage(),
+        pageBuilder: (context, state) =>
+            androidDefaultPage(state, const ModeOnboardingPage()),
       ),
       // —— 第二轮按领域拆分的路由，各自在 `lib/routes/<domain>_routes.dart` 里
       // 定义；这里只负责拼接。新增领域 = 新增一个 `...<domain>Routes()`。
