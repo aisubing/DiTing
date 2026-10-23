@@ -162,6 +162,44 @@ class PlatformBridge {
     }
   }
 
+  /// Opens the document picker and keeps a long-lived read grant, so a local-file rule
+  /// subscription can be re-imported later without asking the user to pick it again.
+  Future<PersistedTextFile> pickPersistableTextFile() async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('pickPersistableTextFile');
+      return PersistedTextFile.fromMap(raw);
+    } on MissingPluginException {
+      return const PersistedTextFile.unavailable();
+    } on PlatformException catch (error) {
+      return PersistedTextFile.failed('无法打开文件选择器：${error.message}');
+    }
+  }
+
+  /// Re-reads a file picked earlier; the persisted grant is what makes this work after a restart.
+  Future<PersistedTextRead> readPersistedText(String uri) async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('readPersistedText', {
+        'uri': uri,
+      });
+      return PersistedTextRead.fromMap(raw);
+    } on MissingPluginException {
+      return const PersistedTextRead.failed('当前环境不支持读取本地文件');
+    } on PlatformException catch (error) {
+      return PersistedTextRead.failed('无法读取该文件：${error.message}');
+    }
+  }
+
+  /// Drops the stored grant when the subscription is deleted.
+  Future<void> releasePersistedText(String uri) async {
+    try {
+      await _channel.invokeMethod<void>('releasePersistedText', {'uri': uri});
+    } on MissingPluginException {
+      // Nothing to release without the channel.
+    } on PlatformException {
+      // A grant that is already gone needs no cleanup.
+    }
+  }
+
   /// Memory used by this process and by the device; a missing channel yields
   /// [ProcessMemory.available] false so the card shows a dash.
   Future<ProcessMemory> memoryInfo() async {
@@ -241,6 +279,79 @@ class DocumentOpenResult {
       text: map['text'] as String?,
       name: map['name'] as String?,
       cancelled: map['cancelled'] == true,
+      error: map['error'] as String?,
+    );
+  }
+}
+
+/// Result of picking a rule file for a local-file subscription.
+class PersistedTextFile {
+  const PersistedTextFile({
+    this.uri,
+    this.name,
+    this.text,
+    this.persisted = false,
+    this.cancelled = false,
+    this.error,
+  });
+
+  const PersistedTextFile.unavailable()
+    : uri = null,
+      name = null,
+      text = null,
+      persisted = false,
+      cancelled = false,
+      error = '当前环境不支持系统文件选择器';
+
+  const PersistedTextFile.failed(String this.error)
+    : uri = null,
+      name = null,
+      text = null,
+      persisted = false,
+      cancelled = false;
+
+  /// `content://` address stored as the subscription's `url`, so its grant can be re-read.
+  final String? uri;
+  final String? name;
+  final String? text;
+
+  /// False when the picker did not grant persistable access; the file then has to be re-picked.
+  final bool persisted;
+  final bool cancelled;
+  final String? error;
+
+  /// A cancelled pick is not an error.
+  bool get isOk => cancelled || error == null;
+  String get displayName => name ?? '';
+
+  static PersistedTextFile fromMap(Object? raw) {
+    final map = raw is Map ? Map<Object?, Object?>.from(raw) : const {};
+    return PersistedTextFile(
+      uri: map['uri'] as String?,
+      name: map['name'] as String?,
+      text: map['text'] as String?,
+      persisted: map['persisted'] == true,
+      cancelled: map['cancelled'] == true,
+      error: map['error'] as String?,
+    );
+  }
+}
+
+/// Result of re-reading a previously picked rule file.
+class PersistedTextRead {
+  const PersistedTextRead({this.text, this.error});
+
+  const PersistedTextRead.failed(String this.error) : text = null;
+
+  final String? text;
+  final String? error;
+
+  bool get isOk => error == null && text != null;
+
+  static PersistedTextRead fromMap(Object? raw) {
+    final map = raw is Map ? Map<Object?, Object?>.from(raw) : const {};
+    return PersistedTextRead(
+      text: map['text'] as String?,
       error: map['error'] as String?,
     );
   }

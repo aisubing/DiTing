@@ -3,6 +3,7 @@
 library;
 
 import 'package:diting/data/db/legacy_database.dart';
+import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
@@ -10,9 +11,12 @@ import 'package:diting/data/rules/rule_importer.dart';
 import 'package:diting/data/rules/rule_parser.dart';
 import 'package:diting/data/subscriptions/subscription_fetcher.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
+import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
+
+part 'subscription_mirror_providers.dart';
 
 /// Normal and server mode share `diting_database`; express has its own file.
 final subscriptionDatabaseFileProvider = Provider<String>((ref) {
@@ -40,10 +44,16 @@ final subscriptionRevisionProvider =
       SubscriptionRevisionNotifier.new,
     );
 
-/// Real fetcher; tests inject a fake with `overrideWithValue`.
-final subscriptionFetcherProvider = Provider<SubscriptionFetcher>(
-  (ref) => HttpSubscriptionFetcher(),
+/// Reads a local rule file back through its persisted SAF grant; null without a channel.
+final subscriptionFileReaderProvider = Provider<PlatformBridge>(
+  (ref) => PlatformBridge(),
 );
+
+/// Real fetcher; tests inject a fake with `overrideWithValue`. The UA comes from
+/// `/config/user-agents` and the provider rebuilds when that selection changes.
+final subscriptionFetcherProvider = Provider<SubscriptionFetcher>((ref) {
+  return HttpSubscriptionFetcher(userAgent: ref.watch(requestUserAgentProvider));
+});
 
 /// Rule importer sharing the repository handle; null without a database.
 final ruleImporterProvider = FutureProvider<RuleImporter?>((ref) async {
@@ -271,13 +281,7 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
       return const SubscriptionFetchResult.failed('订阅数据库不可用');
     }
     if (!entry.isRemote) {
-      // Local-file subscriptions have no URL, matching upstream's failure.
-      await repository.markUpdateFailed(
-        entry.id,
-        error: '本地文件订阅无法更新',
-        attemptedAt: DateTime.now().millisecondsSinceEpoch,
-      );
-      return const SubscriptionFetchResult.failed('本地文件订阅无法更新');
+      return _runLocal(entry, repository);
     }
     await repository.setImportState(
       entry.id,
@@ -322,6 +326,50 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
         );
     }
     return result;
+  }
+
+  /// Re-imports a local rule file through its persisted SAF grant. The `url` column holds the
+  /// `content://` address for local rows, mirroring the legacy `sourceRef`.
+  Future<SubscriptionFetchResult> _runLocal(
+    SubscriptionEntry entry,
+    SubscriptionRepository repository,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final read = await ref
+        .read(subscriptionFileReaderProvider)
+        .readPersistedText(entry.url);
+    if (!read.isOk) {
+      final reason = read.error ?? '无法读取本地文件';
+      await repository.markUpdateFailed(
+        entry.id,
+        error: reason,
+        attemptedAt: now,
+      );
+      return SubscriptionFetchResult.failed(reason, requestedUrl: entry.url);
+    }
+    final imported = await _importContent(entry, read.text!);
+    if (imported == null) {
+      const reason = '规则库不可用，本地规则无法入库';
+      await repository.markUpdateFailed(
+        entry.id,
+        error: reason,
+        attemptedAt: now,
+      );
+      return const SubscriptionFetchResult.failed(reason);
+    }
+    await repository.markImported(
+      entry.id,
+      ruleCount: imported.insertedCount,
+      lastUpdated: now,
+      // A local file has no ETag or Last-Modified to remember.
+      etag: null,
+      lastModified: null,
+    );
+    return SubscriptionFetchResult(
+      outcome: SubscriptionFetchOutcome.content,
+      content: read.text,
+      requestedUrl: entry.url,
+    );
   }
 
   /// Parses the body and rewrites the rule tables for `sub_<id>` only; null without a rule
@@ -389,6 +437,8 @@ class SubscriptionActions {
 
   final Ref _ref;
 
+  /// Adds a subscription. [sourceType] `local` stores a `content://` address picked through the
+  /// system file picker instead of a download URL, and imports it from that file.
   Future<AddSubscriptionResult> add({
     required String name,
     required String url,
@@ -396,10 +446,22 @@ class SubscriptionActions {
     int? groupId,
     String? mirrorTemplate,
     bool mirrorFallback = true,
+    SubscriptionSourceType sourceType = SubscriptionSourceType.remote,
   }) async {
-    final urlError = validateSubscriptionUrl(url);
-    if (urlError != null) {
-      return AddSubscriptionFailure(urlError);
+    final isLocal = sourceType == SubscriptionSourceType.local;
+    if (isLocal) {
+      if (url.trim().isEmpty) {
+        return const AddSubscriptionFailure('请选择一个规则文件');
+      }
+      final pickedName = url.trim().split('/').last;
+      if (!pickedName.toLowerCase().endsWith('.txt')) {
+        return const AddSubscriptionFailure('请选择扩展名为 .txt 的规则文件');
+      }
+    } else {
+      final urlError = validateSubscriptionUrl(url);
+      if (urlError != null) {
+        return AddSubscriptionFailure(urlError);
+      }
     }
     final trimmedUrl = url.trim();
     final trimmedName = name.trim();
@@ -410,7 +472,8 @@ class SubscriptionActions {
     final existing = await repository.byUrlAndKind(trimmedUrl, kind);
     if (existing != null) {
       return AddSubscriptionFailure(
-        '该订阅链接已作为${kind.displayName}存在（「${existing.name}」）',
+        '${isLocal ? '该文件' : '该订阅链接'}已作为${kind.displayName}存在'
+        '（「${existing.name}」）',
       );
     }
     String? normalizedMirror;
@@ -425,9 +488,9 @@ class SubscriptionActions {
         id: 0,
         url: trimmedUrl,
         name: trimmedName.isEmpty
-            ? extractNameFromUrl(trimmedUrl)
+            ? (isLocal ? _localNameOf(trimmedUrl) : extractNameFromUrl(trimmedUrl))
             : trimmedName,
-        sourceType: SubscriptionSourceType.remote,
+        sourceType: sourceType,
         kind: kind,
         enabled: true,
         ruleCount: 0,
@@ -443,6 +506,16 @@ class SubscriptionActions {
       ),
     );
     return AddSubscriptionOk(id);
+  }
+
+  /// Fallback display name for a picked file: its SAF document id is opaque, so only the
+  /// last segment after the final `/` is meaningful.
+  static String _localNameOf(String uri) {
+    final segment = uri.split('/').last;
+    final trimmed = segment.toLowerCase().endsWith('.txt')
+        ? segment.substring(0, segment.length - 4)
+        : segment;
+    return trimmed.isEmpty ? '本地规则文件' : trimmed;
   }
 
   /// Master switch; also flips its source rows, since a rule is active only when both it and a
@@ -465,10 +538,17 @@ class SubscriptionActions {
 
   /// Deletes rules first; the other order would leave ownerless rules blocking.
   Future<void> remove(int id) async {
+    final repository = await _ref.read(subscriptionRepositoryProvider.future);
+    final record = await repository?.byId(id);
     await (await _ref.read(ruleImporterProvider.future))
         ?.removeRulesBySource(subscriptionSourceTag(id));
-    await (await _ref.read(subscriptionRepositoryProvider.future))
-        ?.deleteById(id);
+    await repository?.deleteById(id);
+    // Release the SAF grant a local subscription no longer needs.
+    if (record != null && !record.isRemote) {
+      await _ref.read(subscriptionFileReaderProvider).releasePersistedText(
+        record.url,
+      );
+    }
   }
 
   /// Creates a group and returns its id, or the existing id on a name clash.
@@ -485,61 +565,3 @@ class SubscriptionActions {
 final subscriptionActionsProvider = Provider<SubscriptionActions>(
   SubscriptionActions.new,
 );
-
-// Mirror templates (the mirror_template table).
-
-/// Template repository; null without a legacy database.
-final mirrorTemplateRepositoryProvider =
-    FutureProvider<MirrorTemplateRepository?>((ref) async {
-      final db = await ref.watch(subscriptionDatabaseProvider.future);
-      if (db == null) return null;
-      return MirrorTemplateRepository(
-        db,
-        onChanged: () => ref.read(subscriptionRevisionProvider.notifier).bump(),
-      );
-    });
-
-/// All mirror templates, ordered by `addedAt DESC` like legacy `observeAll`.
-final mirrorTemplatesProvider = FutureProvider<List<MirrorTemplateRecord>>((
-  ref,
-) async {
-  ref.watch(subscriptionRevisionProvider);
-  final repository = await ref.watch(mirrorTemplateRepositoryProvider.future);
-  return repository == null
-      ? const <MirrorTemplateRecord>[]
-      : repository.all();
-});
-
-/// Mirror-template CRUD; `onChanged` bumps the revision so the list rebuilds.
-class MirrorTemplateActions {
-  MirrorTemplateActions(this._ref);
-
-  final Ref _ref;
-
-  Future<MirrorTemplateRepository?> _repository() =>
-      _ref.read(mirrorTemplateRepositoryProvider.future);
-
-  /// New row id, or null on a name clash or empty input.
-  Future<int?> create({required String name, required String template}) async =>
-      (await _repository())?.insert(name: name, template: template);
-
-  /// Returns false on a name clash or invalid input.
-  Future<bool> update({
-    required int id,
-    required String name,
-    required String template,
-  }) async =>
-      await (await _repository())?.update(
-        id: id,
-        name: name,
-        template: template,
-      ) ??
-      false;
-
-  Future<void> remove(int id) async => (await _repository())?.delete(id);
-}
-
-final mirrorTemplateActionsProvider = Provider<MirrorTemplateActions>(
-  MirrorTemplateActions.new,
-);
-

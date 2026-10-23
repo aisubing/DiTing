@@ -71,9 +71,10 @@ class _SubscriptionCard extends StatelessWidget {
                     popupBuilder: (_) => CommonPopupMenu(
                       items: [
                         CommonPopupMenuItem(
-                          label: '立即更新',
+                          // Local rows re-read the picked file instead of downloading it.
+                          label: entry.isRemote ? '立即更新' : '重新导入文件',
                           glyph: AppGlyphs.refresh,
-                          onPressed: busy || !entry.isRemote ? null : onUpdate,
+                          onPressed: busy ? null : onUpdate,
                         ),
                         CommonPopupMenuItem(
                           label: '重命名',
@@ -108,18 +109,19 @@ class _SubscriptionCard extends StatelessWidget {
                         MetaChip(
                           label: '连续失败 ${entry.consecutiveFailureCount} 次',
                         ),
-                      if (!entry.isRemote) const MetaChip(label: '本地文件不可下载'),
+                      if (!entry.isRemote) const MetaChip(label: '本地文件订阅'),
                     ],
                   ),
-                  if (entry.isRemote)
-                    Text(
-                      entry.url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.listCaptionStyle.copyWith(
-                        fontFamily: 'JetBrainsMono',
-                      ),
+                  Text(
+                    // A local row stores its SAF address, which is far too long to show; the
+                    // file name (last path segment) is what the user recognises.
+                    entry.isRemote ? entry.url : _fileNameOf(entry.url),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.listCaptionStyle.copyWith(
+                      fontFamily: 'JetBrainsMono',
                     ),
+                  ),
                   if (hasError)
                     Row(
                       spacing: 6,
@@ -144,12 +146,12 @@ class _SubscriptionCard extends StatelessWidget {
                       minHeight: 3,
                       borderRadius: AppRadius.full,
                     ),
-                  if (entry.isRemote)
-                    Text(
-                      '已入库 ${_formatCount(entry.ruleCount)} 条规则；'
-                      '更新会重新解析并替换该订阅贡献的规则。',
-                      style: context.listCaptionStyle,
-                    ),
+                  Text(
+                    '已入库 ${_formatCount(entry.ruleCount)} 条规则；'
+                    '${entry.isRemote ? '更新会重新下载并替换' : '重新导入会重新读取该文件并替换'}'
+                    '该订阅贡献的规则。',
+                    style: context.listCaptionStyle,
+                  ),
                 ],
               ),
             ),
@@ -157,6 +159,12 @@ class _SubscriptionCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Last segment of a `content://` address, which is the file name the picker reported.
+  static String _fileNameOf(String uri) {
+    final segment = Uri.tryParse(uri)?.pathSegments.lastOrNull ?? uri;
+    return segment.isEmpty ? uri : segment;
   }
 
   static String _lineCountLabel(SubscriptionEntry entry) =>
