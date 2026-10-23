@@ -96,6 +96,57 @@ class LegacySettings {
   void setTabTransitionRaw(String storageValue) =>
       _store.putString(uiContainer, 'tab_transition', storageValue);
 
+  /// Pure black theme, only visible in dark mode; off by default as in 1.4.3.
+  bool get pureBlackEnabled => _bool(uiContainer, 'pure_black_theme', false);
+
+  void setPureBlackEnabled(bool value) =>
+      _store.putBool(uiContainer, 'pure_black_theme', value);
+
+  /// Raw linear text scale; `clampTextScale` applies the layout bounds when read.
+  double get textScale => _double(uiContainer, 'app_text_scale', 1);
+
+  void setTextScale(double value) =>
+      _store.putFloat(uiContainer, 'app_text_scale', value);
+
+  /// `ThemeData.fontFamily` override; a missing or empty value means the platform default.
+  String? get fontFamily {
+    final raw = _string(uiContainer, 'app_font_family');
+    return raw == null || raw.isEmpty ? null : raw;
+  }
+
+  void setFontFamily(String? family) =>
+      _store.putString(uiContainer, 'app_font_family', family ?? '');
+
+  /// Dashboard card order by `DashboardWidget.name`; null when the board was never edited, so the
+  /// built-in defaults apply while an emptied board still restores as empty.
+  List<String>? get dashboardWidgetOrder {
+    final raw = _string(uiContainer, 'dashboard_widget_order');
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return null;
+      }
+      final names = <String>[];
+      for (final item in decoded) {
+        if (item is String && item.isNotEmpty && !names.contains(item)) {
+          names.add(item);
+        }
+      }
+      return names;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  void setDashboardWidgetOrder(List<String> names) => _store.putString(
+    uiContainer,
+    'dashboard_widget_order',
+    jsonEncode(names),
+  );
+
   double get componentOpacity =>
       _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
   /// Per-element opacity falls back to the shared component opacity.
@@ -199,6 +250,14 @@ class LegacySettings {
 
   bool get workModeSelected =>
       _bool(workModeContainer, 'work_mode_initial_selected', false);
+
+  /// Set once the permission guide has been walked through; without it every mode change
+  /// replays onboarding, because the flag used to live only in memory.
+  bool get modeOnboardingCompleted =>
+      _bool(workModeContainer, 'mode_onboarding_completed', false);
+
+  void setModeOnboardingCompleted(bool value) =>
+      _store.putBool(workModeContainer, 'mode_onboarding_completed', value);
 
   void setWorkModeSelected(bool value) =>
       _store.putBool(workModeContainer, 'work_mode_initial_selected', value);

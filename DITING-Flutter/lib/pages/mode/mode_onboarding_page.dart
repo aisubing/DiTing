@@ -1,12 +1,16 @@
+import 'package:diting/data/native/permissions_bridge.dart';
 import 'package:diting/router.dart';
+import 'package:diting/state/permission_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Three-step onboarding: choose mode, explain permissions, key tips. Upstream applies for
-/// permissions; this build only explains them, as none can be requested yet.
+/// Three-step onboarding: choose mode, request permissions, key tips. Step 2 both explains each
+/// permission and opens the real system dialog, because a page that only describes them leaves the
+/// service unprotected: without POST_NOTIFICATIONS the foreground notification is dropped, and
+/// without the VPN consent the tunnel cannot start at all.
 class ModeOnboardingPage extends ConsumerStatefulWidget {
   const ModeOnboardingPage({super.key});
 
@@ -189,8 +193,10 @@ class _ChooseModeStep extends StatelessWidget {
   };
 }
 
-/// Step 2: permission explanation. The list depends on the mode: server mode creates no
-/// tunnel, so no VPN entry. Denial consequences are spelled out, as nothing is requested.
+/// Step 2: request the permissions this mode needs. Every row is a real request: `VPN 连接` opens
+/// the system consent dialog, `通知` the runtime permission (or the notification settings screen
+/// below Android 13), `忽略电池优化` the allowlist dialog, and `应用列表` the vendor permission with a
+/// settings fallback. Denial consequences are spelled out, since the service degrades silently.
 class _PermissionStep extends ConsumerWidget {
   const _PermissionStep();
 
@@ -199,28 +205,36 @@ class _PermissionStep extends ConsumerWidget {
     final mode = ref.watch(workModeProvider);
     final permissions = switch (mode) {
       AppWorkMode.normal => const [
-        (AppGlyphs.vpn, 'VPN 连接', '必需', '建立本地隧道接管流量；拒绝则无法启动'),
-        (AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
-        (AppGlyphs.appsList, '应用列表', '可选', '按应用分流与统计；拒绝则只能按域名规则'),
-        (AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则长时间待机可能断开'),
+        (AppPermission.vpn, AppGlyphs.vpn, 'VPN 连接', '必需', '建立本地隧道接管流量；拒绝则无法启动'),
+        (AppPermission.notification, AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
+        (AppPermission.appList, AppGlyphs.appsList, '应用列表', '可选', '按应用分流与统计；拒绝则只能按域名规则'),
+        (AppPermission.batteryOptimization, AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则长时间待机可能断开'),
       ],
       AppWorkMode.server => const [
-        (AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
-        (AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则局域网内会间歇不可用'),
+        (AppPermission.notification, AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
+        (AppPermission.batteryOptimization, AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则局域网内会间歇不可用'),
       ],
       AppWorkMode.express => const [
-        (AppGlyphs.vpn, 'VPN 连接', '必需', '建立窄路由隧道；拒绝则无法启动'),
-        (AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
-        (AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则长时间待机可能断开'),
+        (AppPermission.vpn, AppGlyphs.vpn, 'VPN 连接', '必需', '建立窄路由隧道；拒绝则无法启动'),
+        (AppPermission.notification, AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
+        (AppPermission.batteryOptimization, AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则长时间待机可能断开'),
       ],
     };
+    final snapshot = ref.watch(permissionStatesProvider).value;
+    final grantedCount = permissions
+        .where((item) => snapshot?.of(item.$1) == true)
+        .length;
     return _StepScaffold(
       glyph: AppGlyphs.lock,
       title: '需要这些权限',
-      description: '全部权限只在本机使用，不会上传任何数据；拒绝「可选」项只影响对应功能。',
+      description: snapshot == null
+          ? '全部权限只在本机使用，不会上传任何数据。'
+          : '已授予 $grantedCount / ${permissions.length} 项；'
+                '全部权限只在本机使用，不会上传任何数据。',
       children: [
-        for (final (glyph, name, level, detail) in permissions)
+        for (final (permission, glyph, name, level, detail) in permissions)
           _PermissionRow(
+            permission: permission,
             glyph: glyph,
             name: name,
             level: level,
@@ -390,80 +404,144 @@ class _TipCard extends StatelessWidget {
   }
 }
 
-class _PermissionRow extends StatelessWidget {
+/// One permission row with its live state; tapping it asks the system, so the step is actionable
+/// instead of a wall of text. A denied permission stays tappable: a second tap opens the settings
+/// screen that can still change it.
+class _PermissionRow extends ConsumerWidget {
   const _PermissionRow({
+    required this.permission,
     required this.glyph,
     required this.name,
     required this.level,
     required this.detail,
   });
 
+  final AppPermission permission;
   final Glyph glyph;
   final String name;
   final String level;
   final String detail;
 
+  Future<void> _request(BuildContext context, WidgetRef ref) async {
+    final notifier = ref.read(permissionStatesProvider.notifier);
+    final snapshot = await notifier.request(permission);
+    if (!context.mounted) {
+      return;
+    }
+    if (snapshot.of(permission) == true) {
+      return;
+    }
+    // A permanently denied permission only changes through the settings screen.
+    final opened = await notifier.openSystemSettings(permission);
+    if (!context.mounted || !opened) {
+      return;
+    }
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text('$name 仍未授予，请在系统设置里允许后返回本页'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 2600),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
     final required = level == '必需';
+    final state = ref.watch(permissionStatesProvider).value?.of(permission);
+    final granted = state == true;
+    final statusLabel = switch (state) {
+      true => '已授予',
+      false => '未授予',
+      null => '状态未知',
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: CommonCard(
         padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 12,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              alignment: Alignment.center,
-              decoration: ShapeDecoration(
-                shape: AppShape.md,
-                color: colorScheme.surfaceContainerHigh,
+        child: InkWell(
+          onTap: granted ? null : () => _request(context, ref),
+          borderRadius: AppRadius.md,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 12,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: ShapeDecoration(
+                  shape: AppShape.md,
+                  color: granted
+                      ? colorScheme.primaryContainer
+                      : colorScheme.surfaceContainerHigh,
+                ),
+                child: GlyphIcon(
+                  granted ? AppGlyphs.checkCircle : glyph,
+                  size: 22,
+                  color: granted ? colorScheme.onPrimaryContainer : colorScheme.primary,
+                ),
               ),
-              child: GlyphIcon(glyph, size: 22, color: colorScheme.primary),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 4,
-                children: [
-                  Row(
-                    spacing: 6,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          name,
-                          style: AppTextStyle.subheadline.of(
-                            context,
-                            emphasized: true,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: 4,
+                  children: [
+                    Row(
+                      spacing: 6,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            style: AppTextStyle.subheadline.of(
+                              context,
+                              emphasized: true,
+                            ),
                           ),
                         ),
-                      ),
-                      TonalChip(
-                        label: level,
-                        color: required
-                            ? colorScheme.errorContainer
-                            : colorScheme.secondaryContainer,
-                        foregroundColor: required
-                            ? colorScheme.onErrorContainer
-                            : colorScheme.onSecondaryContainer,
-                        onPressed: null,
-                      ),
-                    ],
-                  ),
-                  Text(
-                    detail,
-                    style: AppTextStyle.caption1
-                        .of(context)
-                        .copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
-                ],
+                        TonalChip(
+                          label: level,
+                          color: required
+                              ? colorScheme.errorContainer
+                              : colorScheme.secondaryContainer,
+                          foregroundColor: required
+                              ? colorScheme.onErrorContainer
+                              : colorScheme.onSecondaryContainer,
+                          onPressed: null,
+                        ),
+                        TonalChip(
+                          label: statusLabel,
+                          color: granted
+                              ? colorScheme.secondaryContainer
+                              : colorScheme.surfaceContainerHighest,
+                          foregroundColor: granted
+                              ? colorScheme.onSecondaryContainer
+                              : colorScheme.onSurfaceVariant,
+                          onPressed: null,
+                        ),
+                      ],
+                    ),
+                    Text(
+                      detail,
+                      style: AppTextStyle.caption1
+                          .of(context)
+                          .copyWith(color: colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              if (!granted)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: TonalButton(
+                    size: TonalButtonSize.bar,
+                    label: '去授予',
+                    onPressed: () => _request(context, ref),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

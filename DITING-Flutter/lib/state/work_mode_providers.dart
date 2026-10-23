@@ -480,11 +480,17 @@ final workModeSelectedProvider =
 
 class OnboardingNotifier extends Notifier<bool> {
   @override
-  bool build() => false;
+  bool build() => ref.read(legacySettingsProvider).modeOnboardingCompleted;
 
-  void complete() => state = true;
+  void complete() {
+    state = true;
+    ref.read(legacySettingsProvider).setModeOnboardingCompleted(true);
+  }
 
-  void reset() => state = false;
+  void reset() {
+    state = false;
+    ref.read(legacySettingsProvider).setModeOnboardingCompleted(false);
+  }
 }
 
 final onboardingProvider = NotifierProvider<OnboardingNotifier, bool>(

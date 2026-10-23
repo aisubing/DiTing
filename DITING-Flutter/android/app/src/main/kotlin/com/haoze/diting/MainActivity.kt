@@ -6,6 +6,7 @@ import com.haoze.diting.cert.CaInspectionBridge
 import com.haoze.diting.net.DiagnosticsBridge
 import com.haoze.diting.net.DnsLatencyBridge
 import com.haoze.diting.platform.BackgroundBridge
+import com.haoze.diting.platform.PermissionsBridge
 import com.haoze.diting.platform.PlatformBridge
 import com.haoze.diting.platform.RecognitionAvatarBridge
 import com.haoze.diting.platform.UpdateBridge
@@ -18,6 +19,7 @@ class MainActivity : FlutterActivity() {
     private var expressVpnBridge: ExpressVpnBridge? = null
     private var platformBridge: PlatformBridge? = null
     private var backgroundBridge: BackgroundBridge? = null
+    private var permissionsBridge: PermissionsBridge? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -37,6 +39,7 @@ class MainActivity : FlutterActivity() {
         platformBridge = PlatformBridge(this).also { it.register(messenger) }
         UpdateBridge(this).register(messenger)
         backgroundBridge = BackgroundBridge(this).also { it.register(messenger) }
+        permissionsBridge = PermissionsBridge(this).also { it.register(messenger) }
         RecognitionAvatarBridge(applicationContext).register(messenger)
     }
 
@@ -52,6 +55,17 @@ class MainActivity : FlutterActivity() {
         // Codes never collide with the VPN ones: this reads data.data, those read only resultCode.
         if (platformBridge?.onActivityResult(requestCode, resultCode, data) == true) return
         if (backgroundBridge?.onActivityResult(requestCode, resultCode, data) == true) return
+        // Last, because it only claims its own codes and answers a pending request.
+        if (permissionsBridge?.onActivityResult(requestCode, resultCode) == true) return
         expressVpnBridge?.onActivityResult(requestCode, resultCode)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        permissionsBridge?.onRequestPermissionsResult(requestCode)
     }
 }
