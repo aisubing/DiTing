@@ -73,6 +73,39 @@ extension LegacyDnsSettings on LegacySettings {
   List<String> get primaryBackupProviderIds =>
       _idList('primary_backup_provider_ids');
 
+  /// 竞速候选列表。1.4.3 的键是 `race_provider_ids`，与
+  /// `parallel_race_provider_ids` 是两套历史遗留，备份必须按原名带回。
+  List<String> get raceProviderIds => _idList('race_provider_ids');
+
+  void setRaceProviderIds(List<String> ids) =>
+      _store.putString(dnsContainer, 'race_provider_ids', jsonEncode(ids));
+
+  /// 测速列表（`NetworkToolsSettingsStore`），新版页面不编辑它，但备份要带上。
+  List<String> get latencyTestProviderIds =>
+      _idList('latency_test_provider_ids');
+
+  void setLatencyTestProviderIds(List<String> ids) => _store.putString(
+    dnsContainer,
+    'latency_test_provider_ids',
+    jsonEncode(ids),
+  );
+
+  /// 竞速模式默认使用的协议档（`preset_dns_service`，1.4.3 只认 DNS/DoT/DoH
+  /// 三个枚举名，缺省 DNS）。2.0 的界面不再暴露这个开关，但备份必须带出去，
+  /// 否则导回 1.4.3 时会退回 DNS，用户选的 DoH 竞速档位就丢了。
+  String get presetDnsServiceRaw =>
+      _string(dnsContainer, 'preset_dns_service') ?? 'DNS';
+
+  void setPresetDnsServiceRaw(String value) =>
+      _store.putString(dnsContainer, 'preset_dns_service', value);
+
+  /// 竞速测试域名（`ResolutionSettingsStore`），首页竞速用它做探测。
+  /// 1.4.3 的缺省值是 `mihoyo.com`，备份要带出实际生效的值而不是空串。
+  String get raceTestDomain => _string(dnsContainer, 'race_test_domain') ?? 'mihoyo.com';
+
+  void setRaceTestDomain(String domain) =>
+      _store.putString(dnsContainer, 'race_test_domain', domain);
+
   void setSmartPredictionProviderIds(List<String> ids) => _store.putString(
     dnsContainer,
     'smart_prediction_provider_ids',

@@ -100,9 +100,23 @@ final expressVpnControllerProvider = Provider<VpnController>(
 );
 
 class PowerNotifier extends Notifier<PowerState> {
+  /// How long the consent dialog may stay open before the state machine gives
+  /// up waiting for `onPrepareResult`. The callback is delivered through the
+  /// activity result of MainActivity, so a recreate/back-press race can drop
+  /// it entirely; without a deadline the power button would sit on
+  /// 「启动中」forever and the user cannot start the service again, because
+  /// [toggle] ignores taps while [PowerState.isBusy].
+  static const Duration _consentTimeout = Duration(seconds: 90);
+
+  /// Deadline for a start attempt that already got consent. `start()` returns
+  /// as soon as the foreground service is scheduled, so this only catches a
+  /// wedged platform round-trip, not a slow tunnel.
+  static const Duration _launchTimeout = Duration(seconds: 30);
+
   bool _disposed = false;
   bool _pendingPermissionStart = false;
   Timer? _statsTimer;
+  Timer? _guardTimer;
 
   /// Last failure surfaced by the platform bridge; the UI shows the generic
   /// [PowerState.error] label, but keeping the reason here makes device
@@ -120,6 +134,7 @@ class PowerNotifier extends Notifier<PowerState> {
     ref.onDispose(() {
       _disposed = true;
       _statsTimer?.cancel();
+      _guardTimer?.cancel();
     });
     ref.read(vpnControllerProvider).onPrepareResult = _onPrepareResult;
     ref.read(expressVpnControllerProvider).onPrepareResult = _onPrepareResult;
@@ -128,9 +143,12 @@ class PowerNotifier extends Notifier<PowerState> {
         ? settings.expressVpnRunning
         : settings.vpnRunning;
     if (persisted) {
-      // The legacy flag survives process death; ask the service whether the
-      // tunnel is really alive before showing "running".
+      // The legacy flag survives process death — including an app upgrade that
+      // interrupted a running tunnel. Confirm with the native side before
+      // claiming "running", but never leave the button on 「启动中」 if that
+      // round-trip never answers.
       scheduleMicrotask(syncStatus);
+      _armGuard(_launchTimeout);
       return PowerState.starting;
     }
     return PowerState.stopped;
@@ -155,6 +173,7 @@ class PowerNotifier extends Notifier<PowerState> {
       } else {
         state = status.running ? PowerState.running : PowerState.stopped;
       }
+      _guardTimer?.cancel();
       ref
           .read(serviceStatsProvider.notifier)
           .applyNative(status.stats, running: status.running);
@@ -164,7 +183,10 @@ class PowerNotifier extends Notifier<PowerState> {
         _cancelStatsPolling();
       }
     } catch (_) {
-      if (!_disposed) state = PowerState.stopped;
+      if (!_disposed) {
+        state = PowerState.stopped;
+        _guardTimer?.cancel();
+      }
     }
   }
 
@@ -193,12 +215,17 @@ class PowerNotifier extends Notifier<PowerState> {
     }
     state = PowerState.starting;
     lastError = null;
+    _armGuard(_launchTimeout);
     try {
       final prepared = await _controller.prepare();
       if (_disposed) return;
       if (!prepared) {
         // The consent dialog is showing; _onPrepareResult continues the flow.
         _pendingPermissionStart = true;
+        // ...but that callback travels through MainActivity's activity result,
+        // so it can be lost when the activity is recreated or the dialog is
+        // dismissed outside the callback. Do not wait for it forever.
+        _armGuard(_consentTimeout);
         return;
       }
       await _launch(mode);
@@ -207,9 +234,44 @@ class PowerNotifier extends Notifier<PowerState> {
     }
   }
 
+  /// Restarts the watchdog for the current start attempt.
+  ///
+  /// Firing means the attempt never reached a terminal state, so the only
+  /// honest outcome is: ask the service what it actually is, and if it is not
+  /// running, leave «启动中». Retrying silently would hide the real failure.
+  void _armGuard(Duration timeout) {
+    _guardTimer?.cancel();
+    _guardTimer = Timer(timeout, () {
+      if (_disposed) return;
+      final pending = _pendingPermissionStart;
+      _pendingPermissionStart = false;
+      if (state != PowerState.starting && state != PowerState.stopping) return;
+      if (state == PowerState.stopping) {
+        // A wedged stop: the flag is already what matters, converge to idle.
+        state = PowerState.stopped;
+        return;
+      }
+      if (pending) {
+        // Consent never came back, so no tunnel was ever requested. Do not ask
+        // for the status: it would legitimately answer "not running" and turn a
+        // visible failure into a silent no-op.
+        _fail('没有获得 VPN 授权');
+        return;
+      }
+      syncStatus().then((_) {
+        if (_disposed) return;
+        if (state != PowerState.starting) return;
+        _fail('服务启动超时');
+      });
+    });
+  }
+
   Future<void> _onPrepareResult(bool granted) async {
     if (!_pendingPermissionStart) return;
     _pendingPermissionStart = false;
+    // Consent arrived: the consent deadline no longer applies, but the launch
+    // itself still gets one.
+    _armGuard(_launchTimeout);
     if (_disposed) return;
     if (!granted) {
       state = PowerState.stopped;
@@ -286,6 +348,7 @@ class PowerNotifier extends Notifier<PowerState> {
     }
     ref.read(serviceStatsProvider.notifier).markStarted();
     state = PowerState.running;
+    _guardTimer?.cancel();
     _ensureStatsPolling();
     // First counters land a moment after start; refresh once without waiting
     // a full poll interval.
@@ -327,7 +390,11 @@ class PowerNotifier extends Notifier<PowerState> {
   Future<void> stop() async {
     final express = _isExpress;
     _cancelStatsPolling();
+    _pendingPermissionStart = false;
     state = PowerState.stopping;
+    // The stop method channel answers immediately; a wedge here would leave the
+    // button on 「停止中」 with no way back, so it gets a deadline too.
+    _armGuard(_launchTimeout);
     try {
       await (express
               ? ref.read(expressVpnControllerProvider)
@@ -348,6 +415,8 @@ class PowerNotifier extends Notifier<PowerState> {
   }
 
   void _fail(Object error) {
+    _pendingPermissionStart = false;
+    _guardTimer?.cancel();
     lastError = error is String ? error : _messageOf(error);
     final settings = ref.read(legacySettingsProvider);
     settings.setVpnRunning(false);

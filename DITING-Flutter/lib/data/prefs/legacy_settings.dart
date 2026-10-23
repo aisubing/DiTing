@@ -143,6 +143,12 @@ class LegacySettings {
   void setHomeOpacity(String storageKey, double value) =>
       _store.putFloat(uiContainer, storageKey, _clampedOpacity(value));
 
+  void setHomeComponentOpacity(double value) =>
+      _store.putFloat(uiContainer, 'home_component_opacity', _clampedOpacity(value));
+
+  /// 备份等需要按 1.4.3 原始键名直写的场景用；正常页面请走具名访问器。
+  LegacyPrefsStore get rawStore => _store;
+
   ({String running, String stopped}) get homeSentences => (
     running:
         _string(uiContainer, 'home_sentence_running') ?? defaultRunningSentence,

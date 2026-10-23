@@ -43,8 +43,17 @@ enum ServerStatus {
 }
 
 class ServerStatusNotifier extends Notifier<ServerStatus> {
+  /// Deadline for a start/stop attempt.
+  ///
+  /// Both commands answer as soon as the foreground service is scheduled, so a
+  /// longer wait means the platform round-trip is wedged. Without this the card
+  /// would sit on 「启动中」/「停止中」 forever, and [toggle] ignores taps in
+  /// those states — the user could not even stop a stuck service.
+  static const Duration _guardTimeout = Duration(seconds: 30);
+
   bool _disposed = false;
   Timer? _statsTimer;
+  Timer? _guardTimer;
 
   /// Last native failure, kept for diagnostics without changing the five-state
   /// UI contract.
@@ -55,6 +64,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     ref.onDispose(() {
       _disposed = true;
       _statsTimer?.cancel();
+      _guardTimer?.cancel();
     });
     // Leaving server mode must not leave a LAN DNS listener behind; the UI
     // would otherwise show another mode while the port stays bound.
@@ -65,7 +75,10 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       }
     });
     if (ref.read(legacySettingsProvider).serverServiceActive) {
+      // The flag survives process death; confirm with the native side before
+      // claiming the listener is up, and do not wait on it forever.
       scheduleMicrotask(syncStatus);
+      _armGuard();
       return ServerStatus.starting;
     }
     return ServerStatus.stopped;
@@ -82,6 +95,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       } else {
         state = status.running ? ServerStatus.running : ServerStatus.stopped;
       }
+      _guardTimer?.cancel();
       ref
           .read(serviceStatsProvider.notifier)
           .applyNative(status.stats, running: status.running);
@@ -91,7 +105,10 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
         _cancelStatsPolling();
       }
     } catch (_) {
-      if (!_disposed) state = ServerStatus.stopped;
+      if (!_disposed) {
+        state = ServerStatus.stopped;
+        _guardTimer?.cancel();
+      }
     }
   }
 
@@ -118,6 +135,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     if (_disposed) return;
     state = ServerStatus.starting;
     lastError = null;
+    _armGuard();
     final settings = ref.read(legacySettingsProvider);
     try {
       final config = buildServerDnsConfig(settings);
@@ -142,6 +160,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       settings.setServerServiceActive(true);
       ref.read(serviceStatsProvider.notifier).markStarted();
       state = ServerStatus.running;
+      _guardTimer?.cancel();
       _ensureStatsPolling();
       Timer(const Duration(milliseconds: 700), syncStatus);
     } catch (error) {
@@ -164,6 +183,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
   Future<void> _stop() async {
     _cancelStatsPolling();
     state = ServerStatus.stopping;
+    _armGuard();
     try {
       await ref.read(dnsServerControllerProvider).stop();
     } catch (error) {
@@ -173,6 +193,30 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     ref.read(legacySettingsProvider).setServerServiceActive(false);
     ref.read(serviceStatsProvider.notifier).reset();
     state = ServerStatus.stopped;
+    _guardTimer?.cancel();
+  }
+
+  /// Arms (or re-arms) the deadline for the current transient state.
+  ///
+  /// Firing asks the native side what is actually running and, when the state
+  /// is still transient, surfaces a real failure instead of spinning forever.
+  void _armGuard() {
+    _guardTimer?.cancel();
+    _guardTimer = Timer(_guardTimeout, () {
+      if (_disposed) return;
+      if (state != ServerStatus.starting && state != ServerStatus.stopping) {
+        return;
+      }
+      if (state == ServerStatus.stopping) {
+        // The flag is already gone; show idle rather than an endless spinner.
+        state = ServerStatus.stopped;
+        return;
+      }
+      syncStatus().then((_) {
+        if (_disposed || state != ServerStatus.starting) return;
+        _fail('DNS 服务启动超时');
+      });
+    });
   }
 
   Future<Map<RuleKind, List<MockRule>>> _serverRules() async {
@@ -189,6 +233,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
   }
 
   void _fail(String message) {
+    _guardTimer?.cancel();
     lastError = message;
     ref.read(legacySettingsProvider).setServerServiceActive(false);
     state = ServerStatus.error;

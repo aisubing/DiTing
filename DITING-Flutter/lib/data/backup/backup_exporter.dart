@@ -21,11 +21,14 @@ library;
 import 'dart:convert';
 
 import 'package:diting/data/backup/backup_models.dart';
+import 'package:diting/data/backup/legacy_backup_writer.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
+import 'package:diting/data/vpn/dns_config_builder.dart';
+import 'package:diting/data/vpn/provider_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -112,11 +115,16 @@ class BackupExporter {
       'exportedAt': now.millisecondsSinceEpoch,
       'selection': [for (final group in included) group.key],
       'data': data,
+      // 同时在根节点平铺一份 1.4.3 认识的字段：同一份文件既能被 2.0 再次
+      // 导入，也能直接导回 1.4.3。旧版解析器读不到 `format`/`data` 会忽略
+      // 它们，反之亦然，所以两套键共存不会互相干扰。
+      ...LegacyBackupWriter.toLegacy(data, source.settings),
     };
 
     return BackupExportResult(
       content: _encoder.convert(payload),
-      fileName: '${BackupFormat.fileNamePrefix}-${BackupFormat.stampOf(now)}.json',
+      fileName:
+          '${BackupFormat.fileNamePrefix}-${BackupFormat.stampOf(now)}.json',
       included: included,
       counts: counts,
       skipped: skipped,
@@ -133,7 +141,7 @@ class BackupExporter {
     BackupGroup.cache => _cache(source),
     BackupGroup.outbound => _outbound(source),
     BackupGroup.subscriptions => _subscriptions(source),
-    BackupGroup.domainRules => _rules(source, RuleKind.block, group),
+    BackupGroup.domainRules => _rules(source, group),
     BackupGroup.rewriteDomain => _rewriteRules(source, const {'IPv4', 'IPv6'}),
     BackupGroup.rewriteCname => _rewriteRules(source, const {'CNAME'}),
     BackupGroup.addressRules => _addressRules(source),
@@ -151,22 +159,114 @@ class BackupExporter {
     },
     BackupGroup.httpInspection => {
       'enabled': source.settings.httpInspectionEnabled,
+      'http3Enabled': source.settings.http3InspectionEnabled,
       'packages': _stringList(source.settings.httpInspectionPackages),
     },
     BackupGroup.appearance => _appearance(source),
     BackupGroup.system => _system(source),
   };
 
-  /// 自定义服务商（`user_providers_json` 已是 JSON 文本，直接内联成对象）。
+  /// 自定义服务商 + 选择状态。
+  ///
+  /// 1.4.3 把「选了哪个服务商、用哪种解析模式、各模式的候选列表」平铺在备份
+  /// 根节点，2.0 之前的导出只写了 `user_providers_json`，于是这些选择只能靠
+  /// 用户重装后再手点一遍。这里把它们一并收进服务商分组。
   Object? _providers(BackupExportSource source) {
-    final raw = source.settings.userProvidersJson;
-    if (raw == null || raw.trim().isEmpty) return const [];
-    try {
-      return jsonDecode(raw);
-    } on FormatException {
-      // 坏 JSON 如实跳过：塞进备份只会把损坏传给下一次恢复。
-      throw const BackupFormatException('服务商配置不是合法 JSON');
+    final settings = source.settings;
+    final raw = settings.userProvidersJson;
+    var items = const <Object?>[];
+    if (raw != null && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) items = decoded;
+      } on FormatException {
+        // 坏 JSON 如实跳过：塞进备份只会把损坏传给下一次恢复。
+        throw const BackupFormatException('服务商配置不是合法 JSON');
+      }
     }
+    return {'items': items, 'selection': _providerSelection(settings)};
+  }
+
+  /// 服务商选择状态（对应 1.4.3 的 `selectedProvider` / `resolutionMode` /
+  /// 各模式引用列表 / 主页可见性过滤）。
+  ///
+  /// 引用里带 `name` 与 `protocol`：旧版按 `(name, protocol)` 回退匹配，只有
+  /// id 的引用在本机找不到时会整个丢掉。
+  Map<String, Object?> _providerSelection(LegacySettings settings) {
+    final catalog = _providerCatalog(settings);
+    final selectedId = settings.selectedProviderId;
+    return {
+      'selectedProvider': _refOf(catalog, selectedId),
+      'resolutionMode': settings.resolutionModeRaw,
+      'presetDnsService': settings.presetDnsServiceRaw,
+      'raceTestDomain': settings.raceTestDomain,
+      'raceProviderRefs': _providerRefs(catalog, settings.raceProviderIds),
+      'smartPredictionProviderRefs': _providerRefs(
+        catalog,
+        settings.smartPredictionProviderIds,
+      ),
+      'parallelRaceProviderRefs': _providerRefs(
+        catalog,
+        settings.parallelRaceProviderIds,
+      ),
+      'primaryBackupProviderRefs': _providerRefs(
+        catalog,
+        settings.primaryBackupProviderIds,
+      ),
+      'latencyTestProviderRefs': _providerRefs(
+        catalog,
+        settings.latencyTestProviderIds,
+      ),
+      'homeProviderVisibility': {
+        'visibleProtocols': _stringList(settings.homeVisibleProtocols),
+        'hiddenProviderRefs': _providerRefs(
+          catalog,
+          settings.homeHiddenProviderIds,
+        ),
+        'visibleProviderRefs': _providerRefs(
+          catalog,
+          settings.homeVisibleProviderIds,
+        ),
+      },
+    };
+  }
+
+  /// id → (名称, 协议) 的查表，预设与自定义合并。
+  Map<String, ({String name, String protocol})> _providerCatalog(
+    LegacySettings settings,
+  ) {
+    final catalog = <String, ({String name, String protocol})>{};
+    for (final provider in defaultDnsProviders) {
+      catalog[provider.id] = (
+        name: provider.name,
+        protocol: provider.protocol.storageValue,
+      );
+    }
+    for (final record in readUserProviders(settings)) {
+      catalog[record.id] = (
+        name: record.name,
+        protocol: record.protocol.storageValue,
+      );
+    }
+    return catalog;
+  }
+
+  List<Object?> _providerRefs(
+    Map<String, ({String name, String protocol})> catalog,
+    Iterable<String> ids,
+  ) => [for (final id in ids) _refOf(catalog, id)];
+
+  Map<String, Object?> _refOf(
+    Map<String, ({String name, String protocol})> catalog,
+    String id,
+  ) {
+    final entry = catalog[id];
+    return {
+      'id': id,
+      'name': entry?.name ?? id,
+      'protocol': entry?.protocol ?? 'DOH',
+      'isPreset': id.startsWith('preset_'),
+    };
   }
 
   Object? _bootstrap(BackupExportSource source) {
@@ -209,7 +309,7 @@ class BackupExporter {
       'protocol': settings.rawValue('outbound_proxy_protocol'),
       'host': settings.rawValue('outbound_proxy_host'),
       'port': settings.rawValue('outbound_proxy_port'),
-      'proxyAppPackage': settings.rawValue('outbound_proxy_app_package'),
+      'proxyAppPackage': settings.rawValue('outbound_proxy_app'),
       // 明确写进备份：让用户在导入侧看到「这里本来就没有凭据」，
       // 而不是以为导入漏了。
       'credentialsExcluded': true,
@@ -222,10 +322,25 @@ class BackupExporter {
     final repository = SubscriptionRepository(db);
     final groups = await repository.groups();
     final rows = await repository.all();
+    // 镜像模板表没有仓储层，直接读：订阅行只记名字，模板内容是另一张表。
+    // 1.4.x 早期库可能还没有这张表（也没有自定义模板可导），缺表不该让整组
+    // 订阅导出失败，所以这里单独兜住。
+    var templates = const <Map<String, Object?>>[];
+    if (await _hasTable(db, 'mirror_template')) {
+      templates = await db.query(
+        'mirror_template',
+        columns: ['name', 'template'],
+        orderBy: 'name',
+      );
+    }
     return {
       'groups': [
         for (final group in groups)
           {'name': group.name, 'autoUpdateEnabled': group.autoUpdateEnabled},
+      ],
+      'mirrorTemplates': [
+        for (final row in templates)
+          {'name': row['name'], 'template': row['template']},
       ],
       'items': [
         for (final row in rows)
@@ -233,6 +348,7 @@ class BackupExporter {
             'url': row.url,
             'name': row.name,
             'kind': row.kind.storageValue,
+            'scope': 'dns',
             'sourceType': row.sourceType.storageValue,
             'enabled': row.enabled,
             'groupName': _groupNameOf(groups, row.groupId),
@@ -243,6 +359,17 @@ class BackupExporter {
     };
   }
 
+  Future<bool> _hasTable(Database db, String name) async {
+    final rows = await db.query(
+      'sqlite_master',
+      columns: ['name'],
+      where: 'type = ? AND name = ?',
+      whereArgs: ['table', name],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
   String? _groupNameOf(List<SubscriptionGroupRecord> groups, int? groupId) {
     if (groupId == null) return null;
     for (final group in groups) {
@@ -251,26 +378,50 @@ class BackupExporter {
     return null;
   }
 
-  Future<Object?> _rules(
-    BackupExportSource source,
-    RuleKind kind,
-    BackupGroup group,
-  ) async {
+  /// 域名规则：黑白名单放在同一组，用每条规则的 `kind` 区分。
+  ///
+  /// 2.0 早期的导出只写了 `pattern`/`enabled`/`important`/`group`，把
+  /// `appScope`（只对某个应用生效）、`appInverted`（对该应用反选）与
+  /// `rawLine`（原始规则行，AdGuard 语法里的 `$app=`、`@@` 都在这里）全丢了，
+  /// 于是「只屏蔽某个 App」的规则恢复后会变成全局屏蔽。
+  Future<Object?> _rules(BackupExportSource source, BackupGroup group) async {
     final db = source.database;
     if (db == null) return const [];
-    final rules = await RuleRepository(db).loadKind(kind);
-    return [
-      for (final rule in rules)
+    final exported = <Object?>[];
+    for (final kind in const [RuleKind.block, RuleKind.allow]) {
+      final table = kind == RuleKind.block ? 'block_rule' : 'allow_rule';
+      final sourceTable = kind == RuleKind.block
+          ? 'block_rule_source'
+          : 'allow_rule_source';
+      final userRuleIds = await _userRuleIds(db, sourceTable);
+      final rows = await db.query(table, orderBy: 'id DESC');
+      for (final row in rows) {
         // 只导出用户自己加的：预设由应用自带、订阅由订阅链接重建，
         // 备份它们会让恢复时产生重复行。
-        if (rule.source == RuleSource.user)
-          {
-            'pattern': rule.pattern,
-            'enabled': rule.enabled,
-            'important': rule.important,
-            'group': rule.group,
-          },
-    ];
+        if (!userRuleIds.contains(row['id'] as int)) continue;
+        exported.add({
+          'pattern': row['pattern'],
+          'kind': kind == RuleKind.allow ? 'allow' : 'block',
+          'enabled': (row['enabled'] as int? ?? 1) == 1,
+          'important': (row['important'] as int? ?? 0) == 1,
+          'appScope': row['appScope'],
+          'appInverted': (row['appInverted'] as int? ?? 0) == 1,
+          'rawLine': row['rawLine'],
+          'group': row['groupName'],
+        });
+      }
+    }
+    return exported;
+  }
+
+  /// 用户来源的规则 id 集合（source 表里 `useradd`/`local_import`/`local_hosts`）。
+  Future<Set<int>> _userRuleIds(Database db, String sourceTable) async {
+    final rows = await db.query(sourceTable, columns: ['ruleId', 'source']);
+    return {
+      for (final row in rows)
+        if (RuleRepository.userSources.contains(row['source']))
+          row['ruleId'] as int,
+    };
   }
 
   /// 覆写规则（按 targetType 分两档：IPv4/IPv6 与 CNAME）。
@@ -290,6 +441,7 @@ class BackupExporter {
             'pattern': row['pattern'],
             'targetType': row['targetType'],
             'targetValue': row['targetValue'],
+            'rawLine': row['rawLine'],
             'enabled': (row['enabled'] as int? ?? 1) == 1,
           },
     ];
@@ -313,10 +465,10 @@ class BackupExporter {
     if (db == null) return const [];
     final rows = await db.query('go_url_rule', orderBy: 'id DESC');
     final userRuleIds = <int>{};
-    final sources = await db.query('go_url_rule_source', columns: [
-      'ruleId',
-      'source',
-    ]);
+    final sources = await db.query(
+      'go_url_rule_source',
+      columns: ['ruleId', 'source'],
+    );
     for (final row in sources) {
       if (RuleRepository.userSources.contains(row['source'])) {
         userRuleIds.add(row['ruleId'] as int);
@@ -328,6 +480,7 @@ class BackupExporter {
           {
             'pattern': row['pattern'],
             'kind': row['kind'],
+            'rawLine': row['rawLine'],
             'enabled': (row['enabled'] as int? ?? 1) == 1,
           },
     ];
@@ -335,21 +488,47 @@ class BackupExporter {
 
   Object? _appearance(BackupExportSource source) {
     final settings = source.settings;
+    final sentences = settings.homeSentences;
     return {
       'themeMode': settings.themeModeRaw,
       'palette': settings.paletteRaw,
       'liquidGlassMode': settings.liquidGlassModeRaw,
       'bottomBarStyle': settings.bottomBarStyleRaw,
       'tabTransition': settings.tabTransitionRaw,
-      'componentOpacity': settings.componentOpacity,
+      'componentOpacity': _opacity(settings.componentOpacity),
       'hapticEnabled': settings.hapticEnabled,
       'bottomBarIds': settings.bottomBarIds,
       'customBackgroundEnabled': settings.customBackgroundEnabled,
+      // 1.4.3 的首页每个组件有自己的透明度，2.0 统一成一个滑块；
+      // 备份仍按旧键逐个写出，老版本才认得出这份文件。
+      'homePowerButtonOpacity': _opacity(
+        settings.homeOpacity('home_power_button_opacity'),
+      ),
+      'homeProviderSelectorOpacity': _opacity(
+        settings.homeOpacity('home_provider_selector_opacity'),
+      ),
+      'homeModeButtonOpacity': _opacity(
+        settings.homeOpacity('home_mode_button_opacity'),
+      ),
+      'homePoemOpacity': _opacity(settings.homeOpacity('home_poem_opacity')),
+      'homeDnsDetailOpacity': _opacity(
+        settings.homeOpacity('home_dns_detail_opacity'),
+      ),
+      'homeSentenceRunning': sentences.running,
+      'homeSentenceStopped': sentences.stopped,
+      'customBackgroundUri': settings.customBackgroundUri,
     };
   }
 
+  /// 透明度取两位小数再写出。
+  ///
+  /// 安卓用 Java `float` 存透明度，`0.8` 读回来是 `0.800000011920929`；直接
+  /// 写进备份文件既难看，也让「同一份备份再导入」的比较更难对齐。
+  double _opacity(double value) => (value * 100).roundToDouble() / 100;
+
   Object? _system(BackupExportSource source) {
     final settings = source.settings;
+    final texts = settings.notificationTexts;
     return {
       'bypassLan': settings.bypassLanEnabled,
       'ipv6Mode': settings.ipv6ModeRaw,
@@ -357,12 +536,31 @@ class BackupExporter {
       'dnsLogMode': settings.dnsLogModeRaw,
       'hideFromRecents': settings.hideFromRecentsEnabled,
       'floatingLogEnabled': settings.floatingLogEnabled,
+      'floatingLogPanelSize': settings.rawValue('floating_log_panel_size'),
       'disableStartupUpdateCheck': settings.disableStartupUpdateCheck,
       'appLanguageMode': settings.appLanguageModeRaw,
       'notificationPersistent': settings.notificationPersistent,
       'notificationSpeed': settings.notificationSpeed,
+      'customRunningNotificationText': texts.running,
+      'customStoppedNotificationText': texts.stopped,
       'domainRulesEnabled': settings.domainRulesEnabled,
       'addressRulesEnabled': settings.addressRulesEnabled,
+      'encryptedDnsBlockingEnabled': settings.encryptedDnsBlockingEnabled,
+      'blockResponseMode': settings.blockResponseModeRaw,
+      'allowEditDefaultWhitelist':
+          settings.rawValue('allow_edit_default_whitelist') == true,
+      'dynamicBlockResponse': {
+        'enabled': settings.dynamicBlockEnabled,
+        'requestThreshold': settings.dynamicBlockRequestThreshold,
+        'windowSeconds': settings.dynamicBlockWindowSeconds,
+        'nxDomainDurationSeconds': settings.dynamicBlockNxDomainDurationSeconds,
+      },
+      'appTrafficStatsEnabled':
+          settings.rawValue('app_traffic_stats_enabled') != false,
+      'trafficStatsRetentionDays':
+          settings.rawValue('traffic_stats_retention_days') ?? 30,
+      'trafficStatsHideSystemApps':
+          settings.rawValue('traffic_stats_hide_system_apps') == true,
       'subscriptionAutoUpdateEnabled': settings.subscriptionAutoUpdateEnabled,
       'subscriptionAutoUpdateIntervalHours':
           settings.subscriptionAutoUpdateIntervalHours,

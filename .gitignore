@@ -88,3 +88,6 @@ screenshots/
 # adb 真机验收时抓的截图，只作本地证据，不进仓库
 .adb-shots/
 .tmp_ui/
+
+# 本地排障用的临时抓取（截图、拉取的数据库/备份样本）
+.tmp-test/

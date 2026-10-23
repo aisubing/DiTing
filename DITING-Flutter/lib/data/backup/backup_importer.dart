@@ -1,8 +1,18 @@
 /// 备份导入：解析、校验并合并一份备份文件。
 ///
-/// ## 合并语义（照抄 1.4.3 `ConfigImporter` 的分档）
+/// ## 两种格式
 ///
-/// 每个分组独立决定「新增 / 跳过 / 更新」，并逐项记账：
+/// | 来源 | 形状 |
+/// |---|---|
+/// | 2.0 | `{format: 'diting-backup', version, data: {...}}` |
+/// | 1.4.3 | 平铺根节点 + `formatVersion: 10` |
+///
+/// 1.4.3 的 `ConfigTransferParser` 只认平铺键，读不到就当默认值，所以把新版
+/// 备份导回旧版时界面显示「内容为空」；反过来新版早期版本只认 `format` 魔数，
+/// 导入旧备份直接报「这不是谛听的备份文件」。两种入口在这里统一：
+/// [LegacyBackupReader] 把旧格式翻译成同样的 `data`，之后走同一套合并逻辑。
+///
+/// ## 合并语义（照抄 1.4.3 `ConfigImporter` 的分档）
 ///
 /// | 情形 | 结果 |
 /// |---|---|
@@ -24,14 +34,22 @@ library;
 import 'dart:convert';
 
 import 'package:diting/data/backup/backup_models.dart';
+import 'package:diting/data/backup/legacy_backup_reader.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
+import 'package:diting/data/vpn/dns_config_builder.dart';
+import 'package:diting/data/vpn/provider_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
+
+part 'backup_import_lists.dart';
+part 'backup_import_prefs.dart';
+part 'backup_import_rules.dart';
+part 'backup_import_settings.dart';
 
 /// 一个分组的导入结果。
 class BackupGroupOutcome {
@@ -65,6 +83,7 @@ class BackupImportResult {
     this.cancelled = false,
     this.fatalError,
     this.subscriptionCount = 0,
+    this.legacyFormat = false,
   });
 
   /// 用户取消选择文件：不是失败，什么都不该提示「已导入」。
@@ -74,7 +93,8 @@ class BackupImportResult {
       cancelled = true,
       fatalError = null,
       occurredAt = null,
-      subscriptionCount = 0;
+      subscriptionCount = 0,
+      legacyFormat = false;
 
   /// 整份文件无法解析（不是备份文件 / 版本过新 / JSON 损坏）。
   const BackupImportResult.failed(String this.fatalError)
@@ -82,7 +102,8 @@ class BackupImportResult {
       sourceName = null,
       cancelled = false,
       occurredAt = null,
-      subscriptionCount = 0;
+      subscriptionCount = 0,
+      legacyFormat = false;
 
   final DateTime? occurredAt;
   final List<BackupGroupOutcome> outcomes;
@@ -95,6 +116,9 @@ class BackupImportResult {
   /// 本次导入涉及的订阅数（用于提示「请进入订阅管理执行规则更新」）。
   final int subscriptionCount;
 
+  /// 文件是 1.4.3 的平铺格式（导入成功后提示里可以说明这一点）。
+  final bool legacyFormat;
+
   bool get failed => fatalError != null;
 
   int get added => outcomes.fold(0, (sum, item) => sum + item.added);
@@ -102,11 +126,15 @@ class BackupImportResult {
   int get updated => outcomes.fold(0, (sum, item) => sum + item.updated);
 
   /// 有内容变化的分组（用于汇总里只列真正动过的组）。
-  List<BackupGroupOutcome> get changed =>
-      [for (final outcome in outcomes) if (outcome.added + outcome.updated > 0) outcome];
+  List<BackupGroupOutcome> get changed => [
+    for (final outcome in outcomes)
+      if (outcome.added + outcome.updated > 0) outcome,
+  ];
 
-  List<BackupGroupOutcome> get failedGroups =>
-      [for (final outcome in outcomes) if (outcome.failed) outcome];
+  List<BackupGroupOutcome> get failedGroups => [
+    for (final outcome in outcomes)
+      if (outcome.failed) outcome,
+  ];
 }
 
 /// 导入目标：一个已打开的规则库 + prefs 写入视图。
@@ -160,11 +188,23 @@ class BackupImporter {
       }
     }
 
+    // 服务商分组里的选择状态（首选服务商、解析模式、各模式候选列表）在
+    // 1.4.3 里是独立字段，放在这里统一落盘，避免和「新增/更新」计数纠缠。
+    final providers = data[BackupGroup.providers.key];
+    if (providers is Map && providers['selection'] is Map) {
+      try {
+        _applyProviderSelection(providers['selection'], target);
+      } catch (error) {
+        debugPrint('backup import failed for provider selection: $error');
+      }
+    }
+
     return BackupImportResult(
       occurredAt: parsed.exportedAt,
       outcomes: outcomes,
       sourceName: sourceName,
       subscriptionCount: subscriptionCount,
+      legacyFormat: parsed.legacyFormat,
     );
   }
 
@@ -172,8 +212,8 @@ class BackupImporter {
 
   /// 校验并解出 `data` 与 `exportedAt`。
   ///
-  /// 三道校验缺一不可：`format` 区分「我的备份」与「随便一个 JSON」，`version`
-  /// 挡住新版写的文件（解析不完整比拒绝更危险），`data` 必须是对象。
+  /// 2.0 的文件走 `format` 魔数校验，1.4.3 的文件没有魔数、只有
+  /// `formatVersion`，所以先认旧格式再认新格式，两种都不是才拒绝。
   _ParsedBackup _parse(String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) {
@@ -188,9 +228,26 @@ class BackupImporter {
     if (decoded is! Map) {
       throw const BackupFormatException('备份文件的根节点必须是 JSON 对象');
     }
+    final exportedAt = decoded['exportedAt'];
+    final timestamp = exportedAt is int
+        ? DateTime.fromMillisecondsSinceEpoch(exportedAt)
+        : null;
     final format = decoded['format'];
     if (format != BackupFormat.magic) {
-      throw const BackupFormatException('这不是谛听的备份文件');
+      // 旧版备份：平铺根节点，靠 `formatVersion` 标识。
+      if (LegacyBackupReader.looksLegacy(decoded)) {
+        return _ParsedBackup(
+          data: LegacyBackupReader.toGroups(
+            decoded,
+            providerId: _legacyProviderId,
+          ),
+          exportedAt: timestamp,
+          legacyFormat: true,
+        );
+      }
+      throw const BackupFormatException(
+        '这不是谛听的备份文件：既没有 format 标记，也没有 formatVersion 版本号',
+      );
     }
     final version = decoded['version'];
     if (version is! int) {
@@ -206,14 +263,16 @@ class BackupImporter {
     if (data is! Map) {
       throw const BackupFormatException('备份文件缺少 data 段');
     }
-    final exportedAt = decoded['exportedAt'];
     return _ParsedBackup(
       data: {for (final entry in data.entries) '${entry.key}': entry.value},
-      exportedAt: exportedAt is int
-          ? DateTime.fromMillisecondsSinceEpoch(exportedAt)
-          : null,
+      exportedAt: timestamp,
+      legacyFormat: false,
     );
   }
+
+  /// 旧版服务商没有 id，运行期才分配；这里按序号生成，让同一份旧备份反复
+  /// 导入时得到同样的 id（否则每次导入都会多出一批「新」服务商）。
+  String _legacyProviderId(int index) => 'user_legacy_$index';
 
   // ------------------------------------------------------------------ 合并
 
@@ -227,12 +286,7 @@ class BackupImporter {
     BackupGroup.cache => _importCache(value, target),
     BackupGroup.outbound => _importOutbound(value, target),
     BackupGroup.subscriptions => await _importSubscriptions(value, target),
-    BackupGroup.domainRules => await _importRules(
-      value,
-      target,
-      RuleKind.block,
-      group,
-    ),
+    BackupGroup.domainRules => await _importRules(value, target, group),
     BackupGroup.rewriteDomain => await _importRewrite(
       value,
       target,
@@ -253,765 +307,17 @@ class BackupImporter {
     BackupGroup.appearance => _importAppearance(value, target),
     BackupGroup.system => _importSystem(value, target),
   };
-
-  /// 服务商：按名字去重，同名不同配置时更新。
-  BackupGroupOutcome _importProviders(Object? value, BackupImportTarget target) {
-    if (value is! List) {
-      throw const BackupFormatException('服务商分组应为数组');
-    }
-    final existing = _decodeProviders(target.settings.userProvidersJson);
-    final byName = {for (final item in existing) _nameOf(item): item};
-    var added = 0;
-    var updated = 0;
-    var skipped = 0;
-    for (final item in value) {
-      if (item is! Map) {
-        skipped++;
-        continue;
-      }
-      final name = _nameOf(item);
-      if (name.isEmpty) {
-        skipped++;
-        continue;
-      }
-      final current = byName[name];
-      if (current == null) {
-        existing.add(item);
-        byName[name] = item;
-        added++;
-      } else if (_encode(current) == _encode(item)) {
-        skipped++;
-      } else {
-        final index = existing.indexOf(current);
-        existing[index] = item;
-        byName[name] = item;
-        updated++;
-      }
-    }
-    if (added > 0 || updated > 0) {
-      target.store.putString(
-        LegacySettings.uiContainer,
-        'user_providers_json',
-        jsonEncode(existing),
-      );
-    }
-    return BackupGroupOutcome(
-      group: BackupGroup.providers,
-      added: added,
-      skipped: skipped,
-      updated: updated,
-    );
-  }
-
-  List<Map<Object?, Object?>> _decodeProviders(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return [];
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
-      return [
-        for (final item in decoded)
-          if (item is Map) Map<Object?, Object?>.from(item),
-      ];
-    } on FormatException {
-      return [];
-    }
-  }
-
-  String _nameOf(Map<Object?, Object?> provider) {
-    final name = provider['name'];
-    return name is String ? name.trim() : '';
-  }
-
-  /// 稳定的字符串形式，用来判断「是否完全相同」。
-  String _encode(Object? value) {
-    if (value is Map) {
-      final keys = value.keys.map((key) => '$key').toList()..sort();
-      return '{${keys.map((key) => '$key:${_encode(value[key])}').join(',')}}';
-    }
-    if (value is List) {
-      return '[${value.map(_encode).join(',')}]';
-    }
-    return '$value';
-  }
-
-  BackupGroupOutcome _importBootstrap(
-    Object? value,
-    BackupImportTarget target,
-  ) {
-    if (value is! Map) {
-      throw const BackupFormatException('Bootstrap 分组应为对象');
-    }
-    final settings = target.settings;
-    var added = 0;
-    var skipped = 0;
-
-    final enabled = value['enabled'];
-    if (enabled is bool) {
-      settings.setBootstrapEnabled(enabled);
-      added++;
-    } else {
-      skipped++;
-    }
-
-    final presetIds = value['presetIds'];
-    if (presetIds is List) {
-      settings.setBootstrapPresetIds({
-        for (final id in presetIds)
-          if (id is String) id,
-      });
-      added++;
-    } else {
-      skipped++;
-    }
-
-    final custom = value['custom'];
-    if (custom != null) {
-      // 原样写回它自己的 JSON 编码：这一项本来就是「用户自定义节点的原始文本」。
-      settings.setBootstrapCustomJson(jsonEncode(custom));
-      added++;
-    } else {
-      skipped++;
-    }
-
-    return BackupGroupOutcome(
-      group: BackupGroup.bootstrap,
-      added: added,
-      skipped: skipped,
-    );
-  }
-
-  /// 缓存策略：整组原子写入。
-  ///
-  /// 用 `applyCachePreset` 而不是逐个 setter：九个键必须一起落盘，否则引擎可能
-  /// 读到「新模式 + 旧 TTL」的组合（`DnsCacheSettingsStore` 就是为这个原因把九
-  /// 个键放在一次提交里）。
-  BackupGroupOutcome _importCache(Object? value, BackupImportTarget target) {
-    if (value is! Map) {
-      throw const BackupFormatException('缓存分组应为对象');
-    }
-    final settings = target.settings;
-    // 备份里缺的键回落到本机当前值，保证写出去的九项是一致的。
-    final enabled = value['enabled'];
-    final mode = value['mode'];
-    final preset = value['preset'];
-    final maxTtl = value['maxTtlSeconds'];
-    final fixedTtl = value['fixedTtlSeconds'];
-    final minTtlEnabled = value['minTtlEnabled'];
-    final minTtl = value['minTtlSeconds'];
-    final staleEnabled = value['staleFallbackEnabled'];
-    final staleSeconds = value['staleFallbackSeconds'];
-
-    settings.applyCachePreset(
-      storageValue: preset is String ? preset : (settings.cachePresetRaw ?? ''),
-      enabled: enabled is bool ? enabled : settings.cacheEnabled,
-      mode: mode is String ? mode : settings.cacheModeRaw,
-      maxTtlSeconds: maxTtl is int ? maxTtl : settings.cacheMaxTtlSeconds,
-      fixedTtlSeconds: fixedTtl is int
-          ? fixedTtl
-          : settings.cacheFixedTtlSeconds,
-      minTtlEnabled: minTtlEnabled is bool
-          ? minTtlEnabled
-          : settings.cacheMinTtlEnabled,
-      minTtlSeconds: minTtl is int ? minTtl : settings.cacheMinTtlSeconds,
-      staleFallbackEnabled: staleEnabled is bool
-          ? staleEnabled
-          : settings.cacheStaleFallbackEnabled,
-      staleFallbackSeconds: staleSeconds is int
-          ? staleSeconds
-          : settings.cacheStaleFallbackSeconds,
-    );
-    return const BackupGroupOutcome(
-      group: BackupGroup.cache,
-      // 九项一起算一条策略：报「9 项」会让汇总看起来像导入了九条规则。
-      added: 1,
-    );
-  }
-
-  /// 出站代理：备份不含凭据，所以只能恢复「非凭据」的那几项。
-  ///
-  /// 恢复的开关若为真但本机没有凭据，代理会连不上。这里**不**自动把它打开：
-  /// 报「已更新」而实际连不上，比明确跳过更糟。
-  BackupGroupOutcome _importOutbound(
-    Object? value,
-    BackupImportTarget target,
-  ) {
-    if (value is! Map) {
-      throw const BackupFormatException('出站代理分组应为对象');
-    }
-    var restored = 0;
-    for (final entry in const {
-      'protocol': 'outbound_proxy_protocol',
-      'host': 'outbound_proxy_host',
-      'proxyAppPackage': 'outbound_proxy_app_package',
-    }.entries) {
-      final raw = value[entry.key];
-      if (raw is String && raw.isNotEmpty) {
-        target.store.putString(
-          LegacySettings.uiContainer,
-          entry.value,
-          raw,
-        );
-        restored++;
-      }
-    }
-    final port = value['port'];
-    if (port is int) {
-      target.store.putInt(
-        LegacySettings.uiContainer,
-        'outbound_proxy_port',
-        port,
-      );
-      restored++;
-    }
-    return BackupGroupOutcome(
-      group: BackupGroup.outbound,
-      // 账号密码不在备份里，所以「新增」只覆盖地址类字段。
-      added: restored,
-    );
-  }
-
-  Future<BackupGroupOutcome> _importSubscriptions(
-    Object? value,
-    BackupImportTarget target,
-  ) async {
-    if (value is! Map) {
-      throw const BackupFormatException('订阅分组应为对象');
-    }
-    final db = target.database;
-    if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入订阅');
-    }
-    final repository = SubscriptionRepository(db);
-    final groupsValue = value['groups'];
-    final groupIdByName = <String, int>{};
-    var added = 0;
-    var skipped = 0;
-    var updated = 0;
-
-    if (groupsValue is List) {
-      for (final item in groupsValue) {
-        if (item is! Map) continue;
-        final name = item['name'];
-        if (name is! String || name.trim().isEmpty) continue;
-        final existing = await repository.groupByName(name);
-        if (existing == null) {
-          final id = await repository.insertGroup(
-            name: name,
-            autoUpdateEnabled: item['autoUpdateEnabled'] != false,
-          );
-          groupIdByName[name] = id;
-          added++;
-        } else {
-          groupIdByName[name] = existing.id;
-          skipped++;
-        }
-      }
-    }
-
-    final items = value['items'];
-    if (items is List) {
-      for (final item in items) {
-        if (item is! Map) {
-          skipped++;
-          continue;
-        }
-        final url = item['url'];
-        if (url is! String || url.trim().isEmpty) {
-          skipped++;
-          continue;
-        }
-        final kind = SubscriptionKind.normalize(item['kind'] as String?);
-        final existing = await repository.byUrlAndKind(url, kind);
-        if (existing != null) {
-          skipped++;
-          continue;
-        }
-        final groupName = item['groupName'];
-        final now = DateTime.now().millisecondsSinceEpoch;
-        await repository.insert(
-          SubscriptionRecord(
-            id: 0,
-            url: url,
-            name: item['name'] as String? ?? url,
-            sourceType: SubscriptionSourceType.fromStorage(
-              item['sourceType'] as String?,
-            ),
-            kind: kind,
-            enabled: item['enabled'] != false,
-            // 导入的是「订阅地址」而不是它的内容：规则条数与导入时间必须从零
-            // 开始，否则界面会显示一个本机并不存在的规则数，且订阅会一直停在
-            // 「已是最新」而永不真正下载一次。
-            ruleCount: 0,
-            lastUpdated: 0,
-            addedAt: now,
-            importState: SubscriptionImportState.ready,
-            lastAttemptAt: 0,
-            consecutiveFailureCount: 0,
-            mirrorTemplate: item['mirrorTemplate'] as String?,
-            mirrorFallback: item['mirrorFallback'] != false,
-            groupId: groupName is String ? groupIdByName[groupName] : null,
-          ),
-        );
-        added++;
-      }
-    }
-
-    return BackupGroupOutcome(
-      group: BackupGroup.subscriptions,
-      added: added,
-      skipped: skipped,
-      updated: updated,
-    );
-  }
-
-  /// 域名规则：按 pattern 去重，已存在即跳过（内容不同也不覆盖）。
-  ///
-  /// 不覆盖的原因：同一条 domain 在本机可能被用户手工调整过（important /
-  /// appScope），备份里的旧副本不该把这些改动冲掉。旧版同样只做「新增」。
-  Future<BackupGroupOutcome> _importRules(
-    Object? value,
-    BackupImportTarget target,
-    RuleKind kind,
-    BackupGroup group,
-  ) async {
-    if (value is! List) {
-      throw const BackupFormatException('规则分组应为数组');
-    }
-    final db = target.database;
-    if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入规则');
-    }
-    final repository = RuleRepository(db);
-    final existing = {
-      for (final rule in await repository.loadKind(kind)) rule.pattern,
-    };
-    var added = 0;
-    var skipped = 0;
-    for (final item in value) {
-      if (item is! Map) {
-        skipped++;
-        continue;
-      }
-      final pattern = item['pattern'];
-      if (pattern is! String || pattern.trim().isEmpty) {
-        skipped++;
-        continue;
-      }
-      if (!existing.add(pattern.trim())) {
-        skipped++;
-        continue;
-      }
-      await repository.add(kind, pattern.trim());
-      added++;
-    }
-    return BackupGroupOutcome(
-      group: group,
-      added: added,
-      skipped: skipped,
-    );
-  }
-
-  /// 覆写规则：本机同 pattern + targetType 不同目标值时**更新**（见文件头）。
-  Future<BackupGroupOutcome> _importRewrite(
-    Object? value,
-    BackupImportTarget target,
-    Set<String> targetTypes,
-    BackupGroup group,
-  ) async {
-    if (value is! List) {
-      throw const BackupFormatException('覆写规则分组应为数组');
-    }
-    final db = target.database;
-    if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入覆写规则');
-    }
-    var added = 0;
-    var skipped = 0;
-    var updated = 0;
-    for (final item in value) {
-      if (item is! Map) {
-        skipped++;
-        continue;
-      }
-      final pattern = item['pattern'];
-      final targetValue = item['targetValue'];
-      final targetType = item['targetType'];
-      if (pattern is! String ||
-          pattern.trim().isEmpty ||
-          targetValue is! String ||
-          targetType is! String ||
-          !targetTypes.contains(targetType)) {
-        skipped++;
-        continue;
-      }
-      final existing = await db.query(
-        'rewrite_rule',
-        columns: ['id', 'targetValue'],
-        where: 'pattern = ? AND targetType = ?',
-        whereArgs: [pattern.trim(), targetType],
-        limit: 1,
-      );
-      if (existing.isEmpty) {
-        await _insertRewrite(db, pattern.trim(), targetType, targetValue);
-        added++;
-      } else if (existing.first['targetValue'] == targetValue) {
-        skipped++;
-      } else {
-        await db.update(
-          'rewrite_rule',
-          {
-            'targetValue': targetValue,
-            'rawLine': '${pattern.trim()} $targetValue',
-          },
-          where: 'id = ?',
-          whereArgs: [existing.first['id']],
-        );
-        updated++;
-      }
-    }
-    return BackupGroupOutcome(
-      group: group,
-      added: added,
-      skipped: skipped,
-      updated: updated,
-    );
-  }
-
-  Future<void> _insertRewrite(
-    Database db,
-    String pattern,
-    String targetType,
-    String targetValue,
-  ) async {
-    final id = await db.insert('rewrite_rule', {
-      'pattern': pattern,
-      'targetType': targetType,
-      'targetValue': targetValue,
-      'rawLine': '$pattern $targetValue',
-      'addedAt': DateTime.now().millisecondsSinceEpoch,
-      'enabled': 1,
-    });
-    await db.insert('rewrite_rule_source', {
-      'ruleId': id,
-      'source': 'useradd',
-      'enabled': 1,
-    }, conflictAlgorithm: ConflictAlgorithm.ignore);
-  }
-
-  Future<BackupGroupOutcome> _importAddressRules(
-    Object? value,
-    BackupImportTarget target,
-  ) async {
-    if (value is! List) {
-      throw const BackupFormatException('地址规则分组应为数组');
-    }
-    final db = target.database;
-    if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入地址规则');
-    }
-    var added = 0;
-    var skipped = 0;
-    for (final item in value) {
-      if (item is! Map) {
-        skipped++;
-        continue;
-      }
-      final pattern = item['pattern'];
-      final kind = item['kind'];
-      if (pattern is! String ||
-          pattern.trim().isEmpty ||
-          kind is! String ||
-          kind.isEmpty) {
-        skipped++;
-        continue;
-      }
-      final existing = await db.query(
-        'go_url_rule',
-        columns: ['id'],
-        where: 'pattern = ? AND kind = ?',
-        whereArgs: [pattern.trim(), kind],
-        limit: 1,
-      );
-      if (existing.isNotEmpty) {
-        skipped++;
-        continue;
-      }
-      final id = await db.insert('go_url_rule', {
-        'pattern': pattern.trim(),
-        'kind': kind,
-        'rawLine': pattern.trim(),
-        'addedAt': DateTime.now().millisecondsSinceEpoch,
-        'enabled': item['enabled'] == false ? 0 : 1,
-      });
-      await db.insert('go_url_rule_source', {
-        'ruleId': id,
-        'source': 'useradd',
-        'enabled': 1,
-      }, conflictAlgorithm: ConflictAlgorithm.ignore);
-      added++;
-    }
-    return BackupGroupOutcome(
-      group: BackupGroup.addressRules,
-      added: added,
-      skipped: skipped,
-    );
-  }
-
-  // ------------------------------------------------------------- 应用名单
-
-  BackupGroupOutcome _importExcluded(Object? value, BackupImportTarget target) {
-    final incoming = _stringSet(value);
-    if (incoming.isEmpty) {
-      return const BackupGroupOutcome(group: BackupGroup.excluded, skipped: 1);
-    }
-    final settings = target.settings;
-    final merged = {...settings.excludedPackages, ...incoming};
-    final added = merged.length - settings.excludedPackages.length;
-    settings.setExcludedPackages(merged);
-    return BackupGroupOutcome(
-      group: BackupGroup.excluded,
-      added: added,
-      skipped: incoming.length - added,
-    );
-  }
-
-  BackupGroupOutcome _importBlocked(Object? value, BackupImportTarget target) {
-    if (value is! Map) {
-      throw const BackupFormatException('禁止联网分组应为对象');
-    }
-    final incoming = _stringSet(value['packages']);
-    final settings = target.settings;
-    final merged = {...settings.blockedAppPackages, ...incoming};
-    final added = merged.length - settings.blockedAppPackages.length;
-    settings.setBlockedApps(
-      packages: merged,
-      // 开关按「备份或本机任一为真」取并集：用户导入一份开了这项的备份，
-      // 却因为本机是关的而整体无效，会让人以为导入没生效。
-      enabled: settings.blockedAppsEnabled || value['enabled'] == true,
-    );
-    return BackupGroupOutcome(
-      group: BackupGroup.blocked,
-      added: added,
-      skipped: incoming.length - added,
-    );
-  }
-
-  BackupGroupOutcome _importAllowlist(Object? value, BackupImportTarget target) {
-    if (value is! Map) {
-      throw const BackupFormatException('应用独立规则分组应为对象');
-    }
-    final rules = value['rules'];
-    final settings = target.settings;
-    final merged = {
-      for (final entry in settings.appAllowlistRules.entries)
-        entry.key: {...entry.value},
-    };
-    var added = 0;
-    if (rules is Map) {
-      for (final entry in rules.entries) {
-        final package = '${entry.key}';
-        if (package.trim().isEmpty) continue;
-        final domains = _stringSet(entry.value);
-        if (domains.isEmpty) continue;
-        final existing = merged[package] ?? <String>{};
-        final before = existing.length;
-        merged[package] = {...existing, ...domains};
-        added += merged[package]!.length - before;
-      }
-    }
-    settings.setAppAllowlistRules(merged);
-    settings.setAppAllowlistEnabled(
-      settings.appAllowlistEnabled || value['enabled'] == true,
-    );
-    return BackupGroupOutcome(
-      group: BackupGroup.allowlist,
-      added: added,
-      skipped: added == 0 ? 1 : 0,
-    );
-  }
-
-  BackupGroupOutcome _importHttpInspection(
-    Object? value,
-    BackupImportTarget target,
-  ) {
-    if (value is! Map) {
-      throw const BackupFormatException('HTTPS 抓包分组应为对象');
-    }
-    final incoming = _stringSet(value['packages']);
-    final settings = target.settings;
-    final merged = {...settings.httpInspectionPackages, ...incoming};
-    final added = merged.length - settings.httpInspectionPackages.length;
-    settings.setHttpInspectionApps(
-      packages: merged,
-      // 抓包开关**不**从备份打开：`https_inspection_ready` 依赖本机是否装了
-      // CA，拿别人的开关来打开本机的抓包会让每个 HTTPS 请求都失败。
-      enabled: settings.httpInspectionEnabled,
-    );
-    return BackupGroupOutcome(
-      group: BackupGroup.httpInspection,
-      added: added,
-      skipped: incoming.length - added,
-    );
-  }
-
-  // ----------------------------------------------------------------- 设置
-
-  /// 外观：本机已有值的项跳过（见文件头「合并语义」）。
-  BackupGroupOutcome _importAppearance(
-    Object? value,
-    BackupImportTarget target,
-  ) {
-    if (value is! Map) {
-      throw const BackupFormatException('外观分组应为对象');
-    }
-    final settings = target.settings;
-    var added = 0;
-    var skipped = 0;
-
-    void applyIfAbsent(String? current, void Function() write) {
-      if (current != null && current.isNotEmpty) {
-        skipped++;
-      } else {
-        write();
-        added++;
-      }
-    }
-
-    final themeMode = value['themeMode'];
-    if (themeMode is String) {
-      applyIfAbsent(settings.themeModeRaw, () => settings.setThemeModeRaw(themeMode));
-    }
-    final palette = value['palette'];
-    if (palette is String) {
-      applyIfAbsent(settings.paletteRaw, () => settings.setPaletteRaw(palette));
-    }
-    final bottomBarIds = value['bottomBarIds'];
-    if (bottomBarIds is List) {
-      final ids = [for (final id in bottomBarIds) if (id is String) id];
-      if (ids.length >= LegacySettings.bottomBarMinCount) {
-        settings.setBottomBarIds(ids);
-        added++;
-      } else {
-        skipped++;
-      }
-    }
-    final glass = value['liquidGlassMode'];
-    if (glass is String) {
-      settings.setLiquidGlassModeRaw(glass);
-      added++;
-    }
-    final haptic = value['hapticEnabled'];
-    if (haptic is bool) {
-      settings.setHapticEnabled(haptic);
-      added++;
-    }
-
-    return BackupGroupOutcome(
-      group: BackupGroup.appearance,
-      added: added,
-      skipped: skipped,
-    );
-  }
-
-  /// 系统设置：同上，本机已有值跳过。
-  BackupGroupOutcome _importSystem(Object? value, BackupImportTarget target) {
-    if (value is! Map) {
-      throw const BackupFormatException('系统设置分组应为对象');
-    }
-    final settings = target.settings;
-    var added = 0;
-    var skipped = 0;
-
-    final bypassLan = value['bypassLan'];
-    if (bypassLan is bool) {
-      settings.setBypassLanEnabled(bypassLan);
-      added++;
-    }
-    final ipv6 = value['ipv6Mode'];
-    if (ipv6 is String) {
-      settings.setIpv6ModeRaw(ipv6);
-      added++;
-    }
-    final logDays = value['logRetentionDays'];
-    if (logDays is int) {
-      settings.setLogRetentionDays(logDays);
-      added++;
-    }
-    final logMode = value['dnsLogMode'];
-    if (logMode is String) {
-      settings.setDnsLogModeRaw(logMode);
-      added++;
-    }
-    final hideFromRecents = value['hideFromRecents'];
-    if (hideFromRecents is bool) {
-      settings.setHideFromRecentsEnabled(hideFromRecents);
-      added++;
-    }
-    final floatingLog = value['floatingLogEnabled'];
-    if (floatingLog is bool) {
-      settings.setFloatingLogEnabled(floatingLog);
-      added++;
-    }
-    final updateCheck = value['disableStartupUpdateCheck'];
-    if (updateCheck is bool) {
-      settings.setDisableStartupUpdateCheck(updateCheck);
-      added++;
-    }
-    final language = value['appLanguageMode'];
-    if (language is String) {
-      settings.setAppLanguageModeRaw(language);
-      added++;
-    }
-    final persistent = value['notificationPersistent'];
-    if (persistent is bool) {
-      settings.setNotificationPersistent(persistent);
-      added++;
-    }
-    final speed = value['notificationSpeed'];
-    if (speed is bool) {
-      settings.setNotificationSpeed(speed);
-      added++;
-    }
-    final autoUpdate = value['subscriptionAutoUpdateEnabled'];
-    if (autoUpdate is bool) {
-      settings.setSubscriptionAutoUpdateEnabled(autoUpdate);
-      added++;
-    }
-    final interval = value['subscriptionAutoUpdateIntervalHours'];
-    if (interval is int) {
-      settings.setSubscriptionAutoUpdateIntervalHours(interval);
-      added++;
-    }
-
-    return BackupGroupOutcome(
-      group: BackupGroup.system,
-      added: added,
-      skipped: skipped == 0 && added == 0 ? 1 : skipped,
-    );
-  }
-
-  /// JSON 里的字符串集合；接受数组或 `{value: ...}` 形状。
-  Set<String> _stringSet(Object? value) {
-    if (value is List) {
-      return {
-        for (final item in value)
-          if (item is String && item.trim().isNotEmpty) item.trim(),
-      };
-    }
-    if (value is Map) {
-      return {
-        for (final entry in value.keys)
-          if ('$entry'.trim().isNotEmpty) '$entry'.trim(),
-      };
-    }
-    return const {};
-  }
 }
 
 /// 解析出来的两段。
 class _ParsedBackup {
-  const _ParsedBackup({required this.data, required this.exportedAt});
+  const _ParsedBackup({
+    required this.data,
+    required this.exportedAt,
+    required this.legacyFormat,
+  });
 
   final Map<String, Object?> data;
   final DateTime? exportedAt;
+  final bool legacyFormat;
 }
