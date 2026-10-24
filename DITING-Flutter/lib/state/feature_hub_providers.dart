@@ -37,7 +37,6 @@ const hiddenFeatureKeysInFile = <String>[
   'logs',
   'data_management',
   'data_cleanup',
-  'app_update',
   'app_info',
   'sponsor',
   'sponsor_list',

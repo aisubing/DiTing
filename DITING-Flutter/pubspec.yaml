@@ -43,6 +43,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/https_passthrough.txt
+    # Brand icon drawn on the about page hero.
+    - assets/images/
     # Payment QR codes for the sponsor page. The member list and avatars are not
     # bundled; they are fetched as recognition_members.json plus avatars/.
     - assets/pay/

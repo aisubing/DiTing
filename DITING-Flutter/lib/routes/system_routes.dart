@@ -5,7 +5,6 @@ import 'package:diting/pages/appearance/font_size_page.dart';
 import 'package:diting/pages/appearance/settings_parity_pages.dart';
 import 'package:diting/pages/appearance/theme_page.dart';
 import 'package:diting/pages/demo/demo_page.dart';
-import 'package:diting/pages/system/app_update_page.dart';
 import 'package:diting/pages/system/developer_page.dart';
 import 'package:diting/pages/system/ip_quality_page.dart';
 import 'package:diting/pages/system/sponsor_page.dart';
@@ -40,7 +39,6 @@ abstract final class SystemPaths {
   /// to the retained pages and sits in the settings app bar.
   static const developer = '/developer';
   static const sponsor = '/sponsor';
-  static const appUpdate = '/app-update';
 
   /// Retained page: no upstream UI, kept at the user's request.
   static const ipQuality = '/ip-quality';
@@ -138,12 +136,6 @@ List<RouteBase> systemRoutes() => <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const SponsorPage()),
-  ),
-  GoRoute(
-    path: SystemPaths.appUpdate,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const AppUpdatePage()),
   ),
 
   // Retained page.

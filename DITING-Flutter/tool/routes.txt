@@ -1,6 +1,5 @@
 /
 /about
-/app-update
 /config/custom-resources
 /config/icon-sets
 /config/on-demand

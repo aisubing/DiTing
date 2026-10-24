@@ -234,21 +234,14 @@ const mockFeatureCategories = <MockFeatureCategory>[
         route: '/hub/data-cleanup',
         featureKey: 'data_cleanup',
       ),
-      MockFeatureCard(
-        title: '更新与支持',
-        description: '检查软件新版本发布、查看更新日志',
-        glyphName: 'refresh',
-        route: '/app-update',
-        featureKey: 'app_update',
-      ),
     ],
   ),
   MockFeatureCategory(
     title: '关于谛听',
     cards: [
       MockFeatureCard(
-        title: '应用信息',
-        description: '查看软件版本信息、核心技术架构与开源地址',
+        title: '关于',
+        description: '查看版本信息、检查更新、开源地址与贡献者名单',
         glyphName: 'info',
         route: '/about',
         featureKey: 'app_info',

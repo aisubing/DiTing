@@ -1,368 +1,374 @@
-/// About page (legacy `ui/AboutScreen.kt`); express mode drops two capabilities.
+/// About page, merged with the former update & support page. The layout follows FlClash's
+/// `lib/views/about.dart`: centred hero, version/licence pills, one check-update bar, then grouped
+/// rows. Update state renders inline under the bar instead of a separate card.
 library;
 
+import 'package:diting/pages/hub/recognition_pages.dart';
 import 'package:diting/pages/system/app_info.dart';
 import 'package:diting/pages/system/disclaimer_page.dart';
 import 'package:diting/state/app_version_provider.dart';
-import 'package:diting/state/server_status_providers.dart';
-import 'package:diting/state/work_mode_providers.dart';
+import 'package:diting/state/settings_providers.dart';
+import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-
-class _AboutEntry {
-  const _AboutEntry(this.title, this.description, this.glyph);
-
-  final String title;
-  final String description;
-  final Glyph glyph;
-}
-
-const _capabilities = <_AboutEntry>[
-  _AboutEntry('加密上游', '支持 DNS、DoH 与 DoT，并可管理自定义服务商。', AppGlyphs.lock),
-  _AboutEntry('规则与缓存', '以缓存、屏蔽规则、白名单和订阅规则减少重复请求与干扰。', AppGlyphs.rules),
-  _AboutEntry(
-    '可观测性',
-    '通过请求日志、竞速统计、服务商健康和 Bootstrap 数据追踪状态。',
-    AppGlyphs.requests,
-  ),
-  _AboutEntry(
-    '独立引导',
-    '支持 Bootstrap IP，降低解析加密上游域名时对系统 DNS 的依赖。',
-    AppGlyphs.target,
-  ),
-  _AboutEntry('配置流转', '支持自定义服务、规则订阅的导入导出与自动更新。', AppGlyphs.cloudSync),
-  _AboutEntry('快捷控制', '提供系统快捷设置磁贴，方便快速启停 DNS 本地通道。', AppGlyphs.toggle),
-  _AboutEntry('应用管控', '按应用排除 VPN 或阻止联网，灵活控制每个应用的网络访问。', AppGlyphs.block),
-  _AboutEntry(
-    'HTTPS 流量检查',
-    '按应用检查 HTTP(S) 请求并应用域名和 URL 规则，需安装 HTTPS 检查根证书。',
-    AppGlyphs.lockOpen,
-  ),
-];
-
-const _boundaries = <_AboutEntry>[
-  _AboutEntry(
-    '默认仅处理 DNS',
-    '默认通过 Android VpnService 建立仅处理 DNS 的本地通道；启用 HTTPS 流量检查或'
-        '禁止联网后，Go 隧道使用 Go 用户态网络栈接管 TCP、UDP、DNS 和 HTTP(S) 流量。',
-    AppGlyphs.vpn,
-  ),
-  _AboutEntry('实际解析表现', '解析速度、稳定性和可用性取决于网络环境、所选上游和本机规则。', AppGlyphs.speed),
-  _AboutEntry(
-    '隐私与本地存储',
-    '缓存、日志、规则与配置保存在设备本机。上游仍会收到必要查询；'
-        '仅 DoH、DoT 加密到上游的 DNS 传输。',
-    AppGlyphs.lock,
-  ),
-];
-
-const _expressRouteBoundary = _AboutEntry(
-  '极速原生 DNS 窄路由',
-  '通过纯 Kotlin 原生轻量窄路由接管 UDP/TCP 53 端口 DNS 请求；设备常规应用数据'
-      '直连物理网络，不经过 VPN 协议栈，实现零性能损耗与极低功耗。',
-  AppGlyphs.bolt,
-);
-
-const _normalOnlyCapabilities = {'应用管控', 'HTTPS 流量检查'};
 
 class AboutPage extends ConsumerWidget {
   const AboutPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(workModeProvider);
-    final express = mode == AppWorkMode.express;
-    // Legacy `rememberDnsServiceRunning`: server mode reads the server status, everything
-    // else reads the VPN power state.
-    final running = mode == AppWorkMode.server
-        ? ref.watch(serverStatusProvider) == ServerStatus.running
-        : ref.watch(powerProvider) == PowerState.running;
-    final capabilities = express
-        ? [
-            for (final entry in _capabilities)
-              if (!_normalOnlyCapabilities.contains(entry.title)) entry,
-          ]
-        : _capabilities;
-    final boundaries = express
-        ? [_expressRouteBoundary, ..._boundaries.skip(1)]
-        : _boundaries;
+    final update = ref.watch(updateProvider);
+    final notifier = ref.read(updateProvider.notifier);
+    final disableStartupCheck = ref.watch(startupUpdateCheckProvider);
     return CommonScaffold(
-      title: '应用信息',
+      title: '关于',
       body: PageBody(
         children: [
-          _Hero(
+          _AboutHero(
             version: ref.watch(appVersionProvider).name,
-            running: running,
+            update: update,
+            onCheck: update.stage.isBusy ? null : notifier.check,
+            onDownload: update.stage.isBusy ? null : notifier.download,
+            onInstall: () => _install(context, ref),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           generateSection(
-            title: '核心能力',
-            items: [for (final entry in capabilities) _EntryRow(entry: entry)],
-            footer: express ? '极速模式只做窄路由加速，因此不包含应用管控与 HTTPS 流量检查。' : null,
-          ),
-          generateSection(
-            title: '运行边界',
-            items: [for (final entry in boundaries) _EntryRow(entry: entry)],
-          ),
-          const SizedBox(height: 4),
-          const _ProjectCard(),
-          const SizedBox(height: 14),
-          generateSection(
-            title: '免责条款与合规声明',
+            title: '更多',
             items: [
+              _LinkRow(
+                glyph: AppGlyphs.code,
+                title: '项目',
+                label: projectRepositoryUrl.replaceFirst('https://', ''),
+                url: projectRepositoryUrl,
+              ),
+              _LinkRow(
+                glyph: AppGlyphs.send,
+                title: '加入 QQ 群',
+                label: '群号 $qqGroupNumber',
+                url: qqGroupUri,
+              ),
+              _LinkRow(
+                glyph: AppGlyphs.star,
+                title: '赞助',
+                label: sponsorReadmeUrl.replaceFirst('https://', ''),
+                url: sponsorReadmeUrl,
+              ),
+            ],
+          ),
+          generateSection(
+            title: '设置',
+            items: [
+              ListItem.toggle(
+                leading: const GlyphIcon(AppGlyphs.clock),
+                title: const Text('关闭启动时检查更新'),
+                subtitle: Text(
+                  disableStartupCheck ? '应用启动时不自动检查，可随时手动检查' : '应用启动时自动检查新版本',
+                ),
+                value: disableStartupCheck,
+                onChanged: (value) =>
+                    ref.read(startupUpdateCheckProvider.notifier).toggle(value),
+              ),
               ListItem.next(
                 leading: const GlyphIcon(AppGlyphs.gavel),
                 title: const Text('使用须知与免责声明'),
                 subtitle: const Text('软件说明、运行机制与免责条款全文'),
-                // Consent is enforced by the app-level dialog on first run; this is a
-                // read-only re-read.
+                // Acceptance happens in the first-run dialog; this only re-reads it.
                 widget: const DisclaimerPage(),
               ),
             ],
-            footer: '首次启动时必须同意本声明才能继续使用；此处可随时回看。',
           ),
-          const SizedBox(height: 10),
-          const _Signature(),
-          const SizedBox(height: 20),
+          generateSection(
+            title: '其他贡献者',
+            items: [
+              ListItem.next(
+                leading: const GlyphIcon(AppGlyphs.verified),
+                title: const Text('赞助者名单'),
+                subtitle: const Text('鸣谢支持谛听项目的赞助者'),
+                widget: const SponsorListPage(),
+              ),
+              ListItem.next(
+                leading: const GlyphIcon(AppGlyphs.account),
+                title: const Text('共建者名单'),
+                subtitle: const Text('感谢为谛听贡献代码与建议的共建者'),
+                widget: const CoBuildersPage(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
+
+  /// Install through the system installer; failures are reported, usually a missing install
+  /// permission.
+  Future<void> _install(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final ok = await ref.read(updateProvider.notifier).install();
+    if (!context.mounted) return;
+    if (!ok) {
+      final reason = ref.read(updateProvider).error ?? '无法调起系统安装器';
+      messenger?.showSnackBar(
+        SnackBar(
+          content: Text(reason),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(milliseconds: 2200),
+        ),
+      );
+    }
+  }
 }
 
-class _Hero extends StatelessWidget {
-  const _Hero({required this.version, required this.running});
+/// Centred hero: app icon, name, version and licence pills, description and the update bar.
+class _AboutHero extends StatelessWidget {
+  const _AboutHero({
+    required this.version,
+    required this.update,
+    required this.onCheck,
+    required this.onDownload,
+    required this.onInstall,
+  });
+
+  static const _logoSize = 96.0;
+  static const _logoInset = 14.0;
 
   final String version;
-
-  final bool running;
+  final UpdateState update;
+  final VoidCallback? onCheck;
+  final VoidCallback? onDownload;
+  final VoidCallback onInstall;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
+    final stage = update.stage;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: CommonCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 12,
-          children: [
-            Row(
-              spacing: 12,
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: ShapeDecoration(
-                    shape: AppShape.md,
-                    color: colorScheme.primaryContainer,
-                  ),
-                  child: GlyphIcon(
-                    AppGlyphs.dns,
-                    size: 28,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 2,
-                    children: [
-                      Text(
-                        '// LOCAL DNS CONTROL PLANE',
-                        style: AppTextStyle.caption2
-                            .of(context)
-                            .copyWith(
-                              color: colorScheme.primary,
-                              fontFamily: 'JetBrainsMono',
-                            ),
-                      ),
-                      Text(
-                        '谛听 本地解析控制台',
-                        style: AppTextStyle.title2.of(
-                          context,
-                          emphasized: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Column(
+        children: [
+          DecoratedBox(
+            decoration: ShapeDecoration(
+              color: context.raisedSurfaceLevel.colorOf(colorScheme),
+              shape: AppShape.all(AppCorner.fit(_logoSize)),
             ),
-            Text(
-              '在 Android 设备本机管理 DNS 查询路径，让解析策略、缓存、规则与上游连接'
-              '处于可控状态。',
-              style: context.listSubtitleStyle,
+            child: Padding(
+              padding: const EdgeInsets.all(_logoInset),
+              child: Image.asset(
+                'assets/images/icon.png',
+                width: _logoSize - _logoInset * 2,
+                height: _logoSize - _logoInset * 2,
+              ),
             ),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                MetaChip(label: '版本 $version'),
-                const MetaChip(label: 'Android VpnService'),
-                const MetaChip(label: '本地优先'),
-                _StatusDot(running: running),
-              ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            '谛听',
+            style: AppTextStyle.title2.of(context, emphasized: true),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              _Pill(
+                label: 'v$version',
+                color: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
+              ),
+              _Pill(
+                label: 'GPL-3.0',
+                color: context.raisedSurfaceLevel.colorOf(colorScheme),
+                foregroundColor: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Text(
+              '基于 Android VpnService 的本地优先 DNS 加速与流量过滤工具，'
+              '简单易用，开源无广告。',
+              textAlign: TextAlign.center,
+              style: AppTextStyle.subheadline.of(context).copyWith(
+                color: colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
-          ],
+          ),
+          const SizedBox(height: 20),
+          TonalButton(
+            size: TonalButtonSize.bar,
+            glyph: AppGlyphs.sync,
+            label: stage == UpdateStage.checking ? '检查中…' : '检查更新',
+            onPressed: onCheck,
+          ),
+          if (stage == UpdateStage.downloading || stage == UpdateStage.downloaded)
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: _DownloadProgress(state: update),
+            ),
+          if (stage == UpdateStage.available ||
+              stage == UpdateStage.downloading ||
+              stage == UpdateStage.downloaded)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: TonalButton(
+                size: TonalButtonSize.section,
+                glyph: stage == UpdateStage.downloaded
+                    ? AppGlyphs.check
+                    : AppGlyphs.cloudDownload,
+                label: switch (stage) {
+                  UpdateStage.downloading => '下载中…',
+                  UpdateStage.downloaded => '安装',
+                  _ => '下载',
+                },
+                onPressed: stage == UpdateStage.downloaded
+                    ? onInstall
+                    : onDownload,
+              ),
+            ),
+          if (_caption(context) case final caption?)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                caption.text,
+                textAlign: TextAlign.center,
+                style: context.listCaptionStyle.copyWith(color: caption.color),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// One status line under the bar; null while idle and clean, where the bar speaks for itself.
+  ({String text, Color color})? _caption(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    final latest = update.info?.version;
+    final current = update.currentVersion;
+    return switch (update.stage) {
+      UpdateStage.idle => switch (update.error) {
+        final error? => (text: error, color: colorScheme.error),
+        null => null,
+      },
+      UpdateStage.checking => (
+        text: '正在检查 GitHub Release',
+        color: colorScheme.onSurfaceVariant,
+      ),
+      UpdateStage.upToDate => (
+        text: '当前已是最新版本${current == null ? '' : '（$current）'}',
+        color: colorScheme.success,
+      ),
+      UpdateStage.available => (
+        text: [
+          '发现 ${latest ?? '新'}版本',
+          if (current != null) '（当前 $current）',
+          if (update.error != null) '，${update.error}',
+        ].join(),
+        color: update.error == null ? colorScheme.primary : colorScheme.error,
+      ),
+      UpdateStage.downloading || UpdateStage.downloaded => (
+        text: '${latest ?? '新版本'} 更新包',
+        color: colorScheme.onSurfaceVariant,
+      ),
+    };
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({
+    required this.label,
+    required this.color,
+    required this.foregroundColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: ShapeDecoration(color: color, shape: AppShape.full),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Text(
+          label,
+          style: AppTextStyle.caption1.of(context, emphasized: true).copyWith(
+            color: foregroundColor,
+          ),
         ),
       ),
     );
   }
 }
 
-/// Running dot: primary colour while running, error colour otherwise (legacy `titleTrailing`).
-class _StatusDot extends StatelessWidget {
-  const _StatusDot({required this.running});
+/// External link row: square glyph badge, title, one-line target, open-external arrow.
+class _LinkRow extends StatelessWidget {
+  const _LinkRow({
+    required this.glyph,
+    required this.title,
+    required this.label,
+    required this.url,
+  });
 
-  final bool running;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = running
-        ? context.colorScheme.primary
-        : context.colorScheme.error;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      spacing: 6,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: ShapeDecoration(shape: AppShape.circle, color: color),
-        ),
-        Text(
-          running ? '运行中' : '未运行',
-          style: AppTextStyle.caption2.of(context).copyWith(color: color),
-        ),
-      ],
-    );
-  }
-}
-
-class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry});
-
-  final _AboutEntry entry;
+  final Glyph glyph;
+  final String title;
+  final String label;
+  final String url;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
     return ListItem(
-      leading: GlyphIcon(entry.glyph, color: context.colorScheme.primary),
-      title: Text(entry.title),
-      subtitle: Text(entry.description),
+      leading: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: context.raisedSurfaceLevel.colorOf(colorScheme),
+          shape: AppShape.md,
+        ),
+        child: SizedBox.square(
+          dimension: 40,
+          child: Center(
+            child: GlyphIcon(
+              glyph,
+              size: 20,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+      title: Text(title),
+      subtitle: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: const GlyphIcon(AppGlyphs.openExternal),
+      onTap: () => openLinkOrCopy(
+        context,
+        url,
+        '未能打开浏览器，链接已复制：$url',
+      ),
     );
   }
 }
 
-class _ProjectCard extends StatelessWidget {
-  const _ProjectCard();
+class _DownloadProgress extends StatelessWidget {
+  const _DownloadProgress({required this.state});
+
+  final UpdateState state;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: CommonCard(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 12,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: 3,
-              children: [
-                Text(
-                  'MAINTAINED BY',
-                  style: AppTextStyle.caption2
-                      .of(context)
-                      .copyWith(
-                        color: colorScheme.primary,
-                        fontFamily: 'JetBrainsMono',
-                      ),
-                ),
-                Text(
-                  'haoze-evolluling',
-                  style: AppTextStyle.title3.of(context, emphasized: true),
-                ),
-                Text('一位集美大学人工智能系大三学子', style: context.listSubtitleStyle),
-              ],
-            ),
-            GestureDetector(
-              onTap: () => openLinkOrCopy(
-                context,
-                projectRepositoryUrl,
-                '未能打开浏览器，仓库地址已复制：$projectRepositoryUrl',
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: ShapeDecoration(
-                  shape: AppShape.md,
-                  color: colorScheme.primary.withValues(alpha: 0.10),
-                ),
-                child: Row(
-                  spacing: 10,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: 2,
-                        children: [
-                          Text(
-                            '开源项目仓库',
-                            style: AppTextStyle.subheadline.of(
-                              context,
-                              emphasized: true,
-                            ),
-                          ),
-                          Text(
-                            projectRepositoryUrl.replaceFirst('https://', ''),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.listCaptionStyle,
-                          ),
-                        ],
-                      ),
-                    ),
-                    GlyphIcon(
-                      AppGlyphs.openExternal,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-}
-
-class _Signature extends StatelessWidget {
-  const _Signature();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        '谛听 / RESOLUTION UNDER YOUR CONTROL',
-        textAlign: TextAlign.center,
-        style: AppTextStyle.caption2
-            .of(context)
-            .copyWith(
-              color: context.colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
-              letterSpacing: 0.8,
-            ),
+    final done = state.stage == UpdateStage.downloaded;
+    final color = done ? colorScheme.success : colorScheme.primary;
+    return ClipRSuperellipse(
+      borderRadius: AppRadius.full,
+      child: LinearProgressIndicator(
+        value: state.progress,
+        minHeight: 8,
+        backgroundColor: context.raisedSurfaceLevel.colorOf(colorScheme),
+        color: color,
       ),
     );
   }
