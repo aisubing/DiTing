@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { ipc } from '../api/ipc';
 import { themeManager, type ThemeMode, type ThemePalette } from '../theme/theme';
+import { useBrandLogo } from '../theme/brandAsset';
 import {
   loadLoginBgConfig,
   saveLoginBgConfig,
@@ -12,7 +13,6 @@ import { useAuthForm } from '../composables/useAuthForm';
 import M3Icon from '../components/M3Icon.vue';
 import InlineAlert from '../components/ui/InlineAlert.vue';
 import LoginBgModal from '../components/auth/LoginBgModal.vue';
-import appLogo from '../assets/images/logo-universal.png';
 
 const props = withDefaults(
   defineProps<{
@@ -65,6 +65,7 @@ function togglePalette() {
 }
 
 // 注入版本号
+const appLogo = useBrandLogo();
 const appVersion = __APP_VERSION__;
 
 const hasCustomBg = computed(() => bgConfig.value.type !== 'none' && Boolean(bgConfig.value.url));

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ipc } from './api/ipc';
 import { themeManager } from './theme/theme';
+import { useBrandLogo } from './theme/brandAsset';
 import { NAV_ITEMS, SUB_TABS, resolveRoute, type NavTab } from './constants/navigation';
 import { isWebMode } from './utils/env';
 import { initPlatform, usePlatform } from './composables/usePlatform';
@@ -10,7 +11,6 @@ import NavItem from './components/NavItem.vue';
 import StatusBadge from './components/StatusBadge.vue';
 import ServiceAlertModal from './components/ServiceAlertModal.vue';
 import LoginView from './views/LoginView.vue';
-import appLogo from './assets/images/logo-universal.png';
 import OverviewView from './views/OverviewView.vue';
 import ResolveView from './views/ResolveView.vue';
 import ProtectView from './views/ProtectView.vue';
@@ -18,6 +18,7 @@ import DevicesView from './views/DevicesView.vue';
 import SystemView from './views/SystemView.vue';
 
 const appVersion = __APP_VERSION__;
+const appLogo = useBrandLogo();
 const { platformLabel } = usePlatform();
 const navItems = NAV_ITEMS;
 const currentTab = ref<NavTab>('overview');

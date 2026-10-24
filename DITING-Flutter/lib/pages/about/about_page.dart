@@ -144,6 +144,10 @@ class _AboutHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final stage = update.stage;
+    // The brand mark ships in both modes: #FAF8F9/#007AFE for light, #1F1F22/#2E83FF for dark.
+    final logoAsset = colorScheme.brightness == Brightness.dark
+        ? 'assets/images/icon_dark.png'
+        : 'assets/images/icon.png';
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
       child: Column(
@@ -156,7 +160,7 @@ class _AboutHero extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(_logoInset),
               child: Image.asset(
-                'assets/images/icon.png',
+                logoAsset,
                 width: _logoSize - _logoInset * 2,
                 height: _logoSize - _logoInset * 2,
               ),

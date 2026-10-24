@@ -2,245 +2,355 @@
 # -*- coding: utf-8 -*-
 
 """
-谛听 (DITING) 品牌 Logo 矢量化生成与多规格图标导出引擎
+谛听 (DITING) 品牌资产生成引擎
+
+单一形状源：DITING-Legacy/app/src/main/res/drawable/ic_splash_squircle_logo.xml
+（N=3 超椭圆容器 + 居中球体雷达图腾），配色由本模块统一定义：
+
+  浅色模式  background #FAF8F9    foreground #007AFE
+  深色模式  background #1F1F22    foreground #2E83FF
+
+不依赖 Qt / cairo / rsvg —— 光栅化由 `core.vector_raster` 完成，仅需 Pillow。
+
+用法：
+    python -m maintenance.core.logo_generator            # 导出全部平台资源
+    python -m maintenance.core.logo_generator --check    # 只校验源矢量可解析
 """
 
 import os
 import sys
 import xml.etree.ElementTree as ET
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8")
 
-try:
-    from PIL import Image
-    from PyQt6.QtCore import QByteArray
-    from PyQt6.QtGui import QColor, QImage, QPainter
-    from PyQt6.QtSvg import QSvgRenderer
-    QT_AVAILABLE = True
-except ImportError:
-    QT_AVAILABLE = False
+from PIL import Image
 
+try:  # 作为包导入
+    from . import vector_raster as vr
+except ImportError:  # 直接脚本运行
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from core import vector_raster as vr  # type: ignore[no-redef]
 
-def get_android_xml_path() -> str:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
-    return os.path.join(root_dir, "DITING-Legacy", "app", "src", "main", "res", "drawable", "ic_splash_squircle_logo.xml")
+AND = "{http://schemas.android.com/apk/res/android}"
 
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+BRAND_XML = os.path.join(
+    ROOT_DIR, "DITING-Legacy", "app", "src", "main", "res", "drawable", "ic_splash_squircle_logo.xml"
+)
 
-def extract_paths_from_android(xml_path: Optional[str] = None) -> List[Tuple[Optional[str], Optional[str], str]]:
-    if not xml_path:
-        xml_path = get_android_xml_path()
-    if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"未找到 Android Logo XML 矢量资源: {xml_path}")
+# === 品牌调色板（唯一真源） ===
+LIGHT = {"background": "#FAF8F9", "foreground": "#007AFE"}
+DARK = {"background": "#1F1F22", "foreground": "#2E83FF"}
 
-    tree = ET.parse(xml_path)
-    paths = []
-    for p in tree.iter():
-        if p.tag.endswith("path"):
-            fill = p.attrib.get("{http://schemas.android.com/apk/res/android}fillColor")
-            stroke = p.attrib.get("{http://schemas.android.com/apk/res/android}strokeColor")
-            d = p.attrib.get("{http://schemas.android.com/apk/res/android}pathData", "")
-            paths.append((fill, stroke, d))
-    return paths
+# Android 传统启动器位图规格（px）：mdpi/hdpi/xhdpi/xxhdpi/xxxhdpi
+ANDROID_DENSITIES: Sequence[Tuple[str, int]] = (
+    ("mdpi", 48),
+    ("hdpi", 72),
+    ("xhdpi", 96),
+    ("xxhdpi", 144),
+    ("xxxhdpi", 192),
+)
+
+DESKTOP_SIZES = (1024, 512, 256)
+ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
+def _log_default(level: str, message: str) -> None:
+    print(f"[{level.upper()}] {message}")
+
+
+# --------------------------------------------------------------------------- #
+# 源矢量解析
+# --------------------------------------------------------------------------- #
+def load_shapes(palette: Dict[str, str], xml_path: Optional[str] = None) -> Tuple[List[vr.Shape], Tuple[float, float, float, float]]:
+    """把 Android VectorDrawable 解析为可按任意配色渲染的形状序列。"""
+    path = xml_path or BRAND_XML
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"未找到品牌矢量源: {path}")
+
+    root = ET.parse(path).getroot()
+    view_w = float(root.get(AND + "viewportWidth"))
+    view_h = float(root.get(AND + "viewportHeight"))
+    color_map = {
+        "@color/ic_launcher_background": palette["background"],
+        "@color/ic_launcher_foreground": palette["foreground"],
+    }
+    shapes: List[vr.Shape] = []
+
+    def walk(node: ET.Element, matrix: vr.Matrix) -> None:
+        for child in node:
+            tag = child.tag.split("}")[-1]
+            if tag == "group":
+                tx = float(child.get(AND + "translateX") or 0)
+                ty = float(child.get(AND + "translateY") or 0)
+                sx = float(child.get(AND + "scaleX") or 1)
+                sy = float(child.get(AND + "scaleY") or 1)
+                px = float(child.get(AND + "pivotX") or 0)
+                py = float(child.get(AND + "pivotY") or 0)
+                local = vr.multiply(
+                    vr.translation(tx, ty),
+                    vr.multiply(
+                        vr.translation(px, py),
+                        vr.multiply(vr.scaling(sx, sy), vr.translation(-px, -py)),
+                    ),
+                )
+                walk(child, vr.multiply(matrix, local))
+            elif tag == "path":
+                data = child.get(AND + "pathData")
+                fill = child.get(AND + "fillColor") or ""
+                if not data or not fill:
+                    continue
+                color = color_map.get(fill, fill)
+                if not color.startswith("#"):
+                    continue
+                shapes.append(vr.Shape(data, color, matrix))
+
+    walk(root, vr.IDENTITY)
+    if not shapes:
+        raise ValueError(f"品牌矢量源中没有任何可渲染路径: {path}")
+    return shapes, (0.0, 0.0, view_w, view_h)
+
+
+_RENDER_CACHE: Dict[Tuple[str, int], Image.Image] = {}
+
+
+def render_icon(palette: Dict[str, str], size: int, supersample: int = 4) -> Image.Image:
+    """渲染正方形品牌图标（超椭圆底 + 球体雷达图腾），同配色同尺寸复用结果。"""
+    key = (palette["background"] + palette["foreground"], size)
+    cached = _RENDER_CACHE.get(key)
+    if cached is not None:
+        return cached.copy()
+    shapes, view_box = load_shapes(palette)
+    image = vr.render(shapes, size, size, view_box, supersample=supersample)
+    _RENDER_CACHE[key] = image
+    return image.copy()
+
+
+def squircle_svg(palette: Dict[str, str]) -> str:
+    """生成与位图完全等价的 SVG（供网页 / Linux pixmaps 使用）。"""
+    shapes, (vx, vy, vw, vh) = load_shapes(palette)
+    body = "\n  ".join(
+        f'<path fill="{shape.color}" transform="matrix({",".join(f"{v:g}" for v in shape.matrix)})" '
+        f'd="{shape.path_data}" />'
+        for shape in shapes
+    )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vx:g} {vy:g} {vw:g} {vh:g}" '
+        f'width="{int(vw)}" height="{int(vh)}">\n'
+        f"  <!-- 谛听 DITING 品牌图标：{palette['background']} / {palette['foreground']} -->\n"
+        f"  {body}\n</svg>\n"
+    )
+
+
+def adaptive_svg() -> str:
+    """随系统明暗自动切换的品牌 SVG（用于浏览器 favicon / 网页 logo）。"""
+    light_svg = squircle_svg(LIGHT)
+    dark_svg = squircle_svg(DARK)
+    import re
+
+    def body(svg: str) -> str:
+        inner = svg.split(">", 1)[1].rsplit("</svg>", 1)[0]
+        return re.sub(r"<!--.*?-->", "", inner, flags=re.S).strip()
+
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="144" height="144">\n'
+        "  <style>\n"
+        "    .diting-brand--dark { display: none; }\n"
+        "    @media (prefers-color-scheme: dark) {\n"
+        "      .diting-brand--light { display: none; }\n"
+        "      .diting-brand--dark { display: inline; }\n"
+        "    }\n"
+        "  </style>\n"
+        f'  <g class="diting-brand--light">{body(light_svg)}</g>\n'
+        f'  <g class="diting-brand--dark">{body(dark_svg)}</g>\n'
+        "</svg>\n"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 导出
+# --------------------------------------------------------------------------- #
+def _save_png(image: Image.Image, path: str, log: Callable[[str, str], None]) -> str:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    image.save(path, "PNG", optimize=True)
+    log("info", f"PNG {image.width}x{image.height}: {path}")
+    return path
+
+
+def _save_ico(base: Image.Image, path: str, log: Callable[[str, str], None]) -> str:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    frames = [base.resize((s, s), Image.LANCZOS) for s in ICO_SIZES]
+    frames[-1].save(path, format="ICO", sizes=[(s, s) for s in ICO_SIZES], append_images=frames[:-1])
+    log("info", f"ICO {len(ICO_SIZES)} 规格: {path}")
+    return path
+
+
+def export_desktop(log: Callable[[str, str], None]) -> List[str]:
+    """桌面端（Wails + Vue3）：Windows 图标、Linux pixmap、Web favicon 与前端资源。"""
+    desktop = os.path.join(ROOT_DIR, "Desktop")
+    files: List[str] = []
+
+    light_1024 = render_icon(LIGHT, 1024)
+    light_512 = light_1024.resize((512, 512), Image.LANCZOS)
+    dark_512 = render_icon(DARK, 512)
+
+    files.append(_save_png(light_1024, os.path.join(desktop, "build", "appicon.png"), log))
+    files.append(_save_ico(light_512, os.path.join(desktop, "build", "windows", "icon.ico"), log))
+    # Linux 桌面启动器 / 窗口管理器图标
+    files.append(_save_png(light_512, os.path.join(desktop, "build", "linux", "diting.png"), log))
+
+    assets = os.path.join(desktop, "frontend", "src", "assets", "images")
+    files.append(_save_png(light_512, os.path.join(assets, "logo-universal.png"), log))
+    files.append(_save_png(dark_512, os.path.join(assets, "logo-universal-dark.png"), log))
+
+    public = os.path.join(desktop, "frontend", "public")
+    files.append(_save_png(light_512, os.path.join(public, "appicon.png"), log))
+    files.append(_save_ico(light_512, os.path.join(public, "favicon.ico"), log))
+    files.append(_save_png(dark_512, os.path.join(public, "appicon-dark.png"), log))
+
+    for path in (os.path.join(assets, "logo.svg"), os.path.join(public, "logo.svg")):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(adaptive_svg())
+        log("info", f"SVG (随明暗切换): {path}")
+        files.append(path)
+    return files
+
+
+def export_flutter_assets(log: Callable[[str, str], None]) -> List[str]:
+    """Flutter 应用内展示用图标（关于页），浅色与深色各一份。"""
+    images = os.path.join(ROOT_DIR, "DITING-Flutter", "assets", "images")
+    files = [
+        _save_png(render_icon(LIGHT, 512), os.path.join(images, "icon.png"), log),
+        _save_png(render_icon(DARK, 512), os.path.join(images, "icon_dark.png"), log),
+    ]
+    return files
+
+
+def export_android_launcher(res_dir: str, log: Callable[[str, str], None], label: str = "") -> List[str]:
+    """
+    生成传统启动器位图（API < 26 与部分第三方桌面使用）。
+
+    浅色写入 mipmap-<density>/，深色写入 mipmap-night-<density>/，
+    两者都覆盖自适应图标之外的全部回退路径。
+    """
+    if not os.path.isdir(res_dir):
+        log("warn", f"跳过 {label or res_dir}：未找到 res 目录")
+        return []
+
+    files: List[str] = []
+    for folder_suffix, palette in (("", LIGHT), ("-night", DARK)):
+        base = render_icon(palette, 192)
+        for density, size in ANDROID_DENSITIES:
+            for name in ("ic_launcher.png", "ic_launcher_round.png"):
+                target = os.path.join(res_dir, f"mipmap{folder_suffix}-{density}", name)
+                _save_png(base.resize((size, size), Image.LANCZOS), target, log)
+                files.append(target)
+    return files
+
+
+def export_all(on_log: Optional[Callable[[str, str], None]] = None) -> Dict[str, object]:
+    log = on_log or _log_default
+    exported: List[str] = []
+    exported += export_desktop(log)
+    exported += export_flutter_assets(log)
+    exported += export_android_launcher(
+        os.path.join(ROOT_DIR, "DITING-Flutter", "android", "app", "src", "main", "res"), log, "DITING-Flutter"
+    )
+    exported += export_android_launcher(
+        os.path.join(ROOT_DIR, "DITING-Legacy", "app", "src", "main", "res"), log, "DITING-Legacy"
+    )
+    log("info", f"完成，共导出 {len(exported)} 个品牌资源文件")
+    return {"success": True, "files": exported, "palettes": {"light": LIGHT, "dark": DARK}}
+
+
+# --------------------------------------------------------------------------- #
+# 维护工具箱兼容层（旧接口：自定义底色 / 图腾色）
+# --------------------------------------------------------------------------- #
 def generate_squircle_svg(
-    bg_color: str = "#9e2b25",
-    totem_color: str = "#ffffff",
-    sphere_bg: Optional[str] = None,
+    bg_color: str = LIGHT["background"],
+    totem_color: str = LIGHT["foreground"],
     subtle_gradient: bool = False,
     xml_path: Optional[str] = None,
 ) -> str:
-    paths = extract_paths_from_android(xml_path)
-    squircle_d = paths[0][2]
-    sphere_bg_d = paths[1][2]
-    totem_ds = [p[2] for p in paths[2:]]
-
-    if subtle_gradient:
-        defs = """
-  <defs>
-    <linearGradient id="ditingBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#039BE5" />
-      <stop offset="50%" stop-color="#0288D1" />
-      <stop offset="100%" stop-color="#0277BD" />
-    </linearGradient>
-    <radialGradient id="sphereGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.12" />
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.02" />
-    </radialGradient>
-  </defs>"""
-        fill_attr = "url(#ditingBgGrad)"
-        sphere_fill = "url(#sphereGlow)" if sphere_bg else "none"
-    else:
-        defs = ""
-        fill_attr = bg_color
-        sphere_fill = sphere_bg if sphere_bg else "none"
-
-    totem_paths_svg = "\n      ".join(f'<path fill="{totem_color}" d="{d}" />' for d in totem_ds)
-
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="1024" height="1024">{defs}
-  <g transform="translate(-72, -72)">
-    <!-- 1. Squircle (N=3 超椭圆) 容器 -->
-    <path fill="{fill_attr}" d="{squircle_d}" />
-    <!-- 2. 居中球体雷达图腾 (核心品牌资产) -->
-    <g transform="translate(75.95, 76.54) scale(0.1328125)">
-      <path fill="{sphere_fill}" d="{sphere_bg_d}" />
-      {totem_paths_svg}
-    </g>
-  </g>
-</svg>"""
-    return svg
-
-
-def render_svg_to_qimage(svg_content: str, width: int, height: int) -> "QImage":
-    if not QT_AVAILABLE:
-        raise RuntimeError("未安装 PyQt6 库，无法进行高精度矢量图形光栅化渲染。")
-    renderer = QSvgRenderer(QByteArray(svg_content.encode("utf-8")))
-    img = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
-    img.fill(QColor(0, 0, 0, 0))
-    painter = QPainter(img)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-    renderer.render(painter)
-    painter.end()
-    return img
-
-
-def qimage_to_pil(qimg: "QImage") -> "Image.Image":
-    ptr = qimg.bits()
-    ptr.setsize(qimg.sizeInBytes())
-    arr = bytes(ptr)
-    pil_img = Image.frombuffer("RGBA", (qimg.width(), qimg.height()), arr, "raw", "BGRA", 0, 1)
-    return pil_img
+    """兼容旧调用：返回单色 SVG。品牌规范已统一为纯色，渐变参数被忽略。"""
+    palette = {"background": bg_color, "foreground": totem_color}
+    shapes, (vx, vy, vw, vh) = load_shapes(palette, xml_path)
+    body = "\n  ".join(
+        f'<path fill="{shape.color}" transform="matrix({",".join(f"{v:g}" for v in shape.matrix)})" '
+        f'd="{shape.path_data}" />'
+        for shape in shapes
+    )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vx:g} {vy:g} {vw:g} {vh:g}" '
+        f'width="{int(vw)}" height="{int(vh)}">\n  {body}\n</svg>\n'
+    )
 
 
 def export_logo_assets(
-    bg_color: str = "#9e2b25",
-    totem_color: str = "#ffffff",
+    bg_color: Optional[str] = None,
+    totem_color: Optional[str] = None,
     subtle_gradient: bool = False,
     output_dir: Optional[str] = None,
     on_log: Optional[Callable[[str, str], None]] = None,
-) -> dict:
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
-    desktop_dir = os.path.join(root_dir, "Desktop")
+) -> Dict[str, object]:
+    """兼容旧调用：按品牌规范导出全部平台资源，并可额外输出到自定义目录。"""
+    log = on_log or _log_default
+    if subtle_gradient:
+        log("warn", "品牌规范已统一为纯色图标，渐变参数被忽略")
+    if bg_color or totem_color:
+        log("warn", "自定义配色仅影响额外导出目录，仓库内资源始终使用品牌规范色")
+    result = export_all(log)
+    files = list(result["files"])  # type: ignore[arg-type]
 
-    def _log(lvl, msg):
-        if on_log:
-            on_log(lvl, msg)
-        else:
-            print(f"[{lvl.upper()}] {msg}")
-
-    svg_content = generate_squircle_svg(
-        bg_color=bg_color,
-        totem_color=totem_color,
-        sphere_bg=None,
-        subtle_gradient=subtle_gradient,
-    )
-
-    exported_files = []
-
-    # 1. 默认桌面端项目目录导出 SVG
-    svg_out_path = os.path.join(desktop_dir, "frontend", "src", "assets", "images", "logo.svg")
-    os.makedirs(os.path.dirname(svg_out_path), exist_ok=True)
-    with open(svg_out_path, "w", encoding="utf-8") as f:
-        f.write(svg_content)
-    _log("info", f"导出 SVG 矢量图: {svg_out_path}")
-    exported_files.append(svg_out_path)
-
-    if not QT_AVAILABLE:
-        _log("warn", "未检测到 PyQt6 环境，已生成标准 SVG 矢量资源；如需生成 PNG/ICO 位图请安装 PyQt6 与 Pillow。")
-        if output_dir and os.path.isdir(output_dir):
-            custom_svg = os.path.join(output_dir, "diting_logo.svg")
-            with open(custom_svg, "w", encoding="utf-8") as f:
-                f.write(svg_content)
-            exported_files.append(custom_svg)
-        return {
-            "success": True,
-            "files": exported_files,
-            "svg_content": svg_content,
-            "warning": "未安装 PyQt6，已完成 SVG 导出",
-        }
-
-    # 2. 导出 1024x1024 appicon.png
-    qimg_1024 = render_svg_to_qimage(svg_content, 1024, 1024)
-    pil_1024 = qimage_to_pil(qimg_1024)
-    build_appicon_path = os.path.join(desktop_dir, "build", "appicon.png")
-    os.makedirs(os.path.dirname(build_appicon_path), exist_ok=True)
-    pil_1024.save(build_appicon_path, "PNG")
-    _log("info", f"导出应用主图标: {build_appicon_path}")
-    exported_files.append(build_appicon_path)
-
-    # 3. 导出导航栏徽标 logo-universal.png (512x512)
-    qimg_512 = render_svg_to_qimage(svg_content, 512, 512)
-    pil_512 = qimage_to_pil(qimg_512)
-    frontend_logo_path = os.path.join(desktop_dir, "frontend", "src", "assets", "images", "logo-universal.png")
-    pil_512.save(frontend_logo_path, "PNG")
-    _log("info", f"导出前端导航栏图标: {frontend_logo_path}")
-    exported_files.append(frontend_logo_path)
-
-    # 4. 生成 Windows 多分辨率 ICO (16, 24, 32, 48, 64, 128, 256)
-    ico_sizes = [16, 24, 32, 48, 64, 128, 256]
-    ico_images = []
-    for s in ico_sizes:
-        q_s = render_svg_to_qimage(svg_content, s, s)
-        pil_s = qimage_to_pil(q_s)
-        ico_images.append(pil_s)
-
-    ico_out_path = os.path.join(desktop_dir, "build", "windows", "icon.ico")
-    os.makedirs(os.path.dirname(ico_out_path), exist_ok=True)
-    ico_images[-1].save(ico_out_path, format="ICO", sizes=[(s, s) for s in ico_sizes], append_images=ico_images[:-1])
-    _log("info", f"导出 Windows 多分辨率 ICO: {ico_out_path}")
-    exported_files.append(ico_out_path)
-
-    # 5. 同步输出至前端公共静态目录 Desktop/frontend/public/
-    public_dir = os.path.join(desktop_dir, "frontend", "public")
-    if os.path.isdir(public_dir):
-        pub_svg = os.path.join(public_dir, "logo.svg")
-        with open(pub_svg, "w", encoding="utf-8") as f:
-            f.write(svg_content)
-        pub_appicon = os.path.join(public_dir, "appicon.png")
-        pil_512.save(pub_appicon, "PNG")
-        pub_ico = os.path.join(public_dir, "favicon.ico")
-        ico_images[-1].save(pub_ico, format="ICO", sizes=[(s, s) for s in ico_sizes], append_images=ico_images[:-1])
-        _log("info", f"同步更新前端 Public 静态资源: {public_dir}")
-        exported_files.extend([pub_svg, pub_appicon, pub_ico])
-
-    # 6. 若指定了外部 output_dir，同时输出一份到指定目录
     if output_dir and os.path.isdir(output_dir):
         custom_svg = os.path.join(output_dir, "diting_logo.svg")
-        with open(custom_svg, "w", encoding="utf-8") as f:
-            f.write(svg_content)
-        custom_png = os.path.join(output_dir, "diting_logo_1024.png")
-        pil_1024.save(custom_png, "PNG")
-        custom_ico = os.path.join(output_dir, "diting_logo.ico")
-        ico_images[-1].save(custom_ico, format="ICO", sizes=[(s, s) for s in ico_sizes], append_images=ico_images[:-1])
-        _log("info", f"导出自选目录产物至: {output_dir}")
-        exported_files.extend([custom_svg, custom_png, custom_ico])
+        shake = {"background": bg_color or LIGHT["background"], "foreground": totem_color or LIGHT["foreground"]}
+        with open(custom_svg, "w", encoding="utf-8") as handle:
+            handle.write(squircle_svg(shake))
+        files.append(custom_svg)
+        files.append(
+            _save_png(
+                render_icon({"background": bg_color or LIGHT["background"], "foreground": totem_color or LIGHT["foreground"]}, 1024),
+                os.path.join(output_dir, "diting_logo_1024.png"),
+                log,
+            )
+        )
+        log("info", f"已额外导出自选目录产物: {output_dir}")
 
-    return {
-        "success": True,
-        "files": exported_files,
-        "svg_content": svg_content,
-    }
+    result["files"] = files
+    return result
 
 
-def main():
+def main() -> int:
     import argparse
-    parser = argparse.ArgumentParser(description="谛听品牌 Logo 渲染导出工具")
-    parser.add_argument("--bg", default="#9e2b25", help="背景底色 hex (默认朱砂红 #9e2b25)")
-    parser.add_argument("--totem", default="#ffffff", help="图腾颜色 hex (默认纯白 #ffffff)")
-    parser.add_argument("--gradient", action="store_true", help="启用渐变质感")
-    parser.add_argument("-o", "--out", default=None, help="自定义导出目录")
+
+    parser = argparse.ArgumentParser(description="谛听品牌图标导出工具（无需 Qt）")
+    parser.add_argument("--check", action="store_true", help="仅校验品牌矢量源可解析")
+    parser.add_argument("--preview", default=None, help="输出一张浅/深色对照预览图到指定路径")
     args = parser.parse_args()
 
-    res = export_logo_assets(bg_color=args.bg, totem_color=args.totem, subtle_gradient=args.gradient, output_dir=args.out)
-    print(f"导出完成，共生成 {len(res['files'])} 个目标文件。")
+    if args.check:
+        for name, palette in (("light", LIGHT), ("dark", DARK)):
+            shapes, view_box = load_shapes(palette)
+            print(f"{name}: {len(shapes)} 条路径, viewBox={view_box}")
+        return 0
+
+    if args.preview:
+        light = render_icon(LIGHT, 512)
+        dark = render_icon(DARK, 512)
+        canvas = Image.new("RGB", (1024, 512), "#7F7F7F")
+        canvas.paste(light, (0, 0), light)
+        canvas.paste(dark, (512, 0), dark)
+        canvas.save(args.preview, "PNG")
+        print(f"预览已写入 {args.preview}")
+        return 0
+
+    export_all()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
