@@ -11,6 +11,7 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/unsaved_changes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -99,10 +100,22 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
         : apps.where((item) => item.packageName == _selected).firstOrNull;
     final showing = app != null ? _selected : null;
     return PopScope(
-      canPop: showing == null,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && showing != null) {
+      canPop: showing == null && !draft.dirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) {
+          return;
+        }
+        // Back inside the page walks out of the detail panel first; only leaving the page asks
+        // about the pending rules.
+        if (showing != null) {
           setState(() => _selected = null);
+          return;
+        }
+        if (!await _confirmLeave(draft)) {
+          return;
+        }
+        if (mounted) {
+          Navigator.of(this.context).pop();
         }
       },
       child: app == null
@@ -110,6 +123,29 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           : _buildDetail(context, draft, app),
     );
   }
+
+  /// Same question as the blocked/excluded pickers: the draft here is also saved by an explicit
+  /// button, so leaving without it would silently drop the edits.
+  Future<bool> _confirmLeave(AppRulesDraft draft) async {
+    final choice = await showUnsavedChangesDialog(
+      context,
+      title: '保存更改？',
+      message: '「应用独立规则」还有未保存的修改。保存后离开，还是放弃这些修改？',
+    );
+    if (!mounted) {
+      return false;
+    }
+    switch (choice) {
+      case UnsavedChangesChoice.cancel:
+        return false;
+      case UnsavedChangesChoice.discard:
+        return true;
+      case UnsavedChangesChoice.save:
+        _save();
+        return true;
+    }
+  }
+
   Widget _buildList(
     BuildContext context,
     AppRulesDraft draft,
@@ -339,9 +375,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
                 onPressed: () => _addScopedRule(app),
               ),
             ],
-            items: [
-              ..._buildScopedRuleItems(app),
-            ],
+            items: [..._buildScopedRuleItems(app)],
             footer:
                 '这些规则写入规则库的 block_rule / allow_rule，带 appScope 只对本应用生效，'
                 '并随规则快照的 appRules 下发，不会扩大成全局拦截。',
