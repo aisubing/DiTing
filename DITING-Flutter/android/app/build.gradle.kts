@@ -47,6 +47,18 @@ val signDebugWithRelease: Boolean =
       it.isBlank() || it == "true" || it == "1"
     } ?: true
 
+// --- APK size options ---------------------------------------------------
+// Target ABI for single-architecture builds: empty (arm64 only, the historical
+// default), "arm64" or "x86_64". Anything else falls back to the default.
+val targetAbi: String = project.findProperty("ditingAbi")?.toString()?.lowercase() ?: ""
+
+// Native libraries are stored uncompressed by default, which makes them mmap-able
+// but leaves the APK ~20 MB (release) / ~90 MB (debug) larger. Compressing them
+// (legacy packaging, extracted at install) shrinks the download without touching
+// a single line of app code. Disable with -PditingCompressNativeLibs=false.
+val compressNativeLibs: Boolean =
+    project.findProperty("ditingCompressNativeLibs")?.toString()?.toBoolean() ?: true
+
 android {
     namespace = "com.haoze.diting"
     compileSdk = flutter.compileSdkVersion
@@ -93,23 +105,38 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // R8 + resource shrinking: the Flutter/AGP defaults already shrink code,
+            // this makes it explicit and drops unused framework resources too.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
 
 // libs/tunnel.aar is arm64-only; drop the other ABIs at jniLibs, abiFilters gets overwritten.
-
-
+//
+// ABI policy:
+//   ditingAbi unset  -> release: arm64-v8a only (historical default); debug: all ABIs
+//   ditingAbi=arm64  -> arm64-v8a only, debug and release
+//   ditingAbi=x86_64 -> x86_64 only (emulator builds), debug and release
 val splitPerAbi: Boolean =
     project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
 androidComponents {
     onVariants { variant ->
-        if (variant.name == "release" && !splitPerAbi) {
-            variant.packaging.jniLibs.excludes.addAll(
-                "**/armeabi-v7a/**",
-                "**/x86_64/**",
-            )
+        val excludedByAbi = when {
+            targetAbi == "x86_64" -> listOf("**/armeabi-v7a/**", "**/arm64-v8a/**")
+            targetAbi == "arm64" -> listOf("**/armeabi-v7a/**", "**/x86_64/**")
+            variant.name == "release" -> listOf("**/armeabi-v7a/**", "**/x86_64/**")
+            else -> emptyList()
         }
+        if (!splitPerAbi) {
+            variant.packaging.jniLibs.excludes.addAll(excludedByAbi)
+        }
+        variant.packaging.jniLibs.useLegacyPackaging.set(compressNativeLibs)
     }
 }
 

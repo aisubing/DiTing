@@ -5,9 +5,15 @@ title DITING Flutter APK Build and Install Tool
 :: APK build / install script.
 ::
 :: Must go through `flutter build apk`; calling gradlew directly would produce an
-:: APK with no Dart code inside. Release uses the keystore from
-:: android/key.properties; "Debug (Release Key)" adds -PsignDebugWithRelease=true
-:: so the debug build can upgrade-install a release build.
+:: APK with no Dart code inside.
+::
+:: Five build modes, all strictly separated by build type, signing config and
+:: target ABI:
+::   [1] Debug   + debug key   -> cannot upgrade-install over a release build
+::   [2] Debug   + release key -> same signature as release, installable over it
+::   [3] Release + release key + arm64-v8a  -> phones / tablets
+::   [4] Release + release key + x86_64     -> Android emulator debugging only
+::   [5] Clean build cache and outputs
 ::
 :: NOTE: this file is intentionally pure ASCII. cmd.exe parses batch files with the
 :: OEM code page, so UTF-8 Chinese text here breaks the parser. Chinese docs live
@@ -24,32 +30,37 @@ set "APP_VERSION_NAME=unknown"
 for /f "tokens=2 delims=: " %%A in ('findstr /b "version:" pubspec.yaml') do set "APP_VERSION_NAME=%%A"
 for /f "tokens=1 delims=+" %%B in ("!APP_VERSION_NAME!") do set "APP_VERSION_NAME=%%B"
 
-:: Step 1: Select build type
+:: Step 1: Select build mode
 :CHOOSE_BUILD_TYPE
 cls
 echo ================================================================
 echo             DITING Flutter APK Build and Install Tool
 echo ================================================================
 echo.
-echo   [1] Debug                (Development build, fast, Release key)
-echo   [2] Release              (Release build, R8, arm64-only, Release key)  <- default
-echo   [3] Debug (Flutter Key)  (Debug build, debug key)
-echo   [4] Split per ABI        (Release, one APK per ABI, smaller)
-echo   [5] Clean                (flutter clean + gradlew clean)
+echo   [1] Debug    / debug key    - Debuggable, not installable over release
+echo   [2] Debug    / release key  - Debuggable, same signature as release
+echo   [3] Release  / arm64        - Release key, phones and tablets   ^<- default
+echo   [4] Release  / x86_64       - Release key, EMULATOR testing only
+echo   [5] Clean                   - Remove build cache and artifacts
 echo   [0] Exit
 echo.
+echo   Options 3 and 4 produce single-ABI release APKs with R8 shrinking;
+echo   option 4 is signed for x86_64 emulators (Android Studio AVD) only.
+echo.
 set "BUILD_CHOICE="
-set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 2): "
+set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 3): "
 
 :: Default is Release: a debug APK starts in ~1.5 s because of JIT, while the release build
 :: starts in ~0.3 s. Installing the debug build by accident makes the app look slow to launch.
-if "%BUILD_CHOICE%"=="" set "BUILD_CHOICE=2"
-if "%BUILD_CHOICE%"=="1" goto SET_DEBUG_RELEASEKEY
-if /i "%BUILD_CHOICE%"=="d" goto SET_DEBUG_RELEASEKEY
-if "%BUILD_CHOICE%"=="2" goto SET_RELEASE
-if /i "%BUILD_CHOICE%"=="r" goto SET_RELEASE
-if "%BUILD_CHOICE%"=="3" goto SET_DEBUG
-if "%BUILD_CHOICE%"=="4" goto SET_SPLIT
+if "%BUILD_CHOICE%"=="" set "BUILD_CHOICE=3"
+if "%BUILD_CHOICE%"=="1" goto SET_DEBUG_DEBUGKEY
+if /i "%BUILD_CHOICE%"=="d1" goto SET_DEBUG_DEBUGKEY
+if "%BUILD_CHOICE%"=="2" goto SET_DEBUG_RELEASEKEY
+if /i "%BUILD_CHOICE%"=="d2" goto SET_DEBUG_RELEASEKEY
+if "%BUILD_CHOICE%"=="3" goto SET_RELEASE_ARM64
+if /i "%BUILD_CHOICE%"=="r" goto SET_RELEASE_ARM64
+if "%BUILD_CHOICE%"=="4" goto SET_RELEASE_X64
+if /i "%BUILD_CHOICE%"=="x64" goto SET_RELEASE_X64
 if "%BUILD_CHOICE%"=="5" goto DO_CLEAN
 if /i "%BUILD_CHOICE%"=="clean" goto DO_CLEAN
 if "%BUILD_CHOICE%"=="0" goto EXIT_SCRIPT
@@ -68,10 +79,25 @@ echo ================================================================
 echo.
 call flutter clean
 call android\gradlew.bat -p android clean
+if errorlevel 1 goto ERR_CLEAN_FAILED
 echo.
-echo [SUCCESS] Clean finished.
+echo [SUCCESS] Clean finished. Build cache and APK outputs removed.
 pause
 goto CHOOSE_BUILD_TYPE
+
+:: ---------------------------------------------------------------------------
+:: Mode definitions: every branch sets BUILD_TYPE, BUILD_TYPE_NAME, FLUTTER_ARGS,
+:: APK_DIR and APK_NAME so exactly one code path builds and ships the artifact.
+:: ---------------------------------------------------------------------------
+
+:SET_DEBUG_DEBUGKEY
+set "BUILD_TYPE=debug"
+set "BUILD_TYPE_NAME=Debug (Debug Key)"
+set "FLUTTER_ARGS=build apk --debug -PsignDebugWithRelease=false"
+set "APK_DIR=build\app\outputs\flutter-apk"
+set "APK_NAME=app-debug.apk"
+set "IS_EMULATOR_BUILD="
+goto START_BUILD
 
 :SET_DEBUG_RELEASEKEY
 set "BUILD_TYPE=debug"
@@ -79,30 +105,30 @@ set "BUILD_TYPE_NAME=Debug (Release Key)"
 set "FLUTTER_ARGS=build apk --debug -PsignDebugWithRelease=true"
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-debug.apk"
+set "IS_EMULATOR_BUILD="
 goto START_BUILD
 
-:SET_DEBUG
-set "BUILD_TYPE=debug"
-set "BUILD_TYPE_NAME=Debug (Debug Key)"
-set "FLUTTER_ARGS=build apk --debug"
-set "APK_DIR=build\app\outputs\flutter-apk"
-set "APK_NAME=app-debug.apk"
-goto START_BUILD
-
-:SET_RELEASE
+:SET_RELEASE_ARM64
+if not exist "android\key.properties" goto ERR_NO_KEYSTORE
 set "BUILD_TYPE=release"
-set "BUILD_TYPE_NAME=Release"
-set "FLUTTER_ARGS=build apk --release"
+set "BUILD_TYPE_NAME=Release (ARM64, Release Key)"
+set "FLUTTER_ARGS=build apk --release --target-platform android-arm64 -PditingAbi=arm64"
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-release.apk"
+set "IS_EMULATOR_BUILD="
 goto START_BUILD
 
-:SET_SPLIT
+:SET_RELEASE_X64
+if not exist "android\key.properties" goto ERR_NO_KEYSTORE
+:: tunnel.aar only ships arm64-v8a libgojni.so; the x86_64 emulator needs the
+:: locally built multi-ABI tunnel-debug.aar, which is git-ignored.
+if not exist "android\app\libs\tunnel-debug.aar" goto ERR_NO_TUNNEL_X64
 set "BUILD_TYPE=release"
-set "BUILD_TYPE_NAME=Release (per-ABI)"
-set "FLUTTER_ARGS=build apk --release --split-per-abi"
+set "BUILD_TYPE_NAME=Release (x86_64, Release Key, EMULATOR)"
+set "FLUTTER_ARGS=build apk --release --target-platform android-x64 -PditingAbi=x86_64 -PtunnelAar=libs/tunnel-debug.aar"
 set "APK_DIR=build\app\outputs\flutter-apk"
-set "APK_NAME=app-arm64-v8a-release.apk"
+set "APK_NAME=app-release.apk"
+set "IS_EMULATOR_BUILD=1"
 goto START_BUILD
 
 :: Step 2: Build
@@ -113,6 +139,11 @@ echo [INFO] Building: %BUILD_TYPE_NAME%
 echo [INFO] flutter %FLUTTER_ARGS%
 echo ================================================================
 echo.
+if defined IS_EMULATOR_BUILD (
+    echo [WARN] This APK targets the x86_64 emulator only. It will NOT run on
+    echo        a physical ARM device. Use option [3] for real devices.
+    echo.
+)
 
 call flutter %FLUTTER_ARGS%
 if errorlevel 1 goto ERR_BUILD_FAILED
@@ -125,12 +156,14 @@ echo ================================================================
 echo [SUCCESS] %BUILD_TYPE_NAME% build completed!
 echo [INFO] APK: %FOUND_APK%
 for %%F in ("%FOUND_APK%") do echo [INFO] Size: %%~zF bytes
-rem Versioned archive from copy*ApkWithVersion in android/app/build.gradle.kts
-rem (not produced for --split-per-abi).
-if not "%BUILD_TYPE_NAME%"=="Release (per-ABI)" (
-    set "VERSIONED_APK=%CD%\build\app\outputs\apk\versioned\%BUILD_TYPE%\DITING-%BUILD_TYPE%-v%APP_VERSION_NAME%.apk"
-    if exist "!VERSIONED_APK!" echo [INFO] Versioned APK: !VERSIONED_APK!
+echo [INFO] ABIs in package:
+where python >nul 2>&1
+if not errorlevel 1 (
+    python -c "import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print('       '+', '.join(sorted({n.split('/')[1] for n in z.namelist() if n.startswith('lib/')})))" "%FOUND_APK%" 2>nul
 )
+rem Versioned archive from copy*ApkWithVersion in android/app/build.gradle.kts.
+set "VERSIONED_APK=%CD%\build\app\outputs\apk\versioned\%BUILD_TYPE%\DITING-%BUILD_TYPE%-v%APP_VERSION_NAME%.apk"
+if exist "!VERSIONED_APK!" echo [INFO] Versioned APK: !VERSIONED_APK!
 echo ================================================================
 echo.
 
@@ -240,7 +273,7 @@ echo ================================================================
 set "ADB_ADDRESS="
 set /p "ADB_ADDRESS=ADB Device Address [IP:PORT / Q]: "
 
-if "%ADB_ADDRESS%"=="" (
+if "!ADB_ADDRESS!"=="" (
     set /a EMPTY_RETRIES+=1
     echo.
     echo [WARN] Input cannot be empty, please try again.
@@ -321,6 +354,39 @@ echo Action: Add your Flutter SDK bin directory to PATH and retry.
 echo ================================================================
 goto ERROR_EXIT
 
+:ERR_NO_KEYSTORE
+echo.
+echo ================================================================
+echo [ERROR] Release signing is not configured!
+echo Cause:  android\key.properties is missing, so options [3] and [4]
+echo         cannot sign the APK with the release key.
+echo Action: Create android\key.properties (see android\SIGNING.md),
+echo         or use option [1] for an unsigned-release-key debug build.
+echo ================================================================
+goto ERROR_EXIT
+
+:ERR_NO_TUNNEL_X64
+echo.
+echo ================================================================
+echo [ERROR] x86_64 tunnel AAR is missing!
+echo Cause:  android\app\libs\tunnel-debug.aar not found. The shipped
+echo         tunnel.aar contains arm64-v8a only, so an x86_64 build
+echo         would install but the tunnel would fail to load.
+echo Action: Build it with gomobile for android/arm64,android/amd64
+echo         (see docs\development\aar-build-notes.md) and place it at
+echo         android\app\libs\tunnel-debug.aar. Use option [3] otherwise.
+echo ================================================================
+goto ERROR_EXIT
+
+:ERR_CLEAN_FAILED
+echo.
+echo ================================================================
+echo [ERROR] Clean failed!
+echo Cause:  'flutter clean' or 'gradlew clean' returned an error.
+echo Action: Close Android Studio / running Gradle daemons and retry.
+echo ================================================================
+goto ERROR_EXIT
+
 :ERR_BUILD_FAILED
 echo.
 echo ================================================================
@@ -396,7 +462,11 @@ echo Cause:  'adb install' returned an error.
 echo Common troubleshooting steps:
 echo   1. Insufficient device storage space.
 echo   2. Signature mismatch with existing app (uninstall it first).
-echo   3. Device system policy blocked installation.
+echo      Debug [1] uses the debug key, so it cannot replace a release
+echo      build; use Debug [2] instead.
+echo   3. ABI mismatch: Release [4] is x86_64 only (emulator), Release
+echo      [3] is arm64 only. Check the device CPU architecture.
+echo   4. Device system policy blocked installation.
 echo ================================================================
 goto ERROR_EXIT
 

@@ -112,17 +112,28 @@ DITING/
 
 ### 📱 Android（`DITING-Flutter`，新版主力）
 
-要求 Flutter 3.47+、JDK 11+、Android SDK；产物架构为 `arm64-v8a`。
+要求 Flutter 3.47+、JDK 11+、Android SDK；Release 产物架构为 `arm64-v8a`。
 
 ```bash
 cd DITING-Flutter
 flutter pub get
 flutter analyze lib test
 flutter test
-flutter build apk --debug
 ```
 
-模拟器（x86_64）联调需多 ABI 的 AAR：`flutter build apk --debug -PtunnelAar=libs/tunnel-debug.aar`
+日常打包运行 `DITING-Flutter/build_apk.bat`，交互式选择编译档位、自动归档并支持 ADB 部署：
+
+| 档位 | 编译模式 | 签名 | 目标架构 | 用途 |
+| --- | --- | --- | --- | --- |
+| 1 | Debug | Debug Key | 全 ABI | 纯本地调试，无法覆盖安装正式包 |
+| 2 | Debug | Release Key | 全 ABI | 可覆盖安装正式包的调试包 |
+| 3 | Release | Release Key | `arm64-v8a` | 真机发布（默认档位） |
+| 4 | Release | Release Key | `x86_64` | **仅适用于模拟器调试** |
+| 5 | — | — | — | 清理编译缓存与构建产物（`flutter clean` + `gradlew clean`） |
+
+为缩小安装包体积，脚本默认以 `-PditingAbi=<abi>` 构建单架构包，并通过
+`-PditingCompressNativeLibs=true`（默认）对 `.so` 使用 legacy 打包（安装时解压）。
+模拟器（x86_64）联调需多 ABI 的 AAR：档位 4 会自动传 `-PtunnelAar=libs/tunnel-debug.aar`
 （该文件不入库），否则 `libgojni.so` 只有 `arm64-v8a`，`System.loadLibrary` 会失败。
 详情见 [DITING-Flutter/README.md](DITING-Flutter/README.md) 与
 [Go AAR 构建记录](docs/development/aar-build-notes.md)。
