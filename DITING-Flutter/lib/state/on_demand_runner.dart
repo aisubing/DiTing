@@ -2,10 +2,14 @@
 ///
 /// The switch and the SSID table are persisted configuration; without this runner they were only
 /// ever displayed. There is no background network callback in this build (the platform channel
-/// reports the joined SSID on demand), so the whitelist is re-evaluated on start, on resume and
-/// whenever the user asks for it — the same foreground catch-up that [AutoUpdateRunner] uses.
+/// reports the joined SSID on demand), so the catch-up moments are start and resume — but the
+/// whitelist only moves the tunnel when the network CHANGED since the last evaluation. Re-running
+/// the same network would override a manual start/stop on every launch, which is why the last
+/// evaluated SSID is persisted next to the rules.
 library;
 
+import 'package:diting/data/prefs/config_resource_store.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/config/on_demand_capabilities.dart';
 import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -21,6 +25,9 @@ enum OnDemandOutcome {
 
   /// The platform could not report the network, so the whitelist cannot be trusted.
   unknownSsid('无法读取当前 Wi-Fi，未做改动'),
+
+  /// The network is the one the whitelist was last applied to; a manual start or stop is kept.
+  sameNetwork('网络未变化，保持当前 VPN 状态'),
 
   /// Not on Wi-Fi and no whitelist entry covers cellular.
   noWifi('当前不在 Wi-Fi 上，已断开 VPN'),
@@ -55,7 +62,9 @@ class OnDemandRunner {
 
   final Ref _ref;
 
-  Future<OnDemandOutcome> apply() async {
+  /// [force] re-evaluates even when the network is unchanged; the "立即应用" button and the
+  /// on-demand switch use it, start and resume do not.
+  Future<OnDemandOutcome> apply({bool force = false}) async {
     final resources = _ref.read(configResourcesProvider);
     if (!resources.onDemand) {
       return OnDemandOutcome.disabled;
@@ -66,6 +75,25 @@ class OnDemandRunner {
     }
     // Read the SSID fresh: the cached provider may describe the network from before a switch.
     final ssid = await _ref.read(currentSsidReaderProvider)();
+    if (ssid == null) {
+      return OnDemandOutcome.unknownSsid;
+    }
+    final store = ConfigResourceStore(_ref.read(legacyPrefsStoreProvider));
+    final lastSsid = store.loadLastEvaluatedSsid();
+    // A never-evaluated install only records the network, so an upgrade cannot auto-start the
+    // tunnel; after that, acting is reserved for a real network change.
+    if (!force && (lastSsid == ssid || lastSsid == null)) {
+      if (lastSsid == null) store.saveLastEvaluatedSsid(ssid);
+      return OnDemandOutcome.sameNetwork;
+    }
+    // Only a settled outcome records the network; `busy` retries on the next evaluation.
+    OnDemandOutcome settle(OnDemandOutcome outcome) {
+      if (outcome != OnDemandOutcome.busy) {
+        store.saveLastEvaluatedSsid(ssid);
+      }
+      return outcome;
+    }
+
     final decision = decideSsid(
       enabled: true,
       rules: resources.ssidRules,
@@ -79,7 +107,7 @@ class OnDemandRunner {
         return OnDemandOutcome.unknownSsid;
       case SsidMatchState.matched:
         if (power.isRunning) {
-          return OnDemandOutcome.alreadyRunning;
+          return settle(OnDemandOutcome.alreadyRunning);
         }
         if (power.isBusy) {
           return OnDemandOutcome.busy;
@@ -88,19 +116,17 @@ class OnDemandRunner {
         final after = _ref.read(powerProvider);
         // `toggle` returns once the start is scheduled; `starting` means the system consent
         // dialog is still open and the real answer arrives through `onPrepareResult`.
-        return after.isRunning
-            ? OnDemandOutcome.started
-            : OnDemandOutcome.needsConsent;
+        return settle(after.isRunning ? OnDemandOutcome.started : OnDemandOutcome.needsConsent);
       case SsidMatchState.noWifi:
       case SsidMatchState.unmatched:
         if (!power.isRunning) {
-          return OnDemandOutcome.alreadyStopped;
+          return settle(OnDemandOutcome.alreadyStopped);
         }
         if (power.isBusy) {
           return OnDemandOutcome.busy;
         }
         await _ref.read(powerProvider.notifier).stop();
-        return OnDemandOutcome.stopped;
+        return settle(OnDemandOutcome.stopped);
     }
   }
 }

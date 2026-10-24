@@ -55,10 +55,14 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     _maybeApplyOnDemand();
   }
 
+  /// Nothing may reach the network or the tunnel before the first-run agreement is accepted;
+  /// the gate widget only hides the UI, the runners are guarded here.
+  bool get _agreementAccepted => ref.read(initialAgreementProvider);
+
   /// Applies the on-demand whitelist to the tunnel. The platform reports the joined SSID only on
   /// request, so start and resume are the two moments where the answer can have changed.
   Future<void> _maybeApplyOnDemand() async {
-    if (!mounted) return;
+    if (!mounted || !_agreementAccepted) return;
     try {
       await ref.read(onDemandRunnerProvider).apply();
     } catch (_) {
@@ -73,7 +77,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
   }
 
   Future<void> _maybeRunAutoUpdate() async {
-    if (_autoUpdateChecking || !mounted) {
+    if (_autoUpdateChecking || !mounted || !_agreementAccepted) {
       return;
     }
     _autoUpdateChecking = true;

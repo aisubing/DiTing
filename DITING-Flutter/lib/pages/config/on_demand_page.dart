@@ -55,8 +55,9 @@ class OnDemandConfigPage extends ConsumerWidget {
             ],
             footer:
                 '开启后，只有连上白名单里的 SSID 时才会自动启动 VPN；'
-                '其余网络保持断开，省电也更可控。判定在应用启动、'
-                '回到前台或点右上角「立即应用」时进行。',
+                '其余网络保持断开，省电也更可控。自动判定只在网络'
+                '变化时启停 VPN，不会覆盖手动开关的结果；点右上角'
+                '「立即应用」可立即按当前网络重新判定。',
           ),
           if (resources.onDemand) _DecisionCard(decision: decision),
           if (resources.onDemand)
@@ -147,7 +148,7 @@ Future<void> _setEnabled(
     showConfigHint(context, '按需连接已关闭，VPN 不再随网络切换');
     return;
   }
-  final outcome = await ref.read(onDemandRunnerProvider).apply();
+  final outcome = await ref.read(onDemandRunnerProvider).apply(force: true);
   if (!context.mounted) return;
   showConfigHint(context, outcome.label);
 }
@@ -155,7 +156,7 @@ Future<void> _setEnabled(
 /// Re-evaluates the whitelist against the current network; the page has no network callback, so
 /// this is how a user applies it after switching Wi-Fi.
 Future<void> _applyNow(BuildContext context, WidgetRef ref) async {
-  final outcome = await ref.read(onDemandRunnerProvider).apply();
+  final outcome = await ref.read(onDemandRunnerProvider).apply(force: true);
   if (!context.mounted) return;
   showConfigHint(context, outcome.label);
 }

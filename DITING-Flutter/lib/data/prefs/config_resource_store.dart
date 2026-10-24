@@ -17,6 +17,7 @@ class ConfigResourceStore {
   static const _selectedUaKey = 'selected_user_agent';
   static const _ssidRulesKey = 'ssid_rules_json';
   static const _onDemandKey = 'on_demand_enabled';
+  static const _lastSsidKey = 'on_demand_last_ssid';
 
   final LegacyPrefsStore _store;
 
@@ -67,6 +68,17 @@ class ConfigResourceStore {
   );
 
   void saveOnDemand(bool value) => _store.putBool(container, _onDemandKey, value);
+
+  /// The network the whitelist was last applied to, so re-evaluating the same network never
+  /// overrides a manual start/stop. `''` (not on Wi-Fi) is a real value; null means never
+  /// evaluated.
+  String? loadLastEvaluatedSsid() {
+    final raw = _store.read(container, _lastSsidKey);
+    return raw is String ? raw : null;
+  }
+
+  void saveLastEvaluatedSsid(String ssid) =>
+      _store.putString(container, _lastSsidKey, ssid);
 
   /// A missing key returns null so defaults are used; an empty array is valid and stays.
   List<T>? _decodeList<T>(
