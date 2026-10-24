@@ -1,7 +1,9 @@
 // ignore_for_file: sort_child_properties_last
 import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/pages/hub/agent_analysis_sheet.dart';
+import 'package:diting/router.dart';
 import 'package:diting/routes/hub_routes.dart';
+import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -147,7 +149,14 @@ class AgentApiPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.dashboard),
                 title: const Text('日志仪表盘'),
                 subtitle: const Text('「AI 研判」卡片可对最近流量发起整体分析'),
-                onTap: () => context.push('/logs'),
+                // `/logs` is a tab root: pushing it stacks a second copy of the shell branch and
+                // trips go_router's duplicate page-key assert, so open the full-screen twin and
+                // fall back to a branch switch.
+                onTap: () {
+                  if (!pushStandalone(context, Routes.logs)) {
+                    openLocation(context, Routes.logs);
+                  }
+                },
               ),
             ],
             footer: '分析结果里的域名可以一键写入白名单或屏蔽规则，写入后启动 DNS VPN 生效。',
