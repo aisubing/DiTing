@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/router.dart';
+import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -158,7 +163,11 @@ class HttpInspectionPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.logs),
                 title: const Text('请求日志'),
                 subtitle: const Text('查看解密明细与自动旁路记录'),
-                onTap: () => openLocation(context, '/logs'),
+                onTap: () {
+                  if (!pushStandalone(context, '/logs')) {
+                    openLocation(context, '/logs');
+                  }
+                },
               ),
             ],
           ),
@@ -334,10 +343,21 @@ class _HttpInspectionAppsPageState
   final _search = TextEditingController();
   String _query = '';
 
+  /// Same 250 ms debounce as 1.4.3 `AppPickerScreen`.
+  Timer? _debounce;
+
   @override
   void dispose() {
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _query = value);
+    });
   }
 
   /// Every change is persisted immediately, since the parent page reads the same keys; the
@@ -369,16 +389,24 @@ class _HttpInspectionAppsPageState
 
   @override
   Widget build(BuildContext context) {
-    final selected = ref.watch(legacySettingsProvider).httpInspectionPackages;
+    final settings = ref.watch(legacySettingsProvider);
+    final selected = settings.httpInspectionPackages;
+    final filter = AppListFilter.fromStorageValue(
+      settings.httpInspectionAppsFilterRaw,
+    );
+    final sort = AppListSort.fromStorageValue(
+      settings.httpInspectionAppsSortRaw,
+    );
     final snapshot = ref.watch(installedAppsProvider);
     final apps = snapshot.value?.apps ?? const <InstalledApp>[];
     final visible = visibleInstalledApps(
       apps: apps,
       query: _query,
-      filter: AppListFilter.all,
-      sort: AppListSort.labelAsc,
+      filter: filter,
+      sort: sort,
       selected: selected,
     );
+    final visiblePackages = {for (final app in visible) app.packageName};
     return CommonScaffold(
       title: '选择检查应用',
       iconActions: [
@@ -387,101 +415,113 @@ class _HttpInspectionAppsPageState
           tooltip: '全选当前结果',
           onPressed: visible.isEmpty
               ? null
-              : () => _write({
-                  ...selected,
-                  for (final app in visible) app.packageName,
-                }),
+              : () => _write({...selected, ...visiblePackages}),
         ),
         IconButtonData(
           glyph: AppGlyphs.deselect,
           tooltip: '取消当前结果',
           onPressed: visible.isEmpty
               ? null
-              : () => _write(
-                  selected.difference({
-                    for (final app in visible) app.packageName,
-                  }),
-                ),
+              : () => _write(selected.difference(visiblePackages)),
         ),
       ],
-      body: PageBody(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，'
-                '其他应用直接转发。选择应用会取消其「排除应用」「禁止联网」'
-                '与应用独立规则状态。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
+      menuItems: appListMenuItems(
+        filter: filter,
+        sort: sort,
+        onFilterChanged: (value) {
+          settings.setHttpInspectionAppsFilterRaw(value.storageValue);
+          ref.read(legacySettingsRevisionProvider.notifier).bump();
+        },
+        onSortChanged: (value) {
+          settings.setHttpInspectionAppsSortRaw(value.storageValue);
+          ref.read(legacySettingsRevisionProvider.notifier).bump();
+        },
+        onSelectAll: () => _write({...selected, ...visiblePackages}),
+        onClear: () => _write(const {}),
+        onInvert: () => _write(
+          selected.difference(visiblePackages).union(
+            visiblePackages.difference(selected),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SearchField(
-              controller: _search,
-              onChanged: (value) => setState(() => _query = value),
-            ),
-          ),
-          if (snapshot.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(child: CommonCircleLoading()),
-            )
-          else if (snapshot.value?.error != null)
-            EmptyStateBox(
-              minHeight: 260,
-              child: NullStatus(
-                label: '读不到应用列表',
-                description: snapshot.value!.error,
-                illustration: NullStatusIllustration.apps,
-                action: TextButton(
-                  onPressed: () =>
-                      ref.read(installedAppsRevisionProvider.notifier).bump(),
-                  child: const Text('重试'),
+        ),
+      ),
+      body: AppListScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: CommonCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，'
+                      '其他应用直接转发。选择应用会取消其「排除应用」「禁止联网」'
+                      '与应用独立规则状态。',
+                      style: context.listSubtitleStyle,
+                    ),
+                  ),
                 ),
-              ),
-            )
-          else
-            generateSection(
-              title: '已选择 ${selected.length} 个应用（可见 ${visible.length}）',
-              items: [
-                for (final app in visible)
-                  ListItem(
-                    leading: GlyphIcon(
-                      selected.contains(app.packageName)
-                          ? AppGlyphs.checkCircle
-                          : AppGlyphs.appsList,
-                      size: 20,
-                      color: selected.contains(app.packageName)
-                          ? context.colorScheme.primary
-                          : null,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: SearchField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                  ),
+                ),
+                if (snapshot.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CommonCircleLoading()),
+                  )
+                else if (snapshot.value?.error != null)
+                  EmptyStateBox(
+                    minHeight: 260,
+                    child: NullStatus(
+                      label: '读不到应用列表',
+                      description: snapshot.value!.error,
+                      illustration: NullStatusIllustration.apps,
+                      action: TextButton(
+                        onPressed: () => ref
+                            .read(installedAppsRevisionProvider.notifier)
+                            .bump(),
+                        child: const Text('重试'),
+                      ),
                     ),
-                    title: Text(
-                      app.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      app.packageName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: CommonCheckBox(
-                      value: selected.contains(app.packageName),
-                      isCircle: true,
-                      onChanged: (_) => _toggle(selected, app.packageName),
-                    ),
-                    onTap: () => _toggle(selected, app.packageName),
                   ),
               ],
+            ),
+          ),
+          if (!snapshot.isLoading && snapshot.value?.error == null)
+            ...appListSlivers(
+              title: '已选择 ${selected.length} 个应用（可见 ${visible.length}）',
+              itemCount: visible.length,
               footer: visible.isEmpty
                   ? (apps.isEmpty ? '设备上没有可选的应用' : '未找到匹配应用')
                   : null,
+              itemBuilder: (context, index) {
+                final app = visible[index];
+                return ListItem(
+                  leading: AppIconAvatar(packageName: app.packageName),
+                  title: Text(
+                    app.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    app.packageName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: CommonCheckBox(
+                    value: selected.contains(app.packageName),
+                    isCircle: true,
+                    onChanged: (_) => _toggle(selected, app.packageName),
+                  ),
+                  onTap: () => _toggle(selected, app.packageName),
+                );
+              },
             ),
-          const SizedBox(height: 24),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );

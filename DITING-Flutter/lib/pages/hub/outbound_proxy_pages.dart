@@ -5,6 +5,8 @@ import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -402,10 +404,26 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
   final _search = TextEditingController();
   String _query = '';
 
+  /// In-memory only: 1.4.3 `OutboundProxySettingsScreen` passes empty change callbacks here, so the
+  /// picker never persisted its filter or sort.
+  AppListFilter _filter = AppListFilter.user;
+  AppListSort _sort = AppListSort.labelAsc;
+
+  /// Same 250 ms debounce as 1.4.3 `AppPickerScreen`.
+  Timer? _debounce;
+
   @override
   void dispose() {
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _query = value);
+    });
   }
 
   Future<void> _pick(OutboundProxyConfig config, String packageName) async {
@@ -427,89 +445,94 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
     final visible = visibleInstalledApps(
       apps: apps,
       query: _query,
-      filter: AppListFilter.all,
-      sort: AppListSort.labelAsc,
+      filter: _filter,
+      sort: _sort,
       selected: {selected},
     );
     return CommonScaffold(
       title: '选择代理应用',
-      body: PageBody(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '选择提供本地代理端口的应用。代理应用本身会绕过 DITING。'
-                '端口由该应用绑定，谛听无法代它监听。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SearchField(
-              controller: _search,
-              onChanged: (value) => setState(() => _query = value),
-            ),
-          ),
-          if (snapshot.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(child: CommonCircleLoading()),
-            )
-          else if (snapshot.value?.error != null)
-            EmptyStateBox(
-              minHeight: 260,
-              child: NullStatus(
-                label: '读不到应用列表',
-                description: snapshot.value!.error,
-                illustration: NullStatusIllustration.apps,
-                action: TextButton(
-                  onPressed: () =>
-                      ref.read(installedAppsRevisionProvider.notifier).bump(),
-                  child: const Text('重试'),
+      menuItems: appListMenuItems(
+        filter: _filter,
+        sort: _sort,
+        onFilterChanged: (value) => setState(() => _filter = value),
+        onSortChanged: (value) => setState(() => _sort = value),
+      ),
+      body: AppListScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: CommonCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      '选择提供本地代理端口的应用。代理应用本身会绕过 DITING。'
+                      '端口由该应用绑定，谛听无法代它监听。',
+                      style: context.listSubtitleStyle,
+                    ),
+                  ),
                 ),
-              ),
-            )
-          else
-            generateSection(
-              title: '已安装应用（${visible.length}）',
-              items: [
-                for (final app in visible)
-                  ListItem(
-                    leading: GlyphIcon(
-                      selected == app.packageName
-                          ? AppGlyphs.checkCircle
-                          : AppGlyphs.appsList,
-                      size: 20,
-                      color: selected == app.packageName
-                          ? context.colorScheme.primary
-                          : null,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: SearchField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                  ),
+                ),
+                if (snapshot.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CommonCircleLoading()),
+                  )
+                else if (snapshot.value?.error != null)
+                  EmptyStateBox(
+                    minHeight: 260,
+                    child: NullStatus(
+                      label: '读不到应用列表',
+                      description: snapshot.value!.error,
+                      illustration: NullStatusIllustration.apps,
+                      action: TextButton(
+                        onPressed: () => ref
+                            .read(installedAppsRevisionProvider.notifier)
+                            .bump(),
+                        child: const Text('重试'),
+                      ),
                     ),
-                    title: Text(
-                      app.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      app.packageName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: selected == app.packageName
-                        ? const SelectionCheck()
-                        : null,
-                    onTap: config == null
-                        ? null
-                        : () => _pick(config, app.packageName),
                   ),
               ],
+            ),
+          ),
+          if (!snapshot.isLoading && snapshot.value?.error == null)
+            ...appListSlivers(
+              title: '已安装应用（${visible.length}）',
+              itemCount: visible.length,
               footer: visible.isEmpty
                   ? (apps.isEmpty ? '设备上没有可选的代理应用' : '未找到匹配应用')
                   : null,
+              itemBuilder: (context, index) {
+                final app = visible[index];
+                final isSelected = selected == app.packageName;
+                return ListItem(
+                  leading: AppIconAvatar(packageName: app.packageName),
+                  title: Text(
+                    app.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    app.packageName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: isSelected ? const SelectionCheck() : null,
+                  onTap: config == null
+                      ? null
+                      : () => _pick(config, app.packageName),
+                );
+              },
             ),
-          const SizedBox(height: 24),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );

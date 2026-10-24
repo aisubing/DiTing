@@ -7,6 +7,10 @@ import 'package:flutter/services.dart';
 
 const appsChannelName = 'com.haoze.diting/apps';
 
+/// Launcher icons are encoded as PNG at this many pixels per side; 192 px covers a 48 dp tile on a
+/// 4x screen with a little headroom.
+const appsIconPixels = 192;
+
 class InstalledApp {
   const InstalledApp({
     required this.packageName,
@@ -50,6 +54,10 @@ abstract class InstalledAppsSource {
   /// True when [packageName] is this app. Blocking or proxying our own UID would cut the tunnel's
   /// control plane.
   Future<bool> isSelf(String packageName);
+
+  /// Package name to encoded launcher icon (PNG). Missing entries mean "no icon available", which
+  /// the UI renders as a placeholder glyph. Batched so a list refresh is one channel round trip.
+  Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages);
 }
 
 class MethodChannelInstalledAppsSource implements InstalledAppsSource {
@@ -89,6 +97,22 @@ class MethodChannelInstalledAppsSource implements InstalledAppsSource {
         'packageName': packageName,
       }) ??
       false;
+
+  @override
+  Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages) async {
+    final values = packages.toList();
+    if (values.isEmpty) return const {};
+    final raw = await _channel.invokeMethod<Object?>('loadIcons', {
+      'packages': values,
+      'size': appsIconPixels,
+    });
+    if (raw is! Map) return const {};
+    return {
+      for (final entry in raw.entries)
+        if (entry.key is String && entry.value is Uint8List)
+          entry.key as String: entry.value as Uint8List,
+    };
+  }
 }
 
 /// Empty device for widget tests and non-Android hosts, keeping pickers in their "no apps" state
@@ -105,4 +129,8 @@ class EmptyInstalledAppsSource implements InstalledAppsSource {
 
   @override
   Future<bool> isSelf(String packageName) async => false;
+
+  @override
+  Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages) async =>
+      const {};
 }

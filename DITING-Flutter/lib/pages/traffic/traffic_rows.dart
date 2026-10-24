@@ -29,11 +29,7 @@ class AppTrafficRow extends StatelessWidget {
     };
 
     return ListItem(
-      leading: GlyphIcon(
-        AppGlyphs.appsList,
-        size: 20,
-        color: colorScheme.onSurfaceVariant,
-      ),
+      leading: AppIconAvatar(packageName: row.packageName),
       title: Row(
         children: [
           Expanded(

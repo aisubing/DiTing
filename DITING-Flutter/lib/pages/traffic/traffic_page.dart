@@ -7,6 +7,8 @@ import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/chip_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -106,121 +108,140 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
     final hiddenCount =
         snapshot.rows.length - _ranked(snapshot.rows, sort, search).length;
 
-    return PageBody(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: StatStrip(
-            stats: [
-              StatItem(
-                label: '${window.label}下行',
-                value: obsFormatBytes(snapshot.rxBytes),
-                color: context.colorScheme.primary,
-              ),
-              StatItem(
-                label: '${window.label}上行',
-                value: obsFormatBytes(snapshot.txBytes),
-              ),
-              StatItem(label: '应用数', value: '${visible.length}', unit: '个'),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          // Range chips go through ChipRow: a bare Wrap gives no cross-axis constraint and
-          // wraps, pushing every card below it down.
-          child: ChipRow(
+    return AppListScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Column(
             children: [
-              for (final option in _rangeOptions)
-                FilterPill(
-                  label: option.label,
-                  selected: option.window == window,
-                  disabled: option.unavailableReason != null,
-                  onPressed: () {
-                    final target = option.window;
-                    if (target == null) {
-                      _explainUnavailable(
-                        option.label,
-                        option.unavailableReason,
-                      );
-                    } else {
-                      ref.read(trafficWindowProvider.notifier).select(target);
-                    }
-                  },
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        _LiveRateCard(windowLabel: window.label),
-        const SizedBox(height: 10),
-        _AttributionBanner(
-          onTap: () => showSheet<void>(
-            context: context,
-            builder: (_) => const _AttributionSheet(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _TrafficFilterBar(
-          searchController: _search,
-          sort: sort,
-          hideSystemApps: hideSystemApps,
-          onSearchChanged: (value) =>
-              ref.read(trafficSearchProvider.notifier).setQuery(value.trim()),
-          onSortSelected: (option) {
-            final target = option.sort;
-            if (target == null) {
-              _explainUnavailable(option.label, option.unavailableReason);
-            } else {
-              ref.read(trafficSortProvider.notifier).select(target);
-            }
-          },
-          onHideSystemAppsChanged: (value) =>
-              ref.read(trafficHideSystemAppsProvider.notifier).setValue(value),
-        ),
-        if (visible.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-            child: NullStatus(
-              label: search.isEmpty && !hideSystemApps ? '暂无流量数据' : '没有匹配的应用',
-              description: _emptyDescription(
-                search: search,
-                hideSystemApps: hideSystemApps,
-                hiddenCount: hiddenCount,
-                window: window,
-              ),
-              illustration: NullStatusIllustration.data,
-            ),
-          )
-        else
-          generateSection(
-            title: '应用流量排行',
-            footer:
-                '占比按${window.label}总字节数（下行 + 上行）计算；'
-                '${_windowLabel(snapshot)}。点按一行查看该应用的上下行明细。',
-            items: [
-              for (final row in visible)
-                AppTrafficRow(
-                  row: row,
-                  total: snapshot.totalBytes,
-                  sort: sort,
-                  onTap: () => showSheet<void>(
-                    context: context,
-                    builder: (_) => _AppTrafficDetailSheet(
-                      row: row,
-                      total: snapshot.totalBytes,
-                      sort: sort,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: StatStrip(
+                  stats: [
+                    StatItem(
+                      label: '${window.label}下行',
+                      value: obsFormatBytes(snapshot.rxBytes),
+                      color: context.colorScheme.primary,
                     ),
+                    StatItem(
+                      label: '${window.label}上行',
+                      value: obsFormatBytes(snapshot.txBytes),
+                    ),
+                    StatItem(
+                      label: '应用数',
+                      value: '${visible.length}',
+                      unit: '个',
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                // Range chips go through ChipRow: a bare Wrap gives no cross-axis constraint
+                // and wraps, pushing every card below it down.
+                child: ChipRow(
+                  children: [
+                    for (final option in _rangeOptions)
+                      FilterPill(
+                        label: option.label,
+                        selected: option.window == window,
+                        disabled: option.unavailableReason != null,
+                        onPressed: () {
+                          final target = option.window;
+                          if (target == null) {
+                            _explainUnavailable(
+                              option.label,
+                              option.unavailableReason,
+                            );
+                          } else {
+                            ref
+                                .read(trafficWindowProvider.notifier)
+                                .select(target);
+                          }
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _LiveRateCard(windowLabel: window.label),
+              const SizedBox(height: 10),
+              _AttributionBanner(
+                onTap: () => showSheet<void>(
+                  context: context,
+                  builder: (_) => const _AttributionSheet(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _TrafficFilterBar(
+                searchController: _search,
+                sort: sort,
+                hideSystemApps: hideSystemApps,
+                onSearchChanged: (value) => ref
+                    .read(trafficSearchProvider.notifier)
+                    .setQuery(value.trim()),
+                onSortSelected: (option) {
+                  final target = option.sort;
+                  if (target == null) {
+                    _explainUnavailable(option.label, option.unavailableReason);
+                  } else {
+                    ref.read(trafficSortProvider.notifier).select(target);
+                  }
+                },
+                onHideSystemAppsChanged: (value) => ref
+                    .read(trafficHideSystemAppsProvider.notifier)
+                    .setValue(value),
+              ),
+              if (visible.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                  child: NullStatus(
+                    label: search.isEmpty && !hideSystemApps
+                        ? '暂无流量数据'
+                        : '没有匹配的应用',
+                    description: _emptyDescription(
+                      search: search,
+                      hideSystemApps: hideSystemApps,
+                      hiddenCount: hiddenCount,
+                      window: window,
+                    ),
+                    illustration: NullStatusIllustration.data,
                   ),
                 ),
             ],
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-          child: Text(
-            '共 ${visible.length} 个应用产生流量 · 合计 '
-            '${obsFormatBytes(snapshot.totalBytes)}',
-            style: context.listCaptionStyle,
+        ),
+        if (visible.isNotEmpty)
+          ...appListSlivers(
+            title: '应用流量排行',
+            itemCount: visible.length,
+            footer:
+                '占比按${window.label}总字节数（下行 + 上行）计算；'
+                '${_windowLabel(snapshot)}。点按一行查看该应用的上下行明细。',
+            itemBuilder: (context, index) {
+              final row = visible[index];
+              return AppTrafficRow(
+                row: row,
+                total: snapshot.totalBytes,
+                sort: sort,
+                onTap: () => showSheet<void>(
+                  context: context,
+                  builder: (_) => _AppTrafficDetailSheet(
+                    row: row,
+                    total: snapshot.totalBytes,
+                    sort: sort,
+                  ),
+                ),
+              );
+            },
+          ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Text(
+              '共 ${visible.length} 个应用产生流量 · 合计 '
+              '${obsFormatBytes(snapshot.totalBytes)}',
+              style: context.listCaptionStyle,
+            ),
           ),
         ),
       ],

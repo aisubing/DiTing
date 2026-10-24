@@ -1,5 +1,6 @@
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/router.dart';
+import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/feature_hub_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
@@ -112,7 +113,15 @@ class _FeatureCardState extends ConsumerState<_FeatureCard> {
       MediaQuery.textScalerOf(context).scale(_CardGrid._cardHeight) /
       _CardGrid._cardHeight;
 
-  void _open() => openLocation(context, widget.card.route);
+  /// Tab pages (logs, traffic, tools, settings) open full screen so the bottom bar stays out of the
+  /// way and the title bar offers a back arrow; everything else is a normal push.
+  void _open() {
+    final route = widget.card.route;
+    if (pushStandalone(context, route)) {
+      return;
+    }
+    openLocation(context, route);
+  }
 
   void _longPress() {
     final route = widget.card.longPressRoute;

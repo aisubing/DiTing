@@ -36,6 +36,44 @@ extension LegacyHubSettings on LegacySettings {
   void setAppAllowlistSortRaw(String value) =>
       _store.putString(LegacySettings.uiContainer, 'app_allowlist_sort', value);
 
+  /// Blocked-apps picker; 1.4.3 defaults the filter to whatever the excluded list uses.
+  String get blockedAppsFilterRaw =>
+      _string(LegacySettings.uiContainer, 'blocked_apps_filter') ??
+      excludedAppsFilterRaw;
+
+  void setBlockedAppsFilterRaw(String value) => _store.putString(
+    LegacySettings.uiContainer,
+    'blocked_apps_filter',
+    value,
+  );
+
+  String get blockedAppsSortRaw =>
+      _string(LegacySettings.uiContainer, 'blocked_apps_sort') ?? 'LABEL_ASC';
+
+  void setBlockedAppsSortRaw(String value) =>
+      _store.putString(LegacySettings.uiContainer, 'blocked_apps_sort', value);
+
+  /// HTTPS-inspection picker; same default fallback as the blocked list.
+  String get httpInspectionAppsFilterRaw =>
+      _string(LegacySettings.uiContainer, 'http_inspection_apps_filter') ??
+      excludedAppsFilterRaw;
+
+  void setHttpInspectionAppsFilterRaw(String value) => _store.putString(
+    LegacySettings.uiContainer,
+    'http_inspection_apps_filter',
+    value,
+  );
+
+  String get httpInspectionAppsSortRaw =>
+      _string(LegacySettings.uiContainer, 'http_inspection_apps_sort') ??
+      'LABEL_ASC';
+
+  void setHttpInspectionAppsSortRaw(String value) => _store.putString(
+    LegacySettings.uiContainer,
+    'http_inspection_apps_sort',
+    value,
+  );
+
   /// The custom half of the MITM bypass list; presets from `assets/https_passthrough.txt` are
   /// unioned in, never stored here.
   Set<String> get httpsBypassRules =>

@@ -8,6 +8,7 @@ import 'package:diting/pages/hub/app_rules_store.dart';
 import 'package:diting/state/app_rules_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -174,82 +175,97 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           onPressed: draft.dirty ? _save : null,
         ),
       ],
-      body: PageBody(
-        children: [
-          generateSection(
-            title: '总开关',
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.verified),
-                title: const Text('启用单应用域名放行'),
-                subtitle: Text(
-                  draft.configuredApps == 0
-                      ? '暂未配置任何应用独立规则'
-                      : '已配置 ${draft.configuredApps} 个应用 · '
-                            '放行 ${draft.totalDomains} 个域名',
+      body: AppListScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                generateSection(
+                  title: '总开关',
+                  items: [
+                    ListItem.toggle(
+                      leading: const GlyphIcon(AppGlyphs.verified),
+                      title: const Text('启用单应用域名放行'),
+                      subtitle: Text(
+                        draft.configuredApps == 0
+                            ? '暂未配置任何应用独立规则'
+                            : '已配置 ${draft.configuredApps} 个应用 · '
+                                  '放行 ${draft.totalDomains} 个域名',
+                      ),
+                      value: draft.master,
+                      onChanged: (value) =>
+                          setState(() => draft.master = value),
+                    ),
+                  ],
+                  footer:
+                      '为指定应用深度定制网络与解析控制：网络层白名单隔离（只放行列出的域名）、'
+                      'DNS 专属黑/白名单与「默认拦截全部外联」。进入某个应用可分别配置，'
+                      '保存后启动 DNS VPN 时下发。',
                 ),
-                value: draft.master,
-                onChanged: (value) => setState(() => draft.master = value),
-              ),
-            ],
-            footer:
-                '为指定应用深度定制网络与解析控制：网络层白名单隔离（只放行列出的域名）、'
-                'DNS 专属黑/白名单与「默认拦截全部外联」。进入某个应用可分别配置，'
-                '保存后启动 DNS VPN 时下发。',
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SearchField(
-              controller: _search,
-              onChanged: _onSearchChanged,
-            ),
-          ),
-          if (snapshot.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(child: CommonCircleLoading()),
-            )
-          else if (snapshot.value?.error != null)
-            EmptyStateBox(
-              minHeight: 280,
-              child: NullStatus(
-                label: '读不到应用列表',
-                description: snapshot.value!.error,
-                illustration: NullStatusIllustration.apps,
-                action: TextButton(
-                  onPressed: () =>
-                      ref.read(installedAppsRevisionProvider.notifier).bump(),
-                  child: const Text('重试'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: SearchField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                  ),
                 ),
-              ),
-            )
-          else
-            generateSection(
-              title: '应用（${visible.length}）',
-              items: [
-                for (final item in visible)
-                  AppRuleAppRow(
-                    app: item,
-                    domainCount: draft.domainsOf(item.packageName).length,
-                    onTap: () => setState(() => _selected = item.packageName),
+                if (snapshot.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CommonCircleLoading()),
+                  )
+                else if (snapshot.value?.error != null)
+                  EmptyStateBox(
+                    minHeight: 280,
+                    child: NullStatus(
+                      label: '读不到应用列表',
+                      description: snapshot.value!.error,
+                      illustration: NullStatusIllustration.apps,
+                      action: TextButton(
+                        onPressed: () => ref
+                            .read(installedAppsRevisionProvider.notifier)
+                            .bump(),
+                        child: const Text('重试'),
+                      ),
+                    ),
                   ),
               ],
+            ),
+          ),
+          if (!snapshot.isLoading && snapshot.value?.error == null)
+            ...appListSlivers(
+              title: '应用（${visible.length}）',
+              itemCount: visible.length,
               footer: visible.isEmpty
                   ? (apps.isEmpty ? '设备上没有可配置的应用' : '未找到匹配应用')
                   : null,
+              itemBuilder: (context, index) {
+                final item = visible[index];
+                return AppRuleAppRow(
+                  app: item,
+                  domainCount: draft.domainsOf(item.packageName).length,
+                  onTap: () => setState(() => _selected = item.packageName),
+                );
+              },
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: TonalButton(
-              label: '保存',
-              onPressed: draft.dirty ? _save : null,
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: TonalButton(
+                    label: '保存',
+                    onPressed: draft.dirty ? _save : null,
+                  ),
+                ),
+                ListFooter(
+                  text: apps.isEmpty
+                      ? '未读取到任何已安装应用，无法配置应用独立规则。'
+                      : '保存后写入 app_allowlist_enabled 与 '
+                            'app_allowlist_rules_json，启动 DNS VPN 时下发给引擎。',
+                ),
+              ],
             ),
-          ),
-          ListFooter(
-            text: apps.isEmpty
-                ? '未读取到任何已安装应用，无法配置应用独立规则。'
-                : '保存后写入 app_allowlist_enabled 与 app_allowlist_rules_json，'
-                      '启动 DNS VPN 时下发给引擎。',
           ),
         ],
       ),

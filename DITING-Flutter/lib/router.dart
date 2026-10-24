@@ -12,6 +12,7 @@ import 'package:diting/pages/system/unknown_route_page.dart';
 import 'package:diting/pages/tools/tools_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/routes/routes.dart';
+import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/shell/app_shell.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter/widgets.dart';
@@ -212,6 +213,7 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
       ...observabilityRoutes(),
       ...configRoutes(),
       ...systemRoutes(),
+      ...standaloneRoutes(),
     ],
     // Without this, unmatched routes render a blank page instead of failing, so a missing
     // registration goes unnoticed. `UnknownRoutePage` shows "page not found".

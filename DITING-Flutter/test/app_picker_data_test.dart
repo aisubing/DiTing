@@ -391,6 +391,10 @@ class _FakeAppsSource implements InstalledAppsSource {
 
   @override
   Future<bool> isSelf(String packageName) async => false;
+
+  @override
+  Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages) async =>
+      const {};
 }
 
 class _FailingAppsSource implements InstalledAppsSource {
@@ -404,5 +408,9 @@ class _FailingAppsSource implements InstalledAppsSource {
 
   @override
   Future<bool> isSelf(String packageName) async =>
+      throw MissingPluginException('模拟宿主没有 apps 通道');
+
+  @override
+  Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages) async =>
       throw MissingPluginException('模拟宿主没有 apps 通道');
 }

@@ -191,7 +191,10 @@ void main() {
       expect(tester.takeException(), isNull);
 
       expect(find.text('浏览器'), findsOneWidget);
-      expect(find.text('com.example.ads'), findsWidgets);
+      // The ranking is a lazily built sliver, so the second row only exists after a scroll.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -400));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('com.example.ads'), findsWidgets);
       expect(find.text('实时速率'), findsOneWidget);
       expect(find.text('—'), findsWidgets);
       expect(find.textContaining('会话曲线'), findsNothing);

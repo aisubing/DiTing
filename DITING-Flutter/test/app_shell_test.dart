@@ -180,20 +180,22 @@ void main() {
     });
 
     // Regression: hub entries pointing at other tabs' roots clone the shell
-    testWidgets('功能中心里指向其它 tab 的卡片切 tab 而不是叠页', (tester) async {
+    // Entering a tab page from the feature hub opens it standalone: no dock, and a way back.
+    testWidgets('功能中心里指向其它 tab 的卡片以全屏页打开并给出返回键', (tester) async {
       await pumpApp(tester, initialLocation: Routes.hub, dock: userDock);
-      final shellsBefore = find.byType(Scaffold).evaluate().length;
       final card = find.text('应用流量统计');
       await tester.drag(find.byType(Scrollable).first, const Offset(0, -420));
       await tester.pumpAndSettle();
       await tester.tap(card);
       await tester.pumpAndSettle();
       expect(find.byType(TrafficPage), findsOneWidget);
-      expect(find.byType(Scaffold).evaluate().length, shellsBefore);
-      expect(find.byType(BackButton), findsNothing);
-      await tester.tap(find.text('首页').last);
+      expect(find.byType(NavigationDock), findsNothing);
+      expect(find.byType(BackButton), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
-      expect(find.text('谛听 · 普通'), findsOneWidget);
+      expect(find.byType(NavigationDock), findsOneWidget);
+      expect(find.byType(TrafficPage), findsNothing);
+      expect(find.text('功能中心'), findsWidgets);
     });
 
     testWidgets('首页网络速度卡进入流量统计后可切回其它 tab', (tester) async {

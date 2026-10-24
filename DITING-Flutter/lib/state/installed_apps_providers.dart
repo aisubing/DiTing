@@ -2,6 +2,7 @@
 /// never a throw.
 library;
 
+
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -59,6 +60,27 @@ final installedAppsProvider = FutureProvider<InstalledAppsSnapshot>((
 /// Convenience for pages that only need the list (null while loading).
 final installedAppListProvider = Provider<List<InstalledApp>?>((ref) {
   return ref.watch(installedAppsProvider).value?.apps;
+});
+
+/// Package name to encoded launcher icon, fetched once per inventory revision so list rows can
+/// look icons up synchronously while scrolling. A missing entry renders as a placeholder glyph.
+final appIconsProvider = FutureProvider<Map<String, Uint8List>>((ref) async {
+  final apps = ref.watch(installedAppsProvider).value?.apps ?? const [];
+  if (apps.isEmpty) return const {};
+  final source = ref.watch(installedAppsSourceProvider);
+  try {
+    return await source.loadIcons([for (final app in apps) app.packageName]);
+  } on MissingPluginException {
+    return const {};
+  } on PlatformException {
+    return const {};
+  }
+});
+
+/// The icon map if it has already loaded; pages call this from a `select` so a row rebuild never
+/// awaits the channel.
+final appIconsOrEmptyProvider = Provider<Map<String, Uint8List>>((ref) {
+  return ref.watch(appIconsProvider).value ?? const {};
 });
 
 /// Resolves package names to engine UIDs; uninstalled packages are absent rather than -1, so

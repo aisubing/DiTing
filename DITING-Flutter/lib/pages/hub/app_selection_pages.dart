@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
-import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -24,6 +27,16 @@ class BlockedAppsPage extends ConsumerWidget {
       icon: AppGlyphs.wifiOff,
       selected: settings.blockedAppPackages,
       enabled: settings.blockedAppsEnabled,
+      filter: AppListFilter.fromStorageValue(settings.blockedAppsFilterRaw),
+      sort: AppListSort.fromStorageValue(settings.blockedAppsSortRaw),
+      onFilterChanged: (value) {
+        settings.setBlockedAppsFilterRaw(value.storageValue);
+        ref.read(legacySettingsRevisionProvider.notifier).bump();
+      },
+      onSortChanged: (value) {
+        settings.setBlockedAppsSortRaw(value.storageValue);
+        ref.read(legacySettingsRevisionProvider.notifier).bump();
+      },
       onSave: (packages, enabled) => _saveBlocked(ref, packages, enabled),
     );
   }
@@ -55,6 +68,16 @@ class ExcludedAppsPage extends ConsumerWidget {
       selected: settings.excludedPackages,
       enabled: true,
       showToggle: false,
+      filter: AppListFilter.fromStorageValue(settings.excludedAppsFilterRaw),
+      sort: AppListSort.fromStorageValue(settings.excludedAppsSortRaw),
+      onFilterChanged: (value) {
+        settings.setExcludedAppsFilterRaw(value.storageValue);
+        ref.read(legacySettingsRevisionProvider.notifier).bump();
+      },
+      onSortChanged: (value) {
+        settings.setExcludedAppsSortRaw(value.storageValue);
+        ref.read(legacySettingsRevisionProvider.notifier).bump();
+      },
       onSave: (packages, _) {
         settings.setExcludedPackages(packages);
         _dropOverlaps(settings, packages, _Owner.excluded);
@@ -114,6 +137,10 @@ class _AppSelectionScaffold extends ConsumerStatefulWidget {
     required this.selected,
     required this.enabled,
     required this.onSave,
+    required this.filter,
+    required this.sort,
+    required this.onFilterChanged,
+    required this.onSortChanged,
     this.enableToggleTitle,
     this.enableToggleEmptyHint,
     this.showToggle = true,
@@ -131,6 +158,13 @@ class _AppSelectionScaffold extends ConsumerStatefulWidget {
   final String? enableToggleEmptyHint;
   final void Function(Set<String> packages, bool enabled) onSave;
 
+  /// Filter and sort come from the page's own legacy preference keys, so the menu shows the same
+  /// choice the stored list had on the next open.
+  final AppListFilter filter;
+  final AppListSort sort;
+  final ValueChanged<AppListFilter> onFilterChanged;
+  final ValueChanged<AppListSort> onSortChanged;
+
   @override
   ConsumerState<_AppSelectionScaffold> createState() =>
       _AppSelectionScaffoldState();
@@ -145,10 +179,22 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
   late bool _enabled = widget.enabled;
   String _query = '';
 
+  /// Same 250 ms debounce as 1.4.3 `AppPickerScreen`, so typing does not re-filter several hundred
+  /// apps on every keystroke.
+  Timer? _debounce;
+
   @override
   void dispose() {
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _query = value);
+    });
   }
 
   /// Prefs are the only source of truth: a changed stored value discards the local draft,
@@ -192,122 +238,156 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
     _sync(widget.selected);
     final snapshot = ref.watch(installedAppsProvider);
     final apps = snapshot.value?.apps ?? const <InstalledApp>[];
-    // Both pages default to user apps, but sorting and filtering live on `/apps`, so only
-    // search is offered here.
+    // Filter and sort come from the page's own legacy preference keys, so the choice survives a
+    // restart exactly as the 1.4.3 screens did.
     final visible = visibleInstalledApps(
       apps: apps,
       query: _query,
-      filter: AppListFilter.all,
-      sort: AppListSort.labelAsc,
+      filter: widget.filter,
+      sort: widget.sort,
       selected: _selected,
     );
     final dirty = _enabled != widget.enabled || !_sameSet(_selected, _initial);
     return CommonScaffold(
       title: widget.title,
-      body: PageBody(
-        children: [
-          if (widget.showToggle && widget.enableToggleTitle != null)
-            generateSection(
-              title: '开关',
-              items: [
-                ListItem.toggle(
-                  leading: const GlyphIcon(AppGlyphs.wifiOff),
-                  title: Text(widget.enableToggleTitle!),
-                  subtitle: Text(
-                    _selected.isEmpty
-                        ? (widget.enableToggleEmptyHint ?? '尚未选择应用')
-                        : '已选择 ${_selected.length} 个应用',
+      menuItems: appListMenuItems(
+        filter: widget.filter,
+        sort: widget.sort,
+        onFilterChanged: widget.onFilterChanged,
+        onSortChanged: widget.onSortChanged,
+        onSelectAll: () => _selectAll(visible),
+        onClear: () => setState(() => _selected = <String>{}),
+        onInvert: () => _invert(visible),
+      ),
+      body: AppListScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                if (widget.showToggle && widget.enableToggleTitle != null)
+                  generateSection(
+                    title: '开关',
+                    items: [
+                      ListItem.toggle(
+                        leading: const GlyphIcon(AppGlyphs.wifiOff),
+                        title: Text(widget.enableToggleTitle!),
+                        subtitle: Text(
+                          _selected.isEmpty
+                              ? (widget.enableToggleEmptyHint ?? '尚未选择应用')
+                              : '已选择 ${_selected.length} 个应用',
+                        ),
+                        value: _enabled,
+                        onChanged: (value) => setState(() => _enabled = value),
+                      ),
+                    ],
                   ),
-                  value: _enabled,
-                  onChanged: (value) => setState(() => _enabled = value),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: CommonCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(widget.info, style: context.listSubtitleStyle),
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: SearchField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                  ),
+                ),
+                if (snapshot.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CommonCircleLoading()),
+                  )
+                else if (snapshot.value?.error case final error?)
+                  // The error text has no fixed length, so a hard-coded 260 clips the
+                  // description and puts the save button on top of it.
+                  EmptyStateBox(
+                    minHeight: 260,
+                    child: NullStatus(
+                      label: '读不到应用列表',
+                      description: error,
+                      illustration: NullStatusIllustration.apps,
+                      action: TextButton(
+                        onPressed: () => ref
+                            .read(installedAppsRevisionProvider.notifier)
+                            .bump(),
+                        child: const Text('重试'),
+                      ),
+                    ),
+                  ),
               ],
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(widget.info, style: context.listSubtitleStyle),
-            ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SearchField(
-              controller: _search,
-              onChanged: (value) => setState(() => _query = value),
-            ),
-          ),
-          if (snapshot.isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 48),
-              child: Center(child: CommonCircleLoading()),
-            )
-          else if (snapshot.value?.error case final error?)
-            // The error text has no fixed length, so a hard-coded 260 clips the description
-            // and puts the save button on top of it.
-            EmptyStateBox(
-              minHeight: 260,
-              child: NullStatus(
-                label: '读不到应用列表',
-                description: error,
-                illustration: NullStatusIllustration.apps,
-                action: TextButton(
-                  onPressed: () =>
-                      ref.read(installedAppsRevisionProvider.notifier).bump(),
-                  child: const Text('重试'),
-                ),
-              ),
-            )
-          else
-            generateSection(
+          if (!snapshot.isLoading && snapshot.value?.error == null)
+            ...appListSlivers(
               title: '${widget.selectionTitle}（${_selected.length}）',
-              items: [
-                for (final app in visible)
-                  ListItem(
-                    leading: GlyphIcon(
-                      _selected.contains(app.packageName)
-                          ? AppGlyphs.checkCircle
-                          : AppGlyphs.appsList,
-                      size: 20,
-                      color: _selected.contains(app.packageName)
-                          ? context.colorScheme.primary
-                          : null,
-                    ),
-                    title: Text(
-                      app.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      app.packageName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: CommonCheckBox(
-                      value: _selected.contains(app.packageName),
-                      isCircle: true,
-                      onChanged: (_) => _toggle(app.packageName),
-                    ),
-                    onTap: () => _toggle(app.packageName),
-                  ),
-              ],
+              itemCount: visible.length,
               footer: visible.isEmpty
                   ? (apps.isEmpty ? '设备上没有可选的应用' : '未找到匹配应用')
                   : null,
+              itemBuilder: (context, index) {
+                final app = visible[index];
+                return ListItem(
+                  leading: AppIconAvatar(packageName: app.packageName),
+                  title: Text(
+                    app.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    app.packageName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: CommonCheckBox(
+                    value: _selected.contains(app.packageName),
+                    isCircle: true,
+                    onChanged: (_) => _toggle(app.packageName),
+                  ),
+                  onTap: () => _toggle(app.packageName),
+                );
+              },
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: TonalButton(label: '保存', onPressed: dirty ? _save : null),
-          ),
-          ListFooter(
-            text: apps.isEmpty
-                ? '未读取到任何已安装应用；此处的勾选保存后不会命中任何应用。'
-                : '勾选会同时取消该应用在「排除应用」「禁止联网」「HTTPS 检查」'
-                      '与应用独立规则里的选择。',
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: TonalButton(
+                    label: '保存',
+                    onPressed: dirty ? _save : null,
+                  ),
+                ),
+                ListFooter(
+                  text: apps.isEmpty
+                      ? '未读取到任何已安装应用；此处的勾选保存后不会命中任何应用。'
+                      : '勾选会同时取消该应用在「排除应用」「禁止联网」「HTTPS 检查」'
+                            '与应用独立规则里的选择。',
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  void _selectAll(List<InstalledApp> visible) {
+    setState(() {
+      _selected = {..._selected, for (final app in visible) app.packageName};
+    });
+  }
+
+  void _invert(List<InstalledApp> visible) {
+    setState(() {
+      final next = {..._selected};
+      for (final app in visible) {
+        if (!next.remove(app.packageName)) next.add(app.packageName);
+      }
+      _selected = next;
+    });
   }
 
   static bool _sameSet(Set<String> a, Set<String> b) =>

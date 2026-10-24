@@ -6,6 +6,7 @@ import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_icon_avatar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -163,11 +164,7 @@ class AppRuleAppRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final configured = domainCount > 0;
     return ListItem(
-      leading: GlyphIcon(
-        configured ? AppGlyphs.checkCircle : AppGlyphs.appsList,
-        size: 20,
-        color: configured ? context.colorScheme.primary : null,
-      ),
+      leading: AppIconAvatar(packageName: app.packageName),
       title: Text(app.label, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
         '${app.packageName} · $domainCount 个放行域名',
@@ -175,7 +172,17 @@ class AppRuleAppRow extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: AppTextStyle.footnote.of(context),
       ),
-      trailing: app.isSystem ? const MetaChip(label: '系统') : null,
+      // The real icon replaced the old "configured" tick, so the state moves to a chip.
+      trailing: (configured || app.isSystem)
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 6,
+              children: [
+                if (configured) const MetaChip(label: '已配置'),
+                if (app.isSystem) const MetaChip(label: '系统'),
+              ],
+            )
+          : null,
       onTap: onTap,
     );
   }
