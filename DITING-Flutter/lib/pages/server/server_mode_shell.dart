@@ -51,14 +51,12 @@ class _ServerModeShellState extends State<ServerModeShell> {
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: EdgeInsets.zero,
-        child: NavigationDock(
-          destinations: _destinations,
-          selectedIndex: _index,
-          onSelected: _select,
-        ),
+      // No `SafeArea`, for the same reason as the main shell: the dock folds the system bottom
+      // inset into its own margin, and padding it here would eat the reserved content gap.
+      bottomNavigationBar: NavigationDock(
+        destinations: _destinations,
+        selectedIndex: _index,
+        onSelected: _select,
       ),
     );
   }

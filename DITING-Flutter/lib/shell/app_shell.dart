@@ -126,15 +126,14 @@ class _Dock extends StatelessWidget {
         onSelected: onSelected,
       );
     }
-    return SafeArea(
-      top: false,
-      // The dock applies its own bottom inset; do not add another layer here.
-      minimum: EdgeInsets.zero,
-      child: NavigationDock(
-        destinations: items,
-        selectedIndex: selectedIndex,
-        onSelected: onSelected,
-      ),
+    // No `SafeArea`: the dock already folds the system bottom inset into its own bottom margin
+    // (`NavigationDock._bottomMarginOf`), so wrapping it would pad that inset a second time. The
+    // bar would then sit one inset higher while `insetOf` still reserves bar + margin + gap, and
+    // the reserved gap would be spent on the padding: content would rest against the glass.
+    return NavigationDock(
+      destinations: items,
+      selectedIndex: selectedIndex,
+      onSelected: onSelected,
     );
   }
 }
@@ -240,15 +239,16 @@ class _FallbackBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
-  /// Room the plain bar takes below content: its own height plus the same clearance the floating
-  /// dock leaves above itself. `NavigationBar` sits flush against the edge inside its own
-  /// `SafeArea`, so there is no floating margin to add here.
+  /// Room the plain bar takes below content: its own height plus the system bottom inset plus the
+  /// clearance the floating dock leaves above itself. `NavigationBar` sits flush against the edge
+  /// inside its own `SafeArea`, so it pads the gesture inset itself and the reserve has to include
+  /// that inset; otherwise the bar eats the clearance and content rests against it.
   static double insetOf(BuildContext context) {
     final height =
         Theme.of(context).navigationBarTheme.height ??
         const NavigationBarThemeData().height ??
         80;
-    return height + dockContentGap;
+    return height + MediaQuery.paddingOf(context).bottom + dockContentGap;
   }
 
   @override

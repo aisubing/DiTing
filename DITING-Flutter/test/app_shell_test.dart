@@ -98,6 +98,50 @@ void main() {
     expect(tester.getRect(list).bottom, screenHeight);
   });
 
+  testWidgets('系统手势区不会让浮条多让一次位', (tester) async {
+    // A 48px (16dp) gesture inset: the dock folds it into its own margin, so an extra `SafeArea`
+    // would lift the bar by another inset and spend the reserved gap on that padding instead,
+    // leaving content resting against the glass.
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+    await pumpApp(tester, initialLocation: Routes.settings);
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final dock = find.byType(NavigationDock);
+    final inset = NavigationDock.insetOf(tester.element(dock));
+    // Hugs the edge, and the glass sits exactly `inset` minus the gap above the bottom margin
+    expect(tester.getRect(dock).bottom, screenHeight);
+    expect(
+      tester.getRect(find.byType(FloatingNavigationBar)).top,
+      screenHeight - (inset - dockContentGap),
+    );
+  });
+
+  testWidgets('备用底栏的自带 SafeArea 不会吃掉预留间隙', (tester) async {
+    // Five items force the plain `NavigationBar`, whose own `SafeArea` pads the gesture inset.
+    // The reserve must count that inset too, otherwise the bar swallows the clearance above it.
+    tester.view.padding = const FakeViewPadding(bottom: 48);
+    tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+    await pumpApp(
+      tester,
+      initialLocation: Routes.settings,
+      dock: const [
+        BottomBarDestination.home,
+        BottomBarDestination.featureHub,
+        BottomBarDestination.logDashboard,
+        BottomBarDestination.appTraffic,
+        BottomBarDestination.settings,
+      ],
+    );
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(find.byType(NavigationBar), findsOneWidget);
+    final reserve = DockInsetScope.of(tester.element(find.byType(PageBody).first));
+    final barTop = tester.getRect(find.byType(NavigationBar)).top;
+    // Bottom of the reserved band minus the bar top is the clearance content gets
+    expect(barTop - (screenHeight - reserve), moreOrLessEquals(dockContentGap));
+  });
+
   testWidgets('订阅页读真实表：无旧库时是空状态而不是 mock 订阅', (tester) async {
     await pumpApp(tester, initialLocation: Routes.subscriptions);
     // No 1.4.3 database on the test host, so the page renders its empty state
