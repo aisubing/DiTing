@@ -16,9 +16,13 @@ import 'package:diting/state/diagnostics_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/network_tools_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+/// Opt-in startup tracing: `--dart-define=DITING_STARTUP_TRACE=true` turns the
+/// `startup <stage> +Nms` lines on, so ADB (`adb logcat -s flutter`) can time the pre-frame work in a release
+/// build. Off by default, so the strings and the Stopwatch are tree-shaken away.
+const _startupTrace = bool.fromEnvironment('DITING_STARTUP_TRACE');
 
 /// App entry point, the only `runApp`. Legacy settings and rules load before the first
 /// frame so providers see stored values instead of flashing defaults. Native channels are
@@ -29,7 +33,7 @@ Future<void> main() async {
   final watch = Stopwatch()..start();
   var last = 0;
   void stage(String label) {
-    if (!kDebugMode) return;
+    if (!_startupTrace) return;
     debugPrint('startup $label +${watch.elapsedMilliseconds - last}ms');
     last = watch.elapsedMilliseconds;
   }
