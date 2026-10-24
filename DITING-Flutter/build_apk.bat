@@ -32,16 +32,18 @@ echo             DITING Flutter APK Build and Install Tool
 echo ================================================================
 echo.
 echo   [1] Debug                (Development build, fast, Release key)
-echo   [2] Release              (Release build, R8, arm64-only, Release key)
+echo   [2] Release              (Release build, R8, arm64-only, Release key)  <- default
 echo   [3] Debug (Flutter Key)  (Debug build, debug key)
 echo   [4] Split per ABI        (Release, one APK per ABI, smaller)
 echo   [5] Clean                (flutter clean + gradlew clean)
 echo   [0] Exit
 echo.
 set "BUILD_CHOICE="
-set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 1): "
+set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 2): "
 
-if "%BUILD_CHOICE%"=="" set "BUILD_CHOICE=1"
+:: Default is Release: a debug APK starts in ~1.5 s because of JIT, while the release build
+:: starts in ~0.3 s. Installing the debug build by accident makes the app look slow to launch.
+if "%BUILD_CHOICE%"=="" set "BUILD_CHOICE=2"
 if "%BUILD_CHOICE%"=="1" goto SET_DEBUG_RELEASEKEY
 if /i "%BUILD_CHOICE%"=="d" goto SET_DEBUG_RELEASEKEY
 if "%BUILD_CHOICE%"=="2" goto SET_RELEASE
