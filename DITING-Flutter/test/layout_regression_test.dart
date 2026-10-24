@@ -1,4 +1,5 @@
 import 'package:diting/app/app.dart';
+import 'package:diting/pages/system/unknown_route_page.dart';
 import 'package:diting/router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,11 +59,7 @@ void main() {
     testWidgets('所有路由在 $sizeLabel 尺寸下无溢出', (tester) async {
       for (final route in routes) {
         await pumpAt(tester, route: route, size: size);
-        expect(
-          tester.takeException(),
-          isNull,
-          reason: '$route 在 $sizeLabel (${size.width}x${size.height}) 布局异常',
-        );
+        expectNoLayoutFailure(tester, '$route 在 $sizeLabel (${size.width}x${size.height})');
       }
     });
   }
@@ -74,11 +71,17 @@ void main() {
 
     for (final route in routes) {
       await pumpAt(tester, route: route, size: const Size(320, 568));
-      expect(
-        tester.takeException(),
-        isNull,
-        reason: '$route 在 320 宽 + 1.4 倍字号下布局异常',
-      );
+      expectNoLayoutFailure(tester, '$route 在 320 宽 + 1.4 倍字号下');
     }
   });
+}
+
+/// One pump must neither throw nor fall through to the unregistered-route fallback page.
+void expectNoLayoutFailure(WidgetTester tester, String context) {
+  expect(tester.takeException(), isNull, reason: '$context 布局异常');
+  expect(
+    find.byType(UnknownRoutePage),
+    findsNothing,
+    reason: '$context 路由未注册，落到了兜底页',
+  );
 }

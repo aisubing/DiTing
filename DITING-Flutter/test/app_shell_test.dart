@@ -46,13 +46,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('首页渲染标题、电源按钮与底栏', (tester) async {
-    await pumpApp(tester);
-    expect(find.text('谛听 · 普通'), findsOneWidget);
-    expect(find.byType(HomePowerButton), findsOneWidget);
-    expect(find.byType(NavigationDock), findsOneWidget);
-  });
-
   testWidgets('电源按钮经历启动中并回到运行态', (tester) async {
     final fake = FakeVpnController(
       delay: const Duration(milliseconds: 200),

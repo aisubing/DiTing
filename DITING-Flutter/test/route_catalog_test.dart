@@ -9,8 +9,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'support/test_hooks.dart';
 
-/// Guards route coverage: every hub card points at a registered route and every route builds.
-/// `GoRouter` renders `errorBuilder` instead of throwing, so each case asserts the fallback
+/// Guards that every hub card points at a registered route; per-route layout and fallback are
+/// covered by `layout_regression_test.dart`, which pumps the same catalogue at three sizes
 void main() {
   installGlobalTestHooks();
 
@@ -50,22 +50,6 @@ void main() {
       for (final route in routes) {
         await pumpAt(tester, route);
         expectReached(tester, route, '功能中心卡片');
-      }
-    });
-  });
-
-  group('领域路由可达', () {
-    testWidgets('全部一级领域页都能构建', (tester) async {
-      for (final entry in topLevelRoutes.entries) {
-        await pumpAt(tester, entry.value);
-        expectReached(tester, entry.value, entry.key);
-      }
-    });
-
-    testWidgets('带参数的二级页都能构建', (tester) async {
-      for (final entry in idRoutes.entries) {
-        await pumpAt(tester, entry.value);
-        expectReached(tester, entry.value, entry.key);
       }
     });
   });

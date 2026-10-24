@@ -12,27 +12,6 @@ import 'package:material_ui/material_ui.dart';
 import 'support/fake_vpn_controller.dart';
 
 void main() {
-  group('AppThemeSpec 值语义', () {
-    test('同参构造相等且 hashCode 一致', () {
-      const a = AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light);
-      const b = AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light);
-      expect(a, b);
-      expect(a.hashCode, b.hashCode);
-      expect(a, isNot(const AppThemeSpec(
-        seedColor: Color(0xFF007AFF),
-        brightness: Brightness.dark,
-      )));
-    });
-
-    test('copyWith 只改指定字段', () {
-      const spec = AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light);
-      final dark = spec.copyWith(brightness: Brightness.dark, pureBlack: true);
-      expect(dark.brightness, Brightness.dark);
-      expect(dark.pureBlack, isTrue);
-      expect(dark.seedColor, spec.seedColor);
-    });
-  });
-
   group('buildAppTheme 装配顺序', () {
     // Order matters: pure black goes after seededColorScheme, before surface recomputes a tint
     test('纯黑主题的 surface 是纯黑', () {

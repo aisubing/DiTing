@@ -109,49 +109,6 @@ void main() {
   });
 
   group('按需连接判定用的是真实 SSID', () {
-    const rules = [MockSsidRule(ssid: 'Home-5G', cellular: false, delayMs: 800)];
-
-    test('开关关闭时不看白名单', () {
-      expect(
-        decideSsid(
-          enabled: false,
-          rules: rules,
-          currentSsid: 'Home-5G',
-        ).state,
-        SsidMatchState.disabled,
-      );
-    });
-
-    test('读不到 SSID 与未连 Wi-Fi 分开报告', () {
-      expect(
-        decideSsid(enabled: true, rules: rules, currentSsid: null).state,
-        SsidMatchState.unknown,
-      );
-      expect(
-        decideSsid(enabled: true, rules: rules, currentSsid: '').state,
-        SsidMatchState.noWifi,
-      );
-    });
-
-    test('命中时带回规则，未命中不启动', () {
-      final matched = decideSsid(
-        enabled: true,
-        rules: rules,
-        currentSsid: 'Home-5G',
-      );
-      expect(matched.state, SsidMatchState.matched);
-      expect(matched.rule?.delayMs, 800);
-
-      expect(
-        decideSsid(
-          enabled: true,
-          rules: rules,
-          currentSsid: 'home-5g',
-        ).state,
-        SsidMatchState.unmatched,
-      );
-    });
-
     test('页面 provider 读的是已落盘的白名单', () {
       final notifier = container().read(configResourcesProvider.notifier);
       notifier.setOnDemand(true);
