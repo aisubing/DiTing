@@ -9,24 +9,6 @@ import 'package:flutter/services.dart';
 
 const legacyPrefsChannel = MethodChannel('com.haoze.diting/legacy_prefs');
 
-/// Loaded once at startup; keep in sync with the native `LegacyPrefsBridge.CONTAINERS` allowlist,
-/// or writes are accepted here and lost on the next cold start.
-const legacyPrefContainers = <String>[
-  'dns_vpn_prefs',
-  'diting_express_prefs',
-  'diting_dns_mode_prefs',
-  'express_vpn_prefs',
-  'diting_settings',
-  'permission_disclosures',
-  'mode_permission_preferences',
-  'notification_settings_prefs',
-  'diting_crash_state',
-  'network_tools_settings',
-  'recognition_members',
-  // Own container, no legacy counterpart: icon sets, UA, on-demand.
-  'diting_config_resources',
-];
-
 abstract class LegacyPrefsStore {
   Map<String, Object?> readAll(String container);
 
@@ -171,20 +153,21 @@ class MethodChannelLegacyPrefsStore implements LegacyPrefsStore {
 }
 
 /// Loads every legacy container once before the first frame; without the bridge the app starts with
-/// defaults.
+/// defaults. One `readAllAll` round trip replaces the twelve serial `readAll` calls that used to
+/// sit on the startup path.
 Future<LegacyPrefsStore> loadLegacyPrefsStore({
   MethodChannel channel = legacyPrefsChannel,
 }) async {
   final snapshot = <String, Map<String, Object?>>{};
   try {
-    for (final container in legacyPrefContainers) {
-      final values = await channel.invokeMethod<Map<Object?, Object?>>(
-        'readAll',
-        {'container': container},
-      );
-      snapshot[container] = {
-        for (final entry in (values ?? const {}).entries)
-          entry.key.toString(): entry.value,
+    final containers = await channel.invokeMethod<Map<Object?, Object?>>(
+      'readAllAll',
+    );
+    for (final entry in (containers ?? const {}).entries) {
+      final values = entry.value;
+      if (values is! Map) continue;
+      snapshot['${entry.key}'] = {
+        for (final value in values.entries) '${value.key}': value.value,
       };
     }
   } on MissingPluginException {

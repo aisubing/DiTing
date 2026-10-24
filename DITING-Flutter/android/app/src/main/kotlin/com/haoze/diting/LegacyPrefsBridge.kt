@@ -3,6 +3,8 @@ package com.haoze.diting
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -42,6 +44,12 @@ class LegacyPrefsBridge(private val context: Context) :
             result.success(versionInfo())
             return
         }
+        // Startup reads every container at once; twelve serial `readAll` calls paid a channel
+        // round trip each and parsed the XML files on the main thread.
+        if (call.method == "readAllAll") {
+            readAllAll(result)
+            return
+        }
         val container = call.argument<String>("container")
         if (container == null || container !in CONTAINERS) {
             result.error("invalid_container", "Unknown SharedPreferences container", container)
@@ -78,6 +86,20 @@ class LegacyPrefsBridge(private val context: Context) :
             "name" to (info.versionName ?: ""),
             "code" to code,
         )
+    }
+
+    /// Snapshot of every container, read off the main thread so the XML parses do not stall
+    /// the first frames; the reply hops back to the main looper, as the channel requires.
+    private fun readAllAll(result: MethodChannel.Result) {
+        val main = Handler(Looper.getMainLooper())
+        Thread {
+            val snapshot = HashMap<String, Map<String, Any?>>()
+            for (container in CONTAINERS) {
+                val prefs = context.getSharedPreferences(container, Context.MODE_PRIVATE)
+                snapshot[container] = readable(prefs.all)
+            }
+            main.post { result.success(snapshot) }
+        }.start()
     }
 
     private fun put(call: MethodCall, prefs: SharedPreferences, result: MethodChannel.Result) {

@@ -16,6 +16,7 @@ import 'package:diting/state/diagnostics_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/network_tools_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -25,12 +26,26 @@ import 'package:material_ui/material_ui.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   installDebugProbe();
-  final store = await loadLegacyPrefsStore();
+  final watch = Stopwatch()..start();
+  var last = 0;
+  void stage(String label) {
+    if (!kDebugMode) return;
+    debugPrint('startup $label +${watch.elapsedMilliseconds - last}ms');
+    last = watch.elapsedMilliseconds;
+  }
+
+  // The two loads share the wait; the rules bootstrap needs both results, so it stays last.
+  final storeTask = loadLegacyPrefsStore();
+  final versionTask = loadAppVersion();
+  final store = await storeTask;
+  stage('prefs');
   final settings = LegacySettings(store);
   // Single source of truth: `pubspec.yaml`. The value feeds preset seeding,
   // cleanup actions and page display.
-  final version = await loadAppVersion();
+  final version = await versionTask;
+  stage('version');
   final rules = await bootstrapRules(settings, versionCode: version.code);
+  stage('rules');
   runApp(
     ProviderScope(
       overrides: [
