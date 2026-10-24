@@ -15,6 +15,7 @@ window.App = {
       this.log('system', 'PyWebView API 桥接层已成功挂载。');
       LogoModule.refreshPreview();
       BuildModule.refreshToolchain();
+      VersionModule.refreshFlutterVersions();
       VersionModule.refreshVersions();
     });
 
@@ -46,6 +47,7 @@ window.App = {
     } else if (tabId === 'build') {
       BuildModule.refreshToolchain();
     } else if (tabId === 'version') {
+      VersionModule.refreshFlutterVersions();
       VersionModule.refreshVersions();
     }
   },
@@ -197,7 +199,15 @@ window.App = {
       window.pywebview.api.open_explorer('Desktop/build/bin');
     });
 
-    // Version
+    // Version - Flutter 客户端（常用）
+    document.getElementById('btn-flutter-refresh').addEventListener('click', () => VersionModule.refreshFlutterVersions());
+    document.getElementById('btn-flutter-sync').addEventListener('click', () => VersionModule.syncFlutterVersion());
+    const flutterBumpPatch = document.getElementById('btn-flutter-bump-patch');
+    if (flutterBumpPatch) flutterBumpPatch.addEventListener('click', () => VersionModule.bumpFlutterVersion('patch'));
+    const flutterBumpMinor = document.getElementById('btn-flutter-bump-minor');
+    if (flutterBumpMinor) flutterBumpMinor.addEventListener('click', () => VersionModule.bumpFlutterVersion('minor'));
+
+    // Version - 其他模块（折叠区）
     document.getElementById('btn-ver-refresh').addEventListener('click', () => VersionModule.refreshVersions());
     document.getElementById('btn-ver-sync').addEventListener('click', () => VersionModule.syncVersion());
     const bumpPatchBtn = document.getElementById('btn-ver-bump-patch');

@@ -53,7 +53,7 @@
 
 ### 🧰 维护工具箱
 - 基于 Python + PyWebView + WebView2，双击 `maintenance/run_maintenance.bat` 即可启动。
-- 六大工坊：DNS 诊断压测、代码规模扫描、品牌 Logo 导出、跨端构建打包、统一版本管理、界面自动截图。
+- 六大工坊：DNS 诊断压测、代码规模扫描、品牌 Logo 导出、跨端构建打包、版本号维护、界面自动截图。
 
 ---
 
@@ -218,11 +218,16 @@ python -m pip install -r maintenance/requirements.txt
 python maintenance/app.py
 ```
 
-也可直接双击 `maintenance/run_maintenance.bat`：脚本会检测缺失依赖并自动安装，异常退出时保留窗口以便查看报错。发布新版本时，用工具箱的「统一版本管理」，或执行：
+也可直接双击 `maintenance/run_maintenance.bat`：脚本会检测缺失依赖并自动安装，异常退出时保留窗口以便查看报错。
+
+版本号维护在工具箱的「版本号维护」页完成：Flutter 主力客户端（`DITING-Flutter/pubspec.yaml`）是常用入口；桌面端 / Wails / NSIS / 旧版 Android 的版本号维护已折叠归档，仅在需要时展开。命令行等价用法：
 
 ```cmd
-REM 同步到目标版本（示例）
-.\Desktop\set_version.bat 1.4.3
+REM 同步 Flutter 客户端版本（构建号自动按 major*10000+minor*100+patch 推导，只增不减）
+python maintenance/core/version_manager.py 2.0.2 -g flutter
+
+REM 同步桌面端等其余模块（示例）
+.\Desktop\set_version.bat 1.4.3 -g common -g legacy
 ```
 
 ---

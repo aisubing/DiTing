@@ -292,47 +292,104 @@ window.BuildModule = {
   }
 };
 
+// 版本号维护：Flutter 主力客户端独立维护，其余模块折叠归档。
+// groups 传 null 表示全部模块（仅刷新折叠区时使用 legacy+common）。
+const VERSION_COMMON_GROUPS = ['legacy', 'common'];
+
+function renderVersionRows(tbody, items) {
+  tbody.innerHTML = '';
+  items.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${item.name}</strong></td>
+      <td><span class="badge">${item.version}</span></td>
+      <td class="mono">${item.rel_path}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function pickLatestVersion(items) {
+  for (const item of items) {
+    const v = item.version;
+    if (v && v !== '未知' && v !== '文件不存在' && v !== '解析失败') return v;
+  }
+  return '';
+}
+
+function bumpSemver(base, type) {
+  const parts = base.split('.').map(x => parseInt(x) || 0);
+  while (parts.length < 3) parts.push(0);
+  if (type === 'patch') {
+    parts[2] += 1;
+  } else if (type === 'minor') {
+    parts[1] += 1;
+    parts[2] = 0;
+  }
+  return parts.join('.');
+}
+
 window.VersionModule = {
   latestDetectedVersion: '',
+  latestFlutterVersion: '',
 
+  // ---- Flutter 统一版本维护 ----
+  async refreshFlutterVersions() {
+    try {
+      const res = await window.pywebview.api.version_inspect(['flutter']);
+      if (!res.success) return;
+      const tbody = document.querySelector('#flutter-version-table tbody');
+      if (tbody) renderVersionRows(tbody, res.items);
+      const latest = pickLatestVersion(res.items);
+      if (latest) this.latestFlutterVersion = latest;
+    } catch (e) {
+      console.error(e);
+    }
+  },
+
+  bumpFlutterVersion(type) {
+    if (!this.latestFlutterVersion) {
+      App.toast('版本状态尚未加载，请先刷新当前版本', 'warn');
+      return;
+    }
+    const nextVer = bumpSemver(this.latestFlutterVersion, type);
+    const input = document.getElementById('flutter-version-input');
+    if (input) input.value = nextVer;
+    App.toast(`已推导 Flutter 目标版本号: v${nextVer}`, 'ok');
+  },
+
+  async syncFlutterVersion() {
+    const input = document.getElementById('flutter-version-input');
+    const ver = input ? input.value.trim() : '';
+    if (!ver) return App.toast('请输入目标新版本号 (例如 2.0.2)', 'warn');
+
+    const dryRun = document.getElementById('flutter-dry-run').checked;
+    const commit = document.getElementById('flutter-commit').checked;
+
+    App.setBusy(true, `正在同步 Flutter 版本至 v${ver}...`);
+    await window.pywebview.api.version_sync(ver, dryRun, false, commit, ['flutter']);
+  },
+
+  // ---- 其他模块（折叠区）版本维护 ----
   async refreshVersions() {
     try {
-      const res = await window.pywebview.api.version_inspect();
+      const res = await window.pywebview.api.version_inspect(VERSION_COMMON_GROUPS);
       if (!res.success) return;
       const tbody = document.querySelector('#version-table tbody');
-      tbody.innerHTML = '';
-      res.items.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${item.name}</strong></td>
-          <td><span class="badge">${item.version}</span></td>
-          <td class="mono">${item.rel_path}</td>
-        `;
-        tbody.appendChild(tr);
-        if (item.version && item.version !== '未知' && item.version !== '文件不存在') {
-          this.latestDetectedVersion = item.version;
-        }
-      });
+      if (tbody) renderVersionRows(tbody, res.items);
+      const latest = pickLatestVersion(res.items);
+      if (latest) this.latestDetectedVersion = latest;
     } catch (e) {
       console.error(e);
     }
   },
 
   bumpVersion(type) {
-    const base = this.latestDetectedVersion;
-    if (!base) {
+    if (!this.latestDetectedVersion) {
       App.toast('版本状态尚未加载，请先刷新当前版本状态', 'warn');
       return;
     }
-    const parts = base.split('.').map(x => parseInt(x) || 0);
-    while (parts.length < 3) parts.push(0);
-    if (type === 'patch') {
-      parts[2] += 1;
-    } else if (type === 'minor') {
-      parts[1] += 1;
-      parts[2] = 0;
-    }
-    const nextVer = parts.join('.');
+    const nextVer = bumpSemver(this.latestDetectedVersion, type);
     const input = document.getElementById('target-version-input');
     if (input) input.value = nextVer;
     App.toast(`已推导目标版本号: v${nextVer}`, 'ok');
@@ -346,18 +403,29 @@ window.VersionModule = {
     const verify = document.getElementById('ver-verify').checked;
     const commit = document.getElementById('ver-commit').checked;
 
-    App.setBusy(true, `正在同步各模块版本至 v${ver}...`);
-    await window.pywebview.api.version_sync(ver, dryRun, verify, commit);
+    App.setBusy(true, `正在同步其他模块版本至 v${ver}...`);
+    await window.pywebview.api.version_sync(ver, dryRun, verify, commit, VERSION_COMMON_GROUPS);
   },
 
+  // 统一回调：区分本次同步作用于哪些分组
   onSyncDone(payload) {
     App.setBusy(false);
-    this.refreshVersions();
+    const files = (payload.modified_files || []).join('/');
+    const isFlutterScope = files.includes('DITING-Flutter/');
+    if (isFlutterScope) {
+      this.refreshFlutterVersions();
+    } else {
+      this.refreshVersions();
+    }
     if (payload.success) {
       if (payload.target_version) {
-        this.latestDetectedVersion = payload.target_version;
-        const buildVerInput = document.getElementById('build-version');
-        if (buildVerInput) buildVerInput.value = payload.target_version;
+        if (isFlutterScope) {
+          this.latestFlutterVersion = payload.target_version;
+        } else {
+          this.latestDetectedVersion = payload.target_version;
+          const buildVerInput = document.getElementById('build-version');
+          if (buildVerInput) buildVerInput.value = payload.target_version;
+        }
       }
       App.toast(`版本号同步成功，影响文件数: ${payload.modified_files ? payload.modified_files.length : 0}`, 'ok');
     }

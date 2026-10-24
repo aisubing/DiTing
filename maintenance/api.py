@@ -10,7 +10,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Optional
+from typing import List, Optional
 
 from maintenance.core.build_manager import build_pipeline, check_toolchain, get_current_project_version
 from maintenance.core.dns_engine import execute_benchmark, execute_dns_query
@@ -128,16 +128,16 @@ class ApiBridge:
         return {"started": True}
 
     # === 5. 版本管理模块 ===
-    def version_inspect(self) -> dict:
+    def version_inspect(self, groups: Optional[List[str]] = None) -> dict:
         try:
-            items = inspect_versions()
+            items = inspect_versions(groups)
             return {"success": True, "items": items}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def version_sync(self, target_version: str, dry_run: bool, verify: bool, commit: bool):
+    def version_sync(self, target_version: str, dry_run: bool, verify: bool, commit: bool, groups: Optional[List[str]] = None):
         def _task(log_cb, is_cancelled):
-            res = sync_version(target_version=target_version, dry_run=dry_run, verify=verify, commit=commit, on_log=log_cb)
+            res = sync_version(target_version=target_version, dry_run=dry_run, verify=verify, commit=commit, on_log=log_cb, groups=groups)
             return res
 
         self.runner.run_async(_task, self._log, lambda res: self._emit("version_sync_done", res))

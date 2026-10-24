@@ -25,24 +25,39 @@ def get_root_dir() -> str:
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
-def get_file_targets() -> List[Dict[str, str]]:
+# 版本号分组：Flutter 主力工程独立维护（版本号与桌面端早已分叉），
+# 旧版 Android 与其他模块合并在折叠区里，平时不展开。
+GROUP_FLUTTER = "flutter"
+GROUP_LEGACY = "legacy"
+GROUP_COMMON = "common"
+ALL_GROUPS = (GROUP_FLUTTER, GROUP_LEGACY, GROUP_COMMON)
+
+
+def get_file_targets(groups: Optional[List[str]] = None) -> List[Dict[str, str]]:
+    """按分组返回待维护的文件清单；groups 为空表示全部。"""
     root = get_root_dir()
     desktop = os.path.join(root, "Desktop")
     frontend = os.path.join(desktop, "frontend")
     android = os.path.join(root, "DITING-Legacy")
-    return [
-        {"name": "桌面端主程序", "path": os.path.join(desktop, "main.go"), "type": "go"},
-        {"name": "Linux 端主程序", "path": os.path.join(desktop, "main_linux.go"), "type": "go"},
-        {"name": "Linux 构建脚本", "path": os.path.join(desktop, "build_linux.sh"), "type": "sh"},
-        {"name": "特权服务", "path": os.path.join(desktop, "cmd", "service", "main.go"), "type": "go"},
-        {"name": "NSIS 主配置", "path": os.path.join(desktop, "build", "windows", "installer", "project.nsi"), "type": "nsi"},
-        {"name": "NSIS 工具模板", "path": os.path.join(desktop, "build", "windows", "installer", "wails_tools.nsh"), "type": "nsi"},
-        {"name": "Wails 配置", "path": os.path.join(desktop, "wails.json"), "type": "wails"},
-        {"name": "前端 package.json", "path": os.path.join(frontend, "package.json"), "type": "pkg"},
-        {"name": "前端锁文件", "path": os.path.join(frontend, "package-lock.json"), "type": "pkg-lock"},
-        {"name": "旧版 Android 应用配置（DITING-Legacy）", "path": os.path.join(android, "app", "build.gradle.kts"), "type": "gradle"},
-        {"name": "README 版本示例", "path": os.path.join(root, "README.md"), "type": "readme"},
+    flutter = os.path.join(root, "DITING-Flutter")
+    targets = [
+        {"name": "桌面端主程序", "path": os.path.join(desktop, "main.go"), "type": "go", "group": GROUP_COMMON},
+        {"name": "Linux 端主程序", "path": os.path.join(desktop, "main_linux.go"), "type": "go", "group": GROUP_COMMON},
+        {"name": "Linux 构建脚本", "path": os.path.join(desktop, "build_linux.sh"), "type": "sh", "group": GROUP_COMMON},
+        {"name": "特权服务", "path": os.path.join(desktop, "cmd", "service", "main.go"), "type": "go", "group": GROUP_COMMON},
+        {"name": "NSIS 主配置", "path": os.path.join(desktop, "build", "windows", "installer", "project.nsi"), "type": "nsi", "group": GROUP_COMMON},
+        {"name": "NSIS 工具模板", "path": os.path.join(desktop, "build", "windows", "installer", "wails_tools.nsh"), "type": "nsi", "group": GROUP_COMMON},
+        {"name": "Wails 配置", "path": os.path.join(desktop, "wails.json"), "type": "wails", "group": GROUP_COMMON},
+        {"name": "前端 package.json", "path": os.path.join(frontend, "package.json"), "type": "pkg", "group": GROUP_COMMON},
+        {"name": "前端锁文件", "path": os.path.join(frontend, "package-lock.json"), "type": "pkg-lock", "group": GROUP_COMMON},
+        {"name": "Flutter 客户端版本（DITING-Flutter）", "path": os.path.join(flutter, "pubspec.yaml"), "type": "pubspec", "group": GROUP_FLUTTER},
+        {"name": "旧版 Android 应用配置（DITING-Legacy）", "path": os.path.join(android, "app", "build.gradle.kts"), "type": "gradle", "group": GROUP_LEGACY},
+        {"name": "README 版本示例", "path": os.path.join(root, "README.md"), "type": "readme", "group": GROUP_COMMON},
     ]
+    if not groups:
+        return targets
+    wanted = {g for g in groups if g}
+    return [t for t in targets if t["group"] in wanted]
 
 
 
@@ -122,6 +137,10 @@ def extract_version(item: Dict[str, str]) -> str:
     elif ftype == "gradle":
         m = re.search(r'(?m)^\s*val\s+appVersionName\s*=\s*"([^"]+)"', content)
         if m: return m.group(1)
+    elif ftype == "pubspec":
+        m = re.search(r'(?m)^version:\s*([^\s+#]+)(?:\+(\d+))?', content)
+        if m:
+            return m.group(1)
     elif ftype == "readme":
         m = re.search(r'set_version\.bat\s+(\d+\.\d+\.\d+)', content)
         if m: return m.group(1)
@@ -160,6 +179,18 @@ def replace_version_content(content: str, ftype: str, new_ver: str) -> Tuple[str
     elif ftype == "readme":
         new_content, n = re.subn(r'(set_version\.bat\s+)\d+\.\d+\.\d+', rf'\g<1>{new_ver}', content)
         if n > 0 and new_content != content: return new_content, True
+    elif ftype == "pubspec":
+        # pubspec.yaml 的 `version: <name>+<code>`：版本名跟随目标，构建号按
+        # major*10000 + minor*100 + patch 推导，且只增不减（避免被当作降级包）。
+        m = re.search(r'(?m)^(version:\s*)([^\s+#]+)(?:\+(\d+))?', content)
+        if m:
+            code = _android_version_code(new_ver)
+            old_code = int(m.group(3)) if m.group(3) else 0
+            final_code = max(code or 0, old_code)
+            suffix = f"+{final_code}" if final_code > 0 else ""
+            new_content = content[:m.start()] + f"{m.group(1)}{new_ver}{suffix}" + content[m.end():]
+            if new_content != content:
+                return new_content, True
     elif ftype == "sh":
         new_content, n = re.subn(r'(build_linux\.sh\s+-v\s+)\d+\.\d+\.\d+', rf'\g<1>{new_ver}', content)
         if n > 0 and new_content != content: return new_content, True
@@ -167,9 +198,9 @@ def replace_version_content(content: str, ftype: str, new_ver: str) -> Tuple[str
     return content, False
 
 
-def inspect_versions() -> List[Dict[str, str]]:
+def inspect_versions(groups: Optional[List[str]] = None) -> List[Dict[str, str]]:
     root = get_root_dir()
-    targets = get_file_targets()
+    targets = get_file_targets(groups)
     results = []
     for item in targets:
         ver = extract_version(item)
@@ -179,15 +210,20 @@ def inspect_versions() -> List[Dict[str, str]]:
             "path": item["path"],
             "rel_path": rel_path,
             "type": item["type"],
+            "group": item.get("group", GROUP_COMMON),
             "version": ver,
             "exists": os.path.exists(item["path"]),
         })
     return results
 
 
-def get_current_version() -> str:
+def get_current_version(groups: Optional[List[str]] = None) -> str:
     """动态读取并返回当前代码库核心配置中的最新有效版本号"""
-    targets = get_file_targets()
+    if groups is None:
+        # 默认只读桌面端/共用分组：Flutter 工程的版本号已独立演进，
+        # 混进来会让桌面端构建脚本取到错误的默认版本。
+        groups = [GROUP_COMMON, GROUP_LEGACY]
+    targets = get_file_targets(groups)
     for item in targets:
         ver = extract_version(item)
         if ver and ver not in ("未知", "文件不存在", "解析失败"):
@@ -201,13 +237,14 @@ def sync_version(
     verify: bool = False,
     commit: bool = False,
     on_log: Optional[Callable[[str, str], None]] = None,
+    groups: Optional[List[str]] = None,
 ) -> dict:
     target_ver = target_version.strip().lstrip("v")
     if not target_ver:
         return {"success": False, "message": "目标版本号不可为空"}
 
     root = get_root_dir()
-    targets = get_file_targets()
+    targets = get_file_targets(groups)
     modified_files = []
 
     def _log(lvl, msg):
@@ -216,7 +253,8 @@ def sync_version(
         else:
             print(f"[{lvl.upper()}] {msg}")
 
-    _log("info", f"开始同步版本号至: v{target_ver} (DryRun={dry_run})")
+    scope = "全部模块" if not groups else "、".join(groups)
+    _log("info", f"开始同步版本号至: v{target_ver}，范围: {scope} (DryRun={dry_run})")
 
     for item in targets:
         path = item["path"]
@@ -285,10 +323,17 @@ def main():
     parser.add_argument("-d", "--dry-run", action="store_true", help="试运行预览，不写入磁盘")
     parser.add_argument("-v", "--verify", action="store_true", help="同步后运行测试校验")
     parser.add_argument("-c", "--commit", action="store_true", help="同步后自动 Git 提交")
+    parser.add_argument(
+        "-g",
+        "--group",
+        action="append",
+        choices=list(ALL_GROUPS),
+        help="只处理指定分组（flutter / legacy / common），可重复；缺省为全部",
+    )
     args = parser.parse_args()
 
     if args.show or not args.version:
-        records = inspect_versions()
+        records = inspect_versions(args.group)
         print("=" * 64)
         print("  谛听 (DITING) 各模块版本号概览")
         print("=" * 64)
@@ -297,7 +342,13 @@ def main():
         print("=" * 64)
         sys.exit(0)
 
-    res = sync_version(args.version, dry_run=args.dry_run, verify=args.verify, commit=args.commit)
+    res = sync_version(
+        args.version,
+        dry_run=args.dry_run,
+        verify=args.verify,
+        commit=args.commit,
+        groups=args.group,
+    )
     sys.exit(0 if res["success"] else 1)
 
 
