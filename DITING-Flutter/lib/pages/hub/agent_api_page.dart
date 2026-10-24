@@ -1,7 +1,7 @@
 // ignore_for_file: sort_child_properties_last
-import 'package:diting/data/agent/agent_analysis.dart';
-import 'package:diting/pages/hub/agent_analysis_dialog.dart';
-import 'package:diting/state/agent_providers.dart';
+import 'package:diting/data/agent/agent_analysis_target.dart';
+import 'package:diting/pages/hub/agent_analysis_sheet.dart';
+import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -9,8 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// AI analysis settings (upstream `AgentApiSettingsScreen`). Both test entries send real
-/// requests from recent `dns_log`, HTTPS and traffic records.
+/// AI analysis settings (upstream `AgentApiSettingsScreen`). Reports are rendered by
+/// [AgentAnalysisSheet], which the log pages open directly; this page configures the provider and
+/// offers the two test entries.
 class AgentApiPage extends ConsumerWidget {
   const AgentApiPage({super.key});
 
@@ -20,6 +21,7 @@ class AgentApiPage extends ConsumerWidget {
     final notifier = ref.read(agentApiProvider.notifier);
     final provider = state.activeProvider;
     final colorScheme = context.colorScheme;
+    final ready = state.ready;
     return CommonScaffold(
       title: 'AI 分析',
       body: PageBody(
@@ -66,28 +68,39 @@ class AgentApiPage extends ConsumerWidget {
                       MetaChip(
                         label: provider?.hasKey == true ? '密钥已配置' : '缺少 API Key',
                       ),
-                      MetaChip(label: '温度 ${state.temperature.toStringAsFixed(1)}'),
+                      MetaChip(
+                        label: '温度 ${state.temperature.toStringAsFixed(1)}',
+                      ),
                       const MetaChip(label: '请求由你的厂商处理'),
                     ],
                   ),
+                  if (!ready)
+                    Text(
+                      state.enabled
+                          ? '补全厂商与密钥后，日志页就能直接发起分析。'
+                          : '开启后即可在日志页直接发起分析。',
+                      style: AppTextStyle.footnote.of(
+                        context,
+                      ).copyWith(color: colorScheme.onSurfaceVariant),
+                    ),
                 ],
               ),
             ),
           ),
           generateSection(
-            title: '详细设置',
+            title: '厂商与参数',
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.devices),
                 title: const Text('AI 厂商管理'),
                 subtitle: Text('${state.providers.length} 个已配置厂商 · 选择接口与模型'),
-                onTap: () => context.push('/hub/agent/providers'),
+                onTap: () => context.push(HubPaths.agentProviders),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.sliders),
                 title: const Text('参数与提示词'),
                 subtitle: const Text('系统提示词与采样温度'),
-                onTap: () => context.push('/hub/agent/params'),
+                onTap: () => context.push(HubPaths.agentParams),
               ),
             ],
           ),
@@ -98,9 +111,8 @@ class AgentApiPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.dns),
                 title: const Text('分析一个域名'),
                 subtitle: const Text('用示例域名真实调用模型，检查安全风险与处置建议'),
-                onTap: () => _run(
+                onTap: () => openAgentAnalysis(
                   context,
-                  ref,
                   const AgentDomainTarget('example-tracker.com'),
                 ),
               ),
@@ -109,12 +121,36 @@ class AgentApiPage extends ConsumerWidget {
                 title: const Text('分析最近流量'),
                 subtitle: const Text('汇总最近 DNS 与 HTTPS 记录后真实调用模型'),
                 onTap: () =>
-                    _run(context, ref, const AgentTrafficTarget()),
+                    openAgentAnalysis(context, const AgentTrafficTarget()),
               ),
             ],
-            footer: state.ready
+            footer: ready
                 ? '两项都会真实请求你配置的厂商并消耗额度。'
                 : '当前配置不完整（未启用或缺少 API Key），点击会提示先补配置。',
+          ),
+          generateSection(
+            title: '分析入口',
+            items: [
+              ListItem(
+                leading: const GlyphIcon(AppGlyphs.layers),
+                title: const Text('DNS 缓存表'),
+                subtitle: const Text('点按任意一行，分析该域名的安全风险'),
+                onTap: () => context.push('/logs/cache'),
+              ),
+              ListItem(
+                leading: const GlyphIcon(AppGlyphs.requests),
+                title: const Text('请求记录'),
+                subtitle: const Text('打开一条请求的详情，底部可分析该域名'),
+                onTap: () => context.push('/requests'),
+              ),
+              ListItem(
+                leading: const GlyphIcon(AppGlyphs.dashboard),
+                title: const Text('日志仪表盘'),
+                subtitle: const Text('「AI 研判」卡片可对最近流量发起整体分析'),
+                onTap: () => context.push('/logs'),
+              ),
+            ],
+            footer: '分析结果里的域名可以一键写入白名单或屏蔽规则，写入后启动 DNS VPN 生效。',
           ),
           generateSection(
             title: '重置设置',
@@ -140,20 +176,6 @@ class AgentApiPage extends ConsumerWidget {
           const SizedBox(height: 24),
         ],
       ),
-    );
-  }
-
-  Future<void> _run(
-    BuildContext context,
-    WidgetRef ref,
-    AgentAnalysisTarget target,
-  ) async {
-    final notifier = ref.read(agentAnalysisProvider.notifier);
-    notifier.clear();
-    final future = notifier.run(target);
-    await showFloatingDialog<void>(
-      context: context,
-      child: AgentAnalysisDialog(target: target, pending: future),
     );
   }
 

@@ -44,6 +44,38 @@ class AgentApiException implements Exception {
   String toString() => message;
 }
 
+/// Cancels one in-flight request by force-closing its socket. A model answer takes tens of seconds,
+/// so "stop waiting" has to interrupt the request rather than just ignore its result; streaming
+/// would be the other answer, but it rewrites the transport and every fake-server test for a purely
+/// cosmetic gain.
+class AgentCancelToken {
+  bool _cancelled = false;
+  void Function()? _onCancel;
+
+  bool get isCancelled => _cancelled;
+
+  /// Throws [AgentApiException] when the token was already cancelled, so callers cannot start a
+  /// request that is doomed from the start.
+  void throwIfCancelled() {
+    if (_cancelled) throw const AgentApiException('分析已取消');
+  }
+
+  void _register(void Function() onCancel) {
+    _onCancel = onCancel;
+    // Cancelled while the socket was being opened: honour it now.
+    if (_cancelled) onCancel();
+  }
+
+  void _unregister() => _onCancel = null;
+
+  void cancel() {
+    if (_cancelled) return;
+    _cancelled = true;
+    _onCancel?.call();
+    _onCancel = null;
+  }
+}
+
 class AgentChatConfig {
   const AgentChatConfig({
     required this.baseUrl,
@@ -179,6 +211,7 @@ class AgentApiClient {
     List<AgentChatMessage> messages, {
     double? temperatureOverride,
     Duration? timeout,
+    AgentCancelToken? cancelToken,
   }) async {
     if (!config.hasKey) {
       throw const AgentApiException('API Key 不能为空，请先在 AI 分析设置中配置');
@@ -195,6 +228,7 @@ class AgentApiClient {
       apiKey: config.apiKey,
       payload: payload,
       timeout: timeout ?? readTimeout,
+      cancelToken: cancelToken,
     );
     return _parseChat(body, fallbackModel: config.model);
   }
@@ -242,12 +276,17 @@ class AgentApiClient {
     required String apiKey,
     Map<String, Object?>? payload,
     required Duration timeout,
+    AgentCancelToken? cancelToken,
   }) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.hasScheme) {
       throw AgentApiException('接口地址不合法：$url');
     }
     final client = HttpClient()..connectionTimeout = connectTimeout;
+    cancelToken?.throwIfCancelled();
+    // Closing the client is the only way to abort a pending read; the awaits below then fail with
+    // a socket/HTTP error, which is mapped back to "cancelled" in the catch blocks.
+    cancelToken?._register(() => client.close(force: true));
     try {
       final request = await client.openUrl(method, uri).timeout(timeout);
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
@@ -280,17 +319,28 @@ class AgentApiClient {
       return body;
     } on AgentApiException {
       rethrow;
-    } on TimeoutException {
-      throw const AgentApiException('请求超时：模型服务在限定时间内没有响应');
-    } on SocketException catch (error) {
-      throw AgentApiException(
-        '无法连接模型服务（${error.osError?.message ?? error.message}）',
-      );
-    } on HandshakeException {
-      throw const AgentApiException('TLS 握手失败：服务端证书不可信或协议不匹配');
-    } on FormatException {
-      throw const AgentApiException('服务端响应不是合法 JSON');
+    } on Object catch (error) {
+      // A cancelled request surfaces as SocketException/HttpException from the closed client.
+      if (cancelToken?.isCancelled ?? false) {
+        throw const AgentApiException('分析已取消');
+      }
+      if (error is TimeoutException) {
+        throw const AgentApiException('请求超时：模型服务在限定时间内没有响应');
+      }
+      if (error is SocketException) {
+        throw AgentApiException(
+          '无法连接模型服务（${error.osError?.message ?? error.message}）',
+        );
+      }
+      if (error is HandshakeException) {
+        throw const AgentApiException('TLS 握手失败：服务端证书不可信或协议不匹配');
+      }
+      if (error is FormatException) {
+        throw const AgentApiException('服务端响应不是合法 JSON');
+      }
+      rethrow;
     } finally {
+      cancelToken?._unregister();
       client.close(force: true);
     }
   }

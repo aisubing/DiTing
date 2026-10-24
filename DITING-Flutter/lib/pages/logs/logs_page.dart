@@ -3,6 +3,7 @@ import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
+import 'package:diting/pages/logs/ai_insight_card.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
@@ -115,6 +116,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   List<Widget> _allMode(BuildContext context) => [
     TrafficMonitorCard(onDetail: () => openLocation(context, Routes.traffic)),
     const RequestOverviewCard(title: '请求概览'),
+    const AiInsightCard(),
     const LogTrafficStructureCard(mode: TrafficStructureMode.all),
     RecentRequestsLogCard(
       onDetail: () => context.push(ObservabilityPaths.requests),
@@ -129,6 +131,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// the upstream filtered view also omits.
   List<Widget> _filteredMode(BuildContext context) => [
     const FilteredHighlightCard(),
+    const AiInsightCard(),
     const LogTrafficStructureCard(mode: TrafficStructureMode.filtered),
     FilteredRecentLogCard(
       onDetail: () => context.push(ObservabilityPaths.requests),

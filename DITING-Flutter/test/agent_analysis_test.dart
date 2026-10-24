@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:diting/data/agent/agent_analysis.dart';
+import 'package:diting/data/agent/agent_prompts.dart';
+import 'package:diting/data/agent/agent_traffic_summary.dart';
 import 'package:diting/data/agent/agent_api_client.dart';
 import 'package:diting/data/agent/key_obfuscator.dart';
 import 'package:diting/data/db/dns_log_repository.dart';

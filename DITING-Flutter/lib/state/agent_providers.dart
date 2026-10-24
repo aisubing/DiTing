@@ -1,8 +1,10 @@
 /// AI analysis layer: client, model listing, connectivity test and the state machine for one run.
 library;
 
-import 'package:diting/data/agent/agent_analysis.dart';
+import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/agent/agent_api_client.dart';
+import 'package:diting/data/agent/agent_prompts.dart';
+import 'package:diting/data/agent/agent_traffic_summary.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
 import 'package:diting/state/config_providers_resources.dart';
@@ -31,95 +33,155 @@ final agentChatConfigProvider = Provider<AgentChatConfig?>((ref) {
   );
 });
 
+enum AgentAnalysisPhase { idle, running, success, failure }
+
+/// One analysis run. [sessionId] identifies it: results are only written back when the id still
+/// matches, so a slow first request cannot overwrite a newer one (which the previous single-slot
+/// state allowed, showing the wrong domain's report).
 class AgentAnalysisState {
   const AgentAnalysisState({
+    this.sessionId = 0,
     this.target,
-    this.running = false,
-    this.result,
+    this.phase = AgentAnalysisPhase.idle,
+    this.content,
     this.error,
-    this.summary,
+    this.model,
+    this.totalTokens = 0,
+    this.promptDigest,
     this.startedAt,
   });
 
+  /// 0 when no run has happened in this process.
+  final int sessionId;
   final AgentAnalysisTarget? target;
-  final bool running;
-  final AgentChatResult? result;
-  final String? error;
+  final AgentAnalysisPhase phase;
 
-  /// Prompt summary (traffic analysis only). Shown so users can check what the model actually saw.
-  final RecentTrafficSummary? summary;
+  /// Markdown report, set when [phase] is success.
+  final String? content;
+  final String? error;
+  final String? model;
+  final int totalTokens;
+
+  /// What was sent to the model (traffic summary), so the user can audit the prompt.
+  final String? promptDigest;
   final DateTime? startedAt;
 
-  bool get idle => target == null && !running && result == null && error == null;
-
-  AgentAnalysisState copyWith({
-    AgentAnalysisTarget? target,
-    bool? running,
-    AgentChatResult? result,
-    String? error,
-    RecentTrafficSummary? summary,
-    DateTime? startedAt,
-    bool clearResult = false,
-    bool clearError = false,
-  }) => AgentAnalysisState(
-    target: target ?? this.target,
-    running: running ?? this.running,
-    result: clearResult ? null : (result ?? this.result),
-    error: clearError ? null : (error ?? this.error),
-    summary: summary ?? this.summary,
-    startedAt: startedAt ?? this.startedAt,
-  );
+  bool get idle => phase == AgentAnalysisPhase.idle;
+  bool get running => phase == AgentAnalysisPhase.running;
+  bool get success => phase == AgentAnalysisPhase.success;
+  bool get failed => phase == AgentAnalysisPhase.failure;
 }
 
 class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
+  int _nextSession = 0;
+  AgentCancelToken? _cancelToken;
+
   @override
   AgentAnalysisState build() => const AgentAnalysisState();
 
-  /// Runs one analysis. [extraContext] carries context the caller already has, e.g. blocking
-  /// records.
-  Future<void> run(
+  /// Starts one run and returns its session id. [extraContext] carries context the caller already
+  /// has, e.g. blocking records.
+  int start(
     AgentAnalysisTarget target, {
     List<String> extraContext = const [],
-  }) async {
-    if (state.running) return;
+  }) {
+    final session = ++_nextSession;
+    // A new run supersedes the previous one; leaving its socket open would waste tokens.
+    _cancelToken?.cancel();
+    final cancelToken = AgentCancelToken();
+    _cancelToken = cancelToken;
     final config = ref.read(agentChatConfigProvider);
-    if (config == null || !config.hasKey) {
-      state = AgentAnalysisState(
-        target: target,
-        error: '尚未配置可用的 API Key，请先在「AI 厂商管理」里填写并选中该厂商。',
-        startedAt: DateTime.now(),
-      );
-      return;
-    }
     state = AgentAnalysisState(
+      sessionId: session,
       target: target,
-      running: true,
+      phase: AgentAnalysisPhase.running,
       startedAt: DateTime.now(),
     );
+    if (config == null || !config.hasKey) {
+      state = AgentAnalysisState(
+        sessionId: session,
+        target: target,
+        phase: AgentAnalysisPhase.failure,
+        error: '尚未配置可用的 API Key，请先在「AI 厂商管理」里填写并选中该厂商。',
+        startedAt: state.startedAt,
+      );
+      return session;
+    }
+    // Fire and forget: the UI watches the state, and the guard below keeps a stale answer out.
+    _run(session, target, config, extraContext, cancelToken);
+    return session;
+  }
+
+  void cancel() {
+    _cancelToken?.cancel();
+    _cancelToken = null;
+    state = const AgentAnalysisState();
+  }
+
+  void clear() {
+    _cancelToken?.cancel();
+    _cancelToken = null;
+    state = const AgentAnalysisState();
+  }
+
+  Future<void> _run(
+    int session,
+    AgentAnalysisTarget target,
+    AgentChatConfig config,
+    List<String> extraContext,
+    AgentCancelToken cancelToken,
+  ) async {
     try {
-      final request = await _buildRequest(target, config, extraContext);
+      final request = await _buildRequest(
+        session,
+        target,
+        config,
+        extraContext,
+      );
+      if (state.sessionId != session) return;
       final result = await ref
           .read(agentApiClientProvider)
           .chat(config, [
             AgentChatMessage(role: 'system', content: request.systemPrompt),
             AgentChatMessage(role: 'user', content: request.userPrompt),
-          ]);
-      state = state.copyWith(
-        running: false,
-        result: result,
-        clearError: true,
+          ], cancelToken: cancelToken);
+      if (state.sessionId != session) return;
+      state = AgentAnalysisState(
+        sessionId: session,
+        target: target,
+        phase: AgentAnalysisPhase.success,
+        content: result.content,
+        model: result.model,
+        totalTokens: result.totalTokens,
+        promptDigest: state.promptDigest,
+        startedAt: state.startedAt,
       );
     } on AgentApiException catch (error) {
-      state = state.copyWith(running: false, error: error.message);
+      if (state.sessionId != session) return;
+      state = AgentAnalysisState(
+        sessionId: session,
+        target: target,
+        phase: AgentAnalysisPhase.failure,
+        error: error.message,
+        promptDigest: state.promptDigest,
+        startedAt: state.startedAt,
+      );
     } on Object catch (error) {
       // Never leave the UI spinning: turn unknown errors into a readable message.
-      state = state.copyWith(running: false, error: '分析失败：$error');
+      if (state.sessionId != session) return;
+      state = AgentAnalysisState(
+        sessionId: session,
+        target: target,
+        phase: AgentAnalysisPhase.failure,
+        error: '分析失败：$error',
+        promptDigest: state.promptDigest,
+        startedAt: state.startedAt,
+      );
     }
   }
 
-  void clear() => state = const AgentAnalysisState();
-
   Future<AgentAnalysisRequest> _buildRequest(
+    int session,
     AgentAnalysisTarget target,
     AgentChatConfig config,
     List<String> extraContext,
@@ -161,7 +223,17 @@ class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
               ? '极速模式只做窄路由 DNS 加速，不产生 HTTPS 检查记录'
               : null,
         );
-        state = state.copyWith(summary: summary);
+        // Recorded before the request so the "查看送检摘要" panel has it while running. Guarded:
+        // a superseded run must not overwrite the digest of the one that replaced it.
+        if (state.sessionId == session) {
+          state = AgentAnalysisState(
+            sessionId: state.sessionId,
+            target: state.target,
+            phase: state.phase,
+            promptDigest: summary.render(),
+            startedAt: state.startedAt,
+          );
+        }
         return buildTrafficAnalysisRequest(
           summary: summary,
           systemPrompt: config.systemPrompt,
@@ -185,7 +257,6 @@ Future<List<String>> fetchAgentModels(
   baseUrl: baseUrl,
   apiKey: apiKey,
 );
-
 
 Future<AgentChatResult> testAgentConnection(
   WidgetRef ref,

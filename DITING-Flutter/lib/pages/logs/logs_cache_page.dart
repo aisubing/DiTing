@@ -1,4 +1,6 @@
+import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/db/dns_cache_repository.dart';
+import 'package:diting/pages/hub/agent_analysis_sheet.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
@@ -98,11 +100,15 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
           title: '有效缓存',
           footer:
               '共 ${entries.length} 条，按命中次数与过期时间排序。'
-              '剩余 TTL 少于 30 秒的条目标橙色。',
+              '剩余 TTL 少于 30 秒的条目标橙色。点按一行可用 AI 分析该域名。',
           items: [
             for (final entry in entries)
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.layers),
+                onTap: () => openAgentAnalysis(
+                  context,
+                  AgentDomainTarget(entry.domain),
+                ),
                 title: Row(
                   spacing: 8,
                   children: [

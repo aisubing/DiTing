@@ -1,8 +1,10 @@
 // ignore_for_file: sort_child_properties_last
 import 'package:diting/data/agent/agent_api_client.dart';
+import 'package:diting/data/agent/agent_api_text_parser.dart';
 import 'package:diting/state/agent_providers.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -163,6 +165,32 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
     }
   }
 
+  Future<void> _pasteFromClipboard() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!mounted) return;
+    final result = parseAgentApiText(data?.text ?? '');
+    if (result.isEmpty) {
+      setState(() {
+        _error = null;
+        _notice = result.message;
+      });
+      return;
+    }
+    setState(() {
+      _error = null;
+      if (result.baseUrl case final baseUrl? when baseUrl.isNotEmpty) {
+        _baseUrl.text = baseUrl;
+      }
+      if (result.apiKey case final apiKey? when apiKey.isNotEmpty) {
+        _key.text = apiKey;
+      }
+      if (result.model case final model? when model.isNotEmpty) {
+        _model.text = model;
+      }
+      _notice = result.message;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
@@ -174,6 +202,14 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 10,
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _busy ? null : _pasteFromClipboard,
+              icon: const GlyphIcon(AppGlyphs.paste, size: 16),
+              label: const Text('从剪贴板识别'),
+            ),
+          ),
           TextField(
             controller: _name,
             decoration: const InputDecoration(labelText: '厂商名称'),

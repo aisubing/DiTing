@@ -224,6 +224,20 @@ class RequestDetailSheet extends StatelessWidget {
                 KeyValueRow(label: '拦截订阅', value: 'sub_$id', monospace: true),
             ],
           ),
+          if (title != '—')
+            generateSection(
+              title: 'AI 分析',
+              footer: '分析在该面板之上打开；返回后这条记录仍然在这里。',
+              items: [
+                ListItem(
+                  leading: const GlyphIcon(AppGlyphs.sparkle),
+                  title: Text('分析 $title'),
+                  subtitle: const Text('用配置的模型研判归属、风险与处置建议'),
+                  onTap: () =>
+                      openAgentAnalysis(context, AgentDomainTarget(title)),
+                ),
+              ],
+            ),
           generateSection(
             title: '规则命中',
             items: [
