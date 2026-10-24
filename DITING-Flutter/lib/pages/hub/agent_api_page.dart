@@ -50,7 +50,7 @@ class AgentApiPage extends ConsumerWidget {
                           style: context.listTitleStyle,
                         ),
                       ),
-                      Switch(
+                      CommonSwitch(
                         value: state.enabled,
                         onChanged: notifier.setEnabled,
                       ),

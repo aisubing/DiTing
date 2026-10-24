@@ -397,7 +397,7 @@ class _DeveloperModeCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Switch(
+                CommonSwitch(
                   value: enabled,
                   onChanged: (value) =>
                       ref.read(developerModeProvider.notifier).toggle(value),

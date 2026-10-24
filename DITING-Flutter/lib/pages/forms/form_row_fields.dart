@@ -246,7 +246,7 @@ class FormRowSwitch extends StatelessWidget {
       description: description,
       leading: leading,
       onPressed: onChanged == null ? null : () => onChanged!(!value),
-      trailing: Switch(value: value, onChanged: onChanged),
+      trailing: CommonSwitch(value: value, onChanged: onChanged),
     );
   }
 }

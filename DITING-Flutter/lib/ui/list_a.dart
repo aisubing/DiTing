@@ -328,7 +328,7 @@ class ListItem<T> extends StatelessWidget {
               : () {
                   toggleAction.onChanged!(!toggleAction.value);
                 },
-          trailing: Switch(
+          trailing: CommonSwitch(
             value: toggleAction.value,
             onChanged: toggleAction.onChanged,
           ),

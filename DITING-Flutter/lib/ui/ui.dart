@@ -64,6 +64,7 @@ export 'skeleton.dart';
 export 'snap_sheet.dart';
 export 'sortable.dart';
 export 'surface.dart';
+export 'switch.dart';
 export 'text.dart';
 export 'text_loupe.dart';
 export 'text_style.dart';

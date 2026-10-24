@@ -77,7 +77,10 @@ class _RuleRow extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           spacing: 2,
           children: [
-            Switch(value: rule.enabled, onChanged: protected ? null : onToggle),
+            CommonSwitch(
+              value: rule.enabled,
+              onChanged: protected ? null : onToggle,
+            ),
             CommonPopupBox(
               targetBuilder: (open) => IconButton(
                 tooltip: UiLocalizations.of(context).more,

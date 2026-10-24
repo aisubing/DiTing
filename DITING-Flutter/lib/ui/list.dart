@@ -27,6 +27,7 @@ import 'popup.dart';
 import 'scaffold.dart';
 import 'sheet.dart';
 import 'sortable.dart';
+import 'switch.dart';
 
 part 'list_row_separator.dart';
 part 'list_selected.dart';

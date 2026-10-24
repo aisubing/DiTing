@@ -61,7 +61,7 @@ class _SubscriptionCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 spacing: 2,
                 children: [
-                  Switch(value: entry.enabled, onChanged: onToggle),
+                  CommonSwitch(value: entry.enabled, onChanged: onToggle),
                   CommonPopupBox(
                     targetBuilder: (open) => IconButton(
                       tooltip: UiLocalizations.of(context).more,
