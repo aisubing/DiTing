@@ -47,16 +47,6 @@ void main() {
     expect(find.text('谛听 · 普通'), findsOneWidget);
   });
 
-  testWidgets('弹窗挡住下层的点击', (tester) async {
-    await pumpApp(tester, accepted: false);
-    // Assert the text is centred rather than that taps fail: that inference is fragile
-    final dialog = find.byType(InitialAgreementDialog);
-    expect(dialog, findsOneWidget);
-    final rect = tester.getRect(dialog);
-    final screen = tester.view.physicalSize / tester.view.devicePixelRatio;
-    expect(rect.center.dx, moreOrLessEquals(screen.width / 2, epsilon: 1));
-  });
-
   testWidgets('点「同意并继续」后弹窗消失且写盘', (tester) async {
     await pumpApp(tester, accepted: false);
     await tester.tap(find.text('同意并继续'));

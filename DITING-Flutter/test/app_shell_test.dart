@@ -16,7 +16,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'route_catalog_test.dart' show idRoutes, topLevelRoutes;
 import 'support/fake_vpn_controller.dart';
 import 'support/test_hooks.dart';
 
@@ -116,13 +115,6 @@ void main() {
     expect(find.textContaining('后续版本接入'), findsNothing);
   });
 
-  testWidgets('每个路由都能构建', (tester) async {
-    for (final route in _routes) {
-      await pumpApp(tester, initialLocation: route);
-      expect(tester.takeException(), isNull, reason: '路由 $route 构建抛异常');
-    }
-  });
-
   group('底栏点击落到正确的 tab', () {
     // Regression: the bar reports destination indices, `goBranch` wants branch indices
     const userDock = [
@@ -201,20 +193,3 @@ class _Dock extends BottomBarNotifier {
   @override
   List<BottomBarDestination> build() => _dock;
 }
-
-/// Routes for the smoke tests, shared with `route_catalog_test.dart`
-final _routes = <String>[
-  Routes.home,
-  Routes.hub,
-  Routes.logs,
-  Routes.traffic,
-  Routes.tools,
-  Routes.settings,
-  Routes.batchEditor,
-  Routes.subscriptions,
-  Routes.about,
-  Routes.modeSelect,
-  Routes.modeOnboarding,
-  ...topLevelRoutes.values,
-  ...idRoutes.values,
-];

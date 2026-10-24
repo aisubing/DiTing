@@ -139,6 +139,11 @@ final Map<String, String> topLevelRoutes = {
   'WebDAV 云同步': HubPaths.configTransferWebdav,
   '赞助者名单': HubPaths.sponsorList,
   '共建者名单': HubPaths.coBuilders,
+  '订阅': Routes.subscriptions,
+  '关于': Routes.about,
+  '批量编辑': Routes.batchEditor,
+  '模式选择': Routes.modeSelect,
+  '模式引导': Routes.modeOnboarding,
 };
 
 /// Second-level pages with path parameters: ids must exist in the mock data, or the branch proves

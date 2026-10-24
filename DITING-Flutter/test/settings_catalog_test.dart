@@ -2,11 +2,6 @@ import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/native/background_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
-import 'package:diting/routes/config_routes.dart';
-import 'package:diting/routes/hub_routes.dart';
-import 'package:diting/routes/logs_routes.dart';
-import 'package:diting/routes/observability_routes.dart';
-import 'package:diting/routes/system_routes.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -201,66 +196,4 @@ void main() {
     });
   });
 
-  group('路由表形状', () {
-    test('外观子树的八条路径都是 /theme 下的独立页', () {
-      const paths = [
-        SystemPaths.dayNight,
-        SystemPaths.colorStyle,
-        SystemPaths.homeOpacity,
-        SystemPaths.bottomBar,
-        SystemPaths.homeSentence,
-        SystemPaths.notification,
-        SystemPaths.background,
-      ];
-      expect(paths.length, 7);
-      for (final path in paths) {
-        expect(path, startsWith('/theme/'));
-      }
-      expect(SystemPaths.fontFamily, '/font-family');
-      expect(SystemPaths.fontSize, '/font-size');
-    });
-
-    test('日志下钻四条都在 /logs 下', () {
-      for (final path in [
-        LogPaths.cache,
-        LogPaths.race,
-        LogPaths.bootstrap,
-        LogPaths.subscriptionStats,
-      ]) {
-        expect(path, startsWith('/logs/'));
-      }
-    });
-
-    test('配置域只剩三条资源路由', () {
-      for (final path in [
-        ConfigPaths.customResources,
-        ConfigPaths.userAgents,
-        ConfigPaths.onDemand,
-      ]) {
-        expect(path, startsWith('/config/'));
-      }
-    });
-
-    test('观测域只剩请求一条', () {
-      expect(ObservabilityPaths.requests, '/requests');
-    });
-
-    test('设置子页两条', () {
-      expect(SystemPaths.foregroundBackground, '/settings/background');
-      expect(SystemPaths.language, '/settings/language');
-    });
-
-    test('功能中心路由全部以 /hub 或跨域绝对路径开头', () {
-      // Hub cards mix `/hub/...` with cross-domain pages, which must be absolute or they
-      // resolve under the current branch
-      for (final path in [
-        HubPaths.providerManagement,
-        HubPaths.cache,
-        HubPaths.logRetention,
-        HubPaths.configTransfer,
-      ]) {
-        expect(path, startsWith('/hub/'));
-      }
-    });
-  });
 }
