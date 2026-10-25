@@ -125,7 +125,7 @@ flutter analyze lib test
 flutter test
 ```
 
-日常打包运行 `DITING-Flutter/build_apk.bat`，交互式选择编译档位、自动归档并支持 ADB 部署：
+日常打包运行 `DITING-Flutter/build_apk.bat`，交互式选择编译档位并自动归档：
 
 | 档位 | 编译模式 | 签名 | Flutter 库架构 | 隧道引擎架构 | 可安装的设备 |
 | --- | --- | --- | --- | --- | --- |

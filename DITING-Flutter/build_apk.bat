@@ -1,33 +1,28 @@
 @echo off
 setlocal EnableDelayedExpansion
-title DITING Flutter APK Build and Install Tool
+title DITING Flutter APK Build Tool
 
-:: APK build / install script.
+:: APK build script.
 ::
 :: Must go through `flutter build apk`; calling gradlew directly would produce an
 :: APK with no Dart code inside.
 ::
-:: Five build modes, all strictly separated by build type, signing config and
-:: target ABI:
-::   [1] Debug   + debug key   -> cannot upgrade-install over a release build
-::   [2] Debug   + release key -> same signature as release, installable over it
-::   [3] Release + release key + arm64-v8a -> phones / tablets
-::   [4] Release + release key + x86_64    -> Android emulator debugging only
-::   [5] Clean build cache and outputs
+:: Modes:
+::   [1] Debug   + debug key   - cannot upgrade-install over a release build
+::   [2] Debug   + release key - same signature as release, installable over it
+::   [3] Release + arm64       - phones / tablets (default)
+::   [4] Release + x86_64      - Android emulator only
+::   [5] Clean                  - remove build cache and outputs
 ::
-:: ABI note: the tunnel engine comes from a gomobile AAR, picked per build:
-::   [1]/[2] debug bundle the DUAL-ABI engine (libs/tunnel-all.aar), so one
-::           debug APK runs on ARM phones/tablets AND the x86_64 emulator;
-::   [3] bundles the arm64 tunnel (libs/tunnel-arm64.aar) - ARM devices only;
-::   [4] bundles the x86_64 tunnel (libs/tunnel-x64.aar) - emulator only.
-:: Installing [3]/[4] on the wrong device fails with "app not installed /
-:: package incompatible". Also: all debug builds share one output file name -
-:: app-debug.apk - so the artifact on disk always comes from the LAST build.
-:: Check the "Tunnel engine ABI" line printed after each build before installing.
+:: Tunnel engine ABI per mode: [1]/[2] bundle the dual-ABI engine
+:: (libs/tunnel-all.aar, runs on ARM devices AND the x86_64 emulator);
+:: [3] bundles tunnel-arm64.aar; [4] bundles tunnel-x64.aar. Installing [3]/[4]
+:: on the wrong device fails with "app not installed / package incompatible".
+:: All debug builds share one output name (app-debug.apk), so the artifact on
+:: disk always comes from the LAST build - check the "Tunnel engine ABI" line.
 ::
-:: NOTE: this file is intentionally pure ASCII. cmd.exe parses batch files with the
-:: OEM code page, so UTF-8 Chinese text here breaks the parser. Chinese docs live
-:: in android/SIGNING.md.
+:: NOTE: intentionally pure ASCII; cmd.exe parses batch files in the OEM code
+:: page. Chinese docs live in android/SIGNING.md.
 
 cd /d "%~dp0"
 
@@ -40,11 +35,10 @@ set "APP_VERSION_NAME=unknown"
 for /f "tokens=2 delims=: " %%A in ('findstr /b "version:" pubspec.yaml') do set "APP_VERSION_NAME=%%A"
 for /f "tokens=1 delims=+" %%B in ("!APP_VERSION_NAME!") do set "APP_VERSION_NAME=%%B"
 
-:: Step 1: Select build mode
 :CHOOSE_BUILD_TYPE
 cls
 echo ================================================================
-echo             DITING Flutter APK Build and Install Tool
+echo                  DITING Flutter APK Build Tool
 echo ================================================================
 echo.
 echo   [1] Debug    / debug key    - Debuggable, not installable over release
@@ -54,37 +48,23 @@ echo   [4] Release  / x86_64       - Release key, EMULATOR testing only
 echo   [5] Clean                   - Remove build cache and artifacts
 echo   [0] Exit
 echo.
-echo   Device targeting - the tunnel engine ABI differs per build:
-echo     [1] [2] debug builds are DUAL-ABI: run on ARM phones/tablets AND the
-echo           x86_64 emulator (engine: libs/tunnel-all.aar)
-echo     [3] is arm64-only for phones/tablets (engine: libs/tunnel-arm64.aar)
-echo     [4] is x86_64-only for the emulator  (engine: libs/tunnel-x64.aar)
-echo   Options 3 and 4 produce single-ABI release APKs with R8 shrinking;
-echo   installing them on the wrong device type fails with
-echo   "app not installed / package incompatible with your system".
+echo   Engine ABI: [1][2] dual-ABI (phones + emulator), [3] arm64, [4] x86_64.
 echo.
 set "BUILD_CHOICE="
 set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 3): "
 
-:: Default is Release: a debug APK starts in ~1.5 s because of JIT, while the release build
-:: starts in ~0.3 s. Installing the debug build by accident makes the app look slow to launch.
+:: Default is Release: debug APKs start noticeably slower (JIT).
 if "%BUILD_CHOICE%"=="" set "BUILD_CHOICE=3"
 if "%BUILD_CHOICE%"=="1" goto SET_DEBUG_DEBUGKEY
-if /i "%BUILD_CHOICE%"=="d1" goto SET_DEBUG_DEBUGKEY
 if "%BUILD_CHOICE%"=="2" goto SET_DEBUG_RELEASEKEY
-if /i "%BUILD_CHOICE%"=="d2" goto SET_DEBUG_RELEASEKEY
 if "%BUILD_CHOICE%"=="3" goto SET_RELEASE_ARM64
-if /i "%BUILD_CHOICE%"=="r" goto SET_RELEASE_ARM64
 if "%BUILD_CHOICE%"=="4" goto SET_RELEASE_X64
-if /i "%BUILD_CHOICE%"=="x64" goto SET_RELEASE_X64
 if "%BUILD_CHOICE%"=="5" goto DO_CLEAN
-if /i "%BUILD_CHOICE%"=="clean" goto DO_CLEAN
 if "%BUILD_CHOICE%"=="0" goto EXIT_SCRIPT
-if /i "%BUILD_CHOICE%"=="q" goto EXIT_SCRIPT
 
 echo.
 echo [WARN] Invalid choice: "%BUILD_CHOICE%", please try again.
-timeout /t 2 >nul
+ping -n 3 127.0.0.1 >nul
 goto CHOOSE_BUILD_TYPE
 
 :DO_CLEAN
@@ -101,15 +81,11 @@ echo [SUCCESS] Clean finished. Build cache and APK outputs removed.
 pause
 goto CHOOSE_BUILD_TYPE
 
-:: ---------------------------------------------------------------------------
-:: Mode definitions: every branch sets BUILD_TYPE, BUILD_TYPE_NAME, FLUTTER_ARGS,
-:: APK_DIR, APK_NAME and DEVICE_SCOPE so exactly one code path builds and ships
-:: the artifact.
-:: ---------------------------------------------------------------------------
+:: Each mode sets BUILD_TYPE, BUILD_TYPE_NAME, FLUTTER_ARGS, APK_DIR, APK_NAME
+:: and DEVICE_SCOPE; one shared code path does the build.
 
 :SET_DEBUG_DEBUGKEY
-:: Debug APKs bundle the dual-ABI tunnel engine, so the same build runs on both
-:: ARM devices and the x86_64 emulator.
+:: Debug builds bundle the dual-ABI engine so one APK runs everywhere.
 if not exist "android\app\libs\tunnel-all.aar" goto ERR_NO_TUNNEL_ALL
 set "BUILD_TYPE=debug"
 set "BUILD_TYPE_NAME=Debug (Debug Key)"
@@ -143,10 +119,9 @@ set "DEVICE_SCOPE=arm64-only: will NOT run on the x86_64 emulator"
 goto START_BUILD
 
 :SET_RELEASE_X64
-if not exist "android\key.properties" goto ERR_NO_KEYSTORE
-:: tunnel-arm64.aar only ships arm64-v8a libgojni.so; the x86_64 emulator needs
-:: the locally built tunnel-x64.aar (single-ABI, git-ignored). build.gradle.kts
+:: The x86_64 emulator needs the locally built tunnel-x64.aar; build.gradle.kts
 :: picks it automatically from -PditingAbi=x86_64.
+if not exist "android\key.properties" goto ERR_NO_KEYSTORE
 if not exist "android\app\libs\tunnel-x64.aar" goto ERR_NO_TUNNEL_X64
 set "BUILD_TYPE=release"
 set "BUILD_TYPE_NAME=Release (x86_64, Release Key, EMULATOR)"
@@ -157,7 +132,6 @@ set "IS_EMULATOR_BUILD=1"
 set "DEVICE_SCOPE=x86_64 emulator only: will NOT run on ARM phones/tablets"
 goto START_BUILD
 
-:: Step 2: Build
 :START_BUILD
 echo.
 echo ================================================================
@@ -194,7 +168,7 @@ if exist "!VERSIONED_APK!" echo [INFO] Versioned APK: !VERSIONED_APK!
 echo ================================================================
 echo.
 
-:: Print the signer fingerprint.
+:: Signer certificate fingerprint.
 set "BUILD_TOOLS=%LOCALAPPDATA%\Android\Sdk\build-tools"
 if exist "%BUILD_TOOLS%" (
     for /f "delims=" %%D in ('dir /b /o:-n "%BUILD_TOOLS%" 2^>nul') do (
@@ -206,325 +180,76 @@ if exist "%BUILD_TOOLS%" (
     )
 )
 :SIGNED_SHOWN
-
-:: Step 3: Ask to install
-:ASK_INSTALL
-echo Install the APK onto a device?
-echo   [Y] Yes - detect/connect ADB device and install (default)
-echo   [N] No  - keep the build output and exit
-echo.
-set "INSTALL_CHOICE="
-set /p "INSTALL_CHOICE=Enter choice [Y/N] (default: Y): "
-
-if "%INSTALL_CHOICE%"=="" set "INSTALL_CHOICE=Y"
-if /i "%INSTALL_CHOICE%"=="y" goto PREPARE_ADB
-if /i "%INSTALL_CHOICE%"=="yes" goto PREPARE_ADB
-if "%INSTALL_CHOICE%"=="1" goto PREPARE_ADB
-if /i "%INSTALL_CHOICE%"=="n" goto NO_INSTALL
-if /i "%INSTALL_CHOICE%"=="no" goto NO_INSTALL
-if "%INSTALL_CHOICE%"=="0" goto NO_INSTALL
-
-echo.
-echo [WARN] Invalid choice: "%INSTALL_CHOICE%", please try again.
-echo.
-goto ASK_INSTALL
-
-:NO_INSTALL
-echo.
-echo [INFO] Installation skipped. APK kept at:
-echo        %FOUND_APK%
-goto SUCCESS_EXIT
-
-:: Step 4: ADB environment check and device detection
-:PREPARE_ADB
-echo.
-echo ================================================================
-echo [INFO] Checking ADB environment...
-echo ================================================================
-echo.
-
-where adb >nul 2>&1
-if errorlevel 1 goto ERR_NO_ADB
-
-:CHECK_DEVICES
-echo [INFO] Scanning for connected ADB devices...
-set "DEVICE_COUNT=0"
-set "TARGET_DEVICE="
-
-for /f "skip=1 tokens=1,2" %%A in ('adb devices 2^>nul') do (
-    if "%%B"=="device" (
-        set /a DEVICE_COUNT+=1
-        set "DEVICE_!DEVICE_COUNT!=%%A"
-        set "TARGET_DEVICE=%%A"
-    )
-)
-
-if %DEVICE_COUNT% EQU 0 goto PROMPT_CONNECT_ADB
-if %DEVICE_COUNT% EQU 1 goto SINGLE_DEVICE_FOUND
-goto MULTI_DEVICES_FOUND
-
-:MULTI_DEVICES_FOUND
-echo [INFO] Multiple ready devices detected. Select target device:
-for /L %%i in (1,1,%DEVICE_COUNT%) do (
-    call echo   [%%i] %%DEVICE_%%i%%
-)
-echo.
-set "DEV_SEL="
-set /p "DEV_SEL=Enter device number [1-%DEVICE_COUNT%] (default: 1): "
-if "!DEV_SEL!"=="" set "DEV_SEL=1"
-
-call set "SELECTED_DEV=%%DEVICE_!DEV_SEL!%%"
-if "!SELECTED_DEV!"=="" (
-    echo.
-    echo [WARN] Invalid device number: "!DEV_SEL!", please try again.
-    echo.
-    goto CHECK_DEVICES
-)
-set "TARGET_DEVICE=!SELECTED_DEV!"
-echo [INFO] Target device selected: !TARGET_DEVICE!
-goto DO_INSTALL
-
-:SINGLE_DEVICE_FOUND
-echo [INFO] Target device detected: !TARGET_DEVICE!
-goto DO_INSTALL
-
-:: Step 5: Connect manual ADB device (IP:Port)
-:PROMPT_CONNECT_ADB
-if "!EMPTY_RETRIES!"=="" set "EMPTY_RETRIES=0"
-echo [WARN] No ready ADB device currently detected.
-echo.
-echo ================================================================
-echo Please enter the target ADB device IP and port (e.g. 192.168.1.1:6688)
-echo Or enter 'Q' to cancel and exit:
-echo ================================================================
-set "ADB_ADDRESS="
-set /p "ADB_ADDRESS=ADB Device Address [IP:PORT / Q]: "
-
-if "!ADB_ADDRESS!"=="" (
-    set /a EMPTY_RETRIES+=1
-    echo.
-    echo [WARN] Input cannot be empty, please try again.
-    echo.
-    REM Without a console (CI, pipe, redirected file) `set /p` returns an empty
-    REM value forever, so bail out instead of looping.
-    if !EMPTY_RETRIES! GEQ 3 goto ERR_NO_INPUT
-    goto PROMPT_CONNECT_ADB
-)
-if /i "%ADB_ADDRESS%"=="q" goto EXIT_SCRIPT
-if /i "%ADB_ADDRESS%"=="exit" goto EXIT_SCRIPT
-
-echo.
-echo [INFO] Connecting to %ADB_ADDRESS% ...
-adb connect %ADB_ADDRESS%
-
-timeout /t 2 >nul
-
-set "CONNECT_SUCCESS=0"
-for /f "skip=1 tokens=1,2" %%A in ('adb devices 2^>nul') do (
-    if "%%A"=="%ADB_ADDRESS%" (
-        if "%%B"=="device" (
-            set "CONNECT_SUCCESS=1"
-            set "TARGET_DEVICE=%%A"
-        )
-    )
-)
-
-if "!CONNECT_SUCCESS!"=="0" (
-    for /f "skip=1 tokens=1,2" %%A in ('adb devices 2^>nul') do (
-        if "%%B"=="device" (
-            set "CONNECT_SUCCESS=1"
-            set "TARGET_DEVICE=%%A"
-        )
-    )
-)
-
-if "!CONNECT_SUCCESS!"=="0" goto ERR_ADB_CONNECT_FAILED
-
-echo.
-echo [SUCCESS] Successfully connected to device: !TARGET_DEVICE!
-goto DO_INSTALL
-
-:: Step 6: Install
-:DO_INSTALL
-echo.
-echo ================================================================
-echo [INFO] Installing %BUILD_TYPE_NAME% onto device [!TARGET_DEVICE!] ...
-echo [INFO] APK file: %FOUND_APK%
-echo ================================================================
-echo.
-
-adb -s !TARGET_DEVICE! install -r "%FOUND_APK%"
-if errorlevel 1 goto ERR_INSTALL_FAILED
-
-echo.
-echo ================================================================
-echo [SUCCESS] %BUILD_TYPE_NAME% APK installed successfully!
-echo ================================================================
 goto SUCCESS_EXIT
 
 :: Error handlers
 :ERR_NO_FLUTTER
 echo.
-echo ================================================================
-echo [ERROR] Not a Flutter project root (pubspec.yaml not found)!
-echo Cause:  This script must run from DITING-Flutter\
-echo Action: Place it next to pubspec.yaml and run it there.
-echo ================================================================
+echo [ERROR] Not a Flutter project root (pubspec.yaml not found).
+echo         Run this script from DITING-Flutter\.
 goto ERROR_EXIT
 
 :ERR_NO_FLUTTER_BIN
 echo.
-echo ================================================================
-echo [ERROR] 'flutter' command not found in system PATH!
-echo Cause:  Flutter SDK bin directory is not on PATH.
-echo Action: Add your Flutter SDK bin directory to PATH and retry.
-echo ================================================================
+echo [ERROR] 'flutter' not found in PATH. Add your Flutter SDK bin
+echo         directory to PATH and retry.
 goto ERROR_EXIT
 
 :ERR_NO_KEYSTORE
 echo.
-echo ================================================================
-echo [ERROR] Release signing is not configured!
-echo Cause:  android\key.properties is missing, so options [3] and [4]
-echo         cannot sign the APK with the release key.
-echo Action: Create android\key.properties (see android\SIGNING.md),
-echo         or use option [1] for an unsigned-release-key debug build.
-echo ================================================================
+echo [ERROR] Release signing is not configured: android\key.properties
+echo         is missing. Create it (see android\SIGNING.md) or use
+echo         option [1] instead.
 goto ERROR_EXIT
 
 :ERR_NO_TUNNEL_ALL
 echo.
-echo ================================================================
-echo [ERROR] Dual-ABI tunnel AAR is missing!
-echo Cause:  android\app\libs\tunnel-all.aar not found. Debug builds
-echo         bundle the dual-ABI (arm64-v8a + x86_64) engine so ONE
-echo         debug APK runs on phones and the emulator; it is built
-echo         on demand and not committed to git.
-echo Action: Run  powershell -ExecutionPolicy Bypass -File
-echo         tunnel\build_aar.ps1 -Arch all  to build it (see
-echo         docs\development\aar-build-notes.md).
-echo ================================================================
+echo [ERROR] Dual-ABI tunnel AAR is missing: android\app\libs\tunnel-all.aar.
+echo         Debug builds bundle it (arm64-v8a + x86_64 engine); it is built
+echo         on demand and not committed to git. Build it with:
+echo           pwsh -NoProfile -ExecutionPolicy Bypass -File tunnel\build_aar.ps1 -Arch all
+echo         See docs\development\aar-build-notes.md.
 goto ERROR_EXIT
 
 :ERR_NO_TUNNEL_X64
 echo.
-echo ================================================================
-echo [ERROR] x86_64 tunnel AAR is missing!
-echo Cause:  android\app\libs\tunnel-x64.aar not found. The committed
-echo         tunnel-arm64.aar contains arm64-v8a only, so an x86_64
-echo         build would install but the tunnel would fail to load.
-echo Action: Run  powershell -ExecutionPolicy Bypass -File
-echo         tunnel\build_aar.ps1 -Arch x64  to build it (see
-echo         docs\development\aar-build-notes.md), or use option [3].
-echo ================================================================
+echo [ERROR] x86_64 tunnel AAR is missing: android\app\libs\tunnel-x64.aar.
+echo         The committed tunnel-arm64.aar is arm64-only. Build the x64 one
+echo         with:
+echo           pwsh -NoProfile -ExecutionPolicy Bypass -File tunnel\build_aar.ps1 -Arch x64
+echo         or use option [3].
 goto ERROR_EXIT
 
 :ERR_CLEAN_FAILED
 echo.
-echo ================================================================
-echo [ERROR] Clean failed!
-echo Cause:  'flutter clean' or 'gradlew clean' returned an error.
-echo Action: Close Android Studio / running Gradle daemons and retry.
-echo ================================================================
+echo [ERROR] Clean failed ('flutter clean' or 'gradlew clean' returned
+echo         an error). Close Android Studio / Gradle daemons and retry.
 goto ERROR_EXIT
 
 :ERR_BUILD_FAILED
 echo.
-echo ================================================================
-echo [ERROR] Build failed!
-echo Cause:  flutter build apk returned a non-zero exit code.
-echo Troubleshooting:
-echo   1. Run 'dart analyze lib test' and 'flutter test' first
-echo   2. Check signing config: android/key.properties
-echo   3. Gradle cache may be broken - try option [5] Clean
-echo ================================================================
+echo [ERROR] Build failed: 'flutter build apk' returned a non-zero exit
+echo         code. Troubleshooting:
+echo           1. Run 'dart analyze lib test' and 'flutter test' first
+echo           2. Check signing config: android/key.properties
+echo           3. Gradle cache may be broken - try option [5] Clean
 goto ERROR_EXIT
 
 :ERR_NO_APK
 echo.
-echo ================================================================
 echo [ERROR] Build finished but no APK found at: %FOUND_APK%
-echo Action: Check the flutter build output path was not changed.
-echo ================================================================
+echo         Check whether the flutter build output path changed.
 goto ERROR_EXIT
 
-:ERR_NO_INPUT
-echo.
-echo ================================================================
-echo [ERROR] No ADB device and no usable stdin!
-echo Cause:  The APK was built, but there is no connected device and this
-echo         script is not running with an interactive console (stdin is
-echo         redirected, piped, or closed), so the address prompt cannot
-echo         read anything.
-echo Action: Connect a device via USB / wireless debugging, then install
-echo         the APK manually:
-echo           adb install -r "%FOUND_APK%"
-echo ================================================================
-goto ERROR_EXIT
-
-:ERR_NO_ADB
-echo.
-echo ================================================================
-echo [ERROR] 'adb' command not found in system PATH!
-echo Cause:  Android Debug Bridge is not installed or not in PATH.
-echo Action: Install Android SDK Platform-Tools and add it to PATH.
-echo ================================================================
-goto ERROR_EXIT
-
-:ERR_ADB_CONNECT_FAILED
-echo.
-echo ================================================================
-echo [ERROR] Failed to connect to ADB device or device is not ready!
-echo Cause:  Unable to establish connection to %ADB_ADDRESS%.
-echo Troubleshooting steps:
-echo   1. Verify the target IP address and port number.
-echo   2. Ensure the Android device and PC are on the same local network.
-echo   3. Ensure 'Wireless Debugging' is enabled in Developer Options.
-echo   4. Check device screen for the 'Allow wireless debugging' prompt.
-echo ================================================================
-echo.
-echo Retry connection?
-echo   [1] Re-enter IP:Port (default)
-echo   [0] Exit script
-set "RETRY_CHOICE="
-set /p "RETRY_CHOICE=Enter choice [1/0] (default: 1): "
-if "!RETRY_CHOICE!"=="" set "RETRY_CHOICE=1"
-if "!RETRY_CHOICE!"=="1" (
-    echo.
-    goto PROMPT_CONNECT_ADB
-)
-goto ERROR_EXIT
-
-:ERR_INSTALL_FAILED
-echo.
-echo ================================================================
-echo [ERROR] APK installation failed!
-echo Cause:  'adb install' returned an error.
-echo Common troubleshooting steps:
-echo   1. Insufficient device storage space.
-echo   2. Signature mismatch with existing app (uninstall it first).
-echo      Debug [1] uses the debug key, so it cannot replace a release
-echo      build; use Debug [2] instead.
-echo   3. ABI mismatch: Release [4] is x86_64 only (emulator), Release
-echo      [3] is arm64 only. Check the device CPU architecture.
-echo   4. Device system policy blocked installation.
-echo ================================================================
-goto ERROR_EXIT
-
-:: Exit handlers
 :SUCCESS_EXIT
 echo.
-echo ================================================================
 echo [INFO] Done. Press any key to exit...
-echo ================================================================
 pause >nul
 exit /b 0
 
 :ERROR_EXIT
 echo.
-echo ================================================================
 echo [INFO] Aborted due to errors. Press any key to exit...
-echo ================================================================
 pause >nul
 exit /b 1
 
