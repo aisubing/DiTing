@@ -59,6 +59,9 @@ class GoTunnelLogProcessorUpstreamTtlTest {
         // deleted the key for every zero TTL — exactly the case Kotlin needs to
         // see. Pinned at the source level (the Go toolchain is not run here).
         val candidates = listOf(
+            // The engine moved to DITING-Flutter/tunnel; earlier entries cover
+            // historical checkouts before that migration.
+            File("../../DITING-Flutter/tunnel/log_aggregator.go"),
             File("../tunnel/log_aggregator.go"),
             File("DITING-Legacy/tunnel/log_aggregator.go"),
             File("../../tunnel/log_aggregator.go")

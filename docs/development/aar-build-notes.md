@@ -1,16 +1,31 @@
 # Go AAR 构建记录
 
-本文记录 DITING 项目本次 Go 隧道 AAR 的编译过程、构建参数、遇到的问题及解决办法，便于后续重新生成 `DITING-Legacy/app/libs/tunnel.aar`。
+本文记录 DITING 项目 Go 隧道 AAR 的编译过程、构建参数、遇到的问题及解决办法，便于后续重新生成 `DITING-Flutter/android/app/libs/tunnel.aar`。
+
+> **2026-10 结构调整**：Go 隧道引擎源码已从 `DITING-Legacy/tunnel` 迁至 `DITING-Flutter/tunnel`
+> （新版工程自含引擎源码与构建入口）。`DITING-Legacy/app/libs/tunnel.aar` 是迁移时的冻结副本，
+> 旧版工程继续用它构建，不再随引擎更新。日常重建直接运行 `DITING-Flutter/tunnel/build_aar.ps1`，
+> 下文的手工命令等价于该脚本。
 
 ## 构建目标
 
-- 输出文件：`DITING-Legacy/app/libs/tunnel.aar`（旧版工程内产物；新版从同一源构建后复制到
-  `DITING-Flutter/android/app/libs/tunnel.aar`，两份同名 AAR 内容一致）
-- Android 架构：仅 `arm64-v8a`（ARMv8-A）
+按目标架构产出两个单 ABI 的 AAR（日常直接跑 `build_aar.ps1`，见下方参数）：
+
+| 架构 | 目标平台 | 输出文件 | 入库 | 用途 |
+| --- | --- | --- | --- | --- |
+| arm64-v8a（默认） | `android/arm64` | `DITING-Flutter/android/app/libs/tunnel.aar` | 是 | 真机安装包 |
+| x86_64 | `android/amd64` | `DITING-Flutter/android/app/libs/tunnel-x64.aar` | 否 | x86_64 模拟器安装包 |
+
+打包 APK 时 `android/app/build.gradle.kts` 按 `-PditingAbi=x86_64` /
+`--target-platform android-x64` 自动选用 `tunnel-x64.aar`，其余情况用 `tunnel.aar`；
+`-PtunnelAar=<路径>` 可显式覆盖，文件缺失会在 Gradle 配置期直接报错并提示生成命令。
+
 - Android 最低 API：24
 - AAR：启用 ZIP 压缩
 - Go 二进制：移除符号表和调试信息
 - 构建路径：启用 `-trimpath`
+
+脚本参数：`build_aar.ps1`（默认 arm64）/ `-Arch x64` / `-Arch all`（两个都出）。
 
 ## 环境要求
 
@@ -33,7 +48,7 @@ $env:Path = "$env:JAVA_HOME\bin;$env:Path"
 
 ## 构建命令
 
-在项目的 `DITING-Legacy/tunnel` 目录执行：
+在项目的 `DITING-Flutter/tunnel` 目录执行（或直接运行同目录的 `build_aar.ps1`）：
 
 ```powershell
 $env:ANDROID_HOME = "D:\Androidsdk"
@@ -47,7 +62,7 @@ gomobile bind `
   -androidapi 24 `
   -trimpath `
   -ldflags="-s -w" `
-  -o ..\app\libs\tunnel.aar .
+  -o ..\android\app\libs\tunnel.aar .
 ```
 
 `gomobile bind` 生成的 AAR 会自动使用 ZIP 压缩。`-target=android/arm64` 确保不会生成 ARM32、x86 或 x86_64 库；`-s -w` 用于移除 Go 符号表和 DWARF 调试信息。
@@ -103,7 +118,7 @@ jni/arm64-v8a/libgojni.so
 
 ```powershell
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [IO.Compression.ZipFile]::OpenRead("DITING-Legacy\app\libs\tunnel.aar")
+$zip = [IO.Compression.ZipFile]::OpenRead("DITING-Flutter\android\app\libs\tunnel.aar")
 $zip.Entries | Select-Object FullName, Length, CompressedLength
 $zip.Dispose()
 ```

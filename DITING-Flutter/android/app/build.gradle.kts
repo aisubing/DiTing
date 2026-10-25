@@ -173,9 +173,28 @@ if (!splitPerAbi) {
 }
 
 dependencies {
-    // Go userspace tunnel (gomobile AAR); x86_64 emulators need -PtunnelAar=libs/tunnel-debug.aar.
-    val tunnelAar = project.findProperty("tunnelAar")?.toString() ?: "libs/tunnel.aar"
-    implementation(files(tunnelAar))
+    // Go userspace tunnel (gomobile AAR). Picked per target ABI:
+    //   -PtunnelAar=<path>                            explicit override (relative to app dir)
+    //   ditingAbi=x86_64 / target-platform=android-x64 -> libs/tunnel-x64.aar (x86_64 emulator)
+    //   anything else                                  -> libs/tunnel.aar (arm64-v8a, committed)
+    val tunnelAarPath = project.findProperty("tunnelAar")?.toString()
+        ?: if (targetAbi == "x86_64" ||
+            project.findProperty("target-platform")?.toString() == "android-x64"
+        ) {
+            "libs/tunnel-x64.aar"
+        } else {
+            "libs/tunnel.aar"
+        }
+    val tunnelAarFile = file(tunnelAarPath)
+    if (!tunnelAarFile.exists()) {
+        throw GradleException(
+            "Tunnel AAR not found: $tunnelAarFile\n" +
+                "Build it from tunnel/build_aar.ps1 (-Arch x64 for the x86_64 emulator AAR, " +
+                "no args for arm64), see docs/development/aar-build-notes.md"
+        )
+    }
+    println("Tunnel AAR: $tunnelAarFile")
+    implementation(files(tunnelAarFile))
 }
 
 flutter {

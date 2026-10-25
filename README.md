@@ -64,7 +64,7 @@
 | **Android（`DITING-Legacy`，已停维护）** | ⚡ 极速模式 | Android 7.0+ / `arm64-v8a` | 纯 Kotlin 窄路由，仅接管 DNS（53 端口），轻量省电 |
 | **Android（`DITING-Legacy`，已停维护）** | 🛡️ 普通模式 | Android 10.0+ / `arm64-v8a` | gVisor 全隧道，支持应用分流、HTTPS 检查、出站代理 |
 | **Android（`DITING-Legacy`，已停维护）** | 🏠 服务器模式 | Android 10.0+ | Go 独立 DNS 服务，监听 `0.0.0.0:1053`，共享给局域网设备 |
-| **Android（`DITING-Flutter`，主力）** | 三模式 | 同左 | Flutter 重写，复用同一 Go 引擎（`tunnel.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
+| **Android（`DITING-Flutter`，主力）** | 三模式 | 同左 | Flutter 重写，自带 Go 引擎源码（`tunnel/`，构建为 `tunnel.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
 | **Windows** | ⚙️ 特权核心服务 | Windows 10+ 64-bit | 双栈接管物理网卡、本地 53 监听、缓存规则、局域网 DNS、崩溃自愈 |
 | **Windows** | 🖥️ 桌面 GUI | Windows 10+ 64-bit + WebView2 | Wails v2 + Vue 3，免管理员权限管理服务与实时日志 |
 | **Windows** | 🌐 Web 控制台 | 任意主流浏览器 | 访问 15353 端口远程管理 Windows 核心服务 |
@@ -81,10 +81,10 @@ DITING/
 │   ├── lib/ui/               #   移植自 1.4.3 的设计系统（GPL-3.0）
 │   ├── lib/data/             #   旧版 SharedPreferences（11 个容器）与旧版 SQLite 读写
 │   ├── lib/pages/            #   页面（85 条路由）
+│   ├── tunnel/               #   Go 用户态隧道引擎源码（gomobile 构建为 tunnel.aar）
 │   └── android/              #   Flutter Android 壳（包名 com.haoze.diting）
 ├── DITING-Legacy/            # 旧版 Android 客户端（Kotlin 1.4.3 基线，已停止维护，仅供新版对照实现）
-│   ├── app/                  #   Kotlin / Jetpack Compose 应用
-│   └── tunnel/               #   Go 用户态隧道引擎（构建为 tunnel.aar）
+│   └── app/                  #   Kotlin / Jetpack Compose 应用（依赖冻结副本 app/libs/tunnel.aar）
 ├── Desktop/                  # Windows / Linux 工程
 │   ├── cmd/service/          # 特权核心服务（Windows Service / Linux systemd）
 │   ├── internal/             # DNS 内核、平台适配、IPC、鉴权、查询日志
@@ -104,6 +104,10 @@ DITING/
 > 旧版已停止维护，新功能一律进 `DITING-Flutter`；但新版在更新时仍会对照旧版实现（源码注释中的
 > `DITING-Legacy/...` 指针即为此用），因此**旧版工程保留在仓库内，不删除**。
 > `docs/development/Archive/` 下的历史文档保留当年的旧路径，属归档记录，不再同步。
+>
+> **引擎迁移说明**（2026-10）：Go 隧道引擎源码已从 `DITING-Legacy/tunnel` 迁至 `DITING-Flutter/tunnel`，
+> 新版工程自含引擎源码与 AAR 构建入口（`tunnel/build_aar.ps1`），不再依赖旧版目录结构；
+> 旧版工程改用冻结副本 `app/libs/tunnel.aar` 构建，其余源码原样保留。
 
 
 ---
@@ -133,8 +137,9 @@ flutter test
 
 为缩小安装包体积，脚本默认以 `-PditingAbi=<abi>` 构建单架构包，并通过
 `-PditingCompressNativeLibs=true`（默认）对 `.so` 使用 legacy 打包（安装时解压）。
-模拟器（x86_64）联调需多 ABI 的 AAR：档位 4 会自动传 `-PtunnelAar=libs/tunnel-debug.aar`
-（该文件不入库），否则 `libgojni.so` 只有 `arm64-v8a`，`System.loadLibrary` 会失败。
+模拟器（x86_64）联调需要 x86_64 版 AAR：`tunnel/build_aar.ps1 -Arch x64` 生成不入库的
+`tunnel-x64.aar` 后，`build.gradle.kts` 会按 `-PditingAbi=x86_64` / `--target-platform android-x64`
+自动选用（也可 `-PtunnelAar=<路径>` 显式指定）。缺文件时构建会直接报错并提示生成命令。
 详情见 [DITING-Flutter/README.md](DITING-Flutter/README.md) 与
 [Go AAR 构建记录](docs/development/aar-build-notes.md)。
 

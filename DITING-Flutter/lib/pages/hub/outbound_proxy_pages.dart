@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// DITING's own package id (`applicationId` in `DITING-Legacy/app/build.gradle.kts`).
+/// DITING's own package id (`applicationId` in `android/app/build.gradle.kts`).
 /// Upstream reads `context.packageName`; this constant must match or the "cannot select
 /// DITING itself" check breaks.
 const ditingSelfPackage = 'com.haoze.diting';

@@ -52,8 +52,10 @@ class RewriteCnameDeliveryTest {
     @Test
     fun goEngineAppliesCnameBeforeTheFilteringSwitch() {
         // Unit tests run with the module directory (DITING-Legacy/app) as working
-        // directory, so the Go engine one level up is `../tunnel`.
+        // directory. The Go engine moved to DITING-Flutter/tunnel; the ../tunnel
+        // candidates cover historical checkouts before that migration.
         val source = readFile(
+            "../../DITING-Flutter/tunnel/engine_standalone.go",
             "../tunnel/engine_standalone.go",
             "DITING-Legacy/tunnel/engine_standalone.go",
             "engine_standalone.go"
@@ -78,6 +80,7 @@ class RewriteCnameDeliveryTest {
         // engine only applies what the dataset pushes, and the express adapter
         // carries no rewrite rows.
         val engineSource = readFile(
+            "../../DITING-Flutter/tunnel/engine_config.go",
             "../tunnel/engine_config.go",
             "DITING-Legacy/tunnel/engine_config.go",
             "engine_config.go"

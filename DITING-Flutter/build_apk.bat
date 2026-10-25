@@ -121,11 +121,12 @@ goto START_BUILD
 :SET_RELEASE_X64
 if not exist "android\key.properties" goto ERR_NO_KEYSTORE
 :: tunnel.aar only ships arm64-v8a libgojni.so; the x86_64 emulator needs the
-:: locally built multi-ABI tunnel-debug.aar, which is git-ignored.
-if not exist "android\app\libs\tunnel-debug.aar" goto ERR_NO_TUNNEL_X64
+:: locally built tunnel-x64.aar (single-ABI, git-ignored). build.gradle.kts
+:: picks it automatically from -PditingAbi=x86_64.
+if not exist "android\app\libs\tunnel-x64.aar" goto ERR_NO_TUNNEL_X64
 set "BUILD_TYPE=release"
 set "BUILD_TYPE_NAME=Release (x86_64, Release Key, EMULATOR)"
-set "FLUTTER_ARGS=build apk --release --target-platform android-x64 -PditingAbi=x86_64 -PtunnelAar=libs/tunnel-debug.aar"
+set "FLUTTER_ARGS=build apk --release --target-platform android-x64 -PditingAbi=x86_64"
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-release.apk"
 set "IS_EMULATOR_BUILD=1"
@@ -369,12 +370,12 @@ goto ERROR_EXIT
 echo.
 echo ================================================================
 echo [ERROR] x86_64 tunnel AAR is missing!
-echo Cause:  android\app\libs\tunnel-debug.aar not found. The shipped
+echo Cause:  android\app\libs\tunnel-x64.aar not found. The shipped
 echo         tunnel.aar contains arm64-v8a only, so an x86_64 build
 echo         would install but the tunnel would fail to load.
-echo Action: Build it with gomobile for android/arm64,android/amd64
-echo         (see docs\development\aar-build-notes.md) and place it at
-echo         android\app\libs\tunnel-debug.aar. Use option [3] otherwise.
+echo Action: Run  powershell -ExecutionPolicy Bypass -File
+echo         tunnel\build_aar.ps1 -Arch x64  to build it (see
+echo         docs\development\aar-build-notes.md), or use option [3].
 echo ================================================================
 goto ERROR_EXIT
 
