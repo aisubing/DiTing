@@ -237,6 +237,25 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
+    title: '故障排查',
+    cards: [
+      MockFeatureCard(
+        title: '崩溃日志',
+        description: '查看、导出与清空异常退出时自动保存的崩溃诊断文件',
+        glyphName: 'wrench',
+        route: '/hub/crash-logs',
+        featureKey: 'crash_logs',
+      ),
+      MockFeatureCard(
+        title: '运行日志',
+        description: '手动开启运行日志抓取，导出后发送给开发者定位问题',
+        glyphName: 'logs',
+        route: '/hub/runtime-logs',
+        featureKey: 'runtime_logs',
+      ),
+    ],
+  ),
+  MockFeatureCategory(
     title: '关于谛听',
     cards: [
       MockFeatureCard(

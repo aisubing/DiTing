@@ -117,6 +117,8 @@ final Map<String, String> topLevelRoutes = {
   '服务显示': HubPaths.providerVisibility,
   '隐藏功能': HubPaths.hiddenFeatures,
   '日志模式': HubPaths.logRetention,
+  '崩溃日志': HubPaths.crashLogs,
+  '运行日志': HubPaths.runtimeLogs,
   '数据清理': HubPaths.dataCleanup,
   '备份与迁移': HubPaths.configTransfer,
   'WebDAV 云同步': HubPaths.configTransferWebdav,

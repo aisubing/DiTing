@@ -8,6 +8,7 @@ import 'package:diting/pages/hub/ca_certificate_pages.dart';
 import 'package:diting/pages/hub/cache_settings_page.dart';
 import 'package:diting/pages/hub/config_transfer_page.dart';
 import 'package:diting/pages/hub/config_transfer_webdav.dart';
+import 'package:diting/pages/hub/crash_log_page.dart';
 import 'package:diting/pages/hub/data_cleanup_page.dart';
 import 'package:diting/pages/hub/hidden_features_page.dart';
 import 'package:diting/pages/hub/http_inspection_page.dart';
@@ -18,6 +19,7 @@ import 'package:diting/pages/hub/provider_visibility_page.dart';
 import 'package:diting/pages/hub/recognition_pages.dart';
 import 'package:diting/pages/hub/resolution_mode_page.dart';
 import 'package:diting/pages/hub/rule_control_page.dart';
+import 'package:diting/pages/hub/runtime_log_page.dart';
 import 'package:diting/pages/hub/subscription_tools_pages.dart';
 import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
@@ -48,6 +50,8 @@ abstract final class HubPaths {
   static const providerVisibility = '/hub/provider-visibility';
   static const hiddenFeatures = '/hub/hidden-features';
   static const logRetention = '/hub/log-retention';
+  static const crashLogs = '/hub/crash-logs';
+  static const runtimeLogs = '/hub/runtime-logs';
   static const dataCleanup = '/hub/data-cleanup';
   static const configTransfer = '/hub/config-transfer';
   static const configTransferWebdav = '/hub/config-transfer/webdav';
@@ -205,6 +209,18 @@ List<RouteBase> hubRoutes() => [
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const LogRetentionPage()),
+  ),
+  GoRoute(
+    path: HubPaths.crashLogs,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const CrashLogPage()),
+  ),
+  GoRoute(
+    path: HubPaths.runtimeLogs,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const RuntimeLogPage()),
   ),
   GoRoute(
     path: HubPaths.dataCleanup,

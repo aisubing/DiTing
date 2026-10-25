@@ -252,8 +252,14 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
                   _Entry(
                     glyph: AppGlyphs.logs,
                     title: '日志保留',
-                    subtitle: '日志容量上限、崩溃日志的查看与导出',
+                    subtitle: '日志容量上限与 DNS 请求日志的记录范围',
                     route: HubPaths.logRetention,
+                  ),
+                  _Entry(
+                    glyph: AppGlyphs.wrench,
+                    title: '故障排查',
+                    subtitle: '导出崩溃日志，手动抓取并导出运行日志',
+                    route: HubPaths.crashLogs,
                   ),
                   _Entry(
                     glyph: AppGlyphs.broom,
