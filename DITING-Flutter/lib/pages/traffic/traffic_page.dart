@@ -288,11 +288,11 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
         destructive: true,
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () => popFloatingDialog(context, false),
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => popFloatingDialog(context, true),
             child: const Text('确认清除'),
           ),
         ],

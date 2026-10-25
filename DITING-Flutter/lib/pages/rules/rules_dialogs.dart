@@ -117,11 +117,11 @@ Future<bool> _confirm(
       destructive: true,
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => popFloatingDialog(context, false),
           child: Text(localizations.cancel),
         ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
+          onPressed: () => popFloatingDialog(context, true),
           child: Text(confirmLabel),
         ),
       ],

@@ -215,6 +215,21 @@ void main() {
       expect(find.byType(SettingsPage), findsOneWidget);
     });
 
+    // Regression: the alert is pushed on the root navigator while the page sits on a branch
+    // navigator; popping the page's own navigator removed the page and left a black screen.
+    testWidgets('分支页面的清除弹窗取消后仍停留在流量统计', (tester) async {
+      await pumpApp(tester, initialLocation: Routes.traffic, dock: userDock);
+      await tester.tap(find.byTooltip('清除历史'));
+      await tester.pumpAndSettle();
+      expect(find.text('清除全部流量记录？'), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('清除全部流量记录？'), findsNothing);
+      expect(find.byType(TrafficPage), findsOneWidget);
+      expect(find.byType(NavigationDock), findsOneWidget);
+    });
+
     // Regression: a page outside the bar must report -1, not light up "home"
     testWidgets('当前页不在底栏里时底栏不点亮任何一项', (tester) async {
       await pumpApp(tester, initialLocation: Routes.traffic, dock: userDock);

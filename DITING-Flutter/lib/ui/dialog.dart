@@ -62,6 +62,15 @@ Future<T?> showFloatingDialog<T>({
   );
 }
 
+/// Closes the alert [context] opened, on the navigator that hosts it.
+///
+/// An alert is pushed on the outermost navigator ([sheetNavigatorOf]), but a page on a shell branch
+/// sits on a branch navigator. Popping the page's own navigator there would remove the page itself
+/// and leave go_router with an empty stack, which renders as a black screen.
+void popFloatingDialog<T>(BuildContext context, [T? result]) {
+  sheetNavigatorOf(context).pop<T>(result);
+}
+
 /// A route whose navigator an alert raised from inside it opens on.
 mixin AlertHostRoute<T> on ModalRoute<T> {}
 

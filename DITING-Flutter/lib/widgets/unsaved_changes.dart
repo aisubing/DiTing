@@ -29,11 +29,12 @@ Future<UnsavedChangesChoice> showUnsavedChangesDialog(
       actions: [
         TextButton(
           onPressed: () =>
-              Navigator.of(context).pop(UnsavedChangesChoice.discard),
+              popFloatingDialog(context, UnsavedChangesChoice.discard),
           child: const Text('不保存'),
         ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(UnsavedChangesChoice.save),
+          onPressed: () =>
+              popFloatingDialog(context, UnsavedChangesChoice.save),
           child: const Text('保存'),
         ),
       ],
