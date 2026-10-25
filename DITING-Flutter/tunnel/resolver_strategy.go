@@ -10,15 +10,13 @@ package tunnel
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/miekg/dns"
 )
-
-const predictionBackupDelay = 50 * time.Millisecond
 
 func extractQueryInfo(rawQuery []byte) (string, uint16) {
 	var msg dns.Msg
@@ -161,167 +159,6 @@ func (r *Resolver) resolveParallelRace(rawQuery []byte, queryName string, queryT
 	return nil, lastErr
 }
 
-type predResult struct {
-	provider *configuredProvider
-	response []byte
-	elapsed  time.Duration
-	err      error
-	isBackup bool
-}
-
-func (r *Resolver) resolveSmartPrediction(rawQuery []byte, queryName string, queryType uint16, startTime time.Time, snapshot *resolverSnapshot) ([]byte, error) {
-	providers := snapshot.providers
-	n := len(providers)
-	if n == 0 {
-		return nil, fmt.Errorf("no providers available")
-	}
-	if n == 1 {
-		return r.resolveSingle(rawQuery, queryName, queryType, startTime, providers)
-	}
-
-	candidates := make([]*configuredProvider, n)
-	copy(candidates, providers)
-	sort.SliceStable(candidates, func(i, j int) bool {
-		var scoreI, scoreJ time.Duration
-		if candidates[i].stats != nil {
-			scoreI = candidates[i].stats.Score()
-		}
-		if candidates[j].stats != nil {
-			scoreJ = candidates[j].stats.Score()
-		}
-		return scoreI < scoreJ
-	})
-
-	primary := candidates[0]
-	rest := candidates[1:]
-
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeoutPlain)
-	defer cancel()
-
-	resultCh := make(chan predResult, n)
-
-	if !snapshot.acquire() {
-		return nil, fmt.Errorf("snapshot retired: primary provider could not be acquired")
-	}
-	go func() {
-		defer snapshot.release()
-		resp, elapsed, err := r.queryConfiguredProvider(ctx, primary, rawQuery)
-		resultCh <- predResult{
-			provider: primary,
-			response: resp,
-			elapsed:  elapsed,
-			err:      err,
-			isBackup: false,
-		}
-	}()
-
-	backupTimer := time.NewTimer(predictionBackupDelay)
-	defer backupTimer.Stop()
-
-	var fallbackTriggered bool
-	var winner *predResult
-	var lastErr error
-	completed := 0
-	expected := 1
-
-	triggerBackups := func() {
-		if fallbackTriggered {
-			return
-		}
-		fallbackTriggered = true
-		for _, b := range rest {
-			if !snapshot.acquire() {
-				continue
-			}
-			expected++
-			go func(prov *configuredProvider) {
-				defer snapshot.release()
-				resp, elapsed, err := r.queryConfiguredProvider(ctx, prov, rawQuery)
-				resultCh <- predResult{
-					provider: prov,
-					response: resp,
-					elapsed:  elapsed,
-					err:      err,
-					isBackup: true,
-				}
-			}(b)
-		}
-	}
-
-	for {
-		select {
-		case <-backupTimer.C:
-			triggerBackups()
-
-		case res := <-resultCh:
-			completed++
-			if res.err == nil && res.response != nil {
-				resCopy := res
-				winner = &resCopy
-				cancel()
-				goto DONE
-			}
-			lastErr = res.err
-			if !res.isBackup && !fallbackTriggered {
-				backupTimer.Stop()
-				triggerBackups()
-			}
-			// A failed primary always triggers the backups above, so once all
-			// spawned queries have failed there is nothing left to wait for.
-			if fallbackTriggered && completed >= expected {
-				goto DONE
-			}
-		}
-	}
-
-DONE:
-	totalElapsed := time.Since(startTime).Milliseconds()
-	if winner != nil {
-		fallbackSuccess := winner.isBackup
-		var selectedElapsed int64
-		if !winner.isBackup {
-			selectedElapsed = winner.elapsed.Milliseconds()
-		}
-		r.notifyRaceLog(
-			queryName,
-			queryType,
-			"smart_prediction",
-			n,
-			true,
-			totalElapsed,
-			primary.id,
-			selectedElapsed,
-			winner.provider.id,
-			winner.elapsed.Milliseconds(),
-			fallbackTriggered,
-			fallbackSuccess,
-			"",
-		)
-		return winner.response, nil
-	}
-
-	var errMsg string
-	if lastErr != nil {
-		errMsg = lastErr.Error()
-	}
-	r.notifyRaceLog(
-		queryName,
-		queryType,
-		"smart_prediction",
-		n,
-		false,
-		totalElapsed,
-		primary.id,
-		0,
-		"",
-		0,
-		fallbackTriggered,
-		false,
-		errMsg,
-	)
-	return nil, lastErr
-}
-
 func (r *Resolver) queryConfiguredProvider(ctx context.Context, provider *configuredProvider, rawQuery []byte) (resp []byte, elapsed time.Duration, err error) {
 	start := time.Now()
 	defer func() {
@@ -340,6 +177,14 @@ func (r *Resolver) queryConfiguredProvider(ctx context.Context, provider *config
 	}
 	elapsed = time.Since(start)
 	if err != nil {
+		// Cancelled by the caller because another provider already won: the
+		// provider is not broken, it was merely slower than the winner.
+		if errors.Is(ctx.Err(), context.Canceled) {
+			if provider.stats != nil {
+				provider.stats.RecordCensored(elapsed)
+			}
+			return nil, elapsed, err
+		}
 		if provider.stats != nil {
 			provider.stats.RecordFailure()
 		}
