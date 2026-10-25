@@ -64,7 +64,7 @@
 | **Android（`DITING-Legacy`，已停维护）** | ⚡ 极速模式 | Android 7.0+ / `arm64-v8a` | 纯 Kotlin 窄路由，仅接管 DNS（53 端口），轻量省电 |
 | **Android（`DITING-Legacy`，已停维护）** | 🛡️ 普通模式 | Android 10.0+ / `arm64-v8a` | gVisor 全隧道，支持应用分流、HTTPS 检查、出站代理 |
 | **Android（`DITING-Legacy`，已停维护）** | 🏠 服务器模式 | Android 10.0+ | Go 独立 DNS 服务，监听 `0.0.0.0:1053`，共享给局域网设备 |
-| **Android（`DITING-Flutter`，主力）** | 三模式 | 同左 | Flutter 重写，自带 Go 引擎源码（`tunnel/`，构建为 `tunnel.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
+| **Android（`DITING-Flutter`，主力）** | 三模式 | 同左 | Flutter 重写，自带 Go 引擎源码（`tunnel/`，按架构编译为 `tunnel-arm64/x64/all.aar`），读 1.4.3 的配置与数据库；部分页面数据仍为演示 |
 | **Windows** | ⚙️ 特权核心服务 | Windows 10+ 64-bit | 双栈接管物理网卡、本地 53 监听、缓存规则、局域网 DNS、崩溃自愈 |
 | **Windows** | 🖥️ 桌面 GUI | Windows 10+ 64-bit + WebView2 | Wails v2 + Vue 3，免管理员权限管理服务与实时日志 |
 | **Windows** | 🌐 Web 控制台 | 任意主流浏览器 | 访问 15353 端口远程管理 Windows 核心服务 |
@@ -81,7 +81,7 @@ DITING/
 │   ├── lib/ui/               #   移植自 1.4.3 的设计系统（GPL-3.0）
 │   ├── lib/data/             #   旧版 SharedPreferences（11 个容器）与旧版 SQLite 读写
 │   ├── lib/pages/            #   页面（85 条路由）
-│   ├── tunnel/               #   Go 用户态隧道引擎源码（gomobile 构建为 tunnel.aar）
+│   ├── tunnel/               #   Go 用户态隧道引擎源码（gomobile 编译为 arm64/x64/all 三种 AAR）
 │   └── android/              #   Flutter Android 壳（包名 com.haoze.diting）
 ├── DITING-Legacy/            # 旧版 Android 客户端（Kotlin 1.4.3 基线，已停止维护，仅供新版对照实现）
 │   └── app/                  #   Kotlin / Jetpack Compose 应用（依赖冻结副本 app/libs/tunnel.aar）
@@ -129,19 +129,19 @@ flutter test
 
 | 档位 | 编译模式 | 签名 | Flutter 库架构 | 隧道引擎架构 | 可安装的设备 |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Debug | Debug Key | 全 ABI | 仅 arm64 | ARM 手机/平板 |
-| 2 | Debug | Release Key | 全 ABI | 仅 arm64 | ARM 手机/平板（可覆盖安装正式包） |
+| 1 | Debug | Debug Key | `arm64-v8a`+`x86_64` | 双 ABI 一体 | ARM 手机/平板 **与 x86_64 模拟器** |
+| 2 | Debug | Release Key | `arm64-v8a`+`x86_64` | 双 ABI 一体 | 同上（可覆盖安装正式包） |
 | 3 | Release | Release Key | `arm64-v8a` | 仅 arm64 | ARM 手机/平板（默认档位） |
 | 4 | Release | Release Key | `x86_64` | 仅 x86_64 | **仅 x86_64 模拟器** |
 | 5 | — | — | — | — | 清理编译缓存与构建产物（`flutter clean` + `gradlew clean`） |
 
-**架构匹配注意**：隧道引擎（`libgojni.so`）在任何一个安装包里都只有一种架构——1/2/3 档打的是
-arm64 引擎（`tunnel.aar`），4 档打的是 x86_64 引擎（`tunnel-x64.aar`，由
-`tunnel/build_aar.ps1 -Arch x64` 生成不入库文件，`build.gradle.kts` 按
-`-PditingAbi=x86_64` / `--target-platform android-x64` 自动选用，缺文件时构建报错并提示）。
-把包装到不匹配的设备上会报「安装失败 / 安装包与系统不兼容」。另外所有 debug 构建共用同一
-输出文件 `app-debug.apk`，磁盘上的产物永远是**最后一次**构建的架构——装手机前先看构建日志里的
-`Tunnel engine ABI` 行确认。
+**架构匹配注意**：3 档打的是 arm64 引擎（`tunnel-arm64.aar`，入库），4 档打的是 x86_64 引擎
+（`tunnel-x64.aar`），1/2 档 debug 打的是双 ABI 一体引擎（`tunnel-all.aar`，真机与模拟器同包
+通用）。`tunnel-x64.aar` / `tunnel-all.aar` 均按需由 `tunnel/build_aar.ps1 -Arch x64|all`
+生成且不入库，`build.gradle.kts` 按 `-PditingAbi` / `--target-platform` 自动选用，缺文件时
+构建报错并提示。把 3/4 档的包装到不匹配的设备上会报「安装失败 / 安装包与系统不兼容」。
+另外所有 debug 构建共用同一输出文件 `app-debug.apk`，磁盘上的产物永远是**最后一次**构建的
+结果——装设备前先看构建日志里的 `Tunnel engine ABI` 行确认。
 
 为缩小安装包体积，Release 档位以 `-PditingAbi=<abi>` 构建单架构包，并通过
 `-PditingCompressNativeLibs=true`（默认）对 `.so` 使用 legacy 打包（安装时解压）。

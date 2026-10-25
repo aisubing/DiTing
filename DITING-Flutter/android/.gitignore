@@ -14,6 +14,9 @@ key.properties
 **/*.jks
 /build/
 
-# Local x86_64-only tunnel AAR for emulator testing (built on demand).
+# Local on-demand tunnel AARs, not committed: x86_64 emulator single-ABI and
+# the dual-ABI all-in-one that debug APKs bundle by default.
 app/libs/tunnel-x64.aar
-app/libs/tunnel-x64-sources.jar
+app/libs/tunnel-all.aar
+# gomobile bind writes a -sources.jar next to every AAR it builds.
+app/libs/tunnel-*-sources.jar

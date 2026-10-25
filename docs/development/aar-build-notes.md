@@ -1,6 +1,6 @@
 # Go AAR 构建记录
 
-本文记录 DITING 项目 Go 隧道 AAR 的编译过程、构建参数、遇到的问题及解决办法，便于后续重新生成 `DITING-Flutter/android/app/libs/tunnel.aar`。
+本文记录 DITING 项目 Go 隧道 AAR 的编译过程、构建参数、遇到的问题及解决办法，便于后续重新生成 `DITING-Flutter/android/app/libs/` 下的 tunnel AAR。
 
 > **2026-10 结构调整**：Go 隧道引擎源码已从 `DITING-Legacy/tunnel` 迁至 `DITING-Flutter/tunnel`
 > （新版工程自含引擎源码与构建入口）。`DITING-Legacy/app/libs/tunnel.aar` 是迁移时的冻结副本，
@@ -9,23 +9,28 @@
 
 ## 构建目标
 
-按目标架构产出两个单 ABI 的 AAR（日常直接跑 `build_aar.ps1`，见下方参数）：
+按目标架构产出三种 AAR（日常直接跑 `build_aar.ps1`，见下方参数）：
 
 | 架构 | 目标平台 | 输出文件 | 入库 | 用途 |
 | --- | --- | --- | --- | --- |
-| arm64-v8a（默认） | `android/arm64` | `DITING-Flutter/android/app/libs/tunnel.aar` | 是 | 真机安装包 |
-| x86_64 | `android/amd64` | `DITING-Flutter/android/app/libs/tunnel-x64.aar` | 否 | x86_64 模拟器安装包 |
+| arm64-v8a（默认） | `android/arm64` | `DITING-Flutter/android/app/libs/tunnel-arm64.aar` | 是 | 真机 release 安装包（历史默认名 `tunnel.aar`） |
+| x86_64 | `android/amd64` | `DITING-Flutter/android/app/libs/tunnel-x64.aar` | 否 | x86_64 模拟器 release 安装包 |
+| 双 ABI（all） | `android/arm64,android/amd64` | `DITING-Flutter/android/app/libs/tunnel-all.aar` | 否 | **debug APK 默认引擎**，一个包通吃真机与 x86_64 模拟器 |
 
-打包 APK 时 `android/app/build.gradle.kts` 按 `-PditingAbi=x86_64` /
-`--target-platform android-x64` 自动选用 `tunnel-x64.aar`，其余情况用 `tunnel.aar`；
-`-PtunnelAar=<路径>` 可显式覆盖，文件缺失会在 Gradle 配置期直接报错并提示生成命令。
+打包 APK 时 `android/app/build.gradle.kts` 自动选用：
+
+- **debug 构建**（`ditingAbi` 未显式指定）→ `tunnel-all.aar`，双 ABI，真机与模拟器同包通用；
+- **release 构建**（默认）→ `tunnel-arm64.aar`；
+- `-PditingAbi=x86_64`（配合 `--target-platform android-x64`）→ `tunnel-x64.aar`；
+- `-PditingAbi=all` → `tunnel-all.aar`（release 也可打出双 ABI 包）；
+- `-PtunnelAar=<路径>` 显式覆盖；文件缺失会在 Gradle 配置期直接报错并提示生成命令。
 
 - Android 最低 API：24
 - AAR：启用 ZIP 压缩
 - Go 二进制：移除符号表和调试信息
 - 构建路径：启用 `-trimpath`
 
-脚本参数：`build_aar.ps1`（默认 arm64）/ `-Arch x64` / `-Arch all`（两个都出）。
+脚本参数：`build_aar.ps1`（默认 arm64 → `tunnel-arm64.aar`）/ `-Arch x64`（→ `tunnel-x64.aar`）/ `-Arch all`（→ 双 ABI 一体包 `tunnel-all.aar`）。
 
 ## 环境要求
 
@@ -62,10 +67,10 @@ gomobile bind `
   -androidapi 24 `
   -trimpath `
   -ldflags="-s -w" `
-  -o ..\android\app\libs\tunnel.aar .
+  -o ..\android\app\libs\tunnel-arm64.aar .
 ```
 
-`gomobile bind` 生成的 AAR 会自动使用 ZIP 压缩。`-target=android/arm64` 确保不会生成 ARM32、x86 或 x86_64 库；`-s -w` 用于移除 Go 符号表和 DWARF 调试信息。
+`gomobile bind` 生成的 AAR 会自动使用 ZIP 压缩。`-target=android/arm64` 确保不会生成 ARM32、x86 或 x86_64 库；`-s -w` 用于移除 Go 符号表和 DWARF 调试信息。双 ABI 一体包用逗号分隔多 target（`-target=android/arm64,android/amd64`），gomobile 会把两个 `jni/` 架构目录打进同一个 AAR。
 
 ## 遇到的问题与解决办法
 
@@ -108,17 +113,19 @@ exec: "javac": executable file not found in %PATH%
 
 ## 构建结果检查
 
-最终 AAR 约为 4.8 MB，内部只包含：
+最终 `tunnel-arm64.aar` 约为 4.8 MB，内部只包含：
 
 ```text
 jni/arm64-v8a/libgojni.so
 ```
 
+`tunnel-all.aar` 约为两倍大小，内部包含 `jni/arm64-v8a/libgojni.so` 与 `jni/x86_64/libgojni.so` 各一份。
+
 可以使用以下命令查看 AAR 内容：
 
 ```powershell
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [IO.Compression.ZipFile]::OpenRead("DITING-Flutter\android\app\libs\tunnel.aar")
+$zip = [IO.Compression.ZipFile]::OpenRead("DITING-Flutter\android\app\libs\tunnel-arm64.aar")
 $zip.Entries | Select-Object FullName, Length, CompressedLength
 $zip.Dispose()
 ```

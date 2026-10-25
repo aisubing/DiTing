@@ -117,12 +117,15 @@ android {
     }
 }
 
-// libs/tunnel.aar is arm64-only; drop the other ABIs at jniLibs, abiFilters gets overwritten.
+// Tunnel AARs are single- or dual-ABI; drop the ABIs each build must not ship.
+// abiFilters gets overwritten by the Flutter plugin, so jniLibs excludes are used instead.
 //
 // ABI policy:
-//   ditingAbi unset  -> release: arm64-v8a only (historical default); debug: all ABIs
+//   ditingAbi unset  -> debug: arm64-v8a + x86_64 (dual-ABI tunnel-all.aar, runs on
+//                       phones AND the x86_64 emulator); release: arm64-v8a only
 //   ditingAbi=arm64  -> arm64-v8a only, debug and release
 //   ditingAbi=x86_64 -> x86_64 only (emulator builds), debug and release
+//   ditingAbi=all    -> arm64-v8a + x86_64 (universal build), debug and release
 val splitPerAbi: Boolean =
     project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
 androidComponents {
@@ -130,8 +133,9 @@ androidComponents {
         val excludedByAbi = when {
             targetAbi == "x86_64" -> listOf("**/armeabi-v7a/**", "**/arm64-v8a/**")
             targetAbi == "arm64" -> listOf("**/armeabi-v7a/**", "**/x86_64/**")
+            targetAbi == "all" -> listOf("**/armeabi-v7a/**", "**/x86/**")
             variant.name == "release" -> listOf("**/armeabi-v7a/**", "**/x86_64/**")
-            else -> emptyList()
+            else -> listOf("**/armeabi-v7a/**", "**/x86/**")
         }
         if (!splitPerAbi) {
             variant.packaging.jniLibs.excludes.addAll(excludedByAbi)
@@ -173,28 +177,43 @@ if (!splitPerAbi) {
 }
 
 dependencies {
-    // Go userspace tunnel (gomobile AAR). Picked per target ABI:
-    //   -PtunnelAar=<path>                            explicit override (relative to app dir)
-    //   ditingAbi=x86_64 / target-platform=android-x64 -> libs/tunnel-x64.aar (x86_64 emulator)
-    //   anything else                                  -> libs/tunnel.aar (arm64-v8a, committed)
-    val tunnelAarPath = project.findProperty("tunnelAar")?.toString()
-        ?: if (targetAbi == "x86_64" ||
-            project.findProperty("target-platform")?.toString() == "android-x64"
-        ) {
-            "libs/tunnel-x64.aar"
-        } else {
-            "libs/tunnel.aar"
+    // Go userspace tunnel (gomobile AAR). Picked per target ABI / build type:
+    //   -PtunnelAar=<path>      explicit override (relative to app dir), all variants
+    //   ditingAbi=x86_64        -> libs/tunnel-x64.aar   (x86_64 emulator)
+    //   ditingAbi=all           -> libs/tunnel-all.aar   (dual ABI, universal)
+    //   ditingAbi=arm64         -> libs/tunnel-arm64.aar
+    //   ditingAbi unset         -> debug: libs/tunnel-all.aar so ONE debug APK runs on both
+    //                              ARM devices and the x86_64 emulator; release/profile:
+    //                              libs/tunnel-arm64.aar (committed)
+    fun tunnelAar(relPath: String): File {
+        val aarFile = file(relPath)
+        if (!aarFile.exists()) {
+            throw GradleException(
+                "Tunnel AAR not found: $aarFile\n" +
+                    "Build it from tunnel/build_aar.ps1 (no args for arm64, " +
+                    "-Arch x64 / -Arch all for the others), see docs/development/aar-build-notes.md"
+            )
         }
-    val tunnelAarFile = file(tunnelAarPath)
-    if (!tunnelAarFile.exists()) {
-        throw GradleException(
-            "Tunnel AAR not found: $tunnelAarFile\n" +
-                "Build it from tunnel/build_aar.ps1 (-Arch x64 for the x86_64 emulator AAR, " +
-                "no args for arm64), see docs/development/aar-build-notes.md"
-        )
+        println("Tunnel AAR [$relPath]: $aarFile")
+        return aarFile
     }
-    println("Tunnel AAR: $tunnelAarFile")
-    implementation(files(tunnelAarFile))
+    val explicitTunnelAar = project.findProperty("tunnelAar")?.toString()
+    when {
+        explicitTunnelAar != null ->
+            implementation(files(tunnelAar(explicitTunnelAar)))
+        targetAbi == "x86_64" ||
+            project.findProperty("target-platform")?.toString() == "android-x64" ->
+            implementation(files(tunnelAar("libs/tunnel-x64.aar")))
+        targetAbi == "all" ->
+            implementation(files(tunnelAar("libs/tunnel-all.aar")))
+        targetAbi == "arm64" ->
+            implementation(files(tunnelAar("libs/tunnel-arm64.aar")))
+        else -> {
+            add("debugImplementation", files(tunnelAar("libs/tunnel-all.aar")))
+            add("releaseImplementation", files(tunnelAar("libs/tunnel-arm64.aar")))
+            add("profileImplementation", files(tunnelAar("libs/tunnel-arm64.aar")))
+        }
+    }
 }
 
 flutter {

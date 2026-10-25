@@ -1,13 +1,15 @@
 ﻿# 从 DITING-Flutter/tunnel 源码重建 tunnel AAR（新版工程内自含的构建入口）。
 #
-# 两个单架构版本，打包时由 android/app/build.gradle.kts 按目标 ABI 自动选用：
-#   arm64（默认，真机）  -> android/app/libs/tunnel.aar     入库，覆盖即更新
-#   x64  （模拟器 x86_64）-> android/app/libs/tunnel-x64.aar 不入库，按需生成
+# 三种产物，打包时由 android/app/build.gradle.kts 按构建类型与目标 ABI 自动选用：
+#   arm64（默认，真机）    -> android/app/libs/tunnel-arm64.aar  入库，覆盖即更新
+#   x64  （模拟器 x86_64） -> android/app/libs/tunnel-x64.aar    不入库，按需生成
+#   all  （双 ABI 一体包）  -> android/app/libs/tunnel-all.aar   不入库，按需生成；
+#                             debug APK 默认搭载它，真机与 x86_64 模拟器通用
 #
 # 用法：
-#   powershell -ExecutionPolicy Bypass -File build_aar.ps1              # arm64 -> tunnel.aar
+#   powershell -ExecutionPolicy Bypass -File build_aar.ps1              # arm64 -> tunnel-arm64.aar
 #   powershell -ExecutionPolicy Bypass -File build_aar.ps1 -Arch x64    # x86_64 -> tunnel-x64.aar
-#   powershell -ExecutionPolicy Bypass -File build_aar.ps1 -Arch all    # 两个都出
+#   powershell -ExecutionPolicy Bypass -File build_aar.ps1 -Arch all    # 双 ABI -> tunnel-all.aar
 #
 # 参数细节与排障记录见 docs/development/aar-build-notes.md（仓库根相对本目录）。
 param(
@@ -78,13 +80,13 @@ function Invoke-GomobileBind {
 $libsDir = Join-Path $moduleDir '..\android\app\libs'
 switch ($Arch) {
     'arm64' {
-        Invoke-GomobileBind -Target 'android/arm64' -Output (Join-Path $libsDir 'tunnel.aar')
+        Invoke-GomobileBind -Target 'android/arm64' -Output (Join-Path $libsDir 'tunnel-arm64.aar')
     }
     'x64' {
         Invoke-GomobileBind -Target 'android/amd64' -Output (Join-Path $libsDir 'tunnel-x64.aar')
     }
     'all' {
-        Invoke-GomobileBind -Target 'android/arm64' -Output (Join-Path $libsDir 'tunnel.aar')
-        Invoke-GomobileBind -Target 'android/amd64' -Output (Join-Path $libsDir 'tunnel-x64.aar')
+        # 逗号分隔多 target，gomobile 会把两个 ABI 打进同一个 AAR。
+        Invoke-GomobileBind -Target 'android/arm64,android/amd64' -Output (Join-Path $libsDir 'tunnel-all.aar')
     }
 }

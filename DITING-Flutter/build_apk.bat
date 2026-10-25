@@ -15,14 +15,15 @@ title DITING Flutter APK Build and Install Tool
 ::   [4] Release + release key + x86_64    -> Android emulator debugging only
 ::   [5] Clean build cache and outputs
 ::
-:: ABI note: EVERY apk ships exactly one tunnel-engine ABI - libgojni.so comes
-:: from a single-ABI AAR. [1]/[2]/[3] bundle the arm64 tunnel (libs/tunnel.aar)
-:: and run on ARM phones/tablets only; [4] bundles the x86_64 tunnel
-:: (libs/tunnel-x64.aar) and runs on the x86_64 emulator only. Installing on
-:: the wrong device fails with "app not installed / package incompatible".
-:: Also: all debug builds share one output file name - app-debug.apk - so the
-:: artifact on disk always comes from the LAST build. Check the
-:: "Tunnel engine ABI" line printed after each build before installing.
+:: ABI note: the tunnel engine comes from a gomobile AAR, picked per build:
+::   [1]/[2] debug bundle the DUAL-ABI engine (libs/tunnel-all.aar), so one
+::           debug APK runs on ARM phones/tablets AND the x86_64 emulator;
+::   [3] bundles the arm64 tunnel (libs/tunnel-arm64.aar) - ARM devices only;
+::   [4] bundles the x86_64 tunnel (libs/tunnel-x64.aar) - emulator only.
+:: Installing [3]/[4] on the wrong device fails with "app not installed /
+:: package incompatible". Also: all debug builds share one output file name -
+:: app-debug.apk - so the artifact on disk always comes from the LAST build.
+:: Check the "Tunnel engine ABI" line printed after each build before installing.
 ::
 :: NOTE: this file is intentionally pure ASCII. cmd.exe parses batch files with the
 :: OEM code page, so UTF-8 Chinese text here breaks the parser. Chinese docs live
@@ -53,12 +54,14 @@ echo   [4] Release  / x86_64       - Release key, EMULATOR testing only
 echo   [5] Clean                   - Remove build cache and artifacts
 echo   [0] Exit
 echo.
-echo   Device targeting - the tunnel engine is single-ABI in every build:
-echo     [1] [2] [3] build for ARM phones/tablets, arm64 tunnel engine
-echo     [4] builds for the x86_64 emulator, x86_64 tunnel engine
-echo   An APK installed on the wrong device type fails with
+echo   Device targeting - the tunnel engine ABI differs per build:
+echo     [1] [2] debug builds are DUAL-ABI: run on ARM phones/tablets AND the
+echo           x86_64 emulator (engine: libs/tunnel-all.aar)
+echo     [3] is arm64-only for phones/tablets (engine: libs/tunnel-arm64.aar)
+echo     [4] is x86_64-only for the emulator  (engine: libs/tunnel-x64.aar)
+echo   Options 3 and 4 produce single-ABI release APKs with R8 shrinking;
+echo   installing them on the wrong device type fails with
 echo   "app not installed / package incompatible with your system".
-echo   Options 3 and 4 produce single-ABI release APKs with R8 shrinking.
 echo.
 set "BUILD_CHOICE="
 set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 3): "
@@ -100,25 +103,32 @@ goto CHOOSE_BUILD_TYPE
 
 :: ---------------------------------------------------------------------------
 :: Mode definitions: every branch sets BUILD_TYPE, BUILD_TYPE_NAME, FLUTTER_ARGS,
-:: APK_DIR and APK_NAME so exactly one code path builds and ships the artifact.
+:: APK_DIR, APK_NAME and DEVICE_SCOPE so exactly one code path builds and ships
+:: the artifact.
 :: ---------------------------------------------------------------------------
 
 :SET_DEBUG_DEBUGKEY
+:: Debug APKs bundle the dual-ABI tunnel engine, so the same build runs on both
+:: ARM devices and the x86_64 emulator.
+if not exist "android\app\libs\tunnel-all.aar" goto ERR_NO_TUNNEL_ALL
 set "BUILD_TYPE=debug"
 set "BUILD_TYPE_NAME=Debug (Debug Key)"
 set "FLUTTER_ARGS=build apk --debug -PsignDebugWithRelease=false"
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-debug.apk"
 set "IS_EMULATOR_BUILD="
+set "DEVICE_SCOPE=Dual-ABI tunnel: runs on ARM phones/tablets AND the x86_64 emulator"
 goto START_BUILD
 
 :SET_DEBUG_RELEASEKEY
+if not exist "android\app\libs\tunnel-all.aar" goto ERR_NO_TUNNEL_ALL
 set "BUILD_TYPE=debug"
 set "BUILD_TYPE_NAME=Debug (Release Key)"
 set "FLUTTER_ARGS=build apk --debug -PsignDebugWithRelease=true"
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-debug.apk"
 set "IS_EMULATOR_BUILD="
+set "DEVICE_SCOPE=Dual-ABI tunnel: runs on ARM phones/tablets AND the x86_64 emulator"
 goto START_BUILD
 
 :SET_RELEASE_ARM64
@@ -129,12 +139,13 @@ set "FLUTTER_ARGS=build apk --release --target-platform android-arm64 -PditingAb
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-release.apk"
 set "IS_EMULATOR_BUILD="
+set "DEVICE_SCOPE=arm64-only: will NOT run on the x86_64 emulator"
 goto START_BUILD
 
 :SET_RELEASE_X64
 if not exist "android\key.properties" goto ERR_NO_KEYSTORE
-:: tunnel.aar only ships arm64-v8a libgojni.so; the x86_64 emulator needs the
-:: locally built tunnel-x64.aar (single-ABI, git-ignored). build.gradle.kts
+:: tunnel-arm64.aar only ships arm64-v8a libgojni.so; the x86_64 emulator needs
+:: the locally built tunnel-x64.aar (single-ABI, git-ignored). build.gradle.kts
 :: picks it automatically from -PditingAbi=x86_64.
 if not exist "android\app\libs\tunnel-x64.aar" goto ERR_NO_TUNNEL_X64
 set "BUILD_TYPE=release"
@@ -143,6 +154,7 @@ set "FLUTTER_ARGS=build apk --release --target-platform android-x64 -PditingAbi=
 set "APK_DIR=build\app\outputs\flutter-apk"
 set "APK_NAME=app-release.apk"
 set "IS_EMULATOR_BUILD=1"
+set "DEVICE_SCOPE=x86_64 emulator only: will NOT run on ARM phones/tablets"
 goto START_BUILD
 
 :: Step 2: Build
@@ -170,11 +182,7 @@ echo ================================================================
 echo [SUCCESS] %BUILD_TYPE_NAME% build completed!
 echo [INFO] APK: %FOUND_APK%
 for %%F in ("%FOUND_APK%") do echo [INFO] Size: %%~zF bytes
-if defined IS_EMULATOR_BUILD (
-    echo [WARN] Emulator-only APK - it will NOT install on ARM phones.
-) else (
-    echo [INFO] Phone/tablet APK - it will NOT run on the x86_64 emulator.
-)
+echo [INFO] Target scope: %DEVICE_SCOPE%
 echo [INFO] ABIs in package:
 where python >nul 2>&1
 if not errorlevel 1 (
@@ -384,13 +392,27 @@ echo         or use option [1] for an unsigned-release-key debug build.
 echo ================================================================
 goto ERROR_EXIT
 
+:ERR_NO_TUNNEL_ALL
+echo.
+echo ================================================================
+echo [ERROR] Dual-ABI tunnel AAR is missing!
+echo Cause:  android\app\libs\tunnel-all.aar not found. Debug builds
+echo         bundle the dual-ABI (arm64-v8a + x86_64) engine so ONE
+echo         debug APK runs on phones and the emulator; it is built
+echo         on demand and not committed to git.
+echo Action: Run  powershell -ExecutionPolicy Bypass -File
+echo         tunnel\build_aar.ps1 -Arch all  to build it (see
+echo         docs\development\aar-build-notes.md).
+echo ================================================================
+goto ERROR_EXIT
+
 :ERR_NO_TUNNEL_X64
 echo.
 echo ================================================================
 echo [ERROR] x86_64 tunnel AAR is missing!
-echo Cause:  android\app\libs\tunnel-x64.aar not found. The shipped
-echo         tunnel.aar contains arm64-v8a only, so an x86_64 build
-echo         would install but the tunnel would fail to load.
+echo Cause:  android\app\libs\tunnel-x64.aar not found. The committed
+echo         tunnel-arm64.aar contains arm64-v8a only, so an x86_64
+echo         build would install but the tunnel would fail to load.
 echo Action: Run  powershell -ExecutionPolicy Bypass -File
 echo         tunnel\build_aar.ps1 -Arch x64  to build it (see
 echo         docs\development\aar-build-notes.md), or use option [3].
