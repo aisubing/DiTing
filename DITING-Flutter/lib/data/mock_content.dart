@@ -19,12 +19,14 @@ class ServiceStats {
 
   double get cacheHitRate => queries == 0 ? 0 : cacheHits / queries;
 
+  /// Always carries seconds: the status card polls every second, and a label that drops the
+  /// second field after the first hour would look frozen.
   String get uptimeLabel {
     final hours = uptime.inHours;
     final minutes = uptime.inMinutes % 60;
     final seconds = uptime.inSeconds % 60;
     if (hours > 0) {
-      return '$hours小时$minutes分';
+      return '$hours小时$minutes分$seconds秒';
     }
     if (minutes > 0) {
       return '$minutes分$seconds秒';

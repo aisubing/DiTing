@@ -9,8 +9,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Status card, after FlClash widgets/current_outbound.dart. Uptime shows a dash when
-/// stopped, not `0s`: not started is not the same as just started.
+/// Status card, after FlClash widgets/current_outbound.dart. Uptime shows a placeholder rule
+/// when stopped, not `0s`: not started is not the same as just started.
 class StatusCard extends ConsumerWidget {
   const StatusCard({super.key, this.onDetail});
 
@@ -51,16 +51,19 @@ class StatusCard extends ConsumerWidget {
           SizedBox(height: 12 * scale),
           Text('运行时长', style: DashboardText.label(context)),
           SizedBox(height: 2 * scale),
-          Text(
-            core.isRunning ? stats.uptimeLabel : '—',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DashboardText.figure(
-              context,
-              AppTextStyle.title1,
-              color: core.isRunning ? colorScheme.onSurface : null,
-            ),
-          ),
+          if (core.isRunning)
+            Text(
+              stats.uptimeLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: DashboardText.figure(
+                context,
+                AppTextStyle.title1,
+                color: colorScheme.onSurface,
+              ),
+            )
+          else
+            _UptimePlaceholder(scale: scale),
           SizedBox(height: 14 * scale),
           Row(
             spacing: 16,
@@ -85,6 +88,35 @@ class StatusCard extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Stand-in for the uptime figure while stopped. An em dash fell to the font's baseline and
+/// left a stray speck in the middle of a 28pt line; a rounded rule sized to the same line box
+/// reads as "no value yet" and keeps the card's rhythm when the tunnel starts.
+class _UptimePlaceholder extends StatelessWidget {
+  const _UptimePlaceholder({required this.scale});
+
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    return SizedBox(
+      height: AppTextStyle.title1.leading * scale,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          width: 44 * scale,
+          height: 5 * scale,
+          decoration: BoxDecoration(
+            // Same tone as the chart tracks, so the card stays one family.
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.22),
+            borderRadius: BorderRadius.circular(3 * scale),
+          ),
+        ),
       ),
     );
   }

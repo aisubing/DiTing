@@ -312,8 +312,10 @@ class PowerNotifier extends Notifier<PowerState> {
   }
 
   void _ensureStatsPolling() {
+    // One second: the status card shows uptime to the second, and a slower tick made the
+    // figure jump in 5-second steps.
     _statsTimer ??= Timer.periodic(
-      const Duration(seconds: 5),
+      const Duration(seconds: 1),
       (_) => syncStatus(),
     );
   }

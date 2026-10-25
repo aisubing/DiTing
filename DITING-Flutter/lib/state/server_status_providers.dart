@@ -158,8 +158,9 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
   }
 
   void _ensureStatsPolling() {
+    // Matches the VPN side: uptime is displayed to the second.
     _statsTimer ??= Timer.periodic(
-      const Duration(seconds: 5),
+      const Duration(seconds: 1),
       (_) => syncStatus(),
     );
   }
