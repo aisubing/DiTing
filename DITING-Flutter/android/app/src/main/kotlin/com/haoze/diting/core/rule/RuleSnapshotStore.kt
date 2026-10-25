@@ -21,6 +21,7 @@ object RuleSnapshotStore {
     private const val KEY_APP_ALLOWLIST_RULES = "app_allowlist_rules_json"
 
     fun buildSnapshotJson(context: Context, dataset: RuleDataset): String {
+        val started = System.nanoTime()
         val prefs = context.getSharedPreferences(dataset.prefsName(), Context.MODE_PRIVATE)
         val filterEnabled = prefs.getBoolean(KEY_DOMAIN_RULES_ENABLED, true)
         val appAllowlist = if (dataset == RuleDataset.NORMAL) readAppAllowlist(context) else emptyMap()
@@ -40,13 +41,21 @@ object RuleSnapshotStore {
         }
 
         return try {
-            val triesFresh = indexDirectory?.let { isStampCurrent(it, context, dataset) } ?: false
+            val triesFresh = indexDirectory?.let { isStampCurrent(it, dao) } ?: false
             val blockLoaded = BlockRuleLoader.load(dao, indexDirectory, triesFresh)
             val allowLoaded = AllowRuleLoader.load(dao, indexDirectory, triesFresh)
             if (indexDirectory != null && indexesSettled(blockLoaded.compiledAnyIndex, blockLoaded.compileFailure, allowLoaded.compileFailure)) {
-                writeStamp(indexDirectory, context, dataset)
+                writeStamp(indexDirectory, dao)
             }
-            buildJson(filterEnabled, appAllowlist, indexDirectory, blockLoaded, allowLoaded)
+            val json = buildJson(filterEnabled, appAllowlist, indexDirectory, blockLoaded, allowLoaded)
+            // One line: a compile costs seconds on a large subscription and this is the only trace
+            // of which path the start took.
+            Log.i(
+                TAG,
+                "[${dataset.name}] snapshot ${json.length}B in ${(System.nanoTime() - started) / 1_000_000}ms " +
+                    "tries=${if (triesFresh) "fresh" else "stale"} compiled=${blockLoaded.compiledAnyIndex || allowLoaded.compiledAnyIndex}",
+            )
+            json
         } finally {
             dao.close()
         }
@@ -73,13 +82,13 @@ object RuleSnapshotStore {
     fun refreshIndexes(context: Context, dataset: RuleDataset) {
         if (dataset == RuleDataset.DNS_MODE) return
         val indexDirectory = RuleIndexLayout.rootDirectory(context.filesDir, dataset)
-        val triesFresh = isStampCurrent(indexDirectory, context, dataset)
         val dao = RuleSnapshotDao.open(context, dataset.databaseName()) ?: return
         try {
+            val triesFresh = isStampCurrent(indexDirectory, dao)
             val blockLoaded = BlockRuleLoader.load(dao, indexDirectory, triesFresh)
             val allowLoaded = AllowRuleLoader.load(dao, indexDirectory, triesFresh)
             if (indexesSettled(blockLoaded.compiledAnyIndex, blockLoaded.compileFailure, allowLoaded.compileFailure)) {
-                writeStamp(indexDirectory, context, dataset)
+                writeStamp(indexDirectory, dao)
             }
         } finally {
             dao.close()
@@ -258,8 +267,10 @@ object RuleSnapshotStore {
         return result
     }
 
-    // The tries are derived data: the stamp records the database size + mtime they were compiled
-    // from, so any write (import, toggle, delete) invalidates them and forces one recompile.
+    // The tries are derived data: the stamp records the rule-table fingerprint they were compiled
+    // from, so any rule write (import, toggle, delete) invalidates them and forces one recompile.
+    // It must not use the database file size/mtime: the same file carries the request-log tables,
+    // which the tunnel writes continuously, so every start would look stale and recompile.
 
     /** The stamp is only refreshed when a compile actually happened and nothing failed: writing it
      *  after a failed compile would make the next start trust a stale trie file as fresh. */
@@ -268,25 +279,15 @@ object RuleSnapshotStore {
 
     private fun stampFile(indexDirectory: File) = File(indexDirectory, STAMP_FILE)
 
-    private fun fileStamp(file: File): String =
-        if (file.exists()) "${file.length()}:${file.lastModified()}" else "-"
-
-    private fun databaseStamp(context: Context, dataset: RuleDataset): String {
-        // Sidecar files matter too: with WAL journaling a committed write can leave the main
-        // database file untouched until the next checkpoint.
-        val db = context.getDatabasePath(dataset.databaseName())
-        return "${fileStamp(db)}|${fileStamp(File(db.path + "-wal"))}|${fileStamp(File(db.path + "-journal"))}"
-    }
-
-    private fun isStampCurrent(indexDirectory: File, context: Context, dataset: RuleDataset): Boolean {
+    private fun isStampCurrent(indexDirectory: File, dao: RuleSnapshotDao): Boolean {
         val stamp = runCatching { stampFile(indexDirectory).readText().trim() }.getOrNull() ?: return false
-        return stamp == databaseStamp(context, dataset)
+        return stamp == dao.ruleFingerprint()
     }
 
-    private fun writeStamp(indexDirectory: File, context: Context, dataset: RuleDataset) {
+    private fun writeStamp(indexDirectory: File, dao: RuleSnapshotDao) {
         runCatching {
             indexDirectory.mkdirs()
-            stampFile(indexDirectory).writeText(databaseStamp(context, dataset))
+            stampFile(indexDirectory).writeText(dao.ruleFingerprint())
         }.onFailure { Log.w(TAG, "Unable to write rule index stamp", it) }
     }
 }

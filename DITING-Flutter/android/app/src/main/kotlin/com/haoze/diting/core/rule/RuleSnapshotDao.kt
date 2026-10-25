@@ -140,6 +140,36 @@ class RuleSnapshotDao private constructor(private val db: SQLiteDatabase) {
 
     fun close() = db.close()
 
+    /**
+     * Cheap fingerprint of the rule tables only. The database file also holds the request-log and
+     * traffic tables, which the tunnel keeps writing while it runs, so file size and mtime can never
+     * tell whether the *rules* changed: they change on every logged query and would force a trie
+     * recompile on every start.
+     */
+    fun ruleFingerprint(): String {
+        val parts = ArrayList<String>(8)
+        for (kind in RuleKind.entries) {
+            parts += countFingerprint(kind.ruleTable)
+            parts += countFingerprint(kind.sourceTable)
+        }
+        parts += countFingerprint("rewrite_rule")
+        parts += countFingerprint("rewrite_rule_source")
+        return parts.joinToString("|")
+    }
+
+    /** Rows plus the id/source sums catch edits and toggles, not only inserts and deletes. */
+    private fun countFingerprint(table: String): String {
+        if (!LegacyDb.hasTable(db, table)) return "$table:-"
+        val columns = if (table.endsWith("_source")) "SUM(ruleId), SUM(enabled)" else "SUM(id), SUM(enabled)"
+        return db.rawQuery("SELECT COUNT(*), $columns FROM $table", null).use { cursor ->
+            if (!cursor.moveToFirst()) {
+                "$table:0"
+            } else {
+                "$table:${cursor.getLong(0)}:${cursor.getLong(1)}:${cursor.getLong(2)}"
+            }
+        }
+    }
+
     enum class RuleKind(val ruleTable: String, val sourceTable: String) {
         BLOCK("block_rule", "block_rule_source"),
         ALLOW("allow_rule", "allow_rule_source"),
