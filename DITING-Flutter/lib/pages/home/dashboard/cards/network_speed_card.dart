@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
@@ -8,8 +10,8 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Network speed card, after FlClash widgets/traffic.dart. Rates come from the native
-/// TrafficRateMonitor, totals from app_traffic_daily; a missing source is never a flat 0.
+/// Upload and download side by side, after FlClash widgets/traffic.dart: each tile bleeds
+/// its curve under the figures, so the chart is the tile's background rather than a strip.
 class NetworkSpeedCard extends ConsumerWidget {
   const NetworkSpeedCard({super.key, this.onDetail});
 
@@ -40,30 +42,15 @@ class NetworkSpeedCard extends ConsumerWidget {
           SizedBox(height: 12 * scale),
           Row(
             spacing: 10,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _SpeedTile(
-                  label: '上传',
-                  glyph: AppGlyphs.arrowUp,
-                  color: DashboardColors.of(context).series2,
-                  values: series.upValues(),
-                  current: series.last.up,
-                  total: totals?.up,
-                  series: series,
+              for (final direction in _SpeedDirection.values)
+                Expanded(
+                  child: _SpeedTile(
+                    direction: direction,
+                    series: series,
+                    total: direction.totalOf(totals),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _SpeedTile(
-                  label: '下载',
-                  glyph: AppGlyphs.arrowDown,
-                  color: context.colorScheme.primary,
-                  values: series.downValues(),
-                  current: series.last.down,
-                  total: totals?.down,
-                  series: series,
-                ),
-              ),
             ],
           ),
         ],
@@ -72,118 +59,196 @@ class NetworkSpeedCard extends ConsumerWidget {
   }
 }
 
-class _SpeedTile extends StatelessWidget {
-  const _SpeedTile({
-    required this.label,
-    required this.glyph,
-    required this.color,
-    required this.values,
-    required this.current,
-    required this.total,
-    required this.series,
+enum _SpeedDirection {
+  upload,
+  download;
+
+  double of(SpeedSample sample) => this == upload ? sample.up : sample.down;
+
+  Glyph get glyph => this == upload ? AppGlyphs.arrowUp : AppGlyphs.arrowDown;
+
+  String get label => this == upload ? '上传' : '下载';
+
+  Color colorOf(BuildContext context) => this == upload
+      ? DashboardColors.of(context).series2
+      : context.colorScheme.primary;
+
+  List<double> valuesOf(SpeedSeries series) =>
+      this == upload ? series.upValues() : series.downValues();
+
+  double? totalOf(TrafficTotals? totals) =>
+      totals == null ? null : (this == upload ? totals.up : totals.down);
+}
+
+/// Number and unit, so the unit can shrink next to a large figure: `1.2` + `MB`.
+(String, String) _split(String text) {
+  final at = text.lastIndexOf(' ');
+  return at < 0 ? (text, '') : (text.substring(0, at), text.substring(at + 1));
+}
+
+/// Value plus its unit, sized from the surrounding tile.
+class _SpeedFigure extends StatelessWidget {
+  const _SpeedFigure({
+    required this.value,
+    required this.unit,
+    required this.style,
+    required this.unitStyle,
+    this.color,
   });
 
-  final String label;
-  final Glyph glyph;
-  final Color color;
-  final List<double> values;
-  final double current;
-  final double? total;
-  final SpeedSeries series;
-
-  /// Chart height. Scaled with text size so the curve keeps its room.
-  static const _chartHeight = 44.0;
+  final String value;
+  final String unit;
+  final AppTextStyle style;
+  final AppTextStyle unitStyle;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    final scale = DashboardDensityScope.scaleOf(context);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: value,
+            style: DashboardText.figure(context, style, color: color),
+          ),
+          if (unit.isNotEmpty)
+            TextSpan(
+              text: ' $unit/s',
+              style: DashboardText.unit(context, unitStyle),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.clip,
+    );
+  }
+}
+
+/// Keeps one shape at every width: the chart takes what the tile's aspect ratio leaves
+/// under the text, down to [_minChartHeight].
+class _SpeedTile extends StatelessWidget {
+  const _SpeedTile({
+    required this.direction,
+    required this.series,
+    required this.total,
+  });
+
+  final _SpeedDirection direction;
+  final SpeedSeries series;
+  final double? total;
+
+  static const _aspectRatio = 1.06;
+  static const _padding = EdgeInsets.fromLTRB(16, 14, 16, 0);
+  static const _titleGap = 4.0;
+  static const _chartGap = 12.0;
+  static const _bleed = 2.0;
+  static const _minChartHeight = 36.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = direction.colorOf(context);
     final unsupported = series.unsupported;
     final (value, unit) = unsupported
         ? ('—', '')
-        : _split(dashboardBinaryBytes(current));
-    return DashboardBlock(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            spacing: 4,
+        : _split(dashboardBinaryBytes(direction.of(series.last)));
+    final scale = DashboardDensityScope.scaleOf(context);
+    final textHeight =
+        _padding.top +
+        _titleGap +
+        (AppTextStyle.footnote.leading +
+                AppTextStyle.title1.leading +
+                AppTextStyle.caption1.leading) *
+            scale;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final chartHeight = math.max(
+          _minChartHeight,
+          constraints.maxWidth / _aspectRatio - textHeight - _chartGap + _bleed,
+        );
+        return Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: ShapeDecoration(
+            color: DashboardColors.of(context).tone,
+            shape: AppShape.all(DashboardCorner.mobileBlock),
+          ),
+          child: Stack(
             children: [
-              GlyphIcon(glyph, size: 14, color: colorScheme.onSurfaceVariant),
-              Expanded(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: DashboardText.label(context),
+              Positioned(
+                left: -_bleed,
+                right: -_bleed,
+                bottom: -_bleed,
+                height: chartHeight,
+                child: RepaintBoundary(
+                  child: unsupported
+                      ? Center(
+                          child: Text(
+                            series.source == SpeedSource.expressMode
+                                ? '极速模式不统计'
+                                : '当前环境无速率通道',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: DashboardText.label(context),
+                          ),
+                        )
+                      : LineChart(
+                          values: direction.valuesOf(series),
+                          revision: series.revision,
+                          capacity: speedSampleCapacity,
+                          // Same as upstream: idle jitter must not pin the curve to full height.
+                          minScale: 8 * 1024,
+                          color: color,
+                          baselineRatio: 1,
+                        ),
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: 2 * scale),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: value,
-                  style: DashboardText.figure(
-                    context,
-                    AppTextStyle.title3,
-                    color: colorScheme.onSurface,
-                  ),
+              Padding(
+                padding: _padding.copyWith(
+                  bottom: chartHeight - _bleed + _chartGap,
                 ),
-                if (unit.isNotEmpty)
-                  TextSpan(
-                    text: ' $unit/s',
-                    style: DashboardText.unit(context, AppTextStyle.caption1),
-                  ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            total == null ? '累计 —' : '累计 ${dashboardBinaryBytes(total!)}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: DashboardText.label(context),
-          ),
-          SizedBox(height: 6 * scale),
-          SizedBox(
-            height: _chartHeight * scale,
-            child: unsupported
-                ? Center(
-                    child: Text(
-                      series.source == SpeedSource.expressMode
-                          ? '极速模式不统计'
-                          : '当前环境无速率通道',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      spacing: 4,
+                      children: [
+                        GlyphIcon(direction.glyph, size: 16, color: color),
+                        Flexible(
+                          child: Text(
+                            direction.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyle.footnote
+                                .of(context, emphasized: true)
+                                .copyWith(
+                                  color: context.colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: _titleGap),
+                    _SpeedFigure(
+                      value: value,
+                      unit: unit,
+                      style: AppTextStyle.title1,
+                      unitStyle: AppTextStyle.footnote,
+                      color: context.colorScheme.onSurface,
+                    ),
+                    Text(
+                      total == null
+                          ? '累计 —'
+                          : '累计 ${dashboardBinaryBytes(total!)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: DashboardText.label(context),
                     ),
-                  )
-                : LineChart(
-                    values: values,
-                    revision: series.revision,
-                    capacity: speedSampleCapacity,
-                    // Same as upstream: idle jitter must not pin the curve to full height.
-                    minScale: 8 * 1024,
-                    color: color,
-                    baselineRatio: 1,
-                  ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
-  }
-
-  /// Split `1.2 MB` into number and unit; bytes have no unit, so it returns ''.
-  static (String, String) _split(String text) {
-    final at = text.lastIndexOf(' ');
-    return at < 0
-        ? (text, '')
-        : (text.substring(0, at), text.substring(at + 1));
   }
 }
