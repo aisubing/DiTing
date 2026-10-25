@@ -13,6 +13,13 @@ const projectRepositoryUrl = 'https://github.com/haoze-evolluling/DITING';
 /// Legacy `SponsorScreen.SPONSOR_README_URL`.
 const sponsorReadmeUrl = '$projectRepositoryUrl#sponsorship';
 
+/// Upstream whose UI components were reused; credited on the about page.
+const flClashRepositoryUrl = 'https://github.com/chen08209/FlClash';
+
+/// Upstream the original Go tunnel kernel was forked from; credited on the about page.
+const blockAdsRepositoryUrl =
+    'https://github.com/pass-with-high-score/blockads-android';
+
 /// Target group number of the legacy "join QQ group" action.
 const qqGroupNumber = '1078502371';
 

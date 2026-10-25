@@ -58,6 +58,27 @@ class AboutPage extends ConsumerWidget {
             ],
           ),
           generateSection(
+            title: '开源致谢',
+            items: [
+              _LinkRow(
+                glyph: AppGlyphs.palette,
+                title: 'FlClash',
+                label: '界面组件与交互实现复用自该项目',
+                url: flClashRepositoryUrl,
+              ),
+              _LinkRow(
+                glyph: AppGlyphs.vpn,
+                title: 'blockads-android',
+                label: 'Go 隧道内核最初魔改自该项目',
+                url: blockAdsRepositoryUrl,
+              ),
+            ],
+            footer:
+                '上述两个项目均以 GPL-3.0 协议开源，相关代码与设计的版权归各自作者所有。'
+                '谛听的界面层大量借鉴了 FlClash 的实现思路，隧道内核也源自 blockads-android 的早期改造；'
+                '在此向它们的作者与所有贡献者致以诚挚谢意。',
+          ),
+          generateSection(
             title: '设置',
             items: [
               ListItem.toggle(
