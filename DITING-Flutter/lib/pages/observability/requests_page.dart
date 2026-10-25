@@ -29,6 +29,9 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
 
   Timer? _searchTimer;
 
+  /// Distance from the end of the list at which the next page starts loading.
+  static const double _loadMoreThreshold = 240;
+
   @override
   void dispose() {
     _searchTimer?.cancel();
@@ -149,20 +152,79 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
           child: const Text('重置筛选条件'),
         ),
       ),
-      child: ListView(
-        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 16),
+      child: NotificationListener<ScrollNotification>(
+        // The repository has no OFFSET, so "load more" widens the query window instead of
+        // skipping rows. 240 px of slack starts the read before the user hits the end.
+        onNotification: (notification) {
+          if (notification.metrics.extentAfter < _loadMoreThreshold) {
+            _loadMore(feed);
+          }
+          return false;
+        },
+        child: ListView.builder(
+          padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 16),
+          // Header + one row per request + footer.
+          itemCount: items.length + 2,
+          itemBuilder: (context, index) {
+            if (index == 0) return const ListHeader(title: '请求记录');
+            if (index == items.length + 1) {
+              return _FeedFooter(
+                label:
+                    '共 ${items.length} 条，其中 $failed 条处理失败'
+                    '${filterLabel.isEmpty ? '' : '（筛选：$filterLabel）'}'
+                    '${feed.hasMore ? '；继续下滑加载更多' : '；已加载全部'}。'
+                    '点按一行查看规则命中与处理结果。',
+                loading: _isLoadingMore(feed),
+              );
+            }
+            final request = items[index - 1];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: ItemPositionProvider(
+                position: ItemPosition.get(index - 1, items.length),
+                child: RequestRow(
+                  request: request,
+                  onTap: () => _openDetail(request),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Requests the next page when the list is scrolled near its end. Loading state is derived, not
+  /// stored: the query's page runs ahead of the feed's while the wider read is in flight, so a
+  /// scroll burst cannot queue the same page twice. A failed read surfaces as [ObsFailure], whose
+  /// retry re-runs the same page.
+  void _loadMore(RequestFeed feed) {
+    if (!feed.hasMore || _isLoadingMore(feed)) return;
+    ref.read(requestFeedQueryProvider.notifier).loadMore();
+  }
+
+  bool _isLoadingMore(RequestFeed feed) =>
+      ref.read(requestFeedQueryProvider).page > feed.page;
+}
+
+/// Footer that doubles as the pagination indicator: a spinner while the next page is being read,
+/// the count once it has landed.
+class _FeedFooter extends StatelessWidget {
+  const _FeedFooter({required this.label, required this.loading});
+
+  final String label;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 8),
+      child: Row(
+        spacing: 8,
         children: [
-          generateSection(
-            title: '请求记录',
-            footer:
-                '共 ${items.length} 条，其中 $failed 条处理失败'
-                '${filterLabel.isEmpty ? '' : '（筛选：$filterLabel）'}'
-                '${feed.hasMore ? '；已达单次读取上限，可细化筛选后查看' : ''}。'
-                '点按一行查看规则命中与处理结果。',
-            items: [
-              for (final request in items)
-                RequestRow(request: request, onTap: () => _openDetail(request)),
-            ],
+          if (loading) const CommonCircleLoading(size: 14),
+          Expanded(
+            child: Text(label, style: context.listCaptionStyle),
           ),
         ],
       ),

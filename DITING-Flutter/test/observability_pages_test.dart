@@ -183,6 +183,69 @@ void main() {
       expect(find.text('重试'), findsOneWidget);
       expect(find.textContaining('legacy db is locked'), findsOneWidget);
     });
+
+    testWidgets('首屏只取一页，滑到底部再按页取下一批', (tester) async {
+      // 120 rows against a 50-row page: the first screen must read 50 and stop, otherwise the
+      // page is back to loading everything up front.
+      final all = [
+        for (var index = 0; index < 120; index++)
+          ObservedRequest.fromDns(
+            DnsLogRow(
+              id: index,
+              timestamp: DateTime(2026, 10, 20, 13).millisecondsSinceEpoch - index,
+              queryName: 'host$index.example',
+              queryType: 1,
+              result: 'PASSED',
+              cached: false,
+              message: '',
+            ),
+          ),
+      ];
+      await pumpPage(
+        tester,
+        const RequestsPage(),
+        providerOverrides: [
+          requestFeedProvider.overrideWith((ref) async {
+            final query = ref.watch(requestFeedQueryProvider);
+            final items = all.take(query.limit).toList(growable: false);
+            return RequestFeed(
+              items: items,
+              hasMore: items.length < all.length,
+              page: query.page,
+            );
+          }),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(RequestsPage)),
+      );
+      expect(
+        container.read(requestFeedProvider).requireValue.items,
+        hasLength(50),
+      );
+
+      // Scrolling to the end appends one page per arrival; the growing offset means the new rows
+      // land below the viewport, so keep dragging to reach the bottom again.
+      await tester.drag(find.byType(ListView), const Offset(0, -20000));
+      await tester.pumpAndSettle();
+      expect(
+        container.read(requestFeedProvider).requireValue.items,
+        hasLength(100),
+      );
+
+      await tester.drag(find.byType(ListView), const Offset(0, -20000));
+      await tester.pumpAndSettle();
+      final feed = container.read(requestFeedProvider).requireValue;
+      expect(feed.items, hasLength(120));
+      expect(feed.hasMore, isFalse);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -20000));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('共 120 条'), findsOneWidget);
+      expect(find.textContaining('已加载全部'), findsOneWidget);
+    });
   });
 
   group('流量页', () {

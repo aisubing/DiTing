@@ -79,30 +79,39 @@ class ObservedRequest {
   }
 }
 
-/// Request-page query: the legacy four filters (source, status, keyword, limit).
+/// Rows fetched per page. The request page loads one page on entry and appends the next when the
+/// list is scrolled to the bottom; reading thousands of rows up front stalled the UI thread.
+const int requestFeedPageSize = 50;
+
+/// Request-page query: the legacy four filters (source, status, keyword) plus the page count.
 class RequestFeedQuery {
   const RequestFeedQuery({
     this.source = RequestSource.all,
     this.status = RequestStatus.all,
     this.query = '',
-    this.limit = 200,
+    this.page = 1,
   });
 
   final RequestSource source;
   final RequestStatus status;
   final String query;
-  final int limit;
+
+  /// Pages already revealed; 1 means only the first [requestFeedPageSize] rows.
+  final int page;
+
+  /// Rows to read: pages accumulate, the repository has no OFFSET.
+  int get limit => requestFeedPageSize * page;
 
   RequestFeedQuery copyWith({
     RequestSource? source,
     RequestStatus? status,
     String? query,
-    int? limit,
+    int? page,
   }) => RequestFeedQuery(
     source: source ?? this.source,
     status: status ?? this.status,
     query: query ?? this.query,
-    limit: limit ?? this.limit,
+    page: page ?? this.page,
   );
 }
 
@@ -112,18 +121,22 @@ class RequestFeedNotifier extends Notifier<RequestFeedQuery> {
 
   void setSource(RequestSource source) {
     if (state.source == source) return;
-    state = state.copyWith(source: source);
+    // Any filter change restarts paging: the old page count belongs to the old result set.
+    state = state.copyWith(source: source, page: 1);
   }
 
   void setStatus(RequestStatus status) {
     if (state.status == status) return;
-    state = state.copyWith(status: status);
+    state = state.copyWith(status: status, page: 1);
   }
 
   void setQuery(String query) {
     if (state.query == query) return;
-    state = state.copyWith(query: query);
+    state = state.copyWith(query: query, page: 1);
   }
+
+  /// Reveals the next page; the feed provider then re-reads with the larger window.
+  void loadMore() => state = state.copyWith(page: state.page + 1);
 
   void reset() => state = const RequestFeedQuery();
 }
@@ -134,14 +147,22 @@ final requestFeedQueryProvider =
     );
 
 class RequestFeed {
-  const RequestFeed({required this.items, required this.hasMore});
+  const RequestFeed({required this.items, required this.hasMore, this.page = 1});
 
-  const RequestFeed.empty() : items = const [], hasMore = false;
+  const RequestFeed.empty()
+    : items = const [],
+      hasMore = false,
+      page = 1;
 
+  /// The rows of every page requested so far, newest first.
   final List<ObservedRequest> items;
 
-  /// True when either side filled [RequestFeedQuery.limit].
+  /// True when at least one source filled the requested window, so another page may exist.
   final bool hasMore;
+
+  /// The page this feed was read for. While [RequestFeedQuery.page] is ahead of it the next page
+  /// is still loading, which is how the page derives its loading state without a second flag.
+  final int page;
 }
 
 /// Express keeps its own database without `http_request_log`, so querying it throws `no such
@@ -186,6 +207,7 @@ Future<RequestFeed> _loadRequestFeed(Ref ref) async {
   return RequestFeed(
     items: items.take(query.limit).toList(growable: false),
     hasMore: dnsRows.length >= query.limit || httpRows.length >= query.limit,
+    page: query.page,
   );
 }
 
