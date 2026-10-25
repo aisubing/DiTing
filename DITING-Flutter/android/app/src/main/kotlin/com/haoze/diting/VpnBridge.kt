@@ -51,8 +51,6 @@ class VpnBridge(
         val intent = DitingVpnService.startIntent(
             context = activity,
             dnsConfig = dnsConfig,
-            ruleSnapshot = call.argument<String>("ruleSnapshot").orEmpty(),
-            rewriteRules = call.argument<String>("rewriteRules").orEmpty(),
             proxyJson = call.argument<String>("outboundProxy").orEmpty(),
             bypassLan = call.argument<Boolean>("bypassLan") ?: true,
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",

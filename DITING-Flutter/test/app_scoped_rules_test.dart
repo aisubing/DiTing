@@ -140,27 +140,39 @@ void main() {
     // RulesNotifier must drop app-scoped rules, or the blacklist treats an app rule as global
     final container = ProviderContainer(
       overrides: [
-        initialRulesProvider.overrideWithValue({
-          RuleKind.block: const [
-            MockRule(
-              id: '1',
-              pattern: 'global.example',
-              kind: RuleKind.block,
-              source: RuleSource.user,
-            ),
-            MockRule(
-              id: '2',
-              pattern: 'scoped.example',
-              kind: RuleKind.block,
-              source: RuleSource.user,
-              appScope: 'com.foo',
-            ),
-          ],
-        }),
+        initialRulesProvider.overrideWith(
+          () => _ScopedInitialRules({
+            RuleKind.block: const [
+              MockRule(
+                id: '1',
+                pattern: 'global.example',
+                kind: RuleKind.block,
+                source: RuleSource.user,
+              ),
+              MockRule(
+                id: '2',
+                pattern: 'scoped.example',
+                kind: RuleKind.block,
+                source: RuleSource.user,
+                appScope: 'com.foo',
+              ),
+            ],
+          }),
+        ),
       ],
     );
     addTearDown(container.dispose);
     final rules = container.read(rulesProvider);
     expect(rules[RuleKind.block]!.map((r) => r.pattern), ['global.example']);
   });
+}
+
+/// Fixed state for one-shot override of the initial-rules provider.
+class _ScopedInitialRules extends InitialRulesNotifier {
+  _ScopedInitialRules(this._initial);
+
+  final Map<RuleKind, List<MockRule>> _initial;
+
+  @override
+  Map<RuleKind, List<MockRule>> build() => _initial;
 }

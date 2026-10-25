@@ -23,9 +23,19 @@ final expressRuleRepositoryProvider = FutureProvider<RuleRepository?>((
   return db == null ? null : RuleRepository(db);
 });
 
-/// Rules visible on the first frame; `main()` overrides this with the database snapshot.
-final initialRulesProvider = Provider<Map<RuleKind, List<MockRule>>>(
-  (ref) => {
-    for (final kind in RuleKind.values) kind: [...mockRulesOf(kind)],
-  },
-);
+/// Database snapshot backing `rulesProvider`. Starts empty: the full-table load can take seconds
+/// on subscription-sized datasets, so `main()` fills it after the first frame instead of blocking
+/// `runApp` (the legacy app likewise never waited on rules before its first frame).
+class InitialRulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
+  @override
+  Map<RuleKind, List<MockRule>> build() => {
+        for (final kind in RuleKind.values) kind: const [],
+      };
+
+  void fill(Map<RuleKind, List<MockRule>> rules) => state = rules;
+}
+
+final initialRulesProvider =
+    NotifierProvider<InitialRulesNotifier, Map<RuleKind, List<MockRule>>>(
+      InitialRulesNotifier.new,
+    );

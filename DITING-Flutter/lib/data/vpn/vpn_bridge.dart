@@ -10,8 +10,6 @@ const expressVpnChannelName = 'com.haoze.diting/express_vpn';
 class VpnStartRequest {
   const VpnStartRequest({
     required this.dnsConfig,
-    required this.ruleSnapshot,
-    required this.rewriteRules,
     this.outboundProxy = '',
     this.bypassLan = true,
     this.ipv6Mode = 'auto',
@@ -22,8 +20,6 @@ class VpnStartRequest {
   });
 
   final String dnsConfig;
-  final String ruleSnapshot;
-  final String rewriteRules;
   final String outboundProxy;
   final bool bypassLan;
   final String ipv6Mode;
@@ -176,8 +172,6 @@ class MethodChannelVpnController implements VpnController {
     _ensureHandler();
     final result = await _channel.invokeMethod<Object?>('start', {
       'dnsConfig': request.dnsConfig,
-      'ruleSnapshot': request.ruleSnapshot,
-      'rewriteRules': request.rewriteRules,
       'outboundProxy': request.outboundProxy,
       'bypassLan': request.bypassLan,
       'ipv6Mode': request.ipv6Mode,

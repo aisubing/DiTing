@@ -2,8 +2,11 @@
 /// delete 0.
 library;
 
+import 'dart:async';
+
 import 'package:diting/data/cleanup/data_cleanup_service.dart';
 import 'package:diting/data/db/legacy_database.dart';
+import 'package:diting/data/db/rule_index_bridge.dart';
 import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/app_version_provider.dart';
@@ -55,9 +58,27 @@ class CleanupRunner {
     try {
       final result = await _ref.read(dataCleanupServiceProvider).run(action);
       if (result.removed > 0 || !result.failed) _invalidate();
+      _refreshIndexes(action);
       return result;
     } finally {
       progress.set(null);
+    }
+  }
+
+  /// Rule-table cleanups rewrite every rule database at once, so all datasets' tries go stale
+  /// together. Recompiling here keeps the next service start on the mmap fast path.
+  void _refreshIndexes(CleanupAction action) {
+    const ruleActions = {
+      CleanupAction.domainRules,
+      CleanupAction.addressRules,
+      CleanupAction.subscriptions,
+      CleanupAction.allData,
+    };
+    if (!ruleActions.contains(action)) {
+      return;
+    }
+    for (final dataset in RuleIndexDataset.values) {
+      unawaited(refreshRuleIndexes(dataset));
     }
   }
 

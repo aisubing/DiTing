@@ -15,6 +15,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
+import com.haoze.diting.core.rule.RuleDataset
+import com.haoze.diting.core.rule.RuleSnapshotStore
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.RaceLogWriter
@@ -56,18 +58,16 @@ class DitingDnsServerService : Service() {
             return START_NOT_STICKY
         }
         // Persisted so a reboot can rebuild the same intent; the extras themselves die with it.
+        // Rules are not part of it: the engine snapshot is rebuilt from the rule database
+        // (legacy behavior), so a persisted snapshot would only go stale after rule edits.
         rememberStartConfig(
             port = intent.getIntExtra(EXTRA_PORT, DEFAULT_PORT),
             dnsConfig = dnsConfig,
-            ruleSnapshot = intent.getStringExtra(EXTRA_RULE_SNAPSHOT).orEmpty(),
-            rewriteRules = intent.getStringExtra(EXTRA_REWRITE_RULES).orEmpty(),
             adBlockEnabled = intent.getBooleanExtra(EXTRA_AD_BLOCK_ENABLED, false),
         )
         startEngine(
             port = intent.getIntExtra(EXTRA_PORT, DEFAULT_PORT),
             dnsConfig = dnsConfig,
-            ruleSnapshot = intent.getStringExtra(EXTRA_RULE_SNAPSHOT).orEmpty(),
-            rewriteRules = intent.getStringExtra(EXTRA_REWRITE_RULES).orEmpty(),
             adBlockEnabled = intent.getBooleanExtra(EXTRA_AD_BLOCK_ENABLED, false),
         )
         return START_NOT_STICKY
@@ -76,8 +76,6 @@ class DitingDnsServerService : Service() {
     private fun startEngine(
         port: Int,
         dnsConfig: String,
-        ruleSnapshot: String,
-        rewriteRules: String,
         adBlockEnabled: Boolean,
     ) {
         val token = generation.incrementAndGet()
@@ -86,10 +84,13 @@ class DitingDnsServerService : Service() {
             try {
                 val created = Engine()
                 created.applyDNSConfig(dnsConfig)
-                if (ruleSnapshot.isNotBlank()) {
-                    val error = created.applyRuleSnapshot(ruleSnapshot)
-                    if (error.isNotBlank()) Log.w(TAG, "applyRuleSnapshot: $error")
-                }
+                // DNS_MODE keeps every rule inline (no trie files, like the legacy server mode);
+                // built here in-process, so the rule set size never crosses the Binder limit.
+                val error = created.applyRuleSnapshot(
+                    RuleSnapshotStore.buildSnapshotJson(this, RuleDataset.DNS_MODE)
+                )
+                if (error.isNotBlank()) Log.w(TAG, "applyRuleSnapshot: $error")
+                val rewriteRules = RuleSnapshotStore.buildRewriteRulesJson(this, RuleDataset.DNS_MODE)
                 if (rewriteRules.isNotBlank()) {
                     created.setRewriteRules(rewriteRules)
                 }
@@ -212,15 +213,11 @@ class DitingDnsServerService : Service() {
     private fun rememberStartConfig(
         port: Int,
         dnsConfig: String,
-        ruleSnapshot: String,
-        rewriteRules: String,
         adBlockEnabled: Boolean,
     ) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putInt(KEY_LOCAL_PORT, port)
             .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
-            .putString(KEY_LAST_RULE_SNAPSHOT, ruleSnapshot)
-            .putString(KEY_LAST_REWRITE_RULES, rewriteRules)
             .putBoolean(KEY_LAST_AD_BLOCK_ENABLED, adBlockEnabled)
             .apply()
     }
@@ -337,8 +334,6 @@ class DitingDnsServerService : Service() {
 
         // Last start configuration, replayed by DnsModeBootReceiver after a reboot.
         private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
-        private const val KEY_LAST_RULE_SNAPSHOT = "last_rule_snapshot"
-        private const val KEY_LAST_REWRITE_RULES = "last_rewrite_rules"
         private const val KEY_LAST_AD_BLOCK_ENABLED = "last_ad_block_enabled"
 
         const val ACTION_START = "com.haoze.diting.server.START"
@@ -346,8 +341,6 @@ class DitingDnsServerService : Service() {
 
         const val EXTRA_PORT = "port"
         const val EXTRA_DNS_CONFIG = "dns_config"
-        const val EXTRA_RULE_SNAPSHOT = "rule_snapshot"
-        const val EXTRA_REWRITE_RULES = "rewrite_rules"
         const val EXTRA_AD_BLOCK_ENABLED = "ad_block_enabled"
 
         @Volatile
@@ -386,15 +379,11 @@ class DitingDnsServerService : Service() {
             context: Context,
             port: Int,
             dnsConfig: String,
-            ruleSnapshot: String,
-            rewriteRules: String,
             adBlockEnabled: Boolean,
         ): Intent = Intent(context, DitingDnsServerService::class.java).apply {
             action = ACTION_START
             putExtra(EXTRA_PORT, port)
             putExtra(EXTRA_DNS_CONFIG, dnsConfig)
-            putExtra(EXTRA_RULE_SNAPSHOT, ruleSnapshot)
-            putExtra(EXTRA_REWRITE_RULES, rewriteRules)
             putExtra(EXTRA_AD_BLOCK_ENABLED, adBlockEnabled)
         }
 
@@ -411,8 +400,6 @@ class DitingDnsServerService : Service() {
                 context = context,
                 port = prefs.getInt(KEY_LOCAL_PORT, DEFAULT_PORT),
                 dnsConfig = dnsConfig,
-                ruleSnapshot = prefs.getString(KEY_LAST_RULE_SNAPSHOT, null).orEmpty(),
-                rewriteRules = prefs.getString(KEY_LAST_REWRITE_RULES, null).orEmpty(),
                 adBlockEnabled = prefs.getBoolean(KEY_LAST_AD_BLOCK_ENABLED, false),
             )
         }

@@ -2,7 +2,10 @@
 /// `sub_<id>`.
 library;
 
+import 'dart:async';
+
 import 'package:diting/data/db/legacy_database.dart';
+import 'package:diting/data/db/rule_index_bridge.dart';
 import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
@@ -25,6 +28,18 @@ final subscriptionDatabaseFileProvider = Provider<String>((ref) {
       ? LegacyDatabase.expressFile
       : LegacyDatabase.mainFile;
 });
+
+/// Recompiles the native rule tries of whichever rule database the current mode writes
+/// (`diting_express` in express mode, the main database otherwise).
+void refreshRuleIndexesForCurrentMode(Ref ref) {
+  unawaited(
+    refreshRuleIndexes(
+      ref.read(workModeProvider) == AppWorkMode.express
+          ? RuleIndexDataset.express
+          : RuleIndexDataset.normal,
+    ),
+  );
+}
 
 /// Null on a fresh install (no legacy file yet), giving an empty list.
 final subscriptionDatabaseProvider = FutureProvider<Database?>(
@@ -385,15 +400,19 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
     final source = subscriptionSourceTag(entry.id);
     final parsed = parseCategorized(content);
     await importer.removeRulesBySource(source);
-    if (parsed.isEmpty) {
-      return const RuleImportSummary();
+    try {
+      if (parsed.isEmpty) {
+        return const RuleImportSummary();
+      }
+      return await importer.import(
+        parsed,
+        source: source,
+        kind: entry.kind.storageValue,
+        enabled: entry.enabled,
+      );
+    } finally {
+      refreshRuleIndexesForCurrentMode(ref);
     }
-    return importer.import(
-      parsed,
-      source: source,
-      kind: entry.kind.storageValue,
-      enabled: entry.enabled,
-    );
   }
 
   static String _summarize(List<SubscriptionFetchResult> results) {
@@ -525,6 +544,7 @@ class SubscriptionActions {
         ?.setEnabled(id, enabled);
     await (await _ref.read(ruleImporterProvider.future))
         ?.setSourceEnabled(subscriptionSourceTag(id), enabled);
+    refreshRuleIndexesForCurrentMode(_ref);
   }
 
   Future<void> rename(int id, String name) async {
@@ -543,6 +563,7 @@ class SubscriptionActions {
     await (await _ref.read(ruleImporterProvider.future))
         ?.removeRulesBySource(subscriptionSourceTag(id));
     await repository?.deleteById(id);
+    refreshRuleIndexesForCurrentMode(_ref);
     // Release the SAF grant a local subscription no longer needs.
     if (record != null && !record.isRemote) {
       await _ref.read(subscriptionFileReaderProvider).releasePersistedText(

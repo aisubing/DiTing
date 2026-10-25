@@ -3,8 +3,6 @@ library;
 
 import 'dart:async';
 
-import 'package:diting/data/db/rule_providers.dart';
-import 'package:diting/data/db/rule_snapshot.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
@@ -264,14 +262,10 @@ class PowerNotifier extends Notifier<PowerState> {
     final express = mode == AppWorkMode.express;
     final baseSettings = ref.read(legacySettingsProvider);
     final settings = express ? baseSettings.forExpress() : baseSettings;
-    final rules = await _rulesFor(express);
-    if (_disposed) return;
 
-    // Per-app allowlists are normal-mode only; read them before the await.
-    final appAllowlist = express
-        ? const <String, Set<String>>{}
-        : baseSettings.appAllowlistRules;
-
+    // Rules are no longer loaded or shipped here: the service builds the engine
+    // snapshot in its own process (trie files + inline extras), so a large
+    // subscription can no longer blow the Binder transaction limit.
     final config = buildDnsConfig(settings);
     final controller = express
         ? ref.read(expressVpnControllerProvider)
@@ -281,8 +275,6 @@ class PowerNotifier extends Notifier<PowerState> {
     final result = await controller.start(
       VpnStartRequest(
         dnsConfig: config.encode(settings),
-        ruleSnapshot: encodeRuleSnapshot(rules, appAllowlist: appAllowlist),
-        rewriteRules: encodeRewriteRules(rules),
         // Off unless enabled and every field validates: a half-filled config fails start.
         outboundProxy: proxy.enabled && proxy.validationError() == null
             ? proxy.toEngineJson()
@@ -329,24 +321,6 @@ class PowerNotifier extends Notifier<PowerState> {
   void _cancelStatsPolling() {
     _statsTimer?.cancel();
     _statsTimer = null;
-  }
-
-  /// Express keeps its own database, so an empty rule set is a valid fallback.
-  Future<Map<RuleKind, List<MockRule>>> _rulesFor(bool express) async {
-    if (!express) {
-      final repository = ref.read(ruleRepositoryProvider);
-      return repository == null
-          ? ref.read(initialRulesProvider)
-          : await repository.loadAll();
-    }
-    try {
-      final repository = await ref.read(expressRuleRepositoryProvider.future);
-      return repository == null
-          ? <RuleKind, List<MockRule>>{}
-          : await repository.loadAll();
-    } catch (_) {
-      return <RuleKind, List<MockRule>>{};
-    }
   }
 
   Future<void> stop() async {

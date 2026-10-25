@@ -8,15 +8,11 @@ class DnsServerStartRequest {
   const DnsServerStartRequest({
     required this.port,
     required this.dnsConfig,
-    required this.ruleSnapshot,
-    required this.rewriteRules,
     required this.adBlockEnabled,
   });
 
   final int port;
   final String dnsConfig;
-  final String ruleSnapshot;
-  final String rewriteRules;
   final bool adBlockEnabled;
 }
 
@@ -82,8 +78,6 @@ class MethodChannelDnsServerController implements DnsServerController {
     final result = await _channel.invokeMethod<Object?>('start', {
       'port': request.port,
       'dnsConfig': request.dnsConfig,
-      'ruleSnapshot': request.ruleSnapshot,
-      'rewriteRules': request.rewriteRules,
       'adBlockEnabled': request.adBlockEnabled,
     });
     return DnsServerStartResult.fromMap(result);

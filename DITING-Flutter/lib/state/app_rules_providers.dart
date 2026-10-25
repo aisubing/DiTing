@@ -2,6 +2,9 @@
 /// here.
 library;
 
+import 'dart:async';
+
+import 'package:diting/data/db/rule_index_bridge.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
@@ -67,6 +70,11 @@ class AppScopedRulesController {
 
   RuleRepository? get _repository => _ref.read(ruleRepositoryProvider);
 
+  /// Keeps the native rule tries in step with app-scoped writes (same main database).
+  void _refreshIndexes() {
+    unawaited(refreshRuleIndexes(RuleIndexDataset.normal));
+  }
+
   /// Adds a block / allow rule. Returns false if the DB is unavailable or the rule already exists.
   Future<bool> addRule(
     String packageName,
@@ -83,6 +91,7 @@ class AppScopedRulesController {
       important: important,
     );
     if (created != null) {
+      _refreshIndexes();
       _ref.invalidate(appScopedRulesProvider(packageName));
     }
     return created != null;
@@ -93,6 +102,7 @@ class AppScopedRulesController {
     final id = int.tryParse(rule.id);
     if (repository == null || id == null) return;
     await repository.setEnabled(rule.kind, id, enabled);
+    _refreshIndexes();
     _ref.invalidate(appScopedRulesProvider(packageName));
   }
 
@@ -101,6 +111,7 @@ class AppScopedRulesController {
     final id = int.tryParse(rule.id);
     if (repository == null || id == null) return;
     await repository.delete(rule.kind, id);
+    _refreshIndexes();
     _ref.invalidate(appScopedRulesProvider(packageName));
   }
 
@@ -109,6 +120,7 @@ class AppScopedRulesController {
     final repository = _repository;
     if (repository == null) return false;
     final next = await repository.setFullBlock(packageName, enabled);
+    _refreshIndexes();
     _ref.invalidate(appScopedRulesProvider(packageName));
     return next;
   }

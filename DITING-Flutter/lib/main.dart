@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:diting/app/app.dart';
 import 'package:diting/app/debug_probe.dart';
 import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
+import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/native/app_version.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
@@ -50,36 +53,50 @@ Future<void> main() async {
   stage('version');
   final rules = await bootstrapRules(settings, versionCode: version.code);
   stage('rules');
-  runApp(
-    ProviderScope(
-      overrides: [
-        legacyPrefsStoreProvider.overrideWithValue(store),
-        appVersionProvider.overrideWithValue(version),
-        ruleRepositoryProvider.overrideWithValue(rules.repository),
-        initialRulesProvider.overrideWithValue(rules.rules),
-        // Real app list via PackageManager (QUERY_ALL_PACKAGES), shared by the four picker pages.
-        installedAppsSourceProvider.overrideWithValue(
-          MethodChannelInstalledAppsSource(),
-        ),
-        // Credentials are wrapped by AndroidKeyStore, so Dart only sees the whole config blob.
-        outboundProxyStoreProvider.overrideWithValue(
-          MethodChannelOutboundProxyStore(),
-        ),
-        caCertificateServiceProvider.overrideWithValue(
-          MethodChannelCaCertificateService(),
-        ),
-        // Turns plugin exceptions into readable failures for the diagnostics
-        // panel instead of red screens.
-        diagnosticsRunnerProvider.overrideWithValue(
-          GuardedDiagnosticsRunner(MethodChannelDiagnosticsRunner()),
-        ),
-        // Deliberately unguarded: failures are reported per item via `success=false` so the page
-        // can tell "unsupported device" from "probe ran and failed".
-        dnsLatencyRunnerProvider.overrideWithValue(
-          MethodChannelDnsLatencyRunner(),
-        ),
-      ],
-      child: const DitingApp(),
-    ),
+  final container = ProviderContainer(
+    overrides: [
+      legacyPrefsStoreProvider.overrideWithValue(store),
+      appVersionProvider.overrideWithValue(version),
+      ruleRepositoryProvider.overrideWithValue(rules.repository),
+      // Real app list via PackageManager (QUERY_ALL_PACKAGES), shared by the four picker pages.
+      installedAppsSourceProvider.overrideWithValue(
+        MethodChannelInstalledAppsSource(),
+      ),
+      // Credentials are wrapped by AndroidKeyStore, so Dart only sees the whole config blob.
+      outboundProxyStoreProvider.overrideWithValue(
+        MethodChannelOutboundProxyStore(),
+      ),
+      caCertificateServiceProvider.overrideWithValue(
+        MethodChannelCaCertificateService(),
+      ),
+      // Turns plugin exceptions into readable failures for the diagnostics
+      // panel instead of red screens.
+      diagnosticsRunnerProvider.overrideWithValue(
+        GuardedDiagnosticsRunner(MethodChannelDiagnosticsRunner()),
+      ),
+      // Deliberately unguarded: failures are reported per item via `success=false` so the page
+      // can tell "unsupported device" from "probe ran and failed".
+      dnsLatencyRunnerProvider.overrideWithValue(
+        MethodChannelDnsLatencyRunner(),
+      ),
+    ],
   );
+  runApp(
+    UncontrolledProviderScope(container: container, child: const DitingApp()),
+  );
+  // The full-table rule load used to run before `runApp` and kept the first frame waiting on the
+  // biggest tables; it now lands as a state update once the UI is up.
+  unawaited(_loadInitialRules(container, rules.repository, watch));
+}
+
+Future<void> _loadInitialRules(
+  ProviderContainer container,
+  RuleRepository? repository,
+  Stopwatch watch,
+) async {
+  final rules = await loadInitialRules(repository);
+  container.read(initialRulesProvider.notifier).fill(rules);
+  if (_startupTrace) {
+    debugPrint('startup rules-loaded +${watch.elapsedMilliseconds}ms');
+  }
 }

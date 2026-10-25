@@ -11,6 +11,8 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.haoze.diting.R
+import com.haoze.diting.core.rule.RuleDataset
+import com.haoze.diting.core.rule.RuleSnapshotStore
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
@@ -58,8 +60,6 @@ class DitingVpnService : VpnService() {
         }
         startTunnel(
             dnsConfig = dnsConfig,
-            ruleSnapshot = intent.getStringExtra(EXTRA_RULE_SNAPSHOT).orEmpty(),
-            rewriteRules = intent.getStringExtra(EXTRA_REWRITE_RULES).orEmpty(),
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
             bypassLan = intent.getBooleanExtra(EXTRA_BYPASS_LAN, true),
             ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
@@ -74,8 +74,6 @@ class DitingVpnService : VpnService() {
     @Synchronized
     private fun startTunnel(
         dnsConfig: String,
-        ruleSnapshot: String,
-        rewriteRules: String,
         proxyJson: String,
         bypassLan: Boolean,
         ipv6Mode: String,
@@ -115,15 +113,6 @@ class DitingVpnService : VpnService() {
             )
             require(proxyError.isBlank()) { proxyError }
             goEngine.applyDNSConfig(dnsConfig)
-            if (ruleSnapshot.isNotBlank()) {
-                val snapshotError = goEngine.applyRuleSnapshot(ruleSnapshot)
-                if (snapshotError.isNotBlank()) {
-                    Log.w(TAG, "applyRuleSnapshot failed: $snapshotError")
-                }
-            }
-            if (rewriteRules.isNotBlank()) {
-                goEngine.setRewriteRules(rewriteRules)
-            }
             val logMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                 .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
                 ?: DnsLogWriter.MODE_ALL
@@ -217,6 +206,26 @@ class DitingVpnService : VpnService() {
         )
         worker = Thread({
             try {
+                // Rules are built here, off the main thread: a stale index means a trie compile
+                // that can take seconds, and onStartCommand would otherwise ANR the service.
+                // Applied before startFull so the tunnel comes up with filtering already armed.
+                try {
+                    val snapshot = RuleSnapshotStore.buildSnapshotJson(this, RuleDataset.NORMAL)
+                    val snapshotError = goEngine.applyRuleSnapshot(snapshot)
+                    if (snapshotError.isNotBlank()) {
+                        Log.w(TAG, "applyRuleSnapshot failed: $snapshotError")
+                    }
+                    val rewriteRules = RuleSnapshotStore.buildRewriteRulesJson(this, RuleDataset.NORMAL)
+                    if (rewriteRules.isNotBlank()) {
+                        goEngine.setRewriteRules(rewriteRules)
+                    }
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Unable to build rule snapshot", t)
+                    if (!stopping) {
+                        fail("规则加载失败：${t.message ?: t.javaClass.simpleName}")
+                        return@Thread
+                    }
+                }
                 goEngine.startFull(pfd.fd.toLong(), SocketProtector { fd ->
                     protect(fd.toInt())
                 })
@@ -382,8 +391,6 @@ class DitingVpnService : VpnService() {
         const val ACTION_STOP = "com.haoze.diting.STOP_VPN"
 
         const val EXTRA_DNS_CONFIG = "dns_config"
-        const val EXTRA_RULE_SNAPSHOT = "rule_snapshot"
-        const val EXTRA_REWRITE_RULES = "rewrite_rules"
         const val EXTRA_OUTBOUND_PROXY = "outbound_proxy"
         const val EXTRA_BYPASS_LAN = "bypass_lan"
         const val EXTRA_IPV6_MODE = "ipv6_mode"
@@ -462,8 +469,6 @@ class DitingVpnService : VpnService() {
         fun startIntent(
             context: Context,
             dnsConfig: String,
-            ruleSnapshot: String,
-            rewriteRules: String,
             proxyJson: String,
             bypassLan: Boolean,
             ipv6Mode: String,
@@ -474,8 +479,6 @@ class DitingVpnService : VpnService() {
         ): Intent = Intent(context, DitingVpnService::class.java).apply {
             action = ACTION_START
             putExtra(EXTRA_DNS_CONFIG, dnsConfig)
-            putExtra(EXTRA_RULE_SNAPSHOT, ruleSnapshot)
-            putExtra(EXTRA_REWRITE_RULES, rewriteRules)
             putExtra(EXTRA_OUTBOUND_PROXY, proxyJson)
             putExtra(EXTRA_BYPASS_LAN, bypassLan)
             putExtra(EXTRA_IPV6_MODE, ipv6Mode)

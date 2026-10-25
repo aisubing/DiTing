@@ -51,8 +51,6 @@ class DnsServerBridge(
             context = context,
             port = port,
             dnsConfig = dnsConfig,
-            ruleSnapshot = call.argument<String>("ruleSnapshot").orEmpty(),
-            rewriteRules = call.argument<String>("rewriteRules").orEmpty(),
             adBlockEnabled = call.argument<Boolean>("adBlockEnabled") ?: false,
         )
         return try {

@@ -4,9 +4,6 @@ library;
 
 import 'dart:async';
 
-import 'package:diting/data/db/rule_providers.dart';
-import 'package:diting/data/db/rule_snapshot.dart';
-import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';
 import 'package:diting/data/server/dns_server_config.dart';
@@ -133,16 +130,14 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     final settings = ref.read(legacySettingsProvider);
     try {
       final config = buildServerDnsConfig(settings);
-      final rules = await _serverRules();
-      if (_disposed) return;
+      // Rules are no longer loaded or shipped here: the service builds the engine
+      // snapshot in its own process, so the rule set never crosses the Binder limit.
       final result = await ref
           .read(dnsServerControllerProvider)
           .start(
             DnsServerStartRequest(
               port: config.port,
               dnsConfig: config.encode(),
-              ruleSnapshot: encodeRuleSnapshot(rules),
-              rewriteRules: encodeRewriteRules(rules),
               adBlockEnabled: config.adBlockEnabled,
             ),
           );
@@ -209,19 +204,6 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
         _fail('DNS 服务启动超时');
       });
     });
-  }
-
-  Future<Map<RuleKind, List<MockRule>>> _serverRules() async {
-    try {
-      final repository = await ref.read(serverRuleRepositoryProvider.future);
-      return repository == null
-          ? <RuleKind, List<MockRule>>{}
-          : await repository.loadAll();
-    } catch (_) {
-      // A missing or locked legacy DB must not prevent the server from starting; an empty rule set
-      // still resolves.
-      return <RuleKind, List<MockRule>>{};
-    }
   }
 
   void _fail(String message) {

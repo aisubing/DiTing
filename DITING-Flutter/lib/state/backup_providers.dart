@@ -1,8 +1,11 @@
 library;
 
+import 'dart:async';
+
 import 'package:diting/data/backup/backup_exporter.dart';
 import 'package:diting/data/backup/backup_importer.dart';
 import 'package:diting/data/backup/backup_models.dart';
+import 'package:diting/data/db/rule_index_bridge.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/native/platform_bridge.dart';
@@ -11,6 +14,7 @@ import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/state/cleanup_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class BackupStats {
@@ -138,8 +142,30 @@ class BackupActions {
       ),
       sourceName: sourceName,
     );
-    if (!result.failed && !result.cancelled) _invalidate();
+    if (!result.failed && !result.cancelled) {
+      _invalidate();
+      _refreshIndexesIfNeeded(result);
+    }
     return result;
+  }
+
+  /// Rule-writing groups went into the active database; recompile its tries so the next service
+  /// start does not pay the compile itself (the stamp re-check would force it otherwise).
+  void _refreshIndexesIfNeeded(BackupImportResult result) {
+    const ruleGroups = {
+      BackupGroup.subscriptions,
+      BackupGroup.domainRules,
+      BackupGroup.rewriteDomain,
+      BackupGroup.rewriteCname,
+      BackupGroup.addressRules,
+    };
+    if (result.outcomes.every((outcome) => !ruleGroups.contains(outcome.group))) {
+      return;
+    }
+    final dataset = _ref.read(workModeProvider) == AppWorkMode.express
+        ? RuleIndexDataset.express
+        : RuleIndexDataset.normal;
+    unawaited(refreshRuleIndexes(dataset));
   }
 
   void _invalidate() {

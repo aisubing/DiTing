@@ -28,6 +28,7 @@ class MainActivity : FlutterActivity() {
         vpnBridge = VpnBridge(this, messenger)
         expressVpnBridge = ExpressVpnBridge(this, messenger)
         DnsServerBridge(applicationContext, messenger)
+        RuleIndexBridge(applicationContext, messenger)
 
         AppsBridge(applicationContext).register(messenger)
         CaInspectionBridge(applicationContext).register(messenger)

@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/db/preset_whitelist.dart';
+import 'package:diting/data/db/rule_index_bridge.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
@@ -26,6 +27,12 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   var _sequence = 0;
 
   RuleRepository? get _repo => ref.read(ruleRepositoryProvider);
+
+  /// Recompiles the native rule tries after a database write, mirroring the legacy app's
+  /// cache refresh inside RuleOperationWorker. Cheap when nothing changed for the trie tables.
+  void _refreshIndexes() {
+    unawaited(refreshRuleIndexes(RuleIndexDataset.normal));
+  }
 
   @override
   Map<RuleKind, List<MockRule>> build() {
@@ -49,6 +56,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     final dbId = int.tryParse(id);
     if (repo != null && dbId != null) {
       unawaited(repo.setEnabled(kind, dbId, enabled));
+      _refreshIndexes();
     }
   }
 
@@ -69,6 +77,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
         ...state,
         kind: [created, ...rulesOf(kind)],
       };
+      _refreshIndexes();
       return true;
     }
     state = {
@@ -111,6 +120,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
         target: target,
         promotePreset: current?.source == RuleSource.preset,
       );
+      _refreshIndexes();
     }
     _replace(
       kind,
@@ -136,6 +146,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     final dbId = int.tryParse(id);
     if (repo != null && dbId != null) {
       await repo.delete(kind, dbId);
+      _refreshIndexes();
     }
     state = {
       ...state,
@@ -152,6 +163,9 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     final removed = repo == null
         ? rulesOf(kind).where((rule) => rule.source == RuleSource.user).length
         : await repo.clearUser(kind);
+    if (repo != null && removed > 0) {
+      _refreshIndexes();
+    }
     state = {
       ...state,
       kind: [
@@ -174,6 +188,7 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
         return 0;
       }
       final count = await repo.resetPresetWhitelist(entries);
+      _refreshIndexes();
       state = {...state, kind: await repo.loadKind(kind)};
       return count;
     }
@@ -222,6 +237,10 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
     }
     if (added.isEmpty) {
       return 0;
+    }
+    if (repo != null) {
+      // One trie rebuild per batch, not one per row.
+      _refreshIndexes();
     }
     state = {
       ...state,
