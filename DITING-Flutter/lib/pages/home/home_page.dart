@@ -7,6 +7,7 @@ import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/dashboard_providers.dart';
+import 'package:diting/state/log_refresh_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -29,6 +30,7 @@ class _HomePageState extends ConsumerState<HomePage>
   /// Capture the notifier while mounted: dispose() cannot call ref.read, Riverpod 3
   /// throws when ref is used on an unmounted widget.
   SpeedSeriesNotifier? _speed;
+  LogLiveRefreshNotifier? _logRefresh;
 
   @override
   void initState() {
@@ -38,6 +40,10 @@ class _HomePageState extends ConsumerState<HomePage>
     // and a second timer would halve the 60-point window. Tests disable it.
     _speed = ref.read(speedSeriesProvider.notifier);
     _speed!.attachPolling();
+    // Cache, bootstrap and log cards read tables the native writers fill while the tunnel
+    // runs; without this timer they would only refresh on a manual bump. Tests disable it.
+    _logRefresh = ref.read(logLiveRefreshProvider.notifier);
+    _logRefresh!.attachPolling();
   }
 
   @override
@@ -54,6 +60,7 @@ class _HomePageState extends ConsumerState<HomePage>
   @override
   void dispose() {
     _speed?.detachPolling();
+    _logRefresh?.detachPolling();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

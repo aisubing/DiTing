@@ -35,6 +35,15 @@ func (e *Engine) GetDNSCacheStats() string {
 	return e.dnsCache.statsJSON()
 }
 
+// GetDNSCacheEntries returns up to limit live cache entries as a JSON array, hottest
+// first. The Android layer mirrors this into the `dns_cache` table for the DNS cache
+// UI; the in-memory LRU stays authoritative.
+func (e *Engine) GetDNSCacheEntries(limit int64) string {
+	if e == nil || e.dnsCache == nil || limit <= 0 {
+		return "[]"
+	}
+	return e.dnsCache.snapshotJSON(int(limit))
+}
 
 func (e *Engine) GetRouter() *Router {
 	return e.router

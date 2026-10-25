@@ -9,6 +9,7 @@ import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/log_providers.dart';
+import 'package:diting/state/log_refresh_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -27,6 +28,8 @@ class LogsPage extends ConsumerStatefulWidget {
 }
 
 class _LogsPageState extends ConsumerState<LogsPage> {
+  LogLiveRefreshNotifier? _logRefresh;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +42,16 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         ref.read(powerProvider.notifier).syncStatus();
       }
     });
+    // These cards read tables the native writers keep filling; share home's timer so the
+    // lists update without tapping refresh. Tests disable it.
+    _logRefresh = ref.read(logLiveRefreshProvider.notifier);
+    _logRefresh!.attachPolling();
+  }
+
+  @override
+  void dispose() {
+    _logRefresh?.detachPolling();
+    super.dispose();
   }
 
   @override

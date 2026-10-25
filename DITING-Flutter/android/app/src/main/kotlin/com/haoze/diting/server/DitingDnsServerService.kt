@@ -17,11 +17,14 @@ import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.core.rule.RuleDataset
 import com.haoze.diting.core.rule.RuleSnapshotStore
+import com.haoze.diting.log.BootstrapLogWriter
+import com.haoze.diting.log.DnsCacheMirror
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
+import tunnel.BootstrapLogCallback
 import tunnel.Engine
 import tunnel.RaceLogCallback
 import java.util.concurrent.atomic.AtomicInteger
@@ -31,6 +34,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /// applied before the bind: answering the first queries with an empty rule set leaks.
 class DitingDnsServerService : Service() {
     private var engine: Engine? = null
+    private var cacheMirror: DnsCacheMirror? = null
     private val generation = AtomicInteger(0)
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
@@ -148,6 +152,31 @@ class DitingDnsServerService : Service() {
                         )
                     }
                 })
+                created.setBootstrapLogCallback(object : BootstrapLogCallback {
+                    override fun onBootstrapResult(
+                        ipID: String,
+                        ipName: String,
+                        ip: String,
+                        host: String,
+                        success: Boolean,
+                        elapsedMs: Long,
+                        fallbackUsed: Boolean,
+                        errorMessage: String,
+                    ) {
+                        BootstrapLogWriter.write(
+                            this@DitingDnsServerService,
+                            DnsLogWriter.DB_NORMAL,
+                            ipId = ipID,
+                            ipName = ipName,
+                            ip = ip,
+                            host = host,
+                            success = success,
+                            elapsedMs = elapsedMs,
+                            fallbackUsed = fallbackUsed,
+                            errorMessage = errorMessage,
+                        )
+                    }
+                })
                 created.startStandalone(port.toLong())
                 if (generation.get() != token) {
                     Log.i(TAG, "discarding DNS engine: stop requested during start")
@@ -158,6 +187,8 @@ class DitingDnsServerService : Service() {
                 engine = created
                 activeEngine = created
                 isRunning = true
+                // Mirrored periodically: the server has no VpnService data plane to hang it on.
+                cacheMirror = DnsCacheMirror(this, DnsLogWriter.DB_NORMAL, created).also { it.start() }
                 // Authoritative start time for the uptime figure; the UI process can be recreated.
                 startedAt = System.currentTimeMillis()
                 lastError = null
@@ -177,6 +208,7 @@ class DitingDnsServerService : Service() {
         val current = engine
         engine = null
         activeEngine = null
+        closeCacheMirror()
         runCatching { current?.stopStandalone() }
             .onFailure { Log.w(TAG, "stopStandalone failed", it) }
         runCatching { current?.stop() }
@@ -193,6 +225,7 @@ class DitingDnsServerService : Service() {
         isRunning = false
         startedAt = 0L
         activeEngine = null
+        closeCacheMirror()
         setServiceActive(this, false)
         releaseLocks()
         stopForegroundCompat()
@@ -204,6 +237,7 @@ class DitingDnsServerService : Service() {
         val current = engine
         engine = null
         activeEngine = null
+        closeCacheMirror()
         runCatching { current?.stopStandalone() }
         runCatching { current?.stop() }
         isRunning = false
@@ -212,6 +246,13 @@ class DitingDnsServerService : Service() {
         releaseLocks()
         stopForegroundCompat()
         super.onDestroy()
+    }
+
+    /// Stops the periodic `dns_cache` mirror; the last snapshot stays readable by the UI
+    private fun closeCacheMirror() {
+        val mirror = cacheMirror
+        cacheMirror = null
+        runCatching { mirror?.close() }
     }
 
     /// Stores the running configuration so `DnsModeBootReceiver` can restart the service with the

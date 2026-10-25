@@ -4,13 +4,14 @@ import 'package:diting/pages/hub/agent_analysis_sheet.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
+import 'package:diting/state/log_refresh_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// DNS cache table from the real `dns_cache` table. The Go engine keeps its LRU in memory
-/// with no enumeration API, so only the persisted snapshot is visible.
+/// DNS cache table from the real `dns_cache` table. The engine's in-memory LRU is authoritative;
+/// `DnsCacheMirror` mirrors its top entries into this table every 10 s.
 class LogsCachePage extends ConsumerStatefulWidget {
   const LogsCachePage({super.key});
 
@@ -22,8 +23,19 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
   final _search = TextEditingController();
   var _query = '';
 
+  /// The native mirror rewrites `dns_cache` every 10 s; the list follows it without a tap.
+  LogLiveRefreshNotifier? _logRefresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _logRefresh = ref.read(logLiveRefreshProvider.notifier);
+    _logRefresh!.attachPolling();
+  }
+
   @override
   void dispose() {
+    _logRefresh?.detachPolling();
     _search.dispose();
     super.dispose();
   }

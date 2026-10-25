@@ -1,17 +1,39 @@
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
+import 'package:diting/state/log_refresh_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Bootstrap DNS stats from the real `bootstrap_log` table, one row per probe.
-class LogsBootstrapPage extends ConsumerWidget {
+class LogsBootstrapPage extends ConsumerStatefulWidget {
   const LogsBootstrapPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LogsBootstrapPage> createState() => _LogsBootstrapPageState();
+}
+
+class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
+  /// Probes land here continuously while the tunnel resolves; follow them without a tap.
+  LogLiveRefreshNotifier? _logRefresh;
+
+  @override
+  void initState() {
+    super.initState();
+    _logRefresh = ref.read(logLiveRefreshProvider.notifier);
+    _logRefresh!.attachPolling();
+  }
+
+  @override
+  void dispose() {
+    _logRefresh?.detachPolling();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncStats = ref.watch(bootstrapStatsProvider);
     final range = ref.watch(bootstrapStatsRangeProvider);
     return CommonScaffold(

@@ -1,4 +1,5 @@
-/// Read access to the legacy `dns_cache` table; the engine keeps its own in-memory LRU.
+/// Read access to the legacy `dns_cache` table; `DnsCacheMirror` copies the engine's in-memory
+/// LRU into it every 10 s, so rows lag the engine by at most one publish interval.
 library;
 
 import 'package:sqflite/sqflite.dart';

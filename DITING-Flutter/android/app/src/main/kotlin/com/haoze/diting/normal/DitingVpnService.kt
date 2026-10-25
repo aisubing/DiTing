@@ -200,6 +200,8 @@ class DitingVpnService : VpnService() {
             val plane = EngineDataPlane(this, logMode)
             dataPlane = plane
             plane.attachResolvers(goEngine)
+            plane.attachBootstrap(goEngine)
+            plane.attachCacheMirror(goEngine)
             plane.attachTraffic(goEngine)
             plane.attachHttp(goEngine)
 

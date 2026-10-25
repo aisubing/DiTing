@@ -173,9 +173,13 @@ class ExpressVpnService : VpnService() {
             goEngine.setUseTcpStack(true)
 
             // Resolvers only: no user traffic crosses the narrow TUN and there is no MITM stage.
-            val plane = EngineDataPlane(this, logMode)
+            // The log tables live in the express database, so bootstrap rows and the cache
+            // mirror must target it too.
+            val plane = EngineDataPlane(this, logMode, DnsLogWriter.DB_EXPRESS)
             dataPlane = plane
             plane.attachResolvers(goEngine)
+            plane.attachBootstrap(goEngine)
+            plane.attachCacheMirror(goEngine)
         } catch (t: Throwable) {
             Log.e(TAG, "Unable to configure Go engine", t)
             releaseResources()
