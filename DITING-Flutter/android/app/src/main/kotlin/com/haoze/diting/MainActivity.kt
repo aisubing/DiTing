@@ -15,6 +15,11 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterActivity() {
+    companion object {
+        /// Set by the quick settings tile when it needs the app to start the data plane.
+        const val EXTRA_AUTO_START_VPN = "auto_start_vpn"
+    }
+
     private var vpnBridge: VpnBridge? = null
     private var expressVpnBridge: ExpressVpnBridge? = null
     private var platformBridge: PlatformBridge? = null
@@ -41,6 +46,7 @@ class MainActivity : FlutterActivity() {
         UpdateBridge(this).register(messenger)
         backgroundBridge = BackgroundBridge(this).also { it.register(messenger) }
         permissionsBridge = PermissionsBridge(this).also { it.register(messenger) }
+        TileBridge(this).register(messenger)
         RecognitionAvatarBridge(applicationContext).register(messenger)
     }
 
@@ -48,6 +54,13 @@ class MainActivity : FlutterActivity() {
         super.onResume()
         // Relaunching from the app icon recreates the task entry, resetting excludeFromRecents.
         platformBridge?.reapplyRecentsPrivacy()
+    }
+
+    /// `singleTop`: a tile tap reuses this instance, and only `setIntent` makes the new extra
+    /// visible to `TileBridge`.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

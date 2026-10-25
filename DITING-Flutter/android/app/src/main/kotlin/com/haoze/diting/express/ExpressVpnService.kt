@@ -21,6 +21,7 @@ import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.RaceLogWriter
+import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.RaceLogCallback
@@ -55,6 +56,14 @@ class ExpressVpnService : VpnService() {
             stopTunnel()
             return START_NOT_STICKY
         }
+        // Persisted so the quick settings tile can rebuild the same start intent: Dart computes
+        // the config, the intent extras do not survive anywhere else.
+        rememberStartConfig(
+            dnsConfig = dnsConfig,
+            proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
+            ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
+            excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
+        )
         startTunnel(
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
@@ -62,6 +71,21 @@ class ExpressVpnService : VpnService() {
             excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
         )
         return START_NOT_STICKY
+    }
+
+    /// Stores the configuration of the current start so `restoreIntent` can replay it.
+    private fun rememberStartConfig(
+        dnsConfig: String,
+        proxyJson: String,
+        ipv6Mode: String,
+        excludedPackages: Set<String>,
+    ) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
+            .putString(KEY_LAST_OUTBOUND_PROXY, proxyJson)
+            .putString(KEY_LAST_IPV6_MODE, ipv6Mode)
+            .putStringSet(KEY_LAST_EXCLUDED_PACKAGES, excludedPackages)
+            .apply()
     }
 
     @Synchronized
@@ -361,6 +385,12 @@ class ExpressVpnService : VpnService() {
         private const val KEY_LOG_MODE = "dns_log_mode"
         private const val SETTINGS_PREFS = "diting_express_prefs"
 
+        // Last start configuration, replayed by the quick settings tile.
+        private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
+        private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
+        private const val KEY_LAST_IPV6_MODE = "last_ipv6_mode"
+        private const val KEY_LAST_EXCLUDED_PACKAGES = "last_excluded_packages"
+
         private const val DEFAULT_OUTBOUND_PROXY =
             """{"enabled":false,"protocol":"SOCKS5","host":"127.0.0.1","port":7890,"username":"","password":""}"""
 
@@ -385,6 +415,8 @@ class ExpressVpnService : VpnService() {
                 .edit()
                 .putBoolean(KEY_VPN_RUNNING, value)
                 .apply()
+            // The tile lives in another UI surface; it only repaints when told to re-read.
+            QuickSettingsTileUpdater.requestTileUpdate(context)
         }
 
         fun status(context: Context): Map<String, Any?> = mapOf(
@@ -410,5 +442,22 @@ class ExpressVpnService : VpnService() {
 
         fun stopIntent(context: Context): Intent =
             Intent(context, ExpressVpnService::class.java).setAction(ACTION_STOP)
+
+        /// Rebuilds the last start intent so the tile can restart the tunnel without Dart, which
+        /// is where the DNS config is computed. Null until the service was started at least once.
+        fun restoreIntent(context: Context): Intent? {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val dnsConfig = prefs.getString(KEY_LAST_DNS_CONFIG, null)
+            if (dnsConfig.isNullOrBlank()) return null
+            return startIntent(
+                context = context,
+                dnsConfig = dnsConfig,
+                proxyJson = prefs.getString(KEY_LAST_OUTBOUND_PROXY, null)
+                    ?: DEFAULT_OUTBOUND_PROXY,
+                ipv6Mode = prefs.getString(KEY_LAST_IPV6_MODE, null) ?: "auto",
+                excludedPackages = prefs.getStringSet(KEY_LAST_EXCLUDED_PACKAGES, null)
+                    .orEmpty().toList(),
+            )
+        }
     }
 }

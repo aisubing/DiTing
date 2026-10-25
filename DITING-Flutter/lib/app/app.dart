@@ -3,12 +3,15 @@ import 'package:diting/app/initial_agreement.dart';
 import 'package:diting/app/l10n/ui_strings.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/manager.dart';
+import 'package:diting/data/native/tile_bridge.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
 import 'package:diting/state/on_demand_runner.dart';
+import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/settings_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/background_layer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,12 +48,14 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     super.initState();
     _lifecycle = AppLifecycleListener(onResume: _onResume);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeApplyTileStart();
       _maybeRunAutoUpdate();
       _maybeApplyOnDemand();
     });
   }
 
   void _onResume() {
+    _maybeApplyTileStart();
     _maybeRunAutoUpdate();
     _maybeApplyOnDemand();
   }
@@ -67,6 +72,24 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       await ref.read(onDemandRunnerProvider).apply();
     } catch (_) {
       // A missing channel on desktop simply means there is no tunnel to switch.
+    }
+  }
+
+  /// The quick settings tile starts the data plane itself whenever it can; when it cannot (no VPN
+  /// consent, or no persisted start config yet) it opens the app with a one-shot request instead.
+  /// Only a running service needs no work: a mid-transition one is left to settle on its own.
+  Future<void> _maybeApplyTileStart() async {
+    if (!mounted || !_agreementAccepted) return;
+    if (!await ref.read(tileBridgeProvider).consumeStartRequest()) return;
+    if (!mounted) return;
+    if (ref.read(workModeProvider) == AppWorkMode.server) {
+      if (ref.read(serverStatusProvider) == ServerStatus.stopped) {
+        await ref.read(serverStatusProvider.notifier).toggle();
+      }
+      return;
+    }
+    if (ref.read(powerProvider) == PowerState.stopped) {
+      await ref.read(powerProvider.notifier).toggle();
     }
   }
 

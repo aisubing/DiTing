@@ -20,6 +20,7 @@ import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.log.TrafficRateMonitor
+import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.RaceLogCallback
@@ -58,6 +59,18 @@ class DitingVpnService : VpnService() {
             stopTunnel()
             return START_NOT_STICKY
         }
+        // Persisted so the quick settings tile (and a future reboot restore) can rebuild the same
+        // start intent: Dart computes the config, the extras do not survive elsewhere.
+        rememberStartConfig(
+            dnsConfig = dnsConfig,
+            proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
+            bypassLan = intent.getBooleanExtra(EXTRA_BYPASS_LAN, true),
+            ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
+            excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
+            blockedPackages = intent.getStringArrayListExtra(EXTRA_BLOCKED_PACKAGES).orEmpty().toSet(),
+            inspectionPackages = intent.getStringArrayListExtra(EXTRA_INSPECTION_PACKAGES).orEmpty().toSet(),
+            inspectionEnabled = intent.getBooleanExtra(EXTRA_INSPECTION_ENABLED, false),
+        )
         startTunnel(
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
@@ -69,6 +82,30 @@ class DitingVpnService : VpnService() {
             inspectionEnabled = intent.getBooleanExtra(EXTRA_INSPECTION_ENABLED, false),
         )
         return START_NOT_STICKY
+    }
+
+    /// Stores the configuration of the current start so `restoreIntent` can replay it. Rules are
+    /// not part of it: the service rebuilds the engine snapshot from the rule database.
+    private fun rememberStartConfig(
+        dnsConfig: String,
+        proxyJson: String,
+        bypassLan: Boolean,
+        ipv6Mode: String,
+        excludedPackages: Set<String>,
+        blockedPackages: Set<String>,
+        inspectionPackages: Set<String>,
+        inspectionEnabled: Boolean,
+    ) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
+            .putString(KEY_LAST_OUTBOUND_PROXY, proxyJson)
+            .putBoolean(KEY_LAST_BYPASS_LAN, bypassLan)
+            .putString(KEY_LAST_IPV6_MODE, ipv6Mode)
+            .putStringSet(KEY_LAST_EXCLUDED_PACKAGES, excludedPackages)
+            .putStringSet(KEY_LAST_BLOCKED_PACKAGES, blockedPackages)
+            .putStringSet(KEY_LAST_INSPECTION_PACKAGES, inspectionPackages)
+            .putBoolean(KEY_LAST_INSPECTION_ENABLED, inspectionEnabled)
+            .apply()
     }
 
     @Synchronized
@@ -415,6 +452,16 @@ class DitingVpnService : VpnService() {
         private const val KEY_VPN_RUNNING = "vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"
 
+        // Last start configuration, replayed by the quick settings tile.
+        private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
+        private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
+        private const val KEY_LAST_BYPASS_LAN = "last_bypass_lan"
+        private const val KEY_LAST_IPV6_MODE = "last_ipv6_mode"
+        private const val KEY_LAST_EXCLUDED_PACKAGES = "last_excluded_packages"
+        private const val KEY_LAST_BLOCKED_PACKAGES = "last_blocked_packages"
+        private const val KEY_LAST_INSPECTION_PACKAGES = "last_inspection_packages"
+        private const val KEY_LAST_INSPECTION_ENABLED = "last_inspection_enabled"
+
         /// Same directory the legacy app used: an upgraded install keeps its trusted root CA
         private const val MITM_DIR = "go-mitm"
 
@@ -445,8 +492,11 @@ class DitingVpnService : VpnService() {
                 .apply()
         }
 
-        fun setPersistedRunning(context: Context, value: Boolean) =
+        fun setPersistedRunning(context: Context, value: Boolean) {
             context.setRunningFlag(value)
+            // The tile lives in another UI surface; it only repaints when told to re-read.
+            QuickSettingsTileUpdater.requestTileUpdate(context)
+        }
 
         fun status(context: Context): Map<String, Any?> = mapOf(
             "running" to isRunning,
@@ -490,5 +540,28 @@ class DitingVpnService : VpnService() {
 
         fun stopIntent(context: Context): Intent =
             Intent(context, DitingVpnService::class.java).setAction(ACTION_STOP)
+
+        /// Rebuilds the last start intent so the tile can restart the tunnel without Dart, which
+        /// is where the DNS config is computed. Null until the service was started at least once.
+        fun restoreIntent(context: Context): Intent? {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val dnsConfig = prefs.getString(KEY_LAST_DNS_CONFIG, null)
+            if (dnsConfig.isNullOrBlank()) return null
+            return startIntent(
+                context = context,
+                dnsConfig = dnsConfig,
+                proxyJson = prefs.getString(KEY_LAST_OUTBOUND_PROXY, null)
+                    ?: DEFAULT_OUTBOUND_PROXY,
+                bypassLan = prefs.getBoolean(KEY_LAST_BYPASS_LAN, true),
+                ipv6Mode = prefs.getString(KEY_LAST_IPV6_MODE, null) ?: "auto",
+                excludedPackages = prefs.getStringSet(KEY_LAST_EXCLUDED_PACKAGES, null)
+                    .orEmpty().toList(),
+                blockedPackages = prefs.getStringSet(KEY_LAST_BLOCKED_PACKAGES, null)
+                    .orEmpty().toList(),
+                inspectionPackages = prefs.getStringSet(KEY_LAST_INSPECTION_PACKAGES, null)
+                    .orEmpty().toList(),
+                inspectionEnabled = prefs.getBoolean(KEY_LAST_INSPECTION_ENABLED, false),
+            )
+        }
     }
 }

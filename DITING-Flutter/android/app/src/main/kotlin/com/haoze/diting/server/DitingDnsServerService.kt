@@ -20,6 +20,7 @@ import com.haoze.diting.core.rule.RuleSnapshotStore
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.RaceLogWriter
+import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.RaceLogCallback
@@ -364,6 +365,8 @@ class DitingDnsServerService : Service() {
                 .edit()
                 .putBoolean(KEY_SERVICE_ACTIVE, active)
                 .apply()
+            // The tile lives in another UI surface; it only repaints when told to re-read.
+            QuickSettingsTileUpdater.requestTileUpdate(context)
         }
 
         fun status(context: Context): Map<String, Any?> = mapOf(
