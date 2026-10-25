@@ -1,5 +1,5 @@
 /// Log mode (legacy `ui/LogRetentionSettingsScreen.kt`): `dns_log_mode`, `log_retention_days`.
-/// Crash logs moved to 功能中心 → 故障排查 → 崩溃日志.
+/// Crash logs live on the 故障排查 page in 数据与维护.
 library;
 
 import 'package:diting/state/settings_providers.dart';

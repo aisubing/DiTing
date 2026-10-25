@@ -1,4 +1,4 @@
-/// Manual runtime-log capture state, shared by 故障排查 → 运行日志. The native side owns the
+/// Manual runtime-log capture state, shared by 数据与维护 → 故障排查. The native side owns the
 /// files; this layer only mirrors what it reports so the switch never shows a stale state.
 library;
 

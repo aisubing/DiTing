@@ -259,7 +259,7 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
                     glyph: AppGlyphs.wrench,
                     title: '故障排查',
                     subtitle: '导出崩溃日志，手动抓取并导出运行日志',
-                    route: HubPaths.crashLogs,
+                    route: HubPaths.troubleshooting,
                   ),
                   _Entry(
                     glyph: AppGlyphs.broom,
