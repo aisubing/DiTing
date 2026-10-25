@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/data/vpn/vpn_bridge.dart' show epochMillis;
 import 'package:flutter/services.dart';
 
 const dnsServerChannelName = 'com.haoze.diting/dns_server';
@@ -37,6 +38,7 @@ class DnsServerStatus {
     required this.persisted,
     required this.port,
     this.error,
+    this.startedAt,
     this.stats = const {},
   });
 
@@ -44,6 +46,10 @@ class DnsServerStatus {
   final bool persisted;
   final int port;
   final String? error;
+
+  /// When the service actually came up, reported by the native side. Null while stopped.
+  final DateTime? startedAt;
+
   final Map<String, Object?> stats;
 
   factory DnsServerStatus.fromMap(Object? raw) {
@@ -54,6 +60,7 @@ class DnsServerStatus {
       persisted: map['persisted'] == true,
       port: map['port'] is int ? map['port'] as int : 1053,
       error: map['error'] as String?,
+      startedAt: epochMillis(map['startedAt']),
       stats: stats is Map ? Map<String, Object?>.from(stats) : const {},
     );
   }

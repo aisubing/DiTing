@@ -64,12 +64,17 @@ class VpnStatus {
     required this.running,
     required this.persisted,
     this.error,
+    this.startedAt,
     this.stats = const {},
   });
 
   final bool running;
   final bool persisted;
   final String? error;
+
+  /// When the service actually came up, reported by the native side. Null while stopped or on a
+  /// build that does not report it.
+  final DateTime? startedAt;
 
   /// Engine counters; empty when the tunnel has not started.
   final Map<String, Object?> stats;
@@ -81,9 +86,16 @@ class VpnStatus {
       running: map['running'] == true,
       persisted: map['persisted'] == true,
       error: map['error'] as String?,
+      startedAt: epochMillis(map['startedAt']),
       stats: stats is Map ? Map<String, Object?>.from(stats) : const {},
     );
   }
+}
+
+/// Converts a native epoch-millis field to a `DateTime`; missing or non-positive means "unknown".
+DateTime? epochMillis(Object? raw) {
+  final millis = raw is num ? raw.toInt() : 0;
+  return millis > 0 ? DateTime.fromMillisecondsSinceEpoch(millis) : null;
 }
 
 /// One traffic sample in bytes per second. [unsupported] means no counters at all, which differs

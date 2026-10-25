@@ -232,6 +232,9 @@ class DitingVpnService : VpnService() {
         }
 
         isRunning = true
+        // Authoritative start time: the UI is a separate process and loses its own clock when
+        // Android recreates it, which used to restart the uptime counter at zero.
+        startedAt = System.currentTimeMillis()
         setPersistedRunning(this, true)
         startSpeedTicker()
         // The window only matters while logs are written, and this service outlives the UI.
@@ -289,6 +292,7 @@ class DitingVpnService : VpnService() {
         closeDataPlane()
         releaseResources()
         isRunning = false
+        startedAt = 0L
         setPersistedRunning(this, false)
         stopForegroundCompat()
         stopSelf()
@@ -315,6 +319,7 @@ class DitingVpnService : VpnService() {
     private fun fail(message: String) {
         lastError = message
         isRunning = false
+        startedAt = 0L
         activeEngine = null
         closeDataPlane()
         setPersistedRunning(this, false)
@@ -341,6 +346,7 @@ class DitingVpnService : VpnService() {
             closeDataPlane()
             releaseResources()
             isRunning = false
+            startedAt = 0L
             setPersistedRunning(this, false)
             stopForegroundCompat()
         }
@@ -472,6 +478,11 @@ class DitingVpnService : VpnService() {
         @Volatile
         var isRunning: Boolean = false
 
+        /// Epoch millis of the last successful start; 0 while stopped. The UI process can be
+        /// recreated at any time, so the only trustworthy origin for the uptime figure is here.
+        @Volatile
+        var startedAt: Long = 0L
+
         @Volatile
         private var activeEngine: Engine? = null
 
@@ -502,6 +513,8 @@ class DitingVpnService : VpnService() {
             "running" to isRunning,
             "persisted" to isPersistedRunning(context),
             "error" to lastError,
+            // Milliseconds since the tunnel came up; Dart uses it instead of its own clock.
+            "startedAt" to startedAt,
             "stats" to EngineStats.snapshot(activeEngine),
         )
 

@@ -155,7 +155,11 @@ class PowerNotifier extends Notifier<PowerState> {
       _guardTimer?.cancel();
       ref
           .read(serviceStatsProvider.notifier)
-          .applyNative(status.stats, running: status.running);
+          .applyNative(
+            status.stats,
+            running: status.running,
+            startedAt: status.startedAt,
+          );
       if (status.running) {
         _ensureStatsPolling();
       } else {
@@ -384,6 +388,8 @@ class ServiceStatsNotifier extends Notifier<ServiceStats> {
     uptime: Duration.zero,
   );
 
+  /// Origin of the uptime figure. Preference order: the native start timestamp (survives a
+  /// recreated UI process), then the local clock from [markStarted].
   DateTime? _startedAt;
 
   @override
@@ -401,19 +407,28 @@ class ServiceStatsNotifier extends Notifier<ServiceStats> {
   }
 
   /// Replaces the mock counters with the Go engine's real ones.
-  void applyNative(Map<String, Object?> stats, {required bool running}) {
+  ///
+  /// [startedAt] is the service's own start time. It wins over the locally observed one so a
+  /// recreated UI process shows the real uptime instead of starting again from zero.
+  void applyNative(
+    Map<String, Object?> stats, {
+    required bool running,
+    DateTime? startedAt,
+  }) {
     if (!running) {
       reset();
       return;
     }
-    _startedAt ??= DateTime.now();
+    _startedAt = startedAt ?? _startedAt ?? DateTime.now();
     int read(String key) => (stats[key] as num?)?.toInt() ?? 0;
+    final elapsed = DateTime.now().difference(_startedAt!);
     state = ServiceStats(
       queries: read('queries'),
       cacheHits: read('cacheHits'),
       blocked: read('blocked'),
       averageLatencyMs: 0,
-      uptime: DateTime.now().difference(_startedAt!),
+      // A device clock that moved backwards must not show a negative duration.
+      uptime: elapsed.isNegative ? Duration.zero : elapsed,
     );
   }
 

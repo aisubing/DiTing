@@ -89,7 +89,11 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       _guardTimer?.cancel();
       ref
           .read(serviceStatsProvider.notifier)
-          .applyNative(status.stats, running: status.running);
+          .applyNative(
+            status.stats,
+            running: status.running,
+            startedAt: status.startedAt,
+          );
       if (status.running) {
         _ensureStatsPolling();
       } else {

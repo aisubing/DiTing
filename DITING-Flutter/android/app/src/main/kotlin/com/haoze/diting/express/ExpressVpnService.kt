@@ -184,6 +184,8 @@ class ExpressVpnService : VpnService() {
         }
 
         isRunning = true
+        // Authoritative start time: a recreated UI process must not restart the uptime counter.
+        startedAt = System.currentTimeMillis()
         setPersistedRunning(this, true)
         // Express has its own log file, so no HTTP or traffic tables.
         LogRetention.start(
@@ -240,6 +242,7 @@ class ExpressVpnService : VpnService() {
         closeDataPlane()
         releaseResources()
         isRunning = false
+        startedAt = 0L
         setPersistedRunning(this, false)
         stopForegroundCompat()
         stopSelf()
@@ -263,6 +266,7 @@ class ExpressVpnService : VpnService() {
     private fun fail(message: String) {
         lastError = message
         isRunning = false
+        startedAt = 0L
         activeEngine = null
         closeDataPlane()
         setPersistedRunning(this, false)
@@ -289,6 +293,7 @@ class ExpressVpnService : VpnService() {
             closeDataPlane()
             releaseResources()
             isRunning = false
+            startedAt = 0L
             setPersistedRunning(this, false)
             stopForegroundCompat()
         }
@@ -397,6 +402,10 @@ class ExpressVpnService : VpnService() {
         @Volatile
         var isRunning: Boolean = false
 
+        /// Epoch millis of the last successful start; 0 while stopped.
+        @Volatile
+        var startedAt: Long = 0L
+
         @Volatile
         private var activeEngine: Engine? = null
 
@@ -423,6 +432,7 @@ class ExpressVpnService : VpnService() {
             "running" to isRunning,
             "persisted" to isPersistedRunning(context),
             "error" to lastError,
+            "startedAt" to startedAt,
             "stats" to EngineStats.snapshot(activeEngine),
         )
 

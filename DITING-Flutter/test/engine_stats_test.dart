@@ -33,6 +33,28 @@ void main() {
       expect(status.port, 2053);
       expect(status.stats['cacheHits'], 2);
     });
+
+    test('解析原生启动时间戳，缺失或为零时为 null', () {
+      final started = DateTime(2026, 10, 1, 8, 30);
+      final vpn = VpnStatus.fromMap({
+        'running': true,
+        'startedAt': started.millisecondsSinceEpoch,
+      });
+      expect(vpn.startedAt, started);
+
+      final server = DnsServerStatus.fromMap({
+        'running': true,
+        'startedAt': started.millisecondsSinceEpoch,
+      });
+      expect(server.startedAt, started);
+
+      expect(VpnStatus.fromMap({'running': true}).startedAt, isNull);
+      expect(
+        VpnStatus.fromMap({'running': true, 'startedAt': 0}).startedAt,
+        isNull,
+      );
+      expect(DnsServerStatus.fromMap({'running': false}).startedAt, isNull);
+    });
   });
 
   group('ServiceStatsNotifier 接入真实计数', () {
@@ -42,10 +64,11 @@ void main() {
       final stats = c.read(serviceStatsProvider.notifier);
       expect(c.read(serviceStatsProvider).queries, 0);
 
-      stats.applyNative(
-        {'queries': 9, 'blocked': 4, 'cacheHits': 6},
-        running: true,
-      );
+      stats.applyNative({
+        'queries': 9,
+        'blocked': 4,
+        'cacheHits': 6,
+      }, running: true);
       final running = c.read(serviceStatsProvider);
       expect(running.queries, 9);
       expect(running.blocked, 4);
@@ -54,6 +77,36 @@ void main() {
 
       stats.applyNative(const {}, running: false);
       expect(c.read(serviceStatsProvider).queries, 0);
+    });
+
+    test('原生启动时间决定运行时长，进程重建后不会归零', () {
+      final c = ProviderContainer();
+      addTearDown(c.dispose);
+      final stats = c.read(serviceStatsProvider.notifier);
+
+      // The UI process was recreated: nothing local remembers the start, only the service does.
+      stats.applyNative(
+        {'queries': 1},
+        running: true,
+        startedAt: DateTime.now().subtract(
+          const Duration(minutes: 7, seconds: 3),
+        ),
+      );
+      final uptime = c.read(serviceStatsProvider).uptime;
+      expect(uptime.inMinutes, 7);
+      expect(uptime.inSeconds % 60, closeTo(3, 2));
+    });
+
+    test('原生未报告启动时间时退回本地时钟', () {
+      final c = ProviderContainer();
+      addTearDown(c.dispose);
+      final stats = c.read(serviceStatsProvider.notifier);
+
+      stats.applyNative(const {}, running: true);
+      expect(
+        c.read(serviceStatsProvider).uptime,
+        lessThan(const Duration(seconds: 5)),
+      );
     });
 
     test('syncStatus 将原生 stats 写进服务统计', () async {

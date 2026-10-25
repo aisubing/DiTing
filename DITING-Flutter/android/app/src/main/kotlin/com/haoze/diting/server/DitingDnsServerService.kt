@@ -158,6 +158,8 @@ class DitingDnsServerService : Service() {
                 engine = created
                 activeEngine = created
                 isRunning = true
+                // Authoritative start time for the uptime figure; the UI process can be recreated.
+                startedAt = System.currentTimeMillis()
                 lastError = null
                 setServiceActive(this, true)
                 Log.i(TAG, "standalone DNS server listening on 0.0.0.0:$port (UDP & TCP)")
@@ -179,6 +181,7 @@ class DitingDnsServerService : Service() {
             .onFailure { Log.w(TAG, "stopStandalone failed", it) }
         runCatching { current?.stop() }
         isRunning = false
+        startedAt = 0L
         setServiceActive(this, false)
         releaseLocks()
         stopForegroundCompat()
@@ -188,6 +191,7 @@ class DitingDnsServerService : Service() {
     private fun fail(message: String) {
         lastError = message
         isRunning = false
+        startedAt = 0L
         activeEngine = null
         setServiceActive(this, false)
         releaseLocks()
@@ -203,6 +207,7 @@ class DitingDnsServerService : Service() {
         runCatching { current?.stopStandalone() }
         runCatching { current?.stop() }
         isRunning = false
+        startedAt = 0L
         setServiceActive(this, false)
         releaseLocks()
         stopForegroundCompat()
@@ -347,6 +352,10 @@ class DitingDnsServerService : Service() {
         @Volatile
         var isRunning: Boolean = false
 
+        /// Epoch millis of the last successful start; 0 while stopped.
+        @Volatile
+        var startedAt: Long = 0L
+
         @Volatile
         private var activeEngine: Engine? = null
 
@@ -373,6 +382,7 @@ class DitingDnsServerService : Service() {
             "running" to isRunning,
             "persisted" to isServiceActive(context),
             "error" to lastError,
+            "startedAt" to startedAt,
             "stats" to EngineStats.snapshot(activeEngine),
             "port" to context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getInt(KEY_LOCAL_PORT, DEFAULT_PORT),
