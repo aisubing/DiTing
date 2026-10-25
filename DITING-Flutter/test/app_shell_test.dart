@@ -230,6 +230,20 @@ void main() {
       expect(find.byType(NavigationDock), findsOneWidget);
     });
 
+    // Regression: the logs dashboard used to switch to the traffic branch, which kept the bar
+    // and left no way back; it now opens the full-screen twin like the hub card does.
+    testWidgets('日志仪表盘的流量监控以全屏页打开并给出返回键', (tester) async {
+      await pumpApp(tester, initialLocation: Routes.logs, dock: userDock);
+      await tester.tap(find.byTooltip('详情').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(TrafficPage), findsOneWidget);
+      expect(find.byType(NavigationDock), findsNothing);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(TrafficPage), findsNothing);
+      expect(find.byType(NavigationDock), findsOneWidget);
+    });
+
     // Regression: a page outside the bar must report -1, not light up "home"
     testWidgets('当前页不在底栏里时底栏不点亮任何一项', (tester) async {
       await pumpApp(tester, initialLocation: Routes.traffic, dock: userDock);

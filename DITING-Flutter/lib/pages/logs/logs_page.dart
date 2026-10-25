@@ -7,6 +7,7 @@ import 'package:diting/pages/logs/ai_insight_card.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
+import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/settings_providers.dart';
@@ -114,7 +115,11 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// All-records mode: eight blocks of bare cards. Horizontal padding always comes
   /// from [_CardColumn], never from the cards themselves, or it doubles up.
   List<Widget> _allMode(BuildContext context) => [
-    TrafficMonitorCard(onDetail: () => openLocation(context, Routes.traffic)),
+    TrafficMonitorCard(
+      // Full screen like the hub entry: the bar belongs to the shell, so only a push on the root
+      // navigator hides it and gives the title bar a back arrow.
+      onDetail: () => pushStandalone(context, Routes.traffic),
+    ),
     const RequestOverviewCard(title: '请求概览'),
     const AiInsightCard(),
     const LogTrafficStructureCard(mode: TrafficStructureMode.all),
