@@ -11,9 +11,18 @@ title DITING Flutter APK Build and Install Tool
 :: target ABI:
 ::   [1] Debug   + debug key   -> cannot upgrade-install over a release build
 ::   [2] Debug   + release key -> same signature as release, installable over it
-::   [3] Release + release key + arm64-v8a  -> phones / tablets
-::   [4] Release + release key + x86_64     -> Android emulator debugging only
+::   [3] Release + release key + arm64-v8a -> phones / tablets
+::   [4] Release + release key + x86_64    -> Android emulator debugging only
 ::   [5] Clean build cache and outputs
+::
+:: ABI note: EVERY apk ships exactly one tunnel-engine ABI - libgojni.so comes
+:: from a single-ABI AAR. [1]/[2]/[3] bundle the arm64 tunnel (libs/tunnel.aar)
+:: and run on ARM phones/tablets only; [4] bundles the x86_64 tunnel
+:: (libs/tunnel-x64.aar) and runs on the x86_64 emulator only. Installing on
+:: the wrong device fails with "app not installed / package incompatible".
+:: Also: all debug builds share one output file name - app-debug.apk - so the
+:: artifact on disk always comes from the LAST build. Check the
+:: "Tunnel engine ABI" line printed after each build before installing.
 ::
 :: NOTE: this file is intentionally pure ASCII. cmd.exe parses batch files with the
 :: OEM code page, so UTF-8 Chinese text here breaks the parser. Chinese docs live
@@ -44,8 +53,12 @@ echo   [4] Release  / x86_64       - Release key, EMULATOR testing only
 echo   [5] Clean                   - Remove build cache and artifacts
 echo   [0] Exit
 echo.
-echo   Options 3 and 4 produce single-ABI release APKs with R8 shrinking;
-echo   option 4 is signed for x86_64 emulators (Android Studio AVD) only.
+echo   Device targeting - the tunnel engine is single-ABI in every build:
+echo     [1] [2] [3] build for ARM phones/tablets, arm64 tunnel engine
+echo     [4] builds for the x86_64 emulator, x86_64 tunnel engine
+echo   An APK installed on the wrong device type fails with
+echo   "app not installed / package incompatible with your system".
+echo   Options 3 and 4 produce single-ABI release APKs with R8 shrinking.
 echo.
 set "BUILD_CHOICE="
 set /p "BUILD_CHOICE=Enter choice [1/2/3/4/5/0] (default: 3): "
@@ -157,10 +170,15 @@ echo ================================================================
 echo [SUCCESS] %BUILD_TYPE_NAME% build completed!
 echo [INFO] APK: %FOUND_APK%
 for %%F in ("%FOUND_APK%") do echo [INFO] Size: %%~zF bytes
+if defined IS_EMULATOR_BUILD (
+    echo [WARN] Emulator-only APK - it will NOT install on ARM phones.
+) else (
+    echo [INFO] Phone/tablet APK - it will NOT run on the x86_64 emulator.
+)
 echo [INFO] ABIs in package:
 where python >nul 2>&1
 if not errorlevel 1 (
-    python -c "import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);print('       '+', '.join(sorted({n.split('/')[1] for n in z.namelist() if n.startswith('lib/')})))" "%FOUND_APK%" 2>nul
+    python -c "import zipfile,sys;z=zipfile.ZipFile(sys.argv[1]);L=sorted({n.split('/')[1] for n in z.namelist() if n.startswith('lib/')});G=sorted({n.split('/')[1] for n in z.namelist() if n.startswith('lib/') and n.endswith('libgojni.so')});print('       Flutter libs: '+', '.join(L));print('       Tunnel engine ABI: '+(', '.join(G) if G else 'MISSING'))" "%FOUND_APK%" 2>nul
 )
 rem Versioned archive from copy*ApkWithVersion in android/app/build.gradle.kts.
 set "VERSIONED_APK=%CD%\build\app\outputs\apk\versioned\%BUILD_TYPE%\DITING-%BUILD_TYPE%-v%APP_VERSION_NAME%.apk"

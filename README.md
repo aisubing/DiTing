@@ -127,19 +127,24 @@ flutter test
 
 日常打包运行 `DITING-Flutter/build_apk.bat`，交互式选择编译档位、自动归档并支持 ADB 部署：
 
-| 档位 | 编译模式 | 签名 | 目标架构 | 用途 |
-| --- | --- | --- | --- | --- |
-| 1 | Debug | Debug Key | 全 ABI | 纯本地调试，无法覆盖安装正式包 |
-| 2 | Debug | Release Key | 全 ABI | 可覆盖安装正式包的调试包 |
-| 3 | Release | Release Key | `arm64-v8a` | 真机发布（默认档位） |
-| 4 | Release | Release Key | `x86_64` | **仅适用于模拟器调试** |
-| 5 | — | — | — | 清理编译缓存与构建产物（`flutter clean` + `gradlew clean`） |
+| 档位 | 编译模式 | 签名 | Flutter 库架构 | 隧道引擎架构 | 可安装的设备 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Debug | Debug Key | 全 ABI | 仅 arm64 | ARM 手机/平板 |
+| 2 | Debug | Release Key | 全 ABI | 仅 arm64 | ARM 手机/平板（可覆盖安装正式包） |
+| 3 | Release | Release Key | `arm64-v8a` | 仅 arm64 | ARM 手机/平板（默认档位） |
+| 4 | Release | Release Key | `x86_64` | 仅 x86_64 | **仅 x86_64 模拟器** |
+| 5 | — | — | — | — | 清理编译缓存与构建产物（`flutter clean` + `gradlew clean`） |
 
-为缩小安装包体积，脚本默认以 `-PditingAbi=<abi>` 构建单架构包，并通过
+**架构匹配注意**：隧道引擎（`libgojni.so`）在任何一个安装包里都只有一种架构——1/2/3 档打的是
+arm64 引擎（`tunnel.aar`），4 档打的是 x86_64 引擎（`tunnel-x64.aar`，由
+`tunnel/build_aar.ps1 -Arch x64` 生成不入库文件，`build.gradle.kts` 按
+`-PditingAbi=x86_64` / `--target-platform android-x64` 自动选用，缺文件时构建报错并提示）。
+把包装到不匹配的设备上会报「安装失败 / 安装包与系统不兼容」。另外所有 debug 构建共用同一
+输出文件 `app-debug.apk`，磁盘上的产物永远是**最后一次**构建的架构——装手机前先看构建日志里的
+`Tunnel engine ABI` 行确认。
+
+为缩小安装包体积，Release 档位以 `-PditingAbi=<abi>` 构建单架构包，并通过
 `-PditingCompressNativeLibs=true`（默认）对 `.so` 使用 legacy 打包（安装时解压）。
-模拟器（x86_64）联调需要 x86_64 版 AAR：`tunnel/build_aar.ps1 -Arch x64` 生成不入库的
-`tunnel-x64.aar` 后，`build.gradle.kts` 会按 `-PditingAbi=x86_64` / `--target-platform android-x64`
-自动选用（也可 `-PtunnelAar=<路径>` 显式指定）。缺文件时构建会直接报错并提示生成命令。
 详情见 [DITING-Flutter/README.md](DITING-Flutter/README.md) 与
 [Go AAR 构建记录](docs/development/aar-build-notes.md)。
 
