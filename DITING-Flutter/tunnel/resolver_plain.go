@@ -15,6 +15,23 @@ import (
 	"time"
 )
 
+type plainRetryDelayKey struct{}
+
+// withPlainUDPRetryDelay attaches an adaptive initial UDP retry delay to ctx.
+func withPlainUDPRetryDelay(ctx context.Context, d time.Duration) context.Context {
+	if d <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, plainRetryDelayKey{}, d)
+}
+
+func plainUDPRetryDelayFromContext(ctx context.Context) time.Duration {
+	if d, ok := ctx.Value(plainRetryDelayKey{}).(time.Duration); ok && d > 0 {
+		return d
+	}
+	return 1500 * time.Millisecond
+}
+
 func (r *Resolver) queryPlain(rawQuery []byte, server string) ([]byte, error) {
 	return r.queryPlainContext(context.Background(), rawQuery, server)
 }
@@ -69,7 +86,7 @@ func (r *Resolver) queryPlainContext(ctx context.Context, rawQuery []byte, serve
 
 	buf := make([]byte, 4096)
 
-	const initialUdpTimeout = 1500 * time.Millisecond
+	initialUdpTimeout := plainUDPRetryDelayFromContext(ctx)
 	firstDeadline := time.Now().Add(initialUdpTimeout)
 	if firstDeadline.After(deadline) {
 		firstDeadline = deadline
@@ -84,16 +101,23 @@ func (r *Resolver) queryPlainContext(ctx context.Context, rawQuery []byte, serve
 	}
 
 	n, err := conn.Read(buf)
-	if err != nil {
+	for retry := 0; err != nil && retry < 2; retry++ {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-
-		if time.Now().Before(deadline) {
-			_ = conn.SetDeadline(deadline)
-			if _, werr := conn.Write(rawQuery); werr == nil {
-				n, err = conn.Read(buf)
+		now := time.Now()
+		if !now.Before(deadline) {
+			break
+		}
+		nextDeadline := deadline
+		if retry == 0 {
+			if step := now.Add(initialUdpTimeout * 2); step.Before(deadline) {
+				nextDeadline = step
 			}
+		}
+		_ = conn.SetDeadline(nextDeadline)
+		if _, werr := conn.Write(rawQuery); werr == nil {
+			n, err = conn.Read(buf)
 		}
 	}
 

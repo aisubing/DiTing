@@ -36,6 +36,7 @@ type dnsEngineConfig struct {
 	DynamicResponse dynamicBlockConfig  `json:"dynamicResponse"`
 	Cache           dnsCacheConfig      `json:"cache"`
 	Bootstrap       bootstrapConfig     `json:"bootstrap"`
+	RaceMaxParallel int                 `json:"raceMaxParallel,omitempty"`
 }
 
 type dynamicBlockEntry struct {
@@ -148,7 +149,7 @@ func (e *Engine) ApplyDNSConfig(configJSON string) error {
 	}
 	if resolver != nil {
 		resolver.UpdateBootstrap(cfg.Bootstrap)
-		if err := resolver.ConfigureProviders(cfg.Mode, cfg.Providers); err != nil {
+		if err := resolver.ConfigureProvidersWithOptions(cfg.Mode, cfg.Providers, cfg.RaceMaxParallel); err != nil {
 			return err
 		}
 	}

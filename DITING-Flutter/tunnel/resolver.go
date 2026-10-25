@@ -160,39 +160,41 @@ func (r *Resolver) ResetBootstrapStats() {
 	}
 }
 
-func (r *Resolver) notifyRaceLog(
-	queryName string,
-	queryType uint16,
-	strategy string,
-	providerCount int,
-	success bool,
-	elapsedMs int64,
-	selectedProviderID string,
-	selectedElapsedMs int64,
-	winnerProviderID string,
-	winnerElapsedMs int64,
-	fallbackUsed bool,
-	fallbackSuccess bool,
-	errorMessage string,
-) {
+type raceLogEvent struct {
+	queryName          string
+	queryType          uint16
+	strategy           string
+	providerCount      int
+	success            bool
+	elapsedMs          int64
+	selectedProviderID string
+	selectedElapsedMs  int64
+	winnerProviderID   string
+	winnerElapsedMs    int64
+	fallbackUsed       bool
+	fallbackSuccess    bool
+	errorMessage       string
+}
+
+func (r *Resolver) notifyRaceLog(ev raceLogEvent) {
 	r.mu.RLock()
 	cb := r.raceLogCallback
 	r.mu.RUnlock()
 	if cb != nil {
 		cb.OnRaceResult(
-			queryName,
-			int(queryType),
-			strategy,
-			providerCount,
-			success,
-			elapsedMs,
-			selectedProviderID,
-			selectedElapsedMs,
-			winnerProviderID,
-			winnerElapsedMs,
-			fallbackUsed,
-			fallbackSuccess,
-			errorMessage,
+			ev.queryName,
+			int(ev.queryType),
+			ev.strategy,
+			ev.providerCount,
+			ev.success,
+			ev.elapsedMs,
+			ev.selectedProviderID,
+			ev.selectedElapsedMs,
+			ev.winnerProviderID,
+			ev.winnerElapsedMs,
+			ev.fallbackUsed,
+			ev.fallbackSuccess,
+			ev.errorMessage,
 		)
 	}
 }
@@ -239,6 +241,10 @@ func (r *Resolver) Configure(protocol DNSProtocol, primary, fallback, dohURL str
 }
 
 func (r *Resolver) ConfigureProviders(mode string, configs []dnsProviderConfig) error {
+	return r.ConfigureProvidersWithOptions(mode, configs, 0)
+}
+
+func (r *Resolver) ConfigureProvidersWithOptions(mode string, configs []dnsProviderConfig, raceMaxParallel int) error {
 	r.statsMapMu.Lock()
 	if r.providerStatsMap == nil {
 		r.providerStatsMap = make(map[string]*providerStats)
@@ -281,7 +287,7 @@ func (r *Resolver) ConfigureProviders(mode string, configs []dnsProviderConfig) 
 	if len(providers) == 0 {
 		return fmt.Errorf("DNS snapshot has no providers")
 	}
-	next := &resolverSnapshot{providers: providers, mode: mode}
+	next := &resolverSnapshot{providers: providers, mode: mode, raceMaxParallel: raceMaxParallel}
 	r.mu.Lock()
 	old := r.providerSnapshot
 	r.providerSnapshot = next
@@ -293,6 +299,13 @@ func (r *Resolver) ConfigureProviders(mode string, configs []dnsProviderConfig) 
 }
 
 func (r *Resolver) Resolve(rawQuery []byte) ([]byte, error) {
+	return r.ResolveContext(context.Background(), rawQuery)
+}
+
+func (r *Resolver) ResolveContext(ctx context.Context, rawQuery []byte) ([]byte, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	r.mu.RLock()
 	snapshot := r.providerSnapshot
 	acquiredSnapshot := snapshot != nil && snapshot.acquire()
@@ -303,16 +316,16 @@ func (r *Resolver) Resolve(rawQuery []byte) ([]byte, error) {
 	r.mu.RUnlock()
 	if acquiredSnapshot {
 		defer snapshot.release()
-		return r.resolveConfigured(rawQuery, snapshot)
+		return r.resolveConfigured(ctx, rawQuery, snapshot)
 	}
 
-	resp, err := r.query(rawQuery, protocol, primary, dohURL)
+	resp, err := r.queryWithContext(ctx, rawQuery, protocol, primary, dohURL)
 	if err == nil {
 		return resp, nil
 	}
 
 	if fallback != "" && fallback != primary {
-		resp, err2 := r.query(rawQuery, ProtocolPlain, fallback, "")
+		resp, err2 := r.queryWithContext(ctx, rawQuery, ProtocolPlain, fallback, "")
 		if err2 == nil {
 			return resp, nil
 		}

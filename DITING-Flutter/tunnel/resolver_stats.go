@@ -1,10 +1,10 @@
 // resolver_stats.go tracks performance metrics and health statistics for configured upstream DNS providers,
-// recording latency measurements, error rates, and query success counters.
+// recording latency measurements, error rates, query success counters, and circuit breaker state.
 //
 // The model follows TCP's RTO estimator: a smoothed RTT (SRTT) plus a smoothed
-// mean deviation (RTTVAR). Together with an EWMA failure ratio and a time-decayed
-// consecutive-failure penalty they drive the smart_prediction ranking and the
-// adaptive hedge delay.
+// mean deviation (RTTVAR). Together with an EWMA failure ratio, a time-decayed
+// consecutive-failure penalty, and exponential-backoff circuit breaking, they
+// drive ranking, adaptive hedge delays, per-attempt timeouts, and UDP retry intervals.
 
 package tunnel
 
@@ -23,6 +23,9 @@ type providerStats struct {
 	lastFailure  time.Time
 	lastSuccess  time.Time
 	sampleCount  int64
+
+	circuitOpenUntil time.Time
+	probeInFlight    bool
 }
 
 const (
@@ -44,6 +47,23 @@ const (
 	hedgeDelayMin  = 20 * time.Millisecond
 	hedgeDelayMax  = 800 * time.Millisecond
 	hedgeVarFactor = 2
+
+	// Per-attempt timeout bounds for primary_backup sequential failover.
+	attemptTimeoutCold = 1500 * time.Millisecond
+	attemptTimeoutMin  = 300 * time.Millisecond
+	attemptTimeoutMax  = 2000 * time.Millisecond
+	attemptVarFactor   = 4
+
+	// Plain UDP retry interval bounds within a single upstream query.
+	udpRetryDelayCold = 400 * time.Millisecond
+	udpRetryDelayMin  = 200 * time.Millisecond
+	udpRetryDelayMax  = 1500 * time.Millisecond
+	udpRetryVarFactor = 4
+
+	// Circuit breaker parameters for primary_backup.
+	circuitTripThreshold = 3
+	circuitBaseCooldown  = 5 * time.Second
+	circuitMaxCooldown   = 60 * time.Second
 )
 
 func newProviderStats() *providerStats {
@@ -73,16 +93,65 @@ func (s *providerStats) RecordSuccess(rtt time.Duration) {
 	defer s.mu.Unlock()
 	s.lastSuccess = time.Now()
 	s.failureCount = 0
+	s.circuitOpenUntil = time.Time{}
+	s.probeInFlight = false
 	s.failRate *= 1.0 - failRateAlpha
 	s.observeRTTLocked(rtt)
 }
 
 func (s *providerStats) RecordFailure() {
+	s.recordFailureWeight(1)
+}
+
+// RecordPolicyFailure records a policy/configuration rejection (e.g. REFUSED,
+// FORMERR, NOTIMP) with a heavier weight so the circuit breaker trips faster.
+func (s *providerStats) RecordPolicyFailure() {
+	s.recordFailureWeight(circuitTripThreshold)
+}
+
+func (s *providerStats) recordFailureWeight(weight int) {
+	if weight < 1 {
+		weight = 1
+	}
+	now := time.Now()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.lastFailure = time.Now()
-	s.failureCount++
-	s.failRate = (1.0-failRateAlpha)*s.failRate + failRateAlpha
+	s.lastFailure = now
+	s.failureCount += weight
+	s.probeInFlight = false
+	for i := 0; i < weight; i++ {
+		s.failRate = (1.0-failRateAlpha)*s.failRate + failRateAlpha
+	}
+	if s.failureCount >= circuitTripThreshold {
+		shift := s.failureCount - circuitTripThreshold
+		if shift > 6 {
+			shift = 6
+		}
+		cooldown := circuitBaseCooldown << shift
+		if cooldown > circuitMaxCooldown {
+			cooldown = circuitMaxCooldown
+		}
+		s.circuitOpenUntil = now.Add(cooldown)
+	}
+}
+
+// AllowAttempt reports whether a provider should be tried at time `now` under
+// circuit-breaker rules. When the circuit is open, requests are skipped until
+// the cooldown expires, at which point a single half-open probe is allowed.
+func (s *providerStats) AllowAttempt(now time.Time) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.circuitOpenUntil.IsZero() {
+		return true
+	}
+	if now.Before(s.circuitOpenUntil) {
+		return false
+	}
+	if s.probeInFlight {
+		return false
+	}
+	s.probeInFlight = true
+	return true
 }
 
 // RecordCensored records a query that was cancelled because another provider
@@ -93,6 +162,7 @@ func (s *providerStats) RecordFailure() {
 func (s *providerStats) RecordCensored(elapsed time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.probeInFlight = false
 	if s.sampleCount > 0 && elapsed <= s.ewmaRTT {
 		return
 	}
@@ -143,6 +213,42 @@ func (s *providerStats) HedgeDelay() time.Duration {
 	}
 	if d > hedgeDelayMax {
 		d = hedgeDelayMax
+	}
+	return d
+}
+
+// AttemptTimeout returns the per-attempt timeout for sequential failover
+// (SRTT + 4*RTTVAR, clamped to [attemptTimeoutMin, attemptTimeoutMax]).
+func (s *providerStats) AttemptTimeout() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.sampleCount == 0 {
+		return attemptTimeoutCold
+	}
+	d := s.ewmaRTT + attemptVarFactor*s.rttVar
+	if d < attemptTimeoutMin {
+		d = attemptTimeoutMin
+	}
+	if d > attemptTimeoutMax {
+		d = attemptTimeoutMax
+	}
+	return d
+}
+
+// UDPRetryDelay returns the adaptive initial UDP read timeout before retrying
+// a plain UDP packet on the same upstream (SRTT + 4*RTTVAR).
+func (s *providerStats) UDPRetryDelay() time.Duration {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.sampleCount == 0 {
+		return udpRetryDelayCold
+	}
+	d := s.ewmaRTT + udpRetryVarFactor*s.rttVar
+	if d < udpRetryDelayMin {
+		d = udpRetryDelayMin
+	}
+	if d > udpRetryDelayMax {
+		d = udpRetryDelayMax
 	}
 	return d
 }

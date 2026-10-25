@@ -1,29 +1,47 @@
-// resolver_smart.go implements the smart_prediction scheduling strategy.
+// resolver_smart.go implements the unified DNS upstream scheduler and the
+// smart_prediction scheduling strategy.
 //
-// Algorithm (staggered hedging):
-//   - Rank providers by expected cost (SRTT + failure cost + decayed penalty).
-//   - Query the best candidate first. If it has not answered within its own
-//     adaptive hedge delay (≈ SRTT + 2·RTTVAR), launch the next candidate, and so
-//     on one at a time, instead of fanning out to every backup at once.
-//   - A failed attempt immediately launches the next candidate (fast failover).
-//   - The first valid answer wins; the losers are cancelled and recorded as
-//     censored samples rather than failures.
+// Unified Scheduler:
+//   - All concurrent/staggered strategies (parallel_race, smart_prediction) share
+//     a single execution loop that handles snapshot reference counting, staggered
+//     hedging timers, immediate failover on error, encrypted-upstream grace window
+//     against plain-UDP answers in mixed-protocol races, context cancellation,
+//     censored-loser accounting, and aggregated error reporting.
 
 package tunnel
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
 )
 
-type predResult struct {
+// encryptedPreferenceWindow is the short grace period given to in-flight
+// encrypted upstreams (DoH/DoT/DoQ) when a Plain UDP upstream answers first in
+// a mixed-protocol race, mitigating fast forged UDP replies.
+const encryptedPreferenceWindow = 25 * time.Millisecond
+
+type scheduleResult struct {
 	provider *configuredProvider
 	response []byte
 	elapsed  time.Duration
 	err      error
-	isBackup bool
+	index    int
+}
+
+type schedulePlan struct {
+	strategy                string
+	providerCount           int
+	candidates              []*configuredProvider
+	primaryID               string
+	initialBatch            int
+	hedgeDelayFn            func(last *configuredProvider) time.Duration
+	advanceOnError          bool
+	preferEncryptedWindow   time.Duration
+	recordSelectedOnSuccess bool
+	trackFallback           bool
 }
 
 // rankProviders orders providers by ascending score. Scores are computed once
@@ -55,112 +73,248 @@ func providerHedgeDelay(p *configuredProvider) time.Duration {
 	return p.stats.HedgeDelay()
 }
 
-func (r *Resolver) resolveSmartPrediction(rawQuery []byte, queryName string, queryType uint16, startTime time.Time, snapshot *resolverSnapshot) ([]byte, error) {
+func hasMixedEncryptedAndPlain(providers []*configuredProvider) bool {
+	var hasPlain, hasEnc bool
+	for _, p := range providers {
+		if p.protocol == ProtocolPlain {
+			hasPlain = true
+		} else {
+			hasEnc = true
+		}
+		if hasPlain && hasEnc {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Resolver) resolveSmartPrediction(
+	parentCtx context.Context,
+	rawQuery []byte,
+	parsed *parsedDNSQuery,
+	queryName string,
+	queryType uint16,
+	startTime time.Time,
+	snapshot *resolverSnapshot,
+) ([]byte, error) {
 	providers := snapshot.providers
 	n := len(providers)
 	if n == 0 {
 		return nil, fmt.Errorf("no providers available")
 	}
 	if n == 1 {
-		return r.resolveSingle(rawQuery, queryName, queryType, startTime, providers)
+		return r.resolveSingle(parentCtx, rawQuery, parsed, queryName, queryType, startTime, providers)
 	}
 
 	candidates := rankProviders(providers, startTime)
-	primary := candidates[0]
+	return r.executeSchedulePlan(parentCtx, rawQuery, parsed, queryName, queryType, startTime, snapshot, schedulePlan{
+		strategy:                "smart_prediction",
+		providerCount:           n,
+		candidates:              candidates,
+		primaryID:               candidates[0].id,
+		initialBatch:            1,
+		hedgeDelayFn:            providerHedgeDelay,
+		advanceOnError:          true,
+		recordSelectedOnSuccess: true,
+		trackFallback:           true,
+	})
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeoutPlain)
+func (r *Resolver) executeSchedulePlan(
+	parentCtx context.Context,
+	rawQuery []byte,
+	parsed *parsedDNSQuery,
+	queryName string,
+	queryType uint16,
+	startTime time.Time,
+	snapshot *resolverSnapshot,
+	plan schedulePlan,
+) ([]byte, error) {
+	candidates := plan.candidates
+	n := len(candidates)
+	if n == 0 {
+		return nil, fmt.Errorf("no providers available")
+	}
+
+	ctx, cancel := context.WithTimeout(parentCtx, queryTimeoutPlain)
 	defer cancel()
 
-	resultCh := make(chan predResult, n)
+	resultCh := make(chan scheduleResult, n)
 	next := 0
 	inflight := 0
+	inflightEncrypted := 0
+	spawned := 0
 	var lastLaunched *configuredProvider
 
-	// launch starts the next acquirable candidate; false when none remain.
-	launch := func() bool {
+	launchOne := func() bool {
 		for next < n {
-			prov := candidates[next]
-			isBackup := next > 0
+			idx := next
+			prov := candidates[idx]
 			next++
 			if !snapshot.acquire() {
 				continue
 			}
+			spawned++
 			inflight++
+			if prov.protocol != ProtocolPlain {
+				inflightEncrypted++
+			}
 			lastLaunched = prov
-			go func() {
+			go func(p *configuredProvider, i int) {
 				defer snapshot.release()
-				resp, elapsed, err := r.queryConfiguredProvider(ctx, prov, rawQuery)
-				resultCh <- predResult{provider: prov, response: resp, elapsed: elapsed, err: err, isBackup: isBackup}
-			}()
+				resp, elapsed, err := r.queryConfiguredProviderParsed(ctx, p, rawQuery, parsed)
+				resultCh <- scheduleResult{
+					provider: p,
+					response: resp,
+					elapsed:  elapsed,
+					err:      err,
+					index:    i,
+				}
+			}(prov, idx)
 			return true
 		}
 		return false
 	}
 
-	var timer *time.Timer
-	var timerC <-chan time.Time
-	// arm schedules the next hedge based on the latest launched candidate.
-	arm := func() {
-		if timer != nil {
-			timer.Stop()
+	batch := plan.initialBatch
+	if batch < 1 {
+		batch = 1
+	}
+	for i := 0; i < batch; i++ {
+		if !launchOne() {
+			break
 		}
-		timer, timerC = nil, nil
-		if next < n && lastLaunched != nil {
-			timer = time.NewTimer(providerHedgeDelay(lastLaunched))
-			timerC = timer.C
+	}
+	if spawned == 0 {
+		return nil, fmt.Errorf("snapshot retired: no providers could be acquired")
+	}
+
+	var hedgeTimer *time.Timer
+	var hedgeC <-chan time.Time
+	armHedge := func() {
+		if hedgeTimer != nil {
+			hedgeTimer.Stop()
+			hedgeTimer, hedgeC = nil, nil
+		}
+		if plan.hedgeDelayFn != nil && next < n && lastLaunched != nil {
+			hedgeTimer = time.NewTimer(plan.hedgeDelayFn(lastLaunched))
+			hedgeC = hedgeTimer.C
 		}
 	}
 	defer func() {
-		if timer != nil {
-			timer.Stop()
+		if hedgeTimer != nil {
+			hedgeTimer.Stop()
+		}
+	}()
+	armHedge()
+
+	var plainGraceTimer *time.Timer
+	var plainGraceC <-chan time.Time
+	defer func() {
+		if plainGraceTimer != nil {
+			plainGraceTimer.Stop()
 		}
 	}()
 
-	if !launch() {
-		return nil, fmt.Errorf("snapshot retired: primary provider could not be acquired")
-	}
-	arm()
+	var winner *scheduleResult
+	var bufferedPlain *scheduleResult
+	var primaryElapsed int64
+	var errs []error
 
-	var winner *predResult
-	var lastErr error
-	for winner == nil && inflight > 0 {
+	for winner == nil && (inflight > 0 || bufferedPlain != nil) {
+		if bufferedPlain != nil && inflightEncrypted == 0 {
+			winner = bufferedPlain
+			cancel()
+			break
+		}
 		select {
-		case <-timerC:
-			launch()
-			arm()
+		case <-hedgeC:
+			if launchOne() {
+				armHedge()
+			} else {
+				hedgeTimer, hedgeC = nil, nil
+			}
+
+		case <-plainGraceC:
+			winner = bufferedPlain
+			cancel()
+
 		case res := <-resultCh:
 			inflight--
+			if res.provider.protocol != ProtocolPlain {
+				inflightEncrypted--
+			}
+			if res.index == 0 {
+				primaryElapsed = res.elapsed.Milliseconds()
+			}
 			if res.err == nil && res.response != nil {
 				resCopy := res
+				if plan.preferEncryptedWindow > 0 && res.provider.protocol == ProtocolPlain && inflightEncrypted > 0 {
+					if bufferedPlain == nil {
+						bufferedPlain = &resCopy
+						plainGraceTimer = time.NewTimer(plan.preferEncryptedWindow)
+						plainGraceC = plainGraceTimer.C
+					}
+					continue
+				}
 				winner = &resCopy
 				cancel()
 				break
 			}
-			lastErr = res.err
-			if launch() {
-				arm()
+			if res.err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", res.provider.id, res.err))
+			}
+			if plan.advanceOnError && launchOne() {
+				armHedge()
 			}
 		}
 	}
 
-	fallbackTriggered := next > 1
+	fallbackTriggered := plan.trackFallback && spawned > 1
 	totalElapsed := time.Since(startTime).Milliseconds()
 	if winner != nil {
+		fallbackSuccess := plan.trackFallback && winner.index > 0
 		var selectedElapsed int64
-		if !winner.isBackup {
-			selectedElapsed = winner.elapsed.Milliseconds()
+		if plan.recordSelectedOnSuccess {
+			if winner.index == 0 {
+				selectedElapsed = winner.elapsed.Milliseconds()
+			} else {
+				selectedElapsed = primaryElapsed
+			}
 		}
-		r.notifyRaceLog(queryName, queryType, "smart_prediction", n, true, totalElapsed,
-			primary.id, selectedElapsed, winner.provider.id, winner.elapsed.Milliseconds(),
-			fallbackTriggered, winner.isBackup, "")
+		r.notifyRaceLog(raceLogEvent{
+			queryName:          queryName,
+			queryType:          queryType,
+			strategy:           plan.strategy,
+			providerCount:      plan.providerCount,
+			success:            true,
+			elapsedMs:          totalElapsed,
+			selectedProviderID: plan.primaryID,
+			selectedElapsedMs:  selectedElapsed,
+			winnerProviderID:   winner.provider.id,
+			winnerElapsedMs:    winner.elapsed.Milliseconds(),
+			fallbackUsed:       fallbackTriggered,
+			fallbackSuccess:    fallbackSuccess,
+		})
 		return winner.response, nil
 	}
 
+	joinedErr := errors.Join(errs...)
 	var errMsg string
-	if lastErr != nil {
-		errMsg = lastErr.Error()
+	if joinedErr != nil {
+		errMsg = joinedErr.Error()
 	}
-	r.notifyRaceLog(queryName, queryType, "smart_prediction", n, false, totalElapsed,
-		primary.id, 0, "", 0, fallbackTriggered, false, errMsg)
-	return nil, lastErr
+	r.notifyRaceLog(raceLogEvent{
+		queryName:          queryName,
+		queryType:          queryType,
+		strategy:           plan.strategy,
+		providerCount:      plan.providerCount,
+		success:            false,
+		elapsedMs:          totalElapsed,
+		selectedProviderID: plan.primaryID,
+		selectedElapsedMs:  primaryElapsed,
+		fallbackUsed:       fallbackTriggered,
+		errorMessage:       errMsg,
+	})
+	return nil, joinedErr
 }

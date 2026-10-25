@@ -20,12 +20,13 @@ type configuredProvider struct {
 }
 
 type resolverSnapshot struct {
-	mu        sync.Mutex
-	providers []*configuredProvider
-	mode      string
-	active    int
-	retired   bool
-	closed    bool
+	mu              sync.Mutex
+	providers       []*configuredProvider
+	mode            string
+	raceMaxParallel int
+	active          int
+	retired         bool
+	closed          bool
 }
 
 func (s *resolverSnapshot) acquire() bool {
