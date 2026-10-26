@@ -1,6 +1,8 @@
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
+import 'package:diting/routes/routes.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Shared frame of a home card's second-level page: same scaffold, body and spacing as the log
@@ -21,6 +23,9 @@ class DashboardDetailScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonScaffold(
       title: title,
+      // Always show the back button. Relying on the route to imply it leaves the bar without
+      // one whenever the page is reached by a deep link or `go`, where nothing is left to pop.
+      backAction: () => _back(context),
       actions: actions.isEmpty ? null : actions,
       body: PageBody(
         // A wider top gap: every page starts with a card, and a card flush against the toolbar
@@ -29,6 +34,24 @@ class DashboardDetailScaffold extends StatelessWidget {
         children: children,
       ),
     );
+  }
+
+  /// Pop when this page was pushed onto the board, otherwise fall back to the board itself, so a
+  /// deep link still has somewhere to go back to.
+  static void _back(BuildContext context) {
+    final router = GoRouter.maybeOf(context);
+    if (router != null && router.canPop()) {
+      router.pop();
+      return;
+    }
+    final navigator = Navigator.maybeOf(context);
+    if (navigator != null && navigator.canPop()) {
+      navigator.pop();
+      return;
+    }
+    if (router != null) {
+      router.go(DashboardPaths.dashboard);
+    }
   }
 }
 
