@@ -136,10 +136,15 @@ class PowerNotifier extends Notifier<PowerState> {
 
   Future<void> syncStatus() async {
     // Capture the dataset before awaiting: a concurrent switch must not write it.
-    final express = _isExpress;
+    final mode = ref.read(workModeProvider);
+    final express = mode == AppWorkMode.express;
+    // Resolved before the await, so a mode switch cannot redirect this round trip.
+    final controller = express
+        ? ref.read(expressVpnControllerProvider)
+        : ref.read(vpnControllerProvider);
     final settings = ref.read(legacySettingsProvider);
     try {
-      final status = await _controller.status();
+      final status = await controller.status();
       if (_disposed) return;
       if (express) {
         settings.setExpressVpnRunning(status.running);
@@ -158,6 +163,8 @@ class PowerNotifier extends Notifier<PowerState> {
           .applyNative(
             status.stats,
             running: status.running,
+            // Server mode owns the counters there; this plane's "not running" is expected.
+            ownsStats: mode != AppWorkMode.server,
             startedAt: status.startedAt,
           );
       if (status.running) {
@@ -410,11 +417,18 @@ class ServiceStatsNotifier extends Notifier<ServiceStats> {
   ///
   /// [startedAt] is the service's own start time. It wins over the locally observed one so a
   /// recreated UI process shows the real uptime instead of starting again from zero.
+  ///
+  /// [ownsStats] is false when the caller's plane is not the one the current work mode drives.
+  /// Only one data plane can run at a time, so a non-owner always reports `running: false`; acting
+  /// on that would zero the live uptime the owner just published (the status card flashed `0秒`
+  /// for a second whenever both notifiers re-synced on resume).
   void applyNative(
     Map<String, Object?> stats, {
     required bool running,
+    bool ownsStats = true,
     DateTime? startedAt,
   }) {
+    if (!ownsStats) return;
     if (!running) {
       reset();
       return;

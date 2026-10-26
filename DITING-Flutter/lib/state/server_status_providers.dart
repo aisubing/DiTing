@@ -76,6 +76,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
   }
 
   Future<void> syncStatus() async {
+    final mode = ref.read(workModeProvider);
     try {
       final status = await ref.read(dnsServerControllerProvider).status();
       if (_disposed) return;
@@ -92,6 +93,9 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
           .applyNative(
             status.stats,
             running: status.running,
+            // Outside server mode the VPN plane owns the counters, so its "not running" is
+            // expected and must not clear the live uptime.
+            ownsStats: mode == AppWorkMode.server,
             startedAt: status.startedAt,
           );
       if (status.running) {

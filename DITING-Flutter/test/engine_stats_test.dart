@@ -109,6 +109,24 @@ void main() {
       );
     });
 
+    test('非当前数据面的同步不清空计时', () {
+      final c = ProviderContainer();
+      addTearDown(c.dispose);
+      final stats = c.read(serviceStatsProvider.notifier);
+
+      stats.applyNative(
+        {'queries': 5},
+        running: true,
+        startedAt: DateTime.now().subtract(const Duration(minutes: 2)),
+      );
+      // The other plane always answers "not running"; acting on it flashed `0秒` for a second.
+      stats.applyNative(const {}, running: false, ownsStats: false);
+
+      final kept = c.read(serviceStatsProvider);
+      expect(kept.queries, 5);
+      expect(kept.uptime.inMinutes, 2);
+    });
+
     test('syncStatus 将原生 stats 写进服务统计', () async {
       final fake = FakeVpnController()
         ..statusValue = const VpnStatus(
