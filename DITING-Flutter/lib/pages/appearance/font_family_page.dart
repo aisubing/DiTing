@@ -170,8 +170,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
   }
 }
 
-/// Sample text rendered in the candidate face, with the family name as a monospace footnote so the
-/// raw `fontFamily` value is inspectable.
+/// Sample text rendered in the candidate face, labelled with the name the user picked.
 class _PreviewHero extends StatelessWidget {
   const _PreviewHero({required this.family, required this.label});
 
@@ -203,24 +202,7 @@ class _PreviewHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              MetaChip(label: label),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  family ?? '（跟随平台）',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: AppTextStyle.caption1.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: appMonospaceFontFamily,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          MetaChip(label: label),
         ],
       ),
     );
