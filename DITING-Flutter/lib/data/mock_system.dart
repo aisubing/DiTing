@@ -31,7 +31,7 @@ const mockDisclaimerTerms = <MockDisclaimerTerm>[
     title: '四、第三方组件',
     content:
         '本软件的界面组件层移植自 DITING（GPL-3.0-or-later），'
-        '并使用了 JetBrains Mono、Twemoji 等第三方资源。各组件的许可条款见仓库 '
+        '并使用了 material_ui、material_color_utilities 等开源组件。各组件的许可条款见仓库 '
         'NOTICE.md，使用本软件即表示同时接受这些条款。',
   ),
   MockDisclaimerTerm(

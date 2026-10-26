@@ -1,7 +1,5 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
-import 'package:emoji_regex/emoji_regex.dart';
 import 'package:diting/ui/measure.dart';
-import 'package:diting/ui/text_style.dart';
 import 'package:material_ui/material_ui.dart';
 
 class TooltipText extends StatelessWidget {
@@ -65,44 +63,19 @@ class EmojiText extends StatelessWidget {
     this.style,
   });
 
-  static TextSpan spanOf(String text, TextStyle? style) {
-    final List<TextSpan> spans = [];
-    final matches = emojiRegex().allMatches(text);
-
-    int lastMatchEnd = 0;
-    for (final match in matches) {
-      if (match.start > lastMatchEnd) {
-        spans.add(
-          TextSpan(
-            text: text.substring(lastMatchEnd, match.start),
-            style: style,
-          ),
-        );
-      }
-      spans.add(
-        TextSpan(
-          text: match.group(0),
-          style: (style ?? const TextStyle()).copyWith(
-            fontFamily: FontFamily.twEmoji.value,
-          ),
-        ),
-      );
-      lastMatchEnd = match.end;
-    }
-    if (lastMatchEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastMatchEnd), style: style));
-    }
-
-    return TextSpan(children: spans);
-  }
+  /// Emoji need no family of their own any more: the app bundles no fonts, so they resolve through
+  /// the platform's colour-emoji fallback like any other glyph. The class stays because the popup
+  /// measures labels through [widthOf] before laying them out.
+  static TextSpan spanOf(String text, TextStyle? style) =>
+      TextSpan(text: text, style: style);
 
   static double widthOf(BuildContext context, String text, TextStyle style) {
     final painter = TextPainter(
       text: TextSpan(
+        text: text,
         style: MediaQuery.boldTextOf(context)
             ? style.merge(const TextStyle(fontWeight: FontWeight.bold))
             : style,
-        children: [spanOf(text, null)],
       ),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
@@ -118,8 +91,8 @@ class EmojiText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text.rich(
-      spanOf(text, style),
+    return Text(
+      text,
       style: style,
       maxLines: maxLines,
       overflow: overflow ?? TextOverflow.clip,

@@ -118,6 +118,13 @@ class LegacySettings {
   void setFontFamily(String? family) =>
       _store.putString(uiContainer, 'app_font_family', family ?? '');
 
+  /// JSON list of the fonts the user imported; the shape lives in
+  /// `lib/data/fonts/font_repository.dart`, which owns the parsing.
+  String? get importedFontsRaw => _string(uiContainer, 'app_imported_fonts');
+
+  void setImportedFontsRaw(String raw) =>
+      _store.putString(uiContainer, 'app_imported_fonts', raw);
+
   /// Dashboard card order by `DashboardWidget.name`; null when the board was never edited, so the
   /// built-in defaults apply while an emptied board still restores as empty.
   List<String>? get dashboardWidgetOrder {

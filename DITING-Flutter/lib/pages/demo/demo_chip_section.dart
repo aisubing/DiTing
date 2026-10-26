@@ -225,7 +225,7 @@ class _DemoMarkCell extends StatelessWidget {
               .of(context)
               .copyWith(
                 color: context.colorScheme.onSurfaceVariant,
-                fontFamily: 'JetBrainsMono',
+                fontFamily: appMonospaceFontFamily,
                 fontSize: 9,
               ),
         ),

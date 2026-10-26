@@ -222,7 +222,7 @@ class _CopyCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyle.caption1.of(context).copyWith(
                     color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: appMonospaceFontFamily,
                   ),
                 ),
               ],

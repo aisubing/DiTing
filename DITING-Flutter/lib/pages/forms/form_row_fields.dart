@@ -81,7 +81,7 @@ class FormRowTextField extends StatelessWidget {
     final hintText = this.hintText;
     final colorScheme = context.colorScheme;
     final style = monospace
-        ? context.listTitleStyle.copyWith(fontFamily: 'JetBrainsMono')
+        ? context.listTitleStyle.copyWith(fontFamily: appMonospaceFontFamily)
         : null;
     return TextFormField(
       controller: controller,
@@ -115,7 +115,7 @@ class FormRowTextField extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: monospace ? 'JetBrainsMono' : null,
+                        fontFamily: monospace ? appMonospaceFontFamily : null,
                       ),
                 ),
               ),
@@ -216,7 +216,7 @@ class FormRowValue extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: context.listSubtitleStyle.copyWith(
           color: colorScheme.onSurface,
-          fontFamily: monospace ? 'JetBrainsMono' : null,
+          fontFamily: monospace ? appMonospaceFontFamily : null,
         ),
       ),
     );

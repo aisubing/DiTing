@@ -200,7 +200,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                       controller: _url,
                       keyboardType: TextInputType.url,
                       autocorrect: false,
-                      style: const TextStyle(fontFamily: 'JetBrainsMono'),
+                      style: const TextStyle(fontFamily: appMonospaceFontFamily),
                       decoration: const InputDecoration(
                         hintText: 'https://example.com/rules.txt',
                       ),

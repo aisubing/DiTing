@@ -139,7 +139,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                 textAlignVertical: TextAlignVertical.top,
                 keyboardType: TextInputType.multiline,
                 style: const TextStyle(
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: appMonospaceFontFamily,
                   fontSize: 14,
                 ),
                 decoration: const InputDecoration(
@@ -215,7 +215,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: context.listCaptionStyle.copyWith(
-                            fontFamily: 'JetBrainsMono',
+                            fontFamily: appMonospaceFontFamily,
                           ),
                         ),
                       Text(
@@ -246,7 +246,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: context.listCaptionStyle.copyWith(
-                            fontFamily: 'JetBrainsMono',
+                            fontFamily: appMonospaceFontFamily,
                           ),
                         ),
                       if (parsed.duplicated.length > 3)

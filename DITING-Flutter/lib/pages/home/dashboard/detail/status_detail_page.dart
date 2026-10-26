@@ -122,7 +122,7 @@ class StatusDetailPage extends ConsumerWidget {
                                 .of(context)
                                 .copyWith(
                                   color: colorScheme.onSurfaceVariant,
-                                  fontFamily: 'JetBrainsMono',
+                                  fontFamily: appMonospaceFontFamily,
                                 ),
                           ),
                         ],
@@ -275,7 +275,7 @@ class _LatencyBadge extends StatelessWidget {
             .of(context, emphasized: true)
             .copyWith(
               color: measured ? colorScheme.primary : colorScheme.onSurfaceVariant,
-              fontFamily: 'JetBrainsMono',
+              fontFamily: appMonospaceFontFamily,
             ),
       ),
     );

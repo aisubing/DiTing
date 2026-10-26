@@ -54,7 +54,7 @@ class _DemoTypeRow extends StatelessWidget {
                   .of(context)
                   .copyWith(
                     color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: appMonospaceFontFamily,
                   ),
             ),
           ),
@@ -76,7 +76,7 @@ class _DemoTypeRow extends StatelessWidget {
                 .of(context)
                 .copyWith(
                   color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: appMonospaceFontFamily,
                 ),
           ),
         ],
@@ -134,7 +134,7 @@ class _DemoCustomTypeRowState extends State<_DemoCustomTypeRow> {
                     .of(context)
                     .copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: appMonospaceFontFamily,
                     ),
               ),
             ),

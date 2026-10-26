@@ -175,6 +175,30 @@ class PlatformBridge {
     }
   }
 
+  /// Opens the document picker for a font file; the bytes are copied into app storage natively, so
+  /// the returned path stays readable without a URI grant.
+  Future<FontPickResult> pickFontFile() async {
+    try {
+      final raw = await _channel.invokeMethod<Object?>('pickFontFile');
+      return FontPickResult.fromMap(raw);
+    } on MissingPluginException {
+      return const FontPickResult.unavailable();
+    } on PlatformException catch (error) {
+      return FontPickResult.failed(error.message ?? '无法打开文件选择器');
+    }
+  }
+
+  /// Deletes a font copied in by [pickFontFile]; unknown paths are ignored natively.
+  Future<void> deleteFontFile(String path) async {
+    try {
+      await _channel.invokeMethod<void>('deleteFontFile', {'path': path});
+    } on MissingPluginException {
+      // Without the channel there is no copied file to delete.
+    } on PlatformException {
+      // A file that is already gone needs no cleanup.
+    }
+  }
+
   /// Re-reads a file picked earlier; the persisted grant is what makes this work after a restart.
   Future<PersistedTextRead> readPersistedText(String uri) async {
     try {
@@ -331,6 +355,51 @@ class PersistedTextFile {
       name: map['name'] as String?,
       text: map['text'] as String?,
       persisted: map['persisted'] == true,
+      cancelled: map['cancelled'] == true,
+      error: map['error'] as String?,
+    );
+  }
+}
+
+/// Result of picking a TTF/OTF file the user wants to use as the app font.
+class FontPickResult {
+  const FontPickResult({
+    this.path,
+    this.name,
+    this.bytes = 0,
+    this.cancelled = false,
+    this.error,
+  });
+
+  const FontPickResult.unavailable()
+    : path = null,
+      name = null,
+      bytes = 0,
+      cancelled = false,
+      error = '当前环境不支持系统文件选择器';
+
+  const FontPickResult.failed(String this.error)
+    : path = null,
+      name = null,
+      bytes = 0,
+      cancelled = false;
+
+  /// Absolute path inside the app's private `files/fonts` directory.
+  final String? path;
+  final String? name;
+  final int bytes;
+  final bool cancelled;
+  final String? error;
+
+  /// A cancelled pick is not an error.
+  bool get isOk => cancelled || (error == null && path != null);
+
+  static FontPickResult fromMap(Object? raw) {
+    final map = raw is Map ? Map<Object?, Object?>.from(raw) : const {};
+    return FontPickResult(
+      path: map['path'] as String?,
+      name: map['name'] as String?,
+      bytes: (map['bytes'] as num?)?.toInt() ?? 0,
       cancelled: map['cancelled'] == true,
       error: map['error'] as String?,
     );

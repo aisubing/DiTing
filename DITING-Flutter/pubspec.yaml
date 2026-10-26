@@ -18,7 +18,6 @@ dependencies:
   material_new_shapes: 1.0.0             # RoundedPolygon for empty-state art
   animations: 3.0.0                      # FadeThrough / OpenContainer
   path_parsing: 1.1.0                    # Parses Glyph SVG paths
-  emoji_regex: 0.0.5                     # Groups graphemes for EmojiText
   collection: ^1.19.1
 
   # State management and routing.
@@ -50,10 +49,3 @@ flutter:
     - assets/pay/
   shaders:
     - shaders/liquid_glass.frag
-  fonts:
-    - family: JetBrainsMono
-      fonts:
-        - asset: assets/fonts/JetBrainsMono-Regular.ttf
-    - family: Twemoji
-      fonts:
-        - asset: assets/fonts/Twemoji.Mozilla.ttf

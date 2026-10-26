@@ -1,6 +1,11 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'package:material_ui/material_ui.dart';
 
+/// Family used wherever the UI needs column-aligned digits or code. The app bundles no fonts, so
+/// this resolves to the platform's own monospace face (Android maps `monospace` to Droid Sans Mono);
+/// glyphs it lacks fall back through the system chain like any other family.
+const appMonospaceFontFamily = 'monospace';
+
 enum _HanVariant { simplified, traditional, japanese, korean }
 
 // The system fallback picks Han forms by UI locale, so Chinese names draw with Japanese forms.

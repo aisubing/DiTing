@@ -207,7 +207,7 @@ class _Tile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyle.caption2.of(context).copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                     ),
                   ],

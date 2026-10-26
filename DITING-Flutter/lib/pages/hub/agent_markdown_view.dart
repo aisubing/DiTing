@@ -253,7 +253,7 @@ class _CodeBlock extends StatelessWidget {
             child: SelectableText(
               code,
               style: AppTextStyle.caption1.of(context).copyWith(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: appMonospaceFontFamily,
                 height: 1.5,
                 color: colorScheme.onSurface,
               ),

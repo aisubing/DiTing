@@ -264,7 +264,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
               child: SelectableText(
                 digest,
                 style: AppTextStyle.footnote.of(context).copyWith(
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: appMonospaceFontFamily,
                   color: context.colorScheme.onSurfaceVariant,
                 ),
               ),

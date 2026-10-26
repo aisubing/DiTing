@@ -57,7 +57,7 @@ class RequestRow extends StatelessWidget {
                 .of(context)
                 .copyWith(
                   color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: appMonospaceFontFamily,
                 ),
           ),
         ],
@@ -99,7 +99,7 @@ class RequestRow extends StatelessWidget {
                       color: elapsed >= 600
                           ? colorScheme.warning
                           : colorScheme.onSurfaceVariant,
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: appMonospaceFontFamily,
                     ),
               ),
           ],
@@ -262,7 +262,7 @@ class RequestDetailSheet extends StatelessWidget {
                         .of(context)
                         .copyWith(
                           color: colorScheme.onSurfaceVariant,
-                          fontFamily: 'JetBrainsMono',
+                          fontFamily: appMonospaceFontFamily,
                         ),
                   ),
                 ),

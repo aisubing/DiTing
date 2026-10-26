@@ -70,7 +70,7 @@ class _DemoSurfaceLevels extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ],
@@ -234,7 +234,7 @@ class _DemoColorStyles extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ),

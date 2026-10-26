@@ -254,7 +254,7 @@ class CaCertificatePage extends ConsumerWidget {
           fingerprint,
           style: AppTextStyle.footnote
               .of(context)
-              .copyWith(fontFamily: 'JetBrainsMono', height: 1.6),
+              .copyWith(fontFamily: appMonospaceFontFamily, height: 1.6),
         ),
         actions: [
           TextButton(
@@ -288,7 +288,7 @@ class CaCertificatePage extends ConsumerWidget {
               pem,
               style: AppTextStyle.footnote
                   .of(context)
-                  .copyWith(fontFamily: 'JetBrainsMono', height: 1.5),
+                  .copyWith(fontFamily: appMonospaceFontFamily, height: 1.5),
             ),
           ),
         ),

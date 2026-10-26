@@ -57,7 +57,7 @@ class _DemoTonalSizes extends StatelessWidget {
                     .of(context)
                     .copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: appMonospaceFontFamily,
                     ),
               ),
             ],
@@ -146,7 +146,7 @@ class _DemoTonalGroups extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ),

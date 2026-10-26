@@ -13,6 +13,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.security.MessageDigest
 
 /// OS-level operations with no Dart equivalent; the SAF pickers and task list need an Activity.
 class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallHandler {
@@ -42,6 +43,14 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
 
         /// Local-file subscriptions keep a long-lived read grant, unlike a one-shot import.
         private const val REQUEST_PICK_TEXT_FILE = 0x5703
+
+        /// User-supplied fonts are copied into app storage, so a one-shot read is enough.
+        private const val REQUEST_PICK_FONT_FILE = 0x5704
+
+        private const val FONT_DIR = "fonts"
+
+        /// Anything smaller than this cannot hold a usable TrueType table directory.
+        private const val MIN_FONT_BYTES = 1024
 
         private const val EXPORT_DIR = "exports"
 
@@ -90,6 +99,8 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             // Local-file subscriptions: the grant must outlive the picker dialog, so these are
             // separate from importDocument, which only reads the text once.
             "pickPersistableTextFile" -> pickPersistableTextFile(result)
+            "pickFontFile" -> pickFontFile(result)
+            "deleteFontFile" -> deleteFontFile(call, result)
             "readPersistedText" -> readPersistedText(call, result)
             "releasePersistedText" -> releasePersistedText(call, result)
             else -> result.notImplemented()
@@ -141,6 +152,10 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode == REQUEST_PICK_TEXT_FILE) {
             finishPickTextFile(resultCode, data)
+            return true
+        }
+        if (requestCode == REQUEST_PICK_FONT_FILE) {
+            finishPickFontFile(resultCode, data)
             return true
         }
         val isExport = requestCode == REQUEST_EXPORT_DOCUMENT
@@ -256,6 +271,92 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
                 )
             },
         )
+    }
+
+    /// Opens the document picker for a font file. The bytes are copied into `filesDir/fonts` right
+    /// away, so Dart can register them with `loadFontFromList` without holding a URI grant forever.
+    private fun pickFontFile(result: MethodChannel.Result) {
+        if (pendingDocumentResult != null) {
+            result.error("picker_busy", "另一个文件选择器仍在打开", null)
+            return
+        }
+        pendingDocumentResult = result
+        pendingExportContent = null
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            // `font/*` matches almost nothing on Android, and plenty of file managers label a TTF
+            // `application/octet-stream`, so accept anything and validate by content.
+            type = "*/*"
+        }
+        runCatching { activity.startActivityForResult(intent, REQUEST_PICK_FONT_FILE) }
+            .onFailure {
+                pendingDocumentResult = null
+                result.error("picker_failed", it.message, null)
+            }
+    }
+
+    private fun finishPickFontFile(resultCode: Int, data: Intent?) {
+        val pending = pendingDocumentResult
+        pendingDocumentResult = null
+        pendingExportContent = null
+        if (pending == null) return
+        val uri = data?.data
+        if (resultCode != Activity.RESULT_OK || uri == null) {
+            pending.success(mapOf("cancelled" to true))
+            return
+        }
+        pending.success(
+            runCatching {
+                val bytes = activity.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("无法读取该文件")
+                require(bytes.size >= MIN_FONT_BYTES) { "这不是有效的字体文件" }
+                // `00 01` (TrueType) / `OTTO` (CFF) / `true` / `ttcf` (collection).
+                val magic = bytes.copyOfRange(0, 4)
+                val sfnt = magic.size == 4 &&
+                    (
+                        (magic[0].toInt() == 0 && magic[1].toInt() == 1) ||
+                            (magic[0] == 'O'.code.toByte() && magic[1] == 'T'.code.toByte()) ||
+                            (magic[0] == 't'.code.toByte() && magic[1] == 'r'.code.toByte()) ||
+                            (magic[0] == 't'.code.toByte() && magic[1] == 't'.code.toByte() &&
+                                magic[2] == 'c'.code.toByte())
+                        )
+                require(sfnt) { "只支持 TTF / OTF 字体文件" }
+                val dir = File(context.filesDir, FONT_DIR).apply { mkdirs() }
+                val digest = MessageDigest.getInstance("SHA-1")
+                    .digest(bytes)
+                    .joinToString("") { "%02x".format(it) }
+                    .take(20)
+                val file = File(dir, "$digest.ttf")
+                file.writeBytes(bytes)
+                mapOf(
+                    "path" to file.absolutePath,
+                    "name" to (displayNameOf(uri) ?: uri.lastPathSegment ?: "字体"),
+                    "bytes" to bytes.size,
+                    "cancelled" to false,
+                )
+            }.getOrElse { error ->
+                mapOf(
+                    "cancelled" to false,
+                    "error" to (error.message ?: error.javaClass.simpleName),
+                )
+            },
+        )
+    }
+
+    /// Deletes a font copied in by [finishPickFontFile]; unknown paths are ignored, so a stale
+    /// entry cannot make Dart fail to save.
+    private fun deleteFontFile(call: MethodCall, result: MethodChannel.Result) {
+        val path = call.argument<String>("path")
+        if (!path.isNullOrBlank()) {
+            runCatching {
+                val dir = File(context.filesDir, FONT_DIR)
+                val target = File(path)
+                if (target.parentFile?.canonicalPath == dir.canonicalPath) {
+                    target.delete()
+                }
+            }
+        }
+        result.success(null)
     }
 
     /// Re-reads a previously picked file; the stored grant is what makes this work after a restart.

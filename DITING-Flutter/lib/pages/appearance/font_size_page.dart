@@ -1,80 +1,182 @@
+// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 library;
 
 import 'package:diting/app/theme/layout.dart';
-import 'package:diting/pages/appearance/appearance_inputs.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Text scale, shown against a live sample so the effect is visible before leaving the page.
 class FontSizePage extends ConsumerWidget {
   const FontSizePage({super.key});
+
+  /// Slider granularity: 0.8→1.4 in 5% steps keeps the presets below reachable by dragging.
+  static const _step = 0.05;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scale = ref.watch(textScaleProvider);
+    void set(double value) => ref.read(textScaleProvider.notifier).set(value);
+    final isDefault = (scale - 1).abs() < 0.001;
     return CommonScaffold(
       title: '字号',
+      iconActions: [
+        IconButtonData(
+          glyph: AppGlyphs.reset,
+          tooltip: '恢复默认',
+          onPressed: isDefault ? null : () => set(1),
+        ),
+      ],
       body: PageBody(
         children: [
-          const _SizePreview(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: _SizePreview(scale: scale),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: CommonCard(
-              padding: EdgeInsets.zero,
-              child: SliderCardRow(
-                label: '字号',
-                glyph: AppGlyphs.textSize,
-                value: scale,
-                min: minTextScale,
-                max: maxTextScale,
-                divisions: ((maxTextScale - minTextScale) / 0.1).round(),
-                onChanged: (value) =>
-                    ref.read(textScaleProvider.notifier).set(value),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      GlyphIcon(
+                        AppGlyphs.textSize,
+                        size: 20,
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('字号', style: context.listTitleStyle),
+                      ),
+                      Text(
+                        '${(scale * 100).round()}%',
+                        style: context.listSubtitleStyle.copyWith(
+                          fontFamily: appMonospaceFontFamily,
+                          color: context.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: scale,
+                    min: minTextScale,
+                    max: maxTextScale,
+                    divisions: ((maxTextScale - minTextScale) / _step).round(),
+                    label: '${(scale * 100).round()}%',
+                    onChanged: set,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          '${(minTextScale * 100).round()}%',
+                          style: context.listCaptionStyle,
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${(maxTextScale * 100).round()}%',
+                          style: context.listCaptionStyle,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SegmentedControl<double>(
+              segments: const [
+                (0.85, '小'),
+                (1.0, '标准'),
+                (1.2, '大'),
+                (1.4, '特大'),
+              ],
+              value: _nearestPreset(scale),
+              onChanged: set,
+            ),
+          ),
           const ListFooter(
-            text:
-                '字号会同时放大正文、标题与列表行；'
-                '范围为 ${minTextScale * 100}%–${maxTextScale * 100}%。',
+            text: '字号会同时放大正文、标题与列表行，不会改变系统设置；界面已按所选比例排版，无需重启。',
           ),
         ],
       ),
     );
   }
+
+  /// The segmented control highlights one option at a time; a dragged value between presets
+  /// highlights none, which reads as "custom" without needing a fifth segment.
+  static double _nearestPreset(double scale) {
+    const presets = [0.85, 1.0, 1.2, 1.4];
+    for (final preset in presets) {
+      if ((scale - preset).abs() < 0.001) {
+        return preset;
+      }
+    }
+    return -1;
+  }
 }
 
-/// `MediaQuery` already scales from `textScaleProvider`; multiplying again would double it.
+/// The sample itself: three text levels in one card, so the relative rhythm between title, body and
+/// caption is visible at a glance.
 class _SizePreview extends StatelessWidget {
-  const _SizePreview();
+  const _SizePreview({required this.scale});
+
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: CommonCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 6,
-          children: [
-            Text(
-              '谛听万象，明察清浊',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyle.title2.of(context, emphasized: true),
+    return CommonCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '实时预览',
+                  style: context.listCaptionStyle,
+                ),
+              ),
+              TonalChip(
+                label: '${(scale * 100).round()}%',
+                color: colorScheme.primaryContainer,
+                foregroundColor: colorScheme.onPrimaryContainer,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '谛听万象，明察清浊',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyle.title2.of(context, emphasized: true),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '网络连通性、规则命中与设备状态，都在这一页里说清楚。',
+            style: AppTextStyle.body.of(context),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'The quick brown fox jumps over the lazy dog · 0123456789',
+            style: AppTextStyle.footnote.of(context).copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontFamily: appMonospaceFontFamily,
             ),
-            Text(
-              '这是一段用来对比字号的示例文字，滑动下方的滑杆即可预览效果。',
-              style: AppTextStyle.footnote
-                  .of(context)
-                  .copyWith(color: colorScheme.onSurfaceVariant),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

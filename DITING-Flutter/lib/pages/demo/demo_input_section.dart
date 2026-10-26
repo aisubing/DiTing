@@ -146,7 +146,7 @@ class _DemoCheckBoxRow extends StatelessWidget {
                     .of(context)
                     .copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: appMonospaceFontFamily,
                     ),
               ),
             ],

@@ -62,7 +62,7 @@ class _DemoCaptionIcons extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ],
@@ -104,7 +104,7 @@ class _DemoGlyphSizes extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ],
@@ -147,7 +147,7 @@ class _DemoGlyphFills extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ],
@@ -185,7 +185,7 @@ class _DemoAnimatedGlyphRowState extends State<_DemoAnimatedGlyphRow> {
                   .of(context)
                   .copyWith(
                     color: colorScheme.onSurfaceVariant,
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: appMonospaceFontFamily,
                   ),
             ),
           ),
@@ -232,7 +232,7 @@ class _DemoParametricGlyphs extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ],
@@ -278,7 +278,7 @@ class _DemoGlyphGrid extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                         fontSize: 9,
                       ),
                 ),

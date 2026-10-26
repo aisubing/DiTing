@@ -125,7 +125,7 @@ class _SponsorHero extends StatelessWidget {
                         '// SUPPORT THE PROJECT',
                         style: AppTextStyle.caption2.of(context).copyWith(
                           color: colorScheme.primary,
-                          fontFamily: 'JetBrainsMono',
+                          fontFamily: appMonospaceFontFamily,
                         ),
                       ),
                       Text(

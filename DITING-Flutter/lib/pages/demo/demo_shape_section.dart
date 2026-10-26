@@ -93,7 +93,7 @@ class _DemoCornerCell extends StatelessWidget {
                 .of(context)
                 .copyWith(
                   color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: appMonospaceFontFamily,
                 ),
           ),
         ],
@@ -144,7 +144,7 @@ class _DemoRadiusCombos extends StatelessWidget {
                       .of(context)
                       .copyWith(
                         color: colorScheme.onSurfaceVariant,
-                        fontFamily: 'JetBrainsMono',
+                        fontFamily: appMonospaceFontFamily,
                       ),
                 ),
               ),

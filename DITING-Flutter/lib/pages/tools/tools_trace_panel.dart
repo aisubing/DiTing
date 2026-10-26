@@ -148,7 +148,7 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
                           style: AppTextStyle.subheadline
                               .of(context)
                               .copyWith(
-                                fontFamily: 'JetBrainsMono',
+                                fontFamily: appMonospaceFontFamily,
                                 color: hop.responded
                                     ? (hop.reachedTarget
                                           ? colorScheme.success

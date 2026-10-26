@@ -7,6 +7,7 @@ import 'package:diting/pages/appearance/mini_screen.dart';
 import 'package:diting/routes/system_routes.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/font_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -115,7 +116,10 @@ class ThemePage extends ConsumerWidget {
               _MenuRow(
                 glyph: AppGlyphs.font,
                 title: '字体',
-                subtitle: ref.watch(selectedFontFamilyProvider) ?? '系统默认',
+                subtitle: fontLabelOf(
+                  ref.watch(importedFontsProvider),
+                  ref.watch(selectedFontFamilyProvider),
+                ),
                 route: SystemPaths.fontFamily,
               ),
             ],

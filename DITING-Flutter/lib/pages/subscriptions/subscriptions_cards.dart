@@ -119,7 +119,7 @@ class _SubscriptionCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: context.listCaptionStyle.copyWith(
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: appMonospaceFontFamily,
                     ),
                   ),
                   if (hasError)

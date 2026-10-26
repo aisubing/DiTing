@@ -176,7 +176,7 @@ class IpQualitySheet extends StatelessWidget {
                             current.ip,
                             style: AppTextStyle.title2
                                 .of(context, emphasized: true)
-                                .copyWith(fontFamily: 'JetBrainsMono'),
+                                .copyWith(fontFamily: appMonospaceFontFamily),
                           ),
                         ],
                       ),
@@ -414,7 +414,7 @@ class _SourceRow extends StatelessWidget {
             Text(
               '${latency}ms',
               style: context.listCaptionStyle.copyWith(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: appMonospaceFontFamily,
               ),
             ),
           // The reason is shown: "failed" alone cannot tell rate limiting apart.

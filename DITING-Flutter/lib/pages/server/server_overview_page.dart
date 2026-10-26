@@ -77,7 +77,7 @@ class ServerOverviewPage extends ConsumerWidget {
                 title: Text(
                   localIpv4.isEmpty ? '未连接网络' : '$localIpv4:$port',
                   style: context.listTitleStyle.copyWith(
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: appMonospaceFontFamily,
                   ),
                 ),
                 subtitle: Text(
@@ -201,7 +201,7 @@ class _PowerArea extends ConsumerWidget {
         ),
         Text(
           '监听 0.0.0.0:$port',
-          style: context.listCaptionStyle.copyWith(fontFamily: 'JetBrainsMono'),
+          style: context.listCaptionStyle.copyWith(fontFamily: appMonospaceFontFamily),
         ),
       ],
     );

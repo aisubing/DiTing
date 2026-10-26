@@ -4,6 +4,7 @@
 /// must win over `**bold**`, and `**…**` must win over `*italic*`.
 library;
 
+import 'package:diting/ui/font.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Colours the caller resolves from the theme, so this file stays testable without a [BuildContext].
@@ -132,7 +133,7 @@ InlineSpan _spanForToken(
     return TextSpan(
       text: ' ${token.substring(1, token.length - 1)} ',
       style: TextStyle(
-        fontFamily: 'JetBrainsMono',
+        fontFamily: appMonospaceFontFamily,
         backgroundColor: colors.codeBackground,
         color: colors.primary,
         fontWeight: FontWeight.w500,

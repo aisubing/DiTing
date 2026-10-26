@@ -1,5 +1,6 @@
 import 'package:diting/data/agent/markdown/markdown_block.dart';
 import 'package:diting/data/agent/markdown/markdown_inline.dart';
+import 'package:diting/ui/font.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -110,7 +111,7 @@ void main() {
       final code = result.whereType<TextSpan>().firstWhere(
         (span) => span.text?.trim() == 'dns.vpn',
       );
-      expect(code.style?.fontFamily, 'JetBrainsMono');
+      expect(code.style?.fontFamily, appMonospaceFontFamily);
       expect(code.style?.backgroundColor, _colors.codeBackground);
     });
 

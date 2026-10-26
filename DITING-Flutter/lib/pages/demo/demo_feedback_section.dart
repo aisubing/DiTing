@@ -168,7 +168,7 @@ class _DemoScrollBarState extends State<_DemoScrollBar> {
                 .of(context)
                 .copyWith(
                   color: colorScheme.onSurfaceVariant,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: appMonospaceFontFamily,
                 ),
           ),
         ],
@@ -209,7 +209,7 @@ class _DemoLoadings extends StatelessWidget {
                           .of(context)
                           .copyWith(
                             color: colorScheme.onSurfaceVariant,
-                            fontFamily: 'JetBrainsMono',
+                            fontFamily: appMonospaceFontFamily,
                           ),
                     ),
                   ],
@@ -232,7 +232,7 @@ class _DemoLoadings extends StatelessWidget {
                         .of(context)
                         .copyWith(
                           color: colorScheme.onSurfaceVariant,
-                          fontFamily: 'JetBrainsMono',
+                          fontFamily: appMonospaceFontFamily,
                         ),
                   ),
                 ],
@@ -383,7 +383,7 @@ class _DemoLineChart extends StatelessWidget {
               .of(context)
               .copyWith(
                 color: colorScheme.onSurfaceVariant,
-                fontFamily: 'JetBrainsMono',
+                fontFamily: appMonospaceFontFamily,
               ),
         ),
       ],

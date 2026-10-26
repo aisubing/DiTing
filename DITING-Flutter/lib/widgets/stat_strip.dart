@@ -151,7 +151,7 @@ class KeyValueRow extends StatelessWidget {
                   .of(context)
                   .copyWith(
                     color: colorScheme.onSurface,
-                    fontFamily: monospace ? 'JetBrainsMono' : null,
+                    fontFamily: monospace ? appMonospaceFontFamily : null,
                   ),
             ),
           ),

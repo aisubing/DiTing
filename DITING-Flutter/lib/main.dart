@@ -5,6 +5,7 @@ import 'package:diting/app/debug_probe.dart';
 import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
+import 'package:diting/data/fonts/font_repository.dart';
 import 'package:diting/data/native/app_version.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
@@ -53,6 +54,10 @@ Future<void> main() async {
   stage('version');
   final rules = await bootstrapRules(settings, versionCode: version.code);
   stage('rules');
+  // Imported fonts must be registered before the first frame: the theme resolves `fontFamily` when
+  // it is built, and an unknown family silently falls back to the system default.
+  await FontRepository(settings: settings).registerAll();
+  stage('fonts');
   final container = ProviderContainer(
     overrides: [
       legacyPrefsStoreProvider.overrideWithValue(store),

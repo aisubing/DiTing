@@ -134,7 +134,7 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
                 trailing: Text(
                   '$port',
                   style: context.listSubtitleStyle.copyWith(
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: appMonospaceFontFamily,
                   ),
                 ),
                 onTap: () => editServerPort(context, ref),

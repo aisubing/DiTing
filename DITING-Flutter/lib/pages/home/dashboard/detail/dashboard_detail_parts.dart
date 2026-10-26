@@ -243,7 +243,7 @@ class DashboardDetailHero extends StatelessWidget {
                               AppTextStyle.title1,
                               color: figure,
                             ).copyWith(
-                              fontFamily: monospace ? 'JetBrainsMono' : null,
+                              fontFamily: monospace ? appMonospaceFontFamily : null,
                             ),
                           ),
                           if (unit case final unit?)
@@ -486,7 +486,7 @@ class DashboardDetailRows extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyle.subheadline.of(context).copyWith(
                       color: row.color ?? colorScheme.onSurface,
-                      fontFamily: row.monospace ? 'JetBrainsMono' : null,
+                      fontFamily: row.monospace ? appMonospaceFontFamily : null,
                     ),
                   ),
                 ),

@@ -159,7 +159,7 @@ class DashboardShareLegend extends StatelessWidget {
             maxLines: 1,
             style: AppTextStyle.subheadline.of(context, emphasized: true).copyWith(
               color: colorScheme.onSurface,
-              fontFamily: 'JetBrainsMono',
+              fontFamily: appMonospaceFontFamily,
             ),
           ),
         ],
