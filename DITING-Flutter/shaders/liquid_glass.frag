@@ -40,7 +40,7 @@ uniform vec2 uGlowSpread;
 uniform vec3 uEdge;
 // Highlight share in a kRimTail-long tail, end falloff, added as light not screen.
 uniform vec4 uRim;
-// Above 0.5, uProfile replaces the corner shape.
+// Above 0.5, uProfile replaces the corner shape; above 1.5, uPills replace it.
 uniform float uOutlined;
 // Outline distance from center at 64 even turns, 4 per vector, first toward +x.
 uniform vec4 uProfile[16];
@@ -49,6 +49,17 @@ uniform vec4 uShineTurns[2];
 uniform vec4 uShineLit[2];
 uniform vec4 uShineEnds[3];
 uniform vec4 uShineShares[3];
+// Pills in rows, each from the left, as GooSurface in lib/ui/goo.dart lays
+// them out: center and half size each, in glass coordinates.
+uniform vec4 uPills[6];
+// How many of uPills there are, then how far apart each flows into the one
+// before it, from the second on, 0 across rows; then, above 0, the corner
+// radius of the first, no pill then but a rounded rectangle.
+uniform vec4 uGoo[2];
+// Each pill's superellipse along its long sides, as uCurves holds a corner's
+// octant: n, J and the arc's radius, then the arcs' centers two to a vector.
+uniform vec4 uPillCurves[6];
+uniform vec4 uPillCenters[3];
 uniform sampler2D uTexture;
 
 out vec4 fragColor;
@@ -260,9 +271,81 @@ void outlineGeometry(vec2 p, out float inset, out vec2 normal) {
   normal = gradient / stretch;
 }
 
+// How far inside a pill of the engine's superellipse a point lies, q taken
+// from its center and its long sides along x. Its ends are the circles an
+// octant whose side is its radius makes.
+float pillInset(vec2 q, vec2 halfSize, vec4 curve, vec2 center) {
+  float c = halfSize.x - halfSize.y;
+  if (q.y + c < q.x) {
+    return halfSize.y - length(q - vec2(c, 0.0));
+  }
+  return octantInset(vec2(q.x, q.y + c), halfSize.x, curve, center);
+}
+
+// The distance inward from pills flowing together and its outward normal,
+// both blended by a polynomial smooth minimum of the pills' own. The edge
+// keeps to the superellipse of the nearest pill within traced of its rim, as
+// the outline drawn on the CPU does where they do not flow together.
+void gooGeometry(
+  vec2 p,
+  float traced,
+  out float inset,
+  out vec2 normal,
+  out float edge
+) {
+  float d = 1e4;
+  vec2 n = vec2(0.0, -1.0);
+  float nearest = 1e4;
+  float lost = 0.0;
+  for (int i = 0; i < 6; i++) {
+    if (float(i) < uGoo[0].x) {
+      vec4 pill = uPills[i];
+      vec2 q = p - pill.xy;
+      bool rounded = i == 0 && uGoo[1].z > 0.0;
+      float radius = rounded
+          ? min(uGoo[1].z, min(pill.z, pill.w))
+          : min(pill.z, pill.w);
+      float di = roundedBoxDistance(q, pill.zw, radius);
+      vec2 ni = roundedBoxNormal(q, pill.zw, radius);
+      if (di < nearest) {
+        nearest = di;
+        lost = 0.0;
+        if (traced > 0.0 && !rounded
+            && -di < traced + uTexels.x + kCornerGap * radius) {
+          vec4 centers = uPillCenters[i / 2];
+          bool wide = pill.z >= pill.w;
+          lost = max(
+            -di - pillInset(
+              wide ? abs(q) : abs(q.yx),
+              wide ? pill.zw : pill.wz,
+              uPillCurves[i],
+              i - i / 2 * 2 == 0 ? centers.xy : centers.zw
+            ),
+            0.0
+          );
+        }
+      }
+      float k = max(
+        i == 1 ? uGoo[0].y
+            : i == 2 ? uGoo[0].z
+            : i == 3 ? uGoo[0].w
+            : i == 4 ? uGoo[1].x
+            : uGoo[1].y,
+        1e-3
+      );
+      float h = i == 0 ? 0.0 : clamp(0.5 + 0.5 * (di - d) / k, 0.0, 1.0);
+      d = mix(di, d, h) - k * h * (1.0 - h);
+      vec2 m = mix(ni, n, h);
+      n = dot(m, m) > 1e-8 ? normalize(m) : n;
+    }
+  }
+  inset = max(-d, 0.0);
+  normal = n;
+  edge = max(inset - max(lost - (nearest - d), 0.0), 0.0);
+}
+
 // The highlight's bands over depths a to b in from the rim, on average.
-float shineAcross(float a, float b) {
-  float sum = 0.0;
+float shineAcross(float a, float b) {  float sum = 0.0;
   float start = 0.0;
   for (int i = 0; i < 3; i++) {
     vec4 ends = uShineEnds[i];
@@ -308,7 +391,14 @@ void main() {
   // the optics read deeper than that inset holds, so they keep the circles. Only
   // the band the line and highlight can reach is computed.
   float edge;
-  if (uOutlined > 0.5) {
+  bool lit = uEdge.x > 0.0 || uRim.w > 0.0 || uLight.x > 0.0;
+  float traced = max(
+    lit ? kLine + uLight.y : 0.0,
+    uShineLit[0].x > 0.0 ? uShineEnds[2].w : 0.0
+  );
+  if (uOutlined > 1.5) {
+    gooGeometry(point, traced, inset, normal, edge);
+  } else if (uOutlined > 0.5) {
     outlineGeometry(centered, inset, normal);
     edge = inset;
   } else {
@@ -324,11 +414,6 @@ void main() {
     inset = max(-roundedBoxDistance(centered, halfSize, radius), 0.0);
     normal = roundedBoxNormal(centered, halfSize, radius);
     edge = inset;
-    bool lit = uEdge.x > 0.0 || uRim.w > 0.0 || uLight.x > 0.0;
-    float traced = max(
-      lit ? kLine + uLight.y : 0.0,
-      uShineLit[0].x > 0.0 ? uShineEnds[2].w : 0.0
-    );
     if (traced > 0.0 && inset < traced + uTexels.x + kCornerGap * radius) {
       edge = max(cornerInset(centered, halfSize), 0.0);
     }

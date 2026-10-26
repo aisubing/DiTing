@@ -81,7 +81,7 @@ class _SnapSheetState extends State<_SnapSheet>
       onPointerSignal: _handlePointerSignal,
       child: GestureDetector(
         onVerticalDragUpdate: (details) =>
-            _model.dragBy(-details.primaryDelta!),
+            _model.dragBy(-details.primaryDelta!, stretches: true),
         onVerticalDragEnd: (details) =>
             _model.dragEnd(-(details.primaryVelocity ?? 0)),
         onVerticalDragCancel: () => _model.dragEnd(0),

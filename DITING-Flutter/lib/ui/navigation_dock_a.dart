@@ -4,12 +4,16 @@ part of 'navigation_dock.dart';
 
 /// Springs toward a target the finger may move every frame; animateWith restarts the ticker.
 class _Spring extends ChangeNotifier implements ValueListenable<double> {
-  _Spring(TickerProvider vsync, this._value) {
+  _Spring(TickerProvider vsync, this._value, {this.rest = 1e-3}) {
     _ticker = vsync.createTicker(_tick);
   }
 
   late final Ticker _ticker;
   double _value;
+
+  /// How close to the target counts as settled, for a spring whose last
+  /// fraction of a pixel would otherwise keep the ticker going.
+  final double rest;
   double _target = 0;
   SpringSimulation? _simulation;
   SpringDescription? _spring;
@@ -33,7 +37,16 @@ class _Spring extends ChangeNotifier implements ValueListenable<double> {
   }
 
   void springTo(double target, SpringDescription spring) {
-    _simulation = SpringSimulation(spring, _value, target, velocity);
+    _simulation = SpringSimulation(
+      spring,
+      _value,
+      target,
+      velocity,
+      tolerance: Tolerance(
+        distance: rest,
+        velocity: rest * math.sqrt(spring.stiffness / spring.mass),
+      ),
+    );
     _spring = spring;
     _target = target;
     if (_ticker.isActive) {

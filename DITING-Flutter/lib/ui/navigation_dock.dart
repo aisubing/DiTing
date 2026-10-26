@@ -55,6 +55,7 @@ const double _jellyStretch = 0.2;
 const double _jellyBrake = 25;
 const double _jellySquash = 0.15;
 const double _jellyAspect = 1.4;
+const double _jellyRest = 3e-3;
 const double _glowReach = 28;
 const double _glowGrowth = 3;
 const double _glowPeak = 0.06;

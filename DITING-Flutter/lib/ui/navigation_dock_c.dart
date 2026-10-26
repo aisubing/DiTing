@@ -27,7 +27,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
   late final _Spring _hoverShow = _Spring(this, 0);
   late final _Spring _swell = _Spring(this, 0);
   late final _Spring _stretch = _Spring(this, 0);
-  late final _Spring _jelly = _Spring(this, 0);
+  late final _Spring _jelly = _Spring(this, 0, rest: _jellyRest);
   late final _Spring _glow = _Spring(this, 0);
   late final _Spring _glowSpread = _Spring(this, 0);
   final ValueNotifier<LiquidGlassGlow> _touchGlow = ValueNotifier(

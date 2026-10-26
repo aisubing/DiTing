@@ -51,6 +51,7 @@ abstract final class AppGlyphs {
   static const addCircle = _g_addCircle_;
   static const removeCircle = _g_removeCircle_;
   static const close = _g_close_;
+  static const clearField = _g_clearField_;
   static const check = _g_check_;
   static const checkDouble = _g_checkDouble_;
   static const checkCircle = _g_checkCircle_;

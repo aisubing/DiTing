@@ -2,25 +2,42 @@
 
 part of 'scaffold.dart';
 
-class CommonScaffoldState extends State<CommonScaffold> {
+class CommonScaffoldState extends State<CommonScaffold>
+    with SingleTickerProviderStateMixin {
   late final ValueNotifier<AppBarState> _appBarState;
   final ValueNotifier<bool> _loadingNotifier = ValueNotifier(false);
   final ValueNotifier<List<String>> _keywordsNotifier = ValueNotifier([]);
   final _textController = TextEditingController();
   final _searchFocusNode = FocusNode();
+  late final _searchMotion = _SearchMotion(this);
+  late final Animation<double> _titleUnderSearch = _searchMotion.drive(
+    (frame) => frame.titleOpacity,
+  );
+  late final Animation<double> _actionsUnderSearch = _searchMotion.drive(
+    (frame) => frame.actionsOpacity,
+  );
+  late final Animation<double> _searchOverBar = _searchMotion.drive(
+    (frame) => frame.fieldOpacity,
+  );
+  late final Animation<double> _leadingUnderSearch = _searchMotion.drive(
+    (frame) => frame.leadingOpacity,
+  );
+  late final Animation<double> _leadUnderSearch = _searchMotion.drive(
+    (frame) => frame.leadOpacity,
+  );
+  final _searchOrigin = ValueNotifier<_SearchOrigin?>(null);
+  final _searchCovered = ValueNotifier(false);
+  final _searchButtonKey = GlobalKey();
+  final _searchLeadKey = GlobalKey();
+  final _searchLeadingKey = GlobalKey();
+  final _searchFieldKey = GlobalKey();
+  final _barKey = GlobalKey();
+  var _searchFillsBar = true;
+  var _searchDocked = false;
   var _sorting = false;
 
   bool get _isSearch {
     return _appBarState.value.searchState?.query != null;
-  }
-
-  bool get _hasActions {
-    return widget.canSort ||
-        widget.primaryAction != null ||
-        widget.iconActions.isNotEmpty ||
-        widget.confirmationAction != null ||
-        widget.menuItems.isNotEmpty ||
-        widget.actions?.isNotEmpty == true;
   }
 
   @override
@@ -28,6 +45,12 @@ class CommonScaffoldState extends State<CommonScaffold> {
     super.initState();
     _appBarState = ValueNotifier(AppBarState(searchState: widget.searchState));
     _loadingNotifier.value = widget.isLoading;
+    _searchFocusNode.addListener(_handleSearchFocusChange);
+    _searchMotion.addStatusListener((status) {
+      if (!status.isAnimating) {
+        _searchCovered.value = _isSearch;
+      }
+    });
     HardwareKeyboard.instance.addHandler(_handleSearchShortcut);
   }
 
@@ -38,7 +61,60 @@ class CommonScaffoldState extends State<CommonScaffold> {
   }
 
   void _handleToSearch() {
+    _searchOrigin.value = _measureSearchOrigin();
     _updateSearchState((state) => state?.copyWith(query: ''));
+    _moveSearch(open: true);
+  }
+
+  Rect? _measureInBar(GlobalKey key) {
+    final bar = _barKey.currentContext?.findRenderObject();
+    final box = key.currentContext?.findRenderObject();
+    if (box is! RenderBox || bar is! RenderBox || !box.hasSize) {
+      return null;
+    }
+    return box.localToGlobal(Offset.zero, ancestor: bar) & box.size;
+  }
+
+  _SearchOrigin? _measureSearchOrigin() {
+    final group = _measureInBar(_searchButtonKey);
+    return group == null
+        ? null
+        : _SearchOrigin.of(
+            group,
+            lead: _measureInBar(_searchLeadKey),
+            leading: _measureInBar(_searchLeadingKey),
+          );
+  }
+
+  void _moveSearch({required bool open}) {
+    _searchCovered.value = false;
+    if (context.disableAnimations) {
+      _searchMotion.jumpTo(open: open);
+      _searchCovered.value = _isSearch;
+      return;
+    }
+    final origin = _searchOrigin.value;
+    _searchMotion.moveTo(
+      open: open,
+      returns: origin == null || !origin.lone
+          ? _SearchReturn.group
+          : !_searchFillsBar
+          ? _SearchReturn.morph
+          : origin.leading == null
+          ? _SearchReturn.droplet
+          : _SearchReturn.pinch,
+    );
+  }
+
+  // A bar's field at its end folds back once left empty, as a toolbar search
+  // field does on macOS; one across the bar waits for its cancel button.
+  void _handleSearchFocusChange() {
+    if (_searchFocusNode.hasFocus ||
+        _searchFillsBar ||
+        _textController.text.isNotEmpty) {
+      return;
+    }
+    handleExitSearching();
   }
 
   void _toggleSorting() {
@@ -57,7 +133,7 @@ class CommonScaffoldState extends State<CommonScaffold> {
         !_isFrontmost) {
       return false;
     }
-    if (_isSearch || context.isInCompactSheet) {
+    if (_isSearch || _searchDocked) {
       _searchFocusNode.requestFocus();
       _textController.selection = TextSelection(
         baseOffset: 0,
@@ -90,36 +166,6 @@ class CommonScaffoldState extends State<CommonScaffold> {
     return true;
   }
 
-  Color get _searchingBackgroundColor =>
-      SurfaceLevel.card.colorOf(context.colorScheme);
-
-  Widget _buildSearchingAppBarTheme(Widget child) {
-    return Builder(
-      builder: (context) {
-        final theme = Theme.of(context);
-        return Theme(
-          data: theme.copyWith(
-            appBarTheme: theme.appBarTheme.copyWith(
-              backgroundColor: _searchingBackgroundColor,
-              titleTextStyle: AppTextStyle.body.of(context),
-              toolbarTextStyle: AppTextStyle.subheadline.of(context),
-            ),
-          ),
-          child: SurfaceScope(
-            level: SurfaceLevel.card,
-            child: InputDecorationTheme(
-              data: InputDecorationThemeData(
-                hintStyle: theme.inputDecorationTheme.hintStyle,
-                border: InputBorder.none,
-              ),
-              child: child,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   void didUpdateWidget(CommonScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -128,6 +174,10 @@ class CommonScaffoldState extends State<CommonScaffold> {
       _appBarState.value = _appBarState.value.copyWith(
         searchState: widget.searchState?.copyWith(query: query),
       );
+      if (widget.searchState == null) {
+        _searchMotion.jumpTo(open: false);
+        _searchCovered.value = false;
+      }
     }
     if (oldWidget.isLoading != widget.isLoading) {
       _loadingNotifier.value = widget.isLoading;
@@ -144,20 +194,28 @@ class CommonScaffoldState extends State<CommonScaffold> {
     }
   }
 
-  void _handleClear() {
-    if (_textController.text.isNotEmpty) {
-      _handleClearInput();
-      return;
-    }
-    _popAppBarLayer();
-  }
-
   void handleExitSearching() {
     if (!_isSearch) {
       return;
     }
+    final field = _measureInBar(_searchFieldKey);
+    _searchOrigin.value = _searchOrigin.value?.withField(field);
     _handleClearInput();
+    _searchFocusNode.unfocus();
     _updateSearchState((state) => state?.copyWith(query: null));
+    _moveSearch(open: false);
+    // The covered bar, search button included, returns with the next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchOrigin.value =
+            _measureSearchOrigin()?.withField(field) ?? _searchOrigin.value;
+      }
+    });
+  }
+
+  void _handleCancelDockedSearch() {
+    _handleClearInput();
+    _searchFocusNode.unfocus();
   }
 
   void _handleExitAppBarLayer() {
@@ -180,6 +238,9 @@ class CommonScaffoldState extends State<CommonScaffold> {
     _appBarState.dispose();
     _textController.dispose();
     _searchFocusNode.dispose();
+    _searchMotion.dispose();
+    _searchOrigin.dispose();
+    _searchCovered.dispose();
     _loadingNotifier.dispose();
     _keywordsNotifier.dispose();
     super.dispose();
@@ -188,16 +249,18 @@ class CommonScaffoldState extends State<CommonScaffold> {
   void addKeyword(String keyword) {
     final isContains = _keywordsNotifier.value.contains(keyword);
     if (isContains) return;
-    final keywords = List<String>.from(_keywordsNotifier.value)..add(keyword);
-    _keywordsNotifier.value = keywords;
+    _setKeywords(List<String>.from(_keywordsNotifier.value)..add(keyword));
   }
 
   void _deleteKeyword(String keyword) {
     final isContains = _keywordsNotifier.value.contains(keyword);
     if (!isContains) return;
-    final keywords = List<String>.from(_keywordsNotifier.value)
-      ..remove(keyword);
+    _setKeywords(List<String>.from(_keywordsNotifier.value)..remove(keyword));
+  }
+
+  void _setKeywords(List<String> keywords) {
     _keywordsNotifier.value = keywords;
+    widget.onKeywordsUpdate?.call(keywords);
   }
 
   @override
@@ -207,87 +270,68 @@ class CommonScaffoldState extends State<CommonScaffold> {
     final form = _SheetForm.of(
       context,
       searchState: widget.searchState,
-      hasActions: _hasActions,
-      hasPrimaryAction: widget.primaryAction != null,
+      searchInBar: widget.searchInBar,
       hasConfirmationAction: widget.confirmationAction != null,
     );
     final isCompact = form.isCompact;
+    _searchFillsBar = _isCompactBar(context, ViewScope.isMobileOf(context));
+    _searchDocked = form.hasDockedSearch;
     final bottomInset = BottomInsetScope.of(context);
-    // A detent sheet fills its detent and clips its own corners; any other sizes to content.
+    // A detent sheet fills the height its detent gives it and clips its own
+    // corners; any other bottom sheet sizes to its content and brings both.
     final hugsContent = isCompact && !SheetOverhangScope.fillsDetentOf(context);
-    // The bar floats over the body, leaving its height at the top through MediaQuery padding.
+    // The page's bar floats over its body, which leaves the bar's height at
+    // its top through MediaQuery padding, as extendBodyBehindAppBar does.
     final barFloats = !isCompact;
     final sortableBody = SortModeScope(sorting: _sorting, child: widget.body);
     final body = SafeArea(
       top: !barFloats,
+      bottom: false,
       child: ValueListenableBuilder(
         valueListenable: _keywordsNotifier,
         builder: (context, keywords, _) {
-          if (widget.onKeywordsUpdate != null) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              widget.onKeywordsUpdate!(keywords);
-            });
-          }
           final hasKeywords = keywords.isNotEmpty;
-          // The status bar height must come from the `View`: the outer Scaffold consumed it to 0.
-          final view = View.of(context);
-          final barInset = view.viewPadding.top / view.devicePixelRatio;
-          // Total inset of the floating bar: status bar + toolbar.
+          final barInset = MediaQuery.paddingOf(context).top;
           final overlap = barFloats
-              ? barInset + pageToolbarHeight
+              ? barInset
               : isCompact
               ? sheetAppBarHeight
               : 0.0;
+          // A wrapper toggled with the strip would remount the body.
           final content = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: hugsContent ? MainAxisSize.min : MainAxisSize.max,
             children: [
-              if (hasKeywords) ...[
-                SizedBox(height: barInset),
+              if (hasKeywords)
                 Padding(
-                  padding: EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    top: isCompact ? sheetAppBarHeight : 16,
-                    bottom: 16,
-                  ),
-                  child: Wrap(
-                    runSpacing: 8,
-                    spacing: 8,
-                    children: [
-                      for (final keyword in keywords)
-                        CommonChip(
-                          label: keyword,
-                          onDeleted: () {
-                            _deleteKeyword(keyword);
-                          },
-                        ),
-                    ],
+                  padding: EdgeInsets.only(top: overlap + 4, bottom: 16),
+                  child: _KeywordStrip(
+                    keywords: keywords,
+                    onDeleted: _deleteKeyword,
                   ),
                 ),
-              ],
               Flexible(
                 fit: hugsContent ? FlexFit.loose : FlexFit.tight,
-                child: hasKeywords
-                    ? MediaQuery.removePadding(
-                        context: context,
-                        removeTop: true,
-                        child: FloatingBarScope(inset: 0, child: sortableBody),
-                      )
-                    : sortableBody,
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeTop: hasKeywords,
+                  child: FloatingBarScope(
+                    inset: hasKeywords ? 0 : overlap,
+                    child: sortableBody,
+                  ),
+                ),
               ),
             ],
           );
-          final scoped = FloatingBarScope(
-            inset: overlap,
-            child: overlap > 0
-                ? _FocusClearOfBar(inset: overlap, child: content)
-                : content,
+          return TopInsetScope(
+            inset: hasKeywords ? 0 : TopInsetScope.of(context) ?? 0,
+            child: FloatingBarScope(
+              inset: overlap,
+              child: overlap > 0
+                  ? _FocusClearOfBar(inset: overlap, child: content)
+                  : content,
+            ),
           );
-          if (keywords.isEmpty) {
-            return scoped;
-          }
-          return TopInsetScope(inset: 0, child: scoped);
         },
       ),
     );
@@ -299,20 +343,25 @@ class CommonScaffoldState extends State<CommonScaffold> {
           )
         : body;
     if (!isCompact) {
-      final media = MediaQuery.of(context);
-      // The dock shell writes the dock height into `padding.bottom`, cleared by `DockSpacer`.
-      final pagePadding = media.padding.copyWith(
-        bottom: math.min(media.padding.bottom, media.viewPadding.bottom),
-      );
+      final docked = form.dockedSearch;
       return AppBarInsetScope(
         child: Scaffold(
           appBar: appBar,
           extendBodyBehindAppBar: barFloats,
           body: _BodyScope(
-            child: MediaQuery(
-              data: media.copyWith(padding: pagePadding),
-              child: content,
-            ),
+            child: docked == null
+                ? content
+                : Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      content,
+                      if (!_sorting)
+                        Align(
+                          alignment: Alignment.bottomCenter,
+                          child: _buildDockedSearch(docked),
+                        ),
+                    ],
+                  ),
           ),
           resizeToAvoidBottomInset: widget.resizeToAvoidBottomInset,
           backgroundColor: widget.backgroundColor,

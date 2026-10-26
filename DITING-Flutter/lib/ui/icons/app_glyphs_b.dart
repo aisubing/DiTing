@@ -437,6 +437,19 @@ const _g_close_ = Glyph([
 ]);
 
 
+const _g_clearField_ = Glyph([
+  GlyphCircle(12, 12, 8.8),
+  GlyphPolyline([
+    GlyphVertex(9.3, 9.3),
+    GlyphVertex(14.7, 14.7),
+  ], role: GlyphRole.detail),
+  GlyphPolyline([
+    GlyphVertex(14.7, 9.3),
+    GlyphVertex(9.3, 14.7),
+  ], role: GlyphRole.detail),
+]);
+
+
 const _g_check_ = Glyph([
   GlyphPolyline([
     GlyphVertex(4.8, 12.5),

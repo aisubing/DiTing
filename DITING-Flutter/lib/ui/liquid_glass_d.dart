@@ -10,6 +10,7 @@ class _LiquidGlassLayer extends Layer {
   BorderRadius corners = BorderRadius.zero;
   Path? outline;
   List<double> profile = _flatProfile;
+  List<double> goo = _noGoo;
   LiquidGlassStyle style = const LiquidGlassStyle(tint: Colors.transparent);
   LiquidGlassGlow glow = LiquidGlassGlow.none;
   Rect? hold;
@@ -84,9 +85,14 @@ class _LiquidGlassLayer extends Layer {
     style.rimFocus,
     style.rimAdded,
     style._hairlineSide,
-    outline == null ? 0.0 : 1.0,
+    outline == null
+        ? 0.0
+        : identical(goo, _noGoo)
+        ? 1.0
+        : 2.0,
     ...profile,
     ...rim?._uniforms(rect.size, corners.topLeft.x) ?? _noShine,
+    ...goo,
   ];
 
   void _addFrost(ui.SceneBuilder builder) {
@@ -333,10 +339,17 @@ List<double> _cornerCurve(double halfWidth, double halfHeight, double radius) {
 
 typedef _Octant = ({double n, Offset joint, Offset center, double radius});
 
+const _Octant _noOctant = (
+  n: 0,
+  joint: Offset.zero,
+  center: Offset.zero,
+  radius: 0,
+);
+
 /// ComputeOctant in impeller/geometry/round_superellipse_param.cc, which cornerInset follows.
 _Octant _superellipseOctant(double a, double radius) {
   if (radius <= 1e-3) {
-    return (n: 0, joint: Offset.zero, center: Offset.zero, radius: 0);
+    return _noOctant;
   }
   final (n, jointAt) = _octantFit(a * 2 / radius);
   final joint = Offset(

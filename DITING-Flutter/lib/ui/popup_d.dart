@@ -418,19 +418,32 @@ class _PopupPressRecognizer extends OneSequenceGestureRecognizer {
 class CommonPopupMenuItem {
   const CommonPopupMenuItem({
     required this.label,
+    this.subtitle,
     this.glyph,
     this.onPressed,
     this.danger = false,
     this.checked,
+    this.section,
     this.subItems = const [],
   });
 
   final String label;
+  final String? subtitle;
   final Glyph? glyph;
   final VoidCallback? onPressed;
   final bool danger;
   final bool? checked;
+
+  /// Sets this item and those after it apart from the items above, as an
+  /// inline section of an iOS menu does.
+  final CommonPopupMenuSection? section;
   final List<CommonPopupMenuItem> subItems;
+}
+
+class CommonPopupMenuSection {
+  const CommonPopupMenuSection({this.title});
+
+  final String? title;
 }
 
 const _menuMinWidth = 160.0;

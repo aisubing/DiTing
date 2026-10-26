@@ -39,6 +39,10 @@ const _hardestThrow = 0.75;
 /// UIScrollView.DecelerationRate.fast, which iOS projects a release with.
 const _projectionTime = 0.99 / (1 - 0.99) / 1000;
 
+/// UIKit's rubber band past the tallest detent, read from iOS 27.
+const _rubberBandExtent = 100.0;
+const _rubberBandCoefficient = 0.55;
+
 const _settleTolerance = Tolerance(distance: 0.5, velocity: 10);
 
 const _peakEase = 120.0;
@@ -205,4 +209,21 @@ double _rounded(double x, double width) {
   }
   final reach = x + width;
   return reach * reach / (4 * width);
+}
+
+/// How far a drag past the tallest detent shows, easing off as [overshoot] grows.
+double _rubberBand(double overshoot, double extent) {
+  if (overshoot <= 0 || extent <= 0) {
+    return 0;
+  }
+  return (1 - 1 / (overshoot * _rubberBandCoefficient / extent + 1)) * extent;
+}
+
+/// The overshoot that shows [stretch], so a held sheet resumes where it showed.
+double _overshootOf(double stretch, double extent) {
+  if (stretch <= 0 || extent <= 0) {
+    return 0;
+  }
+  final reach = math.min(stretch, extent * 0.99);
+  return extent / _rubberBandCoefficient * reach / (extent - reach);
 }

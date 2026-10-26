@@ -1,27 +1,31 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter, lerpDouble;
 
-import 'package:diting/ui/support/input_limits.dart';
 import 'package:diting/ui/support/iterable.dart';
 import 'package:diting/ui/context.dart';
 import 'package:diting/ui/icons/icons.dart';
 import 'package:diting/ui/keyboard.dart';
 import 'package:diting/ui/l10n.dart';
-import 'package:diting/ui/measure.dart';
 import 'package:diting/ui/metrics.dart';
 import 'package:diting/ui/models.dart';
+import 'package:diting/ui/motion.dart';
 import 'package:diting/ui/pop_scope.dart';
 import 'package:diting/ui/shape.dart';
 import 'package:diting/ui/surface.dart';
 import 'package:diting/ui/typography.dart';
 import 'package:diting/ui/view_scope.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+import 'builder.dart';
 import 'button.dart';
 import 'chip.dart';
 import 'dialog.dart';
+import 'goo.dart';
 import 'inherited.dart';
 import 'liquid_glass.dart';
 import 'loading.dart';
@@ -36,6 +40,8 @@ part 'scaffold_a.dart';
 part 'scaffold_b.dart';
 part 'scaffold_c.dart';
 part 'scaffold_d.dart';
+part 'scaffold_e.dart';
+part 'scaffold_f.dart';
 
 typedef OnKeywordsUpdateCallback = void Function(List<String> keywords);
 
@@ -58,7 +64,8 @@ class CommonScaffold extends StatefulWidget {
 
   final IconButtonData? confirmationAction;
 
-  final bool foldPrimaryAction;
+  /// Opens the [searchState] of a page in its bar rather than at its foot.
+  final bool searchInBar;
   final AppBarSearchState? searchState;
   final List<IconButtonData> searchActions;
 
@@ -86,7 +93,7 @@ class CommonScaffold extends StatefulWidget {
     this.iconActions = const [],
     this.menuItems = const [],
     this.confirmationAction,
-    this.foldPrimaryAction = false,
+    this.searchInBar = false,
     this.onKeywordsUpdate,
     this.resizeToAvoidBottomInset,
     this.canSort = false,
@@ -95,4 +102,3 @@ class CommonScaffold extends StatefulWidget {
   @override
   State<CommonScaffold> createState() => CommonScaffoldState();
 }
-

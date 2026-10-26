@@ -68,13 +68,30 @@ Widget _buildRow(
               const SizedBox(width: 12),
             ],
             Expanded(
-              child: EmojiText(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyle.subheadline
-                    .of(context)
-                    .copyWith(color: foregroundColor),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  EmojiText(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyle.subheadline
+                        .of(context)
+                        .copyWith(color: foregroundColor),
+                  ),
+                  if (item.subtitle case final subtitle?)
+                    EmojiText(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyle.footnote.of(context).copyWith(
+                        color: enabled
+                            ? colorScheme.onSurfaceVariant
+                            : colorScheme.onSurfaceVariant.opacity30,
+                      ),
+                    ),
+                ],
               ),
             ),
             if (arrow != null) ...[const SizedBox(width: 8), arrow],
@@ -128,6 +145,23 @@ Widget _buildItem(
   );
 }
 
+Widget _buildSectionTitle(BuildContext context, String title) {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+    child: Semantics(
+      header: true,
+      child: EmojiText(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyle.footnote
+            .of(context)
+            .copyWith(color: context.colorScheme.onSurfaceVariant),
+      ),
+    ),
+  );
+}
+
 Widget _buildContent(
   BuildContext context,
   _MenuLevel level, {
@@ -139,13 +173,19 @@ Widget _buildContent(
       ? level.items.indexWhere((item) => item.checked == true)
       : -1;
   final items = [
-    for (var index = 0; index < level.items.length; index++)
+    for (var index = 0; index < level.items.length; index++) ...[
+      if (level.items[index].section case final section?) ...[
+        if (index > 0) const Divider(height: _dividerHeight, thickness: 1),
+        if (section.title case final title?)
+          _buildSectionTitle(context, title),
+      ],
       // The item a sub menu stands on hides under its header, which redraws it.
       Opacity(
         key: index == checked ? _checkedKey : null,
         opacity: index == covered ? 0 : 1,
         child: _buildItem(context, level.items[index], index, active: active),
       ),
+    ],
   ];
   if (owner == null) {
     return Column(

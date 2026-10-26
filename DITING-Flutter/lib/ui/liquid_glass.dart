@@ -50,6 +50,11 @@ final _noShine = List<double>.unmodifiable(
 final _flatProfile = List<double>.unmodifiable(
   List<double>.filled(_profileTurns, 0),
 );
+// The size of uPills in shaders/liquid_glass.frag.
+const _gooPills = 6;
+final _noGoo = List<double>.unmodifiable(
+  List<double>.filled(10 * _gooPills + 8, 0),
+);
 
 /// How much of iOS's glass the panes draw (.agents/architecture.md).
 enum LiquidGlassQuality { standard, ultra }
@@ -178,6 +183,51 @@ final class LiquidGlassOutline extends LiquidGlassShape {
   final Path path;
 }
 
+/// `GooSurface`'s pills, outlined by [path], each blending into the one before.
+/// With [firstRadius] the first is a rectangle rounded so, not a pill.
+final class LiquidGlassGoo extends LiquidGlassShape {
+  const LiquidGlassGoo(this.path, this.pills, this.blends, {this.firstRadius})
+    : assert(pills.length <= _gooPills);
+
+  final Path path;
+  final List<Rect> pills;
+  final List<double> blends;
+  final double? firstRadius;
+
+  List<double> get _uniforms {
+    final octants = [
+      for (var index = 0; index < _gooPills; index++)
+        index < pills.length
+            ? _superellipseOctant(
+                pills[index].longestSide / 2,
+                pills[index].shortestSide / 2,
+              )
+            : _noOctant,
+    ];
+    return [
+      for (var index = 0; index < _gooPills; index++)
+        if (index < pills.length) ...[
+          pills[index].center.dx,
+          pills[index].center.dy,
+          pills[index].width / 2,
+          pills[index].height / 2,
+        ] else ...const [0.0, 0.0, 0.0, 0.0],
+      pills.length.toDouble(),
+      for (var index = 1; index < _gooPills; index++)
+        index < pills.length ? blends[index - 1] : 0.0,
+      firstRadius ?? 0.0,
+      0.0,
+      for (final (:n, :joint, :radius, center: _) in octants) ...[
+        n,
+        joint.dx,
+        joint.dy,
+        radius,
+      ],
+      for (final octant in octants) ...[octant.center.dx, octant.center.dy],
+    ];
+  }
+}
+
 /// A pane for a render object that shapes the glass itself, as a morph does.
 class LiquidGlassPane {
   LiquidGlassPane(this.onReady);
@@ -217,7 +267,8 @@ class LiquidGlassPane {
         pane
           ..corners = corners
           ..outline = null
-          ..profile = _flatProfile;
+          ..profile = _flatProfile
+          ..goo = _noGoo;
       case LiquidGlassOutline(:final path):
         assert(shadows.isEmpty, 'An outlined pane casts none');
         if (!identical(path, _profiled)) {
@@ -227,7 +278,16 @@ class LiquidGlassPane {
         pane
           ..corners = BorderRadius.zero
           ..outline = path.shift(rect.topLeft)
-          ..profile = _profile;
+          ..profile = _profile
+          ..goo = _noGoo;
+      case final LiquidGlassGoo goo:
+        assert(shadows.isEmpty, 'A pane of goo casts none');
+        _profiled = null;
+        pane
+          ..corners = BorderRadius.zero
+          ..outline = goo.path.shift(rect.topLeft)
+          ..profile = _flatProfile
+          ..goo = goo._uniforms;
     }
     pane
       ..program = _GlassProgram.request(onReady)

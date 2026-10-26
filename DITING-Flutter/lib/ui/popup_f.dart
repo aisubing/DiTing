@@ -65,7 +65,12 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
   bool _buildsLazily(_MenuLevel level) =>
       widget.maxVisibleItems != null &&
       level.owner == null &&
-      level.items.every((item) => item.subItems.isEmpty);
+      level.items.every(
+        (item) =>
+            item.subItems.isEmpty &&
+            item.subtitle == null &&
+            item.section == null,
+      );
 
   void _revealChecked() {
     final row = _checkedKey.currentContext;

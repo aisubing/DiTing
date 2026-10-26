@@ -1,5 +1,6 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
-import 'package:diting/ui/color.dart';
+import 'package:diting/ui/button.dart';
+import 'package:diting/ui/card.dart';
 import 'package:diting/ui/context.dart';
 import 'package:diting/ui/icons/icons.dart';
 import 'package:diting/ui/measure.dart';
@@ -18,47 +19,37 @@ class CommonChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final foregroundColor = colorScheme.onSurfaceVariant;
-    final content = Padding(
-      padding: EdgeInsets.only(
-        left: 8,
-        right: onDeleted != null ? 6 : 8,
-        top: 3,
-        bottom: 3,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 4,
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyle.caption1
-                  .of(context, emphasized: true)
-                  .copyWith(color: foregroundColor),
-            ),
-          ),
-          if (onDeleted != null)
-            InkWell(
-              onTap: onDeleted,
-              customBorder: AppShape.circle,
-              focusColor: colorScheme.primary.opacity30,
-              child: GlyphIcon(
-                AppGlyphs.close,
-                size: 14,
-                color: foregroundColor,
+    final deletable = onDeleted != null;
+    return SizedBox(
+      height: TonalButtonSize.section.button,
+      child: CommonCard(
+        shape: AppShape.full,
+        inert: !deletable,
+        padding: EdgeInsets.only(left: 16, right: deletable ? 12 : 16),
+        onPressed: onDeleted,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 6,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyle.subheadline
+                    .of(context, emphasized: true)
+                    .copyWith(color: colorScheme.onSurface),
               ),
             ),
-        ],
+            if (deletable)
+              GlyphIcon(
+                AppGlyphs.close,
+                size: 16,
+                color: colorScheme.onSurfaceVariant,
+              ),
+          ],
+        ),
       ),
-    );
-    return Material(
-      color: context.raisedSurfaceLevel.colorOf(colorScheme),
-      shape: AppShape.sm,
-      clipBehavior: Clip.antiAlias,
-      child: content,
     );
   }
 }

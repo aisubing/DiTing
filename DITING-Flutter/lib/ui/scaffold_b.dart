@@ -21,6 +21,43 @@ class AppBarClearance extends StatelessWidget {
   }
 }
 
+class _KeywordStrip extends StatelessWidget {
+  const _KeywordStrip({required this.keywords, required this.onDeleted});
+
+  final List<String> keywords;
+  final ValueChanged<String> onDeleted;
+
+  static const _inset = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: TonalButtonSize.section.button,
+      child: WidthBuilder(
+        builder: (_, width) => ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: _inset),
+          itemCount: keywords.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, index) {
+            final keyword = keywords[index];
+            return ConstrainedBox(
+              key: ValueKey(keyword),
+              constraints: BoxConstraints(
+                maxWidth: math.max(0, width - 2 * _inset),
+              ),
+              child: CommonChip(
+                label: keyword,
+                onDeleted: () => onDeleted(keyword),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
 /// Keeps rebuilds in the body to its own layer (.agents/architecture.md).
 class _BodyScope extends StatelessWidget {
   const _BodyScope({required this.child});
@@ -57,7 +94,8 @@ class _RenderBodyBoundary extends RenderProxyBox {
   }
 }
 
-/// Flutter reveals focus against the viewport alone, which runs under a floating bar.
+/// Flutter reveals a focused control against the viewport alone, which runs
+/// under a floating bar, so keyboard and remote traversal would park it there.
 class _FocusClearOfBar extends StatefulWidget {
   const _FocusClearOfBar({required this.inset, required this.child});
 
@@ -128,94 +166,4 @@ class _FocusClearOfBarState extends State<_FocusClearOfBar> {
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-const _maxBarButtons = 3;
-const _maxGroupedActions = 2;
-
-({List<IconButtonData> shown, List<CommonPopupMenuItem> overflow})
-_foldBarActions({
-  required bool hasLead,
-  IconButtonData? primary,
-  bool foldPrimary = false,
-  List<IconButtonData> icons = const [],
-  IconButtonData? confirmation,
-  int widgetCount = 0,
-  List<CommonPopupMenuItem> menuItems = const [],
-}) {
-  final foldable = [?primary, ...icons];
-  final fixed =
-      (hasLead ? 1 : 0) + widgetCount + (confirmation == null ? 0 : 1);
-  if (fixed + foldable.length + (menuItems.isEmpty ? 0 : 1) <= _maxBarButtons) {
-    return (shown: [...foldable, ?confirmation], overflow: menuItems);
-  }
-  final slots = _maxBarButtons - 1 - fixed;
-  final kept = (foldPrimary ? [...icons, ?primary] : foldable)
-      .take(slots < 0 ? 0 : slots)
-      .toList();
-  bool isKept(IconButtonData data) => kept.any((it) => identical(it, data));
-  return (
-    shown: [
-      for (final data in foldable)
-        if (isKept(data)) data,
-      ?confirmation,
-    ],
-    overflow: [
-      for (final data in foldable)
-        if (!isKept(data))
-          CommonPopupMenuItem(
-            glyph: data.glyph,
-            label: data.tooltip ?? '',
-            checked: data.isSelected,
-            onPressed: data.isLoading ? null : data.onPressed,
-          ),
-      ...menuItems,
-    ],
-  );
-}
-
-class _OverflowMenuButton extends StatelessWidget {
-  const _OverflowMenuButton({required this.items});
-
-  final List<CommonPopupMenuItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return CommonPopupBox(
-      targetBuilder: (open) => IconButton(
-        tooltip: UiLocalizations.of(context).more,
-        onPressed: open,
-        icon: const GlyphIcon(AppGlyphs.more),
-      ),
-      popupBuilder: (_) => CommonPopupMenu(items: items),
-    );
-  }
-}
-
-/// An app bar action from [IconButtonData], showing a spinner while it runs.
-class AppBarActionButton extends StatelessWidget {
-  const AppBarActionButton({super.key, required this.data});
-
-  final IconButtonData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return IconButton(
-      tooltip: data.tooltip,
-      isSelected: data.isSelected,
-      style: data.isSelected == true
-          ? IconButton.styleFrom(
-              backgroundColor: TonalButtonTheme.glassOf(context)
-                  ? null
-                  : colorScheme.primary,
-              foregroundColor: colorScheme.onPrimary,
-            )
-          : null,
-      onPressed: data.isLoading ? null : data.onPressed,
-      icon: data.isLoading
-          ? CommonCircleLoading(size: TonalButtonSize.bar.icon)
-          : GlyphIcon(data.glyph),
-    );
-  }
 }
