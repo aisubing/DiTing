@@ -60,21 +60,30 @@ class SiteLatencySitesPage extends ConsumerWidget {
           ),
           for (final category in SiteCategory.values) ...[
             ListHeader(title: category.label),
-            for (final target in siteLatencyInCategory(category))
-              _CandidateRow(
-                target: target,
-                selected: selectedIds.contains(target.id),
-                onTap: () {
-                  if (!notifier.toggle(target.id)) {
-                    _hint(
-                      context,
-                      selectedIds.contains(target.id)
-                          ? '卡片至少保留 1 个站点'
-                          : '卡片最多放 $dashboardSiteCount 个站点，先取消一个再选。',
-                    );
-                  }
-                },
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 6,
+                children: [
+                  for (final target in siteLatencyInCategory(category))
+                    _CandidateRow(
+                      target: target,
+                      selected: selectedIds.contains(target.id),
+                      onTap: () {
+                        if (!notifier.toggle(target.id)) {
+                          _hint(
+                            context,
+                            selectedIds.contains(target.id)
+                                ? '卡片至少保留 1 个站点'
+                                : '卡片最多放 $dashboardSiteCount 个站点，先取消一个再选。',
+                          );
+                        }
+                      },
+                    ),
+                ],
               ),
+            ),
           ],
           const ListFooter(
             text: '这四张卡片用的是同一个仪表盘卡片，改动立刻生效；测速在详情页按分类手动触发。',
@@ -92,7 +101,8 @@ void _hint(BuildContext context, String message) {
   );
 }
 
-class _SelectedRow extends StatelessWidget {  const _SelectedRow({
+class _SelectedRow extends StatelessWidget {
+  const _SelectedRow({
     required this.index,
     required this.target,
     required this.onTap,
