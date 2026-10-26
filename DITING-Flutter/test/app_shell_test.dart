@@ -3,6 +3,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/pages/hub/feature_hub_page.dart';
 import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
+import 'package:diting/pages/home/dashboard/detail/network_speed_detail_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/pages/settings/settings_page.dart';
 import 'package:diting/pages/tools/tools_page.dart';
@@ -198,7 +199,7 @@ void main() {
       expect(find.text('功能中心'), findsWidgets);
     });
 
-    testWidgets('首页网络速度卡进入流量统计后可切回其它 tab', (tester) async {
+    testWidgets('首页网络速度卡进入网速详情后可返回并切回其它 tab', (tester) async {
       await pumpApp(tester, dock: userDock);
       final detail = find.descendant(
         of: find.byType(NetworkSpeedCard),
@@ -208,8 +209,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(detail);
       await tester.pumpAndSettle();
-      expect(find.byType(TrafficPage), findsOneWidget);
-      expect(find.byType(BackButton), findsNothing);
+      expect(find.byType(NetworkSpeedDetailPage), findsOneWidget);
+      expect(find.byType(TrafficPage), findsNothing);
+      expect(find.byType(NavigationDock), findsNothing);
+      expect(find.byType(BackButton), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(NetworkSpeedDetailPage), findsNothing);
       await tester.tap(find.text('设置').last);
       await tester.pumpAndSettle();
       expect(find.byType(SettingsPage), findsOneWidget);

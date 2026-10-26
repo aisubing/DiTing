@@ -1,12 +1,9 @@
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/intranet_ip_card.dart';
-import 'package:diting/pages/home/dashboard/cards/log_list_cards.dart';
 import 'package:diting/pages/home/dashboard/cards/memory_card.dart';
 import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
 import 'package:diting/pages/home/dashboard/cards/site_latency_card.dart';
 import 'package:diting/pages/home/dashboard/cards/status_card.dart';
-import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
-import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -16,75 +13,44 @@ import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Where dashboard cards navigate to. One object instead of ten optional parameters, so
-/// adding a card does not change the signature. No action means no detail button.
+/// Where dashboard cards navigate to. One callback taking the card, so every card opens its own
+/// second-level page instead of all of them sharing the request page; `null` means no detail
+/// button (edit mode, or a card that has no drill-down page yet).
 class DashboardCardActions {
-  const DashboardCardActions({
-    this.onOpenRequests,
-    this.onOpenCache,
-    this.onOpenRace,
-    this.onOpenBootstrap,
-    this.onOpenSubscriptionStats,
-    this.onOpenTraffic,
-  });
+  const DashboardCardActions({this.onOpenDetail});
 
   /// No targets (edit mode): no card shows a detail button.
   static const none = DashboardCardActions();
 
-  final VoidCallback? onOpenRequests;
-  final VoidCallback? onOpenCache;
-  final VoidCallback? onOpenRace;
-  final VoidCallback? onOpenBootstrap;
-  final VoidCallback? onOpenSubscriptionStats;
+  final ValueChanged<DashboardWidget>? onOpenDetail;
 
-  /// `/traffic`: target for the speed and traffic monitor cards.
-  final VoidCallback? onOpenTraffic;
+  /// Detail callback for one card, or null when that card has no page.
+  VoidCallback? detailOf(DashboardWidget widget) {
+    final open = onOpenDetail;
+    if (open == null) return null;
+    return () => open(widget);
+  }
 }
 
-/// Dashboard card registry. First five cards follow FlClash 0.9.1, the rest the upstream
-/// log dashboard views.
+/// Dashboard card registry. Each card owns a distinct second-level page, so the board shows five
+/// different devices' worth of detail rather than five doors into the request list.
 Widget buildDashboardCard(
   DashboardWidget widget,
   DashboardCardActions actions,
 ) {
   return switch (widget) {
-    DashboardWidget.status => StatusCard(onDetail: actions.onOpenRequests),
+    DashboardWidget.status => StatusCard(onDetail: actions.detailOf(widget)),
     DashboardWidget.networkSpeed => NetworkSpeedCard(
-      onDetail: actions.onOpenTraffic,
+      onDetail: actions.detailOf(widget),
     ),
     DashboardWidget.siteLatency => SiteLatencyCard(
-      onDetail: actions.onOpenTraffic,
+      onDetail: actions.detailOf(widget),
     ),
-    DashboardWidget.memoryInfo => MemoryCard(onDetail: actions.onOpenRequests),
+    DashboardWidget.memoryInfo => MemoryCard(
+      onDetail: actions.detailOf(widget),
+    ),
     DashboardWidget.intranetIp => IntranetIpCard(
-      onDetail: actions.onOpenRequests,
-    ),
-    DashboardWidget.trafficMonitor => TrafficMonitorCard(
-      onDetail: actions.onOpenTraffic,
-    ),
-    DashboardWidget.requestOverview => RequestOverviewCard(
-      onDetail: actions.onOpenRequests,
-    ),
-    DashboardWidget.trafficStructure => const LogTrafficStructureCard(
-      mode: TrafficStructureMode.all,
-    ),
-    DashboardWidget.recentRequests => RecentRequestsLogCard(
-      onDetail: actions.onOpenRequests,
-    ),
-    DashboardWidget.cacheHotspots => CacheHotspotsCard(
-      onDetail: actions.onOpenCache,
-    ),
-    DashboardWidget.raceWinners => RaceWinnersCard(
-      onDetail: actions.onOpenRace,
-    ),
-    DashboardWidget.bootstrapDns => BootstrapDnsCard(
-      onDetail: actions.onOpenBootstrap,
-    ),
-    DashboardWidget.ruleBlocks => RuleBlocksCard(
-      onDetail: actions.onOpenSubscriptionStats,
-    ),
-    DashboardWidget.filteredHighlight => FilteredHighlightCard(
-      onDetail: actions.onOpenSubscriptionStats,
+      onDetail: actions.detailOf(widget),
     ),
   };
 }

@@ -68,36 +68,29 @@ enum CoreState {
   bool get isRunning => this == CoreState.running;
 }
 
-/// Reorderable dashboard cards, in the order the add-card sheet shows them.
+/// Reorderable home dashboard cards, in the order the add-card sheet shows them.
+///
+/// Only cards that are *not* on the log dashboard live here: the log dashboard already owns
+/// traffic, request overview, traffic structure, recent requests, cache hotspots, race winners,
+/// bootstrap DNS, rule blocks and the filtered highlight. Repeating them on home made the two
+/// dashboards look like one page, so home keeps the local device view instead.
 enum DashboardWidget {
   status('状态'),
   networkSpeed('网络速度'),
   siteLatency('网络测速'),
   memoryInfo('内存信息'),
-  intranetIp('内网 IP'),
-  trafficMonitor('流量监控'),
-  requestOverview('请求概览'),
-  trafficStructure('今日流量结构'),
-  recentRequests('最近请求'),
-  cacheHotspots('缓存热点'),
-  raceWinners('竞速胜出'),
-  bootstrapDns('Bootstrap DNS'),
-  ruleBlocks('规则拦截'),
-  filteredHighlight('重点记录');
+  intranetIp('内网 IP');
 
   const DashboardWidget(this.label);
 
   final String label;
 }
 
-/// The seven default cards. `trafficMonitor` is left out because it shows the same data as the
-/// speed card, but it can still be added in edit mode.
+/// The five default cards: one for every widget home owns.
 const defaultDashboardWidgets = <DashboardWidget>[
   DashboardWidget.status,
   DashboardWidget.networkSpeed,
   DashboardWidget.siteLatency,
   DashboardWidget.memoryInfo,
   DashboardWidget.intranetIp,
-  DashboardWidget.requestOverview,
-  DashboardWidget.trafficStructure,
 ];

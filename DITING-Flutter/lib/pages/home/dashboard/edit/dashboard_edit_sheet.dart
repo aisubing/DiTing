@@ -65,15 +65,6 @@ class DashboardEditSheet extends ConsumerWidget {
     DashboardWidget.siteLatency => AppGlyphs.speed,
     DashboardWidget.memoryInfo => AppGlyphs.memory,
     DashboardWidget.intranetIp => AppGlyphs.devices,
-    DashboardWidget.trafficMonitor => AppGlyphs.dataUsage,
-    DashboardWidget.requestOverview => AppGlyphs.requests,
-    DashboardWidget.trafficStructure => AppGlyphs.speed,
-    DashboardWidget.recentRequests => AppGlyphs.logs,
-    DashboardWidget.cacheHotspots => AppGlyphs.layers,
-    DashboardWidget.raceWinners => AppGlyphs.shuffle,
-    DashboardWidget.bootstrapDns => AppGlyphs.dns,
-    DashboardWidget.ruleBlocks => AppGlyphs.rules,
-    DashboardWidget.filteredHighlight => AppGlyphs.block,
   };
 
   static String _descriptionOf(DashboardWidget widget) => switch (widget) {
@@ -82,15 +73,6 @@ class DashboardEditSheet extends ConsumerWidget {
     DashboardWidget.siteLatency => '百度、抖音、哔哩哔哩、网易云音乐的实测延迟',
     DashboardWidget.memoryInfo => '本进程 PSS 与 Java / 原生堆构成',
     DashboardWidget.intranetIp => '当前局域网地址、监听状态与复制入口',
-    DashboardWidget.trafficMonitor => '今日代理流量与实时上下行速率',
-    DashboardWidget.requestOverview => '今日请求、通过、过滤与缓存命中',
-    DashboardWidget.trafficStructure => '今日流量结构与竞速、拦截、缓存比率',
-    DashboardWidget.recentRequests => '最近五条 DNS 与 HTTPS 请求',
-    DashboardWidget.cacheHotspots => '命中次数最高的缓存域名',
-    DashboardWidget.raceWinners => '竞速胜出服务商与平均耗时',
-    DashboardWidget.bootstrapDns => 'Bootstrap 节点成功率与耗时',
-    DashboardWidget.ruleBlocks => '各订阅规则拦截次数与占比',
-    DashboardWidget.filteredHighlight => '仅拦截与错误模式的重点记录四格',
   };
 }
 

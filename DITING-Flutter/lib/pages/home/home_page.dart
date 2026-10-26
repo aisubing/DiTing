@@ -141,13 +141,10 @@ class _HomePageState extends ConsumerState<HomePage>
             ],
             DashboardBoard(
               actions: DashboardCardActions(
-                onOpenRequests: () => context.push(ObservabilityPaths.requests),
-                onOpenCache: () => context.push(LogPaths.cache),
-                onOpenRace: () => context.push(LogPaths.race),
-                onOpenBootstrap: () => context.push(LogPaths.bootstrap),
-                onOpenSubscriptionStats: () =>
-                    context.push(LogPaths.subscriptionStats),
-                onOpenTraffic: () => openLocation(context, Routes.traffic),
+                onOpenDetail: (widget) {
+                  final path = homeDetailPathOf(widget);
+                  if (path != null) context.push(path);
+                },
               ),
             ),
             const SizedBox(height: 8),

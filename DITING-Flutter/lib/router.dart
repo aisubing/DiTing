@@ -208,6 +208,7 @@ GoRouter createRouter({String initialLocation = Routes.home}) {
       // Domain routes live in `lib/routes/<domain>_routes.dart`; a new domain
       // means one more `...<domain>Routes()` entry here.
       ...dashboardRoutes(),
+      ...homeDetailRoutes(),
       ...hubRoutes(),
       ...logsRoutes(),
       ...observabilityRoutes(),

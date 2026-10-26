@@ -66,6 +66,11 @@ void main() {
 /// First-level pages, everything without path parameters; shared with `layout_regression_test.dart`
 final Map<String, String> topLevelRoutes = {
   '首页': DashboardPaths.dashboard,
+  '状态详情': HomeDetailPaths.status,
+  '网速详情': HomeDetailPaths.speed,
+  '测速详情': HomeDetailPaths.latency,
+  '内存详情': HomeDetailPaths.memory,
+  '内网 IP 详情': HomeDetailPaths.intranetIp,
   '请求': ObservabilityPaths.requests,
   '主题': SystemPaths.theme,
   '日夜模式': SystemPaths.dayNight,
