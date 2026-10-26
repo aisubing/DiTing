@@ -126,14 +126,24 @@ class GlyphLink extends GlyphShape {
 
 /// SVG path data on the glyph grid, for curves the other shapes cannot draw.
 class GlyphPath extends GlyphShape {
-  const GlyphPath(this.data, {super.role, super.solid});
+  const GlyphPath(
+    this.data, {
+    super.role,
+    super.solid,
+    this.fillType = PathFillType.nonZero,
+  });
 
   final String data;
+
+  /// Brand silhouettes with a cut-out detail inside the outline (a letter inside a square, a
+  /// play triangle inside a disc) draw the hole as a second subpath; that only works with
+  /// [PathFillType.evenOdd], because two subpaths wound the same way merge under non-zero.
+  final PathFillType fillType;
 
   static final _parsed = Expando<Path>();
 
   @override
-  Path get path => _parsed[this] ??= _parse(data);
+  Path get path => _parsed[this] ??= _parse(data)..fillType = fillType;
 
   static Path _parse(String data) {
     final writer = _PathWriter();
