@@ -1,7 +1,8 @@
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
-import 'package:diting/pages/home/dashboard/detail/dashboard_detail_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
+import 'package:diting/pages/home/dashboard/detail/dashboard_detail_chart.dart';
+import 'package:diting/pages/home/dashboard/detail/dashboard_detail_parts.dart';
 import 'package:diting/state/memory_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -71,12 +72,20 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
         ),
       ],
       children: [
-        DashboardDetailFigure(
+        DashboardDetailHero(
+          glyph: AppGlyphs.memory,
           label: '本进程 PSS',
-          value: available ? dashboardBinaryBytes(memory.totalPss) : '—',
+          value: available ? dashboardBinaryBytes(memory.totalPss) : '不可用',
+          chipLabel: available
+              ? '占整机 ${dashboardPercent(memory.systemShare)}'
+              : '无数据',
+          chipColor: available
+              ? colorScheme.primary
+              : colorScheme.onSurfaceVariant,
           hint: available
-              ? '占整机内存 ${dashboardPercent(memory.systemShare)}'
-              : '当前环境读不到内存数据',
+              ? '整机已用 ${dashboardBinaryBytes(deviceUsed)} / '
+                    '${dashboardBinaryBytes(memory.systemTotal)}'
+              : '当前环境读不到内存数据（桌面、组件画廊或纯 Dart 测试）。',
         ),
         DashboardDetailStats(
           stats: [
@@ -100,122 +109,96 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
             ),
           ],
         ),
-        generateSection(
+        DashboardDetailCard(
+          glyph: AppGlyphs.layers,
           title: '进程构成',
           footer: available
               ? 'PSS 按共享页的比例计入本进程，因此 Java 堆与原生堆之和小于 PSS，'
                     '差额是代码、图形缓冲与共享库。'
               : null,
-          items: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 10,
-                children: [
-                  DashboardShareBar(
-                    segments: [
-                      (value: memory.javaHeap.toDouble(), color: colorScheme.primary),
-                      (value: memory.nativeHeap.toDouble(), color: colors.series2),
-                      (value: other.toDouble(), color: colors.track),
-                    ],
-                  ),
-                  DashboardShareLegend(
-                    label: 'Java 堆',
-                    value: available ? dashboardBinaryBytes(memory.javaHeap) : '—',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 8,
+            children: [
+              DashboardShareBar(
+                segments: [
+                  (
+                    value: memory.javaHeap.toDouble(),
                     color: colorScheme.primary,
-                    share: _share(memory.javaHeap, memory.totalPss),
                   ),
-                  DashboardShareLegend(
-                    label: '原生堆',
-                    value: available
-                        ? dashboardBinaryBytes(memory.nativeHeap)
-                        : '—',
+                  (
+                    value: memory.nativeHeap.toDouble(),
                     color: colors.series2,
-                    share: _share(memory.nativeHeap, memory.totalPss),
                   ),
-                  DashboardShareLegend(
-                    label: '其它（代码 / 共享库 / 图形）',
-                    value: available ? dashboardBinaryBytes(other) : '—',
-                    color: colors.track,
-                    share: _share(other, memory.totalPss),
-                  ),
+                  (value: other.toDouble(), color: colors.track),
                 ],
               ),
-            ),
-          ],
+              DashboardShareLegend(
+                label: 'Java 堆',
+                value: available ? dashboardBinaryBytes(memory.javaHeap) : '—',
+                color: colorScheme.primary,
+                share: _share(memory.javaHeap, memory.totalPss),
+              ),
+              DashboardShareLegend(
+                label: '原生堆',
+                value: available ? dashboardBinaryBytes(memory.nativeHeap) : '—',
+                color: colors.series2,
+                share: _share(memory.nativeHeap, memory.totalPss),
+              ),
+              DashboardShareLegend(
+                label: '其它（代码 / 共享库）',
+                value: available ? dashboardBinaryBytes(other) : '—',
+                color: colors.track,
+                share: _share(other, memory.totalPss),
+              ),
+            ],
+          ),
         ),
-        generateSection(
+        DashboardDetailCard(
+          glyph: AppGlyphs.cpu,
           title: '整机内存',
           footer: available && memory.systemTotal > 0
               ? '整机占用 = 总量 - 可用量，包含系统与所有应用；本进程只是其中一份。'
               : null,
-          items: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 10,
-                children: [
-                  DashboardShareBar(
-                    height: 12,
-                    segments: [
-                      (value: deviceUsed.toDouble(), color: colorScheme.primary),
-                      (
-                        value: memory.systemAvail.toDouble(),
-                        color: colors.track,
-                      ),
-                    ],
-                  ),
-                  DashboardShareLegend(
-                    label: '整机已用',
-                    value: available
-                        ? dashboardBinaryBytes(deviceUsed)
-                        : '—',
-                    color: colorScheme.primary,
-                    share: _share(deviceUsed, memory.systemTotal),
-                  ),
-                  DashboardShareLegend(
-                    label: '整机可用',
-                    value: available
-                        ? dashboardBinaryBytes(memory.systemAvail)
-                        : '—',
-                    color: colors.track,
-                    share: _share(memory.systemAvail, memory.systemTotal),
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 8,
+            children: [
+              DashboardShareBar(
+                segments: [
+                  (value: deviceUsed.toDouble(), color: colorScheme.primary),
+                  (value: memory.systemAvail.toDouble(), color: colors.track),
                 ],
               ),
-            ),
-          ],
-        ),
-        generateSection(
-          title: '最近 PSS',
-          footer: '打开本页后每 2 秒采样一次，最多保留 60 个点；'
-              '曲线持续上扬说明有内存未释放。',
-          items: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: SizedBox(
-                height: 120,
-                child: _pss.length < 2
-                    ? const Center(child: Text('正在采样…'))
-                    : LineChart(
-                        values: _pss,
-                        revision: _revision,
-                        capacity: _capacity,
-                        // 16 MB floor: a flat idle line must not be blown up into noise.
-                        minScale: 16 * 1024 * 1024,
-                        color: colorScheme.primary,
-                        baselineRatio: 1,
-                      ),
+              DashboardShareLegend(
+                label: '整机已用',
+                value: available ? dashboardBinaryBytes(deviceUsed) : '—',
+                color: colorScheme.primary,
+                share: _share(deviceUsed, memory.systemTotal),
               ),
-            ),
-          ],
+              DashboardShareLegend(
+                label: '整机可用',
+                value: available ? dashboardBinaryBytes(memory.systemAvail) : '—',
+                color: colors.track,
+                share: _share(memory.systemAvail, memory.systemTotal),
+              ),
+            ],
+          ),
         ),
-        const ListFooter(
-          text:
-              '数据来自 ActivityManager 的 MemoryInfo；'
-              '切到后台或系统回收后数值会明显下降。',
+        DashboardDetailChart(
+          title: '最近 PSS',
+          color: colorScheme.primary,
+          values: _pss,
+          revision: _revision,
+          capacity: _capacity,
+          // 16 MB floor: a flat idle line must not be blown up into noise.
+          minScale: 16 * 1024 * 1024,
+          height: 128,
+          emptyLabel: '正在采样…',
+          caption: '打开本页后每 2 秒采样一次，最多保留 60 个点；曲线持续上扬说明有内存未释放。',
+        ),
+        const DashboardDetailNote(
+          text: '数据来自 ActivityManager 的 MemoryInfo；切到后台或系统回收后数值会明显下降。',
         ),
       ],
     );

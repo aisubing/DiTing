@@ -1,5 +1,6 @@
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/site_latency_targets.dart';
+import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/pages/home/dashboard/detail/dashboard_detail_parts.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/diagnostics_providers.dart';
@@ -48,6 +49,9 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
     final averages = [
       for (final result in _results.values) ?result.avgMs,
     ];
+    final average = averages.isEmpty
+        ? null
+        : averages.reduce((a, b) => a + b) / averages.length;
     return DashboardDetailScaffold(
       title: '测速详情',
       actions: [
@@ -58,49 +62,62 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
         ),
       ],
       children: [
-        DashboardDetailFigure(
+        DashboardDetailHero(
+          glyph: AppGlyphs.target,
           label: '国内站点连通性',
-          value: measured == 0 ? '—' : '$alive / ${siteLatencyTargets.length}',
-          hint: _probing
-              ? '正在逐个站点测速…'
+          value: _probing
+              ? '测速中'
               : measured == 0
-              ? '尚未测速，点右上角刷新开始'
-              : '最近测速 ${elapsedAgoLabel(_lastRunAt)}'
-                    '${primary == null ? '' : ' · 解析服务商 ${primary.name}'}',
-          color: measured == 0
-              ? null
+              ? '未测速'
+              : '$alive / ${siteLatencyTargets.length}',
+          chipLabel: _probing
+              ? '进行中'
+              : measured == 0
+              ? '待测'
+              : failed == 0
+              ? '全部通畅'
+              : '$failed 个失败',
+          chipColor: measured == 0
+              ? colorScheme.onSurfaceVariant
               : failed == 0
               ? colorScheme.success
               : colorScheme.warning,
+          hint: _probing
+              ? '正在逐个站点测速…'
+              : measured == 0
+              ? '尚未测速，点右上角刷新开始。'
+              : '最近测速 ${elapsedAgoLabel(_lastRunAt)}'
+                    '${primary == null ? '' : ' · 解析服务商 ${primary.name}'}',
         ),
-        DashboardDetailStats(
-          stats: [
-            StatItem(label: '通畅', value: '$alive', color: colorScheme.success),
-            StatItem(
-              label: '失败',
-              value: '$failed',
-              color: failed > 0 ? colorScheme.error : null,
-            ),
-            StatItem(
-              label: '平均往返',
-              value: averages.isEmpty
-                  ? '—'
-                  : '${(averages.reduce((a, b) => a + b) / averages.length).round()}',
-              unit: 'ms',
-            ),
-            StatItem(label: '站点', value: '${siteLatencyTargets.length}'),
-          ],
+        DashboardDetailCard(
+          glyph: AppGlyphs.speed,
+          title: '本次结果',
+          child: DashboardStatGrid(
+            stats: [
+              StatItem(label: '通畅', value: '$alive', color: colorScheme.success),
+              StatItem(
+                label: '失败',
+                value: '$failed',
+                color: failed > 0 ? colorScheme.error : null,
+              ),
+              StatItem(
+                label: '平均往返',
+                value: average == null ? '—' : '${average.round()}',
+                unit: average == null ? null : 'ms',
+              ),
+              StatItem(label: '站点', value: '${siteLatencyTargets.length}'),
+            ],
+          ),
         ),
         for (final target in siteLatencyTargets)
-          _SiteSection(
+          _SiteCard(
             target: target,
             summary: _results[target.id],
             probing: _probing,
             lastRunAt: _lastRunAt,
           ),
-        const ListFooter(
-          text:
-              '每个站点发 3 个 ICMP 回显，取平均值；'
+        const DashboardDetailNote(
+          text: '每个站点发 3 个 ICMP 回显，取平均值；'
               '系统 ping 不可用时退回 TCP 握手，会标上 * 号，数值略高于真实往返。'
               '本应用自身流量不经过 VPN，测的是物理网络。',
         ),
@@ -132,9 +149,9 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
   }
 }
 
-/// One site: header row, then every field the card dropped.
-class _SiteSection extends StatelessWidget {
-  const _SiteSection({
+/// One site: the host and its latency up front, then every field the card dropped.
+class _SiteCard extends StatelessWidget {
+  const _SiteCard({
     required this.target,
     required this.summary,
     required this.probing,
@@ -152,77 +169,126 @@ class _SiteSection extends StatelessWidget {
     final summary = this.summary;
     final pending = probing || summary == null;
     final ok = summary?.success ?? false;
-    final (statusText, statusColor) = probing
-        ? ('测速中…', colorScheme.onSurfaceVariant)
+    final statusColor = pending
+        ? colorScheme.onSurfaceVariant
+        : ok
+        ? colorScheme.success
+        : colorScheme.error;
+    final statusText = probing
+        ? '测速中…'
         : summary == null
-        ? ('尚未测速', colorScheme.onSurfaceVariant)
+        ? '尚未测速'
         : summary.success
-        ? (_latency(summary), colorScheme.success)
-        : ('失败', colorScheme.error);
-    return generateSection(
-      title: target.name,
-      footer: summary == null
-          ? null
-          : summary.success
-          ? summary.measuredWithFallback
-                ? '本次数值来自 TCP 握手 / isReachable，不是 ICMP 回显。'
-                : null
-          : summary.message?.isNotEmpty == true
-          ? summary.message!
-          : '三个回显请求都没有收到应答，可能是站点限流或当前网络不通。',
-      items: [
-        ListItem(
-          leading: GlyphIcon(
-            target.glyph,
-            size: 22,
-            color: pending
-                ? colorScheme.onSurfaceVariant
-                : ok
-                ? colorScheme.success
-                : colorScheme.error,
+        ? _latency(summary)
+        : '失败';
+    return DashboardDetailCard(
+      footer: !pending && !ok
+          ? summary.message?.isNotEmpty == true
+                ? summary.message!
+                : '三个回显请求都没有收到应答，可能是站点限流或当前网络不通。'
+          : !pending && summary.measuredWithFallback
+          ? '本次数值来自 TCP 握手 / isReachable，不是 ICMP 回显。'
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: 10,
+        children: [
+          Row(
+            spacing: 12,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: ShapeDecoration(
+                  color: DashboardColors.of(context).tone,
+                  shape: AppShape.all(AppCorner.sm),
+                ),
+                child: Center(
+                  child: GlyphIcon(target.glyph, size: 20, color: statusColor),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 2,
+                  children: [
+                    Text(
+                      target.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyle.subheadline.of(context, emphasized: true),
+                    ),
+                    Text(
+                      target.host,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyle.caption1.of(context).copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: 'JetBrainsMono',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                spacing: 2,
+                children: [
+                  Text(
+                    statusText,
+                    style: DashboardText.figure(
+                      context,
+                      AppTextStyle.subheadline,
+                      color: statusColor,
+                    ),
+                  ),
+                  Text(
+                    pending
+                        ? '等待回包'
+                        : '${summary.transmitted} 次 · '
+                              '${summary.lossPercent.toStringAsFixed(0)}% 丢包',
+                    style: AppTextStyle.caption2.of(
+                      context,
+                    ).copyWith(color: colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ],
           ),
-          title: Text(
-            target.host,
-            style: AppTextStyle.subheadline.of(context).copyWith(
-              fontFamily: 'JetBrainsMono',
-              color: colorScheme.onSurface,
-            ),
+          DashboardDetailRows(
+            rows: [
+              DashboardDetailRow(
+                label: '平均往返',
+                value: _ms(summary?.avgMs),
+                monospace: true,
+              ),
+              DashboardDetailRow(
+                label: '最小 / 最大',
+                value: '${_ms(summary?.minMs)} / ${_ms(summary?.maxMs)}',
+                monospace: true,
+              ),
+              DashboardDetailRow(
+                label: '抖动',
+                value: _ms(summary?.jitterMs),
+                monospace: true,
+              ),
+              if (summary?.resolvedAddress case final address?
+                  when address.isNotEmpty)
+                DashboardDetailRow(
+                  label: '解析地址',
+                  value: '${summary!.addressFamily ?? ''} $address'.trim(),
+                  monospace: true,
+                ),
+              DashboardDetailRow(
+                label: '本次测速',
+                value: elapsedAgoLabel(lastRunAt),
+              ),
+            ],
           ),
-          subtitle: Text(statusText),
-          trailing: Text(
-            pending ? '—' : '${summary.transmitted} 次',
-            style: AppTextStyle.caption1.of(
-              context,
-            ).copyWith(color: statusColor),
-          ),
-        ),
-        KeyValueRow(
-          label: '平均往返',
-          value: _ms(summary?.avgMs),
-          monospace: true,
-        ),
-        KeyValueRow(
-          label: '最小 / 最大',
-          value: '${_ms(summary?.minMs)} / ${_ms(summary?.maxMs)}',
-          monospace: true,
-        ),
-        KeyValueRow(label: '抖动', value: _ms(summary?.jitterMs), monospace: true),
-        KeyValueRow(
-          label: '丢包',
-          value: summary == null
-              ? '—'
-              : '${summary.lossPercent.toStringAsFixed(0)}%'
-                    '（${summary.received}/${summary.transmitted}）',
-          monospace: true,
-        ),
-        if (summary?.resolvedAddress case final address? when address.isNotEmpty)
-          KeyValueRow(
-            label: '解析地址',
-            value: '${summary!.addressFamily ?? ''} $address'.trim(),
-            monospace: true,
-          ),
-        KeyValueRow(label: '本次测速', value: elapsedAgoLabel(lastRunAt)),
-      ],
+        ],
+      ),
     );
   }
 
