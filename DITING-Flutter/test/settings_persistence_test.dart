@@ -4,11 +4,14 @@ import 'package:diting/data/http/request_user_agent.dart';
 import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/site_latency_categories.dart';
+import 'package:diting/data/site_latency_targets.dart';
 import 'package:diting/pages/config/on_demand_capabilities.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/state/dashboard_providers.dart';
+import 'package:diting/state/site_latency_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -105,6 +108,65 @@ void main() {
         '{not json',
       );
       expect(container().read(dashboardWidgetsProvider), defaultDashboardWidgets);
+    });
+  });
+
+  group('仪表盘站点选择重新打开后仍在', () {
+    test('没有落盘时用默认四站', () {
+      expect(container().read(dashboardSiteIdsProvider), defaultDashboardSiteIds);
+      expect(container().read(dashboardSitesProvider).length, dashboardSiteCount);
+    });
+
+    test('勾选与取消都会写回，且最多四个', () {
+      final notifier = container().read(dashboardSiteIdsProvider.notifier);
+      // The default four already fill the card, so a new site needs a free slot first.
+      expect(notifier.toggle('baidu'), isTrue);
+      expect(
+        container().read(dashboardSiteIdsProvider),
+        isNot(contains('baidu')),
+      );
+
+      expect(notifier.toggle('github'), isTrue);
+      expect(
+        store.read('dns_vpn_prefs', 'dashboard_site_ids'),
+        allOf(contains('github'), isNotNull),
+      );
+      expect(container().read(dashboardSitesProvider).last.id, 'github');
+
+      notifier.reset();
+      expect(container().read(dashboardSiteIdsProvider), defaultDashboardSiteIds);
+    });
+
+    test('满了以后拒绝新增', () {
+      final notifier = container().read(dashboardSiteIdsProvider.notifier);
+      expect(
+        container().read(dashboardSiteIdsProvider),
+        hasLength(dashboardSiteCount),
+      );
+      expect(notifier.toggle('steam'), isFalse);
+      expect(
+        container().read(dashboardSiteIdsProvider),
+        hasLength(dashboardSiteCount),
+      );
+    });
+
+    test('未知 id 从不认识的站点被丢弃', () {
+      store.putString(
+        'dns_vpn_prefs',
+        'dashboard_site_ids',
+        '["github","no_such_site","steam"]',
+      );
+      final sites = container().read(dashboardSitesProvider);
+      expect(sites.map((target) => target.id), ['github', 'steam']);
+    });
+
+    test('全部不认识时回落到默认四站', () {
+      store.putString(
+        'dns_vpn_prefs',
+        'dashboard_site_ids',
+        '["no_such_site"]',
+      );
+      expect(container().read(dashboardSiteIdsProvider), defaultDashboardSiteIds);
     });
   });
 

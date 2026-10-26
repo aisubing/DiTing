@@ -9,6 +9,7 @@ import 'package:diting/data/prefs/legacy_prefs_store.dart';
 part 'legacy_settings_dns.dart';
 part 'legacy_settings_hub.dart';
 part 'legacy_settings_parity.dart';
+part 'legacy_settings_sites.dart';
 
 class LegacySettings {
   LegacySettings(this._store, {String? dnsContainer})

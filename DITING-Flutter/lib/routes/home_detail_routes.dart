@@ -7,6 +7,7 @@ import 'package:diting/pages/home/dashboard/detail/intranet_ip_detail_page.dart'
 import 'package:diting/pages/home/dashboard/detail/memory_detail_page.dart';
 import 'package:diting/pages/home/dashboard/detail/network_speed_detail_page.dart';
 import 'package:diting/pages/home/dashboard/detail/site_latency_detail_page.dart';
+import 'package:diting/pages/home/dashboard/detail/site_latency_sites_page.dart';
 import 'package:diting/pages/home/dashboard/detail/status_detail_page.dart';
 import 'package:diting/routes/page.dart';
 import 'package:diting/ui/ui.dart';
@@ -16,6 +17,7 @@ abstract final class HomeDetailPaths {
   static const status = '/home/status';
   static const speed = '/home/speed';
   static const latency = '/home/latency';
+  static const latencySites = '/home/latency/sites';
   static const memory = '/home/memory';
   static const intranetIp = '/home/intranet-ip';
 }
@@ -49,6 +51,14 @@ List<RouteBase> homeDetailRoutes() => [
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const SiteLatencyDetailPage()),
+    routes: [
+      GoRoute(
+        path: 'sites',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            androidDefaultPage(state, const SiteLatencySitesPage()),
+      ),
+    ],
   ),
   GoRoute(
     path: HomeDetailPaths.memory,

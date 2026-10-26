@@ -1,17 +1,20 @@
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/site_latency_targets.dart';
+import 'package:diting/pages/home/dashboard/cards/site_latency_sheet.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/diagnostics_providers.dart';
 import 'package:diting/state/primary_provider_providers.dart';
+import 'package:diting/state/site_latency_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Real-site latency card: Baidu, Douyin, Bilibili, NetEase Music. Probes use ping with a
-/// TCP fallback marked measuredWithFallback; failures show as failed, never as a fake number.
+/// Real-site latency card: the four sites the user picked for the board, defaulting to Baidu,
+/// Douyin, Bilibili and NetEase Music. Probes use ping with a TCP fallback marked
+/// measuredWithFallback; failures show as failed, never as a fake number.
 class SiteLatencyCard extends ConsumerStatefulWidget {
   const SiteLatencyCard({super.key, this.onDetail});
 
@@ -47,14 +50,15 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
     final scale = DashboardDensityScope.scaleOf(context);
     final colorScheme = context.colorScheme;
     final primary = ref.watch(primaryProviderProvider);
+    final sites = ref.watch(dashboardSitesProvider);
 
     final alive = _results.values.where((result) => result.success).length;
-    final measured = _results.length;
+    final measured = sites.where(_results.containsKey).length;
     final verdict = _probing
         ? '测速中…'
         : measured == 0
         ? '尚未测速'
-        : '$alive / ${siteLatencyTargets.length} 通畅';
+        : '$alive / ${sites.length} 通畅';
     return DashboardCard(
       semanticLabel: '网络测速',
       child: Column(
@@ -68,7 +72,7 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
                 label: verdict,
                 tone: _probing || measured == 0
                     ? DashboardChipTone.idle
-                    : alive == siteLatencyTargets.length
+                    : alive == sites.length
                     ? DashboardChipTone.ok
                     : DashboardChipTone.warn,
                 dot: true,
@@ -89,15 +93,14 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
             ],
           ),
           SizedBox(height: 10 * scale),
-          for (var i = 0; i < siteLatencyTargets.length; i += _columns)
+          for (var i = 0; i < sites.length; i += _columns)
             Padding(
               padding: EdgeInsets.only(top: i == 0 ? 0 : 8 * scale),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 8,
                 children: [
-                  for (final target
-                      in siteLatencyTargets.skip(i).take(_columns))
+                  for (final target in sites.skip(i).take(_columns))
                     Expanded(
                       child: _SiteCell(
                         target: target,
@@ -105,7 +108,7 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
                         probing: _probing,
                         onTap: () => showSheet<void>(
                           context: context,
-                          builder: (_) => _SiteDetailSheet(
+                          builder: (_) => SiteLatencyTargetSheet(
                             target: target,
                             summary: _results[target.id],
                             lastRunAt: _lastRunAt,
@@ -113,8 +116,7 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
                         ),
                       ),
                     ),
-                  if (siteLatencyTargets.skip(i).length < _columns)
-                    const Spacer(),
+                  if (sites.skip(i).length < _columns) const Spacer(),
                 ],
               ),
             ),
@@ -136,17 +138,18 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
 
   static const _columns = 2;
 
-  /// Probe all four sites concurrently, three ICMP echoes each: serial awaits would make
+  /// Probe the card's four sites concurrently, three ICMP echoes each: serial awaits would make
   /// the worst case 4 x 3 timeouts and look frozen.
   Future<void> _probe() async {
     if (_probing) return;
+    final sites = ref.read(dashboardSitesProvider);
     setState(() {
       _probing = true;
       _results.clear();
     });
     final runner = ref.read(diagnosticsRunnerProvider);
     final summaries = await Future.wait([
-      for (final target in siteLatencyTargets)
+      for (final target in sites)
         runner.ping(target.host, count: 3, timeoutSeconds: 2),
     ]);
     if (!mounted) return;
@@ -154,7 +157,7 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
       _probing = false;
       _lastRunAt = DateTime.now();
       for (final (index, summary) in summaries.indexed) {
-        _results[siteLatencyTargets[index].id] = summary;
+        _results[sites[index].id] = summary;
       }
     });
   }
@@ -303,92 +306,3 @@ class _Badge extends StatelessWidget {
   }
 }
 
-class _SiteDetailSheet extends StatelessWidget {
-  const _SiteDetailSheet({
-    required this.target,
-    required this.summary,
-    required this.lastRunAt,
-  });
-
-  final SiteLatencyTarget target;
-  final PingSummary? summary;
-  final DateTime? lastRunAt;
-
-  @override
-  Widget build(BuildContext context) {
-    final summary = this.summary;
-    String ms(double? value) => value == null ? '—' : '${value.round()} ms';
-    return CommonScaffold(
-      title: target.name,
-      body: ListView(
-        // The sheet title floats over the body, so this top padding is required.
-        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
-        children: [
-          const ListHeader(title: '延迟'),
-          ListItem(
-            leading: const GlyphIcon(AppGlyphs.link, size: 20),
-            title: const Text('目标'),
-            subtitle: Text(target.host),
-          ),
-          ListItem(
-            leading: const GlyphIcon(AppGlyphs.speed, size: 20),
-            title: const Text('平均往返'),
-            trailing: Text(ms(summary?.avgMs)),
-          ),
-          ListItem(
-            leading: const GlyphIcon(AppGlyphs.arrowDown, size: 20),
-            title: const Text('最小 / 最大'),
-            trailing: Text('${ms(summary?.minMs)} / ${ms(summary?.maxMs)}'),
-          ),
-          ListItem(
-            leading: const GlyphIcon(AppGlyphs.motion, size: 20),
-            title: const Text('抖动'),
-            trailing: Text(ms(summary?.jitterMs)),
-          ),
-          ListItem(
-            leading: const GlyphIcon(AppGlyphs.warning, size: 20),
-            title: const Text('丢包'),
-            trailing: Text(
-              summary == null
-                  ? '—'
-                  : '${summary.lossPercent.toStringAsFixed(0)}%'
-                        '（${summary.received}/${summary.transmitted}）',
-            ),
-          ),
-          if (summary?.resolvedAddress case final address?
-              when address.isNotEmpty)
-            ListItem(
-              leading: const GlyphIcon(AppGlyphs.dns, size: 20),
-              title: const Text('解析地址'),
-              subtitle: Text('${summary!.addressFamily ?? ''} $address'.trim()),
-            ),
-          ListItem(
-            leading: const GlyphIcon(AppGlyphs.clock, size: 20),
-            title: const Text('最近测速'),
-            trailing: Text(elapsedAgoLabel(lastRunAt)),
-          ),
-          if (summary == null)
-            const ListFooter(text: '尚未测速。点卡片右上角的刷新按钮开始测量。')
-          else if (!summary.success)
-            ListFooter(
-              text: summary.message?.isNotEmpty == true
-                  ? summary.message!
-                  : '三个回显请求都没有收到应答，可能是站点限流或当前网络不通。',
-            )
-          else if (summary.measuredWithFallback)
-            const ListFooter(
-              text:
-                  '系统 ping 不可用，这次数值来自 TCP 握手 / isReachable，'
-                  '衡量的是建连时延而不是 ICMP 回显，会略高于真实往返。',
-            )
-          else
-            const ListFooter(
-              text:
-                  '数值来自系统 ping 的 ICMP 回显（3 次取平均）。'
-                  '本应用自身流量不经过 VPN，测的是物理网络。',
-            ),
-        ],
-      ),
-    );
-  }
-}

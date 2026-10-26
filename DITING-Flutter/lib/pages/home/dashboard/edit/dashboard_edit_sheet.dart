@@ -70,7 +70,7 @@ class DashboardEditSheet extends ConsumerWidget {
   static String _descriptionOf(DashboardWidget widget) => switch (widget) {
     DashboardWidget.status => '内核状态、运行时长、当前服务商与今日查询',
     DashboardWidget.networkSpeed => '上下行实时速率曲线与今日累计流量',
-    DashboardWidget.siteLatency => '百度、抖音、哔哩哔哩、网易云音乐的实测延迟',
+    DashboardWidget.siteLatency => '自定义 4 个站点的实测延迟，详情页可按分类测速',
     DashboardWidget.memoryInfo => '本进程 PSS 与 Java / 原生堆构成',
     DashboardWidget.intranetIp => '当前局域网地址、监听状态与复制入口',
   };
