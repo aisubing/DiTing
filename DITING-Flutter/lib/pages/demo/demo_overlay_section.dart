@@ -275,6 +275,7 @@ class _DemoPopupButtons extends StatelessWidget {
               ),
               CommonPopupMenuItem(
                 label: '更多',
+                subtitle: '子菜单、说明与分组标题',
                 glyph: AppGlyphs.moreCircle,
                 subItems: [
                   CommonPopupMenuItem(
@@ -291,6 +292,7 @@ class _DemoPopupButtons extends StatelessWidget {
               ),
               CommonPopupMenuItem(
                 label: '删除',
+                section: const CommonPopupMenuSection(title: '危险操作'),
                 glyph: AppGlyphs.delete,
                 danger: true,
                 onPressed: () => _demoToast(context, '菜单 · 删除'),

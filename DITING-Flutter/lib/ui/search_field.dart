@@ -1,6 +1,7 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'package:diting/ui/button.dart';
 import 'package:diting/ui/focus.dart';
+import 'package:diting/ui/goo.dart';
 import 'package:diting/ui/icons/icons.dart';
 import 'package:diting/ui/l10n.dart';
 import 'package:diting/ui/shape.dart';
@@ -73,6 +74,13 @@ class _SearchFieldState extends State<SearchField> {
     final remote = RemoteFocusAdapter.isEnabledOf(context);
     final pill = AppShape.input.copyWith(borderRadius: AppRadius.full);
     final trailing = widget.trailing;
+    // On goo the surface behind the field is its fill; anywhere else the field
+    // draws its own, as iOS does when a field stands on a page.
+    final fill =
+        widget.fill ??
+        (GooSurface.of(context)
+            ? null
+            : context.raisedSurfaceLevel.colorOf(colorScheme));
     return ListenableBuilder(
       listenable: Listenable.merge([_controller, FocusMovedByKey.instance]),
       builder: (_, _) {
@@ -96,8 +104,8 @@ class _SearchFieldState extends State<SearchField> {
               height: widget.height ?? TonalButtonSize.bar.button,
             ),
             floatingLabelBehavior: FloatingLabelBehavior.never,
-            filled: widget.fill != null,
-            fillColor: widget.fill,
+            filled: fill != null,
+            fillColor: fill,
             hintText: widget.hintText ?? localizations.search,
             border: pill.copyWith(borderSide: BorderSide.none),
             enabledBorder: pill.copyWith(borderSide: BorderSide.none),
