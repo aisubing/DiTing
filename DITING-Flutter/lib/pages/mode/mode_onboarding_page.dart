@@ -3,6 +3,7 @@ import 'package:diting/router.dart';
 import 'package:diting/state/permission_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/icon_badge.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -313,19 +314,13 @@ class _StepScaffold extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Center(
-                  child: Container(
-                    width: 88,
-                    height: 88,
-                    alignment: Alignment.center,
-                    decoration: ShapeDecoration(
-                      shape: AppShape.full,
-                      color: colorScheme.primary.withValues(alpha: 0.12),
-                    ),
-                    child: GlyphIcon(
-                      glyph,
-                      size: 40,
-                      color: colorScheme.primary,
-                    ),
+                  child: IconBadge(
+                    glyph: glyph,
+                    size: 88,
+                    glyphSize: 40,
+                    color: colorScheme.primary.withValues(alpha: 0.12),
+                    foregroundColor: colorScheme.primary,
+                    shape: AppShape.full,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -467,21 +462,16 @@ class _PermissionRow extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             spacing: 12,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: ShapeDecoration(
-                  shape: AppShape.md,
-                  color: granted
-                      ? colorScheme.primaryContainer
-                      : colorScheme.surfaceContainerHigh,
-                ),
-                child: GlyphIcon(
-                  granted ? AppGlyphs.checkCircle : glyph,
-                  size: 22,
-                  color: granted ? colorScheme.onPrimaryContainer : colorScheme.primary,
-                ),
+              IconBadge(
+                glyph: granted ? AppGlyphs.checkCircle : glyph,
+                size: 44,
+                glyphSize: 22,
+                color: granted
+                    ? colorScheme.primaryContainer
+                    : colorScheme.surfaceContainerHigh,
+                foregroundColor: granted
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.primary,
               ),
               Expanded(
                 child: Column(

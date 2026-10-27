@@ -4,6 +4,7 @@ import 'package:diting/data/backup/backup_models.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/state/backup_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -143,12 +144,11 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
           generateSection(
             title: '云端备份',
             items: [
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.cloudSync),
-                title: const Text('WebDAV 云同步'),
-                subtitle: const Text('把配置文件同步到自建 WebDAV 服务器'),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(HubPaths.configTransferWebdav),
+              NavEntryRow(
+                glyph: AppGlyphs.cloudSync,
+                title: 'WebDAV 云同步',
+                subtitle: '把配置文件同步到自建 WebDAV 服务器',
+                onPressed: () => context.push(HubPaths.configTransferWebdav),
               ),
             ],
           ),

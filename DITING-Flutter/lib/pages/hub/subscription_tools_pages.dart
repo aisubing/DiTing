@@ -6,6 +6,7 @@ import 'package:diting/state/auto_update_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -266,16 +267,7 @@ class MirrorTemplatesPage extends ConsumerWidget {
       ],
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '保存常用的订阅下载镜像。添加规则订阅时，可以直接选择这里的模板。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
-          ),
+          PageIntroCard(text: '保存常用的订阅下载镜像。添加规则订阅时，可以直接选择这里的模板。'),
           generateSection(
             title: '操作',
             items: [

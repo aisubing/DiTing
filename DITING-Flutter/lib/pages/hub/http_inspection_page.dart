@@ -11,6 +11,7 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
 import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -449,17 +450,11 @@ class _HttpInspectionAppsPageState
           SliverToBoxAdapter(
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: CommonCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
+                PageIntroCard(
+                  text:
                       'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，'
                       '其他应用直接转发。选择应用会取消其「排除应用」「禁止联网」'
                       '与应用独立规则状态。',
-                      style: context.listSubtitleStyle,
-                    ),
-                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),

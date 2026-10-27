@@ -132,7 +132,7 @@ class NetworkSpeedDetailPage extends ConsumerWidget {
   /// Why the curve is empty: one is a product decision, the other a missing host channel.
   static String _unsupportedHint(SpeedSource source) => switch (source) {
     SpeedSource.expressMode => '极速模式不经过内核数据面，因此没有逐秒速率；切回普通模式后恢复。',
-    SpeedSource.noNativeChannel => '当前环境没有速率通道（桌面、组件画廊或纯 Dart 测试），读不到实时速率。',
+    SpeedSource.noNativeChannel => '当前环境没有速率通道（桌面环境或纯 Dart 测试），读不到实时速率。',
     SpeedSource.available => '',
   };
 }

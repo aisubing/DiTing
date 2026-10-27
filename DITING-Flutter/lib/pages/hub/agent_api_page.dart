@@ -6,6 +6,7 @@ import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -172,15 +173,10 @@ class AgentApiPage extends ConsumerWidget {
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Text(
-              'AI 分析用于辅助研判，不会自动修改规则；所有请求由你配置的厂商处理，'
-              '密钥只存在本机。',
-              style: AppTextStyle.footnote
-                  .of(context)
-                  .copyWith(color: colorScheme.onSurfaceVariant),
-            ),
+          PageIntroText(
+            text:
+                'AI 分析用于辅助研判，不会自动修改规则；所有请求由你配置的厂商处理，'
+                '密钥只存在本机。',
           ),
           const SizedBox(height: 24),
         ],

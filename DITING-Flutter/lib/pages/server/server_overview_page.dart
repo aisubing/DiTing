@@ -6,6 +6,7 @@ import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/server_upstream_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,12 +56,11 @@ class ServerOverviewPage extends ConsumerWidget {
           generateSection(
             title: '当前上游',
             items: [
-              ListItem(
-                title: Text(upstream.name),
-                subtitle: Text(upstream.endpointLabel),
-                leading: const GlyphIcon(AppGlyphs.dns),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: onOpenUpstreams,
+              NavEntryRow(
+                glyph: AppGlyphs.dns,
+                title: upstream.name,
+                subtitle: upstream.endpointLabel,
+                onPressed: onOpenUpstreams,
               ),
             ],
           ),
@@ -149,19 +149,17 @@ class ServerOverviewPage extends ConsumerWidget {
           const SizedBox(height: 6),
           generateSection(
             items: [
-              ListItem(
-                title: const Text('重置运行统计'),
-                subtitle: const Text('清空本次运行的全部计数，不清规则与缓存'),
-                leading: const GlyphIcon(AppGlyphs.reset),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => confirmResetServerStats(context, ref),
+              NavEntryRow(
+                glyph: AppGlyphs.reset,
+                title: '重置运行统计',
+                subtitle: '清空本次运行的全部计数，不清规则与缓存',
+                onPressed: () => confirmResetServerStats(context, ref),
               ),
-              ListItem(
-                title: const Text('模式设置'),
-                subtitle: const Text('缓存、规则、后台稳定性与运行模式'),
-                leading: const GlyphIcon(AppGlyphs.settings),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: onOpenSettings,
+              NavEntryRow(
+                glyph: AppGlyphs.settings,
+                title: '模式设置',
+                subtitle: '缓存、规则、后台稳定性与运行模式',
+                onPressed: onOpenSettings,
               ),
             ],
           ),

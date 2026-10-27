@@ -6,6 +6,7 @@ import 'package:diting/state/auto_update_providers.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -46,16 +47,10 @@ class RuleControlPage extends ConsumerWidget {
       title: '规则控制',
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
+          PageIntroCard(
+            text:
                 '统一管理域名过滤、URL 规则及规则覆写的总控开关、拦截策略与在线规则订阅。'
                 '黑名单、白名单与覆写名单可在功能中心中独立管理。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
           ),
           generateSection(
             title: '过滤与覆写控制',

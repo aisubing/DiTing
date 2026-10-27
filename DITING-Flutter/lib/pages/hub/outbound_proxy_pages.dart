@@ -8,6 +8,7 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
 import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -462,16 +463,10 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: CommonCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
+                PageIntroCard(
+                  text:
                       '选择提供本地代理端口的应用。代理应用本身会绕过 DITING。'
                       '端口由该应用绑定，谛听无法代它监听。',
-                      style: context.listSubtitleStyle,
-                    ),
-                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),

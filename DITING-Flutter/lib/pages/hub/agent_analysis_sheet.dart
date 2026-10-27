@@ -13,6 +13,8 @@ import 'package:diting/state/agent_providers.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/icon_badge.dart';
+import 'package:diting/widgets/notice.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -135,25 +137,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
           if (_appliedAction case final message?)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: CommonCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                child: Row(
-                  spacing: 8,
-                  children: [
-                    GlyphIcon(
-                      AppGlyphs.checkCircle,
-                      size: 16,
-                      color: context.colorScheme.primary,
-                    ),
-                    Expanded(
-                      child: Text(message, style: context.listSubtitleStyle),
-                    ),
-                  ],
-                ),
-              ),
+              child: CardNoticeRow(message: message),
             ),
           const ListFooter(
             text: 'AI 只做研判，不会自动修改规则；结论仅供参考。'
@@ -340,20 +324,13 @@ class _Header extends StatelessWidget {
       child: Row(
         spacing: 12,
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: ShapeDecoration(
-              color: colorScheme.primaryContainer,
-              shape: AppShape.circle,
-            ),
-            child: Center(
-              child: GlyphIcon(
-                AppGlyphs.sparkle,
-                size: 20,
-                color: colorScheme.onPrimaryContainer,
-              ),
-            ),
+          IconBadge(
+            glyph: AppGlyphs.sparkle,
+            size: 38,
+            glyphSize: 20,
+            color: colorScheme.primaryContainer,
+            foregroundColor: colorScheme.onPrimaryContainer,
+            shape: AppShape.circle,
           ),
           Expanded(
             child: Column(

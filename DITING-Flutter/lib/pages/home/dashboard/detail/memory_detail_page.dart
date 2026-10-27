@@ -85,7 +85,7 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
           hint: available
               ? '整机已用 ${dashboardBinaryBytes(deviceUsed)} / '
                     '${dashboardBinaryBytes(memory.systemTotal)}'
-              : '当前环境读不到内存数据（桌面、组件画廊或纯 Dart 测试）。',
+              : '当前环境读不到内存数据（桌面环境或纯 Dart 测试）。',
         ),
         DashboardDetailStats(
           stats: [

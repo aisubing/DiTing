@@ -10,6 +10,7 @@ import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/status_pill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -262,22 +263,14 @@ class _LatencyBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final measured = provider.latencyMs >= 0;
-    return Container(
+    return StatusPill(
+      label: providerLatencyLabel(provider),
+      color: DashboardColors.of(context).tone,
+      foregroundColor: measured
+          ? colorScheme.primary
+          : colorScheme.onSurfaceVariant,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: ShapeDecoration(
-        color: DashboardColors.of(context).tone,
-        shape: AppShape.all(AppCorner.full),
-      ),
-      child: Text(
-        providerLatencyLabel(provider),
-        maxLines: 1,
-        style: AppTextStyle.caption1
-            .of(context, emphasized: true)
-            .copyWith(
-              color: measured ? colorScheme.primary : colorScheme.onSurfaceVariant,
-              fontFamily: appMonospaceFontFamily,
-            ),
-      ),
+      monospace: true,
     );
   }
 }

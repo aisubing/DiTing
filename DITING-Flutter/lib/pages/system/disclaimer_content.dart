@@ -3,6 +3,7 @@ library;
 import 'package:diting/app/initial_agreement.dart';
 import 'package:diting/data/mock_system.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/notice.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -40,32 +41,11 @@ class DisclaimerIntroCard extends StatelessWidget {
               '全部数据都在本机处理。',
               style: context.listSubtitleStyle,
             ),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: ShapeDecoration(
-                shape: AppShape.md,
-                color: colorScheme.warningContainer,
-              ),
-              child: Row(
-                spacing: 8,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GlyphIcon(
-                    AppGlyphs.warning,
-                    size: 18,
-                    color: colorScheme.onWarningContainer,
-                  ),
-                  Expanded(
-                    child: Text(
-                      '请在遵守所在地法律法规的前提下使用本软件。'
-                      '将本软件用于任何未经授权的网络环境，后果由使用者自行承担。',
-                      style: AppTextStyle.footnote
-                          .of(context)
-                          .copyWith(color: colorScheme.onWarningContainer),
-                    ),
-                  ),
-                ],
-              ),
+            InlineNotice(
+              message:
+                  '请在遵守所在地法律法规的前提下使用本软件。'
+                  '将本软件用于任何未经授权的网络环境，后果由使用者自行承担。',
+              glyphSize: 18,
             ),
           ],
         ),

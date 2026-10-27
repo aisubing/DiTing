@@ -5,6 +5,7 @@ import 'package:diting/pages/server/server_upstream_dialog.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/server_upstream_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -131,13 +132,10 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
         children: [
           // Upstream's activeItemText, above the protocol segments because it describes the
           // page-wide selection and stays visible when switching to DoH.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Text(
-              '当前用于解析 DNS：(${_protocolLabel(selected.protocol)}) '
-              '${selected.name}',
-              style: context.listCaptionStyle,
-            ),
+          PageIntroText(
+            text:
+                '当前用于解析 DNS：(${_protocolLabel(selected.protocol)}) '
+                '${selected.name}',
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),

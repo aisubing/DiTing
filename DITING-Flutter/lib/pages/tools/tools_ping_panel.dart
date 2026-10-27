@@ -52,7 +52,6 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
   @override
   Widget build(BuildContext context) {
     final flags = ref.watch(networkToolFlagsProvider);
-    final colorScheme = context.colorScheme;
     final result = _result;
     return PageBody(
       children: [
@@ -168,15 +167,10 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Text(
-              '本次共发送 ${result.transmitted} 个探测包，'
-              '失败 ${result.transmitted - result.received} 个。',
-              style: context.listCaptionStyle.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
+          PageIntroText(
+            text:
+                '本次共发送 ${result.transmitted} 个探测包，'
+                '失败 ${result.transmitted - result.received} 个。',
           ),
         ],
         const ListFooter(

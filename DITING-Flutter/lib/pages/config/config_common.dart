@@ -88,46 +88,6 @@ class ConfigFieldRow extends StatelessWidget {
   }
 }
 
-/// Explainer card for pages whose rules are not obvious.
-class ConfigNoteCard extends StatelessWidget {
-  const ConfigNoteCard({
-    super.key,
-    required this.text,
-    this.glyph = AppGlyphs.info,
-  });
-
-  final String text;
-  final Glyph glyph;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: CommonCard(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: 10,
-            children: [
-              GlyphIcon(glyph, size: 18, color: colorScheme.onSurfaceVariant),
-              Expanded(
-                child: Text(
-                  text,
-                  style: AppTextStyle.footnote
-                      .of(context)
-                      .copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Trailing remove button, wrapped in `CommonMinIconButtonTheme`: a default IconButton tap
 /// target would stretch the row height.
 class ConfigRemoveButton extends StatelessWidget {
@@ -163,42 +123,3 @@ class ConfigRemoveButton extends StatelessWidget {
 /// Subtitle for list entries: report the count, and explain an empty list.
 String configListSummary(List<String> items, {String empty = '未设置'}) =>
     items.isEmpty ? empty : '共 ${items.length} 项';
-
-/// Entry row that opens another page: icon, title, one-line subtitle and chevron,
-/// identical across the override and resource pages.
-class ConfigEntryRow extends StatelessWidget {
-  const ConfigEntryRow({
-    super.key,
-    required this.glyph,
-    required this.title,
-    required this.subtitle,
-    required this.onPressed,
-    this.enabled = true,
-  });
-
-  final Glyph glyph;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onPressed;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return ListItem(
-      leading: GlyphIcon(
-        glyph,
-        size: 20,
-        color: enabled ? null : colorScheme.onSurface.withValues(alpha: 0.3),
-      ),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: GlyphIcon(
-        AppGlyphs.chevronForward,
-        size: 16,
-        color: colorScheme.onSurfaceVariant,
-      ),
-      onTap: enabled ? onPressed : null,
-    );
-  }
-}

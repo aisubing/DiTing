@@ -5,6 +5,7 @@ import 'package:diting/data/recognition/recognition_members.dart';
 import 'package:diting/state/recognition_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/empty_state.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -167,13 +168,7 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
       ],
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(widget.intro, style: context.listSubtitleStyle),
-            ),
-          ),
+          PageIntroCard(text: widget.intro),
           if (!state.hasMembers && (state.isRefreshing || data == null))
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 64),

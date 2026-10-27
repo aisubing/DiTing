@@ -13,6 +13,7 @@ import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/font_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,12 +46,11 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: CommonCard(
               padding: EdgeInsets.zero,
-              child: ListItem(
-                title: const Text('字号'),
-                subtitle: Text('当前 ${(scale * 100).round()}%'),
-                leading: const GlyphIcon(AppGlyphs.textSize),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(SystemPaths.fontSize),
+              child: NavEntryRow(
+                glyph: AppGlyphs.textSize,
+                title: '字号',
+                subtitle: '当前 ${(scale * 100).round()}%',
+                onPressed: () => context.push(SystemPaths.fontSize),
               ),
             ),
           ),

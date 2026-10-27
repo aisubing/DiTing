@@ -5,6 +5,7 @@ import 'package:diting/router.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -109,23 +110,21 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
           generateSection(
             title: '代理与解析设置',
             items: [
-              ListItem(
-                title: const Text('缓存设置'),
-                subtitle: Text(cacheSummary),
-                leading: const GlyphIcon(AppGlyphs.memory),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+              NavEntryRow(
+                glyph: AppGlyphs.memory,
+                title: '缓存设置',
+                subtitle: cacheSummary,
                 // Server-mode cache keys live in `diting_dns_mode_prefs`, a different set
                 // from the normal-mode cache page, so this entry only navigates.
-                onTap: () => context.push(HubPaths.cache),
+                onPressed: () => context.push(HubPaths.cache),
               ),
-              ListItem(
-                title: const Text('规则控制'),
-                subtitle: Text(
-                  adBlockEnabled ? '已开启 · 命中规则按拦截策略返回' : '已关闭 · 使用独立的过滤规则库',
-                ),
-                leading: const GlyphIcon(AppGlyphs.rules),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(HubPaths.ruleControl),
+              NavEntryRow(
+                glyph: AppGlyphs.rules,
+                title: '规则控制',
+                subtitle: adBlockEnabled
+                    ? '已开启 · 命中规则按拦截策略返回'
+                    : '已关闭 · 使用独立的过滤规则库',
+                onPressed: () => context.push(HubPaths.ruleControl),
               ),
               ListItem(
                 title: const Text('本地监听端口'),
@@ -145,28 +144,25 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
           generateSection(
             title: '规则管理',
             items: [
-              ListItem(
-                title: const Text('黑名单'),
-                subtitle: const Text('管理域名屏蔽规则，独立规则库'),
-                leading: const GlyphIcon(AppGlyphs.block),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(Routes.rulesOf('block')),
+              NavEntryRow(
+                glyph: AppGlyphs.block,
+                title: '黑名单',
+                subtitle: '管理域名屏蔽规则，独立规则库',
+                onPressed: () => context.push(Routes.rulesOf('block')),
               ),
-              ListItem(
-                title: const Text('白名单'),
-                subtitle: const Text('管理域名放行规则，独立规则库'),
-                leading: const GlyphIcon(AppGlyphs.verified),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(Routes.rulesOf('allow')),
+              NavEntryRow(
+                glyph: AppGlyphs.verified,
+                title: '白名单',
+                subtitle: '管理域名放行规则，独立规则库',
+                onPressed: () => context.push(Routes.rulesOf('allow')),
               ),
-              ListItem(
-                title: const Text('Hosts 覆写'),
-                subtitle: const Text('将指定域名解析到配置的 IP 或 CNAME'),
-                leading: const GlyphIcon(AppGlyphs.dns),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+              NavEntryRow(
+                glyph: AppGlyphs.dns,
+                title: 'Hosts 覆写',
+                subtitle: '将指定域名解析到配置的 IP 或 CNAME',
                 // The legacy `REWRITELIST_MANAGEMENT` is the rewrite table; of the three
                 // rule kinds here it maps to `rewrite`.
-                onTap: () => context.push(Routes.rulesOf('rewrite')),
+                onPressed: () => context.push(Routes.rulesOf('rewrite')),
               ),
             ],
             footer: '这三张表只影响服务器模式的独立规则库，与普通模式的规则互不覆盖。',
@@ -175,21 +171,18 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
           generateSection(
             title: '数据与重置',
             items: [
-              ListItem(
-                title: const Text('清空缓存'),
-                subtitle: const Text('移除已缓存的解析结果，下一次查询重新向上游请求'),
-                leading: const GlyphIcon(AppGlyphs.broom),
-                trailing: _clearingCache
-                    ? const CommonCircleLoading(size: 18)
-                    : const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: _clearingCache ? null : _clearCache,
+              NavEntryRow(
+                glyph: AppGlyphs.broom,
+                title: '清空缓存',
+                subtitle: '移除已缓存的解析结果，下一次查询重新向上游请求',
+                busy: _clearingCache,
+                onPressed: _clearingCache ? null : _clearCache,
               ),
-              ListItem(
-                title: const Text('重置运行统计'),
-                subtitle: const Text('清空本次运行的统计数据'),
-                leading: const GlyphIcon(AppGlyphs.reset),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => confirmResetServerStats(context, ref),
+              NavEntryRow(
+                glyph: AppGlyphs.reset,
+                title: '重置运行统计',
+                subtitle: '清空本次运行的统计数据',
+                onPressed: () => confirmResetServerStats(context, ref),
               ),
             ],
           ),
@@ -205,19 +198,17 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
           generateSection(
             title: '运行模式',
             items: [
-              ListItem(
-                title: const Text('使用向导'),
-                subtitle: const Text('查看服务器模式架构原理、局域网配置与就绪指引'),
-                leading: const GlyphIcon(AppGlyphs.info),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(Routes.modeOnboarding),
+              NavEntryRow(
+                glyph: AppGlyphs.info,
+                title: '使用向导',
+                subtitle: '查看服务器模式架构原理、局域网配置与就绪指引',
+                onPressed: () => context.push(Routes.modeOnboarding),
               ),
-              ListItem(
-                title: const Text('重新选择工作模式'),
-                subtitle: const Text('浏览所有工作模式详情并重新选择'),
-                leading: const GlyphIcon(AppGlyphs.sliders),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(Routes.modeSelect),
+              NavEntryRow(
+                glyph: AppGlyphs.sliders,
+                title: '重新选择工作模式',
+                subtitle: '浏览所有工作模式详情并重新选择',
+                onPressed: () => context.push(Routes.modeSelect),
               ),
             ],
           ),

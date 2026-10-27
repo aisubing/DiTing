@@ -10,6 +10,7 @@ import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/font_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -77,30 +78,29 @@ class ThemePage extends ConsumerWidget {
           generateSection(
             title: '界面显示',
             items: [
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.sun,
                 title: '日夜模式',
                 subtitle: _themeModeLabel(ref.watch(themeModeProvider)),
-                route: SystemPaths.dayNight,
+                onPressed: () => context.push(SystemPaths.dayNight),
               ),
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.palette,
                 title: '主题色配置',
                 subtitle: ref.watch(paletteProvider).label,
-                route: SystemPaths.colorStyle,
+                onPressed: () => context.push(SystemPaths.colorStyle),
               ),
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.blur,
                 title: '首页透明度',
                 subtitle: '交互组件与文字的透明度',
-                route: SystemPaths.homeOpacity,
+                onPressed: () => context.push(SystemPaths.homeOpacity),
               ),
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.dashboard,
                 title: '底栏自定义',
-                subtitle:
-                    '已选 ${ref.watch(bottomBarProvider).length} 项，可配置 2–4 项',
-                route: SystemPaths.bottomBar,
+                subtitle: '已选 ${ref.watch(bottomBarProvider).length} 项，可配置 2–4 项',
+                onPressed: () => context.push(SystemPaths.bottomBar),
               ),
               // Retained entries, after the legacy ones.
               ListItem.toggle(
@@ -113,44 +113,44 @@ class ThemePage extends ConsumerWidget {
                           ref.read(pureBlackProvider.notifier).toggle(value)
                     : null,
               ),
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.font,
                 title: '字体',
                 subtitle: fontLabelOf(
                   ref.watch(importedFontsProvider),
                   ref.watch(selectedFontFamilyProvider),
                 ),
-                route: SystemPaths.fontFamily,
+                onPressed: () => context.push(SystemPaths.fontFamily),
               ),
             ],
           ),
           generateSection(
             title: '首页内容',
             items: [
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.textShort,
                 title: '首页句子',
                 subtitle: '运行与停止两种状态各一句',
-                route: SystemPaths.homeSentence,
+                onPressed: () => context.push(SystemPaths.homeSentence),
               ),
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.status,
                 title: '通知栏设置',
                 subtitle: '常驻通知、实时速率与自定义文案',
-                route: SystemPaths.notification,
+                onPressed: () => context.push(SystemPaths.notification),
               ),
             ],
           ),
           generateSection(
             title: '背景与动效',
             items: [
-              _MenuRow(
+              NavEntryRow(
                 glyph: AppGlyphs.photos,
                 title: '软件背景',
                 subtitle: ref.watch(customBackgroundProvider).enabled
                     ? '已启用'
                     : '未启用',
-                route: SystemPaths.background,
+                onPressed: () => context.push(SystemPaths.background),
               ),
               ListItem.toggle(
                 title: const Text('底栏触感反馈'),
@@ -204,31 +204,6 @@ class ThemePage extends ConsumerWidget {
     AppThemeMode.light => '浅色模式',
     AppThemeMode.dark => '深色模式',
   };
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({
-    required this.glyph,
-    required this.title,
-    required this.subtitle,
-    required this.route,
-  });
-
-  final Glyph glyph;
-  final String title;
-  final String subtitle;
-  final String route;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      leading: GlyphIcon(glyph),
-      trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-      onTap: () => context.push(route),
-    );
-  }
 }
 
 class _ThemePreview extends ConsumerStatefulWidget {

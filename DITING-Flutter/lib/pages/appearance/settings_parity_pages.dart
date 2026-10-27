@@ -8,6 +8,7 @@ import 'package:diting/pages/appearance/appearance_inputs.dart';
 import 'package:diting/state/permission_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -95,14 +96,13 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
           generateSection(
             title: '权限',
             items: [
-              ListItem(
-                title: const Text('系统通知权限'),
-                subtitle: const Text('打开系统的通知设置页'),
-                leading: const GlyphIcon(AppGlyphs.lock),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+              NavEntryRow(
+                glyph: AppGlyphs.lock,
+                title: '系统通知权限',
+                subtitle: '打开系统的通知设置页',
                 // Opening the page directly beats a hint: the hint only told people what
                 // to do and left them to find it in Settings.
-                onTap: () => ref
+                onPressed: () => ref
                     .read(permissionStatesProvider.notifier)
                     .openSystemSettings(AppPermission.notification),
               ),
@@ -152,12 +152,11 @@ class ThemeBackgroundPage extends ConsumerWidget {
                 value: background.enabled,
                 onChanged: background.uris.isEmpty ? null : notifier.setEnabled,
               ),
-              ListItem(
-                title: const Text('添加图片'),
-                subtitle: const Text('从相册选择一张'),
-                leading: const GlyphIcon(AppGlyphs.add),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () async {
+              NavEntryRow(
+                glyph: AppGlyphs.add,
+                title: '添加图片',
+                subtitle: '从相册选择一张',
+                onPressed: () async {
                   final error = await notifier.pickAndAdd();
                   if (error != null && context.mounted) _hint(context, error);
                 },
@@ -401,14 +400,13 @@ class SettingsBackgroundPage extends ConsumerWidget {
             title: '稳定性',
             footer: '关闭电池优化后，系统在后台更不容易回收服务进程。',
             items: [
-              ListItem(
-                title: const Text('忽略电池优化'),
-                subtitle: const Text('请求把本应用加入系统白名单'),
-                leading: const GlyphIcon(AppGlyphs.bolt),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
+              NavEntryRow(
+                glyph: AppGlyphs.bolt,
+                title: '忽略电池优化',
+                subtitle: '请求把本应用加入系统白名单',
                 // Asks the system instead of describing the screen path; the request shows the
                 // "always run in background" dialog when the ROM allows it.
-                onTap: () => ref
+                onPressed: () => ref
                     .read(permissionStatesProvider.notifier)
                     .request(AppPermission.batteryOptimization),
               ),

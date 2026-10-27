@@ -4,7 +4,9 @@ library;
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/note_card.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/status_pill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -184,21 +186,15 @@ class IpQualitySheet extends StatelessWidget {
                     if (stage == IpQualityStage.loading)
                       const CommonCircleLoading()
                     else
-                      Container(
+                      StatusPill(
+                        label: level.label,
+                        color: levelColor,
+                        alpha: 0.14,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
                           vertical: 4,
                         ),
-                        decoration: ShapeDecoration(
-                          color: levelColor.withValues(alpha: 0.14),
-                          shape: AppShape.full,
-                        ),
-                        child: Text(
-                          level.label,
-                          style: AppTextStyle.subheadline
-                              .of(context, emphasized: true)
-                              .copyWith(color: levelColor),
-                        ),
+                        style: AppTextStyle.subheadline,
                       ),
                   ],
                 ),
@@ -226,16 +222,7 @@ class IpQualitySheet extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (stage == IpQualityStage.loading)
-                  ClipRSuperellipse(
-                    borderRadius: AppRadius.full,
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      backgroundColor: context.raisedSurfaceLevel.colorOf(
-                        colorScheme,
-                      ),
-                    ),
-                  ),
+                if (stage == IpQualityStage.loading) const ProgressLine(),
               ],
             ),
           ),
@@ -352,29 +339,13 @@ class _TypeBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    return Container(
+    return StatusPill(
+      label: type.label,
+      color: colorScheme.secondaryContainer,
+      foregroundColor: colorScheme.onSecondaryContainer,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: ShapeDecoration(
-        color: colorScheme.secondaryContainer,
-        shape: AppShape.full,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 4,
-        children: [
-          GlyphIcon(
-            type.glyph,
-            size: 14,
-            color: colorScheme.onSecondaryContainer,
-          ),
-          Text(
-            type.label,
-            style: AppTextStyle.caption1
-                .of(context)
-                .copyWith(color: colorScheme.onSecondaryContainer),
-          ),
-        ],
-      ),
+      emphasized: false,
+      leading: type.glyph,
     );
   }
 }

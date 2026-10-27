@@ -2,6 +2,7 @@
 import 'package:diting/data/cleanup/cleanup_models.dart';
 import 'package:diting/state/cleanup_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,35 +20,25 @@ class DataCleanupPage extends ConsumerWidget {
       title: '数据清理',
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                spacing: 8,
-                children: [
-                  Text(
-                    '以下操作会立即删除本机数据，删除后无法恢复。'
-                    '重要规则或配置请在执行前备份。',
-                    style: context.listSubtitleStyle,
-                  ),
-                  if (running != null)
-                    Row(
-                      spacing: 8,
-                      children: [
-                        const CommonCircleLoading(size: 16),
-                        Expanded(
-                          child: Text(
-                            '正在执行：${running.title}',
-                            style: context.listCaptionStyle,
-                          ),
-                        ),
-                      ],
+          PageIntroCard(
+            text:
+                '以下操作会立即删除本机数据，删除后无法恢复。'
+                '重要规则或配置请在执行前备份。',
+            extra: [
+              if (running != null)
+                Row(
+                  spacing: 8,
+                  children: [
+                    const CommonCircleLoading(size: 16),
+                    Expanded(
+                      child: Text(
+                        '正在执行：${running.title}',
+                        style: context.listCaptionStyle,
+                      ),
                     ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+            ],
           ),
           for (final group in cleanupGroups.entries)
             generateSection(

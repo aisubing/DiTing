@@ -6,6 +6,7 @@ import 'package:diting/data/native/dns_latency_bridge.dart';
 import 'package:diting/state/diagnostics_providers.dart';
 import 'package:diting/state/network_tools_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';

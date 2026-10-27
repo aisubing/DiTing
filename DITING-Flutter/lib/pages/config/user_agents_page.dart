@@ -6,6 +6,7 @@ import 'package:diting/pages/config/config_common.dart';
 import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/ui/support/input_limits.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/note_card.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -48,7 +49,7 @@ class UserAgentsConfigPage extends ConsumerWidget {
       ],
       body: PageBody(
         children: [
-          const ConfigNoteCard(
+          const NoteCard(
             text:
                 'UA 会随订阅下载、规则集拉取与订阅测速请求一起发送；'
                 '部分服务端按 UA 拒绝请求，改这里可以绕过。',

@@ -2,8 +2,9 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/feature_hub_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
-import 'package:diting/widgets/stat_strip.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:diting/widgets/page_intro.dart';
+import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -30,17 +31,11 @@ class HiddenFeaturesPage extends ConsumerWidget {
       ],
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
+          PageIntroCard(
+            text:
                 '自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，'
                 '默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。'
                 '设置会保存到本机，重启后仍然有效。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
           ),
           for (final entry in groups.entries)
             generateSection(

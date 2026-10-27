@@ -2,6 +2,7 @@
 import 'package:diting/pages/hub/agent_provider_editor.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -31,17 +32,11 @@ class AgentProvidersPage extends ConsumerWidget {
       ],
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
+          PageIntroCard(
+            text:
                 '点选下方预设厂商会自动预填接口地址；模型名请在编辑页点「拉取模型」'
                 '从厂商真实返回的列表里选。编辑时若 API Key 留空则保留原密钥。'
                 '密钥以旧版同一套掩码混淆后存在本机，不额外落明文。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
           ),
           generateSection(
             title: '我的厂商',

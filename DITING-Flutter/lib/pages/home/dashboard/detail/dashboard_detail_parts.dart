@@ -1,7 +1,9 @@
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/icon_badge.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/status_pill.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -210,16 +212,12 @@ class DashboardDetailHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             spacing: 14,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: ShapeDecoration(
-                  color: colors.tone,
-                  shape: AppShape.all(AppCorner.md),
-                ),
-                child: Center(
-                  child: GlyphIcon(glyph, size: 22, color: accent),
-                ),
+              IconBadge(
+                glyph: glyph,
+                size: 44,
+                glyphSize: 22,
+                color: colors.tone,
+                foregroundColor: accent,
               ),
               Expanded(
                 child: Column(
@@ -291,23 +289,8 @@ class _StatusPill extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: ShapeDecoration(
-        color: color.withValues(alpha: 0.12),
-        shape: AppShape.all(AppCorner.full),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: AppTextStyle.caption1
-            .of(context, emphasized: true)
-            .copyWith(color: color),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      StatusPill(label: label, color: color, alpha: 0.12);
 }
 
 /// Metric tiles in a two-column grid, framed as its own card.

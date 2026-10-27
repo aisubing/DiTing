@@ -16,6 +16,8 @@ import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
+import 'package:diting/widgets/notice.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -237,98 +239,99 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
               generateSection(
                 title: '诊断与观测',
                 items: [
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.target,
+                    leadingSize: 20,
                     title: 'IP 质量',
                     subtitle: '实测出口地址与三个公开情报源的类型判断',
-                    route: SystemPaths.ipQuality,
+                    onPressed: () => context.push(SystemPaths.ipQuality),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.requests,
+                    leadingSize: 20,
                     title: '请求日志',
                     subtitle: '合并 http_request_log 与 dns_log 的实时请求记录',
-                    route: ObservabilityPaths.requests,
+                    onPressed: () => context.push(ObservabilityPaths.requests),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.logs,
+                    leadingSize: 20,
                     title: '日志保留',
                     subtitle: '日志容量上限与 DNS 请求日志的记录范围',
-                    route: HubPaths.logRetention,
+                    onPressed: () => context.push(HubPaths.logRetention),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.wrench,
+                    leadingSize: 20,
                     title: '故障排查',
                     subtitle: '导出崩溃日志，手动抓取并导出运行日志',
-                    route: HubPaths.troubleshooting,
+                    onPressed: () => context.push(HubPaths.troubleshooting),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.broom,
+                    leadingSize: 20,
                     title: '数据清理',
                     subtitle: '按类别删除日志、权重、规则与缓存',
-                    route: HubPaths.dataCleanup,
+                    onPressed: () => context.push(HubPaths.dataCleanup),
                   ),
                 ],
               ),
               generateSection(
                 title: '配置与资源',
                 items: [
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.resources,
+                    leadingSize: 20,
                     title: '自定义资源',
                     subtitle: 'User-Agent、按需连接等配置资源入口',
-                    route: ConfigPaths.customResources,
+                    onPressed: () => context.push(ConfigPaths.customResources),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.account,
+                    leadingSize: 20,
                     title: 'User-Agent',
                     subtitle: '订阅下载与测速请求携带的 UA',
-                    route: ConfigPaths.userAgents,
+                    onPressed: () => context.push(ConfigPaths.userAgents),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.wifi,
+                    leadingSize: 20,
                     title: '按需连接',
                     subtitle: '按 SSID 决定是否启动 VPN',
-                    route: ConfigPaths.onDemand,
+                    onPressed: () => context.push(ConfigPaths.onDemand),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.cloudSync,
+                    leadingSize: 20,
                     title: 'WebDAV 云同步',
                     subtitle: '把备份真实上传到自建的 WebDAV 服务',
-                    route: HubPaths.configTransferWebdav,
+                    onPressed: () => context.push(HubPaths.configTransferWebdav),
                   ),
                 ],
               ),
               generateSection(
                 title: '界面与外观保留项',
                 items: [
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.font,
+                    leadingSize: 20,
                     title: '字体',
                     subtitle: '选择界面字体族，独立页',
-                    route: SystemPaths.fontFamily,
+                    onPressed: () => context.push(SystemPaths.fontFamily),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.textSize,
+                    leadingSize: 20,
                     title: '字号',
                     subtitle: '全局文字缩放；在外观设置「界面显示」组内联滑杆',
-                    route: SystemPaths.theme,
+                    onPressed: () => context.push(SystemPaths.theme),
                   ),
-                  _Entry(
+                  NavEntryRow(
                     glyph: AppGlyphs.motion,
+                    leadingSize: 20,
                     title: 'Tab 动画',
                     subtitle: '切换底部标签时的入场动画；在外观设置「背景与动效」组内联选项',
-                    route: SystemPaths.theme,
-                  ),
-                ],
-              ),
-              generateSection(
-                title: '设计与演示',
-                items: [
-                  _Entry(
-                    glyph: AppGlyphs.palette,
-                    title: '组件画廊',
-                    subtitle: '设计系统全部组件与字形目录',
-                    route: SystemPaths.demo,
+                    onPressed: () => context.push(SystemPaths.theme),
                   ),
                 ],
               ),
@@ -352,7 +355,7 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
               ),
               const ListFooter(
                 text:
-                    '以上「诊断与观测」「配置与资源」「界面与外观保留项」「设计与演示」'
+                    '以上「诊断与观测」「配置与资源」「界面与外观保留项」'
                     '里的页面都不属于旧版 1.4.3 的界面，保留供调试与组件验收；'
                     '旧版对应的功能仍按旧版菜单进入，不经过本页。',
               ),
@@ -410,61 +413,14 @@ class _DeveloperModeCard extends ConsumerWidget {
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: ShapeDecoration(
-                shape: AppShape.md,
-                color: colorScheme.warningContainer,
-              ),
-              child: Row(
-                spacing: 8,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GlyphIcon(
-                    AppGlyphs.warning,
-                    size: 16,
-                    color: colorScheme.onWarningContainer,
-                  ),
-                  Expanded(
-                    child: Text(
-                      '这里的动作会真的改写本机数据（日志库、prefs、数据库文件），'
-                      '其中「清空全部数据」不可撤销，不要在生产环境打开。',
-                      style: AppTextStyle.footnote
-                          .of(context)
-                          .copyWith(color: colorScheme.onWarningContainer),
-                    ),
-                  ),
-                ],
-              ),
+            InlineNotice(
+              message:
+                  '这里的动作会真的改写本机数据（日志库、prefs、数据库文件），'
+                  '其中「清空全部数据」不可撤销，不要在生产环境打开。',
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Entry extends StatelessWidget {
-  const _Entry({
-    required this.glyph,
-    required this.title,
-    required this.subtitle,
-    required this.route,
-  });
-
-  final Glyph glyph;
-  final String title;
-  final String subtitle;
-  final String route;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      leading: GlyphIcon(glyph, size: 20),
-      trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-      onTap: () => context.push(route),
     );
   }
 }

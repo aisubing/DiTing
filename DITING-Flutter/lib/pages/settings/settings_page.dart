@@ -5,6 +5,7 @@ import 'package:diting/router.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/routes/system_routes.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -25,45 +26,45 @@ class SettingsPage extends StatelessWidget {
           onPressed: () => context.push(SystemPaths.developer),
         ),
       ],
-      body: const PageBody(
+      body: PageBody(
         children: [
           // Each `_SettingsGroup` maps to a legacy `SettingsSection`; empty groups are skipped.
           _SettingsGroup(
             title: '运行模式',
             items: [
-              _SettingsRow(
+              NavEntryRow(
                 glyph: AppGlyphs.layers,
                 title: '运行模式',
                 subtitle: '切换普通模式或服务器模式',
-                route: Routes.modeSelect,
+                onPressed: () => context.push(Routes.modeSelect),
               ),
             ],
           ),
           _SettingsGroup(
             title: '性能优化',
             items: [
-              _SettingsRow(
+              NavEntryRow(
                 glyph: AppGlyphs.cpu,
                 title: '缓存设置',
                 subtitle: '缓存已解析的域名，减少重复查询',
-                route: HubPaths.cache,
+                onPressed: () => context.push(HubPaths.cache),
               ),
-              _SettingsRow(
+              NavEntryRow(
                 glyph: AppGlyphs.clock,
                 title: '日志模式',
                 subtitle: '选择 DNS 请求日志的记录范围',
-                route: HubPaths.logRetention,
+                onPressed: () => context.push(HubPaths.logRetention),
               ),
             ],
           ),
           _SettingsGroup(
             title: '运行行为',
             items: [
-              _SettingsRow(
+              NavEntryRow(
                 glyph: AppGlyphs.eyeOff,
                 title: '前后台行为',
                 subtitle: '后台隐藏、通知常驻、绕过局域网',
-                route: SystemPaths.foregroundBackground,
+                onPressed: () => context.push(SystemPaths.foregroundBackground),
               ),
             ],
           ),
@@ -71,22 +72,22 @@ class SettingsPage extends StatelessWidget {
           _SettingsGroup(
             title: '数据管理',
             items: [
-              _SettingsRow(
+              NavEntryRow(
                 glyph: AppGlyphs.language,
                 title: '语言设置',
                 subtitle: '选择应用界面语言',
-                route: SystemPaths.language,
+                onPressed: () => context.push(SystemPaths.language),
               ),
             ],
           ),
           _SettingsGroup(
             title: '其他设置',
             items: [
-              _SettingsRow(
+              NavEntryRow(
                 glyph: AppGlyphs.puzzle,
                 title: '使用向导',
                 subtitle: '查看当前工作模式的架构原理、权限配置与上手指引',
-                route: Routes.modeOnboarding,
+                onPressed: () => context.push(Routes.modeOnboarding),
               ),
             ],
           ),
@@ -105,29 +106,4 @@ class _SettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       generateSection(title: title, items: items);
-}
-
-class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({
-    required this.glyph,
-    required this.title,
-    required this.subtitle,
-    required this.route,
-  });
-
-  final Glyph glyph;
-  final String title;
-  final String subtitle;
-  final String route;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListItem(
-      title: Text(title),
-      subtitle: Text(subtitle),
-      leading: GlyphIcon(glyph),
-      trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-      onTap: () => context.push(route),
-    );
-  }
 }

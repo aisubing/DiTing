@@ -2,6 +2,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -94,16 +95,10 @@ class _ProviderVisibilityPageState
       title: '服务显示',
       body: PageBody(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: CommonCard(
-              padding: const EdgeInsets.all(16),
-              child: Text(
+          PageIntroCard(
+            text:
                 '关闭竞速模式时，首页解析服务下拉框仅显示这里选中的服务。'
                 '当前正在使用的服务会始终保留。',
-                style: context.listSubtitleStyle,
-              ),
-            ),
           ),
           for (final protocol in ProviderProtocol.values)
             _protocolSection(protocol),

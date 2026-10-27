@@ -10,7 +10,9 @@ import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/note_card.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/status_pill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -316,17 +318,11 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: ShapeDecoration(color: color, shape: AppShape.full),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Text(
-          label,
-          style: AppTextStyle.caption1.of(context, emphasized: true).copyWith(
-            color: foregroundColor,
-          ),
-        ),
-      ),
+    return StatusPill(
+      label: label,
+      color: color,
+      foregroundColor: foregroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
     );
   }
 }
@@ -386,15 +382,10 @@ class _DownloadProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final done = state.stage == UpdateStage.downloaded;
-    final color = done ? colorScheme.success : colorScheme.primary;
-    return ClipRSuperellipse(
-      borderRadius: AppRadius.full,
-      child: LinearProgressIndicator(
-        value: state.progress,
-        minHeight: 8,
-        backgroundColor: context.raisedSurfaceLevel.colorOf(colorScheme),
-        color: color,
-      ),
+    return ProgressLine(
+      value: state.progress,
+      minHeight: 8,
+      color: done ? colorScheme.success : colorScheme.primary,
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:diting/router.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/icon_badge.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -100,16 +102,10 @@ class _ModeSelectIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: Text(
-        '三种模式共用一套规则与缓存，区别在接管方式：普通模式走全隧道，'
-        '服务器模式只做局域网 DNS，极速模式是纯 Kotlin 窄路由。',
-        style: AppTextStyle.footnote
-            .of(context)
-            .copyWith(color: colorScheme.onSurfaceVariant),
-      ),
+    return PageIntroText(
+      text:
+          '三种模式共用一套规则与缓存，区别在接管方式：普通模式走全隧道，'
+          '服务器模式只做局域网 DNS，极速模式是纯 Kotlin 窄路由。',
     );
   }
 }
@@ -145,17 +141,14 @@ class _WorkModeCard extends StatelessWidget {
           Row(
             spacing: 12,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: ShapeDecoration(
-                  shape: AppShape.md,
-                  color: selected
-                      ? colorScheme.primary.withValues(alpha: 0.14)
-                      : colorScheme.surfaceContainerHigh,
-                ),
-                child: GlyphIcon(_glyphOf(mode), size: 24, color: accent),
+              IconBadge(
+                glyph: _glyphOf(mode),
+                size: 44,
+                glyphSize: 24,
+                color: selected
+                    ? colorScheme.primary.withValues(alpha: 0.14)
+                    : colorScheme.surfaceContainerHigh,
+                foregroundColor: accent,
               ),
               Expanded(
                 child: Column(

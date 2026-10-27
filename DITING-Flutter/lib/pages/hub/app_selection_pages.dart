@@ -7,6 +7,7 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
 import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
+import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/unsaved_changes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -313,16 +314,7 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
                         ),
                       ],
                     ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: CommonCard(
-                      padding: const EdgeInsets.all(16),
-                      child: Text(
-                        widget.info,
-                        style: context.listSubtitleStyle,
-                      ),
-                    ),
-                  ),
+                  PageIntroCard(text: widget.info),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: SearchField(

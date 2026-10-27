@@ -87,7 +87,6 @@ final Map<String, String> topLevelRoutes = {
   '开发者': SystemPaths.developer,
   '赞助': SystemPaths.sponsor,
   'IP 质量': SystemPaths.ipQuality,
-  '组件画廊': SystemPaths.demo,
   '缓存表': LogPaths.cache,
   '竞速排行': LogPaths.race,
   'Bootstrap DNS': LogPaths.bootstrap,

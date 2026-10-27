@@ -4,6 +4,8 @@ library;
 import 'package:diting/pages/system/app_info.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/icon_badge.dart';
+import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -42,19 +44,17 @@ class SponsorPage extends StatelessWidget {
           generateSection(
             title: '致谢名单',
             items: [
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.verified),
-                title: const Text('赞助者名单'),
-                subtitle: const Text('感谢每一位支持项目的朋友'),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(HubPaths.sponsorList),
+              NavEntryRow(
+                glyph: AppGlyphs.verified,
+                title: '赞助者名单',
+                subtitle: '感谢每一位支持项目的朋友',
+                onPressed: () => context.push(HubPaths.sponsorList),
               ),
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.account),
-                title: const Text('共建者名单'),
-                subtitle: const Text('感谢提出建议与帮助测试的伙伴'),
-                trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
-                onTap: () => context.push(HubPaths.coBuilders),
+              NavEntryRow(
+                glyph: AppGlyphs.account,
+                title: '共建者名单',
+                subtitle: '感谢提出建议与帮助测试的伙伴',
+                onPressed: () => context.push(HubPaths.coBuilders),
               ),
             ],
           ),
@@ -102,19 +102,12 @@ class _SponsorHero extends StatelessWidget {
             Row(
               spacing: 12,
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: ShapeDecoration(
-                    shape: AppShape.md,
-                    color: colorScheme.primaryContainer,
-                  ),
-                  child: GlyphIcon(
-                    AppGlyphs.star,
-                    size: 28,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
+                IconBadge(
+                  glyph: AppGlyphs.star,
+                  size: 52,
+                  glyphSize: 28,
+                  color: colorScheme.primaryContainer,
+                  foregroundColor: colorScheme.onPrimaryContainer,
                 ),
                 Expanded(
                   child: Column(

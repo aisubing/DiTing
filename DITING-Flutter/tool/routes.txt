@@ -6,7 +6,6 @@
 /config/user-agents
 /connections
 /dashboard/edit
-/demo
 /developer
 /editor
 /font-family

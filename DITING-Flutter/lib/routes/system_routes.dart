@@ -4,7 +4,6 @@ import 'package:diting/pages/appearance/font_family_page.dart';
 import 'package:diting/pages/appearance/font_size_page.dart';
 import 'package:diting/pages/appearance/settings_parity_pages.dart';
 import 'package:diting/pages/appearance/theme_page.dart';
-import 'package:diting/pages/demo/demo_page.dart';
 import 'package:diting/pages/system/developer_page.dart';
 import 'package:diting/pages/system/ip_quality_page.dart';
 import 'package:diting/pages/system/sponsor_page.dart';
@@ -42,9 +41,6 @@ abstract final class SystemPaths {
 
   /// Retained page: no upstream UI, kept at the user's request.
   static const ipQuality = '/ip-quality';
-
-  /// Component gallery.
-  static const demo = '/demo';
 }
 
 /// Appearance, settings and system routes, assembled by `lib/router.dart`. All set
@@ -144,13 +140,5 @@ List<RouteBase> systemRoutes() => <RouteBase>[
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const IpQualityPage()),
-  ),
-
-  // Component gallery.
-  GoRoute(
-    path: SystemPaths.demo,
-    parentNavigatorKey: rootNavigatorKey,
-    pageBuilder: (context, state) =>
-        androidDefaultPage(state, const DemoPage()),
   ),
 ];
