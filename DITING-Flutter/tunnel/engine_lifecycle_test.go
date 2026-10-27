@@ -1,12 +1,11 @@
-// engine_lifecycle_test.go pins the Engine teardown contract (A-017).
+// engine_lifecycle_test.go pins the Engine teardown and start/stop
+// interleaving contracts.
 //
 // NewEngine eagerly allocates a DNS cache whose cleaner goroutine ticks every
-// 30 seconds, so an Engine that is dropped without Stop() leaks that goroutine
-// for the rest of the process lifetime. The Android CA helper mints a throwaway
-// Engine per certificate call, which turned the leak into an unbounded one.
-//
-// The assertions here are deliberately observable from outside the cache: after
-// Stop(), the cache reports itself closed and a second Stop() is a no-op.
+// 30 seconds, so an Engine dropped without Stop() leaks that goroutine for the
+// rest of the process lifetime. StartFull, meanwhile, publishes its TUN stack
+// only after releasing e.mu, so a Stop() landing inside that window must be
+// able to tell "I am still the session" from "I was superseded".
 
 package tunnel
 
@@ -53,5 +52,62 @@ func TestEngineStopReleasesCertCache(t *testing.T) {
 
 	if e.stackCertMgr != nil {
 		t.Fatal("Engine.Stop left the MITM certificate manager attached")
+	}
+}
+
+func TestSessionGenInvalidatesInFlightStart(t *testing.T) {
+	e := NewEngine()
+
+	// Stand in for StartFull's capture-under-lock step.
+	e.mu.Lock()
+	gen := e.sessionGen
+	e.mu.Unlock()
+
+	// Stop() then a brand-new session: running ends up true again, which is
+	// exactly what an e.running-only check would mistake for "still mine".
+	e.Stop()
+	e.mu.Lock()
+	e.sessionGen++
+	e.running = true
+	stillCurrent := e.running && e.sessionGen == gen
+	e.mu.Unlock()
+
+	if stillCurrent {
+		t.Fatal("stale StartFull was considered current after Stop + restart")
+	}
+}
+
+// The common case must keep working: nothing intervenes, so the captured
+// generation still identifies the live session when the publish happens.
+func TestSessionGenAcceptsUninterruptedStart(t *testing.T) {
+	e := NewEngine()
+
+	e.mu.Lock()
+	gen := e.sessionGen
+	e.running = true
+	e.mu.Unlock()
+
+	e.mu.Lock()
+	stillCurrent := e.running && e.sessionGen == gen
+	e.mu.Unlock()
+
+	if !stillCurrent {
+		t.Fatal("uninterrupted StartFull was rejected as stale")
+	}
+}
+
+// Stop() must bump the generation even when no tunnel was running, otherwise a
+// StartFull that captured the generation and then lost the race to a Stop would
+// still see a matching value and publish into a stopped engine.
+func TestStopBumpsSessionGenWithoutRunningTunnel(t *testing.T) {
+	e := NewEngine()
+	before := e.sessionGen
+	e.Stop()
+	if e.sessionGen == before {
+		t.Fatal("Stop did not advance sessionGen while idle")
+	}
+	// And it must still have released the cache (A-017 stays fixed).
+	if !e.dnsCache.closed.Load() {
+		t.Fatal("idle Stop no longer closes the DNS cache")
 	}
 }

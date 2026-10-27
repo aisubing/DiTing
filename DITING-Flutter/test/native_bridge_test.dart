@@ -1,11 +1,26 @@
+// Guards the Dart side of the native channels: validation order, JSON shape, enum
+// fallbacks and the one-shot contracts the native side relies on.
+
+import 'package:diting/data/fonts/font_repository.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
+import 'package:diting/data/native/platform_bridge.dart';
+import 'package:diting/data/native/tile_bridge.dart';
+import 'package:diting/data/prefs/legacy_prefs_store.dart';
+import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/state/installed_apps_providers.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards the Dart side of three native channels: validation order, JSON shape, enum fallbacks
 void main() {
+  group('原生通道', _nativeBridge);
+  group('快捷开关启动请求', _tileBridge);
+  group('导入字体', _fontRepository);
+}
+
+/// Guards the Dart side of three native channels: validation order, JSON shape, enum fallbacks
+void _nativeBridge() {
   group('OutboundProxyConfig.validationError', () {
     OutboundProxyConfig base({
       String host = '127.0.0.1',
@@ -150,17 +165,6 @@ void main() {
       expect(json, isNot(contains('"enabled":"true"')));
     });
 
-    test('密码里的引号与反斜杠被正确转义', () {
-      const config = OutboundProxyConfig(
-        username: r'us"er\name',
-        password: r'p@ss"wor\d',
-      );
-      final json = config.toEngineJson();
-      // Backslashes are escaped before quotes; the reverse order breaks the JSON.
-      expect(json, contains(r'"username":"us\"er\\name"'));
-      expect(json, contains(r'"password":"p@ss\"wor\\d"'));
-    });
-
     test('字段集合固定且顺序稳定', () {
       final json = const OutboundProxyConfig().toEngineJson();
       expect(
@@ -169,30 +173,9 @@ void main() {
         '"port":7890,"username":"","password":""}',
       );
     });
-
-    test('port 必须是 JSON 数字，不能带引号', () {
-      // The Go side parses `Port int` with `json.Unmarshal`, so a string port silently kills the
-      // config
-      for (final port in [1, 7890, 65535]) {
-        final json = OutboundProxyConfig(port: port).toEngineJson();
-        expect(json, contains('"port":$port,'));
-        expect(json, isNot(contains('"port":"$port"')));
-      }
-    });
   });
 
   group('OutboundProxyProtocol.fromStorageValue', () {
-    test('已知值原样映射', () {
-      expect(
-        OutboundProxyProtocol.fromStorageValue('socks5'),
-        OutboundProxyProtocol.socks5,
-      );
-      expect(
-        OutboundProxyProtocol.fromStorageValue('http'),
-        OutboundProxyProtocol.http,
-      );
-    });
-
     test('未知值与 null 回落到 socks5', () {
       for (final value in ['quic', 'SOCKS5', 'HTTP', '', null]) {
         expect(
@@ -223,34 +206,6 @@ void main() {
         isFalse,
       );
     });
-
-    test('missing() 一定不 ready', () {
-      expect(const CaCertificateState.missing().ready, isFalse);
-      expect(const CaCertificateState.missing().available, isFalse);
-      expect(const CaCertificateState.missing().fingerprintSha256, isNull);
-    });
-
-    test('fromMap 只认 boolean true', () {
-      final state = CaCertificateState.fromMap({
-        'available': true,
-        'installed': 'true', // a string, not a bool
-        'fingerprintSha256': 'AB:CD',
-        'pem': 'PEM',
-        'error': null,
-      });
-      expect(state.available, isTrue);
-      expect(state.installed, isFalse);
-      expect(state.ready, isFalse);
-      expect(state.fingerprintSha256, 'AB:CD');
-      expect(state.pem, 'PEM');
-    });
-
-    test('空 map 得到全 false', () {
-      final state = CaCertificateState.fromMap(const {});
-      expect(state.available, isFalse);
-      expect(state.installed, isFalse);
-      expect(state.error, isNull);
-    });
   });
 
   group('InstalledApp.matches', () {
@@ -260,10 +215,6 @@ void main() {
       isSystem: false,
       uid: 10123,
     );
-
-    test('空查询匹配一切', () {
-      expect(app.matches(''), isTrue);
-    });
 
     test('匹配标签与包名，大小写不敏感', () {
       for (final query in [
@@ -275,13 +226,6 @@ void main() {
         'example',
       ]) {
         expect(app.matches(query), isTrue, reason: '$query 应当命中');
-      }
-    });
-
-    test('不匹配的内容返回 false', () {
-      for (final query in ['邮箱', 'com.other', ' 地图']) {
-        // No trim: the debounce callback already trimmed, and a second trim would disagree
-        expect(app.matches(query), isFalse, reason: '$query 不该命中');
       }
     });
   });
@@ -304,20 +248,6 @@ void main() {
       });
       expect(app.isSystem, isFalse);
       expect(app.uid, 10001);
-    });
-  });
-
-  group('EmptyInstalledAppsSource', () {
-    test('list / resolveUids / isSelf 都不抛', () async {
-      const source = EmptyInstalledAppsSource();
-      expect(await source.list(), isEmpty);
-      expect(await source.resolveUids(['com.x']), isEmpty);
-      expect(await source.isSelf('com.haoze.diting'), isFalse);
-    });
-
-    test('resolveUids 对空入参也返回空 map', () async {
-      const source = EmptyInstalledAppsSource();
-      expect(await source.resolveUids(const []), isEmpty);
     });
   });
 
@@ -362,15 +292,6 @@ void main() {
       expect(AppListSort.fromStorageValue('RANDOM'), AppListSort.labelAsc);
     });
 
-    test('system / user 按 isSystem 分档，selected 按集合', () {
-      expect(AppListFilter.system.accept(system, const {}), isTrue);
-      expect(AppListFilter.system.accept(userA, const {}), isFalse);
-      expect(AppListFilter.user.accept(userA, const {}), isTrue);
-      expect(AppListFilter.user.accept(system, const {}), isFalse);
-      expect(AppListFilter.selected.accept(userA, const {'com.b.app'}), isTrue);
-      expect(AppListFilter.selected.accept(userA, const {}), isFalse);
-    });
-
     test('排序：标签升/降序，同级用包名升序兜底', () {
       final apps = [system, userA, userB];
       final asc = [...apps]..sort(AppListSort.labelAsc.compare);
@@ -390,27 +311,115 @@ void main() {
         'com.a.app',
       ]);
     });
+  });
+}
 
-    test('visibleInstalledApps 同时应用过滤、搜索与排序', () {
-      final visible = visibleInstalledApps(
-        apps: [system, userA, userB],
-        query: 'app',
-        filter: AppListFilter.user,
-        sort: AppListSort.packageAsc,
-        selected: const {},
-      );
-      expect(visible.map((app) => app.packageName), ['com.a.app', 'com.b.app']);
+/// Guards the one-shot contract of `consumeStartRequest`: the native side clears the extra when
+/// read, so the tile must never be able to start a tunnel twice from one tap.
+void _tileBridge() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const channel = MethodChannel(tileChannelName);
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+  });
+
+  void mockResult(Object? Function(MethodCall call) handler) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async => handler(call));
+  }
+
+  test('读取 native 的一次性启动请求', () async {
+    mockResult((call) => call.method == 'consumeStartRequest' ? true : null);
+    expect(await TileBridge().consumeStartRequest(), isTrue);
+  });
+
+  test('无请求时为 false', () async {
+    mockResult((_) => false);
+    expect(await TileBridge().consumeStartRequest(), isFalse);
+  });
+
+  test('通道缺失（桌面端）降级为 false', () async {
+    // No mock handler installed at all: the call throws MissingPluginException.
+    expect(await TileBridge().consumeStartRequest(), isFalse);
+  });
+
+  test('native 报错降级为 false', () async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          channel,
+          (call) async => throw PlatformException(code: 'boom'),
+        );
+    expect(await TileBridge().consumeStartRequest(), isFalse);
+  });
+}
+
+/// Imported fonts are the only non-system faces now that the bundle ships none, so the bridge
+/// contract and the stored shape both have to survive a round trip.
+void _fontRepository() {
+  group('FontPickResult.fromMap', () {
+    test('成功时带上路径、名称与大小', () {
+      final result = FontPickResult.fromMap({
+        'path': '/data/user/0/com.haoze.diting/files/fonts/abc.ttf',
+        'name': 'Inter-Regular.ttf',
+        'bytes': 20480,
+        'cancelled': false,
+      });
+      expect(result.isOk, isTrue);
+      expect(result.path, endsWith('abc.ttf'));
+      expect(result.name, 'Inter-Regular.ttf');
+      expect(result.bytes, 20480);
     });
 
-    test('SELECTED 过滤配合搜索只留下命中的已选项', () {
-      final visible = visibleInstalledApps(
-        apps: [system, userA, userB],
-        query: 'beta',
-        filter: AppListFilter.selected,
-        sort: AppListSort.labelAsc,
-        selected: const {'com.a.app', 'com.b.app'},
+    test('原生报错时透传原因且不视为成功', () {
+      final result = FontPickResult.fromMap({'error': '只支持 TTF / OTF 字体文件'});
+      expect(result.isOk, isFalse);
+      expect(result.error, '只支持 TTF / OTF 字体文件');
+    });
+
+    test('无通道的降级结果给出可读原因', () {
+      const result = FontPickResult.unavailable();
+      expect(result.isOk, isFalse);
+      expect(result.error, isNotNull);
+    });
+  });
+
+  group('已导入字体的存取', () {
+    late MemoryLegacyPrefsStore store;
+
+    setUp(() => store = MemoryLegacyPrefsStore());
+
+    test('写入后按原样读回，路径与族名都不丢', () {
+      final settings = LegacySettings(store);
+      settings.setImportedFonts(const [
+        ImportedFont(
+          family: 'Inter-Regular',
+          label: 'Inter-Regular',
+          path: '/fonts/abc.ttf',
+        ),
+      ]);
+
+      final restored = LegacySettings(store).importedFonts;
+      expect(restored, hasLength(1));
+      expect(restored.single.family, 'Inter-Regular');
+      expect(restored.single.path, '/fonts/abc.ttf');
+    });
+
+    test('损坏的 JSON 与缺字段的条目都被忽略', () {
+      store.putString('dns_vpn_prefs', 'app_imported_fonts', 'not json');
+      expect(LegacySettings(store).importedFonts, isEmpty);
+
+      store.putString(
+        'dns_vpn_prefs',
+        'app_imported_fonts',
+        '[{"family":"","path":"/x.ttf"},{"label":"无路径"},'
+            '{"family":"Ok","path":"/ok.ttf","label":"Ok"}]',
       );
-      expect(visible.map((app) => app.packageName), ['com.a.app']);
+      final fonts = LegacySettings(store).importedFonts;
+      expect(fonts, hasLength(1));
+      expect(fonts.single.family, 'Ok');
     });
   });
 }

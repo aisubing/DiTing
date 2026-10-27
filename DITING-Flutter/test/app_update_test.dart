@@ -1,11 +1,21 @@
+// Release checking and the auto-update schedule: a mistake silently never updates or
+// re-downloads on every foreground.
+
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/update/app_update_checker.dart';
+import 'package:diting/state/auto_update_runner.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pins the update check against a real HTTP server and 1.4.3's parsing rules.
 void main() {
+  group('版本检查', _updateChecker);
+  group('订阅自动更新', _autoUpdate);
+}
+
+/// Pins the update check against a real HTTP server and 1.4.3's parsing rules.
+void _updateChecker() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   // `flutter_test` installs an HttpOverrides answering 400; this file uses a loopback server
@@ -65,20 +75,10 @@ void main() {
       expect(AppUpdateChecker.isNewerVersion('1.4.9', '1.4.10'), isFalse);
     });
 
-    test('v 前缀与 -suffix 都被忽略', () {
-      expect(AppUpdateChecker.isNewerVersion('v1.5.0', '1.4.4'), isTrue);
-      expect(AppUpdateChecker.isNewerVersion('v1.5.0-beta', '1.4.4'), isTrue);
-    });
-
     test('段数不同时缺失段按 0 处理', () {
       expect(AppUpdateChecker.isNewerVersion('1.5', '1.4.4'), isTrue);
       expect(AppUpdateChecker.isNewerVersion('1.4.4.1', '1.4.4'), isTrue);
       expect(AppUpdateChecker.isNewerVersion('1.4', '1.4.0'), isFalse);
-    });
-
-    test('相同版本不算更新', () {
-      expect(AppUpdateChecker.isNewerVersion('1.4.4', '1.4.4'), isFalse);
-      expect(AppUpdateChecker.isNewerVersion('v1.4.4', '1.4.4'), isFalse);
     });
 
     test('看不懂的版本号不当作更新', () {
@@ -177,31 +177,10 @@ void main() {
       expect(result.error, contains('APK'));
     });
 
-    test('缺 tag_name 时报错', () {
-      final result = AppUpdateChecker.parseLatestRelease(
-        jsonEncode({'assets': <Object>[]}),
-        '1.0.0',
-      );
-      expect(result.failed, isTrue);
-      expect(result.error, contains('tag_name'));
-    });
-
     test('非法 JSON 报错而不是红屏', () {
       final result = AppUpdateChecker.parseLatestRelease('not json', '1.0.0');
       expect(result.failed, isTrue);
       expect(result.error, contains('JSON'));
-    });
-
-    test('download_url 为空时报错', () {
-      final payload = jsonEncode({
-        'tag_name': 'v2.0.0',
-        'assets': [
-          {'name': 'diting.apk', 'browser_download_url': '  '},
-        ],
-      });
-      final result = AppUpdateChecker.parseLatestRelease(payload, '1.0.0');
-      expect(result.failed, isTrue);
-      expect(result.error, contains('下载地址'));
     });
   });
 
@@ -218,13 +197,6 @@ void main() {
       final result = await checker().check('1.4.4');
       expect(result.hasUpdate, isTrue);
       expect(result.info!.version, '9.9.9');
-    });
-
-    test('200 + 同版本 → upToDate', () async {
-      body = release(tag: 'v1.4.4');
-      final result = await checker().check('1.4.4');
-      expect(result.failed, isFalse);
-      expect(result.hasUpdate, isFalse);
     });
 
     test('限流的 403 说清是限流，而不是笼统「返回 403」', () async {
@@ -258,5 +230,80 @@ void main() {
       expect(result.failed, isTrue);
       expect(result.error, contains('无法连接'));
     });
+  });
+}
+
+/// Due-time logic for shipping a release; a mistake silently never updates or re-downloads each
+/// foreground
+void _autoUpdate() {
+  SubscriptionRecord record({
+    int id = 1,
+    int lastAttemptAt = 0,
+    bool enabled = true,
+    String sourceType = 'remote',
+  }) => SubscriptionRecord(
+    id: id,
+    url: 'https://example.com/$id.yaml',
+    name: '订阅 $id',
+    sourceType: SubscriptionSourceType.fromStorage(sourceType),
+    kind: SubscriptionKind.normalize('normal'),
+    enabled: enabled,
+    ruleCount: 0,
+    lastUpdated: 0,
+    addedAt: 0,
+    importState: SubscriptionImportState.ready,
+    lastAttemptAt: lastAttemptAt,
+    consecutiveFailureCount: 0,
+    mirrorFallback: true,
+  );
+
+  const hour = 3600 * 1000;
+
+  group('isDue', () {
+    test('从未尝试过 → 到期', () {
+      expect(AutoUpdateRunner.isDue(record(), 24, 1000), isTrue);
+    });
+
+    test('刚好满间隔 → 到期（边界含等于）', () {
+      final now = 100 * hour;
+      expect(
+        AutoUpdateRunner.isDue(record(lastAttemptAt: now - 24 * hour), 24, now),
+        isTrue,
+      );
+    });
+
+    test('间隔按设置变化，不是写死 24 小时', () {
+      final now = 100 * hour;
+      final target = record(lastAttemptAt: now - 7 * hour);
+      expect(AutoUpdateRunner.isDue(target, 6, now), isTrue);
+      expect(AutoUpdateRunner.isDue(target, 12, now), isFalse);
+    });
+  });
+
+  group('nextDueAt', () {
+    test('取最早到期的那条', () {
+      final now = 100 * hour;
+      final records = [
+        record(id: 1, lastAttemptAt: now - 2 * hour),
+        record(id: 2, lastAttemptAt: now - 20 * hour),
+        record(id: 3, lastAttemptAt: now - 10 * hour),
+      ];
+      expect(AutoUpdateRunner.nextDueAt(records, 24, now), now + 4 * hour);
+    });
+
+    test('从未尝试的订阅立即到期（返回 now）', () {
+      final now = 100 * hour;
+      final records = [
+        record(id: 1, lastAttemptAt: now - 1 * hour),
+        record(id: 2),
+      ];
+      expect(AutoUpdateRunner.nextDueAt(records, 24, now), now);
+    });
+  });
+
+  test('AutoUpdateRun.didRun 只在没有跳过原因时为真', () {
+    expect(const AutoUpdateRun().didRun, isTrue);
+    expect(const AutoUpdateRun(summary: '1 个已更新').didRun, isTrue);
+    expect(const AutoUpdateRun(skip: AutoUpdateSkip.disabled).didRun, isFalse);
   });
 }

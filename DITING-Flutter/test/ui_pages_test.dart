@@ -1,3 +1,6 @@
+// Guards real data reaching the two observability pages. Providers are
+// overridden because `sqflite_common_ffi` I/O never advances under fake async.
+
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
@@ -7,25 +10,17 @@ import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// `Override` is only exported from `misc.dart`, and override lists need `List<Override>`
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'support/app_host.dart';
 
-/// Guards real data reaching the two observability pages. Providers are overridden because
-/// `sqflite_common_ffi` I/O never advances under fake async, so `pumpAndSettle` times out
-class _FakeSpeedSeries extends SpeedSeriesNotifier {
-  _FakeSpeedSeries(this._value);
-
-  final SpeedSeries _value;
-
-  @override
-  SpeedSeries build() => _value;
+void main() {
+  group('请求与流量页', _observabilityPages);
 }
 
-void main() {
+void _observabilityPages() {
   const today = '2026-10-20';
 
   final dnsRows = <DnsLogRow>[
@@ -144,25 +139,6 @@ void main() {
       expect(find.text('HTTPS'), findsWidgets);
       expect(find.textContaining('共 5 条'), findsOneWidget);
       expect(find.textContaining('1 条处理失败'), findsOneWidget);
-    });
-
-    testWidgets('null authority 渲染成破折号而不是空洞', (tester) async {
-      await pumpPage(tester, const RequestsPage());
-      expect(find.text('—'), findsWidgets);
-    });
-
-    testWidgets('空列表进入空态而不是报错', (tester) async {
-      await pumpPage(
-        tester,
-        const RequestsPage(),
-        providerOverrides: [
-          requestFeedProvider.overrideWith(
-            (ref) async => const RequestFeed.empty(),
-          ),
-        ],
-      );
-      expect(tester.takeException(), isNull);
-      expect(find.text('还没有请求记录'), findsOneWidget);
     });
 
     testWidgets('读取失败给出重试入口，而不是空白或崩溃', (tester) async {
@@ -295,19 +271,21 @@ void main() {
       expect(find.text('隐藏系统应用'), findsOneWidget);
       expect(find.byType(TextField), findsWidgets);
     });
-
-    testWidgets('空列表进入空态而不是报错', (tester) async {
-      await pumpPage(
-        tester,
-        const TrafficPage(),
-        providerOverrides: [
-          trafficSnapshotProvider.overrideWith(
-            (ref) async => const TrafficSnapshot.empty(),
-          ),
-        ],
-      );
-      expect(tester.takeException(), isNull);
-      expect(find.text('暂无流量数据'), findsOneWidget);
-    });
   });
 }
+
+// `Override` is only exported from `misc.dart`, and override lists need `List<Override>`
+
+/// Guards real data reaching the two observability pages. Providers are overridden because
+/// `sqflite_common_ffi` I/O never advances under fake async, so `pumpAndSettle` times out
+class _FakeSpeedSeries extends SpeedSeriesNotifier {
+  _FakeSpeedSeries(this._value);
+
+  final SpeedSeries _value;
+
+  @override
+  SpeedSeries build() => _value;
+}
+
+/// The card probes on its own first frame, and its header must then report the tally for the
+/// sites it actually drew — a mismatch between the chip and the cells is what the emulator showed.

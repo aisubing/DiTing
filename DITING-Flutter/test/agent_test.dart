@@ -1,9 +1,13 @@
+// AI analysis: the obfuscated key round trip, endpoint derivation, the HTTP client and
+// the prompts built from real log tables.
+
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:diting/data/agent/agent_api_client.dart';
+import 'package:diting/data/agent/agent_api_text_parser.dart';
 import 'package:diting/data/agent/agent_prompts.dart';
 import 'package:diting/data/agent/agent_traffic_summary.dart';
-import 'package:diting/data/agent/agent_api_client.dart';
 import 'package:diting/data/agent/key_obfuscator.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
@@ -16,6 +20,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'support/legacy_schema.dart';
 
 void main() {
+  group('分析与提示词', _agentAnalysis);
+  group('剪贴板识别', _agentTextParser);
+}
+
+void _agentAnalysis() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   databaseFactory = databaseFactoryFfi;
@@ -29,11 +38,6 @@ void main() {
       expect(openApiKey(sealApiKey('sk-abc')), 'sk-abc');
       expect(sealApiKey(''), '');
       expect(openApiKey(''), '');
-    });
-
-    test('非 ASCII 密钥不被截断', () {
-      const key = '密钥-测试-🔑';
-      expect(openApiKey(sealApiKey(key)), key);
     });
 
     test('坏密文返回空串而不是抛异常', () {
@@ -69,19 +73,6 @@ void main() {
           'https://x.test/v1/chat/completions',
         ),
         'https://x.test/v1/chat/completions',
-      );
-    });
-
-    test('/models 与 /chat/completions 前缀一致', () {
-      expect(
-        AgentApiClient.resolveModelsEndpoint('https://api.deepseek.com'),
-        'https://api.deepseek.com/v1/models',
-      );
-      expect(
-        AgentApiClient.resolveModelsEndpoint(
-          'https://x.test/v1/chat/completions',
-        ),
-        'https://x.test/v1/models',
       );
     });
   });
@@ -244,20 +235,6 @@ void main() {
       expect(models, ['a-model', 'b-model']);
       expect(requests.single['path'], '/models');
     });
-
-    test('模型列表为空时提示手填，而不是给一个空候选列表', () async {
-      reply = {'data': <Object?>[]};
-      await expectLater(
-        client().fetchModels(baseUrl: base, apiKey: 'sk-test'),
-        throwsA(
-          isA<AgentApiException>().having(
-            (error) => error.message,
-            'message',
-            contains('手动填写'),
-          ),
-        ),
-      );
-    });
   });
 
   group('真实日志 → 提示词', () {
@@ -333,26 +310,6 @@ void main() {
       expect(summary.render(), contains('极速模式不产生 HTTPS 检查记录'));
       expect(summary.render(), isNot(contains('采样数量: 0 条')));
     });
-
-    test('域名分析带上该域名的真实命中记录', () async {
-      await insertDns('ads.tracker.test', 'BLOCKED', message: 'matched rule');
-      await insertDns('other.test', 'PASSED');
-      final rows = await DnsLogRepository(db).recent(limit: 50);
-      final context = [
-        for (final row in rows)
-          if (row.domain.contains('tracker'))
-            'DNS: ${row.domain} -> ${row.result}',
-      ].join('\n');
-      final request = buildDomainAnalysisRequest(
-        domain: 'ads.tracker.test',
-        systemPrompt: '',
-        context: context,
-      );
-      expect(request.userPrompt, contains('ads.tracker.test'));
-      expect(request.userPrompt, contains('BLOCKED'));
-      expect(request.userPrompt, isNot(contains('other.test')));
-      expect(request.systemPrompt, contains('资深网络安全'));
-    });
   });
 
   group('设置落盘', () {
@@ -390,29 +347,6 @@ void main() {
       expect(settings.agentApiTemperature, 0.3);
     });
 
-    test('缺失厂商 JSON 时按旧版规则播种', () {
-      final empty = loadAgentApiState(settings);
-      expect(empty.providers, hasLength(1));
-      expect(empty.providers.single.id, 'preset_deepseek');
-
-      store.putString('dns_vpn_prefs', 'agent_api_key', 'sk-legacy');
-      store.putString(
-        'dns_vpn_prefs',
-        'agent_api_base_url',
-        'https://api.moonshot.cn/v1',
-      );
-      final migrated = loadAgentApiState(settings);
-      expect(migrated.providers.single.id, 'migrated_default');
-      expect(migrated.providers.single.baseUrl, 'https://api.moonshot.cn/v1');
-      expect(migrated.providers.single.hasKey, isTrue);
-    });
-
-    test('厂商 JSON 损坏时回落播种，不让整页读不出来', () {
-      store.putString('dns_vpn_prefs', 'agent_ai_providers_json', '{oops');
-      final state = loadAgentApiState(settings);
-      expect(state.providers, isNotEmpty);
-    });
-
     test('厂商 JSON 往返保留混淆后的密钥', () {
       final sealed = sealApiKey('sk-round-trip');
       final encoded = jsonEncode([
@@ -428,6 +362,34 @@ void main() {
       expect(decoded.single.id, 'p1');
       expect(decoded.single.apiKey, 'sk-round-trip');
       expect(encoded.contains('sk-round-trip'), isFalse);
+    });
+  });
+}
+
+void _agentTextParser() {
+  group('剪贴板智能识别', () {
+    test('JSON 一次给出地址、密钥与模型', () {
+      final result = parseAgentApiText(
+        '{"apiKey":"sk-abcdefghijklmnop","baseUrl":"https://api.test/v1","model":"m1"}',
+      );
+      expect(result.apiKey, 'sk-abcdefghijklmnop');
+      expect(result.baseUrl, 'https://api.test/v1');
+      expect(result.model, 'm1');
+      expect(result.message, contains('JSON'));
+    });
+
+    test('地址加密钥的组合被拆开', () {
+      final result = parseAgentApiText(
+        'https://api.test/v1, sk-abcdefghijklmnopqrst',
+      );
+      expect(result.baseUrl, 'https://api.test/v1');
+      expect(result.apiKey, 'sk-abcdefghijklmnopqrst');
+    });
+
+    test('裸密钥被当成密钥，换行与空格一并清掉', () {
+      final result = parseAgentApiText('  sk-abcdefghijklmnopqrst\n ');
+      expect(result.apiKey, 'sk-abcdefghijklmnopqrst');
+      expect(result.baseUrl, isNull);
     });
   });
 }

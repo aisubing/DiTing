@@ -1,68 +1,9 @@
-import 'package:diting/app/app.dart';
-import 'package:diting/data/mock_data.dart';
-import 'package:diting/pages/system/unknown_route_page.dart';
+// Route tables shared by `ui_shell_test.dart` and `ui_behavior_test.dart`:
+// every hub card target and every page without path parameters.
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
 
-import 'support/test_hooks.dart';
-
-/// Guards that every hub card points at a registered route; per-route layout and fallback are
-/// covered by `layout_regression_test.dart`, which pumps the same catalogue at three sizes
-void main() {
-  installGlobalTestHooks();
-
-  Future<void> pumpAt(WidgetTester tester, String location) async {
-    tester.view.physicalSize = const Size(1170, 2532);
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: appTestOverrides(),
-        child: DitingApp(initialLocation: location),
-      ),
-    );
-    await tester.pump();
-    await tester.pumpAndSettle();
-  }
-
-  /// Asserts the mounted page neither threw nor landed on the fallback page.
-  void expectReached(WidgetTester tester, String route, String label) {
-    expect(tester.takeException(), isNull, reason: '$label ($route) 构建抛异常');
-    expect(
-      find.byType(UnknownRoutePage),
-      findsNothing,
-      reason: '$label ($route) 没有注册：落到了未知路由兜底页',
-    );
-  }
-
-  group('功能中心卡片可达', () {
-    testWidgets('每张卡片的 route 都能构建', (tester) async {
-      // Deduplicate: several entries can point at the same page.
-      final routes = <String>{
-        for (final category in mockFeatureCategories)
-          for (final card in category.cards) card.route,
-      };
-      expect(routes, isNotEmpty);
-
-      for (final route in routes) {
-        await pumpAt(tester, route);
-        expectReached(tester, route, '功能中心卡片');
-      }
-    });
-  });
-
-  group('兜底页', () {
-    testWidgets('未注册的路径落到 UnknownRoutePage', (tester) async {
-      await pumpAt(tester, '/definitely/not/a/route');
-      expect(find.byType(UnknownRoutePage), findsOneWidget);
-      expect(find.text('/definitely/not/a/route'), findsOneWidget);
-    });
-  });
-}
-
+/// First-level pages, everything without path parameters.
 /// First-level pages, everything without path parameters; shared with `layout_regression_test.dart`
 final Map<String, String> topLevelRoutes = {
   '首页': DashboardPaths.dashboard,

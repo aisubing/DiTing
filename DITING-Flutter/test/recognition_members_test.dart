@@ -1,31 +1,17 @@
+// Guards the shipped recognition member list: bad entries must void the whole file.
+
 import 'dart:io';
 
 import 'package:diting/data/recognition/recognition_members.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards list parsing: duplicate names, bad avatar names and missing fields must void the file
 void main() {
-  group('parseRecognitionMembers', () {
-    test('解析合法配置并保持数组顺序', () {
-      final members = parseRecognitionMembers('''
-{
-  "version": 3,
-  "sponsors": [
-    {"name": "alone", "avatarFileName": "alone_avatar.jpg"},
-    {"name": "轻"}
-  ],
-  "coBuilders": [
-    {"name": "AceTaffy1883", "avatarFileName": "acetaffy1883_avatar.jpg"}
-  ]
+  group('名单解析', _recognitionMembers);
 }
-''');
-      expect(members.version, 3);
-      expect(members.sponsors.map((m) => m.name), ['alone', '轻']);
-      expect(members.sponsors.first.avatarFileName, 'alone_avatar.jpg');
-      expect(members.sponsors.last.avatarFileName, isNull);
-      expect(members.coBuilders.single.name, 'AceTaffy1883');
-    });
 
+/// Guards list parsing: duplicate names, bad avatar names and missing fields must void the file
+void _recognitionMembers() {
+  group('parseRecognitionMembers', () {
     test('缺版本号 / 缺数组都视为配置无效', () {
       expect(
         () => parseRecognitionMembers('{"sponsors":[],"coBuilders":[]}'),

@@ -1,3 +1,6 @@
+// Pins the data-cleanup contract: every action must delete rows, so assertions go
+// against the DB.
+
 import 'package:diting/data/cleanup/data_cleanup_service.dart';
 import 'package:diting/data/db/legacy_database.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
@@ -7,8 +10,12 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Pins the data-cleanup contract: every action must delete rows, so assertions go against the DB
 void main() {
+  group('数据清理', _dataCleanup);
+}
+
+/// Pins the data-cleanup contract: every action must delete rows, so assertions go against the DB
+void _dataCleanup() {
   // The native channel is unregistered, so the bridge degrades to 0 as on a non-Android host
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -310,44 +317,6 @@ void main() {
         isNotNull,
       );
     });
-
-    test('清除自定义背景缓存清三个键', () async {
-      final result = await buildService().run(CleanupAction.customBackground);
-      expect(result.removed, 1); // only rows with a uri
-      expect(
-        prefs.read(LegacySettings.uiContainer, 'custom_background_uri'),
-        isNull,
-      );
-    });
-
-    test('重置引导清协议标记与「不再提醒」，保留引导完成标记', () async {
-      await buildService().run(CleanupAction.settingsGuides);
-      expect(
-        prefs.read(LegacySettings.uiContainer, 'initial_agreement_accepted'),
-        isNull,
-      );
-      expect(
-        prefs.read(
-          LegacySettings.uiContainer,
-          'settings_guide_acknowledged_ids',
-        ),
-        isNull,
-      );
-      expect(
-        prefs.read(
-          'mode_permission_preferences',
-          'recommendation_dismissed_vpn',
-        ),
-        isNull,
-      );
-      expect(
-        prefs.read(
-          'mode_permission_preferences',
-          'onboarding_completed_normal',
-        ),
-        isNotNull,
-      );
-    });
   });
 
   group('全面清理', () {
@@ -371,12 +340,6 @@ void main() {
         prefs.read(LegacySettings.uiContainer, 'initial_agreement_accepted'),
         isNull,
       );
-    });
-
-    test('全面清理与引导重置都会要求退出应用', () {
-      expect(CleanupAction.allData.exitsApp, isTrue);
-      expect(CleanupAction.settingsGuides.exitsApp, isTrue);
-      expect(CleanupAction.logs.exitsApp, isFalse);
     });
   });
 

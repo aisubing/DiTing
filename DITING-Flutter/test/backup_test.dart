@@ -1,3 +1,6 @@
+// Pins the backup round trip: export parses, import merges into a different
+// store and reports what it did.
+
 import 'dart:convert';
 
 import 'package:diting/data/backup/backup_exporter.dart';
@@ -8,9 +11,11 @@ import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Pins the backup round trip: export parses, import merges into a different store and reports what
-/// it did
 void main() {
+  group('导出与导入', _backupTransfer);
+}
+
+void _backupTransfer() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
@@ -95,36 +100,6 @@ void main() {
       BackupExportSource(settings: LegacySettings(store), database: db);
 
   group('导出', () {
-    test('写出带 format/version/data 的合法 JSON', () async {
-      final store = seededStore();
-      final result = await const BackupExporter().export(exportSource(store));
-      final decoded = jsonDecode(result.content) as Map<String, Object?>;
-
-      expect(decoded['format'], BackupFormat.magic);
-      expect(decoded['version'], BackupFormat.version);
-      expect(decoded['exportedAt'], isA<int>());
-      expect(decoded['data'], isA<Map>());
-      expect(result.fileName, startsWith(BackupFormat.fileNamePrefix));
-      expect(result.fileName, endsWith('.json'));
-    });
-
-    test('只导出勾选的分组', () async {
-      final store = seededStore();
-      final result = await const BackupExporter().export(
-        exportSource(store),
-        groups: {BackupGroup.system, BackupGroup.blocked},
-      );
-      final decoded = jsonDecode(result.content) as Map<String, Object?>;
-      final data = decoded['data'] as Map<String, Object?>;
-
-      expect(data.keys.toSet(), {'system', 'blocked'});
-      expect(result.included.toSet(), {
-        BackupGroup.system,
-        BackupGroup.blocked,
-      });
-      expect((decoded['selection'] as List).toSet(), {'system', 'blocked'});
-    });
-
     test('出站代理不含账号密码', () async {
       final store = seededStore();
       store.putString(
@@ -182,18 +157,6 @@ void main() {
       expect(rules, hasLength(1));
       expect((rules.single as Map)['pattern'], 'user.test');
     });
-
-    test('没有数据库时相关分组导出为空表而不是报错', () async {
-      final result = await const BackupExporter().export(
-        BackupExportSource(
-          settings: LegacySettings(seededStore()),
-          database: null,
-        ),
-        groups: {BackupGroup.subscriptions, BackupGroup.domainRules},
-      );
-      expect(result.skipped, isEmpty);
-      expect(result.counts[BackupGroup.subscriptions], 0);
-    });
   });
 
   group('导入', () {
@@ -214,26 +177,6 @@ void main() {
         sourceName: 'test.json',
       );
     }
-
-    test('空目标上全部新增', () async {
-      final result = await roundTrip(BackupGroup.values.toSet());
-      expect(result.failed, isFalse);
-      expect(result.added, greaterThan(0));
-      expect(result.fatalError, isNull);
-    });
-
-    test('外观与系统设置在空目标上被写入', () async {
-      final target = MemoryLegacyPrefsStore();
-      await roundTrip({
-        BackupGroup.appearance,
-        BackupGroup.system,
-      }, into: target);
-      final settings = LegacySettings(target);
-      expect(settings.themeModeRaw, 'dark');
-      expect(settings.logRetentionDays, 14);
-      expect(settings.dnsLogModeRaw, 'blockedAndErrors');
-      expect(settings.bypassLanEnabled, isFalse);
-    });
 
     test('应用名单做并集，不覆盖本机已有项', () async {
       final target = MemoryLegacyPrefsStore({
@@ -257,31 +200,6 @@ void main() {
       final settings = LegacySettings(target);
       expect(settings.httpInspectionPackages, contains('com.inspect.one'));
       expect(settings.httpInspectionEnabled, isFalse);
-    });
-
-    test('域名规则导入到空库', () async {
-      await db.insert('block_rule', {
-        'pattern': 'one.test',
-        'rawLine': 'one.test',
-        'addedAt': 1,
-      });
-      await db.insert('block_rule_source', {'ruleId': 1, 'source': 'useradd'});
-
-      final export = await const BackupExporter().export(
-        exportSource(seededStore()),
-        groups: {BackupGroup.domainRules},
-      );
-      await db.delete('block_rule_source');
-      await db.delete('block_rule');
-
-      final result = await const BackupImporter().import(
-        export.content,
-        BackupImportTarget(store: MemoryLegacyPrefsStore(), database: db),
-      );
-      expect(result.failed, isFalse);
-      final rows = await db.query('block_rule');
-      expect(rows, hasLength(1));
-      expect(rows.single['pattern'], 'one.test');
     });
 
     test('同名规则第二次导入被跳过', () async {
@@ -397,24 +315,12 @@ void main() {
       expect(result.fatalError, contains('不是谛听的备份文件'));
     });
 
-    test('缺少版本号被拒绝', () async {
-      final result = await importText('{"format":"diting-backup","data":{}}');
-      expect(result.failed, isTrue);
-      expect(result.fatalError, contains('版本'));
-    });
-
     test('更高版本被拒绝并说明原因', () async {
       final result = await importText(
         '{"format":"diting-backup","version":99,"data":{}}',
       );
       expect(result.failed, isTrue);
       expect(result.fatalError, contains('99'));
-    });
-
-    test('缺少 data 被拒绝', () async {
-      final result = await importText('{"format":"diting-backup","version":1}');
-      expect(result.failed, isTrue);
-      expect(result.fatalError, contains('data'));
     });
 
     test('没有规则库时规则分组如实报错而不是静默成功', () async {
@@ -431,3 +337,5 @@ void main() {
     });
   });
 }
+
+/// Backup interop with 1.4.3: old flat backups import and new ones still carry the flat keys

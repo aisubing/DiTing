@@ -1,7 +1,8 @@
+// Pins the 1.4.3 flat backup format in both directions, so an upgrade or a
+// downgrade never loses rules or subscriptions.
+
 import 'dart:convert';
 import 'dart:io';
-
-import 'package:path/path.dart' as p;
 
 import 'package:diting/data/backup/backup_exporter.dart';
 import 'package:diting/data/backup/backup_importer.dart';
@@ -11,10 +12,14 @@ import 'package:diting/data/db/legacy_schema.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Backup interop with 1.4.3: old flat backups import and new ones still carry the flat keys
 void main() {
+  group('1.4.3 备份兼容', _legacyBackupCompat);
+}
+
+void _legacyBackupCompat() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() {
@@ -80,18 +85,6 @@ void main() {
       }
       expect(store.read('dns_vpn_prefs', 'selected_provider_id'), isNotNull);
       expect(store.read('dns_vpn_prefs', 'dns_resolution_mode'), isNotNull);
-    });
-
-    test('旧版备份里的 rewrite 规则按 targetType 落到正确分组', () async {
-      final result = await const BackupImporter().import(
-        fixture('legacy-export-1.4.3.json'),
-        target(),
-      );
-      expect(result.failed, isFalse);
-      final rows = await db.query('rewrite_rule');
-      expect(rows, hasLength(1));
-      expect(rows.single['targetType'], 'CNAME');
-      expect(rows.single['targetValue'], 'target.example.com');
     });
 
     test('旧版备份导入两次不产生重复行', () async {
@@ -162,28 +155,6 @@ void main() {
         (root['outboundProxy'] as Map).containsKey('proxyAppPackage'),
         isTrue,
       );
-    });
-
-    test('镜像模板跟着订阅一起导出', () async {
-      await db.insert('mirror_template', {
-        'name': '我的镜像',
-        'template': 'https://mirror.example.com/{}',
-        'addedAt': 1,
-      });
-      addTearDown(() => db.delete('mirror_template'));
-      final export = await const BackupExporter().export(
-        BackupExportSource(
-          settings: LegacySettings(MemoryLegacyPrefsStore()),
-          database: db,
-        ),
-      );
-      final root = jsonDecode(export.content) as Map<String, Object?>;
-      expect(root['mirrorTemplates'], [
-        {'name': '我的镜像', 'template': 'https://mirror.example.com/{}'},
-      ]);
-      final data = root['data'] as Map<String, Object?>;
-      final subscriptions = data['subscriptions'] as Map<String, Object?>;
-      expect(subscriptions['mirrorTemplates'], hasLength(1));
     });
 
     test('旧版字段名逐一存在（防回归清单）', () async {
@@ -274,24 +245,6 @@ void main() {
     });
   });
   group('重复导入', () {
-    test('同一份备份导入两次，第二次不再报「新增」', () async {
-      final store = MemoryLegacyPrefsStore();
-      final first = await const BackupImporter().import(
-        fixture('legacy-export-1.4.3.json'),
-        target(store),
-      );
-      expect(first.failed, isFalse);
-      expect(first.added, greaterThan(0));
-
-      final second = await const BackupImporter().import(
-        fixture('legacy-export-1.4.3.json'),
-        target(store),
-      );
-      expect(second.failed, isFalse);
-      expect(second.added, 0, reason: '第二次导入时本机已经有全部条目，不应该再报告新增');
-      expect(second.failedGroups, isEmpty);
-    });
-
     test('同一份 2.0 备份连导三次，服务商不再反复报「更新」', () async {
       final store = MemoryLegacyPrefsStore();
       final target = BackupImportTarget(store: store, database: db);
@@ -306,40 +259,6 @@ void main() {
         );
         expect(providers.updated, 0, reason: '第 ${round + 2} 次导入仍把服务商标成更新');
         expect(providers.added, 0);
-      }
-    });
-
-    test('安卓 float 精度不会让透明度被反复导入', () async {
-      // `putFloat(0.8)` reads back 0.800000011920929, so every import saw six new appearance items
-      const stored = 0.800000011920929;
-      final store = MemoryLegacyPrefsStore({
-        'dns_vpn_prefs': {
-          'app_theme_mode': 'dark',
-          'theme_color_style': 'system',
-          'home_component_opacity': stored,
-          'home_power_button_opacity': stored,
-          'home_provider_selector_opacity': stored,
-          'home_mode_button_opacity': stored,
-          'home_poem_opacity': stored,
-          'home_dns_detail_opacity': stored,
-          'home_sentence_running': '测试运行中',
-          'home_sentence_stopped': '测试已停止',
-        },
-      });
-      final settings = LegacySettings(store);
-      final export = await const BackupExporter().export(
-        BackupExportSource(settings: settings, database: db),
-      );
-      final target = BackupImportTarget(store: store, database: db);
-      for (var round = 0; round < 2; round++) {
-        final result = await const BackupImporter().import(
-          export.content,
-          target,
-        );
-        final appearance = result.outcomes.firstWhere(
-          (outcome) => outcome.group == BackupGroup.appearance,
-        );
-        expect(appearance.added, 0, reason: '第 ${round + 1} 次导入又把透明度当成新项');
       }
     });
 

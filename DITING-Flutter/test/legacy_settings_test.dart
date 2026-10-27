@@ -1,14 +1,24 @@
+// The 1.4.3 persistence contract: containers, key names, defaults, legacy semantics.
+
 import 'package:diting/app/theme/colors.dart';
+import 'package:diting/app/theme/layout.dart';
+import 'package:diting/data/native/background_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
+import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The 1.4.3 persistence contract: containers, key names, defaults, legacy semantics.
 void main() {
+  group('LegacySettings 读写', _legacySettings);
+  group('设置键与设置态 provider', _settingsCatalog);
+}
+
+/// The 1.4.3 persistence contract: containers, key names, defaults, legacy semantics.
+void _legacySettings() {
   MemoryLegacyPrefsStore legacyStore() => MemoryLegacyPrefsStore({
     'dns_vpn_prefs': {
       'app_theme_mode': 'dark',
@@ -42,11 +52,6 @@ void main() {
       expect(settings.homeSentences.running, '运行句子');
       expect(settings.homeSentences.stopped, '停止句子');
       expect(settings.hapticEnabled, isFalse);
-    });
-
-    test('底栏数组丢掉未知 id 与重复项', () {
-      final settings = LegacySettings(legacyStore());
-      expect(settings.bottomBarIds, ['home', 'network_tools', 'settings']);
     });
 
     test('工作模式 / 解析模式 / 端口读取旧容器', () {
@@ -254,18 +259,143 @@ void main() {
         '["home","feature_hub","log_dashboard","settings"]',
       );
     });
+  });
+}
 
-    test('不足两项的旧数组回退默认且未知 id 被忽略', () {
-      final container = containerWith(
-        MemoryLegacyPrefsStore({
-          'dns_vpn_prefs': {'bottom_bar_destinations': '["bogus","home"]'},
-        }),
+/// Static guard for the settings domain and route table: a misspelled key still saves and
+/// displays fine, only losing settings on upgrade
+void _settingsCatalog() {
+  group('旧版设置键（第三轮新增）', () {
+    late LegacyPrefsStore store;
+    late LegacySettings settings;
+
+    setUp(() {
+      store = MemoryLegacyPrefsStore();
+      settings = LegacySettings(store);
+    });
+
+    test('日志模式默认 all，且写在数据集容器里', () {
+      expect(settings.dnsLogModeRaw, 'all');
+      settings.setDnsLogModeRaw('blocked_and_errors');
+      expect(store.read('dns_vpn_prefs', 'dns_log_mode'), 'blocked_and_errors');
+      final express = LegacySettings(
+        store,
+        dnsContainer: LegacySettings.expressContainer,
       );
-      expect(container.read(bottomBarProvider), [
-        BottomBarDestination.home,
-        BottomBarDestination.featureHub,
-        BottomBarDestination.logDashboard,
+      expect(express.dnsLogModeRaw, 'all', reason: '极速模式是另一份数据');
+      express.setDnsLogModeRaw('off');
+      expect(store.read('diting_express_prefs', 'dns_log_mode'), 'off');
+    });
+
+    test('日志保留天数默认 7 且被夹在 1–30', () {
+      expect(settings.logRetentionDays, 7);
+      settings.setLogRetentionDays(0);
+      expect(settings.logRetentionDays, 1);
+      settings.setLogRetentionDays(99);
+      expect(settings.logRetentionDays, 30);
+    });
+
+    test('通知栏四键写在独立容器 notification_settings_prefs', () {
+      expect(settings.notificationPersistent, isTrue);
+      expect(settings.notificationSpeed, isFalse);
+      settings.setNotificationPersistent(false);
+      settings.setNotificationSpeed(true);
+      settings.setNotificationTexts(running: '守护中', stopped: '已停止');
+      expect(store.read('notification_settings_prefs', 'persistent'), isFalse);
+      expect(store.read('notification_settings_prefs', 'speed'), isTrue);
+      expect(
+        store.read('notification_settings_prefs', 'custom_running_text'),
+        '守护中',
+      );
+      expect(store.read('dns_vpn_prefs', 'persistent'), isNull);
+    });
+
+    test('软件背景：启用、当前、历史清单三个键', () {
+      expect(settings.customBackgroundEnabled, isFalse);
+      expect(settings.customBackgroundUri, isNull);
+      expect(settings.customBackgroundUris, isEmpty);
+
+      settings.setCustomBackgroundEnabled(true);
+      settings.setCustomBackgroundUri('content://picked/1');
+      settings.setCustomBackgroundUris(['content://picked/1', 'content://2']);
+      expect(settings.customBackgroundEnabled, isTrue);
+      expect(settings.customBackgroundUri, 'content://picked/1');
+      expect(settings.customBackgroundUris, [
+        'content://picked/1',
+        'content://2',
       ]);
     });
+
+    test('历史清单遇到坏 JSON 时返回空表而不是抛异常', () {
+      store.putString('dns_vpn_prefs', 'custom_background_uris', '{not json');
+      expect(settings.customBackgroundUris, isEmpty);
+    });
   });
+
+  group('设置态 provider（内存 store）', () {
+    _FakeBackgroundBridge? bridge;
+
+    ProviderContainer container() {
+      final fake = _FakeBackgroundBridge();
+      bridge = fake;
+      final c = ProviderContainer(
+        overrides: [backgroundBridgeProvider.overrideWithValue(fake)],
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('日志模式三档枚举与落盘值', () {
+      expect(LegacyLogMode.values.length, 3);
+      expect(
+        [for (final mode in LegacyLogMode.values) mode.storageValue],
+        ['all', 'blocked_and_errors', 'off'],
+      );
+      final c = container();
+      c.read(logModeProvider.notifier).select(LegacyLogMode.off);
+      expect(c.read(logModeProvider), LegacyLogMode.off);
+    });
+
+    test('IPv6 三档，未知值回退 auto', () {
+      expect(LegacyIpv6Mode.fromStorageValue('nonsense'), LegacyIpv6Mode.auto);
+      expect(
+        [for (final mode in LegacyIpv6Mode.values) mode.storageValue],
+        ['auto', 'disable', 'prefer'],
+      );
+    });
+
+    test('背景图：添加会同时更新当前与清单，移除当前会退到清单末尾', () {
+      final c = container();
+      final notifier = c.read(customBackgroundProvider.notifier);
+      notifier.add('content://1');
+      notifier.add('content://2');
+      var state = c.read(customBackgroundProvider);
+      expect(state.uris, ['content://1', 'content://2']);
+      expect(state.currentUri, 'content://2');
+      expect(state.enabled, isTrue, reason: '添加一张后应自动启用');
+
+      notifier.remove('content://2');
+      state = c.read(customBackgroundProvider);
+      expect(state.uris, ['content://1']);
+      expect(state.currentUri, 'content://1');
+      expect(bridge!.released, ['content://2']);
+    });
+  });
+
+  group('底栏上限回到旧版的 4', () {
+    test('maxDockDestinations 与 LegacySettings.bottomBarMaxCount 一致', () {
+      expect(maxDockDestinations, LegacySettings.bottomBarMaxCount);
+      expect(maxDockDestinations, 4);
+    });
+  });
+}
+
+class _FakeBackgroundBridge extends BackgroundBridge {
+  final List<String> released = [];
+
+  @override
+  Future<bool> release(String uri) async {
+    released.add(uri);
+    return true;
+  }
 }

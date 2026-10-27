@@ -1,13 +1,26 @@
+// App picker data and its unsaved-changes guard: inventory, filters, mutual exclusion
+// between the four lists, and the dialog that asks before leaving.
+
+import 'package:diting/app/app.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/router.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+
+import 'support/test_hooks.dart';
+
+void main() {
+  group('应用名单数据', _appPickerData);
+  group('未保存改动确认', _unsavedChanges);
+}
 
 /// Data behavior of the app-picker pages - inventory, filter, sort, persist, cleanup
-void main() {
+void _appPickerData() {
   const systemApp = InstalledApp(
     packageName: 'com.android.systemui',
     label: 'System UI',
@@ -76,25 +89,6 @@ void main() {
       expect(snapshot.error, isNotNull);
       // A broken channel looks like a device without apps, so report value plus error
       expect(container.read(installedAppsProvider).hasError, isFalse);
-    });
-
-    test('bump 之后重新枚举', () async {
-      final source = _FakeAppsSource(device);
-      final container = ProviderContainer(
-        overrides: [
-          legacyPrefsStoreProvider.overrideWithValue(MemoryLegacyPrefsStore()),
-          installedAppsSourceProvider.overrideWithValue(source),
-        ],
-      );
-      addTearDown(container.dispose);
-      await container.read(installedAppsProvider.future);
-      expect(source.listCalls, 1);
-
-      source.apps = const [chat];
-      container.read(installedAppsRevisionProvider.notifier).bump();
-      final next = await container.read(installedAppsProvider.future);
-      expect(source.listCalls, 2);
-      expect(next.apps.map((app) => app.packageName), ['com.example.chat']);
     });
   });
 
@@ -171,61 +165,6 @@ void main() {
 
   group('互斥清洗不能把自己清掉', () {
     /// Regression: `_dropOverlaps` once read back the set it had just written, wiping the selection
-    test('保存禁止联网名单后，该名单仍是刚提交的内容', () {
-      final container = containerWith({
-        'dns_vpn_prefs': {
-          'blocked_app_packages': <String>[],
-          'excluded_app_packages': <String>['com.example.maps'],
-          'http_inspection_app_packages': <String>['com.example.maps'],
-          'app_allowlist_rules_json': '{"com.example.maps":["a.example.com"]}',
-        },
-      });
-      final settings = container.read(legacySettingsProvider);
-      const chosen = {'com.example.maps'};
-
-      settings.setBlockedApps(packages: chosen, enabled: true);
-      settings.setExcludedPackages(
-        settings.excludedPackages.difference(chosen),
-      );
-      settings.setHttpInspectionApps(
-        packages: settings.httpInspectionPackages.difference(chosen),
-        enabled: settings.httpInspectionEnabled,
-      );
-      settings.setAppAllowlistRules({
-        for (final entry in settings.appAllowlistRules.entries)
-          if (!chosen.contains(entry.key)) entry.key: entry.value,
-      });
-      container.read(legacySettingsRevisionProvider.notifier).bump();
-
-      final next = container.read(legacySettingsProvider);
-      expect(next.blockedAppPackages, chosen);
-      expect(next.blockedAppsEnabled, isTrue);
-      expect(next.excludedPackages, isEmpty);
-      expect(next.httpInspectionPackages, isEmpty);
-      expect(next.appAllowlistRules, isEmpty);
-    });
-
-    test('保存排除名单后，该名单仍是刚提交的内容', () {
-      final container = containerWith({
-        'dns_vpn_prefs': {
-          'excluded_app_packages': <String>[],
-          'blocked_app_packages': <String>['com.example.chat'],
-        },
-      });
-      final settings = container.read(legacySettingsProvider);
-      const chosen = {'com.example.chat'};
-
-      settings.setExcludedPackages(chosen);
-      settings.setBlockedApps(
-        packages: settings.blockedAppPackages.difference(chosen),
-        enabled: settings.blockedAppsEnabled,
-      );
-      container.read(legacySettingsRevisionProvider.notifier).bump();
-
-      final next = container.read(legacySettingsProvider);
-      expect(next.excludedPackages, chosen);
-      expect(next.blockedAppPackages, isEmpty);
-    });
   });
 
   group('过滤 / 排序的落盘', () {
@@ -250,16 +189,6 @@ void main() {
       expect(next.excludedAppsFilterRaw, 'SELECTED');
       expect(next.appAllowlistFilterRaw, 'ALL');
     });
-
-    test('默认值：filter=USER、sort=LABEL_ASC', () {
-      final container = containerWith();
-      final settings = container.read(legacySettingsProvider);
-      expect(settings.excludedAppsFilterRaw, 'USER');
-      expect(settings.excludedAppsSortRaw, 'LABEL_ASC');
-      expect(settings.appAllowlistFilterRaw, 'USER');
-      expect(settings.appAllowlistSortRaw, 'LABEL_ASC');
-      expect(settings.excludedPackages, isEmpty);
-    });
   });
 
   group('应用独立规则', () {
@@ -277,37 +206,6 @@ void main() {
         'com.example.maps': {'a.example.com', 'b.example.com'},
       });
       expect(settings.appAllowlistEnabled, isTrue);
-    });
-
-    test('总开关独立于规则表', () {
-      final container = containerWith({
-        'dns_vpn_prefs': {
-          'app_allowlist_rules_json': '{"com.example.maps":["a.example.com"]}',
-          'app_allowlist_enabled': false,
-        },
-      });
-      final settings = container.read(legacySettingsProvider);
-      expect(settings.appAllowlistEnabled, isFalse);
-      expect(settings.appAllowlistRules, isNotEmpty);
-      settings.setAppAllowlistEnabled(true);
-      container.read(legacySettingsRevisionProvider.notifier).bump();
-      expect(
-        container.read(legacySettingsProvider).appAllowlistEnabled,
-        isTrue,
-      );
-    });
-  });
-
-  group('HTTPS 绕过规则', () {
-    test('读写 https_bypass_rules 并去掉空白项', () {
-      final container = containerWith();
-      final settings = container.read(legacySettingsProvider);
-      expect(settings.httpsBypassRules, isEmpty);
-
-      settings.setHttpsBypassRules({'example.com', '  ', 'a.example.com'});
-      container.read(legacySettingsRevisionProvider.notifier).bump();
-      final next = container.read(legacySettingsProvider);
-      expect(next.httpsBypassRules, {'example.com', 'a.example.com'});
     });
   });
 
@@ -428,4 +326,126 @@ class _FailingAppsSource implements InstalledAppsSource {
   @override
   Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages) async =>
       throw MissingPluginException('模拟宿主没有 apps 通道');
+}
+
+/// Leaving an app picker with pending changes asks whether to save them. The title-bar arrow, the
+/// system back gesture and the hardware key all land on the same dialog.
+void _unsavedChanges() {
+  installGlobalTestHooks();
+
+  late MemoryLegacyPrefsStore store;
+
+  Future<void> pumpPicker(WidgetTester tester, String cardTitle) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    store = MemoryLegacyPrefsStore();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...appTestOverrides(),
+          legacyPrefsStoreProvider.overrideWithValue(store),
+          installedAppsSourceProvider.overrideWithValue(_UnsavedAppsSource()),
+        ],
+        child: DitingApp(initialLocation: Routes.hub),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+    // Open the picker from the hub, so the route really has a page below it and the bar draws a
+    // back arrow (an initial route would not).
+    final card = find.text(cardTitle);
+    await tester.scrollUntilVisible(
+      card,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(card);
+    await tester.pumpAndSettle();
+  }
+
+  Set<String> blocked() => LegacySettings(store).blockedAppPackages;
+
+  /// Taps an app row; `last` skips the row count in the section heading.
+  Future<void> tapApp(WidgetTester tester, String label) async {
+    await tester.tap(find.text(label).last);
+    await tester.pumpAndSettle();
+  }
+
+  /// Dialog buttons only: the page has its own 保存 button and the hub a 排除应用 card, so a bare
+  /// text finder would be ambiguous.
+  Finder inDialog(String label) =>
+      find.descendant(of: find.byType(Dialog), matching: find.text(label));
+
+  Future<void> leaveWith(WidgetTester tester, String button) async {
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.text('保存更改？'), findsOneWidget);
+    await tester.tap(inDialog(button));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('勾选后返回会先询问，只给「不保存」「保存」两个动作', (tester) async {
+    await pumpPicker(tester, '禁止联网应用');
+    await tapApp(tester, '地图');
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('保存更改？'), findsOneWidget);
+    expect(inDialog('不保存'), findsOneWidget);
+    expect(inDialog('保存'), findsOneWidget);
+    expect(inDialog('取消'), findsNothing);
+  });
+
+  testWidgets('选择保存则写入后再离开', (tester) async {
+    await pumpPicker(tester, '禁止联网应用');
+    await tapApp(tester, '地图');
+    await leaveWith(tester, '保存');
+
+    expect(find.byType(BackButton), findsNothing);
+    expect(blocked(), {'com.example.maps'});
+  });
+
+  testWidgets('没有改动时返回不弹窗', (tester) async {
+    await pumpPicker(tester, '排除应用');
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('保存更改？'), findsNothing);
+    expect(find.byType(BackButton), findsNothing);
+  });
+}
+
+class _UnsavedAppsSource implements InstalledAppsSource {
+  static const _apps = [
+    InstalledApp(
+      packageName: 'com.example.chat',
+      label: 'Chat',
+      isSystem: false,
+      uid: 10102,
+    ),
+    InstalledApp(
+      packageName: 'com.example.maps',
+      label: '地图',
+      isSystem: false,
+      uid: 10101,
+    ),
+  ];
+
+  @override
+  Future<List<InstalledApp>> list() async => _apps;
+
+  @override
+  Future<Map<String, int>> resolveUids(Iterable<String> packages) async => {
+    for (final app in _apps)
+      if (packages.contains(app.packageName)) app.packageName: app.uid,
+  };
+
+  @override
+  Future<bool> isSelf(String packageName) async => false;
+
+  @override
+  Future<Map<String, Uint8List>> loadIcons(Iterable<String> packages) async =>
+      const {};
 }

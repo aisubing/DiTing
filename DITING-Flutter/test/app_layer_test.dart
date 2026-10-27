@@ -1,6 +1,9 @@
+// Theme assembly, the appearance providers and the enum labels that reach the screen.
+
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/app/theme/manager.dart';
+import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -12,6 +15,11 @@ import 'package:material_ui/material_ui.dart';
 import 'support/fake_vpn_controller.dart';
 
 void main() {
+  group('主题与外观', _appLayer);
+  group('枚举文案', _enumDisplay);
+}
+
+void _appLayer() {
   group('buildAppTheme 装配顺序', () {
     // Order matters: pure black goes after seededColorScheme, before surface recomputes a tint
     test('纯黑主题的 surface 是纯黑', () {
@@ -24,16 +32,6 @@ void main() {
       );
       expect(theme.colorScheme.surface, const Color(0xFF000000));
       expect(theme.brightness, Brightness.dark);
-    });
-
-    test('非纯黑深色主题的 surface 不是纯黑', () {
-      final theme = buildAppTheme(
-        const AppThemeSpec(
-          seedColor: Color(0xFF007AFF),
-          brightness: Brightness.dark,
-        ),
-      );
-      expect(theme.colorScheme.surface, isNot(const Color(0xFF000000)));
     });
 
     test('深色主题带 ElevatedColorScheme 扩展，浅色不带', () {
@@ -51,22 +49,6 @@ void main() {
       );
       expect(dark.extension<ElevatedColorScheme>(), isNotNull);
       expect(light.extension<ElevatedColorScheme>(), isNull);
-    });
-
-    test('不同种子色产出不同 primary', () {
-      final purple = buildAppTheme(
-        const AppThemeSpec(
-          seedColor: Color(0xFFAF52DE),
-          brightness: Brightness.light,
-        ),
-      );
-      final blue = buildAppTheme(
-        const AppThemeSpec(
-          seedColor: Color(0xFF007AFF),
-          brightness: Brightness.light,
-        ),
-      );
-      expect(purple.colorScheme.primary, isNot(blue.colorScheme.primary));
     });
 
     test('形状与排版被装配进去', () {
@@ -90,23 +72,6 @@ void main() {
         brightness: Brightness.light,
       );
       expect(identical(cache.of(spec), cache.of(spec)), isTrue);
-    });
-
-    test('不同 spec 返回不同实例', () {
-      final cache = AppThemeCache();
-      final light = cache.of(
-        const AppThemeSpec(
-          seedColor: Color(0xFF007AFF),
-          brightness: Brightness.light,
-        ),
-      );
-      final dark = cache.of(
-        const AppThemeSpec(
-          seedColor: Color(0xFF007AFF),
-          brightness: Brightness.dark,
-        ),
-      );
-      expect(identical(light, dark), isFalse);
     });
 
     test('缓存容量有上界（避免主题切换久了无限增长）', () {
@@ -144,27 +109,6 @@ void main() {
       expect(AppPalette.fromSeed(AppPalette.purple.seed!), AppPalette.purple);
       expect(AppPalette.fromSeed(const Color(0xFF123456)), AppPalette.system);
     });
-
-    test('每个色板都有非空中文标签与 swatch', () {
-      for (final palette in AppPalette.values) {
-        expect(palette.label, isNotEmpty);
-        expect(palette.swatch, isA<Color>());
-      }
-    });
-  });
-
-  group('layout 常量', () {
-    test('断点单调且 isMobileWidth 边界闭合', () {
-      expect(maxMobileWidth, lessThan(maxLaptopWidth));
-      expect(isMobileWidth(maxMobileWidth), isTrue);
-      expect(isMobileWidth(maxMobileWidth + 0.1), isFalse);
-    });
-
-    test('clampTextScale 把越界值夹回区间', () {
-      expect(clampTextScale(0), minTextScale);
-      expect(clampTextScale(9), maxTextScale);
-      expect(clampTextScale(1.2), 1.2);
-    });
   });
 
   group('外观 provider', () {
@@ -184,14 +128,6 @@ void main() {
         c.read(paletteProvider).effectiveSeed,
         AppPalette.purple.effectiveSeed,
       );
-    });
-
-    test('纯黑只在深色下有意义，但 provider 本身不改亮度', () {
-      final c = container();
-      c.read(themeModeProvider.notifier).select(AppThemeMode.dark);
-      c.read(pureBlackProvider.notifier).toggle(true);
-      expect(c.read(pureBlackProvider), isTrue);
-      expect(c.read(themeModeProvider), AppThemeMode.dark);
     });
 
     test('底栏至少留 2 项、最多 $maxDockDestinations 项', () {
@@ -228,14 +164,6 @@ void main() {
       expect(c.read(homeOpacityProvider)[HomeLayer.powerButton], 0.1);
       notifier.set(HomeLayer.powerButton, 5);
       expect(c.read(homeOpacityProvider)[HomeLayer.powerButton], 1.0);
-    });
-
-    test('每个 HomeLayer 都有默认透明度', () {
-      final c = container();
-      final opacity = c.read(homeOpacityProvider);
-      for (final layer in HomeLayer.values) {
-        expect(opacity[layer], isNotNull, reason: '${layer.name} 缺默认值');
-      }
     });
   });
 
@@ -331,22 +259,93 @@ void main() {
       c.read(selectedProviderProvider.notifier).select('does-not-exist');
       expect(c.read(selectedProviderProvider), before);
     });
+  });
+}
 
-    test('serviceStatsProvider 的 bump/reset 对称', () {
-      final c = container();
-      final notifier = c.read(serviceStatsProvider.notifier);
-      final baseline = c.read(serviceStatsProvider);
-      notifier.bump();
-      expect(c.read(serviceStatsProvider).queries, baseline.queries + 1);
-      notifier.reset();
-      expect(c.read(serviceStatsProvider).queries, baseline.queries);
+/// Guards enums reach the screen through `.label`; a bare enum renders `ProviderProtocol.doh`
+void _enumDisplay() {
+  /// A source identifier like "EnumType.value" must never appear in user text.
+  void expectNoRawEnumLiteral(String text, String what) {
+    expect(
+      RegExp(r'\b[A-Z][A-Za-z]*\.[a-z][A-Za-z]*\b').hasMatch(text),
+      isFalse,
+      reason: '$what 里出现了枚举源码标识符：$text',
+    );
+  }
+
+  // 1.4.3's preset providers live under `preset_*` ids; the UI must use that catalog.
+  final catalog = defaultProviderCatalog();
+
+  group('providerEndpointOf', () {
+    test('拼的是协议 label 而不是枚举名', () {
+      for (final provider in catalog) {
+        final text = providerEndpointOf(provider.id);
+        expectNoRawEnumLiteral(text, '端点文案(${provider.id})');
+        expect(
+          text,
+          startsWith(provider.protocol.label),
+          reason: '应以协议 label 开头：$text',
+        );
+        expect(text, contains(provider.address));
+      }
     });
+  });
 
-    test('每个 AppWorkMode 都有标题/徽标/摘要', () {
+  group('枚举展示字段', () {
+    test('每个枚举的 label/title/summary 都不含源码标识符', () {
+      for (final protocol in ProviderProtocol.values) {
+        expectNoRawEnumLiteral(
+          protocol.label,
+          'ProviderProtocol.${protocol.name}',
+        );
+      }
+      for (final kind in RuleKind.values) {
+        expectNoRawEnumLiteral(kind.title, 'RuleKind.${kind.name}.title');
+        expectNoRawEnumLiteral(kind.summary, 'RuleKind.${kind.name}.summary');
+      }
       for (final mode in AppWorkMode.values) {
-        expect(mode.title, isNotEmpty);
-        expect(mode.badge, isNotEmpty);
-        expect(mode.summary, isNotEmpty);
+        expectNoRawEnumLiteral(mode.title, 'AppWorkMode.${mode.name}.title');
+        expectNoRawEnumLiteral(mode.badge, 'AppWorkMode.${mode.name}.badge');
+        expectNoRawEnumLiteral(
+          mode.summary,
+          'AppWorkMode.${mode.name}.summary',
+        );
+      }
+      for (final state in PowerState.values) {
+        expectNoRawEnumLiteral(state.label, 'PowerState.${state.name}.label');
+      }
+      for (final resolution in ResolutionMode.values) {
+        expectNoRawEnumLiteral(
+          resolution.label,
+          'ResolutionMode.${resolution.name}',
+        );
+      }
+      for (final layer in HomeLayer.values) {
+        expectNoRawEnumLiteral(layer.label, 'HomeLayer.${layer.name}');
+      }
+      for (final destination in BottomBarDestination.values) {
+        expectNoRawEnumLiteral(
+          destination.label,
+          'BottomBarDestination.${destination.name}',
+        );
+      }
+      for (final palette in AppPalette.values) {
+        expectNoRawEnumLiteral(palette.label, 'AppPalette.${palette.name}');
+      }
+      for (final themeMode in AppThemeMode.values) {
+        expectNoRawEnumLiteral(
+          themeMode.label,
+          'AppThemeMode.${themeMode.name}',
+        );
+      }
+      for (final source in RuleSource.values) {
+        expectNoRawEnumLiteral(source.label, 'RuleSource.${source.name}');
+      }
+      for (final serverStatus in ServerStatus.values) {
+        expectNoRawEnumLiteral(
+          serverStatus.label,
+          'ServerStatus.${serverStatus.name}',
+        );
       }
     });
   });

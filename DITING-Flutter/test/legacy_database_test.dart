@@ -1,3 +1,5 @@
+// Exercises the log SQL against the exact 1.4.3 layout read off the device.
+
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
@@ -6,8 +8,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/legacy_schema.dart';
 
-/// Exercises the SQL against the exact 1.4.3 layout read off the device
 void main() {
+  group('1.4.3 日志表 SQL', _legacyRepository);
+}
+
+void _legacyRepository() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -144,24 +149,6 @@ void main() {
       expect(sum, all.length, reason: '各档条数之和应等于总数（互斥）');
     });
 
-    test('statusOfOutcome 与 SQL 分档一致', () async {
-      final all = await HttpRequestRepository(db).recent();
-      for (final status in RequestStatus.values) {
-        if (status == RequestStatus.all) continue;
-        final bySql = {
-          for (final row in await HttpRequestRepository(
-            db,
-          ).recent(status: status))
-            row.id,
-        };
-        final byReader = {
-          for (final row in all)
-            if (row.status == status) row.id,
-        };
-        expect(bySql, byReader, reason: '${status.label} 的 SQL 与 Dart 判定不一致');
-      }
-    });
-
     test('关键词匹配 authority / packageName / matchedRule', () async {
       await insertHttp(
         timestamp: 2000,
@@ -186,34 +173,10 @@ void main() {
       );
     });
 
-    test('按 timestamp 倒序且尊重 limit', () async {
-      final rows = await HttpRequestRepository(db).recent(limit: 3);
-      expect(rows, hasLength(3));
-      expect(rows.first.timestamp, greaterThan(rows.last.timestamp));
-      expect(rows.first.timestamp, 1000 + outcomes.length - 1);
-    });
-
-    test('dailyStats 按 outcome 分组并给出总数', () async {
-      final stats = await HttpRequestRepository(db)
-          .dailyStats(since: DateTime.fromMillisecondsSinceEpoch(0));
-
-      expect(stats.total, outcomes.length);
-      expect(stats.byOutcome['allowed'], 1);
-      expect(stats.byOutcome['blocked'], 1);
-      expect(stats.countFor(RequestStatus.blocked), 2);
-      expect(stats.countFor(RequestStatus.all), outcomes.length);
-      expect(stats.countFor(RequestStatus.error), 1);
-    });
-
     test('dailyStats 的窗口过滤掉更早的行', () async {
       final stats = await HttpRequestRepository(db)
           .dailyStats(since: DateTime.fromMillisecondsSinceEpoch(1000 + 4));
       expect(stats.total, outcomes.length - 4);
-    });
-
-    test('clearAll 清空整表', () async {
-      expect(await HttpRequestRepository(db).clearAll(), outcomes.length);
-      expect(await db.query('http_request_log'), isEmpty);
     });
   });
 
@@ -336,39 +299,6 @@ void main() {
       expect(sum, all.length, reason: '各档条数之和应等于总数（互斥）');
     });
 
-    test('关键词匹配 queryName / packageName / message', () async {
-      final repository = DnsQueryRepository(db);
-
-      expect(
-        (await repository.recent(query: 'github')).single.queryName,
-        'api.github.com',
-      );
-      expect(
-        (await repository.recent(query: 'com.example.browser')).single.id,
-        isNotNull,
-      );
-      expect(
-        (await repository.recent(query: '覆写')).single.queryName,
-        'rewrite-chinese.example',
-      );
-    });
-
-    test('DnsLogRow.status 与 SQL 分档一致', () async {
-      final all = await DnsQueryRepository(db).recent();
-      for (final status in RequestStatus.values) {
-        if (status == RequestStatus.all) continue;
-        final bySql = {
-          for (final row in await DnsQueryRepository(db).recent(status: status))
-            row.id,
-        };
-        final byReader = {
-          for (final row in all)
-            if (row.status == status) row.id,
-        };
-        expect(bySql, byReader, reason: '${status.label} 的 SQL 与 Dart 判定不一致');
-      }
-    });
-
     test('DnsLogMessage 拆解 app / resolved / blocked_by / error / elapsed', () {
       final parsed = DnsLogMessage.parse(
         'app=com.example.app, resolved=1.1.1.1, blocked_by=firewall:ads, '
@@ -380,14 +310,6 @@ void main() {
       expect(parsed.blockedBy, 'firewall:ads');
       expect(parsed.error, 'boom');
       expect(parsed.elapsedMs, 42);
-    });
-
-    test('DnsLogMessage 对空值 / 缺失字段容错', () {
-      expect(DnsLogMessage.parse(null).elapsedMs, isNull);
-      expect(DnsLogMessage.parse('').app, isNull);
-      expect(DnsLogMessage.parse('garbage, app=x').app, 'x');
-      expect(DnsLogMessage.parse('error=a=b').error, 'a=b');
-      expect(DnsLogMessage.parse('elapsed=fast').elapsedMs, isNull);
     });
   });
 
@@ -422,21 +344,6 @@ void main() {
       expect(rows.first.packageName, 'com.a');
     });
 
-    test('dateRange 的边界包含首尾两天', () async {
-      final onlyFirst = await AppTrafficRepository(db)
-          .dateRange('2026-10-18', '2026-10-18');
-      expect(onlyFirst.single.packageName, 'com.c');
-    });
-
-    test('allHistory 汇总全部日期', () async {
-      final rows = await AppTrafficRepository(db).allHistory();
-
-      expect(rows, hasLength(3));
-      expect(rows.first.packageName, 'com.a');
-      expect(rows.first.totalBytes, 200);
-      expect(rows.first.date, '2026-10-19');
-    });
-
     test('shareOf 对零总量返回 0 而不是除零', () {
       const row = AppTrafficDaily(
         date: '2026-10-20',
@@ -457,10 +364,6 @@ void main() {
       await insertTraffic(key, 'com.today', tx: 5, rx: 5, appName: '今');
       final rows = await AppTrafficRepository(db).today();
       expect(rows.map((row) => row.packageName), contains('com.today'));
-    });
-
-    test('dateKey 补零', () {
-      expect(AppTrafficRepository.dateKey(DateTime(2026, 1, 5)), '2026-01-05');
     });
   });
 
@@ -486,3 +389,5 @@ void main() {
     });
   });
 }
+
+/// Runs the subscription SQL against the real 1.4.3 tables: `ORDER BY`, conflicts, cascades

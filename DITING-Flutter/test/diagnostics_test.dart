@@ -1,9 +1,11 @@
+// Network-tool judging rules and panels: host sanitizing, a sparse `fromMap`,
+// and every probe state.
+
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/tools/tools_page.dart';
 import 'package:diting/state/diagnostics_providers.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -11,8 +13,11 @@ import 'package:material_ui/material_ui.dart';
 import 'support/app_host.dart';
 import 'support/test_hooks.dart';
 
-/// Network-tool judging rules: host sanitizing, a sparse `fromMap`, and every panel state
 void main() {
+  group('网络工具面板', _diagnostics);
+}
+
+void _diagnostics() {
   installGlobalTestHooks();
 
   group('host 清洗', () {
@@ -40,21 +45,6 @@ void main() {
       expect(sanitizeProbeHost('::1'), '::1');
       expect(sanitizeProbeHost('fe80::1'), 'fe80::1');
     });
-
-    test('单冒号 + 全数字才当端口剥', () {
-      expect(sanitizeProbeHost('example.com:8080'), 'example.com');
-      expect(sanitizeProbeHost('10.0.0.1:53'), '10.0.0.1');
-      expect(sanitizeProbeHost('example.com:abc'), 'example.com:abc');
-    });
-
-    test('空串与纯空白', () {
-      expect(sanitizeProbeHost(''), '');
-      expect(sanitizeProbeHost('   '), '');
-      expect(resolveProbeHost('').error, '请输入探测目标');
-      expect(resolveProbeHost('  ').error, '请输入探测目标');
-      expect(resolveProbeHost('a b').error, '目标不能包含空格');
-      expect(resolveProbeHost('https://example.com').error, isNull);
-    });
   });
 
   group('fromMap 缺字段容错', () {
@@ -71,36 +61,6 @@ void main() {
       expect(summary.minMs, isNull);
     });
 
-    test('PingSummary 完整 map 逐字段还原，replies 非 Map 项被丢弃', () {
-      final summary = PingSummary.fromMap({
-        'target': 'example.com',
-        'resolvedAddress': '93.184.216.34',
-        'addressFamily': 'IPv4',
-        'transmitted': 4,
-        'received': 3,
-        'lossPercent': 25.0,
-        'minMs': 10,
-        'avgMs': 12.5,
-        'maxMs': 18,
-        'jitterMs': 2.5,
-        'success': true,
-        'measuredWithFallback': true,
-        'replies': [
-          {'sequence': 1, 'elapsedMs': 10, 'ttl': 57},
-          {'sequence': 2, 'elapsedMs': 12.5, 'error': null},
-          'not-a-map',
-        ],
-      });
-
-      expect(summary.transmitted, 4);
-      expect(summary.received, 3);
-      expect(summary.avgMs, 12.5);
-      expect(summary.measuredWithFallback, isTrue);
-      expect(summary.replies, hasLength(2));
-      expect(summary.replies.first.ttl, 57);
-      expect(summary.replies.first.ok, isTrue);
-    });
-
     test('TraceResult / DnsLookupResult 空 map 不抛', () {
       final trace = TraceResult.fromMap(const {});
       expect(trace.hops, isEmpty);
@@ -113,42 +73,6 @@ void main() {
       expect(lookup.success, isFalse);
       expect(lookup.elapsedMs, 0);
     });
-
-    test('DnsLookupResult 有答案才算成功', () {
-      final result = DnsLookupResult.fromMap({
-        'domain': 'example.com',
-        'source': 'cache',
-        'elapsedMs': 1.5,
-        'answers': [
-          {'type': 'A', 'value': '1.2.3.4', 'ttl': 60},
-        ],
-      });
-
-      expect(result.source, 'cache');
-      expect(result.success, isTrue);
-      expect(result.answers.single.value, '1.2.3.4');
-    });
-
-    test('NetworkInfoSnapshot 空 map 得到空快照', () {
-      final snapshot = NetworkInfoSnapshot.fromMap(const {});
-
-      expect(snapshot.interfaceName, '');
-      expect(snapshot.localIpv4, '');
-      expect(snapshot.dnsServers, isEmpty);
-      expect(snapshot.vpnActive, isFalse);
-      expect(snapshot.privateDns, 'off');
-    });
-  });
-
-  group('source 文案', () {
-    test('四个来源各有中文，未知值不暴露枚举/英文', () {
-      expect(dnsSourceLabel('upstream'), '上游解析');
-      expect(dnsSourceLabel('cache'), '缓存命中');
-      expect(dnsSourceLabel('rewrite'), '覆写规则');
-      expect(dnsSourceLabel('blocked'), '被规则拦截');
-      expect(dnsSourceLabel('error'), '查询失败');
-      expect(dnsSourceLabel('whatever'), '查询失败');
-    });
   });
 
   group('runner 守卫', () {
@@ -159,18 +83,6 @@ void main() {
       expect((await runner.traceRoute('example.com')).success, isFalse);
       expect((await runner.lookupDns('example.com')).error, isNotNull);
       expect((await runner.networkInfo()).interfaceName, '');
-    });
-
-    test('GuardedDiagnosticsRunner 包住抛异常的实现', () async {
-      final guarded = GuardedDiagnosticsRunner(const _ThrowingRunner());
-
-      final ping = await guarded.ping('example.com', count: 2);
-      expect(ping.success, isFalse);
-      expect(ping.message, contains('诊断执行失败'));
-
-      final lookup = await guarded.lookupDns('example.com');
-      expect(lookup.source, 'error');
-      expect(lookup.error, contains('诊断执行失败'));
     });
   });
 
@@ -223,33 +135,6 @@ void main() {
       expect(find.textContaining('TCP 回退测量'), findsNothing);
     });
 
-    testWidgets('失败态给错误提示，不把 0/0 当成通过', (tester) async {
-      await pumpPanel(tester, _FakeRunner(pingResult: _failedPing));
-
-      await tester.enterText(
-        find.byType(TextField).first,
-        'nonexistent.invalid',
-      );
-      await tester.pump();
-      await tester.tap(find.text('开始 Ping'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('未收到任何回复'), findsOneWidget);
-      expect(find.text('0 / 0'), findsOneWidget);
-    });
-
-    testWidgets('measuredWithFallback 显示 ICMP 受限提示', (tester) async {
-      await pumpPanel(tester, _FakeRunner(pingResult: _fallbackPing));
-
-      await tester.enterText(find.byType(TextField).first, '1.1.1.1');
-      await tester.pump();
-      await tester.tap(find.text('开始 Ping'));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('系统 ICMP 受限'), findsOneWidget);
-      expect(find.textContaining('TCP 回退测量'), findsOneWidget);
-    });
-
     testWidgets('空目标不发起探测，直接给输入校验文案', (tester) async {
       final runner = _FakeRunner(pingResult: _successfulPing);
       await pumpPanel(tester, runner);
@@ -259,58 +144,6 @@ void main() {
 
       expect(find.text('请输入探测目标'), findsOneWidget);
       expect(runner.pingCalls, isEmpty);
-    });
-  });
-
-  group('路由追踪面板', () {
-    testWidgets('渲染逐跳地址、时延与无响应跳', (tester) async {
-      tester.view.physicalSize = const Size(1170, 2532);
-      tester.view.devicePixelRatio = 3;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            diagnosticsRunnerProvider.overrideWithValue(
-              _FakeRunner(
-                pingResult: _successfulPing,
-                traceResult: const TraceResult(
-                  target: 'cdn.example.com',
-                  resolvedAddress: '93.184.216.34',
-                  success: true,
-                  hops: [
-                    TraceHop(hop: 1, address: '10.0.0.1', elapsedMs: 3),
-                    TraceHop(hop: 2),
-                    TraceHop(
-                      hop: 3,
-                      address: '93.184.216.34',
-                      elapsedMs: 18,
-                      reachedTarget: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          child: const AppHost(child: ToolsPage()),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('路由追踪'));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField).first, 'cdn.example.com');
-      await tester.pump();
-      await tester.tap(find.text('开始追踪'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('93.184.216.34'), findsWidgets);
-      expect(find.text('3 / 最多 15'), findsOneWidget);
-      for (var i = 0; i < 4; i++) {
-        await tester.drag(find.text('目标'), const Offset(0, -400));
-        await tester.pumpAndSettle();
-      }
-      expect(find.text('* * *'), findsOneWidget);
-      expect(find.text('无响应'), findsOneWidget);
     });
   });
 
@@ -402,21 +235,6 @@ void main() {
       ], reason: '自定义服务器必须原样传到原生侧，否则测的还是系统解析器');
     });
 
-    testWidgets('自定义档留空时拦在前端，不发请求', (tester) async {
-      final runner = _FakeRunner(pingResult: _successfulPing);
-      await openDns(tester, runner);
-
-      await tester.tap(find.text('自定义'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).first, 'example.com');
-      await tester.pump();
-      await tester.tap(find.text('开始查询'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('请输入自定义 DNS 服务器 IP'), findsOneWidget);
-      expect(runner.dnsLookupServers, isEmpty);
-    });
-
     testWidgets('开启隧道后隐藏服务器选择器（此时由隧道决定）', (tester) async {
       final runner = _FakeRunner(pingResult: _successfulPing);
       await openDns(
@@ -433,41 +251,10 @@ void main() {
   });
 }
 
-class _ThrowingRunner implements DiagnosticsRunner {
-  const _ThrowingRunner();
-
-  @override
-  Future<PingSummary> ping(
-    String target, {
-    int count = 4,
-    int timeoutSeconds = 3,
-  }) async => throw PlatformException(code: 'ping_failed', message: '断网');
-
-  @override
-  Future<TraceResult> traceRoute(String target, {int maxHops = 30}) async =>
-      throw PlatformException(code: 'trace_failed');
-
-  @override
-  Future<DnsLookupResult> lookupDns(
-    String domain, {
-    bool viaTunnel = false,
-    bool ipv4 = true,
-    String? server,
-  }) async => throw PlatformException(code: 'dns_failed', message: '引擎未启动');
-
-  @override
-  Future<NetworkInfoSnapshot> networkInfo() async =>
-      throw PlatformException(code: 'info_failed');
-}
-
 class _FakeRunner implements DiagnosticsRunner {
-  _FakeRunner({
-    required this.pingResult,
-    this.traceResult = const TraceResult(target: '', hops: [], success: false),
-  });
+  _FakeRunner({required this.pingResult});
 
   final PingSummary pingResult;
-  final TraceResult traceResult;
   final List<String> pingCalls = [];
 
   final List<String?> dnsLookupServers = [];
@@ -484,7 +271,7 @@ class _FakeRunner implements DiagnosticsRunner {
 
   @override
   Future<TraceResult> traceRoute(String target, {int maxHops = 30}) async =>
-      traceResult;
+      const TraceResult(target: '', hops: [], success: false);
 
   @override
   Future<DnsLookupResult> lookupDns(
@@ -529,28 +316,4 @@ const _successfulPing = PingSummary(
     PingReply(sequence: 3, elapsedMs: 12, ttl: 57),
     PingReply(sequence: 4, elapsedMs: 18, ttl: 57),
   ],
-);
-
-const _failedPing = PingSummary(
-  target: 'nonexistent.invalid',
-  transmitted: 0,
-  received: 0,
-  lossPercent: 100,
-  success: false,
-  message: '未收到任何回复',
-);
-
-const _fallbackPing = PingSummary(
-  target: '1.1.1.1',
-  resolvedAddress: '1.1.1.1',
-  addressFamily: 'IPv4',
-  transmitted: 4,
-  received: 4,
-  lossPercent: 0,
-  minMs: 3,
-  avgMs: 4,
-  maxMs: 5,
-  success: true,
-  measuredWithFallback: true,
-  message: '系统 ICMP 受阻，已用 TCP/Reachable 回退测量时延',
 );

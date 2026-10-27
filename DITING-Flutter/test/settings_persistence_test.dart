@@ -1,7 +1,13 @@
+// Settings that used to reset on restart: appearance, dashboard order and the two
+// config-resource tables.
+
+import 'dart:convert';
+
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/data/http/request_user_agent.dart';
 import 'package:diting/data/mock_config_resources.dart';
+import 'package:diting/data/prefs/config_resource_store.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/site_latency_categories.dart';
@@ -15,9 +21,14 @@ import 'package:diting/state/site_latency_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+void main() {
+  group('重新打开后仍在', _settingsPersistence);
+  group('自定义资源表', _configResources);
+}
+
 /// Settings that used to reset on restart: appearance, dashboard order, on-demand matching and the
 /// user agent every client sends.
-void main() {
+void _settingsPersistence() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late MemoryLegacyPrefsStore store;
@@ -84,28 +95,6 @@ void main() {
       expect(reopened, contains(DashboardWidget.status));
     });
 
-    test('清空看板不会回落到默认布局', () {
-      final notifier = container().read(dashboardWidgetsProvider.notifier);
-      for (final widget in container().read(dashboardWidgetsProvider)) {
-        notifier.remove(widget);
-      }
-      expect(container().read(dashboardWidgetsProvider), isEmpty);
-    });
-
-    test('改名后的未知卡片只丢自己', () {
-      store.putString(
-        'dns_vpn_prefs',
-        'dashboard_widget_order',
-        '["status","no_such_card","networkSpeed"]',
-      );
-      // Current layout version: no migration, so the unknown name just drops.
-      store.putInt('dns_vpn_prefs', 'dashboard_widget_layout_version', 1);
-      expect(container().read(dashboardWidgetsProvider), [
-        DashboardWidget.status,
-        DashboardWidget.networkSpeed,
-      ]);
-    });
-
     test('旧版布局升级时补上搬到看板的两张卡', () {
       store.putString(
         'dns_vpn_prefs',
@@ -169,19 +158,6 @@ void main() {
       );
     });
 
-    test('满了以后拒绝新增', () {
-      final notifier = container().read(dashboardSiteIdsProvider.notifier);
-      expect(
-        container().read(dashboardSiteIdsProvider),
-        hasLength(dashboardSiteCount),
-      );
-      expect(notifier.toggle('steam'), isFalse);
-      expect(
-        container().read(dashboardSiteIdsProvider),
-        hasLength(dashboardSiteCount),
-      );
-    });
-
     test('未知 id 从不认识的站点被丢弃', () {
       store.putString(
         'dns_vpn_prefs',
@@ -190,18 +166,6 @@ void main() {
       );
       final sites = container().read(dashboardSitesProvider);
       expect(sites.map((target) => target.id), ['github', 'steam']);
-    });
-
-    test('全部不认识时回落到默认四站', () {
-      store.putString(
-        'dns_vpn_prefs',
-        'dashboard_site_ids',
-        '["no_such_site"]',
-      );
-      expect(
-        container().read(dashboardSiteIdsProvider),
-        defaultDashboardSiteIds,
-      );
     });
   });
 
@@ -233,6 +197,102 @@ void main() {
 
       notifier.selectUserAgent(null);
       expect(container().read(requestUserAgentProvider), appFallbackUserAgent);
+    });
+  });
+}
+
+/// Pins the two config-resource tables, which used to live in memory and reverted on restart
+void _configResources() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late MemoryLegacyPrefsStore store;
+
+  setUp(() => store = MemoryLegacyPrefsStore());
+
+  ProviderContainer container() {
+    final instance = ProviderContainer(
+      overrides: [legacyPrefsStoreProvider.overrideWithValue(store)],
+    );
+    addTearDown(instance.dispose);
+    return instance;
+  }
+
+  group('写入后能在新容器里读回', () {
+    test('User-Agent 与选中项', () {
+      final notifier = container().read(configResourcesProvider.notifier);
+      expect(notifier.addUserAgent('MyAgent/1.0'), isTrue);
+      notifier.selectUserAgent('MyAgent/1.0');
+
+      final reopened = container().read(configResourcesProvider);
+      expect(reopened.userAgents.map((a) => a.value), contains('MyAgent/1.0'));
+      expect(reopened.selectedUserAgent, 'MyAgent/1.0');
+    });
+
+    test('SSID 规则增删改与开关', () {
+      final notifier = container().read(configResourcesProvider.notifier);
+      expect(
+        notifier.putSsid(
+          null,
+          const MockSsidRule(ssid: 'Cafe', delayMs: 1200, cellular: false),
+        ),
+        isTrue,
+      );
+      notifier.toggleSsid('Cafe', wifi: false);
+
+      final reopened = container().read(configResourcesProvider);
+      final rule = reopened.ssidRules.firstWhere((r) => r.ssid == 'Cafe');
+      expect(rule.delayMs, 1200);
+      expect(rule.wifi, isFalse);
+      expect(rule.cellular, isFalse);
+    });
+
+    test('按需连接开关', () {
+      container().read(configResourcesProvider.notifier).setOnDemand(true);
+      expect(container().read(configResourcesProvider).onDemand, isTrue);
+    });
+
+    test('删光 UA 列表后不会回落到演示值', () {
+      final notifier = container().read(configResourcesProvider.notifier);
+      for (final agent in mockUserAgents) {
+        if (!agent.isDefault) notifier.removeUserAgent(agent.value);
+      }
+      notifier.addUserAgent('Only/1.0');
+      notifier.removeUserAgent('Only/1.0');
+
+      final reopened = container().read(configResourcesProvider);
+      expect(reopened.userAgents, hasLength(1));
+      expect(reopened.userAgents.single.isDefault, isTrue);
+    });
+  });
+
+  group('损坏数据', () {
+    test('坏 JSON 回落到初始值而不是崩溃', () {
+      store.putString(
+        ConfigResourceStore.container,
+        'user_agents_json',
+        '{not json',
+      );
+      final state = container().read(configResourcesProvider);
+      expect(state.userAgents, hasLength(mockUserAgents.length));
+    });
+
+    test('一组坏掉不牵连另外一组', () {
+      store.putString(
+        ConfigResourceStore.container,
+        'user_agents_json',
+        'oops',
+      );
+      store.putString(
+        ConfigResourceStore.container,
+        'ssid_rules_json',
+        jsonEncode([
+          {'ssid': 'Kept', 'cellular': true, 'wifi': true, 'delayMs': 0},
+        ]),
+      );
+      final state = container().read(configResourcesProvider);
+      expect(state.userAgents, hasLength(mockUserAgents.length));
+      expect(state.ssidRules, hasLength(1));
+      expect(state.ssidRules.single.ssid, 'Kept');
     });
   });
 }

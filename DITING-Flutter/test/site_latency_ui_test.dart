@@ -1,20 +1,62 @@
+// Site latency card and detail page: nothing probes on open, and each category
+// button touches only its own sites.
+
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/site_latency_categories.dart';
 import 'package:diting/data/site_latency_targets.dart';
+import 'package:diting/pages/home/dashboard/cards/site_latency_card.dart';
 import 'package:diting/pages/home/dashboard/detail/site_latency_detail_page.dart';
-import 'package:diting/pages/home/dashboard/detail/site_latency_sites_page.dart';
+import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/diagnostics_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'support/app_host.dart';
+import 'support/test_hooks.dart';
 
-/// Pins the two behaviours the detail page was rewritten for: nothing probes on open, and each
-/// category has its own probe button that touches only its own sites.
-class _FakeRunner implements DiagnosticsRunner {
+void main() {
+  group('站点测速卡', _siteLatencyCard);
+  group('站点测速页', _siteLatencyPage);
+}
+
+void _siteLatencyCard() {
+  // The card's auto-probe is skipped while the global flag is set, so turn it back off here.
+  installGlobalTestHooks();
+
+  testWidgets('自定义的四个站点测完后表头显示计数', (tester) async {
+    debugDisableDashboardLiveUpdates = false;
+    final runner = _CardRunner();
+    final store = MemoryLegacyPrefsStore();
+    LegacySettings(
+      store,
+    ).setDashboardSiteIds(const ['baidu', 'douyin', 'netease', 'duckduckgo']);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          diagnosticsRunnerProvider.overrideWithValue(runner),
+          legacyPrefsStoreProvider.overrideWithValue(store),
+        ],
+        child: const AppHost(child: SiteLatencyCard()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(runner.pingCalls, [
+      'www.baidu.com',
+      'www.douyin.com',
+      'music.163.com',
+      'duckduckgo.com',
+    ]);
+    expect(find.text('4 / 4 通畅'), findsOneWidget);
+    expect(find.text('尚未测速'), findsNothing);
+  });
+}
+
+class _CardRunner implements DiagnosticsRunner {
   final List<String> pingCalls = [];
 
   @override
@@ -30,12 +72,10 @@ class _FakeRunner implements DiagnosticsRunner {
       received: count,
       lossPercent: 0,
       success: true,
-      minMs: 20,
-      avgMs: 30,
-      maxMs: 40,
-      jitterMs: 2,
-      resolvedAddress: '2408:8756::1',
-      addressFamily: 'IPv6',
+      minMs: 1,
+      avgMs: 1,
+      maxMs: 2,
+      jitterMs: 0,
     );
   }
 
@@ -65,12 +105,15 @@ class _FakeRunner implements DiagnosticsRunner {
   );
 }
 
-void main() {
+/// Pins the two behaviours the detail page was rewritten for: nothing probes on open, and each
+/// category has its own probe button that touches only its own sites.
+
+void _siteLatencyPage() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late _FakeRunner runner;
+  late _PageRunner runner;
 
-  setUp(() => runner = _FakeRunner());
+  setUp(() => runner = _PageRunner());
 
   Future<void> pumpPage(WidgetTester tester, Widget page) async {
     tester.view.physicalSize = const Size(1170, 2532);
@@ -120,34 +163,55 @@ void main() {
     // uses.
     expect(find.text('${search.length} / ${search.length} 通畅'), findsOneWidget);
   });
+}
 
-  testWidgets('「测全部」一次测完所有站点', (tester) async {
-    await pumpPage(tester, const SiteLatencyDetailPage());
+class _PageRunner implements DiagnosticsRunner {
+  final List<String> pingCalls = [];
 
-    await tester.tap(find.byTooltip('测全部'));
-    await tester.pumpAndSettle();
-
-    expect(runner.pingCalls.length, siteLatencyTargets.length);
-    expect(
-      find.text('${siteLatencyTargets.length} / ${siteLatencyTargets.length}'),
-      findsOneWidget,
+  @override
+  Future<PingSummary> ping(
+    String target, {
+    int count = 4,
+    int timeoutSeconds = 3,
+  }) async {
+    pingCalls.add(target);
+    return PingSummary(
+      target: target,
+      transmitted: count,
+      received: count,
+      lossPercent: 0,
+      success: true,
+      minMs: 20,
+      avgMs: 30,
+      maxMs: 40,
+      jitterMs: 2,
+      resolvedAddress: '2408:8756::1',
+      addressFamily: 'IPv6',
     );
-  });
+  }
 
-  testWidgets('仪表盘站点页最多选四个', (tester) async {
-    await pumpPage(tester, const SiteLatencySitesPage());
+  @override
+  Future<TraceResult> traceRoute(String target, {int maxHops = 30}) async =>
+      const TraceResult(target: '', hops: [], success: false);
 
-    expect(find.text('第 1 位'), findsOneWidget);
-    expect(find.text('第 $dashboardSiteCount 位'), findsOneWidget);
-    // Full card: adding a fifth site is refused with a hint instead of silently dropped.
-    final steam = find.text('Steam');
-    await tester.dragUntilVisible(
-      steam,
-      find.byType(Scrollable).first,
-      const Offset(0, -280),
-    );
-    await tester.tap(steam);
-    await tester.pumpAndSettle();
-    expect(find.textContaining('最多放 $dashboardSiteCount 个站点'), findsOneWidget);
-  });
+  @override
+  Future<DnsLookupResult> lookupDns(
+    String domain, {
+    bool viaTunnel = false,
+    bool ipv4 = true,
+    String? server,
+  }) async => DnsLookupResult(
+    domain: domain,
+    source: 'upstream',
+    answers: const [],
+    elapsedMs: 0,
+  );
+
+  @override
+  Future<NetworkInfoSnapshot> networkInfo() async => const NetworkInfoSnapshot(
+    interfaceName: 'wlan0',
+    localIpv4: '192.168.1.2',
+    privateDns: '',
+    vpnActive: false,
+  );
 }

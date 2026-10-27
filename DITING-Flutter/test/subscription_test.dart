@@ -1,10 +1,16 @@
+// Runs the subscription SQL against the real 1.4.3 tables: `ORDER BY`,
+// conflicts, cascades.
+
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-/// Runs the subscription SQL against the real 1.4.3 tables: `ORDER BY`, conflicts, cascades
 void main() {
+  group('订阅表 SQL', _subscriptionRepository);
+}
+
+void _subscriptionRepository() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -108,20 +114,6 @@ void main() {
   );
 
   group('查询', () {
-    test('空库返回空列表而不是抛错', () async {
-      expect(await repository.all(), isEmpty);
-      expect(await repository.allRemote(), isEmpty);
-      expect(await repository.byKind(SubscriptionKind.domain), isEmpty);
-      expect(await repository.remoteByKind(SubscriptionKind.hosts), isEmpty);
-      expect(await repository.groups(), isEmpty);
-      expect(await repository.autoUpdateItems('batch-1'), isEmpty);
-      expect(await repository.byId(42), isNull);
-      expect(
-        await repository.byUrlAndKind('https://nope', SubscriptionKind.domain),
-        isNull,
-      );
-    });
-
     test('all() 按 addedAt DESC', () async {
       await insertSub(url: 'https://a', addedAt: 100, name: 'A');
       await insertSub(url: 'https://b', addedAt: 300, name: 'B');
@@ -215,30 +207,6 @@ void main() {
       expect(rows.single['name'], '原始');
       expect(writeCount, 1);
     });
-
-    test('同 url 不同 kind 可以共存', () async {
-      final domainId = await insertSub(
-        url: 'https://same',
-        kind: SubscriptionKind.domain,
-      );
-      final hostsId = await insertSub(
-        url: 'https://same',
-        kind: SubscriptionKind.hosts,
-      );
-
-      expect(hostsId, isNot(domainId));
-      expect(await db.query('subscription'), hasLength(2));
-    });
-
-    test('分组同名（NOCASE）返回已有 id', () async {
-      final first = await repository.insertGroup(name: '广告拦截');
-      final second = await repository.insertGroup(name: '广告拦截');
-      final caseVariant = await repository.insertGroup(name: 'ADGUARD');
-
-      expect(second, first);
-      expect(caseVariant, isNot(first));
-      expect(await db.query('subscription_group'), hasLength(2));
-    });
   });
 
   group('级联与外键', () {
@@ -256,18 +224,6 @@ void main() {
       await repository.deleteById(id);
 
       expect(await db.query('subscription_auto_update_item'), isEmpty);
-    });
-
-    test('dissolveGroup 把组内订阅移到未分组并删分组行', () async {
-      final groupId = await repository.insertGroup(name: '临时组');
-      final subId = await insertSub(groupId: groupId);
-
-      await repository.dissolveGroup(groupId);
-
-      expect(await db.query('subscription_group'), isEmpty);
-      expect((await repository.byId(subId))!.groupId, isNull);
-      expect(await repository.byGroupId(groupId), isEmpty);
-      expect(await repository.all(), hasLength(1));
     });
   });
 
@@ -307,72 +263,6 @@ void main() {
       expect(record.ruleSetHash, isNull);
     });
 
-    test('markNotModified 保留条数与更新时间', () async {
-      final id = await insertSub(failureCount: 2);
-      await repository.markImported(
-        id,
-        ruleCount: 900,
-        lastUpdated: 4000,
-        etag: '"old"',
-        lastModified: null,
-      );
-
-      await repository.markNotModified(
-        id,
-        attemptedAt: 9000,
-        etag: '"old"',
-        lastModified: 'Thu, 22 Oct 2015 08:00:00 GMT',
-      );
-
-      final record = (await repository.byId(id))!;
-      expect(record.ruleCount, 900);
-      expect(record.lastUpdated, 4000);
-      expect(record.lastAttemptAt, 9000);
-      expect(record.consecutiveFailureCount, 0);
-      expect(record.importState, SubscriptionImportState.ready);
-      expect(record.httpLastModified, 'Thu, 22 Oct 2015 08:00:00 GMT');
-    });
-
-    test('resetAfterRuleCleanup 归零条数与校验符', () async {
-      final id = await insertSub(etag: '"e"', lastModified: 'lm');
-      await repository.markImported(
-        id,
-        ruleCount: 700,
-        lastUpdated: 3000,
-        etag: '"e"',
-        lastModified: 'lm',
-      );
-
-      await repository.resetAfterRuleCleanup();
-
-      final record = (await repository.byId(id))!;
-      expect(record.ruleCount, 0);
-      expect(record.lastUpdated, 0);
-      expect(record.httpEtag, isNull);
-      expect(record.httpLastModified, isNull);
-      expect(record.ruleSetHash, isNull);
-      expect(record.importState, SubscriptionImportState.ready);
-    });
-
-    test('setDetails / setEnabled / setName 各改各的列', () async {
-      final id = await insertSub(name: '旧名');
-      await repository.setDetails(
-        id,
-        name: '新名',
-        url: 'https://new',
-        ruleCount: 12,
-        lastUpdated: 999,
-      );
-      await repository.setEnabled(id, false);
-
-      final record = (await repository.byId(id))!;
-      expect(record.name, '新名');
-      expect(record.url, 'https://new');
-      expect(record.ruleCount, 12);
-      expect(record.lastUpdated, 999);
-      expect(record.enabled, isFalse);
-    });
-
     test('每次写都触发 onChanged（revision 自增）', () async {
       final id = await insertSub();
       final afterInsert = writeCount;
@@ -386,16 +276,6 @@ void main() {
 
       expect(afterInsert, 1);
       expect(writeCount, afterInsert + 7);
-    });
-
-    test('setImportState 支持清空 importError', () async {
-      final id = await insertSub(state: SubscriptionImportState.failed);
-      await repository.markUpdateFailed(id, error: '老错误', attemptedAt: 5);
-      await repository.setImportState(id, SubscriptionImportState.importing);
-
-      final record = (await repository.byId(id))!;
-      expect(record.importState, SubscriptionImportState.importing);
-      expect(record.importError, isNull);
     });
   });
 

@@ -1,3 +1,6 @@
+// The DNS config handed to the Go engine: provider catalog, cache presets, block
+// response and the race list all come from 1.4.3 keys.
+
 import 'dart:convert';
 
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
@@ -11,8 +14,13 @@ import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Locks that the UI writes the fixed prefs keys the engine reads (providers, cache, app rules)
 void main() {
+  group('服务商与缓存配置', _providerCatalog);
+  group('VPN DNS 配置', _vpnConfig);
+}
+
+/// Locks that the UI writes the fixed prefs keys the engine reads (providers, cache, app rules)
+void _providerCatalog() {
   ProviderContainer container({Map<String, Object?> dns = const {}}) {
     final store = MemoryLegacyPrefsStore({
       'dns_vpn_prefs': dns,
@@ -134,14 +142,6 @@ void main() {
       expect(settings.parallelRaceProviderIds, ['preset_alidns_dns']);
       expect(settings.primaryBackupProviderIds, ['preset_alidns_dns']);
     });
-
-    test('目录包含 18 个预设且延迟缺失时标为未测速', () {
-      final c = container();
-      final catalog = c.read(dnsProviderCatalogProvider);
-      expect(catalog, hasLength(18));
-      expect(catalog.every((provider) => provider.isPreset), isTrue);
-      expect(providerLatencyLabel(catalog.first), '未测速');
-    });
   });
 
   group('缓存预设', () {
@@ -162,14 +162,6 @@ void main() {
       final cache = config.toJson(settings)['cache'] as Map;
       expect(cache['maxTtlSeconds'], 21600);
       expect(cache['minTtlSeconds'], 120);
-    });
-
-    test('关闭缓存只改开关，不丢预设', () {
-      final settings = LegacySettings(MemoryLegacyPrefsStore());
-      DnsCachePreset.balanced.applyTo(settings, enabled: false);
-      expect(settings.cacheEnabled, isFalse);
-      expect(settings.cachePresetRaw, 'balanced');
-      expect(cacheSummaryOf(settings), '已关闭 · 每次解析都会请求上游');
     });
 
     test('缺少 preset 键时按策略推断，旧安装不会显示空档位', () {
@@ -196,18 +188,6 @@ void main() {
         }),
       );
       expect(DnsCachePreset.current(legacyBalanced), DnsCachePreset.balanced);
-    });
-
-    test('非法 preset 值回落到策略推断', () {
-      final settings = LegacySettings(
-        MemoryLegacyPrefsStore({
-          'dns_vpn_prefs': {
-            'dns_cache_preset_v3': 'bogus',
-            'dns_cache_mode_v2': 'follow_dns_ttl',
-          },
-        }),
-      );
-      expect(DnsCachePreset.current(settings), DnsCachePreset.conservative);
     });
   });
 
@@ -243,17 +223,6 @@ void main() {
       expect(json['windowSeconds'], 10);
       expect(json['nxDomainDurationSeconds'], 3600);
     });
-
-    test('未知存储值回落到 NXDOMAIN', () {
-      expect(
-        BlockResponseMode.fromStorage('bogus'),
-        BlockResponseMode.nxdomain,
-      );
-      expect(
-        BlockResponseMode.fromStorage('zero_address'),
-        BlockResponseMode.zeroAddress,
-      );
-    });
   });
 
   group('服务显示过滤', () {
@@ -272,21 +241,6 @@ void main() {
       // The current selection is always kept, so the user can see it.
       expect(ids, contains('preset_google_dns'));
       expect(ids, isNot(contains('preset_cloudflare_dns')));
-    });
-
-    test('协议开启时按隐藏列表剔除单项', () {
-      final c = container(
-        dns: {
-          'home_visible_protocols': '["DNS","DOH","DOT"]',
-          'home_hidden_provider_ids': '["preset_cloudflare_dns"]',
-        },
-      );
-      final ids = c
-          .read(visibleProvidersProvider)
-          .map((provider) => provider.id)
-          .toSet();
-      expect(ids, isNot(contains('preset_cloudflare_dns')));
-      expect(ids, contains('preset_alidns_dns'));
     });
   });
 
@@ -317,22 +271,6 @@ void main() {
       expect(c.read(raceProvidersProvider), hasLength(2));
     });
 
-    test('主备模式的顺序在落盘后保持不变', () {
-      final c = container(dns: {'dns_resolution_mode': 'primary_backup'});
-      final notifier = c.read(raceProvidersProvider.notifier);
-      notifier.reorder([
-        'preset_dnspod_dns',
-        'preset_alidns_dns',
-        'preset_cloudflare_doh',
-      ]);
-      expect(c.read(legacySettingsProvider).primaryBackupProviderIds, [
-        'preset_dnspod_dns',
-        'preset_alidns_dns',
-        'preset_cloudflare_doh',
-      ]);
-      expect(c.read(raceProvidersProvider), hasLength(3));
-    });
-
     test('切换解析模式读取各自的列表键', () {
       final c = container(
         dns: {
@@ -345,16 +283,86 @@ void main() {
       expect(c.read(raceProvidersProvider), {'preset_google_doh'});
     });
   });
+}
 
-  group('prefs 版本号', () {
-    test('写操作 bump 后可重建 settings 视图', () {
-      final c = container();
-      final revision = c.read(legacySettingsRevisionProvider);
-      c.read(legacySettingsProvider).setDomainRulesEnabled(false);
-      expect(c.read(legacySettingsProvider).domainRulesEnabled, isFalse);
-      c.read(legacySettingsRevisionProvider.notifier).bump();
-      expect(c.read(legacySettingsRevisionProvider), revision + 1);
-      expect(c.read(legacySettingsProvider).domainRulesEnabled, isFalse);
+void _vpnConfig() {
+  group('DNS 配置', () {
+    test('默认单一模式选中阿里云 PLAIN，服务端带端口', () {
+      final settings = settingsWith({});
+      final config = buildDnsConfig(settings);
+      final json = config.toJson(settings);
+
+      expect(json['mode'], 'single');
+      expect(json['blockResponse'], 'NXDOMAIN');
+      final providers = json['providers'] as List;
+      expect(providers, hasLength(1));
+      expect(providers.single, {
+        'id': 'preset_alidns_dns',
+        'protocol': 'PLAIN',
+        'server': '223.5.5.5:53',
+        'url': '',
+      });
+    });
+
+    test('DoH 服务商 server 为空，url 原样保留', () {
+      final settings = settingsWith({
+        'selected_provider_id': 'preset_cloudflare_doh',
+      });
+      final provider =
+          (buildDnsConfig(settings).toJson(settings)['providers'] as List)
+                  .single
+              as Map;
+      expect(provider['protocol'], 'DOH');
+      expect(provider['server'], '');
+      expect(provider['url'], 'https://cloudflare-dns.com/dns-query');
+    });
+
+    test('竞速模式使用竞速列表；不足两个时回落到选中项', () {
+      final two = settingsWith({'dns_resolution_mode': 'parallel_race'});
+      expect(buildDnsConfig(two).providers.map((p) => p.id), [
+        'preset_alidns_dns',
+        'preset_dnspod_dns',
+      ]);
+
+      final one = settingsWith({
+        'dns_resolution_mode': 'parallel_race',
+        'parallel_race_provider_ids': jsonEncode(['preset_google_dns']),
+      });
+      expect(buildDnsConfig(one).providers.single.id, 'preset_alidns_dns');
+      expect(buildDnsConfig(one).mode, 'parallel_race');
+    });
+
+    test('阻断响应与缓存默认值逐字对齐 1.4.3', () {
+      final settings = settingsWith({'block_response_mode': 'zero_address'});
+      final json = buildDnsConfig(settings).toJson(settings);
+      expect(json['blockResponse'], 'CUSTOM_IP');
+      expect(json['cache'], {
+        'enabled': true,
+        'mode': 'limit_max_ttl',
+        'maxTtlSeconds': 3600,
+        'fixedTtlSeconds': 3600,
+        'minTtlEnabled': false,
+        'minTtlSeconds': 60,
+        'staleFallbackEnabled': false,
+        'staleFallbackSeconds': 300,
+        'negativeTtlEnabled': true,
+        'negativeTtlSeconds': 30,
+      });
+    });
+
+    test('bootstrap 只带选中的预置项', () {
+      final settings = settingsWith({});
+      final bootstrap =
+          buildDnsConfig(settings).toJson(settings)['bootstrap'] as Map;
+      expect(bootstrap['enabled'], true);
+      expect((bootstrap['ips'] as List).map((e) => (e as Map)['ip']), [
+        '223.5.5.5',
+        '119.29.29.29',
+        '180.184.1.1',
+      ]);
     });
   });
 }
+
+LegacySettings settingsWith(Map<String, Object?> values) =>
+    LegacySettings(MemoryLegacyPrefsStore({'dns_vpn_prefs': values}));

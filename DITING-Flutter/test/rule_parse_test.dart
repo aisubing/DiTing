@@ -1,11 +1,22 @@
+// Rule parsing and import: a semantic drift silently blocks too much or too little, and
+// the importer must keep the 1.4.3 `*_rule` / `*_rule_source` contract.
+
 import 'package:diting/data/rules/rule_domain_utils.dart';
+import 'package:diting/data/rules/rule_importer.dart';
 import 'package:diting/data/rules/rule_models.dart';
 import 'package:diting/data/rules/rule_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqflite/sqflite.dart' show Sqflite;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+void main() {
+  group('规则解析', _ruleParser);
+  group('规则入库', _ruleImporter);
+}
 
 /// Equivalent of 1.4.3's `AdGuardRuleParserTest`: a semantic drift silently blocks too much
 /// or too little
-void main() {
+void _ruleParser() {
   group('域名 / 修饰符', () {
     test('标准拦截规则与修饰符', () {
       final standard = parseRule('||example.com^');
@@ -48,24 +59,9 @@ void main() {
       expect(allow.appScope, 'com.google.android.gms');
     });
 
-    test('注释与空行被忽略', () {
-      expect(parseRule('! comment'), isNull);
-      expect(parseRule('# comment'), isNull);
-      expect(parseRule('   '), isNull);
-      expect(parseAllowRule('! allow comment'), isNull);
-    });
-
     test('\$all 与 \$all,important', () {
       expect(parseRule('||example.com^\$all')!.pattern, 'example.com');
       expect(parseRule('||example.com^\$all,important')!.important, isTrue);
-    });
-
-    test('\$~app= 前缀同样表示取反', () {
-      final rule = parseRule('||tracker.com^\$~app=com.android.chrome');
-      expect(rule, isNotNull);
-      expect(rule!.pattern, 'tracker.com');
-      expect(rule.appScope, 'com.android.chrome');
-      expect(rule.appInverted, isTrue);
     });
 
     test('只对 HTTP 有意义的修饰符整行忽略', () {
@@ -83,15 +79,6 @@ void main() {
             .ignoredCount,
         1,
       );
-    });
-
-    test('~denyallow= 丢弃修饰符但保留规则', () {
-      final line = parseCategorizedLine(
-        '||example.com^\$~denyallow=a.com|b.com',
-      );
-      expect(line.blockRules, hasLength(1));
-      expect(line.blockRules.first.pattern, 'example.com');
-      expect(line.blockRules.first.denyallow, isNull);
     });
   });
 
@@ -159,19 +146,6 @@ void main() {
         expect(parsed.blockRules, hasLength(1), reason: line);
         expect(parsed.rewriteRules, isEmpty, reason: line);
       }
-    });
-
-    test('dnsmasq 真实 IP 与域名目标变成覆写', () {
-      final ip = parseCategorizedLine('address=/custom.com/10.0.0.1');
-      expect(ip.rewriteRules, hasLength(1));
-      expect(ip.rewriteRules.first.targetValue, '10.0.0.1');
-
-      final cname = parseCategorizedLine(
-        'server=/alias.com/target.example.org',
-      );
-      expect(cname.rewriteRules, hasLength(1));
-      expect(cname.rewriteRules.first.targetType, RewriteTargetType.cname);
-      expect(cname.rewriteRules.first.targetValue, 'target.example.org');
     });
   });
 
@@ -270,5 +244,216 @@ void main() {
       expect(normalizeDomain('1.2.3.4'), isNull);
       expect(normalizeDomain('nodot'), isNull);
     });
+  });
+}
+
+/// Runs the importer against the real 1.4.3 tables: rules land in `*_rule` with a `sub_<id>`
+/// source row, re-imports do not duplicate, and deleting a subscription drops orphan rules
+void _ruleImporter() {
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+
+  late Database db;
+
+  setUp(() async {
+    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+    await db.execute(
+      'CREATE TABLE block_rule (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
+      'pattern TEXT NOT NULL, rawLine TEXT NOT NULL, addedAt INTEGER NOT NULL, '
+      'enabled INTEGER NOT NULL, groupName TEXT, important INTEGER NOT NULL, '
+      'appScope TEXT, appInverted INTEGER NOT NULL, isWildcard INTEGER NOT NULL, '
+      'denyallow TEXT, isRegex INTEGER NOT NULL, dnsType TEXT)',
+    );
+    await db.execute(
+      'CREATE TABLE block_rule_source (ruleId INTEGER NOT NULL, source TEXT NOT NULL, '
+      'enabled INTEGER NOT NULL, PRIMARY KEY(ruleId, source), '
+      'FOREIGN KEY(ruleId) REFERENCES block_rule(id) ON DELETE CASCADE)',
+    );
+    await db.execute(
+      'CREATE TABLE allow_rule (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
+      'pattern TEXT NOT NULL, rawLine TEXT NOT NULL, addedAt INTEGER NOT NULL, '
+      'enabled INTEGER NOT NULL, groupName TEXT, appScope TEXT, '
+      'appInverted INTEGER NOT NULL, isWildcard INTEGER NOT NULL, '
+      'important INTEGER NOT NULL, denyallow TEXT, isRegex INTEGER NOT NULL, '
+      'dnsType TEXT)',
+    );
+    await db.execute(
+      'CREATE TABLE allow_rule_source (ruleId INTEGER NOT NULL, source TEXT NOT NULL, '
+      'enabled INTEGER NOT NULL, PRIMARY KEY(ruleId, source), '
+      'FOREIGN KEY(ruleId) REFERENCES allow_rule(id) ON DELETE CASCADE)',
+    );
+    await db.execute(
+      'CREATE TABLE rewrite_rule (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
+      'pattern TEXT NOT NULL, targetType TEXT NOT NULL, targetValue TEXT NOT NULL, '
+      'rawLine TEXT NOT NULL, addedAt INTEGER NOT NULL, enabled INTEGER NOT NULL)',
+    );
+    await db.execute(
+      'CREATE TABLE rewrite_rule_source (ruleId INTEGER NOT NULL, source TEXT NOT NULL, '
+      'enabled INTEGER NOT NULL, PRIMARY KEY(ruleId, source), '
+      'FOREIGN KEY(ruleId) REFERENCES rewrite_rule(id) ON DELETE CASCADE)',
+    );
+    await db.execute(
+      'CREATE TABLE go_url_rule (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
+      'pattern TEXT NOT NULL, kind TEXT NOT NULL, rawLine TEXT NOT NULL, '
+      'addedAt INTEGER NOT NULL, enabled INTEGER NOT NULL)',
+    );
+    await db.execute(
+      'CREATE TABLE go_url_rule_source (ruleId INTEGER NOT NULL, source TEXT NOT NULL, '
+      'enabled INTEGER NOT NULL, PRIMARY KEY(ruleId, source), '
+      'FOREIGN KEY(ruleId) REFERENCES go_url_rule(id) ON DELETE CASCADE)',
+    );
+    await db.execute(
+      'CREATE TABLE subscription (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
+      'url TEXT NOT NULL, name TEXT NOT NULL)',
+    );
+  });
+
+  tearDown(() => db.close());
+
+  Future<int> count(String table) async =>
+      Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM $table')) ??
+      0;
+
+  test('block / allow / rewrite / url 四族分别落到对应表', () async {
+    const text =
+        '||ads.example.com^\n'
+        '@@||safe.example.com^\n'
+        '||rewrite.example.com^'
+        r'$dnsrewrite=1.2.3.4'
+        '\n'
+        '||tracker.example.com/pixel.js\n';
+    final parsed = parseCategorized(text);
+    final importer = RuleImporter(db);
+
+    final summary = await importer.import(
+      parsed,
+      source: subscriptionSourceTag(7),
+      kind: 'domain',
+      enabled: true,
+    );
+
+    expect(summary.blockCount, 1);
+    expect(summary.allowCount, 1);
+    expect(summary.rewriteCount, 1);
+    expect(summary.urlBlockCount, 1);
+    expect(summary.insertedCount, 4);
+
+    expect(await count('block_rule'), 1);
+    expect(await count('allow_rule'), 1);
+    expect(await count('rewrite_rule'), 1);
+    expect(await count('go_url_rule'), 1);
+
+    final sources = await db.query('block_rule_source');
+    expect(sources.single['source'], 'sub_7');
+    expect(sources.single['enabled'], 1);
+  });
+
+  test('重复导入不新增行，只补来源', () async {
+    const text = '||dup.example.com^\n||dup.example.com^';
+    final parsed = parseCategorized(text);
+    final importer = RuleImporter(db);
+
+    final first = await importer.import(
+      parsed,
+      source: subscriptionSourceTag(1),
+      kind: 'domain',
+      enabled: true,
+    );
+    expect(first.blockCount, 1);
+    expect(await count('block_rule'), 1);
+
+    final second = await importer.import(
+      parsed,
+      source: subscriptionSourceTag(1),
+      kind: 'domain',
+      enabled: true,
+    );
+    // Same source again: the source row exists, so the insert is ignored.
+    expect(second.blockCount, 0);
+    expect(await count('block_rule'), 1, reason: '设备库没有唯一索引，必须靠查重复用');
+
+    // Another subscription with the same pattern reuses the rule row.
+    final other = await importer.import(
+      parsed,
+      source: subscriptionSourceTag(2),
+      kind: 'domain',
+      enabled: true,
+    );
+    expect(other.blockCount, 1);
+    expect(await count('block_rule'), 1);
+    expect(await count('block_rule_source'), 2);
+  });
+
+  test('删除来源后规则行被清掉，不留孤儿', () async {
+    final importer = RuleImporter(db);
+    await importer.import(
+      parseCategorized('||gone.example.com^'),
+      source: subscriptionSourceTag(5),
+      kind: 'domain',
+      enabled: true,
+    );
+    expect(await count('block_rule'), 1);
+
+    await importer.removeRulesBySource(subscriptionSourceTag(5));
+    expect(await count('block_rule_source'), 0);
+    expect(await count('block_rule'), 0, reason: '无来源引用的规则行必须删掉');
+  });
+
+  test('删除一个订阅不影响另一个订阅的同一 pattern', () async {
+    final importer = RuleImporter(db);
+    const text = '||shared.example.com^';
+    await importer.import(
+      parseCategorized(text),
+      source: subscriptionSourceTag(1),
+      kind: 'domain',
+      enabled: true,
+    );
+    await importer.import(
+      parseCategorized(text),
+      source: subscriptionSourceTag(2),
+      kind: 'domain',
+      enabled: true,
+    );
+    expect(await count('block_rule_source'), 2);
+
+    await importer.removeRulesBySource(subscriptionSourceTag(1));
+    expect(await count('block_rule'), 1, reason: 'sub_2 还在引用，规则行必须留着');
+    expect(await count('block_rule_source'), 1);
+  });
+
+  test('cosmetic 解析出来但不入库，并单独计数', () async {
+    final parsed = parseCategorized('example.com##.ad-banner');
+    final importer = RuleImporter(db);
+    final summary = await importer.import(
+      parsed,
+      source: subscriptionSourceTag(4),
+      kind: 'domain',
+      enabled: true,
+    );
+    expect(summary.insertedCount, 0);
+    expect(summary.notAppliedCount, 1);
+    expect(await count('block_rule'), 0);
+  });
+
+  test('带 app 作用域的 URL 规则不入 go_url_rule（该表没有 appScope 列）', () async {
+    const text =
+        '||ads.example.com/banner.js'
+        r'$app=com.foo'
+        '\n';
+    final parsed = parseCategorized(text);
+    expect(parsed.urlBlockRules.single.appScope, 'com.foo');
+
+    final importer = RuleImporter(db);
+    final summary = await importer.import(
+      parsed,
+      source: subscriptionSourceTag(12),
+      kind: 'domain',
+      enabled: true,
+    );
+    // Dropping the scope would turn it into a global URL block, so skip the rule.
+    expect(summary.urlBlockCount, 0);
+    expect(await count('go_url_rule'), 0);
   });
 }

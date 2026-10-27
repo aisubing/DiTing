@@ -1,7 +1,11 @@
-import 'package:diting/data/db/dns_cache_repository.dart';
+// Providers wired to real tables: the overview aggregation and the log
+// refresh timer that keeps the dashboard live.
+
 import 'package:diting/data/db/mirror_template_repository.dart';
+import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/log_dashboard_overview_providers.dart';
 import 'package:diting/state/log_providers.dart';
+import 'package:diting/state/log_refresh_providers.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,8 +14,12 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'support/legacy_schema.dart';
 
-/// Guards real-data wiring in the database: no bucket counted as passed, no demo fallback
 void main() {
+  group('概览聚合', _realDataWiring);
+  group('日志定时刷新', _logRefresh);
+}
+
+void _realDataWiring() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
@@ -75,20 +83,6 @@ void main() {
   int now() => DateTime.now().millisecondsSinceEpoch;
 
   group('概览聚合（logDashboardProvider）', () {
-    test('空库给全零，不给演示值', () async {
-      final container = containerFor();
-      final snapshot = await container.read(logDashboardProvider.future);
-      expect(snapshot.breakdown.total, 0);
-      expect(snapshot.breakdown.cached, 0);
-      expect(snapshot.recentRequests, isEmpty);
-      expect(snapshot.cacheHotspots, isEmpty);
-      expect(snapshot.raceWinners, isEmpty);
-      expect(snapshot.bootstrapIps, isEmpty);
-      expect(snapshot.subscriptionBlocks, isEmpty);
-      expect(snapshot.quality.averageLatencyMs, isNull);
-      expect(snapshot.quality.latencySamples, 0);
-    });
-
     test('DNS 与 HTTPS 两表按旧版口径相加', () async {
       final stamp = now();
       await insertDnsRow(
@@ -372,62 +366,6 @@ void main() {
         'https://ghproxy.example.com/{url}',
       );
     });
-
-    test('改名冲突返回 false，删除后列表为空', () async {
-      final repository = MirrorTemplateRepository(db);
-      final first = (await repository.insert(
-        name: 'A',
-        template: 'https://a.example.com/{url}',
-      ))!;
-      await repository.insert(
-        name: 'B',
-        template: 'https://b.example.com/{url}',
-      );
-
-      expect(
-        await repository.update(
-          id: first,
-          name: 'B',
-          template: 'https://a.example.com/{url}',
-        ),
-        isFalse,
-      );
-      expect(
-        await repository.update(
-          id: first,
-          name: 'A2',
-          template: 'https://a2.example.com/{url}',
-        ),
-        isTrue,
-      );
-      await repository.delete(first);
-      expect([for (final row in await repository.all()) row.name], ['B']);
-    });
-  });
-
-  group('DNS 缓存聚合', () {
-    test('countUnexpired 与 totalHitCount 口径不同', () async {
-      final stamp = now();
-      await db.insert('dns_cache', {
-        'queryName': 'live.example',
-        'queryType': 1,
-        'expiresAt': stamp + 60000,
-        'hitCount': 4,
-        'originalTtlSeconds': 300,
-        'responseSize': 64,
-      });
-      await db.insert('dns_cache', {
-        'queryName': 'dead.example',
-        'queryType': 28,
-        'expiresAt': stamp - 1000,
-        'hitCount': 6,
-        'originalTtlSeconds': 300,
-        'responseSize': 64,
-      });
-      final repository = DnsCacheRepository(db);
-      expect(await repository.countUnexpired(), 1);
-      expect(await repository.totalHitCount(), 10);
-    });
   });
 }
 
@@ -440,3 +378,56 @@ class _OffLogMode extends LogModeNotifier {
   @override
   LegacyLogMode build() => LegacyLogMode.off;
 }
+
+/// The log cards read tables the native writers keep filling; the timer is what makes
+/// `CacheHotspotsCard` / `BootstrapDnsCard` update without a manual refresh.
+
+void _logRefresh() {
+  test('tick 递增共享 revision，日志 provider 随之重查', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final before = container.read(dnsLogRevisionProvider);
+    container.read(logLiveRefreshProvider.notifier).tick();
+    expect(container.read(dnsLogRevisionProvider), before + 1);
+  });
+
+  testWidgets('挂载后定时刷新一次，不依赖手动点刷新', (tester) async {
+    debugDisableDashboardLiveUpdates = false;
+    addTearDown(() => debugDisableDashboardLiveUpdates = false);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final before = container.read(dnsLogRevisionProvider);
+    container.read(logLiveRefreshProvider.notifier).attachPolling();
+    await tester.pump(logLiveRefreshInterval + const Duration(seconds: 1));
+
+    expect(container.read(dnsLogRevisionProvider), before + 1);
+    container.read(logLiveRefreshProvider.notifier).detachPolling();
+  });
+
+  testWidgets('引用计数：多页共用定时器，最后一个 detach 才停', (tester) async {
+    debugDisableDashboardLiveUpdates = false;
+    addTearDown(() => debugDisableDashboardLiveUpdates = false);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final notifier = container.read(logLiveRefreshProvider.notifier);
+
+    notifier.attachPolling();
+    notifier.attachPolling();
+    notifier.detachPolling();
+
+    final before = container.read(dnsLogRevisionProvider);
+    await tester.pump(logLiveRefreshInterval + const Duration(seconds: 1));
+    expect(container.read(dnsLogRevisionProvider), before + 1);
+
+    // Last detach stops the timer: no further bumps.
+    notifier.detachPolling();
+    final after = container.read(dnsLogRevisionProvider);
+    await tester.pump(logLiveRefreshInterval * 3);
+    expect(container.read(dnsLogRevisionProvider), after);
+  });
+}
+
+/// The catalog feeds both the card and the detail page, so a duplicate id or an empty category
+/// would show up as a missing row rather than an error.

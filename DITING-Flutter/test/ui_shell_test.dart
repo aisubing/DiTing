@@ -1,11 +1,17 @@
+// Whole-app smoke test of `DitingApp`: scopes above `Navigator`, tab state, route
+// building and the Android page transition.
+
 import 'package:diting/app/app.dart';
+import 'package:diting/app/theme/manager.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
-import 'package:diting/pages/hub/feature_hub_page.dart';
+import 'package:diting/pages/about/about_page.dart';
 import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
 import 'package:diting/pages/home/dashboard/detail/network_speed_detail_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
+import 'package:diting/pages/hub/feature_hub_page.dart';
 import 'package:diting/pages/settings/settings_page.dart';
+import 'package:diting/pages/system/unknown_route_page.dart';
 import 'package:diting/pages/tools/tools_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/router.dart';
@@ -15,13 +21,21 @@ import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_vpn_controller.dart';
 import 'support/test_hooks.dart';
 
-/// Whole-app smoke test of `DitingApp`: scopes above `Navigator`, tab state, route building
 void main() {
+  group('外壳与底栏', _appShell);
+  group('路由可达性', _routeCatalog);
+  group('二级页转场', _routeTransition);
+  group('功能中心可见性', _featureHub);
+}
+
+/// Whole-app smoke test of `DitingApp`: scopes above `Navigator`, tab state, route building
+void _appShell() {
   installGlobalTestHooks();
 
   Future<void> pumpApp(
@@ -268,4 +282,156 @@ class _Dock extends BottomBarNotifier {
 
   @override
   List<BottomBarDestination> build() => _dock;
+}
+
+/// Guards that every hub card points at a registered route; per-route layout and fallback are
+/// covered by `layout_regression_test.dart`, which pumps the same catalogue at three sizes
+void _routeCatalog() {
+  installGlobalTestHooks();
+
+  Future<void> pumpAt(WidgetTester tester, String location) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: appTestOverrides(),
+        child: DitingApp(initialLocation: location),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+  }
+
+  /// Asserts the mounted page neither threw nor landed on the fallback page.
+  void expectReached(WidgetTester tester, String route, String label) {
+    expect(tester.takeException(), isNull, reason: '$label ($route) 构建抛异常');
+    expect(
+      find.byType(UnknownRoutePage),
+      findsNothing,
+      reason: '$label ($route) 没有注册：落到了未知路由兜底页',
+    );
+  }
+
+  group('功能中心卡片可达', () {
+    testWidgets('每张卡片的 route 都能构建', (tester) async {
+      // Deduplicate: several entries can point at the same page.
+      final routes = <String>{
+        for (final category in mockFeatureCategories)
+          for (final card in category.cards) card.route,
+      };
+      expect(routes, isNotEmpty);
+
+      for (final route in routes) {
+        await pumpAt(tester, route);
+        expectReached(tester, route, '功能中心卡片');
+      }
+    });
+  });
+
+  group('兜底页', () {
+    testWidgets('未注册的路径落到 UnknownRoutePage', (tester) async {
+      await pumpAt(tester, '/definitely/not/a/route');
+      expect(find.byType(UnknownRoutePage), findsOneWidget);
+      expect(find.text('/definitely/not/a/route'), findsOneWidget);
+    });
+  });
+}
+
+/// Guards second-level pages are full-screen with the Android transition: `builder:`-only routes
+/// get `NoTransitionPage`, and a theme without `TargetPlatform.android` falls back to zoom
+void _routeTransition() {
+  installGlobalTestHooks();
+
+  testWidgets('二级页 push 出来的是带转场的 MaterialPage', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(overrides: appTestOverrides(), child: const DitingApp()),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    GoRouter.of(tester.element(find.byType(NavigationDock).first))
+        .push(Routes.about);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    // Mid-transition: `/about` is mounted but not yet in place.
+    expect(find.byType(AboutPage), findsOneWidget);
+    final route = ModalRoute.of(tester.element(find.byType(AboutPage)));
+    expect(route, isNotNull);
+    expect(
+      route!.transitionDuration,
+      greaterThan(Duration.zero),
+      reason: '没有转场时长 = go_router 退化成 `NoTransitionPage`，页面是硬切的',
+    );
+
+    // Still moving: animation below 1 and the position differs from the final one.
+    expect(route.animation!.value, lessThan(1.0));
+    final midX = tester.getTopLeft(find.byType(AboutPage)).dx;
+    await tester.pumpAndSettle();
+    final settledX = tester.getTopLeft(find.byType(AboutPage)).dx;
+    expect(
+      midX,
+      isNot(closeTo(settledX, 0.5)),
+      reason: '转场期间页面的横向位置必须和落位后不同，否则动画没生效',
+    );
+    expect(route.animation!.value, 1.0);
+
+    expect(
+      find.byWidgetPredicate((widget) => widget is NoTransitionPage),
+      findsNothing,
+      reason:
+          '路由用了 `builder:` 而不是 `pageBuilder`：go_router 的 '
+          '`isMaterialApp` 认不出 material_ui 的 MaterialApp，会退化成无转场页',
+    );
+  });
+
+  test('安卓的转场就是系统默认的那个 builder', () {
+    final theme = buildAppTheme(
+      const AppThemeSpec(
+        seedColor: Color(0xFF007AFF),
+        brightness: Brightness.light,
+      ),
+    );
+    final builder = theme.pageTransitionsTheme.builders[TargetPlatform.android];
+    expect(
+      builder,
+      isA<PredictiveBackPageTransitionsBuilder>(),
+      reason:
+          '缺省会兜底到 ZoomPageTransitionsBuilder，那是 Android 10 的动画，'
+          '不是用户要的系统默认转场',
+    );
+  });
+}
+
+/// Guards feature-hub visibility: hidden cards drop their category, fixed cards stay
+void _featureHub() {
+  test('隐藏卡片后分类为空时整类消失，固定卡始终保留', () {
+    final hidden = {
+      for (final card in mockFeatureCategories.first.cards)
+        if (card.featureKey != null) card.featureKey!,
+    };
+    final categories = visibleFeatureCategories(
+      express: false,
+      hiddenKeys: hidden,
+    );
+    expect(categories.any((category) => category.title == 'DNS 服务'), isFalse);
+    expect(categories.length, mockFeatureCategories.length - 1);
+
+    final allHidden = {
+      for (final card in mockFeatureCategories.expand(
+        (category) => category.cards,
+      ))
+        if (card.featureKey != null) card.featureKey!,
+    };
+    final onlyFixed = visibleFeatureCategories(
+      express: false,
+      hiddenKeys: allHidden,
+    );
+    expect(onlyFixed.length, 1);
+    expect(onlyFixed.single.cards.single.title, '隐藏功能');
+  });
 }
