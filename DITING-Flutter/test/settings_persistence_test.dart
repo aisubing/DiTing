@@ -98,10 +98,31 @@ void main() {
         'dashboard_widget_order',
         '["status","no_such_card","networkSpeed"]',
       );
+      // Current layout version: no migration, so the unknown name just drops.
+      store.putInt('dns_vpn_prefs', 'dashboard_widget_layout_version', 1);
       expect(container().read(dashboardWidgetsProvider), [
         DashboardWidget.status,
         DashboardWidget.networkSpeed,
       ]);
+    });
+
+    test('旧版布局升级时补上搬到看板的两张卡', () {
+      store.putString(
+        'dns_vpn_prefs',
+        'dashboard_widget_order',
+        '["status","networkSpeed"]',
+      );
+      final layout = container().read(dashboardWidgetsProvider);
+      expect(layout.take(2), [
+        DashboardWidget.provider,
+        DashboardWidget.resolution,
+      ]);
+      expect(
+        layout,
+        containsAll([DashboardWidget.status, DashboardWidget.networkSpeed]),
+      );
+      // Migrated once: reopening reads the same board instead of inserting again.
+      expect(container().read(dashboardWidgetsProvider), layout);
     });
 
     test('坏 JSON 回落到默认布局', () {

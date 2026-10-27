@@ -80,18 +80,13 @@ class ThemeDayNightPage extends ConsumerWidget {
   }
 }
 
-/// Home element opacity. Keys come from [HomeLayer.storageKey] (`home_*_opacity`);
-/// `home_dns_detail_opacity` is not a [HomeLayer] but the DNS detail block requires it.
+/// Home element opacity. Keys come from [HomeLayer.storageKey] (`home_*_opacity`).
 class ThemeHomeOpacityPage extends ConsumerWidget {
   const ThemeHomeOpacityPage({super.key});
 
-  static const _interactive = [
-    HomeLayer.powerButton,
-    HomeLayer.providerSelector,
-    HomeLayer.modeButton,
-  ];
+  static const _interactive = [HomeLayer.powerButton];
 
-  static const _text = [HomeLayer.poem, HomeLayer.dnsDetail];
+  static const _text = [HomeLayer.poem];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

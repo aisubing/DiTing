@@ -1,8 +1,6 @@
 import 'package:diting/pages/home/dashboard/dashboard_board.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
-import 'package:diting/pages/home/widgets/home_provider_card.dart';
-import 'package:diting/pages/home/widgets/home_resolution_card.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
@@ -16,7 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// Home page / dashboard: power, tagline, provider, resolution mode, cards. Server mode
+/// Home page / dashboard: power, tagline, then the editable card board. Server mode
 /// does not branch here: app_shell swaps the whole tree and would double the bottom bar.
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -122,22 +120,6 @@ class _HomePageState extends ConsumerState<HomePage>
                   ),
                 ),
               const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Opacity(
-                  opacity: opacity[HomeLayer.providerSelector] ?? 1,
-                  child: const HomeProviderCard(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Opacity(
-                  opacity: opacity[HomeLayer.modeButton] ?? 1,
-                  child: HomeResolutionCard(mode: mode),
-                ),
-              ),
-              const SizedBox(height: 12),
             ],
             DashboardBoard(
               actions: DashboardCardActions(

@@ -7,38 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Opens the provider picker. Shared by the home provider card and the provider management
+/// entry points, so the two cannot drift apart.
+void showProviderSheet(BuildContext context) =>
+    showSheet<void>(context: context, builder: (_) => const ProviderSheet());
+
 /// The sheet keeps the active provider even after it left the catalog.
-class HomeProviderCard extends ConsumerWidget {
-  const HomeProviderCard({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final resolution = ref.watch(resolutionModeProvider);
-    final selectedId = ref.watch(selectedProviderProvider);
-    final raceIds = ref.watch(raceProvidersProvider);
-    final catalog = ref.watch(dnsProviderCatalogProvider);
-    final subtitle = resolution.isSingle
-        ? endpointOfProvider(selectedId, catalog)
-        : summaryOfProviders(raceIds, catalog);
-    void open() => showSheet<void>(
-      context: context,
-      builder: (_) => const _ProviderSheet(),
-    );
-    return CommonCard(
-      onPressed: open,
-      child: ListItem(
-        leading: const GlyphIcon(AppGlyphs.dns),
-        title: Text(resolution.isSingle ? '解析服务商' : '竞速服务商'),
-        subtitle: Text(subtitle),
-        trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
-        onTap: open,
-      ),
-    );
-  }
-}
-
-class _ProviderSheet extends ConsumerWidget {
-  const _ProviderSheet();
+class ProviderSheet extends ConsumerWidget {
+  const ProviderSheet({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

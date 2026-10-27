@@ -24,6 +24,8 @@ abstract final class HomeDetailPaths {
 
 /// The page a card opens, or null for a card without one (no detail button then).
 String? homeDetailPathOf(DashboardWidget widget) => switch (widget) {
+  // Both open a sheet or act in place, so they have no drill-down page.
+  DashboardWidget.provider || DashboardWidget.resolution => null,
   DashboardWidget.status => HomeDetailPaths.status,
   DashboardWidget.networkSpeed => HomeDetailPaths.speed,
   DashboardWidget.siteLatency => HomeDetailPaths.latency,

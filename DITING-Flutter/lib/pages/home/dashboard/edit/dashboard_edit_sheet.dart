@@ -60,6 +60,8 @@ class DashboardEditSheet extends ConsumerWidget {
   }
 
   static Glyph _glyphOf(DashboardWidget widget) => switch (widget) {
+    DashboardWidget.provider => AppGlyphs.dns,
+    DashboardWidget.resolution => AppGlyphs.shuffle,
     DashboardWidget.status => AppGlyphs.status,
     DashboardWidget.networkSpeed => AppGlyphs.speed,
     DashboardWidget.siteLatency => AppGlyphs.speed,
@@ -68,6 +70,8 @@ class DashboardEditSheet extends ConsumerWidget {
   };
 
   static String _descriptionOf(DashboardWidget widget) => switch (widget) {
+    DashboardWidget.provider => '当前解析服务商，点开即可切换或调整竞速列表',
+    DashboardWidget.resolution => '解析模式选择、一句话说明与当前生效的 DNS 地址',
     DashboardWidget.status => '内核状态、运行时长、当前服务商与今日查询',
     DashboardWidget.networkSpeed => '上下行实时速率曲线与今日累计流量',
     DashboardWidget.siteLatency => '自定义 4 个站点的实测延迟，详情页可按分类测速',

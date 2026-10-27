@@ -68,13 +68,11 @@ final textScaleProvider = NotifierProvider<TextScaleNotifier, double>(
   TextScaleNotifier.new,
 );
 
-/// Opacity of the five home widgets (`home_*_opacity`); keep `dnsDetail` in step with its widget.
+/// Opacity of the home blocks that are not dashboard cards (`home_*_opacity`). The provider and
+/// resolution blocks became cards, so their transparency is no longer configurable here.
 enum HomeLayer {
   powerButton('启动按钮', 'home_power_button_opacity'),
-  providerSelector('解析服务选择框', 'home_provider_selector_opacity'),
-  modeButton('模式切换按钮', 'home_mode_button_opacity'),
-  poem('首页古诗', 'home_poem_opacity'),
-  dnsDetail('DNS 服务详情', 'home_dns_detail_opacity');
+  poem('首页古诗', 'home_poem_opacity');
 
   const HomeLayer(this.label, this.storageKey);
 
@@ -85,13 +83,7 @@ enum HomeLayer {
 }
 
 class HomeOpacityNotifier extends Notifier<Map<HomeLayer, double>> {
-  static const _defaults = {
-    HomeLayer.powerButton: 1.0,
-    HomeLayer.providerSelector: 1.0,
-    HomeLayer.modeButton: 1.0,
-    HomeLayer.poem: 1.0,
-    HomeLayer.dnsDetail: 1.0,
-  };
+  static const _defaults = {HomeLayer.powerButton: 1.0, HomeLayer.poem: 1.0};
 
   @override
   Map<HomeLayer, double> build() {

@@ -155,6 +155,15 @@ class LegacySettings {
     jsonEncode(names),
   );
 
+  /// Which card set [dashboardWidgetOrder] was written with. A missing value means the order
+  /// predates a card that has since moved from a fixed block onto the board, so the notifier
+  /// inserts that card once and stamps the current version.
+  int get dashboardWidgetLayoutVersion =>
+      _int(uiContainer, 'dashboard_widget_layout_version', 0);
+
+  void setDashboardWidgetLayoutVersion(int version) =>
+      _store.putInt(uiContainer, 'dashboard_widget_layout_version', version);
+
   double get componentOpacity =>
       _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
 

@@ -2,6 +2,8 @@ import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/intranet_ip_card.dart';
 import 'package:diting/pages/home/dashboard/cards/memory_card.dart';
 import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
+import 'package:diting/pages/home/dashboard/cards/provider_card.dart';
+import 'package:diting/pages/home/dashboard/cards/resolution_card.dart';
 import 'package:diting/pages/home/dashboard/cards/site_latency_card.dart';
 import 'package:diting/pages/home/dashboard/cards/status_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
@@ -39,6 +41,8 @@ Widget buildDashboardCard(
   DashboardCardActions actions,
 ) {
   return switch (widget) {
+    DashboardWidget.provider => const ProviderCard(),
+    DashboardWidget.resolution => const ResolutionCard(),
     DashboardWidget.status => StatusCard(onDetail: actions.detailOf(widget)),
     DashboardWidget.networkSpeed => NetworkSpeedCard(
       onDetail: actions.detailOf(widget),

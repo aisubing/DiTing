@@ -75,6 +75,11 @@ enum CoreState {
 /// bootstrap DNS, rule blocks and the filtered highlight. Repeating them on home made the two
 /// dashboards look like one page, so home keeps the local device view instead.
 enum DashboardWidget {
+  /// Picked service provider; `解析服务商` in single mode, `竞速服务商` in the other modes.
+  provider('解析服务商'),
+
+  /// Resolution mode plus the endpoints currently in use.
+  resolution('解析模式'),
   status('状态'),
   networkSpeed('网络速度'),
   siteLatency('网络测速'),
@@ -86,8 +91,10 @@ enum DashboardWidget {
   final String label;
 }
 
-/// The five default cards: one for every widget home owns.
+/// One card for every widget home owns, in the order a fresh install shows them.
 const defaultDashboardWidgets = <DashboardWidget>[
+  DashboardWidget.provider,
+  DashboardWidget.resolution,
   DashboardWidget.status,
   DashboardWidget.networkSpeed,
   DashboardWidget.siteLatency,

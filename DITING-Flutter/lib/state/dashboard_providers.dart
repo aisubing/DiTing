@@ -169,9 +169,14 @@ final dashboardWidgetsProvider =
     );
 
 class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
+  /// Bumped whenever a card moves from a fixed home block onto the board; an older stored order
+  /// gets the new cards inserted once, so an upgrade does not silently lose them.
+  static const layoutVersion = 1;
+
   @override
   List<DashboardWidget> build() {
-    final stored = _settings(ref).dashboardWidgetOrder;
+    final settings = _settings(ref);
+    final stored = settings.dashboardWidgetOrder;
     if (stored == null) {
       return defaultDashboardWidgets;
     }
@@ -179,7 +184,24 @@ class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
       for (final widget in DashboardWidget.values) widget.name: widget,
     };
     // Unknown names (a card removed in a later version) are skipped, not restored.
-    return [for (final name in stored) ?byName[name]];
+    final layout = [for (final name in stored) ?byName[name]];
+    if (settings.dashboardWidgetLayoutVersion >= layoutVersion) {
+      return layout;
+    }
+    // Cards that used to be fixed blocks go to the top of the board, right under the power
+    // button, where the user is used to finding them; a board the user emptied on purpose keeps
+    // staying empty.
+    final missing = [
+      for (final widget in const [
+        DashboardWidget.provider,
+        DashboardWidget.resolution,
+      ])
+        if (!layout.contains(widget)) widget,
+    ];
+    final migrated = [...missing, ...layout];
+    // Store only: `state` is assigned by this build's return value.
+    _write(settings, migrated);
+    return migrated;
   }
 
   void add(DashboardWidget widget) {
@@ -222,8 +244,14 @@ class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
   /// written as `[]` instead of being removed; only a missing key restores the defaults.
   void _commit(List<DashboardWidget> next) {
     state = next;
-    _settings(ref)
-        .setDashboardWidgetOrder([for (final widget in next) widget.name]);
+    _write(_settings(ref), next);
+  }
+
+  static void _write(LegacySettings settings, List<DashboardWidget> layout) {
+    settings.setDashboardWidgetOrder([
+      for (final widget in layout) widget.name,
+    ]);
+    settings.setDashboardWidgetLayoutVersion(layoutVersion);
   }
 }
 
