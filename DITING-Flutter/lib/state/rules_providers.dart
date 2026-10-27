@@ -9,6 +9,7 @@ import 'package:diting/data/db/rule_index_bridge.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -281,6 +282,116 @@ final rulesProvider =
 final rulesOfKindProvider = Provider.family<List<MockRule>, RuleKind>(
   (ref, kind) => ref.watch(rulesProvider)[kind] ?? const [],
 );
+
+/// One rule table narrowed by the source chip and the search box. A filter value rather than UI
+/// state, so the tally and the list read the same snapshot and no page state feeds the stats.
+@immutable
+class RuleListFilter {
+  const RuleListFilter({required this.kind, this.source, this.query = ''});
+
+  final RuleKind kind;
+
+  /// `null` shows every source.
+  final RuleSourceFilter source;
+
+  /// Already trimmed and lower-cased by the caller.
+  final String query;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RuleListFilter &&
+      other.kind == kind &&
+      other.source == source &&
+      other.query == query;
+
+  @override
+  int get hashCode => Object.hash(kind, source, query);
+}
+
+/// Rows the rule page shows for [filter]. Every row here is also matched by the tallies in
+/// [ruleListTallyProvider], so the counter can never disagree with the list.
+final filteredRulesProvider = Provider.family<List<MockRule>, RuleListFilter>(
+  (ref, filter) => ref
+      .watch(rulesOfKindProvider(filter.kind))
+      .where((rule) {
+        if (filter.source != null && rule.source != filter.source) {
+          return false;
+        }
+        final query = filter.query;
+        return query.isEmpty ||
+            rule.pattern.toLowerCase().contains(query) ||
+            (rule.target?.toLowerCase().contains(query) ?? false);
+      })
+      .toList(growable: false),
+  // One entry per keystroke otherwise: the query string is part of the family key.
+  isAutoDispose: true,
+);
+
+/// The three numbers above the rule list: table size, enabled rows and user-defined rows. Always
+/// the whole table, not the filtered rows, matching the legacy screen.
+@immutable
+class RuleListTally {
+  const RuleListTally({
+    required this.total,
+    required this.enabled,
+    required this.custom,
+    required this.matched,
+    required this.matchedEnabled,
+  });
+
+  final int total;
+  final int enabled;
+  final int custom;
+
+  /// Rows left after the source chip and the query; what the "共 N 条" caption reports.
+  final int matched;
+  final int matchedEnabled;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RuleListTally &&
+      other.total == total &&
+      other.enabled == enabled &&
+      other.custom == custom &&
+      other.matched == matched &&
+      other.matchedEnabled == matchedEnabled;
+
+  @override
+  int get hashCode =>
+      Object.hash(total, enabled, custom, matched, matchedEnabled);
+}
+
+final ruleListTallyProvider = Provider.family<RuleListTally, RuleListFilter>((
+  ref,
+  filter,
+) {
+  var total = 0;
+  var enabled = 0;
+  var custom = 0;
+  for (final rule in ref.watch(rulesOfKindProvider(filter.kind))) {
+    total++;
+    if (rule.enabled) {
+      enabled++;
+    }
+    if (rule.source == RuleSource.user) {
+      custom++;
+    }
+  }
+  var matchedEnabled = 0;
+  final matched = ref.watch(filteredRulesProvider(filter));
+  for (final rule in matched) {
+    if (rule.enabled) {
+      matchedEnabled++;
+    }
+  }
+  return RuleListTally(
+    total: total,
+    enabled: enabled,
+    custom: custom,
+    matched: matched.length,
+    matchedEnabled: matchedEnabled,
+  );
+}, isAutoDispose: true);
 
 /// "Allow editing default whitelist" switch, off by default: relaxing the whitelist lets traffic
 /// through.

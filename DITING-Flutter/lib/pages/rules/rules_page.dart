@@ -4,6 +4,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/chip_row.dart';
 import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/glyph_lookup.dart';
@@ -60,15 +61,6 @@ class _RulesPageState extends ConsumerState<RulesPage> {
       setState(() => _query = value.trim().toLowerCase());
     });
   }
-
-  List<MockRule> _visibleRules(List<MockRule> rules) => [
-    for (final rule in rules)
-      if ((_sourceFilter == null || rule.source == _sourceFilter) &&
-          (_query.isEmpty ||
-              rule.pattern.toLowerCase().contains(_query) ||
-              (rule.target?.toLowerCase().contains(_query) ?? false)))
-        rule,
-  ];
 
   /// Prompt once for pattern plus optional target; rewrite needs two fields, which is what
   /// _RuleDialog exists for.
@@ -242,13 +234,16 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   @override
   Widget build(BuildContext context) {
     final kind = _kind;
-    final rules = ref.watch(rulesOfKindProvider(kind));
     final allowPresetEditable = ref.watch(allowPresetEditableProvider);
-    final visible = _visibleRules(rules);
-    final enabledCount = rules.where((rule) => rule.enabled).length;
-    final customCount = rules
-        .where((rule) => rule.source == RuleSource.user)
-        .length;
+    final filter = RuleListFilter(
+      kind: kind,
+      source: _sourceFilter,
+      query: _query,
+    );
+    // Both come from providers, so the counter and the rows always describe the same snapshot.
+    final tally = ref.watch(ruleListTallyProvider(filter));
+    final visible = ref.watch(filteredRulesProvider(filter));
+    final searching = _query.isNotEmpty || _sourceFilter != null;
 
     return CommonScaffold(
       title: kind.title,
@@ -269,7 +264,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
           label: '清空自定义${kind.title}',
           glyph: AppGlyphs.broom,
           danger: true,
-          onPressed: customCount == 0 ? null : _clearCustom,
+          onPressed: tally.custom == 0 ? null : _clearCustom,
         ),
         if (kind == RuleKind.allow)
           CommonPopupMenuItem(
@@ -278,96 +273,101 @@ class _RulesPageState extends ConsumerState<RulesPage> {
             onPressed: _resetPreset,
           ),
       ],
-      body: PageBody(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: CommonCard(
-              child: StatStrip(
-                stats: [
-                  StatItem(label: '规则总数', value: '${rules.length}'),
-                  StatItem(
-                    label: '已启用',
-                    value: '$enabledCount',
-                    color: context.colorScheme.success,
+      body: AppListScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: CommonCard(
+                    child: StatStrip(
+                      stats: [
+                        StatItem(label: '规则总数', value: '${tally.total}'),
+                        StatItem(
+                          label: '已启用',
+                          value: '${tally.enabled}',
+                          color: context.colorScheme.success,
+                        ),
+                        StatItem(
+                          label: kind == RuleKind.rewrite ? '覆写条目' : '自定义',
+                          value: '${tally.custom}',
+                        ),
+                      ],
+                    ),
                   ),
-                  StatItem(
-                    label: kind == RuleKind.rewrite ? '覆写条目' : '自定义',
-                    value: kind == RuleKind.rewrite
-                        ? '${rules.where((rule) => rule.target != null).length}'
-                        : '$customCount',
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (kind == RuleKind.allow)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: CommonCard(
-                child: ListItem.toggle(
-                  title: const Text('允许编辑默认白名单'),
-                  subtitle: const Text('关闭时预设规则只读，避免误放宽放行范围'),
-                  value: allowPresetEditable,
-                  onChanged: _togglePresetEditing,
                 ),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: SearchField(
-              controller: _search,
-              onChanged: _onSearchChanged,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-            child: _SourceChips(
-              value: _sourceFilter,
-              onChanged: (value) => setState(() => _sourceFilter = value),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-            child: Text(
-              // The counter always reports a number, even zero: the empty state already says
-              // there are no matching rules, and repeating it would read as double rendering.
-              '共 ${visible.length} 条 · 启用 '
-              '${visible.where((rule) => rule.enabled).length}',
-              style: context.listCaptionStyle,
+                if (kind == RuleKind.allow)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: CommonCard(
+                      child: ListItem.toggle(
+                        title: const Text('允许编辑默认白名单'),
+                        subtitle: const Text('关闭时预设规则只读，避免误放宽放行范围'),
+                        value: allowPresetEditable,
+                        onChanged: _togglePresetEditing,
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: SearchField(
+                    controller: _search,
+                    onChanged: _onSearchChanged,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: _SourceChips(
+                    value: _sourceFilter,
+                    onChanged: (value) => setState(() => _sourceFilter = value),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                  child: Text(
+                    // The counter always reports a number, even zero: the empty state already
+                    // says there are no matching rules, and repeating it reads as double render.
+                    '共 ${tally.matched} 条 · 启用 ${tally.matchedEnabled}',
+                    style: context.listCaptionStyle,
+                  ),
+                ),
+              ],
             ),
           ),
           if (visible.isEmpty)
-            EmptyStateBox(
-              minHeight: 320,
-              child: NullStatus(
-                label: _query.isEmpty && _sourceFilter == null
-                    ? '还没有${kind.title}规则'
-                    : '没有匹配的规则',
-                description: _query.isEmpty && _sourceFilter == null
-                    ? kind.summary
-                    : '换个关键词或筛选条件再试',
-                illustration: NullStatusIllustration.rules,
-                action: _query.isEmpty && _sourceFilter == null
-                    ? FilledButton(
-                        onPressed: _addRule,
-                        child: Text('添加${kind.title}规则'),
-                      )
-                    : null,
+            SliverToBoxAdapter(
+              child: EmptyStateBox(
+                minHeight: 320,
+                child: NullStatus(
+                  label: searching ? '没有匹配的规则' : '还没有${kind.title}规则',
+                  description: searching ? '换个关键词或筛选条件再试' : kind.summary,
+                  illustration: NullStatusIllustration.rules,
+                  action: searching
+                      ? null
+                      : FilledButton(
+                          onPressed: _addRule,
+                          child: Text('添加${kind.title}规则'),
+                        ),
+                ),
               ),
             )
           else
-            _RuleList(
-              rules: visible,
-              kind: kind,
-              allowPresetEditable: allowPresetEditable,
-              onToggle: (rule, enabled) => ref
-                  .read(rulesProvider.notifier)
-                  .toggle(kind, rule.id, enabled),
-              onEdit: _editRule,
-              onDelete: _deleteRule,
-              onProtected: _showProtectedHint,
-            ),
+            // One sliver per source section, each a lazy SliverList: a subscription with a
+            // hundred thousand rows used to be inflated in one frame and froze the UI.
+            for (final section in ruleSections(visible))
+              ...ruleSectionSlivers(
+                source: section.source,
+                rules: section.rules,
+                kind: kind,
+                allowPresetEditable: allowPresetEditable,
+                onToggle: (rule, enabled) => ref
+                    .read(rulesProvider.notifier)
+                    .toggle(kind, rule.id, enabled),
+                onEdit: _editRule,
+                onDelete: _deleteRule,
+                onProtected: _showProtectedHint,
+              ),
         ],
       ),
     );
@@ -401,55 +401,67 @@ class _SourceChips extends StatelessWidget {
   }
 }
 
-/// Rule list grouped by source, rows built with generateSection so dividers align. Presets
-/// may be read-only and subscriptions get overwritten, so grouping carries meaning.
-class _RuleList extends StatelessWidget {
-  const _RuleList({
-    required this.rules,
-    required this.kind,
-    required this.allowPresetEditable,
-    required this.onToggle,
-    required this.onEdit,
-    required this.onDelete,
-    required this.onProtected,
-  });
+/// Rule rows grouped by source, in enum order. Presets may be read-only and subscriptions get
+/// overwritten, so grouping carries meaning and each group is its own sliver.
+class RuleSection {
+  const RuleSection(this.source, this.rules);
 
+  final RuleSource source;
   final List<MockRule> rules;
-  final RuleKind kind;
-  final bool allowPresetEditable;
-  final void Function(MockRule rule, bool enabled) onToggle;
-  final ValueChanged<MockRule> onEdit;
-  final ValueChanged<MockRule> onDelete;
-  final VoidCallback onProtected;
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final source in RuleSource.values)
-          if (rules.where((rule) => rule.source == source).toList()
-              case final group when group.isNotEmpty)
-            generateSection(
-              title: source.label,
-              items: [
-                for (final rule in group)
-                  _RuleRow(
-                    rule: rule,
-                    kind: kind,
-                    protected: isRuleProtected(
-                      rule,
-                      kind: kind,
-                      allowPresetEditable: allowPresetEditable,
-                    ),
-                    onToggle: (enabled) => onToggle(rule, enabled),
-                    onEdit: () => onEdit(rule),
-                    onDelete: () => onDelete(rule),
-                    onProtected: onProtected,
-                  ),
-              ],
-            ),
-      ],
-    );
+List<RuleSection> ruleSections(List<MockRule> rules) {
+  final bySource = <RuleSource, List<MockRule>>{};
+  for (final rule in rules) {
+    (bySource[rule.source] ??= []).add(rule);
   }
+  return [
+    for (final source in RuleSource.values)
+      if (bySource[source] case final group?) RuleSection(source, group),
+  ];
+}
+
+/// Header plus a lazy row sliver for one source group. Rows are built on demand: a subscription
+/// can carry six figures of rules, and inflating them all in the first frame is what froze the
+/// page (see the 2026-10-27 ANR with 191,090 rules).
+List<Widget> ruleSectionSlivers({
+  required RuleSource source,
+  required List<MockRule> rules,
+  required RuleKind kind,
+  required bool allowPresetEditable,
+  required void Function(MockRule rule, bool enabled) onToggle,
+  required ValueChanged<MockRule> onEdit,
+  required ValueChanged<MockRule> onDelete,
+  required VoidCallback onProtected,
+}) {
+  return [
+    SliverToBoxAdapter(child: ListHeader(title: source.label)),
+    SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList.builder(
+        itemCount: rules.length,
+        // Rows are cheap to rebuild; keeping thousands alive is what made the old list stutter.
+        addAutomaticKeepAlives: false,
+        itemBuilder: (context, index) {
+          final rule = rules[index];
+          return ItemPositionProvider(
+            position: ItemPosition.get(index, rules.length),
+            child: _RuleRow(
+              rule: rule,
+              kind: kind,
+              protected: isRuleProtected(
+                rule,
+                kind: kind,
+                allowPresetEditable: allowPresetEditable,
+              ),
+              onToggle: (enabled) => onToggle(rule, enabled),
+              onEdit: () => onEdit(rule),
+              onDelete: () => onDelete(rule),
+              onProtected: onProtected,
+            ),
+          );
+        },
+      ),
+    ),
+  ];
 }
