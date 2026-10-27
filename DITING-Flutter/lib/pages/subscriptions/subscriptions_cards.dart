@@ -29,6 +29,7 @@ class _SubscriptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final hasError = entry.isFailed;
+    final mirror = entry.record.mirrorTemplate;
     return CommonCard(
       isError: hasError,
       // A disabled subscription dims the whole card: showing it only on the switch makes
@@ -110,6 +111,12 @@ class _SubscriptionCard extends StatelessWidget {
                           label: '连续失败 ${entry.consecutiveFailureCount} 次',
                         ),
                       if (!entry.isRemote) const MetaChip(label: '本地文件订阅'),
+                      if (mirror != null)
+                        MetaChip(
+                          label: entry.record.mirrorFallback
+                              ? '镜像 · 可回退'
+                              : '镜像 · 不回退',
+                        ),
                     ],
                   ),
                   Text(
@@ -122,6 +129,15 @@ class _SubscriptionCard extends StatelessWidget {
                       fontFamily: appMonospaceFontFamily,
                     ),
                   ),
+                  if (mirror != null)
+                    Text(
+                      '镜像 $mirror',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.listCaptionStyle.copyWith(
+                        fontFamily: appMonospaceFontFamily,
+                      ),
+                    ),
                   if (hasError)
                     Row(
                       spacing: 6,
