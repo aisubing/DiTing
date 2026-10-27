@@ -69,12 +69,9 @@ void main() {
     debugDisableDashboardLiveUpdates = false;
     final runner = _FakeRunner();
     final store = MemoryLegacyPrefsStore();
-    LegacySettings(store).setDashboardSiteIds(const [
-      'baidu',
-      'douyin',
-      'netease',
-      'duckduckgo',
-    ]);
+    LegacySettings(
+      store,
+    ).setDashboardSiteIds(const ['baidu', 'douyin', 'netease', 'duckduckgo']);
 
     await tester.pumpWidget(
       ProviderScope(

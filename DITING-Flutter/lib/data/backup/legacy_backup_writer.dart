@@ -329,7 +329,8 @@ abstract final class LegacyBackupWriter {
     final dynamicBlock = BackupJson.map(system?['dynamicBlockResponse']);
     root['dynamicBlockResponse'] = {
       'enabled': dynamicBlock?['enabled'] == true,
-      'requestThreshold': BackupJson.integer(dynamicBlock?['requestThreshold']) ?? 5,
+      'requestThreshold':
+          BackupJson.integer(dynamicBlock?['requestThreshold']) ?? 5,
       'windowSeconds': BackupJson.integer(dynamicBlock?['windowSeconds']) ?? 60,
       'nxDomainDurationSeconds':
           BackupJson.integer(dynamicBlock?['nxDomainDurationSeconds']) ?? 300,
@@ -337,7 +338,8 @@ abstract final class LegacyBackupWriter {
     root['subscriptionAutoUpdate'] = {
       'enabled': system?['subscriptionAutoUpdateEnabled'] == true,
       'intervalHours':
-          BackupJson.integer(system?['subscriptionAutoUpdateIntervalHours']) ?? 24,
+          BackupJson.integer(system?['subscriptionAutoUpdateIntervalHours']) ??
+          24,
     };
   }
 

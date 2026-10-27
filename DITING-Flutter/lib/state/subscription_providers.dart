@@ -67,7 +67,9 @@ final subscriptionFileReaderProvider = Provider<PlatformBridge>(
 /// Real fetcher; tests inject a fake with `overrideWithValue`. The UA comes from
 /// `/config/user-agents` and the provider rebuilds when that selection changes.
 final subscriptionFetcherProvider = Provider<SubscriptionFetcher>((ref) {
-  return HttpSubscriptionFetcher(userAgent: ref.watch(requestUserAgentProvider));
+  return HttpSubscriptionFetcher(
+    userAgent: ref.watch(requestUserAgentProvider),
+  );
 });
 
 /// Rule importer sharing the repository handle; null without a database.
@@ -507,7 +509,9 @@ class SubscriptionActions {
         id: 0,
         url: trimmedUrl,
         name: trimmedName.isEmpty
-            ? (isLocal ? _localNameOf(trimmedUrl) : extractNameFromUrl(trimmedUrl))
+            ? (isLocal
+                  ? _localNameOf(trimmedUrl)
+                  : extractNameFromUrl(trimmedUrl))
             : trimmedName,
         sourceType: sourceType,
         kind: kind,
@@ -566,9 +570,9 @@ class SubscriptionActions {
     refreshRuleIndexesForCurrentMode(_ref);
     // Release the SAF grant a local subscription no longer needs.
     if (record != null && !record.isRemote) {
-      await _ref.read(subscriptionFileReaderProvider).releasePersistedText(
-        record.url,
-      );
+      await _ref
+          .read(subscriptionFileReaderProvider)
+          .releasePersistedText(record.url);
     }
   }
 

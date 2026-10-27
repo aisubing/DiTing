@@ -147,12 +147,13 @@ final requestFeedQueryProvider =
     );
 
 class RequestFeed {
-  const RequestFeed({required this.items, required this.hasMore, this.page = 1});
+  const RequestFeed({
+    required this.items,
+    required this.hasMore,
+    this.page = 1,
+  });
 
-  const RequestFeed.empty()
-    : items = const [],
-      hasMore = false,
-      page = 1;
+  const RequestFeed.empty() : items = const [], hasMore = false, page = 1;
 
   /// The rows of every page requested so far, newest first.
   final List<ObservedRequest> items;

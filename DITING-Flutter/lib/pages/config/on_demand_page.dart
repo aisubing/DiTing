@@ -131,8 +131,7 @@ String _decisionSummary(SsidDecision decision) => switch (decision.state) {
   SsidMatchState.disabled => '按需连接已关闭',
   SsidMatchState.unknown => '无法读取当前 Wi-Fi，白名单不会触发',
   SsidMatchState.noWifi => '当前不在 Wi-Fi 上，VPN 保持断开',
-  SsidMatchState.matched =>
-    '已匹配 ${decision.rule?.ssid ?? ''}，VPN 会自动启动',
+  SsidMatchState.matched => '已匹配 ${decision.rule?.ssid ?? ''}，VPN 会自动启动',
   SsidMatchState.unmatched => '当前 Wi-Fi 不在白名单，VPN 保持断开',
 };
 
@@ -177,11 +176,7 @@ class _DecisionCard extends StatelessWidget {
         '未启用',
         colorScheme.onSurfaceVariant,
       ),
-      SsidMatchState.unknown => (
-        AppGlyphs.locate,
-        '无法判断',
-        colorScheme.warning,
-      ),
+      SsidMatchState.unknown => (AppGlyphs.locate, '无法判断', colorScheme.warning),
       SsidMatchState.noWifi => (
         AppGlyphs.wifiOff,
         '未连接 Wi-Fi',
@@ -204,7 +199,10 @@ class _DecisionCard extends StatelessWidget {
       items: [
         ListItem(
           leading: GlyphIcon(glyph, size: 20, color: tone),
-          title: Text(title, style: context.listTitleStyle.copyWith(color: tone)),
+          title: Text(
+            title,
+            style: context.listTitleStyle.copyWith(color: tone),
+          ),
           subtitle: Text(
             rule == null ? _decisionSummary(decision) : _ruleSummary(rule),
           ),
@@ -274,10 +272,8 @@ class _BatterySection extends ConsumerWidget {
     final (label, color) = switch (state) {
       BatteryOptimizationState.ignored => ('已加入', colorScheme.primary),
       BatteryOptimizationState.notIgnored => ('未加入', colorScheme.warning),
-      BatteryOptimizationState.unavailable || null => (
-        '不可用',
-        context.colorScheme.onSurfaceVariant,
-      ),
+      BatteryOptimizationState.unavailable ||
+      null => ('不可用', context.colorScheme.onSurfaceVariant),
     };
     return generateSection(
       title: '前置条件',
@@ -308,13 +304,10 @@ class _BatterySection extends ConsumerWidget {
   Future<void> _request(BuildContext context, WidgetRef ref) async {
     final state = await requestBatteryOptimizationAccess(ref);
     if (!context.mounted) return;
-    showConfigHint(
-      context,
-      switch (state) {
-        BatteryOptimizationState.ignored => '已加入电池优化白名单',
-        BatteryOptimizationState.notIgnored => '仍未加入，VPN 可能被系统冻结',
-        BatteryOptimizationState.unavailable => '当前构建不支持该授权',
-      },
-    );
+    showConfigHint(context, switch (state) {
+      BatteryOptimizationState.ignored => '已加入电池优化白名单',
+      BatteryOptimizationState.notIgnored => '仍未加入，VPN 可能被系统冻结',
+      BatteryOptimizationState.unavailable => '当前构建不支持该授权',
+    });
   }
 }

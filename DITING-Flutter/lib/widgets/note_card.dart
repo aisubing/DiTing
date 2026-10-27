@@ -6,11 +6,7 @@ import 'package:material_ui/material_ui.dart';
 /// Less loud than [InlineNotice] and more compact than [PageIntroCard]: this one sits between list
 /// sections to explain a rule the rows below cannot state themselves.
 class NoteCard extends StatelessWidget {
-  const NoteCard({
-    super.key,
-    required this.text,
-    this.glyph = AppGlyphs.info,
-  });
+  const NoteCard({super.key, required this.text, this.glyph = AppGlyphs.info});
 
   final String text;
   final Glyph glyph;
@@ -49,12 +45,7 @@ class NoteCard extends StatelessWidget {
 /// The default `LinearProgressIndicator` track vanishes against the card fill, so both callers
 /// painted the track themselves and both had to clip it to a capsule — one copy each, until now.
 class ProgressLine extends StatelessWidget {
-  const ProgressLine({
-    super.key,
-    this.value,
-    this.minHeight = 6,
-    this.color,
-  });
+  const ProgressLine({super.key, this.value, this.minHeight = 6, this.color});
 
   /// `null` renders an indeterminate bar.
   final double? value;

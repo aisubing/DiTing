@@ -75,8 +75,9 @@ int branchIndexOf(String location) {
 
 /// Root path of a branch, used by the shell to translate `currentIndex` back into a
 /// location. The only copy of the order.
-String branchLocationOf(int index) =>
-    index >= 0 && index < _branchOrder.length ? _branchOrder[index] : Routes.home;
+String branchLocationOf(int index) => index >= 0 && index < _branchOrder.length
+    ? _branchOrder[index]
+    : Routes.home;
 
 /// Whether the location is a tab root rather than a sub page; this distinguishes
 /// switching tabs from pushing, and the two APIs are not interchangeable.

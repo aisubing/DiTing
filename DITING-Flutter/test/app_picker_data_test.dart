@@ -28,7 +28,9 @@ void main() {
   );
   const device = [systemApp, maps, chat];
 
-  ProviderContainer containerWith([Map<String, Map<String, Object>> seed = const {}]) {
+  ProviderContainer containerWith([
+    Map<String, Map<String, Object>> seed = const {},
+  ]) {
     final container = ProviderContainer(
       overrides: [
         legacyPrefsStoreProvider.overrideWithValue(
@@ -107,7 +109,8 @@ void main() {
           'blocked_apps_enabled': true,
           'http_inspection_app_packages': <String>['com.example.maps'],
           'http_inspection_enabled': true,
-          'app_allowlist_rules_json': '{"com.example.maps":["api.example.com"]}',
+          'app_allowlist_rules_json':
+              '{"com.example.maps":["api.example.com"]}',
         },
       });
       final settings = container.read(legacySettingsProvider);
@@ -150,7 +153,9 @@ void main() {
         packages: chosen,
         enabled: settings.httpInspectionEnabled,
       );
-      settings.setExcludedPackages(settings.excludedPackages.difference(chosen));
+      settings.setExcludedPackages(
+        settings.excludedPackages.difference(chosen),
+      );
       settings.setBlockedApps(
         packages: settings.blockedAppPackages.difference(chosen),
         enabled: settings.blockedAppsEnabled,
@@ -179,7 +184,9 @@ void main() {
       const chosen = {'com.example.maps'};
 
       settings.setBlockedApps(packages: chosen, enabled: true);
-      settings.setExcludedPackages(settings.excludedPackages.difference(chosen));
+      settings.setExcludedPackages(
+        settings.excludedPackages.difference(chosen),
+      );
       settings.setHttpInspectionApps(
         packages: settings.httpInspectionPackages.difference(chosen),
         enabled: settings.httpInspectionEnabled,
@@ -237,9 +244,7 @@ void main() {
       expect(settings.appAllowlistFilterRaw, 'ALL');
       expect(settings.appAllowlistSortRaw, 'LABEL_DESC');
 
-      settings.setExcludedAppsFilterRaw(
-        AppListFilter.selected.storageValue,
-      );
+      settings.setExcludedAppsFilterRaw(AppListFilter.selected.storageValue);
       container.read(legacySettingsRevisionProvider.notifier).bump();
       final next = container.read(legacySettingsProvider);
       expect(next.excludedAppsFilterRaw, 'SELECTED');
@@ -286,7 +291,10 @@ void main() {
       expect(settings.appAllowlistRules, isNotEmpty);
       settings.setAppAllowlistEnabled(true);
       container.read(legacySettingsRevisionProvider.notifier).bump();
-      expect(container.read(legacySettingsProvider).appAllowlistEnabled, isTrue);
+      expect(
+        container.read(legacySettingsProvider).appAllowlistEnabled,
+        isTrue,
+      );
     });
   });
 
@@ -320,51 +328,58 @@ void main() {
       };
 
       bool operational(Map<String, Map<String, Object>> data) =>
-          containerWith(data).read(legacySettingsProvider).httpsInspectionOperational;
+          containerWith(data)
+              .read(legacySettingsProvider)
+              .httpsInspectionOperational;
 
       expect(
-        operational(seed(
-          backend: 'go-v1',
-          ready: true,
-          enabled: true,
-          apps: ['com.example.maps'],
-        )),
+        operational(
+          seed(
+            backend: 'go-v1',
+            ready: true,
+            enabled: true,
+            apps: ['com.example.maps'],
+          ),
+        ),
         isTrue,
       );
       expect(
-        operational(seed(
-          backend: 'legacy',
-          ready: true,
-          enabled: true,
-          apps: ['com.example.maps'],
-        )),
+        operational(
+          seed(
+            backend: 'legacy',
+            ready: true,
+            enabled: true,
+            apps: ['com.example.maps'],
+          ),
+        ),
         isFalse,
       );
       expect(
-        operational(seed(
-          backend: 'go-v1',
-          ready: false,
-          enabled: true,
-          apps: ['com.example.maps'],
-        )),
+        operational(
+          seed(
+            backend: 'go-v1',
+            ready: false,
+            enabled: true,
+            apps: ['com.example.maps'],
+          ),
+        ),
         isFalse,
       );
       expect(
-        operational(seed(
-          backend: 'go-v1',
-          ready: true,
-          enabled: false,
-          apps: ['com.example.maps'],
-        )),
+        operational(
+          seed(
+            backend: 'go-v1',
+            ready: true,
+            enabled: false,
+            apps: ['com.example.maps'],
+          ),
+        ),
         isFalse,
       );
       expect(
-        operational(seed(
-          backend: 'go-v1',
-          ready: true,
-          enabled: true,
-          apps: [],
-        )),
+        operational(
+          seed(backend: 'go-v1', ready: true, enabled: true, apps: []),
+        ),
         isFalse,
       );
     });

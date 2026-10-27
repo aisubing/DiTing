@@ -168,7 +168,10 @@ List<MarkdownBlock> parseMarkdownBlocks(String rawText) {
     final numbered = _numberedRegex.firstMatch(line);
     if (numbered != null) {
       blocks.add(
-        MarkdownNumberedItem('${numbered.group(2)}.', numbered.group(3)!.trim()),
+        MarkdownNumberedItem(
+          '${numbered.group(2)}.',
+          numbered.group(3)!.trim(),
+        ),
       );
       i++;
       continue;
@@ -180,7 +183,8 @@ List<MarkdownBlock> parseMarkdownBlocks(String rawText) {
       final currentLine = lines[i];
       final currentTrimmed = currentLine.trim();
       if (currentTrimmed.isEmpty) break;
-      if (currentTrimmed.startsWith('```') || currentTrimmed.startsWith('~~~')) {
+      if (currentTrimmed.startsWith('```') ||
+          currentTrimmed.startsWith('~~~')) {
         break;
       }
       if (_hrRegex.hasMatch(currentTrimmed)) break;

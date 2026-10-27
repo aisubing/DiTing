@@ -60,11 +60,7 @@ Future<void> openLinkOrCopy(
 Future<void> joinQqGroup(BuildContext context) async {
   if (await openExternalLink(qqGroupUri)) return;
   if (!context.mounted) return;
-  await copyToClipboard(
-    context,
-    qqGroupNumber,
-    '未检测到 QQ，群号已复制：$qqGroupNumber',
-  );
+  await copyToClipboard(context, qqGroupNumber, '未检测到 QQ，群号已复制：$qqGroupNumber');
 }
 
 /// Copy [text] to the clipboard, then show [message]. The clipboard write is async

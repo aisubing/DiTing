@@ -116,10 +116,12 @@ class _SponsorHero extends StatelessWidget {
                     children: [
                       Text(
                         '// SUPPORT THE PROJECT',
-                        style: AppTextStyle.caption2.of(context).copyWith(
-                          color: colorScheme.primary,
-                          fontFamily: appMonospaceFontFamily,
-                        ),
+                        style: AppTextStyle.caption2
+                            .of(context)
+                            .copyWith(
+                              color: colorScheme.primary,
+                              fontFamily: appMonospaceFontFamily,
+                            ),
                       ),
                       Text(
                         '请作者喝杯蜜雪 🧋',

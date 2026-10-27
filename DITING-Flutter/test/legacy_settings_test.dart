@@ -17,7 +17,8 @@ void main() {
       'home_poem_opacity': 0.4,
       'home_sentence_running': '运行句子',
       'home_sentence_stopped': '停止句子',
-      'bottom_bar_destinations': '["home","network_tools","settings","network_tools","bogus"]',
+      'bottom_bar_destinations':
+          '["home","network_tools","settings","network_tools","bogus"]',
       'bottom_bar_haptic_enabled': false,
       'dns_resolution_mode': 'parallel_race',
     },
@@ -61,8 +62,14 @@ void main() {
       expect(settings.themeModeRaw, isNull);
       expect(settings.paletteRaw, isNull);
       expect(settings.componentOpacity, 1);
-      expect(settings.homeSentences.running, LegacySettings.defaultRunningSentence);
-      expect(settings.homeSentences.stopped, LegacySettings.defaultStoppedSentence);
+      expect(
+        settings.homeSentences.running,
+        LegacySettings.defaultRunningSentence,
+      );
+      expect(
+        settings.homeSentences.stopped,
+        LegacySettings.defaultStoppedSentence,
+      );
       expect(settings.bottomBarIds, LegacySettings.defaultBottomBarIds);
       expect(settings.hapticEnabled, isTrue);
       expect(settings.workModeRaw, 'normal');
@@ -73,10 +80,12 @@ void main() {
     });
 
     test('显式值越界时按旧版钳位', () {
-      final settings = LegacySettings(MemoryLegacyPrefsStore({
-        'dns_vpn_prefs': {'home_poem_opacity': 0.01},
-        'diting_dns_mode_prefs': {'local_listen_port': 80},
-      }));
+      final settings = LegacySettings(
+        MemoryLegacyPrefsStore({
+          'dns_vpn_prefs': {'home_poem_opacity': 0.01},
+          'diting_dns_mode_prefs': {'local_listen_port': 80},
+        }),
+      );
       expect(settings.homeOpacity('home_poem_opacity'), 0.1);
       expect(settings.serverPort, 1024);
     });
@@ -109,12 +118,17 @@ void main() {
       expect(store.read('dns_vpn_prefs', 'theme_color_style'), 'indigo');
       expect(store.read('dns_vpn_prefs', 'home_poem_opacity'), 0.3);
       expect(store.read('dns_vpn_prefs', 'home_sentence_running'), 'a');
-      expect(store.read('dns_vpn_prefs', 'bottom_bar_destinations'),
-          '["home","feature_hub","settings","network_tools"]');
+      expect(
+        store.read('dns_vpn_prefs', 'bottom_bar_destinations'),
+        '["home","feature_hub","settings","network_tools"]',
+      );
       expect(store.read('dns_vpn_prefs', 'bottom_bar_haptic_enabled'), false);
       expect(store.read('diting_settings', 'app_work_mode'), 'express');
       expect(store.read('diting_settings', 'work_mode_initial_selected'), true);
-      expect(store.read('dns_vpn_prefs', 'dns_resolution_mode'), 'smart_prediction');
+      expect(
+        store.read('dns_vpn_prefs', 'dns_resolution_mode'),
+        'smart_prediction',
+      );
       expect(store.read('diting_dns_mode_prefs', 'local_listen_port'), 1053);
     });
 
@@ -127,7 +141,10 @@ void main() {
       });
       LegacySettings(store).clearWorkModeSelection();
       expect(store.read('diting_settings', 'app_work_mode'), isNull);
-      expect(store.read('diting_settings', 'work_mode_initial_selected'), isNull);
+      expect(
+        store.read('diting_settings', 'work_mode_initial_selected'),
+        isNull,
+      );
     });
   });
 
@@ -147,17 +164,19 @@ void main() {
     test('解析模式落盘值与枚举名不同名', () {
       expect(ResolutionMode.smart.storageValue, 'smart_prediction');
       expect(ResolutionMode.parallel.storageValue, 'parallel_race');
-      expect(ResolutionMode.fromStorageValue('parallel_race'),
-          ResolutionMode.parallel);
+      expect(
+        ResolutionMode.fromStorageValue('parallel_race'),
+        ResolutionMode.parallel,
+      );
     });
 
     test('底栏 id 与旧版一致', () {
       expect(BottomBarDestination.appTraffic.storageValue, 'app_traffic_stats');
       expect(BottomBarDestination.networkTools.storageValue, 'network_tools');
-      expect(
-        {for (final destination in BottomBarDestination.values) destination.storageValue},
-        LegacySettings.bottomBarIdValues,
-      );
+      expect({
+        for (final destination in BottomBarDestination.values)
+          destination.storageValue,
+      }, LegacySettings.bottomBarIdValues);
     });
   });
 
@@ -214,7 +233,10 @@ void main() {
       expect(store.read('dns_vpn_prefs', 'home_power_button_opacity'), 0.6);
       expect(store.read('dns_vpn_prefs', 'home_sentence_running'), '新句子');
       expect(store.read('diting_settings', 'app_work_mode'), 'express');
-      expect(store.read('dns_vpn_prefs', 'dns_resolution_mode'), 'primary_backup');
+      expect(
+        store.read('dns_vpn_prefs', 'dns_resolution_mode'),
+        'primary_backup',
+      );
       expect(store.read('diting_dns_mode_prefs', 'local_listen_port'), 1053);
     });
 
@@ -234,11 +256,11 @@ void main() {
     });
 
     test('不足两项的旧数组回退默认且未知 id 被忽略', () {
-      final container = containerWith(MemoryLegacyPrefsStore({
-        'dns_vpn_prefs': {
-          'bottom_bar_destinations': '["bogus","home"]',
-        },
-      }));
+      final container = containerWith(
+        MemoryLegacyPrefsStore({
+          'dns_vpn_prefs': {'bottom_bar_destinations': '["bogus","home"]'},
+        }),
+      );
       expect(container.read(bottomBarProvider), [
         BottomBarDestination.home,
         BottomBarDestination.featureHub,

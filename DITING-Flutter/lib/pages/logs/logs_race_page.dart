@@ -113,7 +113,8 @@ class LogsRacePage extends ConsumerWidget {
         if (snapshot.strategyStats.isNotEmpty)
           generateSection(
             title: '策略概览',
-            footer: '缓存命中的请求不触发竞速，因此不进这张表；'
+            footer:
+                '缓存命中的请求不触发竞速，因此不进这张表；'
                 '首选命中率 = 首选服务商即胜出且成功的比例。',
             items: [
               for (final item in snapshot.strategyStats)
@@ -173,7 +174,8 @@ class LogsRacePage extends ConsumerWidget {
         if (snapshot.smartSelections.isNotEmpty)
           generateSection(
             title: '智能选择首选',
-            footer: '只有智能选择策略下才有意义；首选命中率统计「首选服务商就是'
+            footer:
+                '只有智能选择策略下才有意义；首选命中率统计「首选服务商就是'
                 '胜出者」的比例，兜底救回的查询不计入。',
             items: [
               for (final item in snapshot.smartSelections)

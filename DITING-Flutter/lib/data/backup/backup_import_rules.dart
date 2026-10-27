@@ -132,10 +132,7 @@ extension _BackupImportRuleTables on BackupImporter {
     if (db == null) {
       throw const BackupFormatException('本机还没有规则库，无法导入规则');
     }
-    final existing = {
-      'block': <String>{},
-      'allow': <String>{},
-    };
+    final existing = {'block': <String>{}, 'allow': <String>{}};
     final repository = RuleRepository(db);
     for (final entry in existing.entries) {
       final kind = entry.key == 'allow' ? RuleKind.allow : RuleKind.block;
@@ -209,11 +206,7 @@ extension _BackupImportRuleTables on BackupImporter {
       where: appScope == null
           ? 'pattern = ? AND important = ? AND appScope IS NULL'
           : 'pattern = ? AND important = ? AND appScope = ?',
-      whereArgs: [
-        pattern,
-        item['important'] == true ? 1 : 0,
-        ?appScope,
-      ],
+      whereArgs: [pattern, item['important'] == true ? 1 : 0, ?appScope],
       limit: 1,
     );
     if (rows.isEmpty) return;

@@ -27,11 +27,9 @@ class UpdateProgress {
 }
 
 class UpdateDownloadResult {
-  const UpdateDownloadResult.success(this.path)
-    : error = null;
+  const UpdateDownloadResult.success(this.path) : error = null;
 
-  const UpdateDownloadResult.failed(String this.error)
-    : path = null;
+  const UpdateDownloadResult.failed(String this.error) : path = null;
 
   final String? path;
   final String? error;

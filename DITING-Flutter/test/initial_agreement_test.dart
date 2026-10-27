@@ -19,9 +19,7 @@ void main() {
       ProviderScope(
         overrides: [
           if (accepted)
-            initialAgreementProvider.overrideWith(
-              InitialAgreementAccepted.new,
-            ),
+            initialAgreementProvider.overrideWith(InitialAgreementAccepted.new),
         ],
         child: DitingApp(initialLocation: '/'),
       ),

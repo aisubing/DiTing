@@ -48,9 +48,8 @@ void main() {
   }
 
   testWidgets('电源按钮经历启动中并回到运行态', (tester) async {
-    final fake = FakeVpnController(
-      delay: const Duration(milliseconds: 200),
-    )..statusValue = const VpnStatus(running: true, persisted: true);
+    final fake = FakeVpnController(delay: const Duration(milliseconds: 200))
+      ..statusValue = const VpnStatus(running: true, persisted: true);
     await pumpApp(tester, vpn: fake);
     await tester.tap(find.byType(HomePowerButton));
     await tester.pump();
@@ -72,7 +71,8 @@ void main() {
         matching: find.text(mockFeatureCategories.first.title),
       ),
       findsWidgets,
-    );    await tester.tap(find.text('首页'));
+    );
+    await tester.tap(find.text('首页'));
     await tester.pumpAndSettle();
     expect(find.text('谛听 · 普通'), findsOneWidget);
   });
@@ -137,7 +137,9 @@ void main() {
     final screenHeight =
         tester.view.physicalSize.height / tester.view.devicePixelRatio;
     expect(find.byType(NavigationBar), findsOneWidget);
-    final reserve = DockInsetScope.of(tester.element(find.byType(PageBody).first));
+    final reserve = DockInsetScope.of(
+      tester.element(find.byType(PageBody).first),
+    );
     final barTop = tester.getRect(find.byType(NavigationBar)).top;
     // Bottom of the reserved band minus the bar top is the clearance content gets
     expect(barTop - (screenHeight - reserve), moreOrLessEquals(dockContentGap));

@@ -16,8 +16,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// (several SQLite scans per tick) off the 1 s speed timer.
 const logLiveRefreshInterval = Duration(seconds: 10);
 
-final logLiveRefreshProvider =
-    NotifierProvider<LogLiveRefreshNotifier, int>(LogLiveRefreshNotifier.new);
+final logLiveRefreshProvider = NotifierProvider<LogLiveRefreshNotifier, int>(
+  LogLiveRefreshNotifier.new,
+);
 
 /// Reference-counted like `ProcessMemoryNotifier.attachPolling`: home and the logs page can be
 /// mounted at once and must share one timer.

@@ -132,9 +132,9 @@ class IntranetIpDetailPage extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         '没有读到 DNS 服务器：接口未下发 DNS，或当前环境没有诊断通道。',
-                        style: AppTextStyle.subheadline.of(
-                          context,
-                        ).copyWith(color: colorScheme.onSurfaceVariant),
+                        style: AppTextStyle.subheadline
+                            .of(context)
+                            .copyWith(color: colorScheme.onSurfaceVariant),
                       ),
                     ),
                   ],
@@ -157,7 +157,8 @@ class IntranetIpDetailPage extends ConsumerWidget {
                 ),
         ),
         const DashboardDetailNote(
-          text: '端口只在服务启动时绑定，改动端口后需要重启服务；'
+          text:
+              '端口只在服务启动时绑定，改动端口后需要重启服务；'
               '把同网段设备的 DNS 指向上面的地址即可让它们走本机解析。',
         ),
       ],
@@ -220,10 +221,12 @@ class _CopyCard extends StatelessWidget {
                   address,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyle.caption1.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontFamily: appMonospaceFontFamily,
-                  ),
+                  style: AppTextStyle.caption1
+                      .of(context)
+                      .copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontFamily: appMonospaceFontFamily,
+                      ),
                 ),
               ],
             ),

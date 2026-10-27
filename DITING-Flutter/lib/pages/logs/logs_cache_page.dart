@@ -117,10 +117,8 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
             for (final entry in entries)
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.layers),
-                onTap: () => openAgentAnalysis(
-                  context,
-                  AgentDomainTarget(entry.domain),
-                ),
+                onTap: () =>
+                    openAgentAnalysis(context, AgentDomainTarget(entry.domain)),
                 title: Row(
                   spacing: 8,
                   children: [

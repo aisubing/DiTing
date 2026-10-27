@@ -36,7 +36,11 @@ enum CleanupAction {
 }
 
 class CleanupResult {
-  const CleanupResult({required this.action, required this.removed, this.detail});
+  const CleanupResult({
+    required this.action,
+    required this.removed,
+    this.detail,
+  });
 
   const CleanupResult.failed(this.action, String this.detail) : removed = 0;
 

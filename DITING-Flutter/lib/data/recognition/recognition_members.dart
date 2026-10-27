@@ -100,7 +100,9 @@ List<RecognitionMember> _parseMembers(Object? raw, String field) {
       }
       avatarFileName = value;
     }
-    members.add(RecognitionMember(name: trimmed, avatarFileName: avatarFileName));
+    members.add(
+      RecognitionMember(name: trimmed, avatarFileName: avatarFileName),
+    );
   }
   return List.unmodifiable(members);
 }

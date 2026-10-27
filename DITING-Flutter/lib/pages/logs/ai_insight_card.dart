@@ -46,10 +46,9 @@ class AiInsightCard extends ConsumerWidget {
             Text(
               '把最近的 DNS 与 HTTPS 记录交给配置的模型，'
               '汇总异常请求、防护效果与优化建议。',
-              style: AppTextStyle.subheadline.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
-                height: 1.4,
-              ),
+              style: AppTextStyle.subheadline
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant, height: 1.4),
             )
           else ...[
             Text(
@@ -75,7 +74,9 @@ class AiInsightCard extends ConsumerWidget {
             alignment: Alignment.centerLeft,
             child: TonalButton(
               size: TonalButtonSize.compact,
-              glyph: report == null ? AppGlyphs.sparkle : AppGlyphs.chevronForward,
+              glyph: report == null
+                  ? AppGlyphs.sparkle
+                  : AppGlyphs.chevronForward,
               label: report == null ? '用 AI 研判最近流量' : '查看完整报告',
               onPressed: () => _open(context, state.sessionId, report != null),
             ),

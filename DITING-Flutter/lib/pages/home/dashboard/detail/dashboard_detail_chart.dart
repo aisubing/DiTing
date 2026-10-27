@@ -56,9 +56,9 @@ class DashboardDetailChart extends StatelessWidget {
               Center(
                 child: Text(
                   emptyLabel,
-                  style: AppTextStyle.caption1.of(
-                    context,
-                  ).copyWith(color: colorScheme.onSurfaceVariant),
+                  style: AppTextStyle.caption1
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
                 ),
               )
             else
@@ -82,7 +82,11 @@ class DashboardDetailChart extends StatelessWidget {
 /// Composition bar for one total split into parts; a zero total draws the track only, so the
 /// widget never divides by zero.
 class DashboardShareBar extends StatelessWidget {
-  const DashboardShareBar({super.key, required this.segments, this.height = 12});
+  const DashboardShareBar({
+    super.key,
+    required this.segments,
+    this.height = 12,
+  });
 
   /// Parts of the whole; values are weights, not percentages.
   final List<({double value, Color color})> segments;
@@ -105,7 +109,10 @@ class DashboardShareBar extends StatelessWidget {
                       Expanded(
                         // Per-mille flex: a 0.3% sliver must stay a sliver, not round up to
                         // a visible block.
-                        flex: (part.value * 1000 / total).round().clamp(1, 1000),
+                        flex: (part.value * 1000 / total).round().clamp(
+                          1,
+                          1000,
+                        ),
                         child: ColoredBox(color: part.color),
                       ),
                 ],
@@ -157,10 +164,12 @@ class DashboardShareLegend extends StatelessWidget {
           Text(
             share == null ? value : '$value · ${(share * 100).round()}%',
             maxLines: 1,
-            style: AppTextStyle.subheadline.of(context, emphasized: true).copyWith(
-              color: colorScheme.onSurface,
-              fontFamily: appMonospaceFontFamily,
-            ),
+            style: AppTextStyle.subheadline
+                .of(context, emphasized: true)
+                .copyWith(
+                  color: colorScheme.onSurface,
+                  fontFamily: appMonospaceFontFamily,
+                ),
           ),
         ],
       ),

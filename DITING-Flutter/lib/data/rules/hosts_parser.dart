@@ -61,10 +61,7 @@ CategorizedLine parseDnsmasqLine(String line, String originalLine) {
     if (blockList.isEmpty && invalidCount > 0) {
       return CategorizedLine(invalidCount: invalidCount);
     }
-    return CategorizedLine(
-      blockRules: blockList,
-      invalidCount: invalidCount,
-    );
+    return CategorizedLine(blockRules: blockList, invalidCount: invalidCount);
   }
 
   if (looksLikeLiteralIp(target)) {

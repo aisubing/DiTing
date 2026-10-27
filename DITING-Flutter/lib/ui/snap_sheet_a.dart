@@ -380,9 +380,7 @@ class _SheetModel extends ChangeNotifier {
     final stops = _stops;
     final shown = _presentation.value;
     final extent = stops.first + _keyboard;
-    final position = shown < 1
-        ? extent * shown
-        : _keyboard + _heightIn(stops);
+    final position = shown < 1 ? extent * shown : _keyboard + _heightIn(stops);
     final projected = position + velocity * _projectionTime;
     var target = -1;
     var distance = projected.abs();

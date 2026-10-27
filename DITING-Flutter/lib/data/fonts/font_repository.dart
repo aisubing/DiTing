@@ -37,7 +37,10 @@ class ImportedFont {
     }
     final family = raw['family'];
     final path = raw['path'];
-    if (family is! String || family.isEmpty || path is! String || path.isEmpty) {
+    if (family is! String ||
+        family.isEmpty ||
+        path is! String ||
+        path.isEmpty) {
       return null;
     }
     final label = raw['label'];
@@ -63,7 +66,10 @@ class ImportedFont {
 class FontImportResult {
   const FontImportResult({this.font, this.cancelled = false, this.error});
 
-  const FontImportResult.cancelled() : font = null, cancelled = true, error = null;
+  const FontImportResult.cancelled()
+    : font = null,
+      cancelled = true,
+      error = null;
 
   const FontImportResult.failed(String this.error)
     : font = null,
@@ -123,7 +129,10 @@ class FontRepository {
       }
     }
     if (broken.isNotEmpty) {
-      final remaining = [for (final font in fonts) if (!broken.contains(font)) font];
+      final remaining = [
+        for (final font in fonts)
+          if (!broken.contains(font)) font,
+      ];
       settings.setImportedFonts(remaining);
     }
     return loaded;
@@ -162,7 +171,10 @@ class FontRepository {
   /// bytes for the lifetime of the process; clearing the selection is what makes the UI stop using
   /// them, so callers select the system default first when the deleted font was active.
   Future<void> delete(ImportedFont font) async {
-    final remaining = [for (final item in fonts) if (item != font) item];
+    final remaining = [
+      for (final item in fonts)
+        if (item != font) item,
+    ];
     settings.setImportedFonts(remaining);
     _registered.remove(font.family);
     await _bridge.deleteFontFile(font.path);
@@ -225,9 +237,7 @@ extension ImportedFontSettings on LegacySettings {
       if (decoded is! List) {
         return const [];
       }
-      return [
-        for (final item in decoded) ?ImportedFont.fromJson(item),
-      ];
+      return [for (final item in decoded) ?ImportedFont.fromJson(item)];
     } on FormatException {
       return const [];
     }

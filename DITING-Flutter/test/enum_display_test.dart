@@ -55,7 +55,10 @@ void main() {
   group('枚举展示字段', () {
     test('每个枚举的 label/title/summary 都不含源码标识符', () {
       for (final protocol in ProviderProtocol.values) {
-        expectNoRawEnumLiteral(protocol.label, 'ProviderProtocol.${protocol.name}');
+        expectNoRawEnumLiteral(
+          protocol.label,
+          'ProviderProtocol.${protocol.name}',
+        );
       }
       for (final kind in RuleKind.values) {
         expectNoRawEnumLiteral(kind.title, 'RuleKind.${kind.name}.title');
@@ -64,31 +67,46 @@ void main() {
       for (final mode in AppWorkMode.values) {
         expectNoRawEnumLiteral(mode.title, 'AppWorkMode.${mode.name}.title');
         expectNoRawEnumLiteral(mode.badge, 'AppWorkMode.${mode.name}.badge');
-        expectNoRawEnumLiteral(mode.summary, 'AppWorkMode.${mode.name}.summary');
+        expectNoRawEnumLiteral(
+          mode.summary,
+          'AppWorkMode.${mode.name}.summary',
+        );
       }
       for (final state in PowerState.values) {
         expectNoRawEnumLiteral(state.label, 'PowerState.${state.name}.label');
       }
       for (final resolution in ResolutionMode.values) {
-        expectNoRawEnumLiteral(resolution.label, 'ResolutionMode.${resolution.name}');
+        expectNoRawEnumLiteral(
+          resolution.label,
+          'ResolutionMode.${resolution.name}',
+        );
       }
       for (final layer in HomeLayer.values) {
         expectNoRawEnumLiteral(layer.label, 'HomeLayer.${layer.name}');
       }
       for (final destination in BottomBarDestination.values) {
-        expectNoRawEnumLiteral(destination.label, 'BottomBarDestination.${destination.name}');
+        expectNoRawEnumLiteral(
+          destination.label,
+          'BottomBarDestination.${destination.name}',
+        );
       }
       for (final palette in AppPalette.values) {
         expectNoRawEnumLiteral(palette.label, 'AppPalette.${palette.name}');
       }
       for (final themeMode in AppThemeMode.values) {
-        expectNoRawEnumLiteral(themeMode.label, 'AppThemeMode.${themeMode.name}');
+        expectNoRawEnumLiteral(
+          themeMode.label,
+          'AppThemeMode.${themeMode.name}',
+        );
       }
       for (final source in RuleSource.values) {
         expectNoRawEnumLiteral(source.label, 'RuleSource.${source.name}');
       }
       for (final serverStatus in ServerStatus.values) {
-        expectNoRawEnumLiteral(serverStatus.label, 'ServerStatus.${serverStatus.name}');
+        expectNoRawEnumLiteral(
+          serverStatus.label,
+          'ServerStatus.${serverStatus.name}',
+        );
       }
     });
   });

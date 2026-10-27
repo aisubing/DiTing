@@ -26,7 +26,9 @@ void main() {
     expect(categories.length, mockFeatureCategories.length - 1);
 
     final allHidden = {
-      for (final card in mockFeatureCategories.expand((category) => category.cards))
+      for (final card in mockFeatureCategories.expand(
+        (category) => category.cards,
+      ))
         if (card.featureKey != null) card.featureKey!,
     };
     final onlyFixed = visibleFeatureCategories(

@@ -454,7 +454,8 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                             Expanded(
                               child: _FloatingBarItem(
                                 destination: destination,
-                                selected: _hasSelection && index == _selectedIndex,
+                                selected:
+                                    _hasSelection && index == _selectedIndex,
                                 index: index,
                                 part: part,
                                 lens: _lens,
@@ -474,8 +475,7 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
                         ],
                       ),
                     );
-                    final lensed =
-                        glass && _lifted && _hasSelection;
+                    final lensed = glass && _lifted && _hasSelection;
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -539,4 +539,3 @@ class _FloatingNavigationBarState extends State<FloatingNavigationBar>
     );
   }
 }
-

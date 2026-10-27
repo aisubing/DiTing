@@ -3,7 +3,6 @@ part of 'legacy_settings.dart';
 /// DNS-domain settings: providers, cache policy, block response, bootstrap and the inspection
 /// switches.
 extension LegacyDnsSettings on LegacySettings {
-
   bool get vpnRunning =>
       _bool(LegacySettings.uiContainer, 'vpn_running', false);
 
@@ -89,7 +88,8 @@ extension LegacyDnsSettings on LegacySettings {
       _store.putString(dnsContainer, 'preset_dns_service', value);
 
   /// Home race probe domain; backups must carry the effective value, not an empty string.
-  String get raceTestDomain => _string(dnsContainer, 'race_test_domain') ?? 'mihoyo.com';
+  String get raceTestDomain =>
+      _string(dnsContainer, 'race_test_domain') ?? 'mihoyo.com';
 
   void setRaceTestDomain(String domain) =>
       _store.putString(dnsContainer, 'race_test_domain', domain);

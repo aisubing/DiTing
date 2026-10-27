@@ -128,7 +128,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runner.pingCalls.length, siteLatencyTargets.length);
-    expect(find.text('${siteLatencyTargets.length} / ${siteLatencyTargets.length}'), findsOneWidget);
+    expect(
+      find.text('${siteLatencyTargets.length} / ${siteLatencyTargets.length}'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('仪表盘站点页最多选四个', (tester) async {

@@ -44,7 +44,9 @@ class StatusDetailPage extends ConsumerWidget {
           color: core.isRunning ? colorScheme.onSurface : null,
           chipLabel: core.label,
           chipColor: health.color,
-          hint: core.isRunning ? health.summary : '${mode.title}${core.label}，计时已暂停',
+          hint: core.isRunning
+              ? health.summary
+              : '${mode.title}${core.label}，计时已暂停',
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.status,
@@ -59,9 +61,9 @@ class StatusDetailPage extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       health.summary,
-                      style: AppTextStyle.subheadline.of(context).copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                      style: AppTextStyle.subheadline
+                          .of(context)
+                          .copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                   ),
                 ],
@@ -94,9 +96,9 @@ class StatusDetailPage extends ConsumerWidget {
           child: primary == null
               ? Text(
                   '还没有选择服务商。在服务商管理里挑一个，解析才会走真实上游。',
-                  style: AppTextStyle.subheadline.of(context).copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyle.subheadline
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
                 )
               : Row(
                   spacing: 12,
@@ -136,7 +138,8 @@ class StatusDetailPage extends ConsumerWidget {
         DashboardDetailCard(
           glyph: AppGlyphs.requests,
           title: '今日计数',
-          footer: '计数从本次内核启动开始累计，重启或切换工作模式后归零；'
+          footer:
+              '计数从本次内核启动开始累计，重启或切换工作模式后归零；'
               '已在服务器模式里做的重置也只清计数，不动规则与缓存。',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,9 +179,9 @@ class StatusDetailPage extends ConsumerWidget {
                     children: [
                       Text(
                         '缓存命中率',
-                        style: AppTextStyle.caption1.of(context).copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
+                        style: AppTextStyle.caption1
+                            .of(context)
+                            .copyWith(color: colorScheme.onSurfaceVariant),
                       ),
                       const Spacer(),
                       Text(

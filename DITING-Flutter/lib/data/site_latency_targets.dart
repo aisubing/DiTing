@@ -26,7 +26,12 @@ class SiteLatencyTarget {
 }
 
 /// The four sites the dashboard card shows unless the user picks others.
-const defaultDashboardSiteIds = <String>['baidu', 'douyin', 'bilibili', 'netease'];
+const defaultDashboardSiteIds = <String>[
+  'baidu',
+  'douyin',
+  'bilibili',
+  'netease',
+];
 
 /// Everything the user can put on the card or probe from the detail page.
 const siteLatencyTargets = <SiteLatencyTarget>[

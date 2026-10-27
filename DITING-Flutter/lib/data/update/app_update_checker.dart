@@ -27,8 +27,10 @@ class UpdateCheckResult {
     : info = null,
       error = null;
 
-  const UpdateCheckResult.available(UpdateInfo this.info, {required this.currentVersion})
-    : error = null;
+  const UpdateCheckResult.available(
+    UpdateInfo this.info, {
+    required this.currentVersion,
+  }) : error = null;
 
   const UpdateCheckResult.failed(String this.error)
     : info = null,
@@ -68,12 +70,20 @@ class AppUpdateChecker {
   Future<UpdateCheckResult> check(String currentVersion) async {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
-      final request = await client.getUrl(Uri.parse(releaseUrl)).timeout(timeout);
+      final request = await client
+          .getUrl(Uri.parse(releaseUrl))
+          .timeout(timeout);
       // GitHub 403s a request without a User-Agent; `Accept` selects the schema.
-      request.headers.set(HttpHeaders.acceptHeader, 'application/vnd.github+json');
+      request.headers.set(
+        HttpHeaders.acceptHeader,
+        'application/vnd.github+json',
+      );
       request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
-      final body = await response.transform(utf8.decoder).join().timeout(timeout);
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(timeout);
       if (response.statusCode != 200) {
         return UpdateCheckResult.failed(
           _statusMessage(response.statusCode, body),
@@ -174,7 +184,11 @@ class AppUpdateChecker {
   /// newer".
   static bool isNewerVersion(String remote, String current) {
     List<int>? components(String value) {
-      final normalized = value.trim().replaceFirst(RegExp(r'^v'), '').split('-').first;
+      final normalized = value
+          .trim()
+          .replaceFirst(RegExp(r'^v'), '')
+          .split('-')
+          .first;
       if (normalized.isEmpty) return null;
       final parts = <int>[];
       for (final part in normalized.split('.')) {
@@ -193,7 +207,9 @@ class AppUpdateChecker {
         : currentParts.length;
     for (var index = 0; index < length; index++) {
       final remoteValue = index < remoteParts.length ? remoteParts[index] : 0;
-      final currentValue = index < currentParts.length ? currentParts[index] : 0;
+      final currentValue = index < currentParts.length
+          ? currentParts[index]
+          : 0;
       if (remoteValue != currentValue) return remoteValue > currentValue;
     }
     return false;

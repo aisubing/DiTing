@@ -7,10 +7,8 @@ import 'package:flutter/services.dart';
 const _backgroundChannelName = 'com.haoze.diting/background';
 
 class BackgroundPickResult {
-  const BackgroundPickResult.picked({
-    required this.uri,
-    required this.path,
-  }) : cancelled = false;
+  const BackgroundPickResult.picked({required this.uri, required this.path})
+    : cancelled = false;
 
   const BackgroundPickResult.cancelled()
     : uri = null,

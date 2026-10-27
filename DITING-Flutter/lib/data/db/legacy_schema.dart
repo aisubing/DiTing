@@ -19,7 +19,11 @@ abstract final class LegacySchema {
   /// Order matters: `*_source` tables reference the main tables, so parents come first to keep
   /// `PRAGMA foreign_key_check` output readable.
   static List<String> statementsFor(String fileName) => switch (fileName) {
-    'diting_dns_rules' => [..._ruleTables, ..._subscriptionTables, ..._ruleIndexes],
+    'diting_dns_rules' => [
+      ..._ruleTables,
+      ..._subscriptionTables,
+      ..._ruleIndexes,
+    ],
     'diting_express' => [
       ..._ruleTables,
       ..._subscriptionTables,

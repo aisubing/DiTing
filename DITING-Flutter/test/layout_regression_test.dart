@@ -59,7 +59,10 @@ void main() {
     testWidgets('所有路由在 $sizeLabel 尺寸下无溢出', (tester) async {
       for (final route in routes) {
         await pumpAt(tester, route: route, size: size);
-        expectNoLayoutFailure(tester, '$route 在 $sizeLabel (${size.width}x${size.height})');
+        expectNoLayoutFailure(
+          tester,
+          '$route 在 $sizeLabel (${size.width}x${size.height})',
+        );
       }
     });
   }

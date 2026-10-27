@@ -103,9 +103,7 @@ void main() {
       expect(cancelled.error, isNull);
 
       // The socket is closed, so the pending future must not resurrect the run.
-      reply.complete(
-        const AgentChatResult(content: '迟到的结论', model: 'm1'),
-      );
+      reply.complete(const AgentChatResult(content: '迟到的结论', model: 'm1'));
       await Future<void>.delayed(Duration.zero);
       expect(container.read(agentAnalysisProvider).idle, isTrue);
     });
@@ -132,11 +130,9 @@ void main() {
     test('已取消的令牌直接拒绝发请求', () async {
       final token = AgentCancelToken()..cancel();
       await expectLater(
-        const AgentApiClient().chat(
-          _config,
-          const [AgentChatMessage(role: 'user', content: 'hi')],
-          cancelToken: token,
-        ),
+        const AgentApiClient().chat(_config, const [
+          AgentChatMessage(role: 'user', content: 'hi'),
+        ], cancelToken: token),
         throwsA(
           isA<AgentApiException>().having(
             (error) => error.message,

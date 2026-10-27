@@ -199,7 +199,9 @@ class _PowerArea extends ConsumerWidget {
         ),
         Text(
           '监听 0.0.0.0:$port',
-          style: context.listCaptionStyle.copyWith(fontFamily: appMonospaceFontFamily),
+          style: context.listCaptionStyle.copyWith(
+            fontFamily: appMonospaceFontFamily,
+          ),
         ),
       ],
     );

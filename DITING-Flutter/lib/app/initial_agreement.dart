@@ -147,7 +147,6 @@ class InitialAgreementDialog extends StatelessWidget {
       // Must scroll: three paragraphs do not fit a small screen at large text. Line height 1.6
       // (default 1.33) keeps dense CJK body text legible.
       child: ConstrainedBox(
-
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.5,
         ),

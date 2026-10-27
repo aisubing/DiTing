@@ -29,9 +29,7 @@ class AgentMarkdownView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: 8,
-      children: [
-        for (final block in blocks) _blockOf(context, block, colors),
-      ],
+      children: [for (final block in blocks) _blockOf(context, block, colors)],
     );
   }
 
@@ -86,10 +84,9 @@ class AgentMarkdownView extends StatelessWidget {
           children: [
             Text(
               number,
-              style: AppTextStyle.body.of(context).copyWith(
-                color: colors.primary,
-                fontWeight: FontWeight.bold,
-              ),
+              style: AppTextStyle.body
+                  .of(context)
+                  .copyWith(color: colors.primary, fontWeight: FontWeight.bold),
             ),
             Expanded(
               child: _Rich(
@@ -106,18 +103,18 @@ class AgentMarkdownView extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.only(left: 10),
           decoration: BoxDecoration(
-            border: Border(
-              left: BorderSide(color: colors.primary, width: 4),
-            ),
+            border: Border(left: BorderSide(color: colors.primary, width: 4)),
           ),
           child: _Rich(
             text: text,
             colors: colors,
-            style: AppTextStyle.body.of(context).copyWith(
-              height: 1.45,
-              fontStyle: FontStyle.italic,
-              color: colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyle.body
+                .of(context)
+                .copyWith(
+                  height: 1.45,
+                  fontStyle: FontStyle.italic,
+                  color: colorScheme.onSurfaceVariant,
+                ),
           ),
         );
       case MarkdownDivider():
@@ -138,17 +135,18 @@ class _Rich extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SelectableText.rich(
-      TextSpan(
-        children: buildMarkdownInlineSpans(text, colors),
-        style: style,
-      ),
+      TextSpan(children: buildMarkdownInlineSpans(text, colors), style: style),
       style: style,
     );
   }
 }
 
 class _Heading extends StatelessWidget {
-  const _Heading({required this.level, required this.text, required this.colors});
+  const _Heading({
+    required this.level,
+    required this.text,
+    required this.colors,
+  });
 
   final int level;
   final String text;
@@ -164,10 +162,7 @@ class _Heading extends StatelessWidget {
     }.copyWith(color: level <= 3 ? colors.primary : colors.base);
 
     final label = SelectableText.rich(
-      TextSpan(
-        children: buildMarkdownInlineSpans(text, colors),
-        style: style,
-      ),
+      TextSpan(children: buildMarkdownInlineSpans(text, colors), style: style),
       style: style,
     );
 
@@ -226,10 +221,12 @@ class _CodeBlock extends StatelessWidget {
                 Expanded(
                   child: Text(
                     language.isEmpty ? 'CODE' : language.toUpperCase(),
-                    style: AppTextStyle.caption2.of(context).copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      letterSpacing: 0.6,
-                    ),
+                    style: AppTextStyle.caption2
+                        .of(context)
+                        .copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          letterSpacing: 0.6,
+                        ),
                   ),
                 ),
                 IconButton(
@@ -237,9 +234,9 @@ class _CodeBlock extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: code));
-                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                      const SnackBar(content: Text('代码已复制到剪贴板')),
-                    );
+                    ScaffoldMessenger.maybeOf(
+                      context,
+                    )?.showSnackBar(const SnackBar(content: Text('代码已复制到剪贴板')));
                   },
                   icon: const GlyphIcon(AppGlyphs.copy, size: 16),
                 ),
@@ -252,11 +249,13 @@ class _CodeBlock extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: SelectableText(
               code,
-              style: AppTextStyle.caption1.of(context).copyWith(
-                fontFamily: appMonospaceFontFamily,
-                height: 1.5,
-                color: colorScheme.onSurface,
-              ),
+              style: AppTextStyle.caption1
+                  .of(context)
+                  .copyWith(
+                    fontFamily: appMonospaceFontFamily,
+                    height: 1.5,
+                    color: colorScheme.onSurface,
+                  ),
             ),
           ),
         ],
@@ -266,7 +265,11 @@ class _CodeBlock extends StatelessWidget {
 }
 
 class _Table extends StatelessWidget {
-  const _Table({required this.headers, required this.rows, required this.colors});
+  const _Table({
+    required this.headers,
+    required this.rows,
+    required this.colors,
+  });
 
   final List<String> headers;
   final List<List<String>> rows;
@@ -317,9 +320,7 @@ class _Table extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: headers.length * _columnWidth,
-          ),
+          constraints: BoxConstraints(minWidth: headers.length * _columnWidth),
           child: Table(
             defaultColumnWidth: const IntrinsicColumnWidth(),
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,

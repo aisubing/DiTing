@@ -26,7 +26,10 @@ void main() {
 ## 标题二
 ''');
       expect(blocks, hasLength(4));
-      expect(blocks[0], isA<MarkdownHeading>().having((b) => b.level, 'level', 1));
+      expect(
+        blocks[0],
+        isA<MarkdownHeading>().having((b) => b.level, 'level', 1),
+      );
       expect(
         blocks[1],
         isA<MarkdownParagraph>().having(
@@ -36,16 +39,16 @@ void main() {
         ),
       );
       expect(blocks[2], isA<MarkdownDivider>());
-      expect(blocks[3], isA<MarkdownHeading>().having((b) => b.level, 'level', 2));
+      expect(
+        blocks[3],
+        isA<MarkdownHeading>().having((b) => b.level, 'level', 2),
+      );
     });
 
     test('围栏代码块保留语言与内部井号行', () {
-      final blocks = parseMarkdownBlocks([
-        '```dart',
-        '# 不是标题',
-        'final a = 1;',
-        '```',
-      ].join('\n'));
+      final blocks = parseMarkdownBlocks(
+        ['```dart', '# 不是标题', 'final a = 1;', '```'].join('\n'),
+      );
       final code = blocks.single as MarkdownCodeBlock;
       expect(code.language, 'dart');
       expect(code.code, contains('# 不是标题'));
@@ -116,9 +119,9 @@ void main() {
     });
 
     test('链接只显示文字，不暴露地址', () {
-      final text = spans(
-        '见[官方文档](https://example.test/docs)',
-      ).map((span) => (span as TextSpan).text).join();
+      final text = spans('见[官方文档](https://example.test/docs)')
+          .map((span) => (span as TextSpan).text)
+          .join();
       expect(text, contains('官方文档'));
       expect(text, isNot(contains('https://example.test')));
     });

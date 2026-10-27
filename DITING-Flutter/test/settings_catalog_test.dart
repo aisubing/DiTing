@@ -52,10 +52,7 @@ void main() {
     test('后台隐藏默认关闭', () {
       expect(settings.hideFromRecentsEnabled, isFalse);
       settings.setHideFromRecentsEnabled(true);
-      expect(
-        store.read('dns_vpn_prefs', 'hide_from_recents_enabled'),
-        isTrue,
-      );
+      expect(store.read('dns_vpn_prefs', 'hide_from_recents_enabled'), isTrue);
     });
 
     test('绕过局域网默认开启，且能写', () {
@@ -153,10 +150,7 @@ void main() {
     });
 
     test('未知日志模式回退 all', () {
-      expect(
-        LegacyLogMode.fromStorageValue('whatever'),
-        LegacyLogMode.all,
-      );
+      expect(LegacyLogMode.fromStorageValue('whatever'), LegacyLogMode.all);
     });
 
     test('前后台行为三项可分别写', () {
@@ -195,5 +189,4 @@ void main() {
       expect(maxDockDestinations, 4);
     });
   });
-
 }

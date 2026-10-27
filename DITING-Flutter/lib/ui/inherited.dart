@@ -283,8 +283,9 @@ class SheetScrollScope extends InheritedWidget {
       createController != oldWidget.createController;
 }
 
-typedef SheetScrollControllerFactory =
-    ScrollController Function({double initialScrollOffset});
+typedef SheetScrollControllerFactory = ScrollController Function({
+  double initialScrollOffset,
+});
 
 ScrollController sheetScrollController(
   BuildContext context, {

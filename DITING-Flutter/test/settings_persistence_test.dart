@@ -62,7 +62,10 @@ void main() {
 
   group('看板卡片顺序重新打开后仍在', () {
     test('没有落盘时用默认布局', () {
-      expect(container().read(dashboardWidgetsProvider), defaultDashboardWidgets);
+      expect(
+        container().read(dashboardWidgetsProvider),
+        defaultDashboardWidgets,
+      );
     });
 
     test('增删与移动都会写回', () {
@@ -102,19 +105,24 @@ void main() {
     });
 
     test('坏 JSON 回落到默认布局', () {
-      store.putString(
-        'dns_vpn_prefs',
-        'dashboard_widget_order',
-        '{not json',
+      store.putString('dns_vpn_prefs', 'dashboard_widget_order', '{not json');
+      expect(
+        container().read(dashboardWidgetsProvider),
+        defaultDashboardWidgets,
       );
-      expect(container().read(dashboardWidgetsProvider), defaultDashboardWidgets);
     });
   });
 
   group('仪表盘站点选择重新打开后仍在', () {
     test('没有落盘时用默认四站', () {
-      expect(container().read(dashboardSiteIdsProvider), defaultDashboardSiteIds);
-      expect(container().read(dashboardSitesProvider).length, dashboardSiteCount);
+      expect(
+        container().read(dashboardSiteIdsProvider),
+        defaultDashboardSiteIds,
+      );
+      expect(
+        container().read(dashboardSitesProvider).length,
+        dashboardSiteCount,
+      );
     });
 
     test('勾选与取消都会写回，且最多四个', () {
@@ -134,7 +142,10 @@ void main() {
       expect(container().read(dashboardSitesProvider).last.id, 'github');
 
       notifier.reset();
-      expect(container().read(dashboardSiteIdsProvider), defaultDashboardSiteIds);
+      expect(
+        container().read(dashboardSiteIdsProvider),
+        defaultDashboardSiteIds,
+      );
     });
 
     test('满了以后拒绝新增', () {
@@ -166,7 +177,10 @@ void main() {
         'dashboard_site_ids',
         '["no_such_site"]',
       );
-      expect(container().read(dashboardSiteIdsProvider), defaultDashboardSiteIds);
+      expect(
+        container().read(dashboardSiteIdsProvider),
+        defaultDashboardSiteIds,
+      );
     });
   });
 

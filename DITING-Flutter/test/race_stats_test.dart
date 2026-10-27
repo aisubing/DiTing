@@ -99,9 +99,8 @@ void main() {
         timestamp: yesterday,
       );
       final since = DateTime.now().subtract(const Duration(hours: 1));
-      final rows = await RaceLogRepository(
-        db,
-      ).strategyStats(since: since.millisecondsSinceEpoch);
+      final rows = await RaceLogRepository(db)
+          .strategyStats(since: since.millisecondsSinceEpoch);
       expect(rows, isEmpty);
     });
   });

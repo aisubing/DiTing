@@ -2,7 +2,6 @@
 /// never a throw.
 library;
 
-
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

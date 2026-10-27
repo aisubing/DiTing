@@ -67,10 +67,27 @@ void main() {
         MemoryLegacyPrefsStore({
           'dns_vpn_prefs': {
             'user_providers_json': jsonEncode([
-              {'id': 'a', 'name': '无 https', 'protocol': 'DOH', 'url': 'http://x'},
-              {'id': 'b', 'name': '端口越界', 'protocol': 'DOT', 'host': 'x', 'port': 70000},
+              {
+                'id': 'a',
+                'name': '无 https',
+                'protocol': 'DOH',
+                'url': 'http://x',
+              },
+              {
+                'id': 'b',
+                'name': '端口越界',
+                'protocol': 'DOT',
+                'host': 'x',
+                'port': 70000,
+              },
               {'id': 'c', 'name': '未知协议', 'protocol': 'QUIC', 'host': 'x'},
-              {'id': 'd', 'name': '可用', 'protocol': 'DOT', 'host': 'd.example', 'port': 853},
+              {
+                'id': 'd',
+                'name': '可用',
+                'protocol': 'DOT',
+                'host': 'd.example',
+                'port': 853,
+              },
             ]),
           },
         }),
@@ -80,7 +97,13 @@ void main() {
 
     test('编辑保留 id，删除会清掉选中项与三种模式引用', () {
       final seed = jsonEncode([
-        {'id': 'user_1', 'name': '旧名', 'protocol': 'DOT', 'host': 'old', 'port': 853},
+        {
+          'id': 'user_1',
+          'name': '旧名',
+          'protocol': 'DOT',
+          'host': 'old',
+          'port': 853,
+        },
       ]);
       final settings = LegacySettings(
         MemoryLegacyPrefsStore({
@@ -195,10 +218,7 @@ void main() {
       expect(DynamicBlockPolicy.read(settings).enabled, isFalse);
       expect(DynamicBlockPolicy.read(settings).requestThreshold, 5);
       expect(DynamicBlockPolicy.read(settings).windowSeconds, 60);
-      expect(
-        DynamicBlockPolicy.read(settings).nxDomainDurationSeconds,
-        300,
-      );
+      expect(DynamicBlockPolicy.read(settings).nxDomainDurationSeconds, 300);
     });
 
     test('越界参数在落盘时被夹到旧版区间', () {
@@ -225,7 +245,10 @@ void main() {
     });
 
     test('未知存储值回落到 NXDOMAIN', () {
-      expect(BlockResponseMode.fromStorage('bogus'), BlockResponseMode.nxdomain);
+      expect(
+        BlockResponseMode.fromStorage('bogus'),
+        BlockResponseMode.nxdomain,
+      );
       expect(
         BlockResponseMode.fromStorage('zero_address'),
         BlockResponseMode.zeroAddress,
@@ -295,19 +318,18 @@ void main() {
     });
 
     test('主备模式的顺序在落盘后保持不变', () {
-      final c = container(
-        dns: {'dns_resolution_mode': 'primary_backup'},
-      );
+      final c = container(dns: {'dns_resolution_mode': 'primary_backup'});
       final notifier = c.read(raceProvidersProvider.notifier);
       notifier.reorder([
         'preset_dnspod_dns',
         'preset_alidns_dns',
         'preset_cloudflare_doh',
       ]);
-      expect(
-        c.read(legacySettingsProvider).primaryBackupProviderIds,
-        ['preset_dnspod_dns', 'preset_alidns_dns', 'preset_cloudflare_doh'],
-      );
+      expect(c.read(legacySettingsProvider).primaryBackupProviderIds, [
+        'preset_dnspod_dns',
+        'preset_alidns_dns',
+        'preset_cloudflare_doh',
+      ]);
       expect(c.read(raceProvidersProvider), hasLength(3));
     });
 
@@ -315,7 +337,8 @@ void main() {
       final c = container(
         dns: {
           'smart_prediction_provider_ids': '["preset_google_doh"]',
-          'parallel_race_provider_ids': '["preset_alidns_dns","preset_dnspod_dns"]',
+          'parallel_race_provider_ids':
+              '["preset_alidns_dns","preset_dnspod_dns"]',
         },
       );
       c.read(resolutionModeProvider.notifier).select(ResolutionMode.smart);

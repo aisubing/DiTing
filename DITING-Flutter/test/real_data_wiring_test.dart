@@ -170,15 +170,18 @@ void main() {
 
     test('缓存热点按命中次数排序，过期行不出现', () async {
       final stamp = now();
-      Future<void> cache(String name, {required int hits, required int ttlMs}) =>
-          db.insert('dns_cache', {
-            'queryName': name,
-            'queryType': 1,
-            'expiresAt': stamp + ttlMs,
-            'hitCount': hits,
-            'originalTtlSeconds': 300,
-            'responseSize': 64,
-          });
+      Future<void> cache(
+        String name, {
+        required int hits,
+        required int ttlMs,
+      }) => db.insert('dns_cache', {
+        'queryName': name,
+        'queryType': 1,
+        'expiresAt': stamp + ttlMs,
+        'hitCount': hits,
+        'originalTtlSeconds': 300,
+        'responseSize': 64,
+      });
       await cache('cold.example', hits: 1, ttlMs: 60000);
       await cache('hot.example', hits: 9, ttlMs: 60000);
       await cache('expired.example', hits: 99, ttlMs: -1000);
@@ -301,9 +304,8 @@ void main() {
         authority: 'blocked.example',
       );
 
-      final snapshot = await containerFor(
-        filtered: true,
-      ).read(logDashboardProvider.future);
+      final snapshot = await containerFor(filtered: true)
+          .read(logDashboardProvider.future);
       expect(snapshot.breakdown.passed, 0);
       expect(snapshot.breakdown.cached, 0);
       expect(snapshot.breakdown.blocked, 2);

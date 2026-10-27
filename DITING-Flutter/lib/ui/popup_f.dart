@@ -4,7 +4,6 @@ part of 'popup.dart';
 
 class _CommonPopupMenuState extends State<CommonPopupMenu>
     with SingleTickerProviderStateMixin {
-
   /// 0 at the item to 1 at its card, on one spring, so a fold mid-unfold turns around.
   late final _unfold = AnimationController.unbounded(vsync: this, value: 1);
   late final Animation<double> _items = _unfold.drive(const _Span(0.05, 0.4));
@@ -80,9 +79,8 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
     // Whole rows above, not centring, keep the half row a label cut at the foot.
     final visible = _maxVisibleItems;
     final alignment = (visible ~/ 2) / (visible - 0.5);
-    Scrollable.maybeOf(
-      row,
-    )?.position.ensureVisible(row.findRenderObject()!, alignment: alignment);
+    Scrollable.maybeOf(row)?.position
+        .ensureVisible(row.findRenderObject()!, alignment: alignment);
   }
 
   double _rowExtentOf(BuildContext context) =>
@@ -97,7 +95,6 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
     }
     return 2 * _cardInset + (_maxVisibleItems + 0.5) * _rowExtentOf(context);
   }
-
 
   double _lazyWidthOf(BuildContext context, List<CommonPopupMenuItem> items) {
     final style = AppTextStyle.subheadline.of(context);

@@ -157,6 +157,7 @@ class LegacySettings {
 
   double get componentOpacity =>
       _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
+
   /// Per-element opacity falls back to the shared component opacity.
   double homeOpacity(String storageKey) =>
       _clampedOpacity(_double(uiContainer, storageKey, componentOpacity));
@@ -164,8 +165,11 @@ class LegacySettings {
   void setHomeOpacity(String storageKey, double value) =>
       _store.putFloat(uiContainer, storageKey, _clampedOpacity(value));
 
-  void setHomeComponentOpacity(double value) =>
-      _store.putFloat(uiContainer, 'home_component_opacity', _clampedOpacity(value));
+  void setHomeComponentOpacity(double value) => _store.putFloat(
+    uiContainer,
+    'home_component_opacity',
+    _clampedOpacity(value),
+  );
 
   /// Raw legacy keys for backups; pages should use the named accessors.
   LegacyPrefsStore get rawStore => _store;

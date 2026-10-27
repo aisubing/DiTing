@@ -1,8 +1,10 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 import 'package:material_ui/material_ui.dart';
 
-typedef WidthWidgetBuilder =
-    Widget Function(BuildContext context, double width);
+typedef WidthWidgetBuilder = Widget Function(
+  BuildContext context,
+  double width,
+);
 
 /// Lays content out at each drag height, where a [LayoutBuilder] rebuilds every row each frame.
 class WidthBuilder extends StatefulWidget {

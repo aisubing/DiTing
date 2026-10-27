@@ -206,7 +206,8 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
             generateSection(
               title: '${widget.sectionTitle}（${visible.length}）',
               items: [
-                for (final member in visible) RecognitionMemberRow(member: member),
+                for (final member in visible)
+                  RecognitionMemberRow(member: member),
               ],
             ),
           if (state.hasMembers) _StatusFooter(state: state),

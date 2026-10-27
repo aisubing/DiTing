@@ -144,7 +144,11 @@ void main() {
       expect(second.id, first.id);
       expect(await db.query('block_rule'), hasLength(1));
       expect(
-        await db.query('block_rule_source', where: 'source = ?', whereArgs: ['useradd']),
+        await db.query(
+          'block_rule_source',
+          where: 'source = ?',
+          whereArgs: ['useradd'],
+        ),
         hasLength(1),
       );
     });
@@ -181,12 +185,8 @@ void main() {
         'enabled': 1,
       });
 
-      await RuleRepository(db).update(
-        RuleKind.block,
-        id,
-        'edited.example',
-        promotePreset: true,
-      );
+      await RuleRepository(db)
+          .update(RuleKind.block, id, 'edited.example', promotePreset: true);
 
       final sources = await db.query(
         'block_rule_source',
@@ -195,7 +195,10 @@ void main() {
         orderBy: 'source',
       );
       expect(sources.map((row) => row['source']), ['sub_1', 'useradd']);
-      expect((await db.query('block_rule')).single['pattern'], 'edited.example');
+      expect(
+        (await db.query('block_rule')).single['pattern'],
+        'edited.example',
+      );
     });
 
     test('删除规则级联删除来源', () async {
@@ -220,7 +223,11 @@ void main() {
       final remaining = await db.query('block_rule');
       expect(remaining.map((row) => row['id']), [sub]);
       expect(
-        await db.query('block_rule_source', where: 'ruleId = ?', whereArgs: [user]),
+        await db.query(
+          'block_rule_source',
+          where: 'ruleId = ?',
+          whereArgs: [user],
+        ),
         isEmpty,
       );
       expect(
@@ -268,13 +275,15 @@ void main() {
         'enabled': 1,
       });
 
-      final count = await RuleRepository(db).resetPresetWhitelist([
-        (domain: 'new.example', group: '默认预设'),
-      ]);
+      final count = await RuleRepository(db)
+          .resetPresetWhitelist([(domain: 'new.example', group: '默认预设')]);
 
       final rows = await db.query('allow_rule', orderBy: 'id');
       expect(count, 1);
-      expect(rows.map((row) => row['pattern']), ['user.example', 'new.example']);
+      expect(rows.map((row) => row['pattern']), [
+        'user.example',
+        'new.example',
+      ]);
       expect(rows.last['groupName'], '默认预设');
     });
   });
@@ -292,8 +301,11 @@ b.example//comment
 // 分类C
 c.example
 ''');
-      expect(entries.map((entry) => entry.domain),
-          ['example.com', 'b.example//comment', 'c.example']);
+      expect(entries.map((entry) => entry.domain), [
+        'example.com',
+        'b.example//comment',
+        'c.example',
+      ]);
       expect(entries.first.group, '分类A');
     });
   });

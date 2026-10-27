@@ -13,7 +13,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-
 /// Notification settings. The four keys live in `notification_settings_prefs`: the
 /// foreground service reads that container, so writing elsewhere silently does nothing.
 class ThemeNotificationPage extends ConsumerStatefulWidget {
@@ -124,7 +123,6 @@ void _hint(BuildContext context, String message) {
     ),
   );
 }
-
 
 /// App background. Picking goes through the native `PickVisualMedia` channel; without
 /// it the page still works and only "add image" reports that it is unavailable.
@@ -350,7 +348,6 @@ class _WallpaperThumbnailState extends State<_WallpaperThumbnail> {
   }
 }
 
-
 class SettingsBackgroundPage extends ConsumerWidget {
   const SettingsBackgroundPage({super.key});
 
@@ -417,7 +414,6 @@ class SettingsBackgroundPage extends ConsumerWidget {
     );
   }
 }
-
 
 /// The legacy enum reserves English but ships no strings, so only two options are offered.
 class SettingsLanguagePage extends ConsumerWidget {

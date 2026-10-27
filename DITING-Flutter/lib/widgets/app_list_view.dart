@@ -42,7 +42,9 @@ List<Widget> appListSlivers({
 }) {
   return [
     if (itemCount > 0 && title != null)
-      SliverToBoxAdapter(child: ListHeader(title: title, actions: actions)),
+      SliverToBoxAdapter(
+        child: ListHeader(title: title, actions: actions),
+      ),
     SliverPadding(
       padding: padding,
       sliver: SliverList.builder(

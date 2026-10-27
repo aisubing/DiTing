@@ -126,10 +126,7 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
                     value: memory.javaHeap.toDouble(),
                     color: colorScheme.primary,
                   ),
-                  (
-                    value: memory.nativeHeap.toDouble(),
-                    color: colors.series2,
-                  ),
+                  (value: memory.nativeHeap.toDouble(), color: colors.series2),
                   (value: other.toDouble(), color: colors.track),
                 ],
               ),
@@ -141,7 +138,9 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
               ),
               DashboardShareLegend(
                 label: '原生堆',
-                value: available ? dashboardBinaryBytes(memory.nativeHeap) : '—',
+                value: available
+                    ? dashboardBinaryBytes(memory.nativeHeap)
+                    : '—',
                 color: colors.series2,
                 share: _share(memory.nativeHeap, memory.totalPss),
               ),
@@ -178,7 +177,9 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
               ),
               DashboardShareLegend(
                 label: '整机可用',
-                value: available ? dashboardBinaryBytes(memory.systemAvail) : '—',
+                value: available
+                    ? dashboardBinaryBytes(memory.systemAvail)
+                    : '—',
                 color: colors.track,
                 share: _share(memory.systemAvail, memory.systemTotal),
               ),

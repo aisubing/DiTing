@@ -41,23 +41,27 @@ void main() {
     });
 
     test('保守与高命中率预设逐字对齐', () {
-      final conservative = buildServerDnsConfig(
-        serverSettings({'cache_preset': 'conservative'}),
-      ).toJson()['cache'] as Map;
+      final conservative =
+          buildServerDnsConfig(serverSettings({'cache_preset': 'conservative'}))
+                  .toJson()['cache']
+              as Map;
       expect(conservative['mode'], 'follow_dns_ttl');
       expect(conservative['minTtlEnabled'], false);
       expect(conservative['negativeTtlSeconds'], 15);
 
-      final high = buildServerDnsConfig(
-        serverSettings({'cache_preset': 'high_hit_rate'}),
-      ).toJson()['cache'] as Map;
+      final high =
+          buildServerDnsConfig(
+                serverSettings({'cache_preset': 'high_hit_rate'}),
+              ).toJson()['cache']
+              as Map;
       expect(high['maxTtlSeconds'], 21600);
       expect(high['minTtlSeconds'], 120);
       expect(high['staleFallbackSeconds'], 900);
 
-      final unknown = buildServerDnsConfig(
-        serverSettings({'cache_preset': 'nope'}),
-      ).toJson()['cache'] as Map;
+      final unknown =
+          buildServerDnsConfig(serverSettings({'cache_preset': 'nope'}))
+                  .toJson()['cache']
+              as Map;
       expect(unknown['maxTtlSeconds'], 3600);
     });
 
@@ -90,15 +94,12 @@ void main() {
       });
       final config = buildServerDnsConfig(settings);
       expect(config.upstream.id, 'custom_doh');
-      expect(
-        (config.toJson()['providers'] as List).single,
-        {
-          'id': 'custom_doh',
-          'protocol': 'DOH',
-          'server': '',
-          'url': 'https://dns.example/dns-query',
-        },
-      );
+      expect((config.toJson()['providers'] as List).single, {
+        'id': 'custom_doh',
+        'protocol': 'DOH',
+        'server': '',
+        'url': 'https://dns.example/dns-query',
+      });
       final upstreams = serverUpstreams(settings);
       expect(upstreams.map((u) => u.id), contains('custom_udp'));
       expect(upstreams.map((u) => u.id), isNot(contains('custom_bad')));
@@ -178,10 +179,7 @@ void main() {
       expect(request.dnsConfig, contains('"id":"preset_alidns_dns"'));
       expect(request.dnsConfig, contains('"bootstrap":{"enabled":false'));
       expect(request.adBlockEnabled, false);
-      expect(
-        c.read(legacySettingsProvider).serverServiceActive,
-        true,
-      );
+      expect(c.read(legacySettingsProvider).serverServiceActive, true);
     });
 
     test('非服务器模式拒绝启动', () async {

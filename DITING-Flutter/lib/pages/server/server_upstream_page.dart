@@ -174,10 +174,7 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
                   title: const Text('暂无自定义服务商'),
                   subtitle: const Text('点右上角加号添加 DoH / DoT / 明文 DNS 上游'),
                   leading: const GlyphIcon(AppGlyphs.addCircle),
-                  trailing: const GlyphIcon(
-                    AppGlyphs.chevronForward,
-                    size: 20,
-                  ),
+                  trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
                   onTap: () => _edit(null),
                 )
               else
@@ -295,7 +292,8 @@ class _RowMenu extends StatelessWidget {
     );
     navigator.push(
       CommonPopupRoute<void>(
-        barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+        barrierLabel: MaterialLocalizations.of(context)
+            .modalBarrierDismissLabel,
         placement: PopupPlacement.belowPoint,
         elevated: ElevatedSurfaceTheme.isIn(context),
         anchorOf: () => point & Size.zero,

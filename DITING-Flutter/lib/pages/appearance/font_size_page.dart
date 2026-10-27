@@ -105,9 +105,7 @@ class FontSizePage extends ConsumerWidget {
               onChanged: set,
             ),
           ),
-          const ListFooter(
-            text: '字号会同时放大正文、标题与列表行，不会改变系统设置；界面已按所选比例排版，无需重启。',
-          ),
+          const ListFooter(text: '字号会同时放大正文、标题与列表行，不会改变系统设置；界面已按所选比例排版，无需重启。'),
         ],
       ),
     );
@@ -143,12 +141,7 @@ class _SizePreview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  '实时预览',
-                  style: context.listCaptionStyle,
-                ),
-              ),
+              Expanded(child: Text('实时预览', style: context.listCaptionStyle)),
               TonalChip(
                 label: '${(scale * 100).round()}%',
                 color: colorScheme.primaryContainer,
@@ -171,10 +164,12 @@ class _SizePreview extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'The quick brown fox jumps over the lazy dog · 0123456789',
-            style: AppTextStyle.footnote.of(context).copyWith(
-              color: colorScheme.onSurfaceVariant,
-              fontFamily: appMonospaceFontFamily,
-            ),
+            style: AppTextStyle.footnote
+                .of(context)
+                .copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFamily: appMonospaceFontFamily,
+                ),
           ),
         ],
       ),

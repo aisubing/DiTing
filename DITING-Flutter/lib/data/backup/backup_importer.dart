@@ -244,18 +244,13 @@ class BackupImporter {
     BackupGroup.outbound => _importOutbound(value, target),
     BackupGroup.subscriptions => await _importSubscriptions(value, target),
     BackupGroup.domainRules => await _importRules(value, target, group),
-    BackupGroup.rewriteDomain => await _importRewrite(
-      value,
-      target,
-      const {'IPv4', 'IPv6'},
-      group,
-    ),
-    BackupGroup.rewriteCname => await _importRewrite(
-      value,
-      target,
-      const {'CNAME'},
-      group,
-    ),
+    BackupGroup.rewriteDomain => await _importRewrite(value, target, const {
+      'IPv4',
+      'IPv6',
+    }, group),
+    BackupGroup.rewriteCname => await _importRewrite(value, target, const {
+      'CNAME',
+    }, group),
     BackupGroup.addressRules => await _importAddressRules(value, target),
     BackupGroup.excluded => _importExcluded(value, target),
     BackupGroup.blocked => _importBlocked(value, target),

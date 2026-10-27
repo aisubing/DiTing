@@ -166,7 +166,9 @@ class PlatformBridge {
   /// subscription can be re-imported later without asking the user to pick it again.
   Future<PersistedTextFile> pickPersistableTextFile() async {
     try {
-      final raw = await _channel.invokeMethod<Object?>('pickPersistableTextFile');
+      final raw = await _channel.invokeMethod<Object?>(
+        'pickPersistableTextFile',
+      );
       return PersistedTextFile.fromMap(raw);
     } on MissingPluginException {
       return const PersistedTextFile.unavailable();

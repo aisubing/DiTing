@@ -72,15 +72,16 @@ void main() {
   tearDown(() => db.close());
 
   Future<int> count(String table) async =>
-      Sqflite.firstIntValue(
-        await db.rawQuery('SELECT COUNT(*) FROM $table'),
-      ) ??
+      Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM $table')) ??
       0;
 
   test('block / allow / rewrite / url 四族分别落到对应表', () async {
-    const text = '||ads.example.com^\n'
+    const text =
+        '||ads.example.com^\n'
         '@@||safe.example.com^\n'
-        '||rewrite.example.com^' r'$dnsrewrite=1.2.3.4' '\n'
+        '||rewrite.example.com^'
+        r'$dnsrewrite=1.2.3.4'
+        '\n'
         '||tracker.example.com/pixel.js\n';
     final parsed = parseCategorized(text);
     final importer = RuleImporter(db);
@@ -252,7 +253,10 @@ void main() {
   });
 
   test('带 app 作用域的 URL 规则不入 go_url_rule（该表没有 appScope 列）', () async {
-    const text = '||ads.example.com/banner.js' r'$app=com.foo' '\n';
+    const text =
+        '||ads.example.com/banner.js'
+        r'$app=com.foo'
+        '\n';
     final parsed = parseCategorized(text);
     expect(parsed.urlBlockRules.single.appScope, 'com.foo');
 

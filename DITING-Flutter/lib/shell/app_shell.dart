@@ -45,8 +45,8 @@ class AppShell extends ConsumerWidget {
       navigationShell.goBranch(branch);
     }
 
-    final fallback = destinations.isEmpty ||
-        _wantsFallbackBar(context, destinations, style);
+    final fallback =
+        destinations.isEmpty || _wantsFallbackBar(context, destinations, style);
     return Scaffold(
       // Content adds its own bottom padding (`DockSpacer`); the dock floats over it.
       extendBody: true,

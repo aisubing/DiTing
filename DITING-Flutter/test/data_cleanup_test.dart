@@ -24,7 +24,12 @@ void main() {
 
   Future<void> createSchema(Database db, {bool withRuntime = true}) async {
     if (withRuntime) {
-      for (final table in ['dns_log', 'dns_cache', 'dns_race_log', 'bootstrap_log']) {
+      for (final table in [
+        'dns_log',
+        'dns_cache',
+        'dns_race_log',
+        'bootstrap_log',
+      ]) {
         await db.execute(
           'CREATE TABLE $table (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
           'timestamp INTEGER)',
@@ -40,7 +45,13 @@ void main() {
       'CREATE TABLE http_request_log (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
       'timestamp INTEGER, outcome TEXT)',
     );
-    for (final table in ['block_rule', 'allow_rule', 'rewrite_rule', 'go_url_rule', 'cosmetic_rule']) {
+    for (final table in [
+      'block_rule',
+      'allow_rule',
+      'rewrite_rule',
+      'go_url_rule',
+      'cosmetic_rule',
+    ]) {
       await db.execute(
         'CREATE TABLE $table (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, '
         'pattern TEXT, rawLine TEXT, addedAt INTEGER NOT NULL DEFAULT 0, '
@@ -103,19 +114,29 @@ void main() {
     appVersionCode: seedVersionCode,
     openDatabase: (fileName) async =>
         fileName == LegacyDatabase.mainFile ? main : null,
-      // The preset whitelist asset is absent: an empty table means skip seeding, not clear all
+    // The preset whitelist asset is absent: an empty table means skip seeding, not clear all
     loadPresetAsset: () async => '',
   );
 
   group('运行数据', () {
     test('删除请求日志清空四张日志表', () async {
-      for (final table in ['dns_log', 'http_request_log', 'dns_race_log', 'bootstrap_log']) {
+      for (final table in [
+        'dns_log',
+        'http_request_log',
+        'dns_race_log',
+        'bootstrap_log',
+      ]) {
         await main.insert(table, {'timestamp': 1});
         await main.insert(table, {'timestamp': 2});
       }
       final result = await buildService().run(CleanupAction.logs);
       expect(result.removed, 8);
-      for (final table in ['dns_log', 'http_request_log', 'dns_race_log', 'bootstrap_log']) {
+      for (final table in [
+        'dns_log',
+        'http_request_log',
+        'dns_race_log',
+        'bootstrap_log',
+      ]) {
         expect(await main.query(table), isEmpty, reason: table);
       }
     });
@@ -176,12 +197,27 @@ void main() {
     test('删除全部域名规则清四类表并保留地址规则', () async {
       for (final table in ['block_rule', 'allow_rule', 'cosmetic_rule']) {
         await main.insert(table, {'pattern': 'a.com'});
-        await main.insert('${table}_source', {'ruleId': 1, 'source': 'useradd'});
+        await main.insert('${table}_source', {
+          'ruleId': 1,
+          'source': 'useradd',
+        });
       }
-      await main.insert('rewrite_rule', {'pattern': 'b.com', 'targetType': 'IPv4'});
-      await main.insert('rewrite_rule_source', {'ruleId': 1, 'source': 'useradd'});
-      await main.insert('rewrite_rule', {'pattern': 'c.com', 'targetType': 'CNAME'});
-      await main.insert('rewrite_rule_source', {'ruleId': 2, 'source': 'useradd'});
+      await main.insert('rewrite_rule', {
+        'pattern': 'b.com',
+        'targetType': 'IPv4',
+      });
+      await main.insert('rewrite_rule_source', {
+        'ruleId': 1,
+        'source': 'useradd',
+      });
+      await main.insert('rewrite_rule', {
+        'pattern': 'c.com',
+        'targetType': 'CNAME',
+      });
+      await main.insert('rewrite_rule_source', {
+        'ruleId': 2,
+        'source': 'useradd',
+      });
       await main.insert('go_url_rule', {'pattern': 'https://x.test'});
 
       final result = await buildService().run(CleanupAction.domainRules);
@@ -196,8 +232,14 @@ void main() {
     });
 
     test('删除全部地址规则只清 CNAME 与 go_url_rule', () async {
-      await main.insert('rewrite_rule', {'pattern': 'b.com', 'targetType': 'IPv4'});
-      await main.insert('rewrite_rule', {'pattern': 'c.com', 'targetType': 'CNAME'});
+      await main.insert('rewrite_rule', {
+        'pattern': 'b.com',
+        'targetType': 'IPv4',
+      });
+      await main.insert('rewrite_rule', {
+        'pattern': 'c.com',
+        'targetType': 'CNAME',
+      });
       await main.insert('go_url_rule', {'pattern': 'https://x.test'});
       await main.insert('block_rule', {'pattern': 'a.com'});
 
@@ -210,13 +252,22 @@ void main() {
     });
 
     test('删除订阅清订阅行、分组、自动更新任务与订阅来源的规则', () async {
-      await main.insert('subscription', {'url': 'https://s.test', 'kind': 'domain'});
+      await main.insert('subscription', {
+        'url': 'https://s.test',
+        'kind': 'domain',
+      });
       await main.insert('subscription_group', {'name': 'g'});
-      await main.insert('subscription_auto_update_item', {'subscriptionId': 1, 'status': 'success'});
+      await main.insert('subscription_auto_update_item', {
+        'subscriptionId': 1,
+        'status': 'success',
+      });
       await main.insert('block_rule', {'pattern': 'ads.test'});
       await main.insert('block_rule_source', {'ruleId': 1, 'source': 'sub_1'});
       await main.insert('block_rule', {'pattern': 'mine.test'});
-      await main.insert('block_rule_source', {'ruleId': 2, 'source': 'useradd'});
+      await main.insert('block_rule_source', {
+        'ruleId': 2,
+        'source': 'useradd',
+      });
 
       await buildService().run(CleanupAction.subscriptions);
       expect(await main.query('subscription'), isEmpty);
@@ -230,9 +281,17 @@ void main() {
 
   group('应用与存储', () {
     test('重置应用控制名单清四份名单与抓包就绪标记', () async {
-      prefs.putString(LegacySettings.uiContainer, 'app_allowlist_rules_json', '{}');
+      prefs.putString(
+        LegacySettings.uiContainer,
+        'app_allowlist_rules_json',
+        '{}',
+      );
       prefs.putBool(LegacySettings.uiContainer, 'https_inspection_ready', true);
-      prefs.putBool(LegacySettings.uiContainer, 'custom_background_enabled', true);
+      prefs.putBool(
+        LegacySettings.uiContainer,
+        'custom_background_enabled',
+        true,
+      );
       final result = await buildService().run(CleanupAction.appRules);
       expect(result.removed, greaterThan(0));
       for (final key in [
@@ -240,7 +299,11 @@ void main() {
         'http_inspection_enabled',
         'app_allowlist_rules_json',
       ]) {
-        expect(prefs.read(LegacySettings.uiContainer, key), isNull, reason: key);
+        expect(
+          prefs.read(LegacySettings.uiContainer, key),
+          isNull,
+          reason: key,
+        );
       }
       expect(
         prefs.read(LegacySettings.uiContainer, 'custom_background_enabled'),
@@ -264,15 +327,24 @@ void main() {
         isNull,
       );
       expect(
-        prefs.read(LegacySettings.uiContainer, 'settings_guide_acknowledged_ids'),
+        prefs.read(
+          LegacySettings.uiContainer,
+          'settings_guide_acknowledged_ids',
+        ),
         isNull,
       );
       expect(
-        prefs.read('mode_permission_preferences', 'recommendation_dismissed_vpn'),
+        prefs.read(
+          'mode_permission_preferences',
+          'recommendation_dismissed_vpn',
+        ),
         isNull,
       );
       expect(
-        prefs.read('mode_permission_preferences', 'onboarding_completed_normal'),
+        prefs.read(
+          'mode_permission_preferences',
+          'onboarding_completed_normal',
+        ),
         isNotNull,
       );
     });

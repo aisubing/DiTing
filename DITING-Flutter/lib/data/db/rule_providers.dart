@@ -29,8 +29,8 @@ final expressRuleRepositoryProvider = FutureProvider<RuleRepository?>((
 class InitialRulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   @override
   Map<RuleKind, List<MockRule>> build() => {
-        for (final kind in RuleKind.values) kind: const [],
-      };
+    for (final kind in RuleKind.values) kind: const [],
+  };
 
   void fill(Map<RuleKind, List<MockRule>> rules) => state = rules;
 }

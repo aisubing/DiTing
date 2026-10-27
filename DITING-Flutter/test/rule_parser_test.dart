@@ -14,7 +14,9 @@ void main() {
       expect(standard.important, isFalse);
       expect(standard.appScope, isNull);
 
-      final appImportant = parseRule('||ads.net^\$app=com.app1|com.app2,important');
+      final appImportant = parseRule(
+        '||ads.net^\$app=com.app1|com.app2,important',
+      );
       expect(appImportant, isNotNull);
       expect(appImportant!.pattern, 'ads.net');
       expect(appImportant.important, isTrue);
@@ -27,7 +29,9 @@ void main() {
       expect(inverted.appScope, 'com.android.chrome');
       expect(inverted.appInverted, isTrue);
 
-      final wildcard = parseRule('||*-analytics.google.com^\$app=com.google.android.gms');
+      final wildcard = parseRule(
+        '||*-analytics.google.com^\$app=com.google.android.gms',
+      );
       expect(wildcard, isNotNull);
       expect(wildcard!.pattern, '*-analytics.google.com');
       expect(wildcard.isWildcard, isTrue);
@@ -65,13 +69,26 @@ void main() {
     });
 
     test('只对 HTTP 有意义的修饰符整行忽略', () {
-      expect(parseCategorizedLine('||example.com^\$image,third-party').ignoredCount, 1);
-      expect(parseCategorizedLine('||example.com^\$removeparam=utm_source').ignoredCount, 1);
-      expect(parseCategorizedLine('||example.com/banner.js\$script,badfilter').ignoredCount, 1);
+      expect(
+        parseCategorizedLine('||example.com^\$image,third-party').ignoredCount,
+        1,
+      );
+      expect(
+        parseCategorizedLine('||example.com^\$removeparam=utm_source')
+            .ignoredCount,
+        1,
+      );
+      expect(
+        parseCategorizedLine('||example.com/banner.js\$script,badfilter')
+            .ignoredCount,
+        1,
+      );
     });
 
     test('~denyallow= 丢弃修饰符但保留规则', () {
-      final line = parseCategorizedLine('||example.com^\$~denyallow=a.com|b.com');
+      final line = parseCategorizedLine(
+        '||example.com^\$~denyallow=a.com|b.com',
+      );
       expect(line.blockRules, hasLength(1));
       expect(line.blockRules.first.pattern, 'example.com');
       expect(line.blockRules.first.denyallow, isNull);
@@ -91,7 +108,9 @@ void main() {
       expect(ipv6.rewriteRules.first.targetType, RewriteTargetType.ipv6);
       expect(ipv6.rewriteRules.first.targetValue, '2001:db8::1');
 
-      final cname = parseCategorizedLine('||cname.com^\$dnsrewrite=target.example.org');
+      final cname = parseCategorizedLine(
+        '||cname.com^\$dnsrewrite=target.example.org',
+      );
       expect(cname.rewriteRules, hasLength(1));
       expect(cname.rewriteRules.first.targetType, RewriteTargetType.cname);
       expect(cname.rewriteRules.first.targetValue, 'target.example.org');
@@ -120,7 +139,9 @@ void main() {
     });
 
     test('真实 IP 的 hosts 行变成覆写', () {
-      final realIp = parseCategorizedLine('1.2.3.4 host1.example.com host2.example.com');
+      final realIp = parseCategorizedLine(
+        '1.2.3.4 host1.example.com host2.example.com',
+      );
       expect(realIp.blockRules, isEmpty);
       expect(realIp.rewriteRules, hasLength(2));
       expect(realIp.rewriteRules[0].pattern, 'host1.example.com');
@@ -145,7 +166,9 @@ void main() {
       expect(ip.rewriteRules, hasLength(1));
       expect(ip.rewriteRules.first.targetValue, '10.0.0.1');
 
-      final cname = parseCategorizedLine('server=/alias.com/target.example.org');
+      final cname = parseCategorizedLine(
+        'server=/alias.com/target.example.org',
+      );
       expect(cname.rewriteRules, hasLength(1));
       expect(cname.rewriteRules.first.targetType, RewriteTargetType.cname);
       expect(cname.rewriteRules.first.targetValue, 'target.example.org');
@@ -155,13 +178,15 @@ void main() {
   group('整份文本', () {
     test('混合文本按族归类', () {
       // Matches Kotlin's `trimIndent()`: dropped blank lines would add an extra ignored entry
-      const text = '! Title: Unified List\n'
+      const text =
+          '! Title: Unified List\n'
           '# Comment line\n'
           '[Adblock Plus 2.0]\n'
           'example.com##.ad-banner\n'
           '||ad.com^\n'
           '@@||allow.com^\n'
-          r'||rewrite.com^$dnsrewrite=1.2.3.4' '\n'
+          r'||rewrite.com^$dnsrewrite=1.2.3.4'
+          '\n'
           '0.0.0.0 sink.com\n'
           '10.0.0.2 real.com\n'
           'address=/masq-block.com/\n'
@@ -195,7 +220,8 @@ void main() {
     });
 
     test('放行 badfilter 只关放行规则', () {
-      const text = '||example.com^\n@@||example.com^\n@@||example.com^\$badfilter';
+      const text =
+          '||example.com^\n@@||example.com^\n@@||example.com^\$badfilter';
       final parsed = parseCategorized(text);
       expect(parsed.blockRules, hasLength(1));
       expect(parsed.allowRules, isEmpty);

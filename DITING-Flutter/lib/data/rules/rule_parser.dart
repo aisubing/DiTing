@@ -46,10 +46,7 @@ Set<String> extractBadfilterKeys(String text) {
 
 /// Parses a document, groups by family, dedupes by key. [badfilterKeys] removes matches; when null
 /// it is scanned first.
-CategorizedRules parseCategorized(
-  String text, {
-  Set<String>? badfilterKeys,
-}) {
+CategorizedRules parseCategorized(String text, {Set<String>? badfilterKeys}) {
   final keys = badfilterKeys ?? extractBadfilterKeys(text);
   final blockRules = <String, ParsedRule>{};
   final allowRules = <String, ParsedRule>{};
@@ -88,7 +85,8 @@ CategorizedRules parseCategorized(
       duplicates += _addUnique(urlAllowRules, key, rule);
     }
     for (final rule in lineResult.cosmeticRules) {
-      final key = 'cosmetic:${rule.domain}:${rule.selector}:${rule.isException}';
+      final key =
+          'cosmetic:${rule.domain}:${rule.selector}:${rule.isException}';
       duplicates += _addUnique(cosmeticRules, key, rule);
     }
   }

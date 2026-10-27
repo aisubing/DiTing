@@ -37,30 +37,32 @@ class AppScopedRules {
   final String? error;
 }
 
-final appScopedRulesProvider =
-    FutureProvider.family<AppScopedRules, String>((ref, packageName) async {
-      final repository = ref.watch(ruleRepositoryProvider);
-      if (repository == null) {
-        return const AppScopedRules.unavailable('当前环境无法读写规则库');
-      }
-      try {
-        final rules = await repository.loadForApp(packageName);
-        final fullBlock = await repository.hasFullBlock(packageName);
-        return AppScopedRules(
-          block: [
-            for (final rule in rules)
-              if (rule.kind == RuleKind.block) rule,
-          ],
-          allow: [
-            for (final rule in rules)
-              if (rule.kind == RuleKind.allow) rule,
-          ],
-          fullBlock: fullBlock,
-        );
-      } catch (error) {
-        return AppScopedRules.unavailable('读取应用规则失败：$error');
-      }
-    });
+final appScopedRulesProvider = FutureProvider.family<AppScopedRules, String>((
+  ref,
+  packageName,
+) async {
+  final repository = ref.watch(ruleRepositoryProvider);
+  if (repository == null) {
+    return const AppScopedRules.unavailable('当前环境无法读写规则库');
+  }
+  try {
+    final rules = await repository.loadForApp(packageName);
+    final fullBlock = await repository.hasFullBlock(packageName);
+    return AppScopedRules(
+      block: [
+        for (final rule in rules)
+          if (rule.kind == RuleKind.block) rule,
+      ],
+      allow: [
+        for (final rule in rules)
+          if (rule.kind == RuleKind.allow) rule,
+      ],
+      fullBlock: fullBlock,
+    );
+  } catch (error) {
+    return AppScopedRules.unavailable('读取应用规则失败：$error');
+  }
+});
 
 /// Write entry point; refreshes the matching provider on success.
 class AppScopedRulesController {

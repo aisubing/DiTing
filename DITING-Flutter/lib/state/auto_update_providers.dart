@@ -8,7 +8,10 @@ import 'package:diting/state/subscription_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AutoUpdateSettings {
-  const AutoUpdateSettings({required this.enabled, required this.intervalHours});
+  const AutoUpdateSettings({
+    required this.enabled,
+    required this.intervalHours,
+  });
 
   final bool enabled;
   final int intervalHours;
@@ -63,7 +66,6 @@ final autoUpdateActionsProvider = Provider<AutoUpdateActions>(
 );
 
 /// Groups with their auto-update switch, straight from `subscription_group` rows.
-final autoUpdateGroupsProvider =
-    FutureProvider<List<SubscriptionGroupRecord>>((ref) =>
-        ref.watch(subscriptionGroupsProvider.future),
-    );
+final autoUpdateGroupsProvider = FutureProvider<List<SubscriptionGroupRecord>>(
+  (ref) => ref.watch(subscriptionGroupsProvider.future),
+);

@@ -420,9 +420,8 @@ class ListHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final padding = this.padding ?? listHeaderPaddingOf(context);
-    final lineHeight = MeasureScope.of(
-      context,
-    ).textHeight(AppTextStyle.footnote);
+    final lineHeight = MeasureScope.of(context)
+        .textHeight(AppTextStyle.footnote);
     final overhang = (_actionSize.button - lineHeight) / 2;
     return Padding(
       padding: EdgeInsets.fromLTRB(

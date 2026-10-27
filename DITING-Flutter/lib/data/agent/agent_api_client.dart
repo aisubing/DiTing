@@ -197,7 +197,8 @@ class AgentApiClient {
       const [
         AgentChatMessage(
           role: 'user',
-          content: 'Hi, this is a connectivity test from DITING. '
+          content:
+              'Hi, this is a connectivity test from DITING. '
               "Please reply with 'OK' and your model name in 10 words.",
         ),
       ],
@@ -308,9 +309,10 @@ class AgentApiClient {
         request.add(bytes);
       }
       final response = await request.close().timeout(timeout);
-      final body = await response.transform(utf8.decoder).join().timeout(
-        timeout,
-      );
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(timeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw AgentApiException(
           _describe(status: response.statusCode, body: body),

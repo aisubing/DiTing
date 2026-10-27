@@ -501,4 +501,3 @@ bool _drawsOffscreen(Layer layer) {
     _ => false,
   };
 }
-

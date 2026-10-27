@@ -116,7 +116,11 @@ class OnDemandRunner {
         final after = _ref.read(powerProvider);
         // `toggle` returns once the start is scheduled; `starting` means the system consent
         // dialog is still open and the real answer arrives through `onPrepareResult`.
-        return settle(after.isRunning ? OnDemandOutcome.started : OnDemandOutcome.needsConsent);
+        return settle(
+          after.isRunning
+              ? OnDemandOutcome.started
+              : OnDemandOutcome.needsConsent,
+        );
       case SsidMatchState.noWifi:
       case SsidMatchState.unmatched:
         if (!power.isRunning) {

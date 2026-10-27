@@ -531,4 +531,3 @@ class LiquidGlassGlow {
   @override
   int get hashCode => Object.hash(center, reach, strength, wash);
 }
-

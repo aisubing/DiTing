@@ -324,7 +324,10 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
   }
 
   /// Legacy `syncProviderToConfig`: mirrors the active provider into the flat keys 1.4.3 reads.
-  void _syncActiveToFlatKeys(List<AiProviderConfig> providers, String activeId) {
+  void _syncActiveToFlatKeys(
+    List<AiProviderConfig> providers,
+    String activeId,
+  ) {
     final settings = _settings;
     AiProviderConfig? active;
     for (final provider in providers) {
@@ -340,7 +343,8 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
     settings.setAgentApiModel(active.model);
   }
 
-  void update(AgentApiState Function(AgentApiState state) fn) => state = fn(state);
+  void update(AgentApiState Function(AgentApiState state) fn) =>
+      state = fn(state);
 
   void setEnabled(bool value) {
     _settings.setAgentApiEnabled(value);

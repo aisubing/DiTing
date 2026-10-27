@@ -15,7 +15,6 @@ const _g_send_ = Glyph([
   ], role: GlyphRole.detail),
 ]);
 
-
 const _g_rules_ = Glyph([
   GlyphBox(3, 4, 21, 20, 3),
   GlyphCircle(7, 8, 1.1, role: GlyphRole.detail, solid: true),
@@ -35,17 +34,13 @@ const _g_rules_ = Glyph([
   ], role: GlyphRole.detail),
 ], matchTextDirection: true);
 
-
 const _g_rulePresets_ = Glyph([
   GlyphBox(3, 9.5, 21, 21, 3),
   GlyphPolyline([
     GlyphVertex(5.5, 6.2),
     GlyphVertex(18.5, 6.2),
   ], role: GlyphRole.line),
-  GlyphPolyline([
-    GlyphVertex(8, 3),
-    GlyphVertex(16, 3),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(8, 3), GlyphVertex(16, 3)], role: GlyphRole.line),
   GlyphCircle(7, 13.4, 1.1, role: GlyphRole.detail, solid: true),
   GlyphPolyline([
     GlyphVertex(10.8, 13.4),
@@ -57,7 +52,6 @@ const _g_rulePresets_ = Glyph([
     GlyphVertex(17.2, 17.1),
   ], role: GlyphRole.detail),
 ], matchTextDirection: true);
-
 
 const _g_code_ = Glyph([
   GlyphPolyline([
@@ -75,7 +69,6 @@ const _g_code_ = Glyph([
     GlyphVertex(10.2, 19),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_settings_ = Glyph([
   GlyphPolyline([
@@ -107,7 +100,6 @@ const _g_settings_ = Glyph([
   GlyphCircle(12, 12, 3, role: GlyphRole.detail),
 ]);
 
-
 const _g_sliders_ = Glyph([
   GlyphPolyline([
     GlyphVertex(3.2, 5.5),
@@ -138,7 +130,6 @@ const _g_sliders_ = Glyph([
   GlyphCircle(15.5, 18.5, 2.5),
 ]);
 
-
 const _g_wrench_ = Glyph([
   GlyphPath(
     'M3.58 17.59L10.1 11.07A1.2 1.2 0 0 0 10.41 9.89'
@@ -149,12 +140,10 @@ const _g_wrench_ = Glyph([
   ),
 ]);
 
-
 const _g_toggle_ = Glyph([
   GlyphBox(2.9, 6.5, 21.1, 17.5, 5.5),
   GlyphCircle(8.4, 12, 2.8, role: GlyphRole.detail, solid: true),
 ]);
-
 
 const _g_pin_ = Glyph([
   GlyphPolyline([
@@ -171,7 +160,6 @@ const _g_pin_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_eye_ = Glyph([
   GlyphPath(
     'M3.01 11.32A10.08 10.08 0 0 1 20.99 11.32A1.5 1.5 0 0 1 20.99 12.68'
@@ -179,7 +167,6 @@ const _g_eye_ = Glyph([
   ),
   GlyphCircle(12, 12, 2.8, role: GlyphRole.detail),
 ]);
-
 
 const _g_eyeOff_ = Glyph([
   GlyphPath(
@@ -193,12 +180,8 @@ const _g_eyeOff_ = Glyph([
     role: GlyphRole.line,
   ),
   GlyphArc(12, 12, 2.8, math.pi * 0.25, math.pi, role: GlyphRole.line),
-  GlyphPolyline([
-    GlyphVertex(4, 4),
-    GlyphVertex(20, 20),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(4, 4), GlyphVertex(20, 20)], role: GlyphRole.line),
 ]);
-
 
 const _g_lock_ = Glyph([
   GlyphBox(5, 10.5, 19, 20.8, 2.5),
@@ -209,7 +192,6 @@ const _g_lock_ = Glyph([
   ], role: GlyphRole.detail),
 ]);
 
-
 const _g_lockOpen_ = Glyph([
   GlyphBox(5, 10.5, 19, 20.8, 2.5),
   GlyphPath('M8.5 10.5V7A3.5 3.5 0 0 1 15.5 7', role: GlyphRole.line),
@@ -218,7 +200,6 @@ const _g_lockOpen_ = Glyph([
     GlyphVertex(12, 17),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_key_ = Glyph([
   GlyphCircle(9.27, 7.99, 5),
@@ -234,14 +215,12 @@ const _g_key_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_password_ = Glyph([
   GlyphBox(2.9, 6, 21.1, 18, 3),
   GlyphCircle(7.4, 12, 1.4, role: GlyphRole.detail, solid: true),
   GlyphCircle(12, 12, 1.4, role: GlyphRole.detail, solid: true),
   GlyphCircle(16.6, 12, 1.4, role: GlyphRole.detail, solid: true),
 ]);
-
 
 const _g_account_ = Glyph([
   GlyphCircle(12, 12, 8.8),
@@ -255,7 +234,6 @@ const _g_account_ = Glyph([
     role: GlyphRole.detail,
   ),
 ]);
-
 
 const _g_sparkle_ = Glyph([
   GlyphPolyline([
@@ -280,7 +258,6 @@ const _g_sparkle_ = Glyph([
   ], closed: true),
 ]);
 
-
 const _g_bolt_ = Glyph([
   GlyphPolyline([
     GlyphVertex(14.5, 2.8, 1),
@@ -291,7 +268,6 @@ const _g_bolt_ = Glyph([
     GlyphVertex(12.8, 10.3, 0.6),
   ], closed: true),
 ]);
-
 
 const _g_locate_ = Glyph([
   GlyphCircle(12, 12, 6.2),
@@ -314,7 +290,6 @@ const _g_locate_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_star_ = Glyph([
   GlyphPolyline([
     GlyphVertex(12, 3.2, 1.2),
@@ -330,7 +305,6 @@ const _g_star_ = Glyph([
   ], closed: true),
 ]);
 
-
 const _g_puzzle_ = Glyph([
   GlyphPath(
     'M3 10A2.2 2.2 0 0 1 5.2 7.8H7.94A2.6 2.6 0 1 1 11.26 7.8H14'
@@ -341,7 +315,6 @@ const _g_puzzle_ = Glyph([
   ),
 ]);
 
-
 const _g_customize_ = Glyph([
   GlyphBox(3.5, 3.5, 10.5, 10.5, 2),
   GlyphBox(3.5, 13.5, 10.5, 20.5, 2),
@@ -350,12 +323,8 @@ const _g_customize_ = Glyph([
     GlyphVertex(17, 4),
     GlyphVertex(17, 10),
   ], role: GlyphRole.line),
-  GlyphPolyline([
-    GlyphVertex(14, 7),
-    GlyphVertex(20, 7),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(14, 7), GlyphVertex(20, 7)], role: GlyphRole.line),
 ]);
-
 
 const _g_layers_ = Glyph([
   GlyphPolyline([
@@ -375,7 +344,6 @@ const _g_layers_ = Glyph([
     GlyphVertex(20.8, 16.4),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_sun_ = Glyph([
   GlyphCircle(12, 12, 4),
@@ -413,7 +381,6 @@ const _g_sun_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_pureBlack_ = Glyph([
   GlyphBox(3, 3.5, 21, 16.5, 2.5),
   GlyphPath(
@@ -431,7 +398,6 @@ const _g_pureBlack_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_palette_ = Glyph([
   GlyphPath(
     'M20.59 13.9A8.8 8.8 0 1 0 13.9 20.59A1.2 1.2 0 0 0 14.83 19.28A4 4 0 0 1 19.28 14.83A1.2 1.2 0 0 0 20.59 13.9Z',
@@ -441,7 +407,6 @@ const _g_palette_ = Glyph([
   GlyphCircle(12, 7.15, 1.4, role: GlyphRole.detail, solid: true),
   GlyphCircle(16.04, 9.32, 1.4, role: GlyphRole.detail, solid: true),
 ]);
-
 
 const _g_paintbrush_ = Glyph([
   GlyphPolyline([
@@ -458,7 +423,6 @@ const _g_paintbrush_ = Glyph([
     GlyphVertex(19, 2.6, 1.7),
   ], closed: true),
 ]);
-
 
 const _g_eyedropper_ = Glyph([
   GlyphPolyline([
@@ -477,7 +441,6 @@ const _g_eyedropper_ = Glyph([
     GlyphVertex(5.92, 15.54, 1.2),
   ], closed: true),
 ]);
-
 
 const _g_motion_ = Glyph([
   GlyphCircle(15.6, 12, 5.3),

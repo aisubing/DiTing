@@ -149,9 +149,9 @@ void main() {
       for (final status in RequestStatus.values) {
         if (status == RequestStatus.all) continue;
         final bySql = {
-          for (final row in await HttpRequestRepository(db).recent(
-            status: status,
-          ))
+          for (final row in await HttpRequestRepository(
+            db,
+          ).recent(status: status))
             row.id,
         };
         final byReader = {
@@ -194,9 +194,8 @@ void main() {
     });
 
     test('dailyStats 按 outcome 分组并给出总数', () async {
-      final stats = await HttpRequestRepository(
-        db,
-      ).dailyStats(since: DateTime.fromMillisecondsSinceEpoch(0));
+      final stats = await HttpRequestRepository(db)
+          .dailyStats(since: DateTime.fromMillisecondsSinceEpoch(0));
 
       expect(stats.total, outcomes.length);
       expect(stats.byOutcome['allowed'], 1);
@@ -207,9 +206,8 @@ void main() {
     });
 
     test('dailyStats 的窗口过滤掉更早的行', () async {
-      final stats = await HttpRequestRepository(
-        db,
-      ).dailyStats(since: DateTime.fromMillisecondsSinceEpoch(1000 + 4));
+      final stats = await HttpRequestRepository(db)
+          .dailyStats(since: DateTime.fromMillisecondsSinceEpoch(1000 + 4));
       expect(stats.total, outcomes.length - 4);
     });
 
@@ -226,7 +224,8 @@ void main() {
         queryName: 'api.github.com',
         result: 'PASSED',
         packageName: 'com.example.browser',
-        message: 'app=com.example.browser, resolved=140.82.113.6, '
+        message:
+            'app=com.example.browser, resolved=140.82.113.6, '
             'elapsed=28ms',
       );
       await insertDns(
@@ -270,9 +269,8 @@ void main() {
     });
 
     test('PASSED 排除 TCP / UDP 前缀行与 blocked_by=connection', () async {
-      final rows = await DnsQueryRepository(
-        db,
-      ).recent(status: RequestStatus.passed);
+      final rows = await DnsQueryRepository(db)
+          .recent(status: RequestStatus.passed);
       final names = {for (final row in rows) row.queryName};
 
       expect(names, contains('api.github.com'));
@@ -283,9 +281,8 @@ void main() {
     });
 
     test('REWRITTEN 命中结果列、英文短语与中文「覆写」', () async {
-      final rows = await DnsQueryRepository(
-        db,
-      ).recent(status: RequestStatus.rewritten);
+      final rows = await DnsQueryRepository(db)
+          .recent(status: RequestStatus.rewritten);
       final names = {for (final row in rows) row.queryName};
 
       expect(names, contains('rewrite-column.example'));
@@ -295,9 +292,8 @@ void main() {
     });
 
     test('BLOCKED 命中结果列与 blocked_by=firewall:', () async {
-      final rows = await DnsQueryRepository(
-        db,
-      ).recent(status: RequestStatus.blocked);
+      final rows = await DnsQueryRepository(db)
+          .recent(status: RequestStatus.blocked);
       final names = {for (final row in rows) row.queryName};
 
       expect(names, contains('ads.example.com'));
@@ -306,16 +302,14 @@ void main() {
     });
 
     test('ERROR 只取 result = ERROR', () async {
-      final rows = await DnsQueryRepository(
-        db,
-      ).recent(status: RequestStatus.error);
+      final rows = await DnsQueryRepository(db)
+          .recent(status: RequestStatus.error);
       expect(rows.single.queryName, 'broken.example');
     });
 
     test('BYPASSED 命中 queryType = 0 与 TCP / UDP 前缀行', () async {
-      final rows = await DnsQueryRepository(
-        db,
-      ).recent(status: RequestStatus.bypassed);
+      final rows = await DnsQueryRepository(db)
+          .recent(status: RequestStatus.bypassed);
       final names = {for (final row in rows) row.queryName};
 
       expect(names, contains('TCP 1.1.1.1:443'));
@@ -364,9 +358,7 @@ void main() {
       for (final status in RequestStatus.values) {
         if (status == RequestStatus.all) continue;
         final bySql = {
-          for (final row in await DnsQueryRepository(db).recent(
-            status: status,
-          ))
+          for (final row in await DnsQueryRepository(db).recent(status: status))
             row.id,
         };
         final byReader = {
@@ -417,9 +409,8 @@ void main() {
     });
 
     test('dateRange 按包名求和并取最早日期', () async {
-      final rows = await AppTrafficRepository(
-        db,
-      ).dateRange('2026-10-19', '2026-10-20');
+      final rows = await AppTrafficRepository(db)
+          .dateRange('2026-10-19', '2026-10-20');
 
       expect(rows, hasLength(2));
       final a = rows.firstWhere((row) => row.packageName == 'com.a');
@@ -432,9 +423,8 @@ void main() {
     });
 
     test('dateRange 的边界包含首尾两天', () async {
-      final onlyFirst = await AppTrafficRepository(
-        db,
-      ).dateRange('2026-10-18', '2026-10-18');
+      final onlyFirst = await AppTrafficRepository(db)
+          .dateRange('2026-10-18', '2026-10-18');
       expect(onlyFirst.single.packageName, 'com.c');
     });
 
@@ -478,9 +468,8 @@ void main() {
     test('三个仓储的空查询返回空列表而不是抛错', () async {
       expect(await HttpRequestRepository(db).recent(), isEmpty);
       expect(
-        await HttpRequestRepository(db).dailyStats(
-          since: DateTime.fromMillisecondsSinceEpoch(0),
-        ),
+        await HttpRequestRepository(db)
+            .dailyStats(since: DateTime.fromMillisecondsSinceEpoch(0)),
         isA<HttpRequestDailyStats>().having((stats) => stats.total, 'total', 0),
       );
       expect(await DnsQueryRepository(db).recent(), isEmpty);

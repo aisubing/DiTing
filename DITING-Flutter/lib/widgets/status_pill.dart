@@ -53,10 +53,12 @@ class StatusPill extends StatelessWidget {
       this.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: style.of(context, emphasized: emphasized).copyWith(
-        color: fore,
-        fontFamily: monospace ? appMonospaceFontFamily : null,
-      ),
+      style: style
+          .of(context, emphasized: emphasized)
+          .copyWith(
+            color: fore,
+            fontFamily: monospace ? appMonospaceFontFamily : null,
+          ),
     );
     final leading = this.leading;
     return Container(

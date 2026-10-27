@@ -28,10 +28,7 @@ class SiteLatencySitesPage extends ConsumerWidget {
         ),
       ],
       body: ListView(
-        padding: EdgeInsets.only(
-          top: context.contentTopPadding,
-          bottom: 24,
-        ),
+        padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
           const ListHeader(title: '仪表盘卡片'),
           Padding(
@@ -51,9 +48,9 @@ class SiteLatencySitesPage extends ConsumerWidget {
                       ? '卡片只能放 $dashboardSiteCount 个站点，先点掉一个再换别的。'
                       : '还可以再放 '
                             '${dashboardSiteCount - selectedIds.length} 个站点。',
-                  style: AppTextStyle.caption2.of(context).copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
+                  style: AppTextStyle.caption2
+                      .of(context)
+                      .copyWith(color: context.colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -85,9 +82,7 @@ class SiteLatencySitesPage extends ConsumerWidget {
               ),
             ),
           ],
-          const ListFooter(
-            text: '这四张卡片用的是同一个仪表盘卡片，改动立刻生效；测速在详情页按分类手动触发。',
-          ),
+          const ListFooter(text: '这四张卡片用的是同一个仪表盘卡片，改动立刻生效；测速在详情页按分类手动触发。'),
         ],
       ),
     );
@@ -123,9 +118,9 @@ class _SelectedRow extends StatelessWidget {
         children: [
           Text(
             '第 ${index + 1} 位',
-            style: AppTextStyle.caption2.of(
-              context,
-            ).copyWith(color: colorScheme.onSurfaceVariant),
+            style: AppTextStyle.caption2
+                .of(context)
+                .copyWith(color: colorScheme.onSurfaceVariant),
           ),
           const GlyphIcon(AppGlyphs.removeCircle, size: 18),
         ],
@@ -152,7 +147,11 @@ class _CandidateRow extends StatelessWidget {
     return _Tile(
       target: target,
       trailing: selected
-          ? GlyphIcon(AppGlyphs.checkCircle, size: 18, color: colorScheme.primary)
+          ? GlyphIcon(
+              AppGlyphs.checkCircle,
+              size: 18,
+              color: colorScheme.primary,
+            )
           : const GlyphIcon(AppGlyphs.addCircle, size: 18),
       onTap: onTap,
     );
@@ -205,10 +204,12 @@ class _Tile extends StatelessWidget {
                       target.host,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyle.caption2.of(context).copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontFamily: appMonospaceFontFamily,
-                      ),
+                      style: AppTextStyle.caption2
+                          .of(context)
+                          .copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontFamily: appMonospaceFontFamily,
+                          ),
                     ),
                   ],
                 ),

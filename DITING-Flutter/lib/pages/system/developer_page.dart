@@ -305,7 +305,8 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
                     leadingSize: 20,
                     title: 'WebDAV 云同步',
                     subtitle: '把备份真实上传到自建的 WebDAV 服务',
-                    onPressed: () => context.push(HubPaths.configTransferWebdav),
+                    onPressed: () =>
+                        context.push(HubPaths.configTransferWebdav),
                   ),
                 ],
               ),

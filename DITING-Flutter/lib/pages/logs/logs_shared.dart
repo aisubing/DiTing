@@ -76,15 +76,12 @@ class LogsDashboardHero extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         spacing: 6,
         children: [
-          Text(
-            title,
-            style: AppTextStyle.title2.of(context, emphasized: true),
-          ),
+          Text(title, style: AppTextStyle.title2.of(context, emphasized: true)),
           Text(
             description,
-            style: AppTextStyle.subheadline.of(
-              context,
-            ).copyWith(color: colorScheme.onSurfaceVariant),
+            style: AppTextStyle.subheadline
+                .of(context)
+                .copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),

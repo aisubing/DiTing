@@ -73,5 +73,5 @@ Future<void> _seedPresetIfNeeded(
 }
 
 Map<RuleKind, List<MockRule>> _emptyRules() => {
-      for (final kind in RuleKind.values) kind: const [],
-    };
+  for (final kind in RuleKind.values) kind: const [],
+};

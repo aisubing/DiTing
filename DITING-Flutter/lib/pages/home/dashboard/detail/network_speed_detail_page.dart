@@ -85,9 +85,9 @@ class NetworkSpeedDetailPage extends ConsumerWidget {
           child: totals == null
               ? Text(
                   '流量库还没有今天的记录。',
-                  style: AppTextStyle.subheadline.of(
-                    context,
-                  ).copyWith(color: colorScheme.onSurfaceVariant),
+                  style: AppTextStyle.subheadline
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -162,16 +162,16 @@ class _TotalsBar extends StatelessWidget {
           children: [
             Text(
               '下行 ${dashboardPercent(totals.total <= 0 ? 0 : totals.down / totals.total)}',
-              style: AppTextStyle.caption1.of(
-                context,
-              ).copyWith(color: colorScheme.onSurfaceVariant),
+              style: AppTextStyle.caption1
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant),
             ),
             const Spacer(),
             Text(
               '上行 ${dashboardPercent(totals.total <= 0 ? 0 : totals.up / totals.total)}',
-              style: AppTextStyle.caption1.of(
-                context,
-              ).copyWith(color: colorScheme.onSurfaceVariant),
+              style: AppTextStyle.caption1
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant),
             ),
           ],
         ),

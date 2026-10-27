@@ -97,11 +97,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
       _notice = null;
     });
     try {
-      final models = await fetchAgentModels(
-        ref,
-        baseUrl: baseUrl,
-        apiKey: key,
-      );
+      final models = await fetchAgentModels(ref, baseUrl: baseUrl, apiKey: key);
       if (!mounted) return;
       setState(() {
         _models = models;
@@ -143,9 +139,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
         AgentChatConfig(baseUrl: baseUrl, apiKey: key, model: model),
       );
       if (!mounted) return;
-      final usage = result.hasUsage
-          ? '，用量 ${result.totalTokens} tokens'
-          : '';
+      final usage = result.hasUsage ? '，用量 ${result.totalTokens} tokens' : '';
       setState(() {
         _busy = false;
         _notice = '连接成功：${result.model}$usage';

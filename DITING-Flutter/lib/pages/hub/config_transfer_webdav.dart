@@ -192,7 +192,9 @@ class _ConfigTransferWebdavPageState
         _toast('本机没有可备份的配置');
         return;
       }
-      final result = await ref.read(davProvider.notifier).upload(export.content);
+      final result = await ref
+          .read(davProvider.notifier)
+          .upload(export.content);
       if (!mounted) return;
       _toast(
         result.succeeded
@@ -228,10 +230,7 @@ class _ConfigTransferWebdavPageState
 
   void _toast(String message) {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 }

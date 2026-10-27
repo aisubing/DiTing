@@ -19,9 +19,7 @@ final mirrorTemplatesProvider = FutureProvider<List<MirrorTemplateRecord>>((
 ) async {
   ref.watch(subscriptionRevisionProvider);
   final repository = await ref.watch(mirrorTemplateRepositoryProvider.future);
-  return repository == null
-      ? const <MirrorTemplateRecord>[]
-      : repository.all();
+  return repository == null ? const <MirrorTemplateRecord>[] : repository.all();
 });
 
 /// Mirror-template CRUD; `onChanged` bumps the revision so the list rebuilds.
@@ -56,4 +54,3 @@ class MirrorTemplateActions {
 final mirrorTemplateActionsProvider = Provider<MirrorTemplateActions>(
   MirrorTemplateActions.new,
 );
-

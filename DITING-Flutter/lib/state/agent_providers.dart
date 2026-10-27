@@ -139,12 +139,10 @@ class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
         extraContext,
       );
       if (state.sessionId != session) return;
-      final result = await ref
-          .read(agentApiClientProvider)
-          .chat(config, [
-            AgentChatMessage(role: 'system', content: request.systemPrompt),
-            AgentChatMessage(role: 'user', content: request.userPrompt),
-          ], cancelToken: cancelToken);
+      final result = await ref.read(agentApiClientProvider).chat(config, [
+        AgentChatMessage(role: 'system', content: request.systemPrompt),
+        AgentChatMessage(role: 'user', content: request.userPrompt),
+      ], cancelToken: cancelToken);
       if (state.sessionId != session) return;
       state = AgentAnalysisState(
         sessionId: session,
@@ -253,10 +251,9 @@ Future<List<String>> fetchAgentModels(
   WidgetRef ref, {
   required String baseUrl,
   required String apiKey,
-}) => ref.read(agentApiClientProvider).fetchModels(
-  baseUrl: baseUrl,
-  apiKey: apiKey,
-);
+}) => ref
+    .read(agentApiClientProvider)
+    .fetchModels(baseUrl: baseUrl, apiKey: apiKey);
 
 Future<AgentChatResult> testAgentConnection(
   WidgetRef ref,

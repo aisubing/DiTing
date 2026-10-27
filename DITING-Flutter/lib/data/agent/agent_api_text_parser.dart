@@ -77,10 +77,9 @@ AgentApiTextParseResult parseAgentApiText(String raw) {
   }
 
   // 2. Both a URL and a key somewhere in the paste.
-  final foundUrl = _urlRegex.firstMatch(text)?[0]?.replaceFirst(
-    RegExp(r'/+$'),
-    '',
-  );
+  final foundUrl = _urlRegex
+      .firstMatch(text)?[0]
+      ?.replaceFirst(RegExp(r'/+$'), '');
   final textWithoutUrl = foundUrl == null
       ? text
       : text.replaceFirst(foundUrl, '');
@@ -99,7 +98,9 @@ AgentApiTextParseResult parseAgentApiText(String raw) {
 
   // 3. Only a server address. Two lines is the cap: a longer paste without `sk-` is more likely a
   // key that happens to contain a URL, so it falls through to step 4.
-  if (foundUrl != null && text.split('\n').length <= 2 && !text.contains('sk-')) {
+  if (foundUrl != null &&
+      text.split('\n').length <= 2 &&
+      !text.contains('sk-')) {
     return AgentApiTextParseResult(
       baseUrl: sanitizeAgentApiInput(foundUrl),
       message: '已填入服务地址',

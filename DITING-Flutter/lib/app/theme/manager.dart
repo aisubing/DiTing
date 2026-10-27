@@ -108,9 +108,7 @@ ThemeData buildAppTheme(
       platform: target,
       locales: locales,
     ),
-    extensions: [
-      if (dark) ElevatedColorScheme(scheme.elevated),
-    ],
+    extensions: [if (dark) ElevatedColorScheme(scheme.elevated)],
   ).withAppShapes.withAppSurfaces.withAppTypography.copyWith(
     scaffoldBackgroundColor: transparent ? Colors.transparent : null,
   );

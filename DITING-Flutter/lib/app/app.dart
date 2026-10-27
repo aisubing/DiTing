@@ -176,10 +176,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
                   enabled: glass.enabled,
                   child: InitialAgreementGate(
                     child: showBackground
-                        ? AppBackgroundLayer(
-                            uri: backgroundUri,
-                            child: content,
-                          )
+                        ? AppBackgroundLayer(uri: backgroundUri, child: content)
                         : content,
                   ),
                 ),

@@ -440,9 +440,9 @@ class _HttpInspectionAppsPageState
         onSelectAll: () => _write({...selected, ...visiblePackages}),
         onClear: () => _write(const {}),
         onInvert: () => _write(
-          selected.difference(visiblePackages).union(
-            visiblePackages.difference(selected),
-          ),
+          selected
+              .difference(visiblePackages)
+              .union(visiblePackages.difference(selected)),
         ),
       ),
       body: AppListScrollView(

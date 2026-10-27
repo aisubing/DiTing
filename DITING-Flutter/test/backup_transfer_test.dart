@@ -84,8 +84,7 @@ void main() {
       'excluded_app_packages': <String>['com.excluded.one'],
       'http_inspection_enabled': true,
       'http_inspection_app_packages': <String>['com.inspect.one'],
-      'app_allowlist_rules_json':
-          '{"com.allow.one":["a.test","b.test"]}',
+      'app_allowlist_rules_json': '{"com.allow.one":["a.test","b.test"]}',
       'app_allowlist_enabled': true,
       'custom_background_enabled': true,
     },
@@ -119,18 +118,30 @@ void main() {
       final data = decoded['data'] as Map<String, Object?>;
 
       expect(data.keys.toSet(), {'system', 'blocked'});
-      expect(result.included.toSet(), {BackupGroup.system, BackupGroup.blocked});
-      expect(
-        (decoded['selection'] as List).toSet(),
-        {'system', 'blocked'},
-      );
+      expect(result.included.toSet(), {
+        BackupGroup.system,
+        BackupGroup.blocked,
+      });
+      expect((decoded['selection'] as List).toSet(), {'system', 'blocked'});
     });
 
     test('出站代理不含账号密码', () async {
       final store = seededStore();
-      store.putString(LegacySettings.uiContainer, 'outbound_proxy_host', 'h.test');
-      store.putString(LegacySettings.uiContainer, 'outbound_proxy_username', 'u');
-      store.putString(LegacySettings.uiContainer, 'outbound_proxy_password', 'p');
+      store.putString(
+        LegacySettings.uiContainer,
+        'outbound_proxy_host',
+        'h.test',
+      );
+      store.putString(
+        LegacySettings.uiContainer,
+        'outbound_proxy_username',
+        'u',
+      );
+      store.putString(
+        LegacySettings.uiContainer,
+        'outbound_proxy_password',
+        'p',
+      );
       final result = await const BackupExporter().export(
         exportSource(store),
         groups: {BackupGroup.outbound},
@@ -148,22 +159,19 @@ void main() {
         'rawLine': 'user.test',
         'addedAt': 1,
       });
-      await db.insert('block_rule_source', {
-        'ruleId': 1,
-        'source': 'useradd',
-      });
+      await db.insert('block_rule_source', {'ruleId': 1, 'source': 'useradd'});
       await db.insert('block_rule', {
         'pattern': 'preset.test',
         'rawLine': 'preset.test',
         'addedAt': 1,
       });
-      await db.insert('block_rule_source', {
-        'ruleId': 2,
-        'source': 'preset',
-      });
+      await db.insert('block_rule_source', {'ruleId': 2, 'source': 'preset'});
 
       final result = await const BackupExporter().export(
-        BackupExportSource(settings: LegacySettings(seededStore()), database: db),
+        BackupExportSource(
+          settings: LegacySettings(seededStore()),
+          database: db,
+        ),
         groups: {BackupGroup.domainRules},
       );
       final data =
@@ -216,7 +224,10 @@ void main() {
 
     test('外观与系统设置在空目标上被写入', () async {
       final target = MemoryLegacyPrefsStore();
-      await roundTrip({BackupGroup.appearance, BackupGroup.system}, into: target);
+      await roundTrip({
+        BackupGroup.appearance,
+        BackupGroup.system,
+      }, into: target);
       final settings = LegacySettings(target);
       expect(settings.themeModeRaw, 'dark');
       expect(settings.logRetentionDays, 14);
@@ -301,17 +312,18 @@ void main() {
         'targetType': 'IPv4',
         'targetValue': '1.1.1.1',
       });
-      await db.insert('rewrite_rule_source', {'ruleId': 1, 'source': 'useradd'});
+      await db.insert('rewrite_rule_source', {
+        'ruleId': 1,
+        'source': 'useradd',
+      });
       final export = await const BackupExporter().export(
         exportSource(seededStore()),
         groups: {BackupGroup.rewriteDomain},
       );
       // Local value changed; import must write the backup's value back.
-      await db.update(
-        'rewrite_rule',
-        {'targetValue': '9.9.9.9'},
-        where: 'id = 1',
-      );
+      await db.update('rewrite_rule', {
+        'targetValue': '9.9.9.9',
+      }, where: 'id = 1');
 
       final result = await const BackupImporter().import(
         export.content,

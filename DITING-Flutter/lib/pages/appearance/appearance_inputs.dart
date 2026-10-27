@@ -106,7 +106,11 @@ class SliderCardRow extends StatelessWidget {
             spacing: 10,
             children: [
               if (glyph != null)
-                GlyphIcon(glyph!, size: 20, color: colorScheme.onSurfaceVariant),
+                GlyphIcon(
+                  glyph!,
+                  size: 20,
+                  color: colorScheme.onSurfaceVariant,
+                ),
               Expanded(child: Text(label, style: context.listTitleStyle)),
               Text(
                 percent,

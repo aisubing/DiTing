@@ -7,13 +7,7 @@ const platformChannelName = 'com.haoze.diting/platform';
 
 const serverChannelName = 'com.haoze.diting/dns_server';
 
-enum BatteryOptimizationState {
-  ignored,
-
-  notIgnored,
-
-  unavailable,
-}
+enum BatteryOptimizationState { ignored, notIgnored, unavailable }
 
 /// Reads the battery optimization state; a missing channel yields
 /// [BatteryOptimizationState.unavailable].

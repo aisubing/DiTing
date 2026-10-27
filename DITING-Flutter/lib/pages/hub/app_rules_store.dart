@@ -293,7 +293,9 @@ class AppScopedRuleRow extends StatelessWidget {
       leading: GlyphIcon(
         isAllow ? AppGlyphs.verified : AppGlyphs.block,
         size: 20,
-        color: isAllow ? context.colorScheme.primary : context.colorScheme.error,
+        color: isAllow
+            ? context.colorScheme.primary
+            : context.colorScheme.error,
       ),
       title: Text(rule.pattern, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(isAllow ? '白名单（放行）' : '黑名单（拦截）'),
@@ -376,10 +378,7 @@ class _ScopedRuleDialogState extends State<_ScopedRuleDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SegmentedControl<RuleKind>(
-            segments: const [
-              (RuleKind.block, '黑名单'),
-              (RuleKind.allow, '白名单'),
-            ],
+            segments: const [(RuleKind.block, '黑名单'), (RuleKind.allow, '白名单')],
             value: _kind,
             onChanged: (value) => setState(() => _kind = value),
           ),

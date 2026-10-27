@@ -209,14 +209,11 @@ class _MorphBorder extends ShapeBorder {
 
   @override
   Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
-    final transform = Matrix4.translationValues(
-      rect.center.dx,
-      rect.center.dy,
-      0,
-    )
-      ..rotateZ(progress * 2 * math.pi / 9)
-      ..scaleByDouble(rect.width, rect.height, 1, 1)
-      ..translateByDouble(-0.5, -0.5, 0, 1);
+    final transform =
+        Matrix4.translationValues(rect.center.dx, rect.center.dy, 0)
+          ..rotateZ(progress * 2 * math.pi / 9)
+          ..scaleByDouble(rect.width, rect.height, 1, 1)
+          ..translateByDouble(-0.5, -0.5, 0, 1);
     return _morphPath(progress).transform(transform.storage);
   }
 
@@ -238,8 +235,5 @@ class _MorphBorder extends ShapeBorder {
 /// Built once: Morph pairs its curves at construction, so keep it out of the per-frame paint path.
 final _morph = Morph(MaterialShapes.circle, MaterialShapes.cookie9Sided);
 
-Path _morphPath(double progress) => _morph.toPath(
-  progress: progress,
-  rotationPivotX: 0.5,
-  rotationPivotY: 0.5,
-);
+Path _morphPath(double progress) =>
+    _morph.toPath(progress: progress, rotationPivotX: 0.5, rotationPivotY: 0.5);

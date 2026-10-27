@@ -8,11 +8,7 @@ import 'package:material_ui/material_ui.dart';
 /// so the intro no longer drifts page by page. [extra] holds rows that belong inside the same card
 /// (a progress line, a live status), and both keep the card's 8 gap.
 class PageIntroCard extends StatelessWidget {
-  const PageIntroCard({
-    super.key,
-    required this.text,
-    this.extra = const [],
-  });
+  const PageIntroCard({super.key, required this.text, this.extra = const []});
 
   final String text;
   final List<Widget> extra;

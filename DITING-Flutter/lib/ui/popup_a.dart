@@ -311,9 +311,8 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
               platter: _platter,
               sourceColor: sourceColor,
               sourceImage: sourceImage,
-              surfaceColor: SurfaceLevel.floatingOf(
-                colorScheme,
-              ).colorOf(colorScheme),
+              surfaceColor: SurfaceLevel.floatingOf(colorScheme)
+                  .colorOf(colorScheme),
               shadows: glass
                   ? glassMenuShadows(colorScheme)
                   : _cardShadows(colorScheme),

@@ -261,8 +261,8 @@ class SubscriptionsPage extends ConsumerWidget {
                   '同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。',
             ),
           ),
-        // `PageBody` already adds a `DockSpacer`, so no extra bottom padding here: doubling
-        // it leaves roughly twice the dock height of empty space.
+          // `PageBody` already adds a `DockSpacer`, so no extra bottom padding here: doubling
+          // it leaves roughly twice the dock height of empty space.
         ],
       ),
     );

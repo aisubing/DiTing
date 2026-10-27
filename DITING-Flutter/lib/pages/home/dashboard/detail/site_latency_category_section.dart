@@ -32,9 +32,7 @@ class SiteLatencyCategorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final measured = [
-      for (final target in targets) ?results[target.id],
-    ];
+    final measured = [for (final target in targets) ?results[target.id]];
     final alive = measured.where((result) => result.success).length;
     final verdict = probing
         ? '测速中…'
@@ -175,10 +173,12 @@ class SiteLatencyRow extends StatelessWidget {
                       target.host,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyle.caption2.of(context).copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        fontFamily: appMonospaceFontFamily,
-                      ),
+                      style: AppTextStyle.caption2
+                          .of(context)
+                          .copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontFamily: appMonospaceFontFamily,
+                          ),
                     ),
                   ],
                 ),

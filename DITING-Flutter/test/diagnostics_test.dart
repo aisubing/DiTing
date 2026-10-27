@@ -180,7 +180,10 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    Future<void> pumpPanel(WidgetTester tester, DiagnosticsRunner runner) async {
+    Future<void> pumpPanel(
+      WidgetTester tester,
+      DiagnosticsRunner runner,
+    ) async {
       tester.view.physicalSize = const Size(1170, 2532);
       tester.view.devicePixelRatio = 3;
       addTearDown(tester.view.reset);
@@ -197,7 +200,10 @@ void main() {
     testWidgets('成功态渲染 min/avg/max、丢包与逐条 reply', (tester) async {
       await pumpPanel(tester, _FakeRunner(pingResult: _successfulPing));
 
-      await tester.enterText(find.byType(TextField).first, 'https://example.com/x');
+      await tester.enterText(
+        find.byType(TextField).first,
+        'https://example.com/x',
+      );
       await tester.pump();
       await tester.tap(find.text('开始 Ping'));
       await tester.pumpAndSettle();
@@ -220,7 +226,10 @@ void main() {
     testWidgets('失败态给错误提示，不把 0/0 当成通过', (tester) async {
       await pumpPanel(tester, _FakeRunner(pingResult: _failedPing));
 
-      await tester.enterText(find.byType(TextField).first, 'nonexistent.invalid');
+      await tester.enterText(
+        find.byType(TextField).first,
+        'nonexistent.invalid',
+      );
       await tester.pump();
       await tester.tap(find.text('开始 Ping'));
       await tester.pumpAndSettle();
@@ -349,7 +358,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            if (store != null) legacyPrefsStoreProvider.overrideWithValue(store),
+            if (store != null)
+              legacyPrefsStoreProvider.overrideWithValue(store),
             diagnosticsRunnerProvider.overrideWithValue(runner),
           ],
           child: const AppHost(child: ToolsPage()),
@@ -387,11 +397,9 @@ void main() {
       await tester.tap(find.text('开始查询'));
       await tester.pumpAndSettle();
 
-      expect(
-        runner.dnsLookupServers,
-        ['1.1.1.1'],
-        reason: '自定义服务器必须原样传到原生侧，否则测的还是系统解析器',
-      );
+      expect(runner.dnsLookupServers, [
+        '1.1.1.1',
+      ], reason: '自定义服务器必须原样传到原生侧，否则测的还是系统解析器');
     });
 
     testWidgets('自定义档留空时拦在前端，不发请求', (tester) async {
@@ -455,11 +463,7 @@ class _ThrowingRunner implements DiagnosticsRunner {
 class _FakeRunner implements DiagnosticsRunner {
   _FakeRunner({
     required this.pingResult,
-    this.traceResult = const TraceResult(
-      target: '',
-      hops: [],
-      success: false,
-    ),
+    this.traceResult = const TraceResult(target: '', hops: [], success: false),
   });
 
   final PingSummary pingResult;

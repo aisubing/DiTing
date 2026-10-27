@@ -34,11 +34,7 @@ class RuleImportSummary {
 
   /// Rules written or reused; the only count safe to show as "N imported".
   int get insertedCount =>
-      blockCount +
-      allowCount +
-      rewriteCount +
-      urlBlockCount +
-      urlAllowCount;
+      blockCount + allowCount + rewriteCount + urlBlockCount + urlAllowCount;
 
   /// Parsed but not stored: the engine has no injection path for cosmetic rules.
   int get notAppliedCount => cosmeticCount;
@@ -266,24 +262,22 @@ class RuleImporter {
     var inserted = 0;
     await _db.transaction((txn) async {
       for (final rule in rules) {
-        final ruleId = await _findDomainRule(
-          txn,
-          table,
-          rule,
-        ) ?? await txn.insert(table, {
-          'pattern': rule.pattern,
-          'rawLine': rule.rawLine,
-          'addedAt': now,
-          'enabled': 1,
-          'groupName': null,
-          'important': rule.important ? 1 : 0,
-          'appScope': rule.appScope,
-          'appInverted': rule.appInverted ? 1 : 0,
-          'isWildcard': rule.isWildcard ? 1 : 0,
-          'denyallow': rule.denyallow,
-          'isRegex': rule.isRegex ? 1 : 0,
-          'dnsType': rule.dnsType,
-        });
+        final ruleId =
+            await _findDomainRule(txn, table, rule) ??
+            await txn.insert(table, {
+              'pattern': rule.pattern,
+              'rawLine': rule.rawLine,
+              'addedAt': now,
+              'enabled': 1,
+              'groupName': null,
+              'important': rule.important ? 1 : 0,
+              'appScope': rule.appScope,
+              'appInverted': rule.appInverted ? 1 : 0,
+              'isWildcard': rule.isWildcard ? 1 : 0,
+              'denyallow': rule.denyallow,
+              'isRegex': rule.isRegex ? 1 : 0,
+              'dnsType': rule.dnsType,
+            });
         final rows = await txn.insert(sourceTable, {
           'ruleId': ruleId,
           'source': source,

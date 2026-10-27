@@ -97,7 +97,8 @@ final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
     final mainDb = await ref.watch(mainLogDatabaseProvider.future);
     if (mainDb != null) {
       try {
-        httpStats = await HttpRequestRepository(mainDb).dailyStats(since: since);
+        httpStats = await HttpRequestRepository(mainDb)
+            .dailyStats(since: since);
       } on DatabaseException {
         httpStats = const HttpRequestDailyStats.empty();
       }
@@ -159,16 +160,19 @@ final logDashboardProvider = FutureProvider<LogDashboardSnapshot>((ref) async {
                 ? null
                 : dnsDaily.averageLatencyMs.toDouble(),
             latencySamples: dnsDaily.latencySamples,
-            cacheHitRate: filteredMode
-                ? 0
-                : dnsDaily.cacheHitRate,
+            cacheHitRate: filteredMode ? 0 : dnsDaily.cacheHitRate,
           ),
     race: race.summary,
     bootstrap: bootstrap.summary,
     offMode: offMode,
     recentRequests: off
         ? const []
-        : await _loadRecentRequests(ref, db, express: express, filtered: filteredMode),
+        : await _loadRecentRequests(
+            ref,
+            db,
+            express: express,
+            filtered: filteredMode,
+          ),
     cacheHotspots: await _loadCacheHotspots(cache),
     raceWinners: race.winners,
     bootstrapIps: bootstrap.ips,
@@ -243,9 +247,8 @@ class _BootstrapSlice {
 Future<_BootstrapSlice> _loadBootstrap(Database db, DateTime since) async {
   // `recentStats` takes a window length, so "today" is time since local midnight.
   final window = DateTime.now().difference(since);
-  final stats = await BootstrapLogRepository(
-    db,
-  ).recentStats(window: window < Duration.zero ? Duration.zero : window);
+  final stats = await BootstrapLogRepository(db)
+      .recentStats(window: window < Duration.zero ? Duration.zero : window);
 
   var attempts = 0;
   var successes = 0;
@@ -305,9 +308,8 @@ Future<List<LogRecentRequest>> _loadRecentRequests(
     final mainDb = await ref.watch(mainLogDatabaseProvider.future);
     if (mainDb != null) {
       try {
-        httpRows = await HttpRequestRepository(
-          mainDb,
-        ).recent(limit: _recentLogLimit);
+        httpRows = await HttpRequestRepository(mainDb)
+            .recent(limit: _recentLogLimit);
       } on DatabaseException {
         httpRows = const [];
       }

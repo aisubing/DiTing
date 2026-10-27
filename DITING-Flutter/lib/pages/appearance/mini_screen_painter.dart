@@ -330,7 +330,6 @@ class _MiniScreenPainter extends CustomPainter {
     }
   }
 
-
   Color _surface(SurfaceLevel level, double opacity) =>
       level.colorOf(colorScheme).withValues(alpha: opacity);
 

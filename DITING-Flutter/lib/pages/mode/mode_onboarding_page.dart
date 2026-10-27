@@ -206,19 +206,67 @@ class _PermissionStep extends ConsumerWidget {
     final mode = ref.watch(workModeProvider);
     final permissions = switch (mode) {
       AppWorkMode.normal => const [
-        (AppPermission.vpn, AppGlyphs.vpn, 'VPN 连接', '必需', '建立本地隧道接管流量；拒绝则无法启动'),
-        (AppPermission.notification, AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
-        (AppPermission.appList, AppGlyphs.appsList, '应用列表', '可选', '按应用分流与统计；拒绝则只能按域名规则'),
-        (AppPermission.batteryOptimization, AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则长时间待机可能断开'),
+        (
+          AppPermission.vpn,
+          AppGlyphs.vpn,
+          'VPN 连接',
+          '必需',
+          '建立本地隧道接管流量；拒绝则无法启动',
+        ),
+        (
+          AppPermission.notification,
+          AppGlyphs.info,
+          '通知',
+          '必需',
+          '前台服务常驻通知；拒绝则服务可能被系统回收',
+        ),
+        (
+          AppPermission.appList,
+          AppGlyphs.appsList,
+          '应用列表',
+          '可选',
+          '按应用分流与统计；拒绝则只能按域名规则',
+        ),
+        (
+          AppPermission.batteryOptimization,
+          AppGlyphs.bolt,
+          '忽略电池优化',
+          '可选',
+          '避免后台被杀；拒绝则长时间待机可能断开',
+        ),
       ],
       AppWorkMode.server => const [
-        (AppPermission.notification, AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
-        (AppPermission.batteryOptimization, AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则局域网内会间歇不可用'),
+        (
+          AppPermission.notification,
+          AppGlyphs.info,
+          '通知',
+          '必需',
+          '前台服务常驻通知；拒绝则服务可能被系统回收',
+        ),
+        (
+          AppPermission.batteryOptimization,
+          AppGlyphs.bolt,
+          '忽略电池优化',
+          '可选',
+          '避免后台被杀；拒绝则局域网内会间歇不可用',
+        ),
       ],
       AppWorkMode.express => const [
         (AppPermission.vpn, AppGlyphs.vpn, 'VPN 连接', '必需', '建立窄路由隧道；拒绝则无法启动'),
-        (AppPermission.notification, AppGlyphs.info, '通知', '必需', '前台服务常驻通知；拒绝则服务可能被系统回收'),
-        (AppPermission.batteryOptimization, AppGlyphs.bolt, '忽略电池优化', '可选', '避免后台被杀；拒绝则长时间待机可能断开'),
+        (
+          AppPermission.notification,
+          AppGlyphs.info,
+          '通知',
+          '必需',
+          '前台服务常驻通知；拒绝则服务可能被系统回收',
+        ),
+        (
+          AppPermission.batteryOptimization,
+          AppGlyphs.bolt,
+          '忽略电池优化',
+          '可选',
+          '避免后台被杀；拒绝则长时间待机可能断开',
+        ),
       ],
     };
     final snapshot = ref.watch(permissionStatesProvider).value;

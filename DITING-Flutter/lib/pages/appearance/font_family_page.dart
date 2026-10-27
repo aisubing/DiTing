@@ -98,10 +98,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              '选择只影响本机显示，不改动服务端规则。',
-              style: context.listCaptionStyle,
-            ),
+            child: Text('选择只影响本机显示，不改动服务端规则。', style: context.listCaptionStyle),
           ),
           const SizedBox(height: 24),
         ],
@@ -196,10 +193,12 @@ class _PreviewHero extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'The quick brown fox jumps over the lazy dog · 0123456789',
-            style: AppTextStyle.footnote.of(context).copyWith(
-              fontFamily: family,
-              color: colorScheme.onSurfaceVariant,
-            ),
+            style: AppTextStyle.footnote
+                .of(context)
+                .copyWith(
+                  fontFamily: family,
+                  color: colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 10),
           MetaChip(label: label),
@@ -244,10 +243,12 @@ class _FontRow extends StatelessWidget {
         ),
         child: Text(
           'Aa',
-          style: AppTextStyle.subheadline.of(context, emphasized: true).copyWith(
-            fontFamily: family,
-            color: colorScheme.onSurfaceVariant,
-          ),
+          style: AppTextStyle.subheadline
+              .of(context, emphasized: true)
+              .copyWith(
+                fontFamily: family,
+                color: colorScheme.onSurfaceVariant,
+              ),
         ),
       ),
       title: Text(label, style: TextStyle(fontFamily: family)),
@@ -261,10 +262,7 @@ class _FontRow extends StatelessWidget {
               onPressed: onDelete,
               icon: const GlyphIcon(AppGlyphs.delete, size: 20),
             ),
-          if (selected)
-            const SelectionCheck()
-          else
-            const SizedBox(width: 24),
+          if (selected) const SelectionCheck() else const SizedBox(width: 24),
         ],
       ),
     );

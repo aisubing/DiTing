@@ -119,11 +119,7 @@ class DashboardDetailCard extends StatelessWidget {
             type: MaterialType.transparency,
             child: onTap == null
                 ? content
-                : InkWell(
-                    customBorder: shape,
-                    onTap: onTap,
-                    child: content,
-                  ),
+                : InkWell(customBorder: shape, onTap: onTap, child: content),
           ),
         ),
       ),
@@ -236,13 +232,16 @@ class DashboardDetailHero extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: value,
-                            style: DashboardText.figure(
-                              context,
-                              AppTextStyle.title1,
-                              color: figure,
-                            ).copyWith(
-                              fontFamily: monospace ? appMonospaceFontFamily : null,
-                            ),
+                            style:
+                                DashboardText.figure(
+                                  context,
+                                  AppTextStyle.title1,
+                                  color: figure,
+                                ).copyWith(
+                                  fontFamily: monospace
+                                      ? appMonospaceFontFamily
+                                      : null,
+                                ),
                           ),
                           if (unit case final unit?)
                             TextSpan(
@@ -319,11 +318,7 @@ class DashboardDetailStats extends StatelessWidget {
 
 /// The tile grid itself, for pages that already own a card.
 class DashboardStatGrid extends StatelessWidget {
-  const DashboardStatGrid({
-    super.key,
-    required this.stats,
-    this.columns = 2,
-  });
+  const DashboardStatGrid({super.key, required this.stats, this.columns = 2});
 
   final List<StatItem> stats;
   final int columns;
@@ -340,7 +335,10 @@ class DashboardStatGrid extends StatelessWidget {
           runSpacing: _gap,
           children: [
             for (final stat in stats)
-              SizedBox(width: width, child: _MetricTile(item: stat)),
+              SizedBox(
+                width: width,
+                child: _MetricTile(item: stat),
+              ),
           ],
         );
       },
@@ -393,9 +391,9 @@ class _MetricTile extends StatelessWidget {
                   padding: const EdgeInsetsDirectional.only(start: 3),
                   child: Text(
                     unit,
-                    style: AppTextStyle.caption1.of(context).copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    style: AppTextStyle.caption1
+                        .of(context)
+                        .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                 ),
             ],
@@ -457,9 +455,9 @@ class DashboardDetailRows extends StatelessWidget {
               children: [
                 Text(
                   row.label,
-                  style: AppTextStyle.subheadline.of(
-                    context,
-                  ).copyWith(color: colorScheme.onSurfaceVariant),
+                  style: AppTextStyle.subheadline
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
                 ),
                 Expanded(
                   child: Text(
@@ -467,10 +465,14 @@ class DashboardDetailRows extends StatelessWidget {
                     textAlign: TextAlign.end,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyle.subheadline.of(context).copyWith(
-                      color: row.color ?? colorScheme.onSurface,
-                      fontFamily: row.monospace ? appMonospaceFontFamily : null,
-                    ),
+                    style: AppTextStyle.subheadline
+                        .of(context)
+                        .copyWith(
+                          color: row.color ?? colorScheme.onSurface,
+                          fontFamily: row.monospace
+                              ? appMonospaceFontFamily
+                              : null,
+                        ),
                   ),
                 ),
               ],

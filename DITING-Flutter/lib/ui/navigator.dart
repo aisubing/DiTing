@@ -51,9 +51,8 @@ class BaseNavigator {
   }
 
   static Future<T?> pushReplacement<T>(BuildContext context, Widget child) {
-    return Navigator.of(
-      context,
-    ).pushReplacement<T, void>(_routeOf(context, child));
+    return Navigator.of(context)
+        .pushReplacement<T, void>(_routeOf(context, child));
   }
 }
 
@@ -100,9 +99,8 @@ Future<void> whenRouteSettled(BuildContext context) async {
   }
 }
 
-bool isRouteArriving(BuildContext context) => routesCarrying(
-  context,
-).any((route) => route.offstage || (route.animation?.isAnimating ?? false));
+bool isRouteArriving(BuildContext context) => routesCarrying(context)
+    .any((route) => route.offstage || (route.animation?.isAnimating ?? false));
 
 Future<void> _whenSettled(ModalRoute<Object?> route) async {
   // HeroController builds a pushed route offstage first, so it tells the truth only after.

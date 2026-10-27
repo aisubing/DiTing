@@ -80,9 +80,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
 
   void _start() {
     setState(() => _appliedAction = null);
-    _sessionId = ref
-        .read(agentAnalysisProvider.notifier)
-        .start(widget.target);
+    _sessionId = ref.read(agentAnalysisProvider.notifier).start(widget.target);
   }
 
   void _enableAndStart() {
@@ -93,9 +91,8 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
   Future<void> _copyResult(String content) async {
     await Clipboard.setData(ClipboardData(text: content));
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(content: Text('分析结果已复制到剪贴板')),
-    );
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(const SnackBar(content: Text('分析结果已复制到剪贴板')));
   }
 
   Future<void> _addRule(RuleKind kind) async {
@@ -140,7 +137,8 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
               child: CardNoticeRow(message: message),
             ),
           const ListFooter(
-            text: 'AI 只做研判，不会自动修改规则；结论仅供参考。'
+            text:
+                'AI 只做研判，不会自动修改规则；结论仅供参考。'
                 '请求由你配置的厂商处理，密钥只存在本机。',
           ),
         ],
@@ -247,10 +245,12 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
               ),
               child: SelectableText(
                 digest,
-                style: AppTextStyle.footnote.of(context).copyWith(
-                  fontFamily: appMonospaceFontFamily,
-                  color: context.colorScheme.onSurfaceVariant,
-                ),
+                style: AppTextStyle.footnote
+                    .of(context)
+                    .copyWith(
+                      fontFamily: appMonospaceFontFamily,
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
               ),
             ),
           ),
@@ -343,9 +343,9 @@ class _Header extends StatelessWidget {
                 ),
                 Text(
                   target.subtitle,
-                  style: AppTextStyle.footnote.of(
-                    context,
-                  ).copyWith(color: colorScheme.onSurfaceVariant),
+                  style: AppTextStyle.footnote
+                      .of(context)
+                      .copyWith(color: colorScheme.onSurfaceVariant),
                 ),
               ],
             ),

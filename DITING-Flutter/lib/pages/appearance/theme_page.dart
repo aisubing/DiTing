@@ -99,7 +99,8 @@ class ThemePage extends ConsumerWidget {
               NavEntryRow(
                 glyph: AppGlyphs.dashboard,
                 title: '底栏自定义',
-                subtitle: '已选 ${ref.watch(bottomBarProvider).length} 项，可配置 2–4 项',
+                subtitle:
+                    '已选 ${ref.watch(bottomBarProvider).length} 项，可配置 2–4 项',
                 onPressed: () => context.push(SystemPaths.bottomBar),
               ),
               // Retained entries, after the legacy ones.

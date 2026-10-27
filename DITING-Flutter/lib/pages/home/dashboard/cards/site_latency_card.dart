@@ -54,7 +54,9 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
 
     // Both tallies only count the sites actually on the card: after the user swaps one out, a
     // stale result left in `_results` must not inflate the header.
-    final measured = sites.where((site) => _results.containsKey(site.id)).length;
+    final measured = sites
+        .where((site) => _results.containsKey(site.id))
+        .length;
     final alive = sites
         .where((site) => _results[site.id]?.success ?? false)
         .length;
@@ -309,4 +311,3 @@ class _Badge extends StatelessWidget {
     );
   }
 }
-

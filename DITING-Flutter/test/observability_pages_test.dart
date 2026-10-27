@@ -111,11 +111,8 @@ void main() {
     dnsQueryWindowProvider.overrideWith((ref) async => dnsRows),
     dnsQueriesProvider.overrideWith((ref) async => dnsRows),
     trafficSnapshotProvider.overrideWith(
-      (ref) async => TrafficSnapshot(
-        rows: trafficRows,
-        startDate: today,
-        endDate: today,
-      ),
+      (ref) async =>
+          TrafficSnapshot(rows: trafficRows, startDate: today, endDate: today),
     ),
   ];
 
@@ -192,7 +189,8 @@ void main() {
           ObservedRequest.fromDns(
             DnsLogRow(
               id: index,
-              timestamp: DateTime(2026, 10, 20, 13).millisecondsSinceEpoch - index,
+              timestamp:
+                  DateTime(2026, 10, 20, 13).millisecondsSinceEpoch - index,
               queryName: 'host$index.example',
               queryType: 1,
               result: 'PASSED',

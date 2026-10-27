@@ -184,11 +184,14 @@ class CaCertificatePage extends ConsumerWidget {
     final hint = saved.saved
         ? '证书已存到 ${saved.name ?? '下载目录'}。'
         : '证书文件保存失败（${saved.error ?? '未知原因'}）。';
-    _toast(context, '${switch (result.target) {
-      CaInstallTarget.installer => '已打开系统证书安装界面。',
-      CaInstallTarget.settings => '系统没有证书安装器，已打开安全设置。',
-      CaInstallTarget.none => result.error ?? '无法打开证书安装界面。',
-    }}$hint若界面只提示前往设置，请在「加密与凭据 → 安装证书 → CA 证书」里手动选中它。');
+    _toast(
+      context,
+      '${switch (result.target) {
+        CaInstallTarget.installer => '已打开系统证书安装界面。',
+        CaInstallTarget.settings => '系统没有证书安装器，已打开安全设置。',
+        CaInstallTarget.none => result.error ?? '无法打开证书安装界面。',
+      }}$hint若界面只提示前往设置，请在「加密与凭据 → 安装证书 → CA 证书」里手动选中它。',
+    );
     await notifier.refresh();
   }
 

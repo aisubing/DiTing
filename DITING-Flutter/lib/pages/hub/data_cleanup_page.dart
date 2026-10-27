@@ -122,9 +122,7 @@ class DataCleanupPage extends ConsumerWidget {
       context: context,
       child: CommonDialog(
         title: '需要重启应用',
-        child: const Text(
-          '清理已完成。新手引导与使用协议已重置，应用需要重新启动才会生效。',
-        ),
+        child: const Text('清理已完成。新手引导与使用协议已重置，应用需要重新启动才会生效。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -158,15 +156,12 @@ class DataCleanupPage extends ConsumerWidget {
   };
 
   static String _confirmTextOf(CleanupAction action) => switch (action) {
-    CleanupAction.logs =>
-      '确定要删除所有 DNS、HTTP 请求日志、竞速统计和 Bootstrap DNS 解析统计吗？',
+    CleanupAction.logs => '确定要删除所有 DNS、HTTP 请求日志、竞速统计和 Bootstrap DNS 解析统计吗？',
     CleanupAction.traffic => '确定要清除所有应用的历史流量统计记录与实时统计状态吗？',
     CleanupAction.crash => '确定要删除所有本地崩溃日志和崩溃统计状态吗？',
     CleanupAction.dnsCache => '确定要删除所有本地 DNS 缓存吗？下次访问域名时会重新查询。',
-    CleanupAction.providerWeights =>
-      '确定要清除所有服务商健康样本并恢复竞速模式默认权重吗？',
-    CleanupAction.bootstrapWeights =>
-      '确定要清除 Bootstrap DNS 解析健康样本并恢复默认权重吗？',
+    CleanupAction.providerWeights => '确定要清除所有服务商健康样本并恢复竞速模式默认权重吗？',
+    CleanupAction.bootstrapWeights => '确定要清除 Bootstrap DNS 解析健康样本并恢复默认权重吗？',
     CleanupAction.domainRules =>
       '确定要删除全部域名规则吗？域名屏蔽、白名单、IPv4/IPv6 覆写规则及对应订阅都会被移除，'
           '地址规则不受影响。',
@@ -179,8 +174,7 @@ class DataCleanupPage extends ConsumerWidget {
     CleanupAction.appRules =>
       '确定要重置所有应用控制名单吗？分应用代理排除、禁止联网应用、应用独立白名单以及 '
           'HTTP/HTTPS 抓包应用配置都将被清空并恢复默认。',
-    CleanupAction.outboundProxy =>
-      '确定要重置出站代理配置吗？出站代理将被禁用，服务器地址、端口及账号密码将被清除。',
+    CleanupAction.outboundProxy => '确定要重置出站代理配置吗？出站代理将被禁用，服务器地址、端口及账号密码将被清除。',
     CleanupAction.caCertificate =>
       '确定要清除本地生成的 HTTPS 抓包 CA 证书和私钥吗？如果系统已安装此证书，'
           '清除后需重新生成并导入系统方可继续解密抓包。',

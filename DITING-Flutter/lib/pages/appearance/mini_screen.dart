@@ -10,7 +10,6 @@ import 'package:material_ui/material_ui.dart';
 
 part 'mini_screen_painter.dart';
 
-
 // `dart:math`, `dart:ui` and `AppShape` are only used in the part file, but parts
 // share the parent's import scope, so the imports must stay here.
 enum MiniPage { dashboard, rules, logs, tools }

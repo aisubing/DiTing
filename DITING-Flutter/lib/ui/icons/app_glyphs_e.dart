@@ -17,7 +17,6 @@ const _g_blur_ = Glyph([
   GlyphCircle(14.6, 19.8, 1.1, role: GlyphRole.line, solid: true),
 ]);
 
-
 const _g_liquidGlass_ = Glyph([
   GlyphPath(
     'M12 3.4C14.6 6.2 18.4 10.2 18.4 14.4A6.4 6.4 0 0 1 5.6 14.4'
@@ -33,7 +32,6 @@ const _g_liquidGlass_ = Glyph([
   ),
 ]);
 
-
 const _g_font_ = Glyph([
   GlyphPolyline([
     GlyphVertex(5.2, 19.6),
@@ -45,7 +43,6 @@ const _g_font_ = Glyph([
     GlyphVertex(16.3, 14),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_textSize_ = Glyph([
   GlyphPolyline([
@@ -65,7 +62,6 @@ const _g_textSize_ = Glyph([
     GlyphVertex(17.9, 19.6),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_language_ = Glyph([
   GlyphPolyline([
@@ -88,7 +84,6 @@ const _g_language_ = Glyph([
   ], role: GlyphRole.detail),
 ]);
 
-
 const _g_keyboard_ = Glyph([
   GlyphBox(3, 4.6, 21, 19.4, 2.8),
   GlyphCircle(6.75, 8.3, 1.1, role: GlyphRole.detail, solid: true),
@@ -104,7 +99,6 @@ const _g_keyboard_ = Glyph([
     GlyphVertex(15.4, 15.6),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_photos_ = Glyph([
   GlyphBox(3, 6.4, 17.6, 21, 2.6),
@@ -123,7 +117,6 @@ const _g_photos_ = Glyph([
   GlyphCircle(13.4, 10.6, 1.4, role: GlyphRole.detail, solid: true),
 ]);
 
-
 const _g_camera_ = Glyph([
   GlyphPolyline([
     GlyphVertex(3, 7.5, 2.6),
@@ -137,7 +130,6 @@ const _g_camera_ = Glyph([
   ], closed: true),
   GlyphCircle(12, 13.4, 3.4, role: GlyphRole.detail),
 ]);
-
 
 const _g_qrCode_ = Glyph([
   GlyphBox(3, 3, 10.2, 10.2, 2.2),
@@ -175,7 +167,6 @@ const _g_qrCode_ = Glyph([
   ),
 ]);
 
-
 const _g_torch_ = Glyph([
   GlyphPolyline([
     GlyphVertex(2.24, 17.66, 1.8),
@@ -202,7 +193,6 @@ const _g_torch_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_torchOff_ = Glyph([
   GlyphPolyline([
     GlyphVertex(2.24, 17.66, 1.8),
@@ -216,7 +206,6 @@ const _g_torchOff_ = Glyph([
   ], closed: true),
   GlyphCircle(8.68, 15.32, 1.1, role: GlyphRole.detail, solid: true),
 ]);
-
 
 const _g_torchAuto_ = Glyph([
   GlyphPolyline([
@@ -241,7 +230,6 @@ const _g_torchAuto_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_vpn_ = Glyph([
   GlyphPolyline([
     GlyphVertex(12, 2.9, 1.5),
@@ -258,7 +246,6 @@ const _g_vpn_ = Glyph([
   ], role: GlyphRole.detail),
 ]);
 
-
 const _g_status_ = Glyph([
   GlyphBox(3, 4.2, 21, 19.8, 4.5),
   GlyphPolyline([
@@ -270,7 +257,6 @@ const _g_status_ = Glyph([
     GlyphVertex(17.6, 12.3),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_verified_ = Glyph([
   GlyphPolyline([
@@ -287,7 +273,6 @@ const _g_verified_ = Glyph([
     GlyphVertex(15.3, 9.6),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_swap_ = Glyph([
   GlyphPolyline([
@@ -310,7 +295,6 @@ const _g_swap_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_shuffle_ = Glyph([
   GlyphPolyline([
     GlyphVertex(3, 7),
@@ -331,7 +315,6 @@ const _g_shuffle_ = Glyph([
     GlyphVertex(17.5, 20),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_split_ = Glyph([
   GlyphPolyline([
@@ -356,7 +339,6 @@ const _g_split_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_speed_ = Glyph([
   GlyphPath(
     'M6.759 19.057 Q5.259 19.057 4.396 17.83 A8.8 8.8 0 1 1 19.604 17.83 '
@@ -369,7 +351,6 @@ const _g_speed_ = Glyph([
   ], role: GlyphRole.detail),
 ]);
 
-
 const _g_dataUsage_ = Glyph([
   GlyphPath(
     'M10 14 H15.8 Q17 14 16.897 15.194 '
@@ -381,7 +362,6 @@ const _g_dataUsage_ = Glyph([
     'H14.6 Q13.6 10.4 13.6 9.4 Z',
   ),
 ]);
-
 
 const _g_memory_ = Glyph([
   GlyphBox(3.5, 7.2, 20.5, 16.8, 2.5),
@@ -410,7 +390,6 @@ const _g_memory_ = Glyph([
     GlyphVertex(16, 20.2),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_cpu_ = Glyph([
   GlyphBox(5.5, 5.5, 18.5, 18.5, 2.2),
@@ -465,7 +444,6 @@ const _g_cpu_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_devices_ = Glyph([
   GlyphPolyline([
     GlyphVertex(11.4, 14.5),
@@ -480,7 +458,6 @@ const _g_devices_ = Glyph([
   ], role: GlyphRole.line),
   GlyphBox(15, 10, 20.8, 20.5, 2),
 ]);
-
 
 const _g_broom_ = Glyph([
   GlyphPolyline([

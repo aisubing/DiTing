@@ -222,9 +222,8 @@ class DashboardWidgetsNotifier extends Notifier<List<DashboardWidget>> {
   /// written as `[]` instead of being removed; only a missing key restores the defaults.
   void _commit(List<DashboardWidget> next) {
     state = next;
-    _settings(ref).setDashboardWidgetOrder([
-      for (final widget in next) widget.name,
-    ]);
+    _settings(ref)
+        .setDashboardWidgetOrder([for (final widget in next) widget.name]);
   }
 }
 

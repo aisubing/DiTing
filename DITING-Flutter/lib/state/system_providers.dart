@@ -69,7 +69,8 @@ class DavNotifier extends Notifier<DavState> {
   DavState build() => const DavState();
 
   /// Built per call so a UA change in `/config/user-agents` applies to the next request.
-  DavClient get _client => DavClient(userAgent: ref.read(requestUserAgentProvider));
+  DavClient get _client =>
+      DavClient(userAgent: ref.read(requestUserAgentProvider));
 
   void update(DavState Function(DavState state) update) =>
       state = update(state);
@@ -99,10 +100,7 @@ class DavNotifier extends Notifier<DavState> {
       );
       return;
     }
-    state = state.copyWith(
-      status: DavStatus.failed,
-      message: result.error,
-    );
+    state = state.copyWith(status: DavStatus.failed, message: result.error);
   }
 
   void reset() => state = const DavState();
@@ -135,15 +133,9 @@ class DavNotifier extends Notifier<DavState> {
   Future<String?> download() async {
     state = state.copyWith(status: DavStatus.connecting, clearMessage: true);
     try {
-      final text = await _client.getText(
-        credentials,
-        name: remoteFileName,
-      );
+      final text = await _client.getText(credentials, name: remoteFileName);
       state = text == null
-          ? state.copyWith(
-              status: DavStatus.connected,
-              message: '云端还没有备份文件',
-            )
+          ? state.copyWith(status: DavStatus.connected, message: '云端还没有备份文件')
           : state.copyWith(status: DavStatus.connected, message: '已从云端取回备份');
       return text;
     } on Object catch (error) {
@@ -277,10 +269,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
     final result = await ref.read(appUpdateCheckerProvider).check(current);
     if (result.failed) {
       // Back to idle with the reason; staying "checking" spins forever.
-      state = state.copyWith(
-        stage: UpdateStage.idle,
-        error: result.error,
-      );
+      state = state.copyWith(stage: UpdateStage.idle, error: result.error);
       return;
     }
     state = result.hasUpdate

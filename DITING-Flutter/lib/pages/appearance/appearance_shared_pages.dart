@@ -14,7 +14,6 @@ import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
-
 class ThemeDayNightPage extends ConsumerWidget {
   const ThemeDayNightPage({super.key});
 
@@ -81,7 +80,6 @@ class ThemeDayNightPage extends ConsumerWidget {
   }
 }
 
-
 /// Home element opacity. Keys come from [HomeLayer.storageKey] (`home_*_opacity`);
 /// `home_dns_detail_opacity` is not a [HomeLayer] but the DNS detail block requires it.
 class ThemeHomeOpacityPage extends ConsumerWidget {
@@ -131,7 +129,6 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
     );
   }
 }
-
 
 /// One-line description per dock destination; the enum has no such field.
 const _destinationSubtitles = {
@@ -200,7 +197,6 @@ class ThemeBottomBarPage extends ConsumerWidget {
   }
 }
 
-
 /// Home sentences: one each for running and stopped; empty hides them.
 class ThemeHomeSentencePage extends ConsumerStatefulWidget {
   const ThemeHomeSentencePage({super.key});
@@ -243,15 +239,17 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
                   label: 'DNS 服务开启时',
                   controller: _running,
                   minLines: 2,
-                  onChanged: (value) =>
-                      ref.read(homeSentenceProvider.notifier).set(running: value),
+                  onChanged: (value) => ref
+                      .read(homeSentenceProvider.notifier)
+                      .set(running: value),
                 ),
                 LabeledTextField(
                   label: 'DNS 服务关闭时',
                   controller: _stopped,
                   minLines: 2,
-                  onChanged: (value) =>
-                      ref.read(homeSentenceProvider.notifier).set(stopped: value),
+                  onChanged: (value) => ref
+                      .read(homeSentenceProvider.notifier)
+                      .set(stopped: value),
                 ),
               ],
             ),
@@ -262,7 +260,6 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
     );
   }
 }
-
 
 /// One-shot SnackBar notice for rule rejections, which otherwise leave no trace
 /// beyond the switch bouncing back.

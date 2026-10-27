@@ -14,8 +14,9 @@ class CleanupDatabases {
   final Future<Database?> Function(String fileName) _open;
   final Map<String, Database?> _cache = {};
 
-  Future<Database?> of(String fileName) async =>
-      _cache.containsKey(fileName) ? _cache[fileName] : (_cache[fileName] = await _open(fileName));
+  Future<Database?> of(String fileName) async => _cache.containsKey(fileName)
+      ? _cache[fileName]
+      : (_cache[fileName] = await _open(fileName));
 
   Future<Database?> get main => of(LegacyDatabase.mainFile);
 
@@ -37,7 +38,10 @@ class CleanupDatabases {
   /// Databases holding runtime tables (logs, cache); main and express only.
   Future<List<Database>> runtimeDatabases() async {
     final databases = <Database>[];
-    for (final fileName in [LegacyDatabase.mainFile, LegacyDatabase.expressFile]) {
+    for (final fileName in [
+      LegacyDatabase.mainFile,
+      LegacyDatabase.expressFile,
+    ]) {
       final db = await of(fileName);
       if (db != null) databases.add(db);
     }
@@ -54,17 +58,12 @@ class CleanupDatabases {
 }
 
 /// Deletes all rows; a missing table returns 0 and logs why.
-Future<int> deleteAllRows(DatabaseExecutor db, String table) => _guard(
-  () => db.delete(table),
-  'delete $table',
-);
+Future<int> deleteAllRows(DatabaseExecutor db, String table) =>
+    _guard(() => db.delete(table), 'delete $table');
 
 /// Deletes matching rows; a missing table or column returns 0.
-Future<int> deleteRowsWhere(
-  DatabaseExecutor db,
-  String table,
-  String where,
-) => _guard(() => db.delete(table, where: where), 'delete $table ($where)');
+Future<int> deleteRowsWhere(DatabaseExecutor db, String table, String where) =>
+    _guard(() => db.delete(table, where: where), 'delete $table ($where)');
 
 /// Deletes rule rows that no source row references (`NOT EXISTS`).
 Future<int> deleteOrphanRows(
@@ -109,7 +108,8 @@ Future<void> deleteOrphanAutoUpdateItems(DatabaseExecutor db) async {
 Future<List<({String domain, String group})>> loadPresetEntries({
   Future<String> Function()? load,
 }) async {
-  final asset = load ?? (() => rootBundle.loadString('assets/https_passthrough.txt'));
+  final asset =
+      load ?? (() => rootBundle.loadString('assets/https_passthrough.txt'));
   try {
     return parsePresetWhitelist(await asset());
   } on FlutterError catch (error) {

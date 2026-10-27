@@ -47,11 +47,15 @@ void main() {
   group('端点推导', () {
     test('按厂商习惯补 /v1 与 /chat/completions', () {
       expect(
-        AgentApiClient.resolveChatCompletionsEndpoint('https://api.deepseek.com'),
+        AgentApiClient.resolveChatCompletionsEndpoint(
+          'https://api.deepseek.com',
+        ),
         'https://api.deepseek.com/v1/chat/completions',
       );
       expect(
-        AgentApiClient.resolveChatCompletionsEndpoint('https://api.openai.com/v1'),
+        AgentApiClient.resolveChatCompletionsEndpoint(
+          'https://api.openai.com/v1',
+        ),
         'https://api.openai.com/v1/chat/completions',
       );
       expect(
@@ -74,7 +78,9 @@ void main() {
         'https://api.deepseek.com/v1/models',
       );
       expect(
-        AgentApiClient.resolveModelsEndpoint('https://x.test/v1/chat/completions'),
+        AgentApiClient.resolveModelsEndpoint(
+          'https://x.test/v1/chat/completions',
+        ),
         'https://x.test/v1/models',
       );
     });
@@ -131,7 +137,11 @@ void main() {
             'message': {'content': '分析结论'},
           },
         ],
-        'usage': {'prompt_tokens': 10, 'completion_tokens': 5, 'total_tokens': 15},
+        'usage': {
+          'prompt_tokens': 10,
+          'completion_tokens': 5,
+          'total_tokens': 15,
+        },
       };
       final result = await client().chat(config(), const [
         AgentChatMessage(role: 'system', content: 'be brief'),
@@ -170,7 +180,9 @@ void main() {
 
     test('429 / 5xx 各自给出可操作的原因', () async {
       status = 429;
-      reply = {'error': {'message': 'rate limited'}};
+      reply = {
+        'error': {'message': 'rate limited'},
+      };
       await expectLater(
         client().chat(config(), const [
           AgentChatMessage(role: 'user', content: 'hi'),
@@ -359,7 +371,10 @@ void main() {
       settings.setAgentApiTemperature(0.4);
       settings.setAgentApiSystemPrompt('prompt');
       settings.setAgentAiActiveProviderId('p1');
-      expect(store.read('dns_vpn_prefs', 'agent_api_base_url'), 'https://api.moonshot.cn/v1');
+      expect(
+        store.read('dns_vpn_prefs', 'agent_api_base_url'),
+        'https://api.moonshot.cn/v1',
+      );
       expect(store.read('dns_vpn_prefs', 'agent_api_key'), 'sk-1');
       expect(store.read('dns_vpn_prefs', 'agent_api_model'), 'kimi-k3');
       expect(store.read('dns_vpn_prefs', 'agent_api_temperature'), '0.4');

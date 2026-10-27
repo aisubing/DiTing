@@ -66,19 +66,11 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: _metric(
-                    context,
-                    '自定义规则',
-                    _figure(stats?.customRules),
-                  ),
+                  child: _metric(context, '自定义规则', _figure(stats?.customRules)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _metric(
-                    context,
-                    '名单应用',
-                    _figure(stats?.listedApps),
-                  ),
+                  child: _metric(context, '名单应用', _figure(stats?.listedApps)),
                 ),
               ],
             ),
@@ -273,10 +265,7 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
 
   void _toast(String message) {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 }
@@ -292,9 +281,7 @@ class _ImportResultDialog extends StatelessWidget {
     final colorScheme = context.colorScheme;
     return CommonDialog(
       title: '导入应用配置',
-      trailing: MetaChip(
-        label: result.failed ? '导入失败' : '导入完成',
-      ),
+      trailing: MetaChip(label: result.failed ? '导入失败' : '导入完成'),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,7 +299,10 @@ class _ImportResultDialog extends StatelessWidget {
               style: context.listTitleStyle,
             ),
             if (result.sourceName != null)
-              Text('来源文件：${result.sourceName}', style: context.listCaptionStyle),
+              Text(
+                '来源文件：${result.sourceName}',
+                style: context.listCaptionStyle,
+              ),
             if (result.occurredAt != null)
               Text(
                 '备份导出于 ${_dateText(result.occurredAt!)}',

@@ -69,7 +69,9 @@ class AgentApiPage extends ConsumerWidget {
                     runSpacing: 6,
                     children: [
                       MetaChip(
-                        label: provider?.hasKey == true ? '密钥已配置' : '缺少 API Key',
+                        label: provider?.hasKey == true
+                            ? '密钥已配置'
+                            : '缺少 API Key',
                       ),
                       MetaChip(
                         label: '温度 ${state.temperature.toStringAsFixed(1)}',
@@ -82,9 +84,9 @@ class AgentApiPage extends ConsumerWidget {
                       state.enabled
                           ? '补全厂商与密钥后，日志页就能直接发起分析。'
                           : '开启后即可在日志页直接发起分析。',
-                      style: AppTextStyle.footnote.of(
-                        context,
-                      ).copyWith(color: colorScheme.onSurfaceVariant),
+                      style: AppTextStyle.footnote
+                          .of(context)
+                          .copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                 ],
               ),

@@ -89,11 +89,11 @@ Future<RecentTrafficSummary> summarizeRecentTraffic({
     if (result == 'REWRITTEN') rewritten++;
     if (row.cached) cached++;
   }
-  final top =
-      counts.entries.toList()..sort((a, b) {
-        final byCount = b.value.compareTo(a.value);
-        return byCount != 0 ? byCount : a.key.compareTo(b.key);
-      });
+  final top = counts.entries.toList()
+    ..sort((a, b) {
+      final byCount = b.value.compareTo(a.value);
+      return byCount != 0 ? byCount : a.key.compareTo(b.key);
+    });
 
   var httpSamples = 0;
   var blockedHttp = 0;

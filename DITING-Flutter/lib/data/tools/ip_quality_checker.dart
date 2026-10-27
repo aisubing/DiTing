@@ -140,7 +140,10 @@ class IpQualityChecker {
       final request = await client.getUrl(Uri.parse(url)).timeout(timeout);
       request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
-      final body = await response.transform(utf8.decoder).join().timeout(timeout);
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(timeout);
       if (response.statusCode != 200) return null;
       final raw = body.trim();
       if (raw.startsWith('{')) {
@@ -164,7 +167,10 @@ class IpQualityChecker {
     return RegExp(r'^[0-9a-fA-F:.]+$').hasMatch(value);
   }
 
-  Future<List<IpSourceResult>> _querySources(HttpClient client, String ip) async {
+  Future<List<IpSourceResult>> _querySources(
+    HttpClient client,
+    String ip,
+  ) async {
     final probes = <Future<IpSourceResult>>[
       _ipApi(client, ip),
       _ipWhoIs(client, ip),
@@ -176,24 +182,30 @@ class IpQualityChecker {
   /// ip-api.com: free, no key, plain HTTP (TLS there is a paid feature).
   Future<IpSourceResult> _ipApi(HttpClient client, String ip) async {
     final watch = Stopwatch()..start();
-    return _get(client, 'ip-api.com', '$ipApiUrl/$ip?fields=status,message,as,isp,org', (
-      body,
-    ) {
-      final decoded = jsonDecode(body);
-      if (decoded is! Map || decoded['status'] != 'success') {
-        // Failures look like {"status":"fail","message":"private range"}.
+    return _get(
+      client,
+      'ip-api.com',
+      '$ipApiUrl/$ip?fields=status,message,as,isp,org',
+      (body) {
+        final decoded = jsonDecode(body);
+        if (decoded is! Map || decoded['status'] != 'success') {
+          // Failures look like {"status":"fail","message":"private range"}.
+          return _ProbeOutcome(
+            status: '失败',
+            detail: decoded is Map ? '${decoded['message'] ?? ''}' : null,
+          );
+        }
         return _ProbeOutcome(
-          status: '失败',
-          detail: decoded is Map ? '${decoded['message'] ?? ''}' : null,
+          status: '命中',
+          ipType: _classify(
+            '${decoded['as'] ?? ''} ${decoded['isp'] ?? ''} ${decoded['org'] ?? ''}',
+          ),
+          organization: '${decoded['isp'] ?? decoded['org'] ?? ''}',
+          asn: _asnOf('${decoded['as'] ?? ''}'),
         );
-      }
-      return _ProbeOutcome(
-        status: '命中',
-        ipType: _classify('${decoded['as'] ?? ''} ${decoded['isp'] ?? ''} ${decoded['org'] ?? ''}'),
-        organization: '${decoded['isp'] ?? decoded['org'] ?? ''}',
-        asn: _asnOf('${decoded['as'] ?? ''}'),
-      );
-    }, watch);
+      },
+      watch,
+    );
   }
 
   Future<IpSourceResult> _ipWhoIs(HttpClient client, String ip) async {
@@ -215,7 +227,9 @@ class IpQualityChecker {
               ? '${connection['isp'] ?? ''} ${connection['org'] ?? ''} ${connection['domain'] ?? ''}'
               : '',
         ),
-        organization: connection is Map ? '${connection['isp'] ?? connection['org'] ?? ''}' : '',
+        organization: connection is Map
+            ? '${connection['isp'] ?? connection['org'] ?? ''}'
+            : '',
         asn: asnText.isEmpty ? '' : 'AS$asnText',
       );
     }, watch);
@@ -259,7 +273,10 @@ class IpQualityChecker {
       final request = await client.getUrl(Uri.parse(url)).timeout(timeout);
       request.headers.set(HttpHeaders.userAgentHeader, userAgent);
       final response = await request.close().timeout(timeout);
-      final body = await response.transform(utf8.decoder).join().timeout(timeout);
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(timeout);
       watch.stop();
       if (response.statusCode == 429) {
         return IpSourceResult(
@@ -301,14 +318,41 @@ class IpQualityChecker {
   static String _classify(String text) {
     final lower = text.toLowerCase();
     const datacenter = [
-      'hosting', 'datacenter', 'data center', 'cloud', 'server', 'vps',
-      'amazon', 'aws', 'google', 'microsoft', 'azure', 'digitalocean',
-      'linode', 'vultr', 'ovh', 'hetzner', 'cloudflare', 'alibaba', 'tencent',
-      'leaseweb', 'contabo', 'oracle',
+      'hosting',
+      'datacenter',
+      'data center',
+      'cloud',
+      'server',
+      'vps',
+      'amazon',
+      'aws',
+      'google',
+      'microsoft',
+      'azure',
+      'digitalocean',
+      'linode',
+      'vultr',
+      'ovh',
+      'hetzner',
+      'cloudflare',
+      'alibaba',
+      'tencent',
+      'leaseweb',
+      'contabo',
+      'oracle',
     ];
     const mobile = [
-      'mobile', 'wireless', 'cellular', 'china mobile', '中国移动',
-      'china unicom', '中国联通', 'china telecom', '中国电信', '4g', '5g',
+      'mobile',
+      'wireless',
+      'cellular',
+      'china mobile',
+      '中国移动',
+      'china unicom',
+      '中国联通',
+      'china telecom',
+      '中国电信',
+      '4g',
+      '5g',
     ];
     for (final keyword in mobile) {
       if (lower.contains(keyword)) return '移动';

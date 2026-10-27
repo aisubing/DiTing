@@ -117,7 +117,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         return (
           hero: const LogsDashboardHero(
             title: '服务状态与解析概览',
-            description: '当前处于隐私模式，不记录请求明细。'
+            description:
+                '当前处于隐私模式，不记录请求明细。'
                 'DNS 缓存、并发竞速与网络流量监控仍正常运行。',
           ),
           cards: _offMode(context),

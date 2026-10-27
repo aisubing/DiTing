@@ -42,7 +42,8 @@ class AgentParamsPage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.compose),
                 title: const Text('系统提示词设定'),
                 subtitle: Text(
-                  state.systemPrompt.isEmpty ? '未设置（将使用各分析场景的内置提示词）'
+                  state.systemPrompt.isEmpty
+                      ? '未设置（将使用各分析场景的内置提示词）'
                       : state.systemPrompt,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,

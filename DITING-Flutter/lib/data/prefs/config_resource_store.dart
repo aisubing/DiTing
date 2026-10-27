@@ -47,11 +47,8 @@ class ConfigResourceStore {
   );
 
   /// An empty string is written to tell "no override" from unset.
-  void saveSelectedUserAgent(String? value) => _store.putString(
-    container,
-    _selectedUaKey,
-    value ?? '',
-  );
+  void saveSelectedUserAgent(String? value) =>
+      _store.putString(container, _selectedUaKey, value ?? '');
 
   void saveSsidRules(List<MockSsidRule> rules) => _store.putString(
     container,
@@ -67,7 +64,8 @@ class ConfigResourceStore {
     ]),
   );
 
-  void saveOnDemand(bool value) => _store.putBool(container, _onDemandKey, value);
+  void saveOnDemand(bool value) =>
+      _store.putBool(container, _onDemandKey, value);
 
   /// The network the whitelist was last applied to, so re-evaluating the same network never
   /// overrides a manual start/stop. `''` (not on Wi-Fi) is a real value; null means never

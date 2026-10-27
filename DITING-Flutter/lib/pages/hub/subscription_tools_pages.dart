@@ -70,7 +70,9 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
                       : '输入 1 至 168 小时之间的更新时间',
                 ),
                 trailing: settings.isCustom ? const SelectionCheck() : null,
-                onTap: enabled ? () => _editCustom(context, ref, settings) : null,
+                onTap: enabled
+                    ? () => _editCustom(context, ref, settings)
+                    : null,
               ),
             ],
             footer:
@@ -309,10 +311,9 @@ class MirrorTemplatesPage extends ConsumerWidget {
                         ),
                         IconButton(
                           tooltip: '删除',
-                          onPressed: () =>
-                              ref.read(mirrorTemplateActionsProvider).remove(
-                                row.id,
-                              ),
+                          onPressed: () => ref
+                              .read(mirrorTemplateActionsProvider)
+                              .remove(row.id),
                           icon: const GlyphIcon(AppGlyphs.delete, size: 20),
                         ),
                       ],
@@ -442,16 +443,15 @@ class _TemplateDialogState extends State<_TemplateDialog> {
   }
 
   bool get _valid =>
-      _template.text.startsWith('http') && _placeholder.hasMatch(_template.text);
+      _template.text.startsWith('http') &&
+      _placeholder.hasMatch(_template.text);
 
   void _submit() {
     if (!_valid || _name.text.trim().isEmpty) {
       return;
     }
-    Navigator.of(context).pop((
-      name: _name.text.trim(),
-      template: _template.text.trim(),
-    ));
+    Navigator.of(context)
+        .pop((name: _name.text.trim(), template: _template.text.trim()));
   }
 
   @override
@@ -485,11 +485,13 @@ class _TemplateDialogState extends State<_TemplateDialog> {
             _valid
                 ? '可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'
                 : '必须使用 HTTP(S) 并包含至少一个占位符',
-            style: AppTextStyle.footnote.of(context).copyWith(
-              color: _valid
-                  ? context.colorScheme.onSurfaceVariant
-                  : context.colorScheme.error,
-            ),
+            style: AppTextStyle.footnote
+                .of(context)
+                .copyWith(
+                  color: _valid
+                      ? context.colorScheme.onSurfaceVariant
+                      : context.colorScheme.error,
+                ),
           ),
         ],
       ),

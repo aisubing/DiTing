@@ -88,10 +88,7 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     setState(() => _clearingCache = false);
     // Only two causes: the service is not running (nothing to clear) or the engine threw.
     // Both mean "not cleared", so the hint is actionable rather than "not wired yet".
-    showServerHint(
-      context,
-      cleared ? '缓存已清空' : '清空失败：请先启动解析服务再试',
-    );
+    showServerHint(context, cleared ? '缓存已清空' : '清空失败：请先启动解析服务再试');
   }
 
   @override

@@ -32,7 +32,8 @@ void main() {
         'selected_provider_id': 'preset_cloudflare_doh',
       });
       final provider =
-          (buildDnsConfig(settings).toJson(settings)['providers'] as List).single
+          (buildDnsConfig(settings).toJson(settings)['providers'] as List)
+                  .single
               as Map;
       expect(provider['protocol'], 'DOH');
       expect(provider['server'], '');
@@ -78,7 +79,13 @@ void main() {
             'url': 'https://dns.example/dns-query',
           },
           {'id': 'u2', 'name': '坏 DoH', 'protocol': 'DOH', 'url': 'http://x'},
-          {'id': 'u3', 'name': '坏端口', 'protocol': 'DOT', 'host': 'x.y', 'port': 0},
+          {
+            'id': 'u3',
+            'name': '坏端口',
+            'protocol': 'DOT',
+            'host': 'x.y',
+            'port': 0,
+          },
           {'id': 'u4', 'name': '未知协议', 'protocol': 'DOQ', 'url': 'https://x'},
         ]),
         'selected_provider_id': 'u1',
@@ -111,10 +118,11 @@ void main() {
       final bootstrap =
           buildDnsConfig(settings).toJson(settings)['bootstrap'] as Map;
       expect(bootstrap['enabled'], true);
-      expect(
-        (bootstrap['ips'] as List).map((e) => (e as Map)['ip']),
-        ['223.5.5.5', '119.29.29.29', '180.184.1.1'],
-      );
+      expect((bootstrap['ips'] as List).map((e) => (e as Map)['ip']), [
+        '223.5.5.5',
+        '119.29.29.29',
+        '180.184.1.1',
+      ]);
     });
 
     test('关闭 bootstrap 后 ips 为空', () {

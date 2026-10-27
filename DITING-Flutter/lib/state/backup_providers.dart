@@ -50,9 +50,7 @@ final backupStatsProvider = FutureProvider<BackupStats>((ref) async {
   var customRules = 0;
   if (db != null) {
     try {
-      final rows = await db.rawQuery(
-        'SELECT COUNT(*) AS n FROM subscription',
-      );
+      final rows = await db.rawQuery('SELECT COUNT(*) AS n FROM subscription');
       subscriptions = (rows.first['n'] as num?)?.toInt() ?? 0;
     } on Exception {
       subscriptions = 0;
@@ -61,7 +59,9 @@ final backupStatsProvider = FutureProvider<BackupStats>((ref) async {
     for (final kind in [RuleKind.block, RuleKind.allow, RuleKind.rewrite]) {
       try {
         final rules = await repository.loadKind(kind);
-        customRules += rules.where((rule) => rule.source == RuleSource.user).length;
+        customRules += rules
+            .where((rule) => rule.source == RuleSource.user)
+            .length;
       } on Exception {
         // A missing table counts as 0: this tile is an overview, not an error.
         continue;
@@ -101,22 +101,22 @@ class BackupActions {
 
   Future<BackupExportResult> export(Set<BackupGroup> groups) async {
     final db = await _ref.read(activeLogDatabaseProvider.future);
-    final result = await _ref.read(backupExporterProvider).export(
-      BackupExportSource(
-        settings: _ref.read(legacySettingsProvider),
-        database: db,
-      ),
-      groups: groups,
-    );
+    final result = await _ref
+        .read(backupExporterProvider)
+        .export(
+          BackupExportSource(
+            settings: _ref.read(legacySettingsProvider),
+            database: db,
+          ),
+          groups: groups,
+        );
     return result;
   }
 
   /// Saves via the system picker; returns the user-facing result.
-  Future<DocumentSaveResult> saveToDocument(BackupExportResult export) =>
-      _ref.read(platformBridgeProvider).exportDocument(
-        name: export.fileName,
-        content: export.content,
-      );
+  Future<DocumentSaveResult> saveToDocument(BackupExportResult export) => _ref
+      .read(platformBridgeProvider)
+      .exportDocument(name: export.fileName, content: export.content);
 
   /// Opens the system picker, parses and merges the picked file.
   Future<BackupImportResult> importFromDocument() async {
@@ -134,14 +134,16 @@ class BackupActions {
     String? sourceName,
   }) async {
     final db = await _ref.read(activeLogDatabaseProvider.future);
-    final result = await _ref.read(backupImporterProvider).import(
-      text,
-      BackupImportTarget(
-        store: _ref.read(legacyPrefsStoreProvider),
-        database: db,
-      ),
-      sourceName: sourceName,
-    );
+    final result = await _ref
+        .read(backupImporterProvider)
+        .import(
+          text,
+          BackupImportTarget(
+            store: _ref.read(legacyPrefsStoreProvider),
+            database: db,
+          ),
+          sourceName: sourceName,
+        );
     if (!result.failed && !result.cancelled) {
       _invalidate();
       _refreshIndexesIfNeeded(result);
@@ -159,7 +161,9 @@ class BackupActions {
       BackupGroup.rewriteCname,
       BackupGroup.addressRules,
     };
-    if (result.outcomes.every((outcome) => !ruleGroups.contains(outcome.group))) {
+    if (result.outcomes.every(
+      (outcome) => !ruleGroups.contains(outcome.group),
+    )) {
       return;
     }
     final dataset = _ref.read(workModeProvider) == AppWorkMode.express

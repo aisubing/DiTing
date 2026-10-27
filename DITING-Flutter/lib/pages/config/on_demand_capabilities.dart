@@ -114,7 +114,9 @@ SsidDecision decideSsid({
   if (currentSsid == null) return const SsidDecision(SsidMatchState.unknown);
   if (currentSsid.isEmpty) return const SsidDecision(SsidMatchState.noWifi);
   for (final rule in rules) {
-    if (rule.ssid == currentSsid) return SsidDecision(SsidMatchState.matched, rule);
+    if (rule.ssid == currentSsid) {
+      return SsidDecision(SsidMatchState.matched, rule);
+    }
   }
   return const SsidDecision(SsidMatchState.unmatched);
 }

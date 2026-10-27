@@ -8,7 +8,6 @@ const _g_wifi_ = Glyph([
   GlyphCircle(12, 18.6, 1.7, role: GlyphRole.line, solid: true),
 ]);
 
-
 const _g_wifiOff_ = Glyph([
   GlyphPath('M3.32 9.56 A13.5 13.5 0 0 1 6.15 7.73', role: GlyphRole.line),
   GlyphPath('M10.75 6.46 A13.5 13.5 0 0 1 20.68 9.56', role: GlyphRole.line),
@@ -20,7 +19,6 @@ const _g_wifiOff_ = Glyph([
     GlyphVertex(20.5, 19),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_gavel_ = Glyph([
   GlyphPolyline([
@@ -38,7 +36,6 @@ const _g_gavel_ = Glyph([
     GlyphVertex(11.5, 20.5),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_appsList_ = Glyph([
   GlyphBox(3.5, 3.3, 6.9, 6.7, 1),
@@ -58,7 +55,6 @@ const _g_appsList_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_iconTile_ = Glyph([
   GlyphBox(3, 3, 21, 21, 5),
   GlyphPolyline([
@@ -70,7 +66,6 @@ const _g_iconTile_ = Glyph([
   ], role: GlyphRole.detail),
   GlyphCircle(15.2, 8.8, 1.5, role: GlyphRole.detail, solid: true),
 ]);
-
 
 Glyph _g_sidebar_(double progress) {
   final divider = lerpDouble(8.5, 11.5, progress)!;
@@ -87,7 +82,6 @@ Glyph _g_sidebar_(double progress) {
       ], role: GlyphRole.detail),
   ], matchTextDirection: true);
 }
-
 
 /// Play at 0, pause at 1; past either end it keeps turning, so it bounces.
 Glyph _g_playPause_(double progress) {
@@ -109,7 +103,6 @@ Glyph _g_playPause_(double progress) {
   ]);
 }
 
-
 const _g__playCorners_ = [
   Offset(8.3, 5.6),
   Offset(18.8, 12),
@@ -119,12 +112,7 @@ const _g__playCorners_ = [
 const _g__playHalves_ = [
   (
     [Offset(8.3, 5.6), Offset(18.8, 12), Offset(18.8, 12), Offset(8.3, 12)],
-    [
-      Offset(5.9, 6.9),
-      Offset(18.1, 6.9),
-      Offset(18.1, 9.1),
-      Offset(5.9, 9.1),
-    ],
+    [Offset(5.9, 6.9), Offset(18.1, 6.9), Offset(18.1, 9.1), Offset(5.9, 9.1)],
   ),
   (
     [Offset(8.3, 12), Offset(18.8, 12), Offset(18.8, 12), Offset(8.3, 18.4)],
@@ -137,7 +125,6 @@ const _g__playHalves_ = [
   ),
 ];
 
-
 GlyphVertex _g__turnedVertex_(Offset corner, double angle) {
   final offset = corner - const Offset(12, 12);
   return GlyphVertex(
@@ -146,7 +133,6 @@ GlyphVertex _g__turnedVertex_(Offset corner, double angle) {
     1.2,
   );
 }
-
 
 Glyph _g_backFor_(TargetPlatform platform) {
   if (kIsWeb) {

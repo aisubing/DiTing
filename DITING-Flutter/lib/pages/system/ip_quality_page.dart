@@ -139,11 +139,7 @@ class IpQualitySheet extends StatelessWidget {
     if (report == null) {
       // Without a report, speak per stage: spinner, reason and retry, or a hint. No
       // hard-coded sample is shown.
-      return _EmptyReport(
-        stage: stage,
-        error: error,
-        onRetry: onRetry,
-      );
+      return _EmptyReport(stage: stage, error: error, onRetry: onRetry);
     }
     final current = report!;
     final type = _typeOf(current.ipType);
@@ -296,9 +292,7 @@ class _EmptyReport extends StatelessWidget {
                     spacing: 4,
                     children: [
                       Text(
-                        loading
-                            ? '正在检测'
-                            : (failed ? '检测失败' : '尚未检测'),
+                        loading ? '正在检测' : (failed ? '检测失败' : '尚未检测'),
                         style: context.listTitleStyle,
                       ),
                       Text(
@@ -380,7 +374,10 @@ class _SourceRow extends StatelessWidget {
             style: context.listCaptionStyle.copyWith(color: color),
           ),
           if (ipType != null)
-            Text('判定为${_typeOf(ipType).label}', style: context.listCaptionStyle),
+            Text(
+              '判定为${_typeOf(ipType).label}',
+              style: context.listCaptionStyle,
+            ),
           if (latency != null)
             Text(
               '${latency}ms',

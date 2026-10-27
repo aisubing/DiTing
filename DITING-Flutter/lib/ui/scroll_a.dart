@@ -160,7 +160,7 @@ class _AppScrollbarState extends RawScrollbarState<_AppScrollbar> {
     widget.onScrub?.call(_scrubRate);
   }
 
-    // The thumb maps to an absolute offset; feed the base class the scaled delta only.
+  // The thumb maps to an absolute offset; feed the base class the scaled delta only.
   @override
   void handleThumbPressUpdate(Offset localPosition) {
     final origin = _scrubOrigin;

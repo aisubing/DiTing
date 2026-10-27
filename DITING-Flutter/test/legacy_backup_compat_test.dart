@@ -304,11 +304,7 @@ void main() {
         final providers = again.outcomes.firstWhere(
           (outcome) => outcome.group == BackupGroup.providers,
         );
-        expect(
-          providers.updated,
-          0,
-          reason: '第 ${round + 2} 次导入仍把服务商标成更新',
-        );
+        expect(providers.updated, 0, reason: '第 ${round + 2} 次导入仍把服务商标成更新');
         expect(providers.added, 0);
       }
     });
@@ -343,11 +339,7 @@ void main() {
         final appearance = result.outcomes.firstWhere(
           (outcome) => outcome.group == BackupGroup.appearance,
         );
-        expect(
-          appearance.added,
-          0,
-          reason: '第 ${round + 1} 次导入又把透明度当成新项',
-        );
+        expect(appearance.added, 0, reason: '第 ${round + 1} 次导入又把透明度当成新项');
       }
     });
 

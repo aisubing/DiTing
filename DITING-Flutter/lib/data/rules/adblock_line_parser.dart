@@ -11,8 +11,7 @@ const _cosmeticDelimiters = ['#\$@#', '#@#', '##', '#?#', '#\$#'];
 
 /// Whether the line uses an element-hiding delimiter. Must run before comment filtering: a `#` line
 /// may be a comment or a rule.
-bool isCosmeticRuleLine(String line) =>
-    _cosmeticDelimiters.any(line.contains);
+bool isCosmeticRuleLine(String line) => _cosmeticDelimiters.any(line.contains);
 
 /// Index where a trailing `#` comment may start, or 0. A regex may contain `#` (`/foo#bar/`), so
 /// the scan starts after the closing `/`.
@@ -173,7 +172,8 @@ CategorizedLine parseAdblockOrDomainLine(
           cleanDomains.add(normalized);
         }
         denyallow = cleanDomains.join('|');
-      } else if (lower.startsWith('dnstype=') || lower.startsWith('~dnstype=')) {
+      } else if (lower.startsWith('dnstype=') ||
+          lower.startsWith('~dnstype=')) {
         final isNegative = lower.startsWith('~dnstype=');
         final rawSpec = (isNegative ? token.substring(9) : token.substring(8))
             .trim();
@@ -291,11 +291,7 @@ CategorizedLine parseAdblockOrDomainLine(
   if (isBadfilter) {
     final String key;
     if (dnsrewriteTargetType != null && dnsrewriteTargetValue != null) {
-      key = rewriteRuleKey(
-        domain,
-        dnsrewriteTargetType,
-        dnsrewriteTargetValue,
-      );
+      key = rewriteRuleKey(domain, dnsrewriteTargetType, dnsrewriteTargetValue);
     } else if (dnsrewriteIsBlock || !allow) {
       key = blockRuleKey(
         domain,
@@ -516,7 +512,8 @@ String _ruleKey(
 }) {
   final base = '$prefix:$pattern:$important:$appScope:$appInverted';
   final hasExtra =
-      (denyallow != null && denyallow.isNotEmpty) || isRegex ||
+      (denyallow != null && denyallow.isNotEmpty) ||
+      isRegex ||
       (dnsType != null && dnsType.isNotEmpty);
   if (!hasExtra) {
     return base;

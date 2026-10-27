@@ -174,7 +174,11 @@ String? normalizeWildcardDomain(String value) {
     for (final unit in label.codeUnits) {
       final isLower = unit >= 0x61 && unit <= 0x7a;
       final isDigit = unit >= 0x30 && unit <= 0x39;
-      if (!isLower && !isDigit && unit != 0x2d && unit != 0x2a && unit != 0x5f) {
+      if (!isLower &&
+          !isDigit &&
+          unit != 0x2d &&
+          unit != 0x2a &&
+          unit != 0x5f) {
         return null;
       }
     }

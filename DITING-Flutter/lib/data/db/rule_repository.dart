@@ -88,7 +88,8 @@ class RuleRepository {
       subscriptionName: _subscriptionNameOf(sources, subscriptionNames),
       target: kind == RuleKind.rewrite ? row['targetValue'] as String? : null,
       appScope: appScope == null || appScope.isEmpty ? null : appScope,
-      appInverted: kind != RuleKind.rewrite && (row['appInverted'] as int? ?? 0) == 1,
+      appInverted:
+          kind != RuleKind.rewrite && (row['appInverted'] as int? ?? 0) == 1,
     );
   }
 
@@ -455,8 +456,7 @@ class RuleRepository {
     final existing = await _db.query(
       'block_rule',
       columns: ['id'],
-      where:
-          'pattern = ? AND appInverted = 0 AND ${_scopeClause('appScope')}',
+      where: 'pattern = ? AND appInverted = 0 AND ${_scopeClause('appScope')}',
       whereArgs: ['*', ..._scopeArgs(packageName)],
       limit: 1,
     );

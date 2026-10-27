@@ -21,8 +21,10 @@ part 'snap_sheet_b.dart';
 part 'snap_sheet_c.dart';
 
 /// Receives the sheet's own scroll controller, or null with no detents to drag between.
-typedef SnapSheetBuilder =
-    Widget Function(BuildContext context, ScrollController? controller);
+typedef SnapSheetBuilder = Widget Function(
+  BuildContext context,
+  ScrollController? controller,
+);
 
 const snapSheetDetents = [9 / 16, 0.9];
 
@@ -107,7 +109,7 @@ class SnapSheetRoute<T> extends PopupRoute<T> with SheetCoverRouteMixin<T> {
     controller!.animateWith(_presentation(1, velocity));
   }
 
-/// Springs back while a guard decides, then closes with [velocity] as UIKit does.
+  /// Springs back while a guard decides, then closes with [velocity] as UIKit does.
   void _close(double velocity) {
     _restore(0);
     _closingVelocity = velocity;

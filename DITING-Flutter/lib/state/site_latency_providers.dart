@@ -39,7 +39,10 @@ class DashboardSiteIdsNotifier extends Notifier<List<String>> {
       if (state.length <= 1) {
         return false;
       }
-      _commit([for (final item in state) if (item != id) item]);
+      _commit([
+        for (final item in state)
+          if (item != id) item,
+      ]);
       return true;
     }
     if (state.length >= dashboardSiteCount) {

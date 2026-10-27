@@ -49,8 +49,10 @@ void main() {
 
   void stubAll({
     String ip = '1.2.3.4',
-    String ipApi = '{"status":"success","as":"AS15169 Google LLC","isp":"Google"}',
-    String ipWho = '{"success":true,"connection":{"asn":15169,"isp":"Google LLC"}}',
+    String ipApi =
+        '{"status":"success","as":"AS15169 Google LLC","isp":"Google"}',
+    String ipWho =
+        '{"success":true,"connection":{"asn":15169,"isp":"Google LLC"}}',
     String ipInfo = '{"org":"AS15169 Google LLC"}',
   }) {
     routes['/ip'] = jsonEncode({'ip': ip});
@@ -122,7 +124,8 @@ void main() {
     test('移动运营商被判为移动', () async {
       stubAll(
         ipApi: '{"status":"success","as":"AS9808 China Mobile","isp":"China Mobile"}',
-        ipWho: '{"success":true,"connection":{"asn":9808,"isp":"China Mobile"}}',
+        ipWho:
+            '{"success":true,"connection":{"asn":9808,"isp":"China Mobile"}}',
         ipInfo: '{"org":"AS9808 China Mobile"}',
       );
       final report = (await checker().detect() as IpQualitySuccess).report;
@@ -148,10 +151,7 @@ void main() {
       }
       final outcome = await checker().detect();
       expect(outcome, isA<IpQualityError>());
-      expect(
-        (outcome as IpQualityError).failure.message,
-        contains('均未返回结果'),
-      );
+      expect((outcome as IpQualityError).failure.message, contains('均未返回结果'));
     });
 
     test('ipinfo 额度用尽被标为限流而不是失败', () async {

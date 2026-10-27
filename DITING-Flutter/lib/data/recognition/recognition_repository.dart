@@ -74,7 +74,9 @@ class RecognitionMembersRepository {
       } on Object catch (error) {
         lastError = error;
         if (attempt < 2) {
-          await Future<void>.delayed(Duration(milliseconds: 400 * (attempt + 1)));
+          await Future<void>.delayed(
+            Duration(milliseconds: 400 * (attempt + 1)),
+          );
         }
       }
     }
@@ -197,7 +199,11 @@ class RecognitionMembersRepository {
     store.putString(container, _configKey, raw);
     // Millisecond timestamps (~1.7e12) overflow 32 bits, so putLong is required; putInt truncates
     // to a 1970 date.
-    store.putLong(container, _savedAtKey, DateTime.now().millisecondsSinceEpoch);
+    store.putLong(
+      container,
+      _savedAtKey,
+      DateTime.now().millisecondsSinceEpoch,
+    );
     if (etag != null && etag.isNotEmpty) {
       store.putString(container, _etagKey, etag);
     }

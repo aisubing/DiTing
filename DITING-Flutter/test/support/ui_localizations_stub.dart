@@ -44,8 +44,7 @@ class _StubDelegate extends LocalizationsDelegate<UiLocalizations> {
   bool isSupported(Locale locale) => true;
 
   @override
-  Future<UiLocalizations> load(Locale locale) async =>
-      StubUiLocalizations();
+  Future<UiLocalizations> load(Locale locale) async => StubUiLocalizations();
 
   @override
   bool shouldReload(_StubDelegate old) => false;

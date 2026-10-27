@@ -56,9 +56,7 @@ class TrafficMonitorCard extends ConsumerWidget {
                   children: [
                     Text('今日代理流量', style: DashboardText.label(context)),
                     Text(
-                      totals == null
-                          ? '—'
-                          : dashboardBinaryBytes(totals.total),
+                      totals == null ? '—' : dashboardBinaryBytes(totals.total),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: DashboardText.figure(

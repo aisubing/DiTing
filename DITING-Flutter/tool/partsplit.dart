@@ -22,7 +22,8 @@ void main(List<String> args) {
     var start = c[0];
     while (start > 2) {
       final prev = lines[start - 2];
-      if (prev.trimLeft().startsWith('///') || prev.trimLeft().startsWith('//')) {
+      if (prev.trimLeft().startsWith('///') ||
+          prev.trimLeft().startsWith('//')) {
         start--;
       } else {
         break;
@@ -36,8 +37,7 @@ void main(List<String> args) {
     final name = '${stem}_${String.fromCharCode(0x61 + i)}.dart';
     names.add(name);
     final body = lines.sublist(adj[i][0] - 1, adj[i][1]).join('\n').trimRight();
-    File('$dir/$name')
-        .writeAsStringSync("$hdr\n\npart of '$base';\n\n$body\n");
+    File('$dir/$name').writeAsStringSync("$hdr\n\npart of '$base';\n\n$body\n");
   }
 
   final covered = List<bool>.filled(lines.length + 2, false);
@@ -60,9 +60,15 @@ void main(List<String> args) {
   }
   final rel = names.map((n) => "part '$n';");
   File(file).writeAsStringSync(
-      [...kept.sublist(0, insertAt), ...rel, ...kept.sublist(insertAt)]
-          .join('\n')
-          .trimRight() + '\n');
-  print('$base root=${kept.length} parts='
-      '${names.map((n) => File('$dir/$n').readAsLinesSync().length).toList()}');
+    [
+          ...kept.sublist(0, insertAt),
+          ...rel,
+          ...kept.sublist(insertAt),
+        ].join('\n').trimRight() +
+        '\n',
+  );
+  print(
+    '$base root=${kept.length} parts='
+    '${names.map((n) => File('$dir/$n').readAsLinesSync().length).toList()}',
+  );
 }

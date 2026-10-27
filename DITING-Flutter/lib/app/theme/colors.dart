@@ -62,7 +62,6 @@ enum AppThemeMode {
   /// Legacy `app_theme_mode` value.
   final String storageValue;
 
-
   static AppThemeMode fromStorageValue(String? value) => values.firstWhere(
     (mode) => mode.storageValue == value,
     orElse: () => system,

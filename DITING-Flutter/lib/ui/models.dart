@@ -37,9 +37,7 @@ class IconButtonData {
           : onPressed as VoidCallback?,
       tooltip: tooltip == _keep ? this.tooltip : tooltip as String?,
       isLoading: isLoading ?? this.isLoading,
-      isSelected: isSelected == _keep
-          ? this.isSelected
-          : isSelected as bool?,
+      isSelected: isSelected == _keep ? this.isSelected : isSelected as bool?,
     );
   }
 
@@ -54,7 +52,8 @@ class IconButtonData {
           other.isSelected == isSelected;
 
   @override
-  int get hashCode => Object.hash(glyph, onPressed, tooltip, isLoading, isSelected);
+  int get hashCode =>
+      Object.hash(glyph, onPressed, tooltip, isLoading, isSelected);
 }
 
 @immutable
@@ -87,7 +86,10 @@ class AppBarSearchState {
   final Function(String) onSearch;
   final String? query;
 
-  AppBarSearchState copyWith({Function(String)? onSearch, Object? query = _keep}) {
+  AppBarSearchState copyWith({
+    Function(String)? onSearch,
+    Object? query = _keep,
+  }) {
     return AppBarSearchState(
       onSearch: onSearch ?? this.onSearch,
       query: query == _keep ? this.query : query as String?,

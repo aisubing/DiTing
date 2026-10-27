@@ -190,10 +190,7 @@ class _AboutHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            '谛听',
-            style: AppTextStyle.title2.of(context, emphasized: true),
-          ),
+          Text('谛听', style: AppTextStyle.title2.of(context, emphasized: true)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -219,10 +216,9 @@ class _AboutHero extends StatelessWidget {
               '基于 Android VpnService 的本地优先 DNS 加速与流量过滤工具，'
               '简单易用，开源无广告。',
               textAlign: TextAlign.center,
-              style: AppTextStyle.subheadline.of(context).copyWith(
-                color: colorScheme.onSurfaceVariant,
-                height: 1.5,
-              ),
+              style: AppTextStyle.subheadline
+                  .of(context)
+                  .copyWith(color: colorScheme.onSurfaceVariant, height: 1.5),
             ),
           ),
           const SizedBox(height: 20),
@@ -232,7 +228,8 @@ class _AboutHero extends StatelessWidget {
             label: stage == UpdateStage.checking ? '检查中…' : '检查更新',
             onPressed: onCheck,
           ),
-          if (stage == UpdateStage.downloading || stage == UpdateStage.downloaded)
+          if (stage == UpdateStage.downloading ||
+              stage == UpdateStage.downloaded)
             Padding(
               padding: const EdgeInsets.only(top: 14),
               child: _DownloadProgress(state: update),
@@ -364,11 +361,7 @@ class _LinkRow extends StatelessWidget {
       title: Text(title),
       subtitle: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: const GlyphIcon(AppGlyphs.openExternal),
-      onTap: () => openLinkOrCopy(
-        context,
-        url,
-        '未能打开浏览器，链接已复制：$url',
-      ),
+      onTap: () => openLinkOrCopy(context, url, '未能打开浏览器，链接已复制：$url'),
     );
   }
 }

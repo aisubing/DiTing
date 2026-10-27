@@ -55,10 +55,10 @@ void main() {
 
   /// The last network the whitelist was applied to; `null` means the key is absent.
   String? readLastSsid(ProviderContainer c) =>
-      c.read(legacyPrefsStoreProvider).read(
-        'diting_config_resources',
-        'on_demand_last_ssid',
-      ) as String?;
+      c
+              .read(legacyPrefsStoreProvider)
+              .read('diting_config_resources', 'on_demand_last_ssid')
+          as String?;
 
   /// Settles the asynchronous status sync `PowerNotifier.build` starts for a persisted tunnel.
   Future<void> settle(ProviderContainer instance) async {

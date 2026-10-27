@@ -127,10 +127,11 @@ void main() {
       await insertSub(url: 'https://b', addedAt: 300, name: 'B');
       await insertSub(url: 'https://c', addedAt: 200, name: 'C');
 
-      expect(
-        (await repository.all()).map((record) => record.name),
-        ['B', 'C', 'A'],
-      );
+      expect((await repository.all()).map((record) => record.name), [
+        'B',
+        'C',
+        'A',
+      ]);
     });
 
     test('kind / sourceType 过滤与 kind 归一化', () async {
@@ -148,10 +149,7 @@ void main() {
         hasLength(1),
       );
       expect(await repository.allRemote(), hasLength(2));
-      expect(
-        SubscriptionKind.normalize('HOSTS'),
-        SubscriptionKind.hosts,
-      );
+      expect(SubscriptionKind.normalize('HOSTS'), SubscriptionKind.hosts);
       expect(SubscriptionKind.normalize(null), SubscriptionKind.domain);
       expect(SubscriptionKind.isCanonical('domain'), isTrue);
       expect(SubscriptionKind.isCanonical('weird'), isFalse);
@@ -174,10 +172,11 @@ void main() {
         'addedAt': 50,
       });
 
-      expect(
-        (await repository.groups()).map((group) => group.name),
-        ['zeta', 'Alpha', 'beta'],
-      );
+      expect((await repository.groups()).map((group) => group.name), [
+        'zeta',
+        'Alpha',
+        'beta',
+      ]);
     });
 
     test('allAutoUpdatableRemote：启用 + 无分组或分组开启', () async {

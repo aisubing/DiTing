@@ -88,21 +88,14 @@ class DavClient {
         // A missing directory is normal on first use; failing to create it is not.
         final created = await _mkcol(client, credentials);
         if (created) return const DavProbeResult.ok(created: true);
-        return const DavProbeResult.failed(
-          '服务器可达但无法创建目录，请检查账号是否具备写入权限',
-        );
+        return const DavProbeResult.failed('服务器可达但无法创建目录，请检查账号是否具备写入权限');
       }
-      return DavProbeResult.failed(
-        _statusMessage(status),
-        statusCode: status,
-      );
+      return DavProbeResult.failed(_statusMessage(status), statusCode: status);
     } on SocketException catch (error) {
       // Unreachable address, DNS failure and closed port look alike to users.
       return DavProbeResult.failed('无法连接到服务器：${error.message}');
     } on HandshakeException {
-      return const DavProbeResult.failed(
-        'TLS 握手失败：服务器证书不被信任（自签证书需在系统里安装）',
-      );
+      return const DavProbeResult.failed('TLS 握手失败：服务器证书不被信任（自签证书需在系统里安装）');
     } on HttpException {
       return DavProbeResult.failed('HTTP 请求失败，请检查服务器是否支持 WebDAV');
     } finally {

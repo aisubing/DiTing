@@ -38,9 +38,7 @@ final _inlineTokenRegex = RegExp(
 
 /// Highlight colour for a risk / recommendation word, or null when the text carries no verdict.
 Color? badgeColorOf(String text, MarkdownColors colors) {
-  if (text.contains('高危') ||
-      text.contains('高风险') ||
-      text.contains('屏蔽规则')) {
+  if (text.contains('高危') || text.contains('高风险') || text.contains('屏蔽规则')) {
     return colors.error;
   }
   if (text.contains('中风险') || text.contains('存在一般隐患')) {
@@ -60,7 +58,10 @@ Color? badgeColorOf(String text, MarkdownColors colors) {
 }
 
 /// One paragraph of model output as styled spans. Unmatched text keeps [MarkdownColors.base].
-List<InlineSpan> buildMarkdownInlineSpans(String source, MarkdownColors colors) {
+List<InlineSpan> buildMarkdownInlineSpans(
+  String source,
+  MarkdownColors colors,
+) {
   final spans = <InlineSpan>[];
   var cursor = 0;
 
@@ -96,7 +97,9 @@ InlineSpan _spanForToken(
   MarkdownColors colors,
 ) {
   bool wrapped(String mark, int minLength) =>
-      token.startsWith(mark) && token.endsWith(mark) && token.length >= minLength;
+      token.startsWith(mark) &&
+      token.endsWith(mark) &&
+      token.length >= minLength;
 
   // Bold & italic.
   if (wrapped('***', 6) || wrapped('___', 6)) {
@@ -171,5 +174,8 @@ InlineSpan _spanForToken(
     );
   }
 
-  return TextSpan(text: token, style: TextStyle(color: colors.base));
+  return TextSpan(
+    text: token,
+    style: TextStyle(color: colors.base),
+  );
 }

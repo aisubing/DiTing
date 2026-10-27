@@ -69,7 +69,8 @@ class AgentProvidersPage extends ConsumerWidget {
                     children: [
                       IconButton(
                         tooltip: '编辑',
-                        onPressed: () => _edit(context, ref, existing: provider),
+                        onPressed: () =>
+                            _edit(context, ref, existing: provider),
                         icon: const GlyphIcon(AppGlyphs.edit, size: 20),
                       ),
                       IconButton(

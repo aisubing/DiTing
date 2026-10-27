@@ -105,7 +105,6 @@ final cacheLastHitProvider = FutureProvider<Map<String, int?>>((ref) async {
   };
 });
 
-
 class BootstrapStatsSnapshot {
   const BootstrapStatsSnapshot({
     required this.attempts,

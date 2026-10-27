@@ -1,6 +1,7 @@
 /// Kept-resource demo data. Initial values only; mutable copies live in
 /// `lib/state/config_providers_resources.dart`.
 library;
+
 class MockUserAgent {
   const MockUserAgent({required this.value, this.isDefault = false});
 

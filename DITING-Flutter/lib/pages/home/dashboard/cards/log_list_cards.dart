@@ -41,11 +41,7 @@ class RequestOverviewCard extends ConsumerWidget {
           value: _figure(stats?.passed),
           color: colorScheme.primary,
         ),
-        (
-          label: '过滤',
-          value: _figure(stats?.blocked),
-          color: colorScheme.error,
-        ),
+        (label: '过滤', value: _figure(stats?.blocked), color: colorScheme.error),
         (
           label: '缓存命中',
           value: _figure(stats?.cached),
@@ -73,9 +69,7 @@ class FilteredHighlightCard extends ConsumerWidget {
       cells: [
         (
           label: '重点记录',
-          value: _figure(
-            stats == null ? null : stats.blocked + stats.error,
-          ),
+          value: _figure(stats == null ? null : stats.blocked + stats.error),
           color: colorScheme.primary,
         ),
         (
@@ -83,11 +77,7 @@ class FilteredHighlightCard extends ConsumerWidget {
           value: _figure(stats?.blocked),
           color: colorScheme.error,
         ),
-        (
-          label: '异常失败',
-          value: _figure(stats?.error),
-          color: colorScheme.error,
-        ),
+        (label: '异常失败', value: _figure(stats?.error), color: colorScheme.error),
         (
           label: '旁路直连',
           value: _figure(stats?.bypassed),

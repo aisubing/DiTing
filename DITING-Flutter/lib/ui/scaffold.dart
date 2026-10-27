@@ -45,8 +45,9 @@ part 'scaffold_f.dart';
 
 typedef OnKeywordsUpdateCallback = void Function(List<String> keywords);
 
-typedef AppBarSearchStateBuilder =
-    AppBarSearchState? Function(AppBarSearchState? state);
+typedef AppBarSearchStateBuilder = AppBarSearchState? Function(
+  AppBarSearchState? state,
+);
 
 class CommonScaffold extends StatefulWidget {
   final Widget body;

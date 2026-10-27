@@ -45,9 +45,8 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
 
   @override
   ConfigResources build() {
-    final snapshot = ConfigResourceStore(
-      ref.watch(legacyPrefsStoreProvider),
-    ).load();
+    final snapshot = ConfigResourceStore(ref.watch(legacyPrefsStoreProvider))
+        .load();
     return ConfigResources(
       userAgents: snapshot.userAgents,
       selectedUserAgent: snapshot.selectedUserAgent,
@@ -120,7 +119,6 @@ class ConfigResourcesNotifier extends Notifier<ConfigResources> {
     // Persist the cleared selection too, or a restart shows "selected" for a missing agent.
     if (selectedWasRemoved) _store.saveSelectedUserAgent(null);
   }
-
 
   void selectUserAgent(String? value) {
     _put(
@@ -198,6 +196,8 @@ final configResourcesProvider =
 /// `/config/user-agents` a real setting instead of a stored string.
 final requestUserAgentProvider = Provider<String>(
   (ref) => resolveRequestUserAgent(
-    ref.watch(configResourcesProvider.select((state) => state.selectedUserAgent)),
+    ref.watch(
+      configResourcesProvider.select((state) => state.selectedUserAgent),
+    ),
   ),
 );

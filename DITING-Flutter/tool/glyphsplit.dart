@@ -4,8 +4,15 @@ const hdr =
     '// Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.';
 
 class Member {
-  Member(this.name, this.isPublic, this.isFn, this.ret, this.params, this.declAt,
-      this.lines);
+  Member(
+    this.name,
+    this.isPublic,
+    this.isFn,
+    this.ret,
+    this.params,
+    this.declAt,
+    this.lines,
+  );
   final String name;
   final bool isPublic;
   final bool isFn;
@@ -16,14 +23,17 @@ class Member {
 }
 
 final reStatic = RegExp(r'^  static ');
-final reFn = RegExp(r'^  static ([A-Za-z<>?,\[\] ]+ )([a-zA-Z_][a-zA-Z0-9_]*)\(');
+final reFn = RegExp(
+  r'^  static ([A-Za-z<>?,\[\] ]+ )([a-zA-Z_][a-zA-Z0-9_]*)\(',
+);
 final reConst = RegExp(r'^  static (const|final) ([a-zA-Z_][a-zA-Z0-9_]*) =');
 final reTailIdent = RegExp(r'([a-zA-Z_][a-zA-Z0-9_]*)$');
 
 void main() {
   final src = File('lib/ui/icons/app_glyphs.dart').readAsLinesSync();
-  final clsOpen =
-      src.indexWhere((l) => l.startsWith('abstract final class AppGlyphs'));
+  final clsOpen = src.indexWhere(
+    (l) => l.startsWith('abstract final class AppGlyphs'),
+  );
   final clsClose = src.lastIndexWhere((l) => l == '}');
 
   final starts = <int>[];
@@ -60,12 +70,22 @@ void main() {
       final name = mFn.group(2)!;
       final open = decl.indexOf('(', decl.indexOf(name) + name.length);
       final close = _matchParen(decl, open);
-      members.add(Member(name, !name.startsWith('_'), true,
-          mFn.group(1)!.trim(), decl.substring(open + 1, close), di, block));
+      members.add(
+        Member(
+          name,
+          !name.startsWith('_'),
+          true,
+          mFn.group(1)!.trim(),
+          decl.substring(open + 1, close),
+          di,
+          block,
+        ),
+      );
     } else if (mC != null) {
       final name = mC.group(2)!;
       members.add(
-          Member(name, !name.startsWith('_'), false, '', '', di, block));
+        Member(name, !name.startsWith('_'), false, '', '', di, block),
+      );
     } else {
       stderr.writeln('UNCLASSIFIED: $decl');
       exitCode = 3;
@@ -87,7 +107,8 @@ void main() {
         if (m.isFn) {
           final open = l.indexOf('(', l.indexOf(m.name) + m.name.length);
           final close = _matchParen(l, open);
-          text = '${m.ret} ${gname(m.name)}${l.substring(open, close + 1)}'
+          text =
+              '${m.ret} ${gname(m.name)}${l.substring(open, close + 1)}'
               '${l.substring(close + 1)}';
         } else {
           text = 'const ${gname(m.name)} =${l.substring(l.indexOf('=') + 1)}';
@@ -134,16 +155,20 @@ void main() {
   main.writeln('  // （顶层私有常量/函数）；以下转发保持 `AppGlyphs.xxx` 调用点不变。');
   for (final m in members.where((m) => m.isPublic)) {
     if (m.isFn) {
-      main.writeln('  static ${m.ret} ${m.name}(${m.params}) '
-          '=> ${gname(m.name)}(${_args(m.params)});');
+      main.writeln(
+        '  static ${m.ret} ${m.name}(${m.params}) '
+        '=> ${gname(m.name)}(${_args(m.params)});',
+      );
     } else {
       main.writeln('  static const ${m.name} = ${gname(m.name)};');
     }
   }
   main.writeln('}');
   File('lib/ui/icons/app_glyphs.dart').writeAsStringSync(main.toString());
-  print('main=${main.toString().split('\n').length} lines, parts='
-      '${partNames.map((p) => File('lib/ui/icons/$p').readAsLinesSync().length).toList()}');
+  print(
+    'main=${main.toString().split('\n').length} lines, parts='
+    '${partNames.map((p) => File('lib/ui/icons/$p').readAsLinesSync().length).toList()}',
+  );
 }
 
 int _matchParen(String s, int open) {

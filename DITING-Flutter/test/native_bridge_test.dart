@@ -27,10 +27,7 @@ void main() {
 
     test('合法配置没有错误', () {
       expect(
-        base().validationError(
-          selfPackage: self,
-          installedPackages: installed,
-        ),
+        base().validationError(selfPackage: self, installedPackages: installed),
         isNull,
       );
     });
@@ -83,20 +80,16 @@ void main() {
 
     test('未安装的应用报「未安装」', () {
       expect(
-        base(proxyAppPackage: 'com.gone.app').validationError(
-          selfPackage: self,
-          installedPackages: installed,
-        ),
+        base(proxyAppPackage: 'com.gone.app')
+            .validationError(selfPackage: self, installedPackages: installed),
         '所选代理应用未安装',
       );
     });
 
     test('installedPackages 为 null 时跳过「未安装」判据', () {
       expect(
-        base(proxyAppPackage: 'com.gone.app').validationError(
-          selfPackage: self,
-          installedPackages: null,
-        ),
+        base(proxyAppPackage: 'com.gone.app')
+            .validationError(selfPackage: self, installedPackages: null),
         isNull,
       );
     });
@@ -118,13 +111,20 @@ void main() {
 
     test('判据顺序：地址先于端口、端口先于应用', () {
       expect(
-        OutboundProxyConfig(enabled: true, host: 'bad', port: 0, proxyAppPackage: '')
-            .validationError(selfPackage: self),
+        OutboundProxyConfig(
+          enabled: true,
+          host: 'bad',
+          port: 0,
+          proxyAppPackage: '',
+        ).validationError(selfPackage: self),
         '代理地址仅支持 127.0.0.1 或 ::1',
       );
       expect(
-        OutboundProxyConfig(enabled: true, port: 0, proxyAppPackage: '')
-            .validationError(selfPackage: self),
+        OutboundProxyConfig(
+          enabled: true,
+          port: 0,
+          proxyAppPackage: '',
+        ).validationError(selfPackage: self),
         '代理端口必须在 1 到 65535 之间',
       );
     });
@@ -342,14 +342,18 @@ void main() {
     );
 
     test('过滤枚举与 1.4.3 的四个名字一致', () {
-      expect(
-        AppListFilter.values.map((item) => item.storageValue),
-        ['ALL', 'SYSTEM', 'USER', 'SELECTED'],
-      );
-      expect(
-        AppListSort.values.map((item) => item.storageValue),
-        ['LABEL_ASC', 'LABEL_DESC', 'PACKAGE_ASC', 'PACKAGE_DESC'],
-      );
+      expect(AppListFilter.values.map((item) => item.storageValue), [
+        'ALL',
+        'SYSTEM',
+        'USER',
+        'SELECTED',
+      ]);
+      expect(AppListSort.values.map((item) => item.storageValue), [
+        'LABEL_ASC',
+        'LABEL_DESC',
+        'PACKAGE_ASC',
+        'PACKAGE_DESC',
+      ]);
     });
 
     test('未知存储值回落到 USER / LABEL_ASC', () {
@@ -363,10 +367,7 @@ void main() {
       expect(AppListFilter.system.accept(userA, const {}), isFalse);
       expect(AppListFilter.user.accept(userA, const {}), isTrue);
       expect(AppListFilter.user.accept(system, const {}), isFalse);
-      expect(
-        AppListFilter.selected.accept(userA, const {'com.b.app'}),
-        isTrue,
-      );
+      expect(AppListFilter.selected.accept(userA, const {'com.b.app'}), isTrue);
       expect(AppListFilter.selected.accept(userA, const {}), isFalse);
     });
 

@@ -25,9 +25,8 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    GoRouter.of(
-      tester.element(find.byType(NavigationDock).first),
-    ).push(Routes.about);
+    GoRouter.of(tester.element(find.byType(NavigationDock).first))
+        .push(Routes.about);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));
 
@@ -69,8 +68,7 @@ void main() {
         brightness: Brightness.light,
       ),
     );
-    final builder =
-        theme.pageTransitionsTheme.builders[TargetPlatform.android];
+    final builder = theme.pageTransitionsTheme.builders[TargetPlatform.android];
     expect(
       builder,
       isA<PredictiveBackPageTransitionsBuilder>(),

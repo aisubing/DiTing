@@ -108,7 +108,9 @@ void main() {
 
   test('规则库不可用时如实返回 unavailable', () async {
     final container = containerWith(null);
-    final rules = await container.read(appScopedRulesProvider('com.foo').future);
+    final rules = await container.read(
+      appScopedRulesProvider('com.foo').future,
+    );
     expect(rules.available, isFalse);
     expect(rules.error, isNotNull);
   });
@@ -120,7 +122,9 @@ void main() {
 
     final repo = RuleRepository(db);
     final container = containerWith(repo);
-    final rules = await container.read(appScopedRulesProvider('com.foo').future);
+    final rules = await container.read(
+      appScopedRulesProvider('com.foo').future,
+    );
 
     expect(rules.available, isTrue);
     expect(rules.block.map((r) => r.pattern), ['ads.example']);
@@ -132,7 +136,9 @@ void main() {
     final repo = RuleRepository(db);
     await repo.setFullBlock('com.foo', true);
     final container = containerWith(repo);
-    final rules = await container.read(appScopedRulesProvider('com.foo').future);
+    final rules = await container.read(
+      appScopedRulesProvider('com.foo').future,
+    );
     expect(rules.fullBlock, isTrue);
   });
 

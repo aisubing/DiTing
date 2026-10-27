@@ -50,7 +50,10 @@ void main() {
       notifier.selectUserAgent('curl/8.7.1');
       notifier.selectUserAgent(null);
 
-      expect(container().read(configResourcesProvider).selectedUserAgent, isNull);
+      expect(
+        container().read(configResourcesProvider).selectedUserAgent,
+        isNull,
+      );
     });
 
     test('删掉选中的 UA 时选中态一起清掉', () {
@@ -60,7 +63,10 @@ void main() {
       notifier.removeUserAgent('Temp/1.0');
 
       final reopened = container().read(configResourcesProvider);
-      expect(reopened.userAgents.map((a) => a.value), isNot(contains('Temp/1.0')));
+      expect(
+        reopened.userAgents.map((a) => a.value),
+        isNot(contains('Temp/1.0')),
+      );
       expect(reopened.selectedUserAgent, isNull);
     });
 

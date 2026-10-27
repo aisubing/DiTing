@@ -336,7 +336,9 @@ UpstreamValidation validateServerUpstream({
 }
 
 String normalizeServerUpstreamAddress(DnsProtocol protocol, String address) =>
-    protocol == DnsProtocol.doh ? address.trim() : _stripBrackets(address.trim());
+    protocol == DnsProtocol.doh
+    ? address.trim()
+    : _stripBrackets(address.trim());
 
 String _stripBrackets(String value) {
   var result = value;

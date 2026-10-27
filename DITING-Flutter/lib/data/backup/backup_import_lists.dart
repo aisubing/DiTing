@@ -39,7 +39,10 @@ extension _BackupImportLists on BackupImporter {
     );
   }
 
-  BackupGroupOutcome _importAllowlist(Object? value, BackupImportTarget target) {
+  BackupGroupOutcome _importAllowlist(
+    Object? value,
+    BackupImportTarget target,
+  ) {
     if (value is! Map) {
       throw const BackupFormatException('应用独立规则分组应为对象');
     }

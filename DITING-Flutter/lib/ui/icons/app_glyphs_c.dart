@@ -11,13 +11,11 @@ const _g_error_ = Glyph([
   GlyphCircle(12, 16.5, 1.4, role: GlyphRole.detail, solid: true),
 ]);
 
-
 const _g_more_ = Glyph([
   GlyphCircle(12, 5.5, 1.4, role: GlyphRole.line, solid: true),
   GlyphCircle(12, 12, 1.4, role: GlyphRole.line, solid: true),
   GlyphCircle(12, 18.5, 1.4, role: GlyphRole.line, solid: true),
 ]);
-
 
 const _g_moreCircle_ = Glyph([
   GlyphCircle(12, 12, 8.8),
@@ -26,12 +24,8 @@ const _g_moreCircle_ = Glyph([
   GlyphCircle(16.6, 12, 1.4, role: GlyphRole.detail, solid: true),
 ]);
 
-
 const _g_dragHandle_ = Glyph([
-  GlyphPolyline([
-    GlyphVertex(4, 7),
-    GlyphVertex(20, 7),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(4, 7), GlyphVertex(20, 7)], role: GlyphRole.line),
   GlyphPolyline([
     GlyphVertex(4, 12),
     GlyphVertex(20, 12),
@@ -42,12 +36,8 @@ const _g_dragHandle_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_sort_ = Glyph([
-  GlyphPolyline([
-    GlyphVertex(4, 7),
-    GlyphVertex(20, 7),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(4, 7), GlyphVertex(20, 7)], role: GlyphRole.line),
   GlyphPolyline([
     GlyphVertex(4, 12),
     GlyphVertex(15, 12),
@@ -58,12 +48,8 @@ const _g_sort_ = Glyph([
   ], role: GlyphRole.line),
 ], matchTextDirection: true);
 
-
 const _g_filter_ = Glyph([
-  GlyphPolyline([
-    GlyphVertex(4, 7),
-    GlyphVertex(20, 7),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(4, 7), GlyphVertex(20, 7)], role: GlyphRole.line),
   GlyphPolyline([
     GlyphVertex(7, 12),
     GlyphVertex(17, 12),
@@ -74,24 +60,16 @@ const _g_filter_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_textShort_ = Glyph([
-  GlyphPolyline([
-    GlyphVertex(4, 9),
-    GlyphVertex(20, 9),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(4, 9), GlyphVertex(20, 9)], role: GlyphRole.line),
   GlyphPolyline([
     GlyphVertex(4, 15),
     GlyphVertex(13, 15),
   ], role: GlyphRole.line),
 ], matchTextDirection: true);
 
-
 const _g_wrap_ = Glyph([
-  GlyphPolyline([
-    GlyphVertex(4, 6),
-    GlyphVertex(20, 6),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(4, 6), GlyphVertex(20, 6)], role: GlyphRole.line),
   GlyphPolyline([
     GlyphVertex(4, 12),
     GlyphVertex(20, 12, 3),
@@ -108,7 +86,6 @@ const _g_wrap_ = Glyph([
     GlyphVertex(6.5, 18),
   ], role: GlyphRole.line),
 ], matchTextDirection: true);
-
 
 const _g_listAdd_ = Glyph([
   GlyphPolyline([
@@ -133,7 +110,6 @@ const _g_listAdd_ = Glyph([
   ], role: GlyphRole.line),
 ], matchTextDirection: true);
 
-
 const _g_edit_ = Glyph([
   GlyphPolyline([
     GlyphVertex(4, 20, 1),
@@ -147,7 +123,6 @@ const _g_edit_ = Glyph([
     GlyphVertex(16.75, 10.75),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_compose_ = Glyph([
   GlyphPolyline([
@@ -169,7 +144,6 @@ const _g_compose_ = Glyph([
     GlyphVertex(17.25, 10.45),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_delete_ = Glyph([
   GlyphPolyline([
@@ -197,7 +171,6 @@ const _g_delete_ = Glyph([
     GlyphVertex(15, 6.8),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_clearAll_ = Glyph([
   GlyphPolyline([
@@ -234,7 +207,6 @@ const _g_clearAll_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_copy_ = Glyph([
   GlyphBox(8.5, 7.5, 20.5, 21, 2.5),
   GlyphPolyline([
@@ -243,7 +215,6 @@ const _g_copy_ = Glyph([
     GlyphVertex(16, 3),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_cut_ = Glyph([
   GlyphCircle(7, 17.5, 3),
@@ -257,7 +228,6 @@ const _g_cut_ = Glyph([
     GlyphVertex(7.2, 3.5),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_paste_ = Glyph([
   GlyphPolyline([
@@ -277,7 +247,6 @@ const _g_paste_ = Glyph([
     GlyphVertex(15.5, 5.2),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_selectAll_ = Glyph([
   GlyphPolyline([
@@ -323,7 +292,6 @@ const _g_selectAll_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_deselect_ = Glyph([
   GlyphPolyline([
     GlyphVertex(3.5, 7),
@@ -361,12 +329,8 @@ const _g_deselect_ = Glyph([
     GlyphVertex(3.5, 13.4),
     GlyphVertex(3.5, 10.6),
   ], role: GlyphRole.line),
-  GlyphPolyline([
-    GlyphVertex(8, 8),
-    GlyphVertex(16, 16),
-  ], role: GlyphRole.line),
+  GlyphPolyline([GlyphVertex(8, 8), GlyphVertex(16, 16)], role: GlyphRole.line),
 ]);
-
 
 const _g_search_ = Glyph([
   GlyphCircle(10.3, 10.3, 6.9, role: GlyphRole.line),
@@ -375,7 +339,6 @@ const _g_search_ = Glyph([
     GlyphVertex(20.6, 20.6),
   ], role: GlyphRole.line),
 ]);
-
 
 const _g_matchCase_ = Glyph([
   GlyphPolyline([
@@ -410,7 +373,6 @@ const _g_regex_ = Glyph([
   ], role: GlyphRole.line),
 ]);
 
-
 const _g_importFile_ = Glyph([
   GlyphPolyline([
     GlyphVertex(5, 3, 2.5),
@@ -435,7 +397,6 @@ const _g_importFile_ = Glyph([
   ], role: GlyphRole.detail),
 ]);
 
-
 const _g_cloudDownload_ = Glyph([
   GlyphPath(
     'M7 19.4A4.2 4.2 0 0 1 5.06 11.47A6 6 0 1 1 16.95 9.83A4.8 4.8 0 0 1 16.4 19.4Z',
@@ -450,7 +411,6 @@ const _g_cloudDownload_ = Glyph([
     GlyphVertex(15, 13),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_cloudSync_ = Glyph([
   GlyphPath(
@@ -474,7 +434,6 @@ const _g_cloudSync_ = Glyph([
     GlyphVertex(10.9, 11.71),
   ], role: GlyphRole.detail),
 ]);
-
 
 const _g_link_ = Glyph([
   GlyphPath(

@@ -4,7 +4,6 @@ import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
-
 /// Shared log-dashboard block primitives, defined once so ring width and padding cannot
 /// drift between cards.
 /// One donut segment. Callers filter out zero-value segments first.

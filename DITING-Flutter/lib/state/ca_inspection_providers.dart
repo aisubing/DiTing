@@ -73,7 +73,9 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     } on PlatformException catch (error) {
       return CaSaveResult(
         saved: false,
-        error: (error.message ?? '').trim().isEmpty ? '无法写入下载目录' : error.message,
+        error: (error.message ?? '').trim().isEmpty
+            ? '无法写入下载目录'
+            : error.message,
       );
     }
   }

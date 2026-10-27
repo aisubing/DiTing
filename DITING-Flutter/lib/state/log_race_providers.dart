@@ -112,7 +112,6 @@ class RaceStatsSnapshot {
 /// Aggregates the selected window, unlike `raceRankingProvider`, which would make the range
 /// selector do nothing.
 final raceStatsProvider = FutureProvider<RaceStatsSnapshot>((ref) async {
-
   ref.watch(dnsLogRevisionProvider);
   final range = ref.watch(raceStatsRangeProvider);
   final db = await ref.watch(activeLogDatabaseProvider.future);

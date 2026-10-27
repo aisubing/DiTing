@@ -33,11 +33,7 @@ class TrafficStructureRate {
   final double progress;
 }
 
-enum TrafficStructureMode {
-  all,
-
-  filtered,
-}
+enum TrafficStructureMode { all, filtered }
 
 /// Layout only; callers compute the numbers so the card cannot drift across midnight.
 class TrafficStructureCard extends StatelessWidget {
@@ -138,9 +134,7 @@ class LogTrafficStructureCard extends ConsumerWidget {
     return TrafficStructureCard(
       mode: mode,
       title: filtered ? '重点流量结构' : '今日流量结构',
-      total: filtered
-          ? (snapshot?.highlightedTotal ?? 0)
-          : breakdown.total,
+      total: filtered ? (snapshot?.highlightedTotal ?? 0) : breakdown.total,
       segments: filtered
           ? [
               if (breakdown.blocked > 0)

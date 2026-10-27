@@ -306,13 +306,8 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
       .substring(0, 14);
 
   void _toast(String message) {
-    ScaffoldMessenger.maybeOf(
-      context,
-    )?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 

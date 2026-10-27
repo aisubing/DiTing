@@ -94,18 +94,9 @@ void main() {
         ),
         'TCP 直连 · com.example.app',
       );
-      expect(
-        dnsRowSourceOf(queryType: 1, queryName: 'example.com'),
-        'DNS',
-      );
-      expect(
-        dnsRowSourceOf(queryType: 0, queryName: 'TCP 1.1.1.1:443'),
-        'TCP',
-      );
-      expect(
-        dnsRowSourceOf(queryType: 0, queryName: 'UDP 1.1.1.1:53'),
-        'UDP',
-      );
+      expect(dnsRowSourceOf(queryType: 1, queryName: 'example.com'), 'DNS');
+      expect(dnsRowSourceOf(queryType: 0, queryName: 'TCP 1.1.1.1:443'), 'TCP');
+      expect(dnsRowSourceOf(queryType: 0, queryName: 'UDP 1.1.1.1:53'), 'UDP');
     });
 
     test('时间戳缺失给 --:--:--，不拿当前时钟冒充', () {

@@ -88,7 +88,11 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
           title: '本次结果',
           child: DashboardStatGrid(
             stats: [
-              StatItem(label: '通畅', value: '$alive', color: colorScheme.success),
+              StatItem(
+                label: '通畅',
+                value: '$alive',
+                color: colorScheme.success,
+              ),
               StatItem(
                 label: '失败',
                 value: '$failed',
@@ -113,7 +117,8 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
             onProbe: () => _probe(category),
           ),
         const DashboardDetailNote(
-          text: '每个站点发 3 个 ICMP 回显，取平均值；'
+          text:
+              '每个站点发 3 个 ICMP 回显，取平均值；'
               '系统 ping 不可用时退回 TCP 握手，会标上 * 号，数值略高于真实往返。'
               '本应用自身流量不经过 VPN，测的是物理网络。',
         ),

@@ -106,10 +106,7 @@ const cleanupGroups = <String, List<CleanupAction>>{
     CleanupAction.crash,
     CleanupAction.dnsCache,
   ],
-  '权重数据': [
-    CleanupAction.providerWeights,
-    CleanupAction.bootstrapWeights,
-  ],
+  '权重数据': [CleanupAction.providerWeights, CleanupAction.bootstrapWeights],
   '规则与订阅': [
     CleanupAction.domainRules,
     CleanupAction.addressRules,
@@ -122,8 +119,5 @@ const cleanupGroups = <String, List<CleanupAction>>{
     CleanupAction.downloadCache,
     CleanupAction.customBackground,
   ],
-  '引导与重置': [
-    CleanupAction.settingsGuides,
-    CleanupAction.allData,
-  ],
+  '引导与重置': [CleanupAction.settingsGuides, CleanupAction.allData],
 };

@@ -55,17 +55,26 @@ void main() {
 
     test('不同种子色产出不同 primary', () {
       final purple = buildAppTheme(
-        const AppThemeSpec(seedColor: Color(0xFFAF52DE), brightness: Brightness.light),
+        const AppThemeSpec(
+          seedColor: Color(0xFFAF52DE),
+          brightness: Brightness.light,
+        ),
       );
       final blue = buildAppTheme(
-        const AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light),
+        const AppThemeSpec(
+          seedColor: Color(0xFF007AFF),
+          brightness: Brightness.light,
+        ),
       );
       expect(purple.colorScheme.primary, isNot(blue.colorScheme.primary));
     });
 
     test('形状与排版被装配进去', () {
       final theme = buildAppTheme(
-        const AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light),
+        const AppThemeSpec(
+          seedColor: Color(0xFF007AFF),
+          brightness: Brightness.light,
+        ),
       );
       // Without withAppShapes the Card radius stays the M3 default.
       expect(theme.cardTheme.shape, isNotNull);
@@ -86,10 +95,16 @@ void main() {
     test('不同 spec 返回不同实例', () {
       final cache = AppThemeCache();
       final light = cache.of(
-        const AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.light),
+        const AppThemeSpec(
+          seedColor: Color(0xFF007AFF),
+          brightness: Brightness.light,
+        ),
       );
       final dark = cache.of(
-        const AppThemeSpec(seedColor: Color(0xFF007AFF), brightness: Brightness.dark),
+        const AppThemeSpec(
+          seedColor: Color(0xFF007AFF),
+          brightness: Brightness.dark,
+        ),
       );
       expect(identical(light, dark), isFalse);
     });
@@ -165,7 +180,10 @@ void main() {
       // Monet
       expect(c.read(paletteProvider), AppPalette.system);
       c.read(paletteProvider.notifier).select(AppPalette.purple);
-      expect(c.read(paletteProvider).effectiveSeed, AppPalette.purple.effectiveSeed);
+      expect(
+        c.read(paletteProvider).effectiveSeed,
+        AppPalette.purple.effectiveSeed,
+      );
     });
 
     test('纯黑只在深色下有意义，但 provider 本身不改亮度', () {
@@ -224,7 +242,9 @@ void main() {
   group('工作模式 provider', () {
     ProviderContainer container() {
       final c = ProviderContainer(
-        overrides: [vpnControllerProvider.overrideWithValue(FakeVpnController())],
+        overrides: [
+          vpnControllerProvider.overrideWithValue(FakeVpnController()),
+        ],
       );
       addTearDown(c.dispose);
       return c;

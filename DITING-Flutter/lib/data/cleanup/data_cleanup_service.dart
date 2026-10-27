@@ -123,7 +123,9 @@ class DataCleanupService {
   /// Main database only: the express and server databases lack `app_traffic_daily`.
   Future<CleanupResult> _clearTraffic() async {
     final db = await _databases.main;
-    final removed = db == null ? 0 : await deleteAllRows(db, 'app_traffic_daily');
+    final removed = db == null
+        ? 0
+        : await deleteAllRows(db, 'app_traffic_daily');
     return _result(CleanupAction.traffic, removed);
   }
 
@@ -273,11 +275,7 @@ class DataCleanupService {
   Future<CleanupResult> _resetCaCertificate() async {
     await _ca.inspect(regenerate: true);
     _settings.setHttpsInspectionReady(false);
-    return _result(
-      CleanupAction.caCertificate,
-      1,
-      detail: '需重新生成并导入系统证书',
-    );
+    return _result(CleanupAction.caCertificate, 1, detail: '需重新生成并导入系统证书');
   }
 
   /// Both halves must run, or stale files or a lying UI remain.
@@ -302,10 +300,8 @@ class DataCleanupService {
     ]) {
       if (_removeKey(LegacySettings.uiContainer, key)) removed++;
     }
-    for (final key in _prefs
-        .readAll('mode_permission_preferences')
-        .keys
-        .toList()) {
+    for (final key
+        in _prefs.readAll('mode_permission_preferences').keys.toList()) {
       if (!key.startsWith('recommendation_dismissed_')) continue;
       if (_removeKey('mode_permission_preferences', key)) removed++;
     }
