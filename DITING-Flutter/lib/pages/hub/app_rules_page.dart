@@ -10,10 +10,12 @@ import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/empty_state.dart';
-import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/section_slivers.dart';
 import 'package:diting/widgets/unsaved_changes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+
+part 'app_rules_detail.dart';
 
 /// Per-app rules (upstream `AppRuleManagementScreen`): master switch, search and configured
 /// apps; picking an app swaps to the detail panel within the same route.
@@ -324,81 +326,28 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           onPressed: () => _addDomain(draft, app.packageName),
         ),
       ],
-      body: PageBody(
-        children: [
-          generateSection(
-            title: '应用',
-            items: [
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.arrowBack, size: 20),
-                title: const Text('返回应用列表'),
-                subtitle: Text(app.packageName),
-                onTap: () => setState(() => _selected = null),
-              ),
-            ],
-          ),
-          generateSection(
-            title: '专属放行域名（网络层） (${domains.length})',
-            actions: [
-              IconButtonData(
-                glyph: AppGlyphs.add,
-                tooltip: '添加放行域名',
-                onPressed: () => _addDomain(draft, app.packageName),
-              ),
-            ],
-            items: [
-              if (domains.isEmpty)
-                const ListItem(
-                  title: Text('未配置网络放行域名'),
-                  subtitle: Text('网络层白名单为空时，该应用不受额外限制'),
-                  leading: GlyphIcon(AppGlyphs.info),
+      body: SliverPageBody(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                generateSection(
+                  title: '应用',
+                  items: [
+                    ListItem(
+                      leading: const GlyphIcon(AppGlyphs.arrowBack, size: 20),
+                      title: const Text('返回应用列表'),
+                      subtitle: Text(app.packageName),
+                      onTap: () => setState(() => _selected = null),
+                    ),
+                  ],
                 ),
-              for (final domain in domains.toList()..sort())
-                AppAllowDomainRow(
-                  domain: domain,
-                  onDelete: () => setState(
-                    () => draft.removeDomain(app.packageName, domain),
-                  ),
-                ),
-            ],
-            footer: domains.isEmpty
-                ? null
-                : '这些域名会写入 app_allowlist_rules_json，'
-                      '由引擎在下一次启动隧道时下发给 setAppAllowlist。',
+              ],
+            ),
           ),
-          generateSection(
-            title: 'DNS 专属黑/白名单',
-            actions: [
-              IconButtonData(
-                glyph: AppGlyphs.add,
-                tooltip: '添加 DNS 规则',
-                onPressed: () => _addScopedRule(app),
-              ),
-            ],
-            items: [..._buildScopedRuleItems(app)],
-            footer:
-                '这些规则写入规则库的 block_rule / allow_rule，带 appScope 只对本应用生效，'
-                '并随规则快照的 appRules 下发，不会扩大成全局拦截。',
-          ),
-          generateSection(
-            title: '外联与隔离模式',
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.wifiOff),
-                title: const Text('默认拦截全部外联'),
-                subtitle: const Text('开启后阻断该应用的所有网络连接，仅放行白名单'),
-                value: rules.value?.fullBlock ?? false,
-                onChanged: (value) => _toggleFullBlock(app, value),
-              ),
-              if (rules.value?.fullBlock ?? false)
-                const ListItem(
-                  leading: GlyphIcon(AppGlyphs.info),
-                  title: Text('已开启全阻断模式'),
-                  subtitle: Text('请确保已添加必要的放行白名单，否则应用可能无法联网。'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 24),
+          ..._allowDomainSlivers(draft, app, domains),
+          ..._scopedRuleSlivers(app),
+          SliverToBoxAdapter(child: _detailFooter(app, rules)),
         ],
       ),
     );
@@ -429,52 +378,16 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     setState(draft.clearAll);
   }
 
+  /// Drops one locally edited allowlisted domain; the change lands on save.
+  void _removeDomain(AppRulesDraft draft, String packageName, String domain) =>
+      setState(() => draft.removeDomain(packageName, domain));
+
   Future<void> _addDomain(AppRulesDraft draft, String packageName) async {
     final domain = await showAppAllowDomainDialog(context);
     if (domain == null || !mounted) {
       return;
     }
     setState(() => draft.addDomain(packageName, domain));
-  }
-
-  List<Widget> _buildScopedRuleItems(InstalledApp app) {
-    final rules = ref.watch(appScopedRulesProvider(app.packageName));
-    if (rules.isLoading) {
-      return const [
-        ListItem(
-          leading: GlyphIcon(AppGlyphs.info),
-          title: Text('正在读取规则库'),
-          subtitle: Text('稍候'),
-        ),
-      ];
-    }
-    final value = rules.value;
-    if (value == null || !value.available) {
-      return [
-        ListItem(
-          leading: const GlyphIcon(AppGlyphs.info),
-          title: const Text('读不到规则库'),
-          subtitle: Text(value?.error ?? '当前环境无法读写规则库'),
-        ),
-      ];
-    }
-    if (value.block.isEmpty && value.allow.isEmpty) {
-      return const [
-        ListItem(
-          leading: GlyphIcon(AppGlyphs.info),
-          title: Text('未配置 DNS 专属规则'),
-          subtitle: Text('添加后仅对本应用生效，不影响其他应用'),
-        ),
-      ];
-    }
-    return [
-      for (final rule in [...value.block, ...value.allow])
-        AppScopedRuleRow(
-          rule: rule,
-          onToggle: (enabled) => _toggleScopedRule(app, rule, enabled),
-          onDelete: () => _deleteScopedRule(app, rule),
-        ),
-    ];
   }
 
   Future<void> _addScopedRule(InstalledApp app) async {

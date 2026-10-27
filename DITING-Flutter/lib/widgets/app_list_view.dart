@@ -1,37 +1,24 @@
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
-import 'package:diting/widgets/stat_strip.dart';
+import 'package:diting/widgets/section_slivers.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Scroll body for the app pickers: same app-bar inset and dock clearance as [PageBody], but built
 /// from slivers so the app section can stay lazy.
+///
+/// Thin alias of [SliverPageBody], kept because the app-picker call sites predate it.
 class AppListScrollView extends StatelessWidget {
   const AppListScrollView({super.key, required this.slivers});
 
   final List<Widget> slivers;
 
   @override
-  Widget build(BuildContext context) {
-    return MediaQuery.removePadding(
-      context: context,
-      removeTop: true,
-      child: FloatingBarScope(
-        inset: 0,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: SizedBox(height: context.appBarInset)),
-            ...slivers,
-            const SliverToBoxAdapter(child: DockSpacer()),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SliverPageBody(slivers: slivers);
 }
 
-/// Lazily built app rows for a [CustomScrollView]. Building only the rows on screen (instead of a
-/// `Column` inside a `ListView`, which constructed every app up front) is what removed the stalls
-/// when scrolling a few hundred packages.
+/// Lazily built app rows for a [CustomScrollView].
+///
+/// Alias of [lazySectionSlivers] with the app-picker defaults, kept for the existing call sites.
 List<Widget> appListSlivers({
   String? title,
   List<IconButtonData> actions = const [],
@@ -40,27 +27,14 @@ List<Widget> appListSlivers({
   String? footer,
   EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 16),
 }) {
-  return [
-    if (itemCount > 0 && title != null)
-      SliverToBoxAdapter(
-        child: ListHeader(title: title, actions: actions),
-      ),
-    SliverPadding(
-      padding: padding,
-      sliver: SliverList.builder(
-        itemCount: itemCount,
-        // No keep-alives: rows are cheap to rebuild and holding hundreds of them alive is what
-        // made the list stutter on the way back up.
-        addAutomaticKeepAlives: false,
-        itemBuilder: (context, index) => ItemPositionProvider(
-          position: ItemPosition.get(index, itemCount),
-          child: itemBuilder(context, index)!,
-        ),
-      ),
-    ),
-    if (itemCount > 0 && footer != null)
-      SliverToBoxAdapter(child: ListFooter(text: footer)),
-  ];
+  return lazySectionSlivers(
+    title: title,
+    actions: actions,
+    itemCount: itemCount,
+    itemBuilder: itemBuilder,
+    footer: footer,
+    padding: padding,
+  );
 }
 
 /// The 1.4.3 `AppListOverflowMenu` in Flutter form: select-all / clear / invert, then the filter and

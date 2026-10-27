@@ -10,9 +10,9 @@ import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
 import 'package:diting/widgets/app_list_view.dart';
+import 'package:diting/widgets/section_slivers.dart';
 import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/page_intro.dart';
-import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -42,178 +42,211 @@ class HttpInspectionPage extends ConsumerWidget {
         : '已选 ${apps.length} 个应用，其余直接转发';
     return CommonScaffold(
       title: 'HTTPS 流量检查',
-      body: PageBody(
-        children: [
-          generateSection(
-            title: '检查范围',
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.lock),
-                title: const Text('启用 HTTPS 检查'),
-                subtitle: Text(caHint),
-                value: enabled,
-                onChanged: caReady
-                    ? (value) => _setEnabled(context, ref, settings, value)
-                    : (_) => _explainCaMissing(context, ca),
-              ),
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.appsList),
-                title: const Text('目标应用'),
-                subtitle: Text(
-                  !caReady
-                      ? caHint
-                      : apps.isEmpty
-                      ? '未选择任何应用'
-                      : '已选择 ${apps.length} 个应用',
+      body: SliverPageBody(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                generateSection(
+                  title: '检查范围',
+                  items: [
+                    ListItem.toggle(
+                      leading: const GlyphIcon(AppGlyphs.lock),
+                      title: const Text('启用 HTTPS 检查'),
+                      subtitle: Text(caHint),
+                      value: enabled,
+                      onChanged: caReady
+                          ? (value) =>
+                                _setEnabled(context, ref, settings, value)
+                          : (_) => _explainCaMissing(context, ca),
+                    ),
+                    ListItem(
+                      leading: const GlyphIcon(AppGlyphs.appsList),
+                      title: const Text('目标应用'),
+                      subtitle: Text(
+                        !caReady
+                            ? caHint
+                            : apps.isEmpty
+                            ? '未选择任何应用'
+                            : '已选择 ${apps.length} 个应用',
+                      ),
+                      // A dead row reads as "the app is broken"; explain the missing certificate
+                      // instead and offer the one screen that fixes it.
+                      onTap: caReady
+                          ? () => context.push('/hub/https-inspection/apps')
+                          : () => _explainCaMissing(context, ca),
+                    ),
+                    ListItem(
+                      leading: const GlyphIcon(AppGlyphs.verified),
+                      title: const Text('CA 证书'),
+                      subtitle: Text(
+                        ca == null
+                            ? '正在检查根证书…'
+                            : caReady
+                            ? '证书已安装且指纹匹配，可查看或重置'
+                            : _caProblem(ca.available, ca.installed),
+                      ),
+                      onTap: () => context.push('/hub/https-inspection/ca'),
+                    ),
+                  ],
                 ),
-                // A dead row reads as "the app is broken"; explain the missing certificate
-                // instead and offer the one screen that fixes it.
-                onTap: caReady
-                    ? () => context.push('/hub/https-inspection/apps')
-                    : () => _explainCaMissing(context, ca),
-              ),
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.verified),
-                title: const Text('CA 证书'),
-                subtitle: Text(
-                  ca == null
-                      ? '正在检查根证书…'
-                      : caReady
-                      ? '证书已安装且指纹匹配，可查看或重置'
-                      : _caProblem(ca.available, ca.installed),
+                generateSection(
+                  title: '解密内容过滤',
+                  items: [
+                    ListItem.toggle(
+                      leading: const GlyphIcon(AppGlyphs.target),
+                      title: const Text('启用 URL 规则与重定向'),
+                      subtitle: Text(
+                        !caReady
+                            ? caHint
+                            : !enabled
+                            ? '需先启用 HTTPS 检查'
+                            : !urlRules
+                            ? '已暂停 · 解密请求直接放行，不应用 URL 规则及 CNAME 重定向'
+                            : '开启解密流量下的 URL 屏蔽、放行及 CNAME 重定向',
+                      ),
+                      value: urlRules,
+                      onChanged: enabled
+                          ? (value) {
+                              settings.setHttpInspectionToggles(
+                                http3: settings.http3InspectionEnabled,
+                                encryptedDns:
+                                    settings.encryptedDnsBlockingEnabled,
+                                addressRules: value,
+                              );
+                              ref
+                                  .read(legacySettingsRevisionProvider.notifier)
+                                  .bump();
+                            }
+                          : null,
+                    ),
+                  ],
                 ),
-                onTap: () => context.push('/hub/https-inspection/ca'),
-              ),
-            ],
+                generateSection(
+                  title: '协议与兼容性',
+                  items: [
+                    ListItem.toggle(
+                      leading: const GlyphIcon(AppGlyphs.bolt),
+                      title: const Text('拦截 HTTP/3 (QUIC)'),
+                      subtitle: Text(
+                        !enabled
+                            ? '需先启用 HTTPS 检查'
+                            : '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭',
+                      ),
+                      value: http3,
+                      onChanged: enabled
+                          ? (value) {
+                              settings.setHttpInspectionToggles(
+                                http3: value,
+                                encryptedDns:
+                                    settings.encryptedDnsBlockingEnabled,
+                                addressRules: settings.addressRulesEnabled,
+                              );
+                              ref
+                                  .read(legacySettingsRevisionProvider.notifier)
+                                  .bump();
+                            }
+                          : null,
+                    ),
+                    ListItem.toggle(
+                      leading: const GlyphIcon(AppGlyphs.lock),
+                      title: const Text('阻断加密 DNS (DoT)'),
+                      subtitle: Text(
+                        !enabled ? '需先启用 HTTPS 检查' : '阻断 TCP 853 端口，防止绕过域名规则',
+                      ),
+                      value: encryptedDns,
+                      onChanged: enabled
+                          ? (value) {
+                              settings.setHttpInspectionToggles(
+                                http3: settings.http3InspectionEnabled,
+                                encryptedDns: value,
+                                addressRules: settings.addressRulesEnabled,
+                              );
+                              ref
+                                  .read(legacySettingsRevisionProvider.notifier)
+                                  .bump();
+                            }
+                          : null,
+                    ),
+                    ListItem(
+                      leading: const GlyphIcon(AppGlyphs.logs),
+                      title: const Text('请求日志'),
+                      subtitle: const Text('查看解密明细与自动旁路记录'),
+                      onTap: () {
+                        if (!pushStandalone(context, '/logs')) {
+                          openLocation(context, '/logs');
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          generateSection(
-            title: '解密内容过滤',
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.target),
-                title: const Text('启用 URL 规则与重定向'),
-                subtitle: Text(
-                  !caReady
-                      ? caHint
-                      : !enabled
-                      ? '需先启用 HTTPS 检查'
-                      : !urlRules
-                      ? '已暂停 · 解密请求直接放行，不应用 URL 规则及 CNAME 重定向'
-                      : '开启解密流量下的 URL 屏蔽、放行及 CNAME 重定向',
-                ),
-                value: urlRules,
-                onChanged: enabled
-                    ? (value) {
-                        settings.setHttpInspectionToggles(
-                          http3: settings.http3InspectionEnabled,
-                          encryptedDns: settings.encryptedDnsBlockingEnabled,
-                          addressRules: value,
-                        );
-                        ref
-                            .read(legacySettingsRevisionProvider.notifier)
-                            .bump();
-                      }
-                    : null,
-              ),
-            ],
-          ),
-          generateSection(
-            title: '协议与兼容性',
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.bolt),
-                title: const Text('拦截 HTTP/3 (QUIC)'),
-                subtitle: Text(
-                  !enabled ? '需先启用 HTTPS 检查' : '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭',
-                ),
-                value: http3,
-                onChanged: enabled
-                    ? (value) {
-                        settings.setHttpInspectionToggles(
-                          http3: value,
-                          encryptedDns: settings.encryptedDnsBlockingEnabled,
-                          addressRules: settings.addressRulesEnabled,
-                        );
-                        ref
-                            .read(legacySettingsRevisionProvider.notifier)
-                            .bump();
-                      }
-                    : null,
-              ),
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.lock),
-                title: const Text('阻断加密 DNS (DoT)'),
-                subtitle: Text(
-                  !enabled ? '需先启用 HTTPS 检查' : '阻断 TCP 853 端口，防止绕过域名规则',
-                ),
-                value: encryptedDns,
-                onChanged: enabled
-                    ? (value) {
-                        settings.setHttpInspectionToggles(
-                          http3: settings.http3InspectionEnabled,
-                          encryptedDns: value,
-                          addressRules: settings.addressRulesEnabled,
-                        );
-                        ref
-                            .read(legacySettingsRevisionProvider.notifier)
-                            .bump();
-                      }
-                    : null,
-              ),
-              ListItem(
-                leading: const GlyphIcon(AppGlyphs.logs),
-                title: const Text('请求日志'),
-                subtitle: const Text('查看解密明细与自动旁路记录'),
-                onTap: () {
-                  if (!pushStandalone(context, '/logs')) {
-                    openLocation(context, '/logs');
-                  }
-                },
-              ),
-            ],
-          ),
-          generateSection(
-            title: 'HTTPS 绕过规则（${bypass.length}）',
-            actions: [
-              IconButtonData(
-                glyph: AppGlyphs.add,
-                tooltip: '添加绕过域名',
-                onPressed: () => _addBypass(context, ref, settings, bypass),
-              ),
-            ],
-            items: [
-              if (bypass.isEmpty)
-                const ListItem(
-                  leading: GlyphIcon(AppGlyphs.info),
-                  title: Text('未配置自定义绕过规则'),
-                  subtitle: Text('内置放行清单始终生效；这里是额外追加的域名后缀'),
-                ),
-              for (final rule in bypass.toList()..sort())
-                ListItem(
-                  leading: const GlyphIcon(AppGlyphs.split, size: 20),
-                  title: Text(
-                    rule,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: const Text('不参与解密，直接透传'),
-                  trailing: IconButton(
-                    tooltip: '删除',
-                    onPressed: () {
-                      settings.setHttpsBypassRules({...bypass}..remove(rule));
-                      ref.read(legacySettingsRevisionProvider.notifier).bump();
-                    },
-                    icon: const GlyphIcon(AppGlyphs.delete, size: 20),
-                  ),
-                ),
-            ],
-            footer:
-                '写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单'
-                '合并后交给引擎的 setExtraPassthroughSuffixes。',
-          ),
-          const SizedBox(height: 24),
+          ..._bypassSlivers(context, ref, settings, bypass),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
+    );
+  }
+
+  /// Bypass suffixes are user-maintained and grow without bound; a lazy sliver keeps the first
+  /// frame flat no matter how many are configured.
+  List<Widget> _bypassSlivers(
+    BuildContext context,
+    WidgetRef ref,
+    LegacySettings settings,
+    Set<String> bypass,
+  ) {
+    final actions = [
+      IconButtonData(
+        glyph: AppGlyphs.add,
+        tooltip: '添加绕过域名',
+        onPressed: () => _addBypass(context, ref, settings, bypass),
+      ),
+    ];
+    const footer =
+        '写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单'
+        '合并后交给引擎的 setExtraPassthroughSuffixes。';
+    if (bypass.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: generateSection(
+            title: 'HTTPS 绕过规则（0）',
+            actions: actions,
+            items: const [
+              ListItem(
+                leading: GlyphIcon(AppGlyphs.info),
+                title: Text('未配置自定义绕过规则'),
+                subtitle: Text('内置放行清单始终生效；这里是额外追加的域名后缀'),
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+    final sorted = bypass.toList()..sort();
+    return lazySectionSlivers(
+      title: 'HTTPS 绕过规则（${sorted.length}）',
+      actions: actions,
+      itemCount: sorted.length,
+      footer: footer,
+      itemBuilder: (context, index) {
+        final rule = sorted[index];
+        return ListItem(
+          leading: const GlyphIcon(AppGlyphs.split, size: 20),
+          title: Text(rule, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: const Text('不参与解密，直接透传'),
+          trailing: IconButton(
+            tooltip: '删除',
+            onPressed: () {
+              settings.setHttpsBypassRules({...bypass}..remove(rule));
+              ref.read(legacySettingsRevisionProvider.notifier).bump();
+            },
+            icon: const GlyphIcon(AppGlyphs.delete, size: 20),
+          ),
+        );
+      },
     );
   }
 
