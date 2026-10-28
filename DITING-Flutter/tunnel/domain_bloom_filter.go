@@ -25,7 +25,6 @@ package tunnel
 import (
 	"encoding/binary"
 	"fmt"
-	"hash/fnv"
 	"math"
 	"os"
 	"strings"
@@ -233,13 +232,21 @@ func (bf *BloomFilter) MightContainDomainOrParent(domain string) bool {
 }
 
 func bloomDoubleHash(s string) (uint64, uint64) {
-	h1 := fnv.New64a()
-	h1.Write([]byte(s))
-	v1 := h1.Sum64()
-
-	h2 := fnv.New64()
-	h2.Write([]byte(s))
-	v2 := h2.Sum64()
+	// Inlined FNV-1a / FNV-1 (64-bit): identical output to hash/fnv, but without
+	// the two hasher allocations and the []byte(s) copy per probed label.
+	const (
+		offset64 = 14695981039346656037
+		prime64  = 1099511628211
+	)
+	v1 := uint64(offset64)
+	v2 := uint64(offset64)
+	for i := 0; i < len(s); i++ {
+		c := uint64(s[i])
+		v1 ^= c
+		v1 *= prime64
+		v2 *= prime64
+		v2 ^= c
+	}
 
 	if v2%2 == 0 {
 		v2++

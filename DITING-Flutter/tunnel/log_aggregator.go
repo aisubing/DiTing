@@ -105,8 +105,15 @@ func (a *logAggregator) start() {
 	stop := a.stopChan
 
 	go func() {
-		ticker := time.NewTicker(logFlushInterval)
-		defer ticker.Stop()
+		// The flush timer is armed only while a partial batch is pending. A free
+		// running 100ms ticker woke the CPU ten times a second even when the
+		// tunnel was idle (screen off), which defeats deep-sleep states.
+		timer := time.NewTimer(logFlushInterval)
+		if !timer.Stop() {
+			<-timer.C
+		}
+		timerArmed := false
+		defer timer.Stop()
 
 		batch := make([]logItem, 0, logBatchSize)
 
@@ -131,11 +138,13 @@ func (a *logAggregator) start() {
 				batch = append(batch, item)
 				if len(batch) >= logBatchSize {
 					flush()
+				} else if !timerArmed {
+					timer.Reset(logFlushInterval)
+					timerArmed = true
 				}
-			case <-ticker.C:
-				if len(batch) > 0 {
-					flush()
-				}
+			case <-timer.C:
+				timerArmed = false
+				flush()
 			case <-stop:
 
 				for {

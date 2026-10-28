@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,13 +21,28 @@ func peekFlow(conn net.Conn, maxBytes int, timeout time.Duration) ([]byte, io.Re
 	conn.SetReadDeadline(time.Now().Add(timeout))
 	defer conn.SetReadDeadline(time.Time{})
 
-	buf := make([]byte, maxBytes)
+	bufp := peekBufPool.Get().(*[]byte)
+	buf := *bufp
+	if len(buf) < maxBytes {
+		buf = make([]byte, maxBytes)
+	}
+	buf = buf[:maxBytes]
 	n, err := conn.Read(buf)
 	if n == 0 {
+		peekBufPool.Put(bufp)
 		return nil, nil, err
 	}
-	peeked := buf[:n]
+	peeked := make([]byte, n)
+	copy(peeked, buf[:n])
+	peekBufPool.Put(bufp)
 	return peeked, io.MultiReader(bytes.NewReader(peeked), conn), nil
+}
+
+var peekBufPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, peekSize)
+		return &b
+	},
 }
 
 func parseClientHelloSNI(record []byte) string {

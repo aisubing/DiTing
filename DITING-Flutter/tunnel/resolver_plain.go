@@ -69,15 +69,10 @@ func (r *Resolver) queryPlainContext(ctx context.Context, rawQuery []byte, serve
 	}
 	defer conn.Close()
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			conn.Close()
-		case <-done:
-		}
-	}()
+	// Close the socket when ctx is cancelled (e.g. another provider won the race)
+	// without parking a watcher goroutine per query.
+	stopWatch := context.AfterFunc(ctx, func() { conn.Close() })
+	defer stopWatch()
 
 	deadline, ok := ctx.Deadline()
 	if !ok || deadline.After(time.Now().Add(queryTimeoutPlain)) {
@@ -165,15 +160,10 @@ func queryPlainTCPContext(ctx context.Context, outbound flowOutbound, rawQuery [
 	}
 	defer conn.Close()
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			conn.Close()
-		case <-done:
-		}
-	}()
+	// Close the socket when ctx is cancelled (e.g. another provider won the race)
+	// without parking a watcher goroutine per query.
+	stopWatch := context.AfterFunc(ctx, func() { conn.Close() })
+	defer stopWatch()
 
 	deadline, ok := ctx.Deadline()
 	if !ok || deadline.After(time.Now().Add(queryTimeoutPlain)) {

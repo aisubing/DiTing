@@ -140,8 +140,7 @@ func (m *MmapTrie) findChildOffset(nodeOffset int, targetLabel string) int {
 		return -1
 	}
 
-	targetBytes := []byte(targetLabel)
-	targetLen := len(targetBytes)
+	targetLen := len(targetLabel)
 
 	pos := nodeOffset + 1
 
@@ -162,7 +161,7 @@ func (m *MmapTrie) findChildOffset(nodeOffset int, targetLabel string) int {
 		if labelLen == targetLen {
 			match := true
 			for b := 0; b < labelLen; b++ {
-				if m.buffer[pos+b] != targetBytes[b] {
+				if m.buffer[pos+b] != targetLabel[b] {
 					match = false
 					break
 				}

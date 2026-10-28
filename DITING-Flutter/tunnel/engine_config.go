@@ -293,7 +293,7 @@ func (e *Engine) SetAppResolver(resolver AppResolver) {
 }
 
 func (e *Engine) SetAppUidResolver(resolver AppUidResolver) {
-	e.appUidResolver = resolver
+	e.appUidResolver = newCachingAppUidResolver(resolver)
 }
 
 func (e *Engine) SetLogCallback(cb LogCallback) {

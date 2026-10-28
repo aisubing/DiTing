@@ -28,6 +28,9 @@ func resolveFlowUID(r UIDResolver, protocol int, id flowID) int {
 	if r == nil {
 		return UIDUnknown
 	}
+	if c, ok := r.(*cachingUIDResolver); ok {
+		return c.resolveFlow(protocol, id)
+	}
 	return r.ResolveUID(
 		protocol,
 

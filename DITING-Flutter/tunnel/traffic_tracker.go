@@ -106,6 +106,9 @@ type countingConn struct {
 	net.Conn
 	tracker *TrafficTracker
 	uid     int
+	// counters is resolved once per connection so every Read/Write is a pair of
+	// atomic adds instead of an RWMutex-guarded map lookup.
+	counters *uidTrafficCounters
 }
 
 // countingHalfCloseConn is a countingConn whose transport supports TCP
@@ -129,16 +132,18 @@ func (c *countingHalfCloseConn) CloseWrite() error {
 
 func (c *countingConn) Read(b []byte) (int, error) {
 	n, err := c.Conn.Read(b)
-	if n > 0 && c.tracker != nil {
-		c.tracker.RecordTx(c.uid, int64(n))
+	if n > 0 && c.counters != nil {
+		c.counters.txDelta.Add(uint64(n))
+		c.counters.txTotal.Add(uint64(n))
 	}
 	return n, err
 }
 
 func (c *countingConn) Write(b []byte) (int, error) {
 	n, err := c.Conn.Write(b)
-	if n > 0 && c.tracker != nil {
-		c.tracker.RecordRx(c.uid, int64(n))
+	if n > 0 && c.counters != nil {
+		c.counters.rxDelta.Add(uint64(n))
+		c.counters.rxTotal.Add(uint64(n))
 	}
 	return n, err
 }
@@ -148,9 +153,10 @@ func (t *TrafficTracker) WrapClientConn(conn net.Conn, uid int) net.Conn {
 		return conn
 	}
 	wrapped := &countingConn{
-		Conn:    conn,
-		tracker: t,
-		uid:     uid,
+		Conn:     conn,
+		tracker:  t,
+		uid:      uid,
+		counters: t.getOrCreateCounters(uid),
 	}
 	if _, ok := conn.(interface{ CloseWrite() error }); ok {
 		return &countingHalfCloseConn{countingConn: wrapped}
@@ -208,19 +214,14 @@ func (t *TrafficTracker) Stop() {
 func (t *TrafficTracker) tick() {
 	t.mu.RLock()
 	cb := t.callback
-	keys := make([]int, 0, len(t.uids))
-	for k := range t.uids {
-		keys = append(keys, k)
-	}
-	t.mu.RUnlock()
-
-	if cb == nil || len(keys) == 0 {
+	if cb == nil || len(t.uids) == 0 {
+		t.mu.RUnlock()
 		return
 	}
-
+	// Counters are never removed from the map, so swapping them while holding
+	// the read lock is safe and avoids a lock round-trip per UID.
 	var deltas []uidDeltaJson
-	for _, uid := range keys {
-		c := t.getOrCreateCounters(uid)
+	for uid, c := range t.uids {
 		tx := c.txDelta.Swap(0)
 		rx := c.rxDelta.Swap(0)
 		if tx > 0 || rx > 0 {
@@ -231,6 +232,7 @@ func (t *TrafficTracker) tick() {
 			})
 		}
 	}
+	t.mu.RUnlock()
 
 	if len(deltas) > 0 {
 		if data, err := json.Marshal(deltas); err == nil {

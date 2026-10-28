@@ -12,6 +12,7 @@ package tunnel
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 )
@@ -67,6 +68,25 @@ func (d *connLogSeenDedup) size() int {
 	return len(d.seen)
 }
 
+// connLogKey builds the dedupe key ("[blk|]app|dest|port|proto[|reason]")
+// without fmt; it runs for every flow, including the duplicates it filters.
+func connLogKey(prefix, app, dest string, port, protocol int, reason string) string {
+	buf := make([]byte, 0, len(prefix)+len(app)+len(dest)+len(reason)+16)
+	buf = append(buf, prefix...)
+	buf = append(buf, app...)
+	buf = append(buf, '|')
+	buf = append(buf, dest...)
+	buf = append(buf, '|')
+	buf = strconv.AppendInt(buf, int64(port), 10)
+	buf = append(buf, '|')
+	buf = strconv.AppendInt(buf, int64(protocol), 10)
+	if reason != "" {
+		buf = append(buf, '|')
+		buf = append(buf, reason...)
+	}
+	return string(buf)
+}
+
 func (e *Engine) appNameForFlow(flow flowID, protocol int) string {
 	uidr := e.uidResolver
 	r := e.appUidResolver
@@ -102,8 +122,7 @@ func (e *Engine) logConnection(flow flowID, protocol int) {
 		}
 	}
 	dest := flow.serverIP.String()
-	key := fmt.Sprintf("%s|%s|%d|%d", app, dest, flow.serverPort, protocol)
-	if connLogSeen.markSeen(key) {
+	if connLogSeen.markSeen(connLogKey("", app, dest, flow.serverPort, protocol, "")) {
 		return
 	}
 	proto := "TCP"
@@ -145,8 +164,7 @@ func (e *Engine) logBlockedConnection(flow flowID, protocol int, reason string) 
 	if protocol == ProtocolUDP {
 		proto = "UDP"
 	}
-	key := fmt.Sprintf("blk|%s|%s|%d|%d|%s", app, dest, flow.serverPort, protocol, reason)
-	if connLogSeen.markSeen(key) {
+	if connLogSeen.markSeen(connLogKey("blk|", app, dest, flow.serverPort, protocol, reason)) {
 		return
 	}
 	e.notifyLog(

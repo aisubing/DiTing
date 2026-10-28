@@ -98,14 +98,18 @@ func isLoopbackOrInternal(hostname string) bool {
 	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || isPrivateIP(ip)
 }
 
-func isPrivateIP(ip net.IP) bool {
-	privateRanges := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-	}
-	for _, cidrStr := range privateRanges {
+// privateIPv4Nets are the RFC 1918 ranges, parsed once instead of on every flow.
+var privateIPv4Nets = func() []*net.IPNet {
+	var nets []*net.IPNet
+	for _, cidrStr := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} {
 		_, cidr, _ := net.ParseCIDR(cidrStr)
+		nets = append(nets, cidr)
+	}
+	return nets
+}()
+
+func isPrivateIP(ip net.IP) bool {
+	for _, cidr := range privateIPv4Nets {
 		if cidr.Contains(ip) {
 			return true
 		}

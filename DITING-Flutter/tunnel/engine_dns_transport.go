@@ -131,9 +131,9 @@ func (w *tcpDNSResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (w *tcpDNSResponseWriter) writeBytes(b []byte) error {
-	lenBuf := make([]byte, 2)
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(b)))
-	total := append(lenBuf, b...)
+	total := make([]byte, 2+len(b))
+	binary.BigEndian.PutUint16(total, uint16(len(b)))
+	copy(total[2:], b)
 	if w.engine != nil && w.engine.trafficTracker != nil && len(total) > 0 {
 		w.engine.trafficTracker.RecordRx(w.uid, int64(len(total)))
 	}

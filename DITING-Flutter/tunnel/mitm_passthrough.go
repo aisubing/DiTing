@@ -20,9 +20,11 @@ func isTLSClientPort(port int) bool {
 }
 
 func dialUpstream(flow flowID, hostname string, blocker adBlockChecker, protectFn func(fd int) bool) (net.Conn, error) {
-	outbound := flowOutbound(newFlowOutbound(outboundProxyConfig{}, protectFn, nil))
+	var outbound flowOutbound
 	if engine, ok := blocker.(*Engine); ok && engine.flowOutbound != nil {
 		outbound = engine.flowOutbound
+	} else {
+		outbound = newFlowOutbound(outboundProxyConfig{}, protectFn, nil)
 	}
 	if hostname == "" && blocker != nil {
 		hostname = blocker.domainForIP(flow.serverIP)
@@ -90,14 +92,14 @@ func relayDirectPeeked(clientConn net.Conn, clientReader io.Reader, flow flowID,
 
 	done := make(chan struct{}, 2)
 	go func() {
-		io.Copy(remote, clientReader)
+		copyPooled(remote, clientReader)
 		if cw, ok := remote.(interface{ CloseWrite() error }); ok {
 			cw.CloseWrite()
 		}
 		done <- struct{}{}
 	}()
 	go func() {
-		io.Copy(clientConn, remote)
+		copyPooled(clientConn, remote)
 		if cw, ok := clientConn.(interface{ CloseWrite() error }); ok {
 			cw.CloseWrite()
 		}

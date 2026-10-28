@@ -4,7 +4,7 @@
 package tunnel
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,7 +32,14 @@ func normalizeDNSCacheConfig(cfg *dnsCacheConfig) {
 
 func cacheKey(domain string, qtype, qclass uint16) string {
 	normalized := strings.ToLower(strings.TrimSuffix(domain, "."))
-	return fmt.Sprintf("%s:%d:%d", normalized, qtype, qclass)
+	// Same "name:qtype:qclass" format as before, without fmt's reflection and boxing.
+	buf := make([]byte, 0, len(normalized)+12)
+	buf = append(buf, normalized...)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(qtype), 10)
+	buf = append(buf, ':')
+	buf = strconv.AppendUint(buf, uint64(qclass), 10)
+	return string(buf)
 }
 
 func fnv32(s string) uint32 {

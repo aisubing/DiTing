@@ -51,8 +51,10 @@ func (e *Engine) requestFilterDecision(scheme, host, path, appName string) (bloc
 		path = "/"
 	}
 	url := strings.ToLower(scheme + "://" + host + path)
+	// SetRequestRules always installs a fresh slice and never mutates it in
+	// place, so the reference can be read without copying per request.
 	e.mu.Lock()
-	rules := append([]requestRule(nil), e.requestRules...)
+	rules := e.requestRules
 	e.mu.Unlock()
 	bestLen := -1
 	bestAllow := false

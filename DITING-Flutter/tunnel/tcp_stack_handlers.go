@@ -98,14 +98,14 @@ func bidiCopyFlow(a, b net.Conn) {
 
 	go func() {
 		defer wg.Done()
-		io.Copy(b, a)
+		copyPooled(b, a)
 		if cw, ok := b.(interface{ CloseWrite() error }); ok {
 			cw.CloseWrite()
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		io.Copy(a, b)
+		copyPooled(a, b)
 		if cw, ok := a.(interface{ CloseWrite() error }); ok {
 			cw.CloseWrite()
 		}
@@ -114,7 +114,33 @@ func bidiCopyFlow(a, b net.Conn) {
 	wg.Wait()
 }
 
+const tcpCopyBufferSize = 32 * 1024
+
+var tcpCopyBufPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, tcpCopyBufferSize)
+		return &b
+	},
+}
+
+// Hiding ReadFrom/WriteTo forces io.CopyBuffer onto the pooled buffer. One side
+// of every relay is a gVisor conn, so the kernel splice fast path never applies
+// and net.TCPConn's fallback would allocate a fresh 32 KB buffer per direction.
+type copyWriterOnly struct{ io.Writer }
+type copyReaderOnly struct{ io.Reader }
+
+func copyPooled(dst io.Writer, src io.Reader) (int64, error) {
+	bufp := tcpCopyBufPool.Get().(*[]byte)
+	defer tcpCopyBufPool.Put(bufp)
+	return io.CopyBuffer(copyWriterOnly{dst}, copyReaderOnly{src}, *bufp)
+}
+
 const defaultUDPIdleTimeout = 30 * time.Second
+
+// udpDeadlineRefresh bounds how often the rolling idle deadline is re-armed.
+// Re-arming on every datagram cost a timer reset per packet on QUIC-heavy flows;
+// the effective idle timeout stays within [timeout-refresh, timeout].
+const udpDeadlineRefresh = time.Second
 
 var udpBufPool = sync.Pool{
 	New: func() any {
@@ -131,11 +157,18 @@ func relayUDPFlow(a, b net.Conn) {
 		bufp := udpBufPool.Get().(*[]byte)
 		defer udpBufPool.Put(bufp)
 		buf := *bufp
+		var readArmed, writeArmed time.Time
 		for {
-			_ = src.SetReadDeadline(time.Now().Add(defaultUDPIdleTimeout))
+			if now := time.Now(); now.Sub(readArmed) >= udpDeadlineRefresh {
+				_ = src.SetReadDeadline(now.Add(defaultUDPIdleTimeout))
+				readArmed = now
+			}
 			n, err := src.Read(buf)
 			if n > 0 {
-				_ = dst.SetWriteDeadline(time.Now().Add(defaultUDPIdleTimeout))
+				if now := time.Now(); now.Sub(writeArmed) >= udpDeadlineRefresh {
+					_ = dst.SetWriteDeadline(now.Add(defaultUDPIdleTimeout))
+					writeArmed = now
+				}
 				if _, werr := dst.Write(buf[:n]); werr != nil {
 					return
 				}

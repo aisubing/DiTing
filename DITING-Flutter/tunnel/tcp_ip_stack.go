@@ -121,24 +121,28 @@ func (s *TcpIpStack) HandleTCP(conn adapter.TCPConn) {
 	uidr := s.uidr
 	s.mu.Unlock()
 
-	flow := tcpFlowID(conn)
-	uid := resolveFlowUID(uidr, ProtocolTCP, flow)
-
-	if c <= 5 {
-		logf("TcpIpStack: HandleTCP #%d uid=%d %s:%d → %s:%d (handler set: %t)",
-			c, uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort, h != nil)
-	}
-
-	if h == nil {
-
-		logf("TcpIpStack: TCP uid=%d %s:%d → %s:%d (no handler, dropping)",
-			uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort)
-		_ = conn.Close()
-		return
+	// The UID is only needed for the diagnostics below; the flow handler resolves
+	// it itself, so skip the platform lookup on the common path.
+	if c <= 5 || h == nil {
+		flow := tcpFlowID(conn)
+		uid := resolveFlowUID(uidr, ProtocolTCP, flow)
+		if c <= 5 {
+			logf("TcpIpStack: HandleTCP #%d uid=%d %s:%d → %s:%d (handler set: %t)",
+				c, uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort, h != nil)
+		}
+		if h == nil {
+			logf("TcpIpStack: TCP uid=%d %s:%d → %s:%d (no handler, dropping)",
+				uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort)
+			_ = conn.Close()
+			return
+		}
 	}
 	h(conn)
 }
 
+// HandleUDP runs on gVisor's single packet-dispatch goroutine, so it must not
+// block: the UID lookup is a JNI + binder round-trip and is left to the handler
+// goroutine.
 func (s *TcpIpStack) HandleUDP(conn adapter.UDPConn) {
 	s.udpFlows.Add(1)
 
@@ -147,13 +151,14 @@ func (s *TcpIpStack) HandleUDP(conn adapter.UDPConn) {
 	uidr := s.uidr
 	s.mu.Unlock()
 
-	flow := udpFlowID(conn)
-	uid := resolveFlowUID(uidr, ProtocolUDP, flow)
-
 	if h == nil {
-		logf("TcpIpStack: UDP uid=%d %s:%d → %s:%d (no handler, dropping)",
-			uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort)
-		_ = conn.Close()
+		go func() {
+			flow := udpFlowID(conn)
+			uid := resolveFlowUID(uidr, ProtocolUDP, flow)
+			logf("TcpIpStack: UDP uid=%d %s:%d → %s:%d (no handler, dropping)",
+				uid, flow.appIP, flow.appPort, flow.serverIP, flow.serverPort)
+			_ = conn.Close()
+		}()
 		return
 	}
 

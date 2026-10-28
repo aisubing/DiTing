@@ -61,6 +61,7 @@ func (e *Engine) SetUseTcpStack(enabled bool) {
 func (e *Engine) IsUsingTcpStack() bool { return e.useTcpStack.Load() }
 
 func (e *Engine) SetUIDResolver(r UIDResolver) {
+	r = newCachingUIDResolver(r)
 	e.mu.Lock()
 	e.uidResolver = r
 	stack := e.tcpStack
