@@ -225,14 +225,19 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
   }
 
   /// The subtitle reflects the real count; an unreadable count says so instead of inventing one.
-  /// The subtitle reflects the real count; an unreadable count says so instead of inventing one.
   String _dbHealthSubtitle(DbWriteHealthSnapshot? health) {
     if (health == null) return '正在读取写入状态…';
-    if (health.healthy) return '正常，没有日志被丢弃';
+    if (health.healthy) {
+      // The probe is what makes this trustworthy: "0 dropped" also happens when nothing writes.
+      if (!health.probeOk) return '正常，没有日志被丢弃';
+      return '正常，没有日志被丢弃（${health.probeJournalMode} · '
+          'busy ${health.probeBusyTimeoutMs}ms）';
+    }
     final dropped = health.droppedRows;
     final failed = health.openFailures;
-    final cause = health.lastCause.isEmpty ? '' : '（${health.lastCause}）';
-    return '已丢弃 $dropped 条日志，打开失败 $failed 次$cause';
+    final cause = health.lastCause.isEmpty ? health.probeCause : health.lastCause;
+    final reason = cause.isEmpty ? '' : '（$cause）';
+    return '已丢弃 $dropped 条日志，打开失败 $failed 次$reason';
   }
 
   String _crashSubtitle(int? count) => switch (count) {

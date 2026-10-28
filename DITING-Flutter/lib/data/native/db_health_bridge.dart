@@ -13,6 +13,11 @@ class DbWriteHealthSnapshot {
     this.droppedRows = 0,
     this.openFailures = 0,
     this.lastCause = '',
+    this.probeOk = false,
+    this.probeAbsent = false,
+    this.probeJournalMode = '',
+    this.probeBusyTimeoutMs = -1,
+    this.probeCause = '',
   });
 
   /// Rows thrown away because they could not be buffered or persisted at all.
@@ -24,8 +29,21 @@ class DbWriteHealthSnapshot {
   /// Last native failure, e.g. `SQLiteDatabaseLockedException: database is locked`.
   final String lastCause;
 
-  /// True when nothing was dropped and no open failed during this process lifetime.
-  bool get healthy => droppedRows == 0 && openFailures == 0;
+  /// Whether the native side could open the database right now, and how it came up.
+  final bool probeOk;
+
+  /// No database file yet (first run): not a failure, the Dart side creates the schema.
+  final bool probeAbsent;
+  final String probeJournalMode;
+  final int probeBusyTimeoutMs;
+  final String probeCause;
+
+  /// True when nothing was dropped, no open failed, and the connection answers right now.
+  /// An empty [probeCause] means the probe never ran (no native channel), not that it failed.
+  bool get healthy =>
+      droppedRows == 0 &&
+      openFailures == 0 &&
+      (probeOk || probeAbsent || probeCause.isEmpty);
 
   static const unavailable = DbWriteHealthSnapshot();
 
@@ -35,6 +53,11 @@ class DbWriteHealthSnapshot {
       droppedRows: (raw['droppedRows'] as num?)?.toInt() ?? 0,
       openFailures: (raw['openFailures'] as num?)?.toInt() ?? 0,
       lastCause: raw['lastCause'] as String? ?? '',
+      probeOk: raw['probeOk'] as bool? ?? false,
+      probeAbsent: raw['probeAbsent'] as bool? ?? false,
+      probeJournalMode: raw['probeJournalMode'] as String? ?? '',
+      probeBusyTimeoutMs: (raw['probeBusyTimeoutMs'] as num?)?.toInt() ?? -1,
+      probeCause: raw['probeCause'] as String? ?? '',
     );
   }
 }

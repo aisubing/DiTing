@@ -2,6 +2,7 @@ package com.haoze.diting.log
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.util.Log
 import java.io.File
 
 /// Owns the one writable connection per database file used by the native readers and writers.
@@ -12,6 +13,7 @@ import java.io.File
 /// (183 attempts, zero successes, four minutes). One long-lived connection plus `busy_timeout`
 /// turns that into a short wait on the same connection the writers already share.
 internal object LegacyDb {
+    private const val TAG = "LegacyDb"
     private const val BUSY_TIMEOUT_MS = 5_000
 
     /// Outcome of [open]. Writers must tell [Absent] (nothing to write to yet) from [Unavailable]
@@ -42,10 +44,15 @@ internal object LegacyDb {
                 path.path,
                 null,
                 SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING,
-            ).apply {
-                // WAL is what the sqflite side uses; asking for it explicitly keeps both sides on
-                // the same journal mode instead of racing a switch under the other's lock.
-                execSQL("PRAGMA busy_timeout = $BUSY_TIMEOUT_MS")
+            ).also { db ->
+                db.setBusyTimeout(BUSY_TIMEOUT_MS)
+                // One line per open (the connection is cached, so opens are rare): the next log
+                // export can tell whether the connection really is WAL with a busy timeout.
+                Log.i(
+                    TAG,
+                    "opened $databaseName journal=${db.pragmaString("PRAGMA journal_mode")} " +
+                        "busy=${db.pragmaLong("PRAGMA busy_timeout")}ms v${db.version}",
+                )
             }
         }.fold(
             onSuccess = { db ->
@@ -56,6 +63,52 @@ internal object LegacyDb {
                 DbWriteHealth.onOpenFailure(databaseName, error)
                 Open.Unavailable(error)
             },
+        )
+    }
+
+    /// `PRAGMA busy_timeout = N` returns a row, so `execSQL` rejects it ("Queries can be performed
+    /// using SQLiteDatabase query or rawQuery methods only") — that turned every 2.1.8 open into a
+    /// failure. A query consumes the row instead, and the whole thing stays best-effort: a pragma
+    /// that does not stick must never invalidate a connection that already opened.
+    private fun SQLiteDatabase.setBusyTimeout(timeoutMs: Int) {
+        runCatching {
+            rawQuery("PRAGMA busy_timeout = $timeoutMs", null).use { it.moveToFirst() }
+        }.onFailure { DbWriteHealth.warn("LegacyDb", "busy_timeout not applied", it) }
+    }
+
+    private fun SQLiteDatabase.pragmaString(sql: String): String = runCatching {
+        rawQuery(sql, null).use { if (it.moveToFirst()) it.getString(0) else "?" }
+    }.getOrDefault("?")
+
+    private fun SQLiteDatabase.pragmaLong(sql: String): Long = runCatching {
+        rawQuery(sql, null).use { if (it.moveToFirst()) it.getLong(0) else -1L }
+    }.getOrDefault(-1L)
+
+    /// Live read-back for the troubleshooting page: whether the connection is actually WAL and
+    /// actually has a busy timeout. Counters alone cannot tell "no failures yet" from "no writes".
+    fun probe(context: Context, databaseName: String): Map<String, Any> {
+        val opened = open(context, databaseName)
+        if (opened !is Open.Ready) {
+            val cause = (opened as? Open.Unavailable)?.cause
+            val text = cause?.let { "${it.javaClass.simpleName}: ${it.message}" }
+                ?: "database file missing"
+            return mapOf(
+                "probeDatabase" to databaseName,
+                "probeOk" to false,
+                // A missing file is normal before the first run creates the schema.
+                "probeAbsent" to (opened is Open.Absent),
+                "probeCause" to text,
+            )
+        }
+        val db = opened.db
+        return mapOf(
+            "probeDatabase" to databaseName,
+            "probeOk" to true,
+            "probeAbsent" to false,
+            "probeJournalMode" to db.pragmaString("PRAGMA journal_mode"),
+            "probeBusyTimeoutMs" to db.pragmaLong("PRAGMA busy_timeout"),
+            "probeUserVersion" to db.version,
+            "probeCause" to "",
         )
     }
 

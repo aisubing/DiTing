@@ -4,6 +4,7 @@
 import 'package:diting/data/fonts/font_repository.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
+import 'package:diting/data/native/db_health_bridge.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/native/tile_bridge.dart';
@@ -17,6 +18,7 @@ void main() {
   group('原生通道', _nativeBridge);
   group('快捷开关启动请求', _tileBridge);
   group('导入字体', _fontRepository);
+  group('数据库写入健康度', _dbHealthBridge);
 }
 
 /// Guards the Dart side of three native channels: validation order, JSON shape, enum fallbacks
@@ -421,5 +423,86 @@ void _fontRepository() {
       expect(fonts, hasLength(1));
       expect(fonts.single.family, 'Ok');
     });
+  });
+}
+
+/// The troubleshooting card is the only place a silent "no logs at all" becomes visible, so the
+/// mapping from the native payload has to keep three cases apart: fine, dropping, and unopenable.
+void _dbHealthBridge() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const channel = MethodChannel(dbHealthChannelName);
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+  });
+
+  void mockResult(Map<String, Object?> payload) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async => payload);
+  }
+
+  test('连接正常时如实给出日志模式与 busy 超时', () async {
+    mockResult({
+      'droppedRows': 0,
+      'openFailures': 0,
+      'lastCause': '',
+      'probeOk': true,
+      'probeAbsent': false,
+      'probeJournalMode': 'wal',
+      'probeBusyTimeoutMs': 5000,
+      'probeCause': '',
+    });
+    final health = await DbHealthBridge().status();
+    expect(health.healthy, isTrue);
+    expect(health.probeJournalMode, 'wal');
+    expect(health.probeBusyTimeoutMs, 5000);
+  });
+
+  test('有丢弃或打开失败时不算健康，并透传原因', () async {
+    mockResult({
+      'droppedRows': 12,
+      'openFailures': 3,
+      'lastCause': 'SQLiteDatabaseLockedException: database is locked',
+      'probeOk': false,
+      'probeAbsent': false,
+      'probeCause': 'SQLiteException: boom',
+    });
+    final health = await DbHealthBridge().status();
+    expect(health.healthy, isFalse);
+    expect(health.droppedRows, 12);
+    expect(health.openFailures, 3);
+    expect(health.lastCause, contains('database is locked'));
+  });
+
+  test('计数为零但探针打不开库，也要报不健康', () async {
+    mockResult({
+      'droppedRows': 0,
+      'openFailures': 0,
+      'probeOk': false,
+      'probeAbsent': false,
+      'probeCause': 'SQLiteException: unknown error (code 0 SQLITE_OK)',
+    });
+    final health = await DbHealthBridge().status();
+    expect(health.healthy, isFalse);
+    expect(health.probeCause, contains('SQLITE_OK'));
+  });
+
+  test('首次安装还没有库文件时不算故障', () async {
+    mockResult({
+      'droppedRows': 0,
+      'openFailures': 0,
+      'probeOk': false,
+      'probeAbsent': true,
+      'probeCause': 'database file missing',
+    });
+    expect((await DbHealthBridge().status()).healthy, isTrue);
+  });
+
+  test('通道缺失（桌面端）降级为不可读而不是抛异常', () async {
+    final health = await DbHealthBridge().status();
+    expect(health.healthy, isTrue);
+    expect(health.probeJournalMode, isEmpty);
   });
 }

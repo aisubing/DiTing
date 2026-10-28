@@ -52,7 +52,7 @@ class MainActivity : FlutterActivity() {
         RecognitionAvatarBridge(applicationContext).register(messenger)
         // Manual runtime-log capture: its own channel, so PlatformBridge stays crash-only.
         RuntimeLogBridge(applicationContext).register(messenger)
-        DbHealthBridge().register(messenger)
+        DbHealthBridge(applicationContext).register(messenger)
     }
 
     override fun onResume() {
