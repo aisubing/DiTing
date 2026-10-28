@@ -7,6 +7,7 @@ import com.haoze.diting.net.DiagnosticsBridge
 import com.haoze.diting.net.DnsLatencyBridge
 import com.haoze.diting.platform.BackgroundBridge
 import com.haoze.diting.platform.DbHealthBridge
+import com.haoze.diting.platform.NotificationBridge
 import com.haoze.diting.platform.PermissionsBridge
 import com.haoze.diting.platform.PlatformBridge
 import com.haoze.diting.platform.RecognitionAvatarBridge
@@ -52,6 +53,8 @@ class MainActivity : FlutterActivity() {
         RecognitionAvatarBridge(applicationContext).register(messenger)
         // Manual runtime-log capture: its own channel, so PlatformBridge stays crash-only.
         RuntimeLogBridge(applicationContext).register(messenger)
+        // Notification repaints after a Dart-side settings edit: same reasoning.
+        NotificationBridge(applicationContext).register(messenger)
         DbHealthBridge(applicationContext).register(messenger)
     }
 

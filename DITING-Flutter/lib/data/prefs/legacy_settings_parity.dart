@@ -118,6 +118,17 @@ extension LegacySettingsParity on LegacySettings {
     _store.putString(_notification, 'custom_stopped_text', stopped);
   }
 
+  /// Legacy-style bodies composed by Dart (`notification_status_text.dart`): the services cannot
+  /// see the provider catalog, so the default is persisted next to the custom text.
+  void setNotificationDefaultRunningText(String value) =>
+      _store.putString(_notification, 'default_running_text', value);
+
+  void setNotificationDefaultExpressText(String value) =>
+      _store.putString(_notification, 'default_express_text', value);
+
+  void setNotificationDefaultServerText(String value) =>
+      _store.putString(_notification, 'default_server_text', value);
+
   /// Dataset container: one shared switch would make express and server modes change together.
   bool get subscriptionAutoUpdateEnabled => _bool(
     dnsContainer,

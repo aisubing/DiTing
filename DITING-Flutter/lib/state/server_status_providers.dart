@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 
+import 'package:diting/data/notifications/notification_status_text.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';
 import 'package:diting/data/server/dns_server_config.dart';
@@ -138,6 +139,10 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
     final settings = ref.read(legacySettingsProvider);
     try {
       final config = buildServerDnsConfig(settings);
+      // Composed here: the service has no provider catalog to build the upstream line from.
+      settings.setNotificationDefaultServerText(
+        defaultServerNotificationText(settings),
+      );
       // Rules are no longer loaded or shipped here: the service builds the engine
       // snapshot in its own process, so the rule set never crosses the Binder limit.
       final result = await ref

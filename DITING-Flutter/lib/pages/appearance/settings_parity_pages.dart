@@ -1,8 +1,10 @@
 /// Notifications, background and language sub pages; keys in `notification_settings_prefs`.
 library;
 
+import 'dart:async';
 import 'dart:io';
 
+import 'package:diting/data/native/notification_bridge.dart';
 import 'package:diting/data/native/permissions_bridge.dart';
 import 'package:diting/pages/appearance/appearance_inputs.dart';
 import 'package:diting/state/permission_providers.dart';
@@ -26,6 +28,7 @@ class ThemeNotificationPage extends ConsumerStatefulWidget {
 class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
   late final TextEditingController _running;
   late final TextEditingController _stopped;
+  Timer? _refreshDebounce;
 
   @override
   void initState() {
@@ -37,9 +40,19 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
 
   @override
   void dispose() {
+    _refreshDebounce?.cancel();
     _running.dispose();
     _stopped.dispose();
     super.dispose();
+  }
+
+  /// The services read the text from prefs, so a running notification only picks the edit up when
+  /// it is told to rebuild. Debounced: typing must not repaint the shade on every keystroke.
+  void _refreshNotification() {
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(const Duration(milliseconds: 300), () {
+      ref.read(notificationBridgeProvider).refresh();
+    });
   }
 
   @override
@@ -59,14 +72,22 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
                 subtitle: const Text('服务运行时保留一条不可划掉的通知'),
                 leading: const GlyphIcon(AppGlyphs.status),
                 value: settings.persistent,
-                onChanged: notifier.setPersistent,
+                onChanged: (value) {
+                  notifier.setPersistent(value);
+                  _refreshNotification();
+                },
               ),
               ListItem.toggle(
                 title: const Text('显示实时速率'),
                 subtitle: const Text('在通知里显示当前上下行速率'),
                 leading: const GlyphIcon(AppGlyphs.speed),
                 value: settings.showSpeed,
-                onChanged: settings.persistent ? notifier.setShowSpeed : null,
+                onChanged: settings.persistent
+                    ? (value) {
+                        notifier.setShowSpeed(value);
+                        _refreshNotification();
+                      }
+                    : null,
               ),
             ],
           ),
@@ -79,14 +100,20 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
                   controller: _running,
                   minLines: 2,
                   hintText: '留空则使用默认文案',
-                  onChanged: notifier.setRunningText,
+                  onChanged: (value) {
+                    notifier.setRunningText(value);
+                    _refreshNotification();
+                  },
                 ),
                 LabeledTextField(
                   label: 'DNS 服务关闭时',
                   controller: _stopped,
                   minLines: 2,
                   hintText: '留空则使用默认文案',
-                  onChanged: notifier.setStoppedText,
+                  onChanged: (value) {
+                    notifier.setStoppedText(value);
+                    _refreshNotification();
+                  },
                 ),
               ],
             ),

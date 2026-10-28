@@ -22,6 +22,8 @@ import com.haoze.diting.log.DnsCacheMirror
 import com.haoze.diting.log.DnsLogWriter
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.RaceLogWriter
+import com.haoze.diting.platform.NotificationMode
+import com.haoze.diting.platform.NotificationSettings
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.BootstrapLogCallback
@@ -303,7 +305,7 @@ class DitingDnsServerService : Service() {
     }
 
     private fun promoteToForeground(port: Int) {
-        val notification = buildNotification(port)
+        val notification = buildNotification(this, port)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(
@@ -317,32 +319,6 @@ class DitingDnsServerService : Service() {
         } catch (t: Throwable) {
             Log.e(TAG, "startForeground failed", t)
         }
-    }
-
-    private fun buildNotification(port: Int): Notification {
-        val openIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val stopIntent = PendingIntent.getService(
-            this,
-            1,
-            Intent(this, DitingDnsServerService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val label = applicationInfo.loadLabel(packageManager).toString()
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("$label · 服务器模式运行中")
-            .setContentText("正在监听端口 $port（UDP/TCP）")
-            .setContentIntent(openIntent)
-            .addAction(0, "停止", stopIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
     }
 
     private fun createNotificationChannel() {
@@ -428,6 +404,55 @@ class DitingDnsServerService : Service() {
             "port" to context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getInt(KEY_LOCAL_PORT, DEFAULT_PORT),
         )
+
+        /// Builds the foreground notification from the current settings; the body prefers the
+        /// user's custom text over the legacy-style upstream line Dart composed.
+        private fun buildNotification(context: Context, port: Int): Notification {
+            val openIntent = PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            val stopIntent = PendingIntent.getService(
+                context,
+                1,
+                Intent(context, DitingDnsServerService::class.java).setAction(ACTION_STOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            val label = context.applicationInfo.loadLabel(context.packageManager).toString()
+            val status = NotificationSettings.runningText(
+                context,
+                NotificationMode.SERVER,
+                "正在监听端口 $port（UDP/TCP）",
+            )
+            return NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("$label · 服务器模式运行中")
+                .setContentText(status)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(status))
+                .setContentIntent(openIntent)
+                .addAction(0, "停止", stopIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .build()
+        }
+
+        /// Rebuilds the posted notification after a settings change; false when nothing is posted
+        fun refreshNotification(context: Context): Boolean {
+            if (!isRunning) return false
+            val port = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getInt(KEY_LOCAL_PORT, DEFAULT_PORT)
+            return runCatching {
+                val manager = context.getSystemService(NotificationManager::class.java)
+                    ?: return@runCatching false
+                manager.notify(NOTIFICATION_ID, buildNotification(context, port))
+                true
+            }.getOrDefault(false)
+        }
 
         fun startIntent(
             context: Context,

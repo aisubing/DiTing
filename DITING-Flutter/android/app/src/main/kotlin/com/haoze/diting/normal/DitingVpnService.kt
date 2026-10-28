@@ -511,6 +511,10 @@ class DitingVpnService : VpnService() {
             QuickSettingsTileUpdater.requestTileUpdate(context)
         }
 
+        /// Rebuilds the posted notification after a settings change; false when nothing is posted
+        fun refreshNotification(context: Context): Boolean =
+            isRunning && VpnNotification.rerender(context, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP)
+
         fun status(context: Context): Map<String, Any?> = mapOf(
             "running" to isRunning,
             "persisted" to isPersistedRunning(context),

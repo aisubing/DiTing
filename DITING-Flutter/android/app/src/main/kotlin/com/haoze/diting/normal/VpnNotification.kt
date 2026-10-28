@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
 import com.haoze.diting.log.TrafficRateMonitor
+import com.haoze.diting.platform.NotificationMode
 import com.haoze.diting.platform.NotificationSettings
 
 /// Builds the full-tunnel foreground notification. The channel id and stop action stay owned by
@@ -36,11 +37,11 @@ object VpnNotification {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val label = context.applicationInfo.loadLabel(context.packageManager).toString()
-        
-        val status = NotificationSettings.contentText(
+
+        val status = NotificationSettings.runningText(
             context,
-            running = true,
-            fallback = "VPN 正在运行",
+            NotificationMode.NORMAL,
+            "已连接",
         )
         val speed = if (NotificationSettings.showSpeed(context)) {
             val (tx, rx) = TrafficRateMonitor.snapshot()
@@ -65,7 +66,8 @@ object VpnNotification {
             .build()
     }
 
-    /// Re-renders the notification in place. No-op unless the speed readout is on
+    /// Re-renders the notification in place. No-op unless the speed readout is on: the ticker calls
+    /// this every second and the body only changes when the rate does.
     fun refresh(
         context: Context,
         channelId: String,
@@ -73,12 +75,19 @@ object VpnNotification {
         stopAction: String,
     ) {
         if (!NotificationSettings.showSpeed(context)) return
-        runCatching {
-            val manager = context.getSystemService(NotificationManager::class.java) ?: return
-            manager.notify(
-                notificationId,
-                build(context, channelId, notificationId, stopAction),
-            )
-        }
+        rerender(context, channelId, notificationId, stopAction)
     }
+
+    /// Unconditional rebuild for settings changes (custom text, speed toggle, persistent).
+    fun rerender(
+        context: Context,
+        channelId: String,
+        notificationId: Int,
+        stopAction: String,
+    ): Boolean = runCatching {
+        val manager = context.getSystemService(NotificationManager::class.java)
+            ?: return@runCatching false
+        manager.notify(notificationId, build(context, channelId, notificationId, stopAction))
+        true
+    }.getOrDefault(false)
 }

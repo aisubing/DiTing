@@ -21,6 +21,8 @@ import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.RaceLogWriter
+import com.haoze.diting.platform.NotificationMode
+import com.haoze.diting.platform.NotificationSettings
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
@@ -305,7 +307,7 @@ class ExpressVpnService : VpnService() {
     }
 
     private fun promoteToForeground() {
-        val notification = buildNotification()
+        val notification = buildNotification(this)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 startForeground(
@@ -319,32 +321,6 @@ class ExpressVpnService : VpnService() {
         } catch (t: Throwable) {
             Log.e(TAG, "startForeground failed", t)
         }
-    }
-
-    private fun buildNotification(): Notification {
-        val openIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val stopIntent = PendingIntent.getService(
-            this,
-            1,
-            Intent(this, ExpressVpnService::class.java).setAction(ACTION_STOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val label = applicationInfo.loadLabel(packageManager).toString()
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("$label · 极速")
-            .setContentText("极速模式运行中，仅接管 DNS 查询")
-            .setContentIntent(openIntent)
-            .addAction(0, "停止", stopIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
     }
 
     private fun createNotificationChannel() {
@@ -439,6 +415,53 @@ class ExpressVpnService : VpnService() {
             "startedAt" to startedAt,
             "stats" to EngineStats.snapshot(activeEngine),
         )
+
+        /// Builds the foreground notification from the current settings; the body prefers the
+        /// user's custom text over the legacy-style line Dart composed.
+        private fun buildNotification(context: Context): Notification {
+            val openIntent = PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            val stopIntent = PendingIntent.getService(
+                context,
+                1,
+                Intent(context, ExpressVpnService::class.java).setAction(ACTION_STOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            val label = context.applicationInfo.loadLabel(context.packageManager).toString()
+            val status = NotificationSettings.runningText(
+                context,
+                NotificationMode.EXPRESS,
+                "极速模式运行中",
+            )
+            return NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("$label · 极速")
+                .setContentText(status)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(status))
+                .setContentIntent(openIntent)
+                .addAction(0, "停止", stopIntent)
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+                .build()
+        }
+
+        /// Rebuilds the posted notification after a settings change; false when nothing is posted
+        fun refreshNotification(context: Context): Boolean {
+            if (!isRunning) return false
+            return runCatching {
+                val manager = context.getSystemService(NotificationManager::class.java)
+                    ?: return@runCatching false
+                manager.notify(NOTIFICATION_ID, buildNotification(context))
+                true
+            }.getOrDefault(false)
+        }
 
         fun startIntent(
             context: Context,

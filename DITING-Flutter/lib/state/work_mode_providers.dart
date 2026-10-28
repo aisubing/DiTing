@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/notifications/notification_status_text.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
@@ -278,6 +279,17 @@ class PowerNotifier extends Notifier<PowerState> {
     // snapshot in its own process (trie files + inline extras), so a large
     // subscription can no longer blow the Binder transaction limit.
     final config = buildDnsConfig(settings);
+    // The service only sees the config JSON, so the legacy-style status line is composed here and
+    // read back from prefs by the notification builder.
+    final statusText = defaultRunningNotificationText(
+      settings,
+      express: express,
+    );
+    if (express) {
+      settings.setNotificationDefaultExpressText(statusText);
+    } else {
+      settings.setNotificationDefaultRunningText(statusText);
+    }
     final controller = express
         ? ref.read(expressVpnControllerProvider)
         : ref.read(vpnControllerProvider);
