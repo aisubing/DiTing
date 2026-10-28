@@ -12,11 +12,13 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
   ValueListenable<bool>? _platter;
   late Listenable _motion = _unfold;
   _CarriedPress? _carried;
+  _PopupSurface? _surface;
   ValueSetter<VoidCallback>? _runPicked;
 
   final List<_MenuStep> _path = [];
   bool _folding = false;
   final _menuKey = GlobalKey();
+  final _cardKeys = <GlobalKey>[];
   final _checkedKey = GlobalKey();
   ScrollController? _lazyController;
 
@@ -46,6 +48,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
       ?..onMove = _slideCarried
       ..onRelease = _releaseCarried
       ..onCancel = _cancelCarried;
+    _surface = scope?.surface?..rectIn = _topCardIn;
   }
 
   @override
@@ -54,6 +57,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
       ?..onMove = null
       ..onRelease = null
       ..onCancel = null;
+    _surface?.rectIn = null;
     _dwell?.cancel();
     _unfold.dispose();
     _lazyController?.dispose();
@@ -186,6 +190,26 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
       );
     }
     return levels;
+  }
+
+  GlobalKey _cardKeyAt(int index) {
+    while (_cardKeys.length <= index) {
+      _cardKeys.add(GlobalKey());
+    }
+    return _cardKeys[index];
+  }
+
+  /// Where the top sub menu's card stands in the popup, for it to return from.
+  Rect? _topCardIn(RenderBox popup) {
+    final top = _resolveLevels().length - 1;
+    if (top == 0 || top >= _cardKeys.length) {
+      return null;
+    }
+    final card = _cardKeys[top].currentContext?.findRenderObject();
+    if (card is! _RenderPopupMenuCard || !card.hasSize || !card.attached) {
+      return null;
+    }
+    return MatrixUtils.transformRect(card.getTransformTo(popup), card._rect);
   }
 
   void _push(BuildContext itemContext, int index) {
@@ -420,6 +444,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
                   child: _buildLevel(
                     context,
                     levels[index],
+                    cardKey: _cardKeyAt(index),
                     depth: topIndex - index,
                     pivot: index < topIndex
                         ? _path[index].itemTop - levels[index].top

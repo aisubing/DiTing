@@ -15,7 +15,13 @@ class _Replay {
   final _entered = <(ContainerLayer, Matrix4?, bool)>[];
   final _saves = <int>[];
 
-  void run() => _walk(entry.root, root: true);
+  Color? _veil;
+
+  /// Replays the slot, answering the veil left for the shader to lay over it.
+  Color run() {
+    _walk(entry.root, root: true);
+    return _veil ?? const Color(0x00000000);
+  }
 
   bool _walk(ContainerLayer layer, {required bool root}) {
     if (!root && !entry.ancestors.contains(layer) && !_mayShow(layer)) {
@@ -40,6 +46,11 @@ class _Replay {
               when _shows(recorded.canvasBounds.inflate(_overflow))) {
             _draw(picture);
           }
+        case final _LiquidGlassVeilLayer veil when _liesEvenly(veil):
+          final under = _veil;
+          _veil = under == null
+              ? veil.color
+              : Color.alphaBlend(veil.color, under);
         case final ContainerLayer container:
           reached = _walk(container, root: false);
       }
@@ -61,12 +72,64 @@ class _Replay {
   bool _shows(Rect bounds) =>
       MatrixUtils.transformRect(_toHost.last, bounds).overlaps(entry.slot);
 
+  bool _liesEvenly(_LiquidGlassVeilLayer veil) {
+    final toHost = _toHost.last;
+    final m = toHost.storage;
+    if (m[1] != 0 ||
+        m[4] != 0 ||
+        m[3] != 0 ||
+        m[7] != 0 ||
+        !_encloses(MatrixUtils.transformRect(toHost, veil.rect), entry.slot)) {
+      return false;
+    }
+    for (final (index, (layer, _, root)) in _entered.indexed) {
+      final clip = layer.describeClipBounds();
+      if (!root && _effectOf(layer) != null ||
+          clip != null &&
+              !_encloses(
+                MatrixUtils.transformRect(_toHost[index + 1], clip),
+                entry.slot,
+              )) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   void _draw(ui.Picture picture) {
+    // What the canvas has applied so far lay over the veil too, and neither
+    // tints nor cuts it.
+    if (_veil case final veil?) {
+      canvas.drawPaint(Paint()..color = veil);
+      drawn.add(veil);
+      _veil = null;
+    }
     while (_saves.length < _entered.length) {
       _saves.add(_apply(_entered[_saves.length]));
     }
-    canvas.drawPicture(picture);
+    final shift = _wholeTexelShift();
+    canvas
+      ..save()
+      ..translate(shift.dx, shift.dy)
+      ..drawPicture(picture)
+      ..restore();
     drawn.add(picture);
+  }
+
+  Offset _wholeTexelShift() {
+    final m = _toHost.last.storage;
+    if (m[1] != 0 || m[4] != 0 || m[3] != 0 || m[7] != 0) {
+      return Offset.zero;
+    }
+    final scale = entry.texelsPerDp;
+    double by(double translation, double stretch) {
+      final texels = translation * scale;
+      return stretch == 0
+          ? 0
+          : (texels.roundToDouble() - texels) / (scale * stretch);
+    }
+
+    return Offset(by(m[12], m[0]), by(m[13], m[5]));
   }
 
   int _apply((ContainerLayer, Matrix4?, bool) entered) {
@@ -79,24 +142,7 @@ class _Replay {
       drawn.addAll(geometry.storage);
       saves++;
     }
-    final effect = root
-        ? null
-        : switch (layer) {
-            OpacityLayer(:final alpha?) when alpha < 255 => (
-              Paint()..color = Color.fromARGB(alpha, 0, 0, 0),
-              alpha,
-            ),
-            ColorFilterLayer(:final colorFilter?) => (
-              Paint()..colorFilter = colorFilter,
-              colorFilter,
-            ),
-            ImageFilterLayer(:final imageFilter?) => (
-              Paint()..imageFilter = imageFilter,
-              imageFilter,
-            ),
-            ShaderMaskLayer(:final shader) => (Paint(), shader),
-            _ => null,
-          };
+    final effect = root ? null : _effectOf(layer);
     if (effect case (final paint, final key)?) {
       canvas.saveLayer(null, paint);
       drawn
@@ -109,6 +155,23 @@ class _Replay {
     }
     return saves;
   }
+
+  static (Paint, Object?)? _effectOf(ContainerLayer layer) => switch (layer) {
+    OpacityLayer(:final alpha?) when alpha < 255 => (
+      Paint()..color = Color.fromARGB(alpha, 0, 0, 0),
+      alpha,
+    ),
+    ColorFilterLayer(:final colorFilter?) => (
+      Paint()..colorFilter = colorFilter,
+      colorFilter,
+    ),
+    ImageFilterLayer(:final imageFilter?) => (
+      Paint()..imageFilter = imageFilter,
+      imageFilter,
+    ),
+    ShaderMaskLayer(:final shader) => (Paint(), shader),
+    _ => null,
+  };
 
   bool _clip(ContainerLayer layer) {
     final Object clip;

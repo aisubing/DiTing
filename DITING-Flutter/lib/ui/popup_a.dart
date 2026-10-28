@@ -24,9 +24,9 @@ const _maxContentBlur = 8.0;
 
 const _overshootPerLongestSide = 0.1;
 
-const _openDuration = Duration(milliseconds: 750);
+const _openDuration = Duration(milliseconds: 450);
 
-const _dismissDuration = Duration(milliseconds: 300);
+const _dismissDuration = Duration(milliseconds: 500);
 
 const _shrinkDuration = Duration(milliseconds: 200);
 
@@ -40,52 +40,43 @@ final _openSeconds = _secondsOf(_openDuration);
 
 final _dismissSeconds = _secondsOf(_dismissDuration);
 
-const _contentOut = Interval(0, 0.5, curve: Curves.easeOut);
+// iOS 27 returns a menu into its button as one drop of glass: the platter dips
+// away, then shrinks into the button, which re-forms out of a droplet and rises
+// past its place. iOS lays a menu over its button; one here opens beside it, so
+// it dips half as far, or the two would part.
+final _droplet = SpringSimulation(dropletSpring, 0, 1, 0);
+const _dropletBlend = 28.0;
+const _dropletContentOut = 0.1;
+const _dropletGlyphIn = 0.47;
+const _dropletGlyphCurve = Cubic(0.25, 0.1, 0.25, 1);
 
-final _returnSpring = SpringCurve(
-  SpringDescription.withDurationAndBounce(
-    duration: const Duration(milliseconds: 260),
-  ),
-  seconds: _dismissSeconds,
-);
+// Inside the button by then, the platter stops swelling it and the glass eases
+// back to the button's, so the last frame is the button itself.
+const _dropletAbsorbed = Interval(0.6, 0.9, curve: Curves.easeInOut);
 
-final _returnXSpring = SpringCurve(
-  SpringDescription.withDurationAndBounce(
-    duration: const Duration(milliseconds: 220),
-  ),
-  seconds: _dismissSeconds,
+// As measured on iOS 27: one spring opens the menu, a later one squares off its
+// capsule corners.
+final _open = SpringSimulation(
+  SpringDescription.withDampingRatio(mass: 1, stiffness: 400, ratio: 0.754),
+  0,
+  1,
+  0,
 );
-
-final _returnYSpring = SpringCurve(
-  SpringDescription.withDurationAndBounce(
-    duration: const Duration(milliseconds: 290),
-  ),
-  seconds: _dismissSeconds,
+final _corners = SpringSimulation(
+  SpringDescription.withDampingRatio(mass: 1, stiffness: 324, ratio: 0.75),
+  1,
+  0,
+  0,
 );
-
-final _growSpring = SpringCurve(
-  SpringDescription.withDurationAndBounce(
-    duration: const Duration(milliseconds: 500),
-    bounce: 0.3,
-  ),
-  seconds: _openSeconds,
-);
-
-final _moveYSpring = SpringCurve(
-  SpringDescription.withDurationAndBounce(
-    duration: const Duration(milliseconds: 340),
-    bounce: 0.12,
-  ),
-  seconds: _openSeconds,
-);
-
-final _moveXSpring = SpringCurve(
-  SpringDescription.withDurationAndBounce(
-    duration: const Duration(milliseconds: 520),
-    bounce: 0.2,
-  ),
-  seconds: _openSeconds,
-);
+const _cornersDelay = 0.07;
+const _cornersReachPerWidth = 0.48;
+const _openContentBlur = 4.0;
+const _openBlurBump = 1.9;
+const _unseenBlur = 0.1;
+const _platterInControl = 0.41;
+const _dropletShare = 0.25;
+const _rimDepth = 8.0;
+const _glyphUnderAt = 0.25;
 
 const _dwellDuration = Duration(milliseconds: 400);
 
@@ -144,34 +135,27 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
   Duration get reverseTransitionDuration =>
       sourceImage == null ? _shrinkDuration : _dismissDuration;
 
-  late final CurvedAnimation _grow = CurvedAnimation(
-    parent: animation!,
-    curve: _growSpring,
-  );
-
-  late final CurvedAnimation _moveX = CurvedAnimation(
-    parent: animation!,
-    curve: _moveXSpring,
-  );
-
-  late final CurvedAnimation _moveY = CurvedAnimation(
-    parent: animation!,
-    curve: _moveYSpring,
-  );
-
-  late final CurvedAnimation _content = CurvedAnimation(
-    parent: animation!,
-    curve: const Interval(0.04, 0.45, curve: Curves.easeOutCubic),
-  );
+  // A controller reverses over the share of its duration it had run, so a
+  // popup closed while opening would rush the return its morph times in full.
+  @override
+  bool didPop(T? result) {
+    final controller = this.controller!;
+    controller.reverseDuration =
+        reverseTransitionDuration * (1 / math.max(controller.value, 1e-3));
+    return super.didPop(result);
+  }
 
   final _unfolded = ValueNotifier<bool>(false);
 
-  /// Whether the platter shows rather than the cards, which on glass stand bare meanwhile.
+  /// Whether the platter shows rather than the cards, which on glass stand
+  /// bare meanwhile so that one pane, the platter's, bends what lies behind.
   final _platter = ValueNotifier<bool>(true);
 
   final _pin = _PopupPin();
 
   final _press = _CarriedPress();
+
+  final _surface = _PopupSurface();
 
   @override
   void install() {
@@ -186,15 +170,15 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
 
   void _updatePlatter() {
     final animation = this.animation!;
-    // A popup with a control to return into does so on the platter; one without dissolves.
+    // A popup with a control to return into does so on the platter; one
+    // without dissolves as it stood when it began to close.
     if (animation.status == AnimationStatus.reverse) {
       if (sourceImage != null) {
         _platter.value = true;
       }
       return;
     }
-    _platter.value =
-        !animation.isCompleted && _content.value < 1 && !_unfolded.value;
+    _platter.value = !animation.isCompleted && !_unfolded.value;
   }
 
   @override
@@ -202,10 +186,6 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
     animation
       ?..removeListener(_updatePlatter)
       ..removeStatusListener(_handleStatusChanged);
-    _grow.dispose();
-    _moveX.dispose();
-    _moveY.dispose();
-    _content.dispose();
     _unfolded.dispose();
     _platter.dispose();
     super.dispose();
@@ -258,6 +238,7 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
       child: _PopupScope(
         platter: _platter,
         press: _press,
+        surface: _surface,
         runPicked: _runPicked,
         child: builder(context),
       ),
@@ -304,11 +285,8 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
             child: _PopupMorph(
               anchor: anchor,
               animation: animation,
-              grow: _grow,
-              moveX: _moveX,
-              moveY: _moveY,
-              content: _content,
               platter: _platter,
+              surface: _surface,
               sourceColor: sourceColor,
               sourceImage: sourceImage,
               surfaceColor: SurfaceLevel.floatingOf(colorScheme)
@@ -321,6 +299,9 @@ class CommonPopupRoute<T> extends PopupRoute<T> {
                       from: LiquidGlassStyle.regular(colorScheme),
                       to: LiquidGlassStyle.menu(colorScheme),
                       rim: LiquidGlassRim.menu(colorScheme),
+                      coarse:
+                          LiquidGlassScope.qualityOf(context) ==
+                          LiquidGlassQuality.standard,
                     )
                   : null,
               child: child,

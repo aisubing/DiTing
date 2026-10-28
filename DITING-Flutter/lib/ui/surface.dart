@@ -78,14 +78,16 @@ extension ElevatedSurfaceExt on ColorScheme {
         SurfaceLevel.page.colorOf(this).tone;
     Color raise(Color color) => color.shiftTone(lift);
     return copyWith(
-      surface: raise(surface),
+      surface: surfaceContainer,
       surfaceDim: raise(surfaceDim),
       surfaceBright: raise(surfaceBright),
       surfaceContainerLowest: raise(surfaceContainerLowest),
       surfaceContainerLow: raise(surfaceContainerLow),
-      surfaceContainer: raise(surfaceContainer),
-      surfaceContainerHigh: raise(surfaceContainerHigh),
-      surfaceContainerHighest: raise(surfaceContainerHighest),
+      surfaceContainer: surfaceContainerHigh,
+      surfaceContainerHigh: surfaceContainerHighest,
+      surfaceContainerHighest: surfaceContainerHighest.shiftTone(
+        surfaceContainerHighest.tone - surfaceContainerHigh.tone,
+      ),
     );
   }
 }

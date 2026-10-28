@@ -4,6 +4,7 @@ part of 'liquid_glass.dart';
 
 class _LiquidGlassLayer extends Layer {
   static int _skipped = 0;
+  static int _capturesHeld = 0;
 
   ui.FragmentProgram? program;
   Rect rect = Rect.zero;
@@ -14,7 +15,10 @@ class _LiquidGlassLayer extends Layer {
   LiquidGlassStyle style = const LiquidGlassStyle(tint: Colors.transparent);
   LiquidGlassGlow glow = LiquidGlassGlow.none;
   Rect? hold;
+  double? holdFrost;
+  bool steadyFrost = false;
   LiquidGlassRim? rim;
+  Object? group;
   _Placement? _held;
 
   ui.Picture? _frost;
@@ -32,7 +36,6 @@ class _LiquidGlassLayer extends Layer {
   void dispose() {
     _frost?.dispose();
     _dropCaptured();
-    _captureShader?.dispose();
     super.dispose();
   }
 
@@ -160,8 +163,7 @@ class _LiquidGlassLayer extends Layer {
         canvas.drawRSuperellipse(corners.toRSuperellipse(rect), paint);
       }
     }
-    _captured?.dispose();
-    _captured = recorder.endRecording();
+    _hold(recorder.endRecording());
     _captureKey = (atlas, outline, blendMode, program, uniforms);
   }
 
@@ -200,6 +202,15 @@ class _LiquidGlassLayer extends Layer {
     if (haze > 0) {
       drawSlot(_hazeSample, Paint()..color = Color.fromRGBO(0, 0, 0, haze));
     }
+    final veil = Color.from(
+      alpha: mapping[_veilColor + 3],
+      red: mapping[_veilColor],
+      green: mapping[_veilColor + 1],
+      blue: mapping[_veilColor + 2],
+    );
+    if (veil.a > 0) {
+      canvas.drawPaint(Paint()..color = veil);
+    }
     _drawFrost(canvas, overCapture: true);
     canvas.restore();
   }
@@ -211,9 +222,18 @@ class _LiquidGlassLayer extends Layer {
   }
 
   void _dropCaptured() {
-    _captured?.dispose();
-    _captured = null;
+    _hold(null);
     _captureKey = null;
+    _captureShader?.dispose();
+    _captureShader = null;
+  }
+
+  void _hold(ui.Picture? captured) {
+    if ((captured == null) != (_captured == null)) {
+      _capturesHeld += captured == null ? -1 : 1;
+    }
+    _captured?.dispose();
+    _captured = captured;
   }
 
   ui.Picture _paintFrost() {

@@ -226,6 +226,7 @@ extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
   Widget _buildLevel(
     BuildContext context,
     _MenuLevel level, {
+    required GlobalKey cardKey,
     required int depth,
     required double pivot,
     required int? covered,
@@ -265,6 +266,7 @@ extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
                 alignment: Alignment.topRight,
                 origin: Offset(0, pivot),
                 child: PopupMenuCard(
+                  key: cardKey,
                   grow: step == null ? 1 : unfold,
                   origin: step == null
                       ? null

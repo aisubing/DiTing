@@ -17,6 +17,7 @@ const double _heldFrostShare = 0.9;
 // Offsets into a pane's mapping, in the order of the shader's uniforms.
 const _hazeSample = 10;
 const _hazeShare = 18;
+const _veilColor = 19;
 const _noHaze = <double>[0, 0, 1, 1, 0, 0, 0, 0];
 
 typedef LiquidGlassCapture = ({
@@ -51,6 +52,10 @@ class LiquidGlassHost extends StatelessWidget {
 
   @visibleForTesting
   static bool? debugCarryBandsOverride;
+
+  /// How many panes hold a capture, under a host or not.
+  @visibleForTesting
+  static int get debugHeldCaptures => _LiquidGlassLayer._capturesHeld;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +165,90 @@ class _RenderLiquidGlassFade extends RenderProxyBox {
 }
 
 class _LiquidGlassFadeLayer extends OpacityLayer {}
+
+/// Dims what it covers by [color], under [child], as a modal barrier does. An
+/// even scrim blurs to itself, so a pane above takes it from the shader rather
+/// than its capture, and a scrim fading renews none.
+class LiquidGlassVeil extends SingleChildRenderObjectWidget {
+  const LiquidGlassVeil({super.key, required this.color, super.child});
+
+  final Animation<Color?> color;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderLiquidGlassVeil(color);
+  }
+
+  @override
+  void updateRenderObject(BuildContext context, RenderObject renderObject) {
+    (renderObject as _RenderLiquidGlassVeil).color = color;
+  }
+}
+
+class _RenderLiquidGlassVeil extends RenderProxyBox {
+  _RenderLiquidGlassVeil(this._color);
+
+  final _layer = LayerHandle<_LiquidGlassVeilLayer>();
+
+  Animation<Color?> _color;
+  set color(Animation<Color?> value) {
+    if (value == _color) {
+      return;
+    }
+    if (attached) {
+      _color.removeListener(markNeedsPaint);
+      value.addListener(markNeedsPaint);
+    }
+    _color = value;
+    markNeedsPaint();
+  }
+
+  @override
+  bool get alwaysNeedsCompositing => true;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _color.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _color.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  void dispose() {
+    _layer.layer = null;
+    super.dispose();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final color = _color.value;
+    if (color == null || color.a == 0) {
+      _layer.layer = null;
+    } else {
+      final layer = _layer.layer ??= _LiquidGlassVeilLayer();
+      layer
+        ..color = color
+        ..rect = offset & size;
+      context.pushLayer(
+        layer,
+        (context, _) =>
+            context.canvas.drawRect(layer.rect, Paint()..color = color),
+        Offset.zero,
+      );
+    }
+    super.paint(context, offset);
+  }
+}
+
+class _LiquidGlassVeilLayer extends ContainerLayer {
+  Color color = const Color(0x00000000);
+  Rect rect = Rect.zero;
+}
 
 class _LiquidGlassHostBox extends SingleChildRenderObjectWidget {
   const _LiquidGlassHostBox({

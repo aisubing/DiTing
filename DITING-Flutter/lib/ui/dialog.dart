@@ -127,23 +127,21 @@ mixin AlertMotionRouteMixin<T> on PopupRoute<T> {
 
   @override
   Widget buildModalBarrier() {
-    final barrierColor = this.barrierColor;
-    if (offstage || barrierColor == null) {
-      return ModalBarrier(
-        dismissible: barrierDismissible,
-        semanticsLabel: barrierLabel,
-        barrierSemanticsDismissible: semanticsDismissible,
-        onDismiss: onBarrierDismiss,
-      );
-    }
-    return AnimatedModalBarrier(
-      color: _spring.drive(
-        ColorTween(begin: barrierColor.withValues(alpha: 0), end: barrierColor),
-      ),
+    final barrier = ModalBarrier(
       dismissible: barrierDismissible,
       semanticsLabel: barrierLabel,
       barrierSemanticsDismissible: semanticsDismissible,
       onDismiss: onBarrierDismiss,
+    );
+    final barrierColor = this.barrierColor;
+    if (offstage || barrierColor == null) {
+      return barrier;
+    }
+    return LiquidGlassVeil(
+      color: _spring.drive(
+        ColorTween(begin: barrierColor.withValues(alpha: 0), end: barrierColor),
+      ),
+      child: barrier,
     );
   }
 

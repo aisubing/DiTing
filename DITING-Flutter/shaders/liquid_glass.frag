@@ -19,6 +19,10 @@ uniform vec2 uTexels;
 uniform vec4 uHazeSample;
 uniform vec4 uHazeClamp;
 uniform float uHaze;
+// Straight alpha: an even scrim over all the pane reads that the texture leaves
+// out. It tints a mean of texels as it would each, so it is laid over what the
+// samples come to.
+uniform vec4 uVeil;
 // Width, height, bevel width, frost sigma.
 uniform vec4 uShape;
 // Corner radii: top left, top right, bottom right, bottom left.
@@ -88,6 +92,10 @@ const float kPartHold = 7.0;
 const float kRimTail = 4.5;
 // At this frost width (dp) the backdrop luma is read once, like a haze.
 const float kSteadyFrost = 8.0;
+
+vec4 veiled(vec4 color) {
+  return color * (1.0 - uVeil.a) + vec4(uVeil.rgb * uVeil.a, uVeil.a);
+}
 
 vec4 texel(vec2 pixel) {
   return texture(
@@ -451,6 +459,7 @@ void main() {
   if (uHaze > 0.0) {
     base = mix(base, sampleHaze(point + shift), uHaze);
   }
+  base = veiled(base);
   float alpha = base.a;
   vec3 color = base.rgb / max(alpha, 1e-4);
   color = mix(vec3(dot(color, kLuma)), color, uOptics.y) * uOptics.z;
@@ -463,6 +472,7 @@ void main() {
         + sampleBehind(halfSize * vec2(1.6, 0.6))
         + sampleBehind(halfSize * vec2(0.4, 1.4))
         + sampleBehind(halfSize * vec2(1.6, 1.4));
+    behind = veiled(behind * 0.2);
     float behindLuma = dot(behind.rgb / max(behind.a, 1e-4), kLuma);
     clash = clamp(
       (sign(uGlow.w) * (dot(uTint.rgb, kLuma) - behindLuma) - 0.3) / 0.5,
@@ -501,7 +511,7 @@ void main() {
   float across = abs(normal.x);
   float darken = mix(uEdge.x, uRim.w, across * across * across);
   if ((uEdge.x > 0.0 || uRim.w > 0.0) && line > 0.0) {
-    vec4 under = sampleGlass(point);
+    vec4 under = veiled(sampleGlass(point));
     vec3 dark = max(under.rgb - kLineCap * under.a, 0.22 * under.rgb);
     glass = mix(glass, mix(under.rgb, dark, darken), line);
     coverage = mix(coverage, under.a, line);

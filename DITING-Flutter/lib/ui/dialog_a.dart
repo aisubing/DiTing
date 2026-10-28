@@ -80,12 +80,15 @@ class _RenderAlertGlass extends RenderProxyBox {
       _pane.clear();
     } else {
       final rect = _surfaceRectIn(this).shift(offset);
+      // One capture serves the entry's scale and a press.
       _pane.paint(
         context,
         rect,
         shape: LiquidGlassCorners.circular(AppCorner.alert),
         style: _style,
         shadows: _shadows,
+        hold: rect.inflate(_pressGrowth + _pressPull),
+        steadyFrost: true,
         rim: _rim,
       );
       _rim.paintLine(context.canvas, rect, AppCorner.alert);

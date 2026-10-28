@@ -11,6 +11,8 @@ class _LiquidGlassHostLayer extends ContainerLayer {
 
   final _atlases = <({ui.Image image, List<_Band> bands})>[];
 
+  Set<_LiquidGlassLayer> _panes = {};
+
   @override
   void addToScene(ui.SceneBuilder builder) {
     _capture();
@@ -19,6 +21,10 @@ class _LiquidGlassHostLayer extends ContainerLayer {
 
   @override
   void dispose() {
+    for (final pane in _panes) {
+      pane._dropCaptured();
+    }
+    _panes = {};
     for (final atlas in _atlases) {
       atlas.image.dispose();
     }
@@ -26,11 +32,18 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     super.dispose();
   }
 
-  /// A pane painted over another in the same root reads a capture with it drawn as glass.
+  /// A pane over one painted before it in the same root, but for one of its
+  /// own group, sits a level above it, and reads a capture with that one drawn
+  /// as glass.
   void _capture() {
     _pass++;
     final found = <_Behind>[];
     _gather(this, Matrix4.identity(), this, Matrix4.identity(), [], found);
+    final panes = {for (final entry in found) entry.pane};
+    for (final pane in _panes.difference(panes)) {
+      pane._dropCaptured();
+    }
+    _panes = panes;
     final placed = <_Behind>[];
     for (final entry in found) {
       if (_place(entry)) {
@@ -47,9 +60,11 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     }
     var levels = 0;
     for (final (index, entry) in placed.indexed) {
+      final group = entry.pane.group;
       for (final before in placed.take(index)) {
         if ((identical(entry.root, this) ||
                 before.ancestors.contains(entry.root)) &&
+            (group == null || !identical(before.pane.group, group)) &&
             before.device.overlaps(entry.reach)) {
           entry.level = math.max(entry.level, before.level + 1);
         }
@@ -110,13 +125,18 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     for (Layer? child = layer.firstChild; child != null;) {
       switch (child) {
         case final _LiquidGlassLayer pane:
+          final style = switch (quality) {
+            LiquidGlassQuality.standard => pane.style._standard,
+            LiquidGlassQuality.ultra => pane.style,
+          };
+          final storage = toHost.storage;
+          final stretch = math.max(storage[0].abs(), storage[5].abs());
           found.add(
             _Behind(
               pane,
-              switch (quality) {
-                LiquidGlassQuality.standard => pane.style._standard,
-                LiquidGlassQuality.ultra => pane.style,
-              },
+              pane.steadyFrost && stretch > 0
+                  ? style.copyWith(blur: style.blur / stretch)
+                  : style,
               toHost,
               root,
               rootToHost,
@@ -164,18 +184,21 @@ class _LiquidGlassHostLayer extends ContainerLayer {
     final needed = device.inflate(reach).intersect(bounds);
     final covered = sweep.inflate(reach).intersect(bounds);
     final longest = math.max(covered.width, covered.height) * devicePixelRatio;
+    final captured = hold != null && pane.program != null
+        ? math.min(blur, pane.holdFrost ?? blur)
+        : blur;
     final divisor = math.max(
       math.min(
         _maxDivisor,
         math.max(
           1,
-          (blur * stretch * devicePixelRatio / _captureFrost).floor(),
+          (captured * stretch * devicePixelRatio / _captureFrost).floor(),
         ),
       ),
       (longest / _maxCaptureSide).ceil(),
     );
     final scale = devicePixelRatio / divisor;
-    final frost = blur * stretch * scale;
+    final frost = captured * stretch * scale;
     final softness = divisor > 1 ? _captureSoftness : 0.0;
     final blurSigma = frost > softness
         ? math.sqrt(frost * frost - softness * softness)
@@ -364,6 +387,10 @@ class _LiquidGlassHostLayer extends ContainerLayer {
         entry.heldFrost,
         ...haze == null ? _noHaze : _sampling(haze),
         if (haze == null) 0 else entry.style.haze,
+        entry.veil.r,
+        entry.veil.g,
+        entry.veil.b,
+        entry.veil.a,
       ],
       identical(entry.root, this) ? BlendMode.srcOver : BlendMode.src,
       entry.style,
@@ -454,6 +481,7 @@ class _Behind {
   int level = 0;
   ui.Image? atlas;
   _Behind? haze;
+  Color veil = const Color(0x00000000);
 }
 
 /// The transform a layer gives its children now; [Layer.applyTransform] may answer from last frame.

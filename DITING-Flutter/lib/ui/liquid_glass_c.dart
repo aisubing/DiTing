@@ -4,6 +4,7 @@ part of 'liquid_glass.dart';
 
 class _LiquidGlassPane extends SingleChildRenderObjectWidget {
   const _LiquidGlassPane({
+    required this.group,
     required this.style,
     required this.clipper,
     required this.shadows,
@@ -13,6 +14,7 @@ class _LiquidGlassPane extends SingleChildRenderObjectWidget {
     super.child,
   });
 
+  final Object? group;
   final LiquidGlassStyle style;
   final CustomClipper<Path>? clipper;
   final List<BoxShadow> shadows;
@@ -23,6 +25,7 @@ class _LiquidGlassPane extends SingleChildRenderObjectWidget {
   @override
   _RenderLiquidGlass createRenderObject(BuildContext context) {
     return _RenderLiquidGlass(
+      group: group,
       style: style,
       clipper: clipper,
       shadows: shadows,
@@ -38,6 +41,7 @@ class _LiquidGlassPane extends SingleChildRenderObjectWidget {
     _RenderLiquidGlass renderObject,
   ) {
     renderObject
+      ..group = group
       ..style = style
       ..clipper = clipper
       ..shadows = shadows
@@ -49,13 +53,15 @@ class _LiquidGlassPane extends SingleChildRenderObjectWidget {
 
 class _RenderLiquidGlass extends RenderProxyBox {
   _RenderLiquidGlass({
+    required Object? group,
     required LiquidGlassStyle style,
     required CustomClipper<Path>? clipper,
     required List<BoxShadow> shadows,
     required double press,
     required bool fading,
     required LiquidGlassGlow? glow,
-  }) : _style = style,
+  }) : _group = group,
+       _style = style,
        _clipper = clipper,
        _shadows = shadows,
        _press = press,
@@ -63,6 +69,15 @@ class _RenderLiquidGlass extends RenderProxyBox {
        _glow = glow;
 
   late final _pane = LiquidGlassPane(markNeedsPaint);
+
+  Object? _group;
+  set group(Object? value) {
+    if (identical(value, _group)) {
+      return;
+    }
+    _group = value;
+    markNeedsPaint();
+  }
 
   LiquidGlassStyle _style;
   set style(LiquidGlassStyle value) {
@@ -211,6 +226,7 @@ class _RenderLiquidGlass extends RenderProxyBox {
                   (1 + (_fading ? _glowSpread * (1 - _press) : 0)),
               strength: _press * 0.16,
             ),
+        group: _group,
       );
     }
     super.paint(context, offset);

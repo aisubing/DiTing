@@ -83,6 +83,17 @@ class LiquidGlassScope extends InheritedWidget {
       enabled != oldWidget.enabled || quality != oldWidget.quality;
 }
 
+/// Keeps the panes below on one level, as iOS's GlassEffectContainer does.
+class LiquidGlassGroup extends InheritedWidget {
+  const LiquidGlassGroup({super.key, required super.child});
+
+  static Object? _of(BuildContext context) =>
+      context.getElementForInheritedWidgetOfExactType<LiquidGlassGroup>();
+
+  @override
+  bool updateShouldNotify(LiquidGlassGroup oldWidget) => false;
+}
+
 /// Lengths are dp. The shader shrinks [bevel] and [refraction] to fit a small pane.
 @immutable
 class LiquidGlass extends StatelessWidget {
@@ -134,8 +145,10 @@ class LiquidGlass extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final group = LiquidGlassGroup._of(context);
     if (glow case final glow?) {
       return _LiquidGlassPane(
+        group: group,
         style: style,
         clipper: clipper,
         shadows: shadows,
@@ -150,6 +163,7 @@ class LiquidGlass extends StatelessWidget {
       duration: context.motionDuration(pressed ? _glowIn : _glowOut),
       curve: Curves.easeOut,
       builder: (context, press, child) => _LiquidGlassPane(
+        group: group,
         style: style,
         clipper: clipper,
         shadows: shadows,
@@ -238,7 +252,10 @@ class LiquidGlassPane {
   Path? _profiled;
   List<double> _profile = _flatProfile;
 
-  /// A pane moving within [hold] keeps one capture.
+  /// A pane moving within [hold] keeps one capture, taken at [holdFrost] where
+  /// the shader frosts past it. A [steadyFrost] pane frosts by [style]'s blur
+  /// in the host's dp however it is scaled, so it keeps that capture as it
+  /// grows or shrinks.
   void paint(
     PaintingContext context,
     Rect rect, {
@@ -247,7 +264,10 @@ class LiquidGlassPane {
     List<BoxShadow> shadows = const [],
     LiquidGlassGlow glow = LiquidGlassGlow.none,
     Rect? hold,
+    double? holdFrost,
+    bool steadyFrost = false,
     LiquidGlassRim? rim,
+    Object? group,
   }) {
     final pane = _layer.layer ??= _LiquidGlassLayer();
     assert(rim == null || shape is LiquidGlassCorners);
@@ -295,7 +315,10 @@ class LiquidGlassPane {
       ..style = style
       ..glow = glow
       ..hold = hold
-      ..rim = rim;
+      ..holdFrost = holdFrost
+      ..steadyFrost = steadyFrost
+      ..rim = rim
+      ..group = group;
     context.addLayer(pane);
     if (hold != null) {
       _paintShadows(context.canvas, rect, pane.corners, shadows);

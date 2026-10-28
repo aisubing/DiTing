@@ -19,11 +19,13 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:material_ui/material_ui.dart';
 
+import 'goo.dart';
 import 'liquid_glass.dart';
 import 'navigation_dock.dart' show ElasticPress, ElasticPressHandle;
 import 'text.dart';
 part 'popup_a.dart';
 part 'popup_b.dart';
+part 'popup_i.dart';
 part 'popup_c.dart';
 part 'popup_d.dart';
 part 'popup_e.dart';

@@ -1,4 +1,6 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
+import 'dart:math' as math;
+
 import 'package:diting/ui/color.dart';
 import 'package:diting/ui/inherited.dart';
 import 'package:diting/ui/metrics.dart';
@@ -35,6 +37,16 @@ extension BuildContextExtension on BuildContext {
   double get contentTopPadding =>
       TopInsetScope.of(this) ??
       (isInCompactSheet ? sheetAppBarHeight : appBarInset + 12);
+
+  /// For a page that opens on a section: the section's own gap above it then
+  /// lands it where [contentTopPadding] puts any other page's content.
+  double get sectionsTopPadding =>
+      math.max(0, contentTopPadding - listHeaderPaddingOf(this).top);
+
+  /// What the end of a body scrolls clear of: the system bar the body runs
+  /// under and what floats over its foot.
+  double get bottomInset =>
+      BottomInsetScope.of(this) + MediaQuery.paddingOf(this).bottom;
 
   ColorScheme get colorScheme => Theme.of(this).colorScheme;
 

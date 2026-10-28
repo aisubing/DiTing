@@ -18,6 +18,32 @@ class ListFooter extends StatelessWidget {
   }
 }
 
+/// The gap a section without a title leaves above it, the same one a titled
+/// section's header leaves.
+class ListSectionGap extends StatelessWidget {
+  const ListSectionGap({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(height: listHeaderPaddingOf(context).top);
+  }
+}
+
+/// A section's rows alone, for a group under a header its caller lays out.
+Widget generateGroup(Iterable<Widget> items) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      ...items.mapIndexed<Widget>(
+        (index, item) => ItemPositionProvider(
+          position: ItemPosition.get(index, items.length),
+          child: item,
+        ),
+      ),
+    ],
+  );
+}
+
 /// A group: header, cards, footer. [padding] reaches the cards only; header and footer carry 16 a
 /// side already.
 Widget generateSection({
@@ -27,23 +53,11 @@ Widget generateSection({
   String? footer,
   EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 16),
 }) {
-  final genItems = items.mapIndexed<Widget>(
-    (index, item) => ItemPositionProvider(
-      position: ItemPosition.get(index, items.length),
-      child: item,
-    ),
-  );
   return Column(
     children: [
       if (items.isNotEmpty && title != null)
         ListHeader(title: title, actions: actions),
-      Padding(
-        padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [...genItems],
-        ),
-      ),
+      Padding(padding: padding, child: generateGroup(items)),
       if (items.isNotEmpty && footer != null) ListFooter(text: footer),
     ],
   );
