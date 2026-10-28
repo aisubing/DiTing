@@ -168,6 +168,14 @@ class _DitingAppState extends ConsumerState<DitingApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Accepting the agreement is the one startup gate change that does not navigate itself
+    // (`InitialAgreementGate` only hides the UI), so refresh the router to run the first-run
+    // redirect. Mode selection and onboarding navigate on their own.
+    ref.listen(initialAgreementProvider, (_, accepted) {
+      if (accepted) {
+        _router.refresh();
+      }
+    });
     final mode = ref.watch(themeModeProvider);
     final palette = ref.watch(paletteProvider);
     final pureBlack = ref.watch(pureBlackProvider);

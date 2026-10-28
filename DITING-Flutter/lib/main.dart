@@ -49,6 +49,14 @@ Future<void> main() async {
   final store = await storeTask;
   stage('prefs');
   final settings = LegacySettings(store);
+  // Existing installs already accepted the agreement and chose a mode before the guide existed;
+  // backfill the new flag instead of replaying onboarding after an upgrade. This mirrors legacy
+  // `MainWorkModeCoordinator.checkStartupOnboarding`.
+  if (settings.initialAgreementAccepted &&
+      settings.workModeSelected &&
+      !settings.modeOnboardingCompleted) {
+    settings.setModeOnboardingCompleted(true);
+  }
   // Single source of truth: `pubspec.yaml`. The value feeds preset seeding,
   // cleanup actions and page display.
   final version = await versionTask;

@@ -14,8 +14,11 @@ import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/shell/app_shell.dart';
+import 'package:diting/state/settings_providers.dart';
+import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 /// Route table: one shell branch per bottom-bar tab (the indexed stack keeps them alive), secondary
@@ -109,10 +112,32 @@ void openLocation(BuildContext context, String location) {
   context.push(location);
 }
 
+/// First-run gate, mirroring legacy `MainWorkModeCoordinator.checkStartupOnboarding`: the
+/// agreement dialog owns the very first step, then an unchosen work mode goes to mode selection
+/// and an unfinished guide to onboarding. Returning a location on every navigation is what keeps
+/// a first-run user from reaching the home page before the guide; the mode and onboarding pages
+/// are allowed through so their own flow can run.
+String? startupOnboardingRedirect(BuildContext context, GoRouterState state) {
+  // Redirects get no `WidgetRef`; the scope is above the router (see `DitingApp`).
+  final container = ProviderScope.containerOf(context, listen: false);
+  if (!container.read(initialAgreementProvider)) {
+    return null;
+  }
+  final location = state.matchedLocation;
+  if (!container.read(workModeSelectedProvider)) {
+    return location == Routes.modeSelect ? null : Routes.modeSelect;
+  }
+  if (!container.read(onboardingProvider)) {
+    return location == Routes.modeOnboarding ? null : Routes.modeOnboarding;
+  }
+  return null;
+}
+
 GoRouter createRouter({String initialLocation = Routes.home}) {
   return GoRouter(
     initialLocation: initialLocation,
     navigatorKey: rootNavigatorKey,
+    redirect: startupOnboardingRedirect,
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
