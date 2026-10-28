@@ -10,9 +10,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// List-style cards of the log dashboard, shared by home and `/logs`. A null snapshot means
-/// not loaded yet, so cells show a dash, not `0`.
+/// not loaded yet, so cells show a dash, not `0`. Selects the value only: a refresh passes through
+/// a loading state that keeps the previous value, and an unchanged snapshot rebuilds nothing.
 LogDashboardSnapshot? _snapshotOf(WidgetRef ref) =>
-    ref.watch(logDashboardProvider).value;
+    ref.watch(logDashboardProvider.select((async) => async.value));
 
 String _figure(int? value) => value == null ? '—' : dashboardCount(value);
 

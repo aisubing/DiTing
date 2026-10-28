@@ -36,11 +36,6 @@ class _MemoryCardState extends ConsumerState<MemoryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final memory = ref.watch(processMemoryProvider);
-    final scale = DashboardDensityScope.scaleOf(context);
-    final colorScheme = context.colorScheme;
-    final colors = DashboardColors.of(context);
-    final available = memory.available;
     return DashboardCard(
       semanticLabel: '内存信息',
       child: Column(
@@ -58,69 +53,89 @@ class _MemoryCardState extends ConsumerState<MemoryCard> {
                 ),
             ],
           ),
-          SizedBox(height: 10 * scale),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: available ? dashboardBinaryBytes(memory.totalPss) : '—',
-                  style: DashboardText.figure(
-                    context,
-                    AppTextStyle.title2,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                if (available)
-                  TextSpan(
-                    text: '  PSS',
-                    style: DashboardText.unit(context, AppTextStyle.caption1),
-                  ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 10 * scale),
-          _CompositionBar(
-            segments: [
-              (bytes: memory.javaHeap, color: colorScheme.primary),
-              (bytes: memory.nativeHeap, color: colors.series2),
-              (
-                bytes: (memory.totalPss - memory.javaHeap - memory.nativeHeap)
-                    .clamp(0, memory.totalPss),
-                color: colors.track,
-              ),
-            ],
-          ),
-          SizedBox(height: 8 * scale),
-          Wrap(
-            spacing: 14,
-            runSpacing: 4,
-            children: [
-              _Legend(
-                label: 'Java 堆',
-                value: memory.javaHeap,
-                color: colorScheme.primary,
-                available: available,
-              ),
-              _Legend(
-                label: '原生堆',
-                value: memory.nativeHeap,
-                color: colors.series2,
-                available: available,
-              ),
-              if (available && memory.systemTotal > 0)
-                _Legend(
-                  label: '整机可用',
-                  value: memory.systemAvail,
-                  color: colors.track,
-                  available: available,
-                  percentOf: memory.systemTotal,
-                ),
-            ],
-          ),
+          // Samples land every 2 s; only the figures rebuild, not the card and its header.
+          const _MemoryFigures(),
         ],
       ),
+    );
+  }
+}
+
+class _MemoryFigures extends ConsumerWidget {
+  const _MemoryFigures();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final memory = ref.watch(processMemoryProvider);
+    final scale = DashboardDensityScope.scaleOf(context);
+    final colorScheme = context.colorScheme;
+    final colors = DashboardColors.of(context);
+    final available = memory.available;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(height: 10 * scale),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: available ? dashboardBinaryBytes(memory.totalPss) : '—',
+                style: DashboardText.figure(
+                  context,
+                  AppTextStyle.title2,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+              if (available)
+                TextSpan(
+                  text: '  PSS',
+                  style: DashboardText.unit(context, AppTextStyle.caption1),
+                ),
+            ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        SizedBox(height: 10 * scale),
+        _CompositionBar(
+          segments: [
+            (bytes: memory.javaHeap, color: colorScheme.primary),
+            (bytes: memory.nativeHeap, color: colors.series2),
+            (
+              bytes: (memory.totalPss - memory.javaHeap - memory.nativeHeap)
+                  .clamp(0, memory.totalPss),
+              color: colors.track,
+            ),
+          ],
+        ),
+        SizedBox(height: 8 * scale),
+        Wrap(
+          spacing: 14,
+          runSpacing: 4,
+          children: [
+            _Legend(
+              label: 'Java 堆',
+              value: memory.javaHeap,
+              color: colorScheme.primary,
+              available: available,
+            ),
+            _Legend(
+              label: '原生堆',
+              value: memory.nativeHeap,
+              color: colors.series2,
+              available: available,
+            ),
+            if (available && memory.systemTotal > 0)
+              _Legend(
+                label: '整机可用',
+                value: memory.systemAvail,
+                color: colors.track,
+                available: available,
+                percentOf: memory.systemTotal,
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

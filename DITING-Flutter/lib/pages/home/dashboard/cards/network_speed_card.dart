@@ -19,8 +19,9 @@ class NetworkSpeedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final series = ref.watch(speedSeriesProvider);
-    final totals = ref.watch(trafficTotalsProvider).value;
+    // Only the source shapes the tiles. Samples land every second and are watched by the
+    // figures and the chart alone, so the header and tile frames do not rebuild with them.
+    final source = ref.watch(speedSeriesProvider.select((s) => s.source));
     final scale = DashboardDensityScope.scaleOf(context);
     return DashboardCard(
       semanticLabel: '网络速度',
@@ -45,11 +46,7 @@ class NetworkSpeedCard extends ConsumerWidget {
             children: [
               for (final direction in _SpeedDirection.values)
                 Expanded(
-                  child: _SpeedTile(
-                    direction: direction,
-                    series: series,
-                    total: direction.totalOf(totals),
-                  ),
+                  child: _SpeedTile(direction: direction, source: source),
                 ),
             ],
           ),
@@ -127,15 +124,10 @@ class _SpeedFigure extends StatelessWidget {
 /// Keeps one shape at every width: the chart takes what the tile's aspect ratio leaves
 /// under the text, down to [_minChartHeight].
 class _SpeedTile extends StatelessWidget {
-  const _SpeedTile({
-    required this.direction,
-    required this.series,
-    required this.total,
-  });
+  const _SpeedTile({required this.direction, required this.source});
 
   final _SpeedDirection direction;
-  final SpeedSeries series;
-  final double? total;
+  final SpeedSource source;
 
   static const _aspectRatio = 1.06;
   static const _padding = EdgeInsets.fromLTRB(16, 14, 16, 0);
@@ -147,10 +139,7 @@ class _SpeedTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = direction.colorOf(context);
-    final unsupported = series.unsupported;
-    final (value, unit) = unsupported
-        ? ('—', '')
-        : _split(dashboardBinaryBytes(direction.of(series.last)));
+    final unsupported = source != SpeedSource.available;
     final scale = DashboardDensityScope.scaleOf(context);
     final textHeight =
         _padding.top +
@@ -182,7 +171,7 @@ class _SpeedTile extends StatelessWidget {
                   child: unsupported
                       ? Center(
                           child: Text(
-                            series.source == SpeedSource.expressMode
+                            source == SpeedSource.expressMode
                                 ? '极速模式不统计'
                                 : '当前环境无速率通道',
                             maxLines: 1,
@@ -190,14 +179,20 @@ class _SpeedTile extends StatelessWidget {
                             style: DashboardText.label(context),
                           ),
                         )
-                      : LineChart(
-                          values: direction.valuesOf(series),
-                          revision: series.revision,
-                          capacity: speedSampleCapacity,
-                          // Same as upstream: idle jitter must not pin the curve to full height.
-                          minScale: 8 * 1024,
-                          color: color,
-                          baselineRatio: 1,
+                      : Consumer(
+                          builder: (context, ref, _) {
+                            final series = ref.watch(speedSeriesProvider);
+                            return LineChart(
+                              values: direction.valuesOf(series),
+                              revision: series.revision,
+                              capacity: speedSampleCapacity,
+                              // Same as upstream: idle jitter must not pin the curve to full
+                              // height.
+                              minScale: 8 * 1024,
+                              color: color,
+                              baselineRatio: 1,
+                            );
+                          },
                         ),
                 ),
               ),
@@ -227,20 +222,39 @@ class _SpeedTile extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: _titleGap),
-                    _SpeedFigure(
-                      value: value,
-                      unit: unit,
-                      style: AppTextStyle.title1,
-                      unitStyle: AppTextStyle.footnote,
-                      color: context.colorScheme.onSurface,
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final rate = ref.watch(
+                          speedSeriesProvider.select(
+                            (s) => direction.of(s.last),
+                          ),
+                        );
+                        final (value, unit) = unsupported
+                            ? ('—', '')
+                            : _split(dashboardBinaryBytes(rate));
+                        return _SpeedFigure(
+                          value: value,
+                          unit: unit,
+                          style: AppTextStyle.title1,
+                          unitStyle: AppTextStyle.footnote,
+                          color: context.colorScheme.onSurface,
+                        );
+                      },
                     ),
-                    Text(
-                      total == null
-                          ? '累计 —'
-                          : '累计 ${dashboardBinaryBytes(total!)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: DashboardText.label(context),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final total = direction.totalOf(
+                          ref.watch(trafficTotalsProvider).value,
+                        );
+                        return Text(
+                          total == null
+                              ? '累计 —'
+                              : '累计 ${dashboardBinaryBytes(total)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: DashboardText.label(context),
+                        );
+                      },
                     ),
                   ],
                 ),

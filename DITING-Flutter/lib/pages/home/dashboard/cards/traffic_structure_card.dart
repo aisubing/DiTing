@@ -124,7 +124,9 @@ class LogTrafficStructureCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final snapshot = ref.watch(logDashboardProvider).value;
+    final snapshot = ref.watch(
+      logDashboardProvider.select((async) => async.value),
+    );
     final breakdown = snapshot?.breakdown ?? const LogTrafficBreakdown.empty();
     final colorScheme = context.colorScheme;
     final filtered = mode == TrafficStructureMode.filtered;

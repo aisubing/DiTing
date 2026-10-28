@@ -19,6 +19,18 @@ class LogDnsQuality {
   final double? averageLatencyMs;
   final int latencySamples;
   final double cacheHitRate;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogDnsQuality &&
+      other.averageLatencyMs == averageLatencyMs &&
+      other.latencySamples == latencySamples &&
+      other.cacheHitRate == cacheHitRate;
+
+  @override
+  int get hashCode =>
+      Object.hash(averageLatencyMs, latencySamples, cacheHitRate);
 }
 
 class LogTrafficBreakdown {
@@ -51,6 +63,21 @@ class LogTrafficBreakdown {
   double get blockRate => total == 0 ? 0 : blocked / total;
 
   double get cacheRate => total == 0 ? 0 : cached / total;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogTrafficBreakdown &&
+      other.total == total &&
+      other.passed == passed &&
+      other.blocked == blocked &&
+      other.error == error &&
+      other.bypassed == bypassed &&
+      other.cached == cached;
+
+  @override
+  int get hashCode =>
+      Object.hash(total, passed, blocked, error, bypassed, cached);
 }
 
 class LogRaceSummary {
@@ -70,6 +97,17 @@ class LogRaceSummary {
   final double averageElapsedMs;
 
   double get successRate => requests == 0 ? 0 : successes / requests;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogRaceSummary &&
+      other.requests == requests &&
+      other.successes == successes &&
+      other.averageElapsedMs == averageElapsedMs;
+
+  @override
+  int get hashCode => Object.hash(requests, successes, averageElapsedMs);
 }
 
 class LogBootstrapSummary {
@@ -89,6 +127,17 @@ class LogBootstrapSummary {
   final double averageElapsedMs;
 
   double get successRate => attempts == 0 ? 0 : successes / attempts;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogBootstrapSummary &&
+      other.attempts == attempts &&
+      other.successes == successes &&
+      other.averageElapsedMs == averageElapsedMs;
+
+  @override
+  int get hashCode => Object.hash(attempts, successes, averageElapsedMs);
 }
 
 class LogOffModeStats {
@@ -109,6 +158,19 @@ class LogOffModeStats {
   final int cacheHits;
   final int raceRequests;
   final int bootstrapAttempts;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogOffModeStats &&
+      other.cacheEntries == cacheEntries &&
+      other.cacheHits == cacheHits &&
+      other.raceRequests == raceRequests &&
+      other.bootstrapAttempts == bootstrapAttempts;
+
+  @override
+  int get hashCode =>
+      Object.hash(cacheEntries, cacheHits, raceRequests, bootstrapAttempts);
 }
 
 /// One recent request. [time] is derived from the row `timestamp`, never a literal.
@@ -131,6 +193,21 @@ class LogRecentRequest {
 
   final String resultLabel;
   final LogRowStatus status;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogRecentRequest &&
+      other.time == time &&
+      other.name == name &&
+      other.source == source &&
+      other.meta == meta &&
+      other.resultLabel == resultLabel &&
+      other.status == status;
+
+  @override
+  int get hashCode =>
+      Object.hash(time, name, source, meta, resultLabel, status);
 }
 
 class LogCacheHotspot {
@@ -148,6 +225,25 @@ class LogCacheHotspot {
   final int remainingSeconds;
   final int responseSize;
   final int hitCount;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogCacheHotspot &&
+      other.queryName == queryName &&
+      other.queryType == queryType &&
+      other.remainingSeconds == remainingSeconds &&
+      other.responseSize == responseSize &&
+      other.hitCount == hitCount;
+
+  @override
+  int get hashCode => Object.hash(
+    queryName,
+    queryType,
+    remainingSeconds,
+    responseSize,
+    hitCount,
+  );
 }
 
 class LogRaceWinner {
@@ -160,6 +256,17 @@ class LogRaceWinner {
   final String name;
   final int wins;
   final double averageElapsedMs;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogRaceWinner &&
+      other.name == name &&
+      other.wins == wins &&
+      other.averageElapsedMs == averageElapsedMs;
+
+  @override
+  int get hashCode => Object.hash(name, wins, averageElapsedMs);
 }
 
 class LogBootstrapIp {
@@ -178,6 +285,20 @@ class LogBootstrapIp {
   final double averageElapsedMs;
 
   double get successRate => attempts == 0 ? 0 : successes / attempts;
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogBootstrapIp &&
+      other.name == name &&
+      other.ip == ip &&
+      other.attempts == attempts &&
+      other.successes == successes &&
+      other.averageElapsedMs == averageElapsedMs;
+
+  @override
+  int get hashCode =>
+      Object.hash(name, ip, attempts, successes, averageElapsedMs);
 }
 
 class LogSubscriptionBlock {
@@ -201,4 +322,17 @@ class LogSubscriptionBlock {
     if (deleted) return '已删除';
     return enabled ? '已启用' : '已禁用';
   }
+
+  // Value equality lets an unchanged refresh skip rebuilding the cards.
+  @override
+  bool operator ==(Object other) =>
+      other is LogSubscriptionBlock &&
+      other.name == name &&
+      other.enabled == enabled &&
+      other.deleted == deleted &&
+      other.hits == hits &&
+      other.rate == rate;
+
+  @override
+  int get hashCode => Object.hash(name, enabled, deleted, hits, rate);
 }

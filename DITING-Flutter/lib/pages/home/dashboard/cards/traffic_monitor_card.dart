@@ -17,16 +17,7 @@ class TrafficMonitorCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totals = ref.watch(trafficTotalsProvider).value;
-    final series = ref.watch(speedSeriesProvider);
-    final last = series.last;
     final colorScheme = context.colorScheme;
-    final speedText = series.unsupported
-        ? '本模式不统计'
-        : series.samples.isEmpty
-        ? '—'
-        : '↓ ${dashboardBinarySpeed(last.down)}  '
-              '↑ ${dashboardBinarySpeed(last.up)}';
     return DashboardCard(
       semanticLabel: '流量监控',
       child: Column(
@@ -55,15 +46,23 @@ class TrafficMonitorCard extends ConsumerWidget {
                   spacing: 2,
                   children: [
                     Text('今日代理流量', style: DashboardText.label(context)),
-                    Text(
-                      totals == null ? '—' : dashboardBinaryBytes(totals.total),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: DashboardText.figure(
-                        context,
-                        AppTextStyle.title3,
-                        color: colorScheme.primary,
-                      ),
+                    // The figures refresh every second; only they rebuild, not the card.
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final totals = ref.watch(trafficTotalsProvider).value;
+                        return Text(
+                          totals == null
+                              ? '—'
+                              : dashboardBinaryBytes(totals.total),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: DashboardText.figure(
+                            context,
+                            AppTextStyle.title3,
+                            color: colorScheme.primary,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -75,14 +74,16 @@ class TrafficMonitorCard extends ConsumerWidget {
                   spacing: 2,
                   children: [
                     Text('实时速率', style: DashboardText.label(context)),
-                    Text(
-                      speedText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: DashboardText.figure(
-                        context,
-                        AppTextStyle.footnote,
+                    Consumer(
+                      builder: (context, ref, _) => Text(
+                        ref.watch(speedSeriesProvider.select(_speedText)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                        style: DashboardText.figure(
+                          context,
+                          AppTextStyle.footnote,
+                        ),
                       ),
                     ),
                   ],
@@ -94,6 +95,14 @@ class TrafficMonitorCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _speedText(SpeedSeries series) {
+  if (series.unsupported) return '本模式不统计';
+  if (series.samples.isEmpty) return '—';
+  final last = series.last;
+  return '↓ ${dashboardBinarySpeed(last.down)}  '
+      '↑ ${dashboardBinarySpeed(last.up)}';
 }
 
 class DashboardMetricCell extends StatelessWidget {

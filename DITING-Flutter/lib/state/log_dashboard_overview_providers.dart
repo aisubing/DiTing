@@ -15,6 +15,7 @@ import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -66,6 +67,35 @@ class LogDashboardSnapshot {
 
   /// Highlighted total: blocked plus failed (legacy `FilteredModeDashboard`).
   int get highlightedTotal => breakdown.blocked + breakdown.error;
+
+  // The overview re-queries every 10 s; equal snapshots let the cards skip the rebuild.
+  @override
+  bool operator ==(Object other) =>
+      other is LogDashboardSnapshot &&
+      other.breakdown == breakdown &&
+      other.quality == quality &&
+      other.race == race &&
+      other.bootstrap == bootstrap &&
+      other.offMode == offMode &&
+      listEquals(other.recentRequests, recentRequests) &&
+      listEquals(other.cacheHotspots, cacheHotspots) &&
+      listEquals(other.raceWinners, raceWinners) &&
+      listEquals(other.bootstrapIps, bootstrapIps) &&
+      listEquals(other.subscriptionBlocks, subscriptionBlocks);
+
+  @override
+  int get hashCode => Object.hash(
+    breakdown,
+    quality,
+    race,
+    bootstrap,
+    offMode,
+    Object.hashAll(recentRequests),
+    Object.hashAll(cacheHotspots),
+    Object.hashAll(raceWinners),
+    Object.hashAll(bootstrapIps),
+    Object.hashAll(subscriptionBlocks),
+  );
 }
 
 /// Milliseconds at local midnight, matching the legacy `dayStartMillis()`.

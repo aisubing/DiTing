@@ -20,7 +20,6 @@ class StatusCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final core = ref.watch(coreStateProvider);
     final mode = ref.watch(workModeProvider);
-    final stats = ref.watch(serviceStatsProvider);
     final primary = ref.watch(primaryProviderProvider);
     final scale = DashboardDensityScope.scaleOf(context);
     final colorScheme = context.colorScheme;
@@ -52,14 +51,17 @@ class StatusCard extends ConsumerWidget {
           Text('运行时长', style: DashboardText.label(context)),
           SizedBox(height: 2 * scale),
           if (core.isRunning)
-            Text(
-              stats.uptimeLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: DashboardText.figure(
-                context,
-                AppTextStyle.title1,
-                color: colorScheme.onSurface,
+            // Stats poll every second; only the figures showing them rebuild.
+            Consumer(
+              builder: (context, ref, _) => Text(
+                ref.watch(serviceStatsProvider.select((s) => s.uptimeLabel)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DashboardText.figure(
+                  context,
+                  AppTextStyle.title1,
+                  color: colorScheme.onSurface,
+                ),
               ),
             )
           else
@@ -79,10 +81,14 @@ class StatusCard extends ConsumerWidget {
               ),
               Expanded(
                 flex: 2,
-                child: _StatusCell(
-                  label: '今日查询',
-                  value: dashboardCount(stats.queries),
-                  hint: mode.title,
+                child: Consumer(
+                  builder: (context, ref, _) => _StatusCell(
+                    label: '今日查询',
+                    value: dashboardCount(
+                      ref.watch(serviceStatsProvider.select((s) => s.queries)),
+                    ),
+                    hint: mode.title,
+                  ),
                 ),
               ),
             ],

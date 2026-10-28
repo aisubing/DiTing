@@ -22,7 +22,15 @@ sealed class GlyphShape {
   final GlyphRole role;
   final bool solid;
 
-  Path get path;
+  /// Shapes are const and canonicalized, so one path per shape serves every paint; the dock
+  /// repaints its glyphs on every lens frame and rebuilding them showed up in profiles.
+  static final _built = Expando<Path>();
+
+  Path get path => _built[this] ??= buildPath();
+
+  /// Builds the path once; callers read [path].
+  @protected
+  Path buildPath();
 }
 
 class GlyphBox extends GlyphShape {
@@ -42,7 +50,7 @@ class GlyphBox extends GlyphShape {
   final double radius;
 
   @override
-  Path get path => Path()
+  Path buildPath() => Path()
     ..addRSuperellipse(
       RSuperellipse.fromLTRBR(
         left,
@@ -62,7 +70,7 @@ class GlyphCircle extends GlyphShape {
   final double radius;
 
   @override
-  Path get path =>
+  Path buildPath() =>
       Path()..addOval(Rect.fromCircle(center: Offset(x, y), radius: radius));
 }
 
@@ -75,7 +83,7 @@ class GlyphOval extends GlyphShape {
   final double bottom;
 
   @override
-  Path get path => Path()..addOval(Rect.fromLTRB(left, top, right, bottom));
+  Path buildPath() => Path()..addOval(Rect.fromLTRB(left, top, right, bottom));
 }
 
 class GlyphArc extends GlyphShape {
@@ -95,7 +103,7 @@ class GlyphArc extends GlyphShape {
   final double sweep;
 
   @override
-  Path get path => Path()
+  Path buildPath() => Path()
     ..addArc(
       Rect.fromCircle(center: Offset(x, y), radius: radius),
       start,
@@ -113,7 +121,7 @@ class GlyphLink extends GlyphShape {
   final double radius;
 
   @override
-  Path get path {
+  Path buildPath() {
     final delta = to - from;
     final inset = delta / delta.distance * (radius + Glyph.strokeWidth);
     final start = from + inset;
@@ -140,10 +148,8 @@ class GlyphPath extends GlyphShape {
   /// [PathFillType.evenOdd], because two subpaths wound the same way merge under non-zero.
   final PathFillType fillType;
 
-  static final _parsed = Expando<Path>();
-
   @override
-  Path get path => _parsed[this] ??= _parse(data)..fillType = fillType;
+  Path buildPath() => _parse(data)..fillType = fillType;
 
   static Path _parse(String data) {
     final writer = _PathWriter();
@@ -209,7 +215,7 @@ class GlyphPolyline extends GlyphShape {
   }
 
   @override
-  Path get path {
+  Path buildPath() {
     final path = Path();
     final count = vertices.length;
     final first = closed ? _corner(0).$2 : vertices.first.offset;
