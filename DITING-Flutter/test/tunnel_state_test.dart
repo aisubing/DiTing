@@ -153,15 +153,16 @@ void _expressMode() {
     ProviderContainer container({
       required FakeVpnController normal,
       required FakeVpnController express,
-      Map<String, Object?> expressPrefs = const {},
+      Map<String, Object?> dnsPrefs = const {},
       Map<String, Object?> expressRunning = const {},
     }) {
       final store = MemoryLegacyPrefsStore({
         'diting_settings': {'app_work_mode': 'express'},
-        'diting_express_prefs': {
+        // The UI writes DNS settings to the shared container, so express must read them there.
+        'dns_vpn_prefs': {
           'selected_provider_id': 'preset_dnspod_dns',
           'ipv6_mode': 'disabled',
-          ...expressPrefs,
+          ...dnsPrefs,
         },
         'express_vpn_prefs': expressRunning,
       });
@@ -177,7 +178,7 @@ void _expressMode() {
       return c;
     }
 
-    test('启动走极速通道并写 express_vpn_running', () async {
+    test('启动走极速通道、采用共享的 DNS 配置并写 express_vpn_running', () async {
       final normal = FakeVpnController();
       final express = FakeVpnController();
       final c = container(normal: normal, express: express);
@@ -198,6 +199,28 @@ void _expressMode() {
       final settings = c.read(legacySettingsProvider);
       expect(settings.expressVpnRunning, isTrue);
       expect(settings.vpnRunning, isFalse);
+    });
+
+    // Regression: the express engine used to read its own dataset container, so the notification
+    // kept showing the default provider after the user picked another resolution mode.
+    test('极速模式通知文案跟随共享的解析模式', () async {
+      final c = container(
+        normal: FakeVpnController(),
+        express: FakeVpnController(),
+        dnsPrefs: const {
+          'dns_resolution_mode': 'smart_prediction',
+          'smart_prediction_provider_ids':
+              '["preset_alidns_dns","preset_dnspod_dns"]',
+        },
+      );
+      await c.read(powerProvider.notifier).toggle();
+      expect(c.read(powerProvider), PowerState.running);
+      expect(
+        c
+            .read(legacyPrefsStoreProvider)
+            .read(LegacySettings.notificationContainer, 'default_express_text'),
+        '运行中 · [智能选择] 2 个服务商',
+      );
     });
 
     test('残留运行标志经原生状态回写为停止', () async {

@@ -272,8 +272,10 @@ class PowerNotifier extends Notifier<PowerState> {
       return;
     }
     final express = mode == AppWorkMode.express;
-    final baseSettings = ref.read(legacySettingsProvider);
-    final settings = express ? baseSettings.forExpress() : baseSettings;
+    // One DNS config for every mode. The UI writes these keys to `dns_vpn_prefs` regardless of the
+    // work mode, so reading the express dataset container here made the engine (and the
+    // notification) ignore every provider/resolution change made in the app.
+    final settings = ref.read(legacySettingsProvider);
 
     // Rules are no longer loaded or shipped here: the service builds the engine
     // snapshot in its own process (trie files + inline extras), so a large

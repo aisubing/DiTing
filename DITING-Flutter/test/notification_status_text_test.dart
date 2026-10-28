@@ -10,12 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   LegacySettings settings({
     Map<String, Object?> dns = const {},
-    Map<String, Object?> express = const {},
     Map<String, Object?> server = const {},
   }) => LegacySettings(
     MemoryLegacyPrefsStore({
       'dns_vpn_prefs': dns,
-      'diting_express_prefs': express,
       'diting_dns_mode_prefs': server,
     }),
   );
@@ -36,23 +34,6 @@ void main() {
         ),
       );
       expect(text, '运行中 · [最快响应] 2 个服务商');
-    });
-
-    test('极速模式读取自己的配置容器，正文结构不变', () {
-      final expressSettings = LegacySettings(
-        MemoryLegacyPrefsStore({
-          'diting_express_prefs': const {
-            'dns_resolution_mode': 'smart_prediction',
-            'smart_prediction_provider_ids':
-                '["preset_alidns_doh","preset_dnspod_doh"]',
-          },
-        }),
-        dnsContainer: LegacySettings.expressContainer,
-      );
-      expect(
-        defaultRunningNotificationText(expressSettings),
-        '运行中 · [智能选择] 2 个服务商',
-      );
     });
 
     test('自定义服务商使用其名称', () {

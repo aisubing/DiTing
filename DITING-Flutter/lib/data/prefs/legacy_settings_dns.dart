@@ -349,6 +349,9 @@ extension LegacyDnsSettings on LegacySettings {
   bool get httpsInspectionReady =>
       _bool(LegacySettings.uiContainer, 'https_inspection_ready', false);
 
+  /// View over `diting_express_prefs`, which only the native side still reads per dataset (rule
+  /// switch and log retention). DNS config is shared in `dns_vpn_prefs`, exactly like server mode
+  /// keeps its keys in `diting_dns_mode_prefs`; do not build a tunnel config from this view.
   LegacySettings forExpress() =>
       LegacySettings(_store, dnsContainer: LegacySettings.expressContainer);
 }
