@@ -52,6 +52,9 @@ class VpnBridge(
             context = activity,
             dnsConfig = dnsConfig,
             proxyJson = call.argument<String>("outboundProxy").orEmpty(),
+            // Android only lets the proxy app bind its loopback port, so its own sockets have to
+            // stay outside the TUN or every dial loops back into the proxy.
+            proxyAppPackage = call.argument<String>("proxyAppPackage").orEmpty(),
             bypassLan = call.argument<Boolean>("bypassLan") ?: true,
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = excluded,

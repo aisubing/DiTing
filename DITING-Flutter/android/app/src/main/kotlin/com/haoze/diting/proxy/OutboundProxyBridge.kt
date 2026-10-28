@@ -36,6 +36,16 @@ class OutboundProxyBridge(private val context: Context) :
         private val worker = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "diting-outbound-proxy").apply { isDaemon = true }
         }
+
+        /// Called by the VPN services from the engine's status callback. The service shares this
+        /// process with the UI, so a plain `apply()` is visible to the next `read`.
+        fun publishStatus(context: Context, state: String, message: String) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_STATUS, state.ifEmpty { DEFAULT_STATUS })
+                .putString(KEY_STATUS_MESSAGE, message)
+                .apply()
+        }
     }
 
     fun register(messenger: BinaryMessenger) {
@@ -116,12 +126,8 @@ class OutboundProxyBridge(private val context: Context) :
             .apply()
     }
 
-    private fun setStatus(state: String, message: String) {
-        prefs().edit()
-            .putString(KEY_STATUS, state.ifEmpty { DEFAULT_STATUS })
-            .putString(KEY_STATUS_MESSAGE, message)
-            .apply()
-    }
+    private fun setStatus(state: String, message: String) =
+        publishStatus(context, state, message)
 
     private fun configFrom(call: MethodCall): Map<String, Any?> = mapOf(
         "enabled" to (call.argument<Boolean>("enabled") ?: false),

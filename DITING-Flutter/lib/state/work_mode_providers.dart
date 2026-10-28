@@ -297,13 +297,14 @@ class PowerNotifier extends Notifier<PowerState> {
         : ref.read(vpnControllerProvider);
     final proxy = await ref.read(outboundProxyStoreProvider).read();
     if (_disposed) return;
+    // A half-filled config fails validation and is dropped rather than failing the start.
+    final proxyUsable = proxy.enabled && proxy.validationError() == null;
     final result = await controller.start(
       VpnStartRequest(
         dnsConfig: config.encode(settings),
-        // Off unless enabled and every field validates: a half-filled config fails start.
-        outboundProxy: proxy.enabled && proxy.validationError() == null
-            ? proxy.toEngineJson()
-            : '',
+        outboundProxy: proxyUsable ? proxy.toEngineJson() : '',
+        // The service disallows it in the TUN so the proxy's own dials skip the tunnel.
+        proxyAppPackage: proxyUsable ? proxy.proxyAppPackage : '',
         bypassLan: express ? false : settings.bypassLanEnabled,
         ipv6Mode: settings.ipv6ModeRaw,
         excludedPackages: settings.excludedPackages.toList(),

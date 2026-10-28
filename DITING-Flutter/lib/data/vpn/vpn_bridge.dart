@@ -11,6 +11,7 @@ class VpnStartRequest {
   const VpnStartRequest({
     required this.dnsConfig,
     this.outboundProxy = '',
+    this.proxyAppPackage = '',
     this.bypassLan = true,
     this.ipv6Mode = 'auto',
     this.excludedPackages = const [],
@@ -21,6 +22,10 @@ class VpnStartRequest {
 
   final String dnsConfig;
   final String outboundProxy;
+
+  /// App that owns the loopback proxy port. Excluded from the TUN: Android lets only one app
+  /// bind that port, so its upstream sockets must not be captured or they loop back into it.
+  final String proxyAppPackage;
   final bool bypassLan;
   final String ipv6Mode;
 
@@ -185,6 +190,7 @@ class MethodChannelVpnController implements VpnController {
     final result = await _channel.invokeMethod<Object?>('start', {
       'dnsConfig': request.dnsConfig,
       'outboundProxy': request.outboundProxy,
+      'proxyAppPackage': request.proxyAppPackage,
       'bypassLan': request.bypassLan,
       'ipv6Mode': request.ipv6Mode,
       'excludedPackages': request.excludedPackages,

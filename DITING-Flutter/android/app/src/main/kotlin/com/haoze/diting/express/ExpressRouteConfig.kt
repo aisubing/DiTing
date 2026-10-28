@@ -55,6 +55,7 @@ object ExpressRouteConfig {
     fun establish(
         service: VpnService,
         excludedPackages: Set<String>,
+        proxyPackage: String?,
         ipv6Mode: String,
     ): ParcelFileDescriptor? {
         val enableIpv6 = when (ipv6Mode.lowercase()) {
@@ -99,7 +100,11 @@ object ExpressRouteConfig {
             }
         }
 
-        val allExcluded = excludedPackages + service.packageName
+        // The proxy app must stay outside the tunnel: its own DNS/resolver sockets would
+        // otherwise be hijacked by this TUN and sent back through the proxy.
+        val allExcluded = (excludedPackages + service.packageName + listOfNotNull(proxyPackage))
+            .filter { it.isNotBlank() }
+            .toSet()
         allExcluded.forEach { excluded ->
             try {
                 builder.addDisallowedApplication(excluded)

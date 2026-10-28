@@ -22,6 +22,7 @@ object VpnRouteConfig {
     fun establish(
         service: VpnService,
         excludedPackages: Set<String>,
+        proxyPackage: String?,
         bypassLan: Boolean,
         ipv6Mode: String,
     ): ParcelFileDescriptor? {
@@ -78,7 +79,11 @@ object VpnRouteConfig {
             }
         }
 
-        val allExcluded = excludedPackages + service.packageName
+        // The proxy app must stay outside the tunnel: its upstream sockets would otherwise be
+        // captured by this TUN, re-dialed through the proxy and loop until the handshake dies.
+        val allExcluded = (excludedPackages + service.packageName + listOfNotNull(proxyPackage))
+            .filter { it.isNotBlank() }
+            .toSet()
         allExcluded.forEach { excluded ->
             try {
                 builder.addDisallowedApplication(excluded)

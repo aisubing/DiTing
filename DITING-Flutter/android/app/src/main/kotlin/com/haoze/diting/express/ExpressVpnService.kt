@@ -23,9 +23,11 @@ import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.platform.NotificationMode
 import com.haoze.diting.platform.NotificationSettings
+import com.haoze.diting.proxy.OutboundProxyBridge
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
+import tunnel.OutboundProxyStatusCallback
 import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 
@@ -63,12 +65,14 @@ class ExpressVpnService : VpnService() {
         rememberStartConfig(
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
+            proxyAppPackage = intent.getStringExtra(EXTRA_PROXY_APP).orEmpty(),
             ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
             excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
         )
         startTunnel(
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
+            proxyAppPackage = intent.getStringExtra(EXTRA_PROXY_APP).orEmpty(),
             ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
             excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
         )
@@ -79,12 +83,14 @@ class ExpressVpnService : VpnService() {
     private fun rememberStartConfig(
         dnsConfig: String,
         proxyJson: String,
+        proxyAppPackage: String,
         ipv6Mode: String,
         excludedPackages: Set<String>,
     ) {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
             .putString(KEY_LAST_OUTBOUND_PROXY, proxyJson)
+            .putString(KEY_LAST_PROXY_APP, proxyAppPackage)
             .putString(KEY_LAST_IPV6_MODE, ipv6Mode)
             .putStringSet(KEY_LAST_EXCLUDED_PACKAGES, excludedPackages)
             .apply()
@@ -94,6 +100,7 @@ class ExpressVpnService : VpnService() {
     private fun startTunnel(
         dnsConfig: String,
         proxyJson: String,
+        proxyAppPackage: String,
         ipv6Mode: String,
         excludedPackages: Set<String>,
     ) {
@@ -104,7 +111,12 @@ class ExpressVpnService : VpnService() {
         stopping = false
         lastError = null
 
-        val pfd = ExpressRouteConfig.establish(this, excludedPackages, ipv6Mode)
+        val pfd = ExpressRouteConfig.establish(
+            service = this,
+            excludedPackages = excludedPackages,
+            proxyPackage = proxyAppPackage.ifBlank { null },
+            ipv6Mode = ipv6Mode,
+        )
         if (pfd == null) {
             fail("无法建立极速模式接口")
             return
@@ -126,7 +138,18 @@ class ExpressVpnService : VpnService() {
             val proxyError = goEngine.configureOutboundProxy(
                 proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY }
             )
+            if (proxyError.isNotBlank()) {
+                // Persisted before failing so the page shows the reason, as the legacy app did.
+                OutboundProxyBridge.publishStatus(this@ExpressVpnService, "error", proxyError)
+            }
             require(proxyError.isBlank()) { proxyError }
+            // Emits `connecting` inside startFull; without this callback nothing ever writes the
+            // final ready/error state back to `dns_vpn_prefs`.
+            goEngine.setOutboundProxyStatusCallback(object : OutboundProxyStatusCallback {
+                override fun onOutboundProxyStatus(state: String, message: String) {
+                    OutboundProxyBridge.publishStatus(this@ExpressVpnService, state, message)
+                }
+            })
             goEngine.applyDNSConfig(dnsConfig)
             val logMode = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
                 .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
@@ -360,6 +383,9 @@ class ExpressVpnService : VpnService() {
 
         const val EXTRA_DNS_CONFIG = "dns_config"
         const val EXTRA_OUTBOUND_PROXY = "outbound_proxy"
+
+        /// Package of the app that owns the loopback proxy port; excluded from the TUN.
+        const val EXTRA_PROXY_APP = "proxy_app_package"
         const val EXTRA_IPV6_MODE = "ipv6_mode"
         const val EXTRA_EXCLUDED_PACKAGES = "excluded_packages"
 
@@ -373,6 +399,7 @@ class ExpressVpnService : VpnService() {
         // Last start configuration, replayed by the quick settings tile.
         private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
         private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
+        private const val KEY_LAST_PROXY_APP = "last_outbound_proxy_app"
         private const val KEY_LAST_IPV6_MODE = "last_ipv6_mode"
         private const val KEY_LAST_EXCLUDED_PACKAGES = "last_excluded_packages"
 
@@ -469,10 +496,12 @@ class ExpressVpnService : VpnService() {
             proxyJson: String,
             ipv6Mode: String,
             excludedPackages: List<String>,
+            proxyAppPackage: String = "",
         ): Intent = Intent(context, ExpressVpnService::class.java).apply {
             action = ACTION_START
             putExtra(EXTRA_DNS_CONFIG, dnsConfig)
             putExtra(EXTRA_OUTBOUND_PROXY, proxyJson)
+            putExtra(EXTRA_PROXY_APP, proxyAppPackage)
             putExtra(EXTRA_IPV6_MODE, ipv6Mode)
             putStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES, ArrayList(excludedPackages))
         }
@@ -494,6 +523,7 @@ class ExpressVpnService : VpnService() {
                 ipv6Mode = prefs.getString(KEY_LAST_IPV6_MODE, null) ?: "auto",
                 excludedPackages = prefs.getStringSet(KEY_LAST_EXCLUDED_PACKAGES, null)
                     .orEmpty().toList(),
+                proxyAppPackage = prefs.getString(KEY_LAST_PROXY_APP, null).orEmpty(),
             )
         }
     }

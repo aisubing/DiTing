@@ -20,9 +20,11 @@ import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.log.TrafficRateMonitor
+import com.haoze.diting.proxy.OutboundProxyBridge
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
+import tunnel.OutboundProxyStatusCallback
 import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 import java.io.File
@@ -64,6 +66,7 @@ class DitingVpnService : VpnService() {
         rememberStartConfig(
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
+            proxyAppPackage = intent.getStringExtra(EXTRA_PROXY_APP).orEmpty(),
             bypassLan = intent.getBooleanExtra(EXTRA_BYPASS_LAN, true),
             ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
             excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
@@ -74,6 +77,7 @@ class DitingVpnService : VpnService() {
         startTunnel(
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
+            proxyAppPackage = intent.getStringExtra(EXTRA_PROXY_APP).orEmpty(),
             bypassLan = intent.getBooleanExtra(EXTRA_BYPASS_LAN, true),
             ipv6Mode = intent.getStringExtra(EXTRA_IPV6_MODE) ?: "auto",
             excludedPackages = intent.getStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES).orEmpty().toSet(),
@@ -89,6 +93,7 @@ class DitingVpnService : VpnService() {
     private fun rememberStartConfig(
         dnsConfig: String,
         proxyJson: String,
+        proxyAppPackage: String,
         bypassLan: Boolean,
         ipv6Mode: String,
         excludedPackages: Set<String>,
@@ -99,6 +104,7 @@ class DitingVpnService : VpnService() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
             .putString(KEY_LAST_OUTBOUND_PROXY, proxyJson)
+            .putString(KEY_LAST_PROXY_APP, proxyAppPackage)
             .putBoolean(KEY_LAST_BYPASS_LAN, bypassLan)
             .putString(KEY_LAST_IPV6_MODE, ipv6Mode)
             .putStringSet(KEY_LAST_EXCLUDED_PACKAGES, excludedPackages)
@@ -112,6 +118,7 @@ class DitingVpnService : VpnService() {
     private fun startTunnel(
         dnsConfig: String,
         proxyJson: String,
+        proxyAppPackage: String,
         bypassLan: Boolean,
         ipv6Mode: String,
         excludedPackages: Set<String>,
@@ -126,7 +133,13 @@ class DitingVpnService : VpnService() {
         stopping = false
         lastError = null
 
-        val pfd = VpnRouteConfig.establish(this, excludedPackages, bypassLan, ipv6Mode)
+        val pfd = VpnRouteConfig.establish(
+            service = this,
+            excludedPackages = excludedPackages,
+            proxyPackage = proxyAppPackage.ifBlank { null },
+            bypassLan = bypassLan,
+            ipv6Mode = ipv6Mode,
+        )
         if (pfd == null) {
             fail("无法建立 VPN 接口")
             return
@@ -148,7 +161,19 @@ class DitingVpnService : VpnService() {
             val proxyError = goEngine.configureOutboundProxy(
                 proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY }
             )
+            if (proxyError.isNotBlank()) {
+                // Persisted before failing so the page shows the reason, as the legacy app did.
+                OutboundProxyBridge.publishStatus(this@DitingVpnService, "error", proxyError)
+            }
             require(proxyError.isBlank()) { proxyError }
+            // Registered before startFull, which already emits `connecting`; without this the
+            // engine's ready/error result never reaches `dns_vpn_prefs` and the page stays on
+            // "正在连接" forever.
+            goEngine.setOutboundProxyStatusCallback(object : OutboundProxyStatusCallback {
+                override fun onOutboundProxyStatus(state: String, message: String) {
+                    OutboundProxyBridge.publishStatus(this@DitingVpnService, state, message)
+                }
+            })
             goEngine.applyDNSConfig(dnsConfig)
             val logMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                 .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
@@ -437,6 +462,9 @@ class DitingVpnService : VpnService() {
 
         const val EXTRA_DNS_CONFIG = "dns_config"
         const val EXTRA_OUTBOUND_PROXY = "outbound_proxy"
+
+        /// Package of the app that owns the loopback proxy port; excluded from the TUN.
+        const val EXTRA_PROXY_APP = "proxy_app_package"
         const val EXTRA_BYPASS_LAN = "bypass_lan"
         const val EXTRA_IPV6_MODE = "ipv6_mode"
         const val EXTRA_EXCLUDED_PACKAGES = "excluded_packages"
@@ -463,6 +491,7 @@ class DitingVpnService : VpnService() {
         // Last start configuration, replayed by the quick settings tile.
         private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
         private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
+        private const val KEY_LAST_PROXY_APP = "last_outbound_proxy_app"
         private const val KEY_LAST_BYPASS_LAN = "last_bypass_lan"
         private const val KEY_LAST_IPV6_MODE = "last_ipv6_mode"
         private const val KEY_LAST_EXCLUDED_PACKAGES = "last_excluded_packages"
@@ -542,6 +571,7 @@ class DitingVpnService : VpnService() {
             bypassLan: Boolean,
             ipv6Mode: String,
             excludedPackages: List<String>,
+            proxyAppPackage: String = "",
             blockedPackages: List<String> = emptyList(),
             inspectionPackages: List<String> = emptyList(),
             inspectionEnabled: Boolean = false,
@@ -549,6 +579,7 @@ class DitingVpnService : VpnService() {
             action = ACTION_START
             putExtra(EXTRA_DNS_CONFIG, dnsConfig)
             putExtra(EXTRA_OUTBOUND_PROXY, proxyJson)
+            putExtra(EXTRA_PROXY_APP, proxyAppPackage)
             putExtra(EXTRA_BYPASS_LAN, bypassLan)
             putExtra(EXTRA_IPV6_MODE, ipv6Mode)
             putStringArrayListExtra(EXTRA_EXCLUDED_PACKAGES, ArrayList(excludedPackages))
@@ -575,6 +606,7 @@ class DitingVpnService : VpnService() {
                 ipv6Mode = prefs.getString(KEY_LAST_IPV6_MODE, null) ?: "auto",
                 excludedPackages = prefs.getStringSet(KEY_LAST_EXCLUDED_PACKAGES, null)
                     .orEmpty().toList(),
+                proxyAppPackage = prefs.getString(KEY_LAST_PROXY_APP, null).orEmpty(),
                 blockedPackages = prefs.getStringSet(KEY_LAST_BLOCKED_PACKAGES, null)
                     .orEmpty().toList(),
                 inspectionPackages = prefs.getStringSet(KEY_LAST_INSPECTION_PACKAGES, null)

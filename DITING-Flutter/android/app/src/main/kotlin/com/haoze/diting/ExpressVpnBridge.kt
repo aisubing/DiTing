@@ -59,6 +59,8 @@ class ExpressVpnBridge(
             context = activity,
             dnsConfig = dnsConfig,
             proxyJson = call.argument<String>("outboundProxy").orEmpty(),
+            // Kept out of the TUN: a proxied DNS query would otherwise re-enter the proxy.
+            proxyAppPackage = call.argument<String>("proxyAppPackage").orEmpty(),
             ipv6Mode = call.argument<String>("ipv6Mode") ?: "auto",
             excludedPackages = call.argument<List<String>>("excludedPackages").orEmpty(),
             // Blocked/inspection packages are not forwarded: this TUN has no firewall or MITM.
