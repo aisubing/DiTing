@@ -401,6 +401,24 @@ void _ruleImporter() {
     expect(await count('block_rule'), 0, reason: '无来源引用的规则行必须删掉');
   });
 
+  test('孤儿清理按页删除，超过一页也能清空', () async {
+    // 一页之外的孤儿行如果没被扫到，就是分批改写引入的静默数据残留。
+    final importer = RuleImporter(db);
+    final total = RuleImporter.orphanPageSize + 50;
+    final lines = [for (var i = 0; i < total; i++) '||bulk$i.example.com^'];
+    await importer.import(
+      parseCategorized(lines.join('\n')),
+      source: subscriptionSourceTag(9),
+      kind: 'domain',
+      enabled: true,
+    );
+    expect(await count('block_rule'), total);
+
+    await importer.removeRulesBySource(subscriptionSourceTag(9));
+    expect(await count('block_rule_source'), 0);
+    expect(await count('block_rule'), 0);
+  });
+
   test('删除一个订阅不影响另一个订阅的同一 pattern', () async {
     final importer = RuleImporter(db);
     const text = '||shared.example.com^';

@@ -3,7 +3,6 @@ package com.haoze.diting.log
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import tunnel.Engine
@@ -55,35 +54,36 @@ class DnsCacheMirror(
         val entries = try {
             JSONArray(engine.getDNSCacheEntries(MAX_ROWS))
         } catch (t: Throwable) {
-            Log.w(TAG, "Unable to read engine cache snapshot", t)
+            DbWriteHealth.warn(TAG, "Unable to read engine cache snapshot", t)
             return
         }
 
-        val db = LegacyDb.open(context, databaseName) ?: return
+        val db = when (val opened = LegacyDb.open(context, databaseName)) {
+            is LegacyDb.Open.Ready -> opened.db
+            // No database yet, or locked right now: the next tick is 10s away, so just skip.
+            LegacyDb.Open.Absent -> return
+            is LegacyDb.Open.Unavailable -> return
+        }
+        if (!LegacyDb.hasTable(db, TABLE)) return
+        db.beginTransaction()
         try {
-            if (!LegacyDb.hasTable(db, TABLE)) return
-            db.beginTransaction()
-            try {
-                // Replace the projection wholesale: entries the engine evicted or expired must
-                // disappear, and the snapshot is already capped to the hottest rows.
-                db.delete(TABLE, null, null)
-                for (i in 0 until entries.length()) {
-                    val obj = entries.optJSONObject(i) ?: continue
-                    db.insertWithOnConflict(
-                        TABLE,
-                        null,
-                        toValues(obj),
-                        SQLiteDatabase.CONFLICT_REPLACE,
-                    )
-                }
-                db.setTransactionSuccessful()
-            } catch (t: Throwable) {
-                Log.w(TAG, "Unable to mirror DNS cache", t)
-            } finally {
-                runCatching { db.endTransaction() }
+            // Replace the projection wholesale: entries the engine evicted or expired must
+            // disappear, and the snapshot is already capped to the hottest rows.
+            db.delete(TABLE, null, null)
+            for (i in 0 until entries.length()) {
+                val obj = entries.optJSONObject(i) ?: continue
+                db.insertWithOnConflict(
+                    TABLE,
+                    null,
+                    toValues(obj),
+                    SQLiteDatabase.CONFLICT_REPLACE,
+                )
             }
+            db.setTransactionSuccessful()
+        } catch (t: Throwable) {
+            DbWriteHealth.warn(TAG, "Unable to mirror DNS cache", t)
         } finally {
-            runCatching { db.close() }
+            runCatching { db.endTransaction() }
         }
     }
 

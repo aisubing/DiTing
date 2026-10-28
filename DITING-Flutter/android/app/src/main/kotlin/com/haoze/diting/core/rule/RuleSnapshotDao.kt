@@ -36,8 +36,9 @@ data class EnabledRuleKeyset(
 
 /**
  * Raw-SQLite port of the legacy Room rule DAO surface the snapshot builder needs. The rule tables
- * live in the sqflite-created database; this reader never writes, so the app process and the
- * service process can hold the file at the same time.
+ * live in the sqflite-created database; this reader only reads, and the connection it borrows is
+ * the process-wide one from [LegacyDb], so a snapshot build never competes with the log writers
+ * for the file lock.
  */
 class RuleSnapshotDao private constructor(private val db: SQLiteDatabase) {
 
@@ -138,7 +139,9 @@ class RuleSnapshotDao private constructor(private val db: SQLiteDatabase) {
         result.map { (pattern, target) -> pattern to target }
     }
 
-    fun close() = db.close()
+    /// The connection belongs to [LegacyDb] and is shared with the log writers; closing it here
+    /// would pull the file out from under them, so this only drops the reference.
+    fun close() = Unit
 
     /**
      * Cheap fingerprint of the rule tables only. The database file also holds the request-log and
@@ -178,11 +181,10 @@ class RuleSnapshotDao private constructor(private val db: SQLiteDatabase) {
     companion object {
         private const val PAGE_SIZE = 2000
 
-        /** Opens the legacy sqflite database read-only-ish; null when it does not exist yet. */
+        /** Opens the legacy database through the shared connection; null when it has no rule tables. */
         fun open(context: Context, databaseName: String): RuleSnapshotDao? {
-            val db = LegacyDb.open(context, databaseName) ?: return null
+            val db = LegacyDb.writable(context, databaseName) ?: return null
             if (!LegacyDb.hasTable(db, "block_rule") || !LegacyDb.hasTable(db, "allow_rule")) {
-                db.close()
                 return null
             }
             return RuleSnapshotDao(db)

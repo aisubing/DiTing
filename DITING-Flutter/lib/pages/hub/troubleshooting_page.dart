@@ -5,8 +5,10 @@ library;
 
 import 'dart:async';
 
+import 'package:diting/data/native/db_health_bridge.dart';
 import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/native/runtime_log_bridge.dart';
+import 'package:diting/state/db_health_providers.dart';
 import 'package:diting/state/runtime_log_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -42,6 +44,9 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _refreshRuntimeStatus();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshDbHealth();
+    });
   }
 
   @override
@@ -58,7 +63,13 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     if (state == AppLifecycleState.resumed) {
       _refreshCrashCount();
       _refreshRuntimeStatus(force: true);
+      _refreshDbHealth();
     }
+  }
+
+  /// Log-write counters change while the tunnel runs, so every open and resume re-reads them.
+  Future<void> _refreshDbHealth() async {
+    await ref.read(dbWriteHealthProvider.notifier).refresh();
   }
 
   Future<void> _refreshCrashCount() async {
@@ -95,6 +106,7 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     final status = ref.watch(runtimeLogStatusProvider).value;
     final capturing = status?.capturing ?? false;
     final hasRuntimeLogs = status?.hasLogs ?? false;
+    final dbHealth = ref.watch(dbWriteHealthProvider).value;
     final error = context.colorScheme.error;
     final muted = context.colorScheme.onSurfaceVariant;
     return CommonScaffold(
@@ -136,6 +148,27 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
             footer:
                 '默认关闭。开启后会在通知栏显示状态，关闭软件或手动关闭后即停止记录；'
                 '日志只保存在本机，不会自动上传。',
+          ),
+          generateSection(
+            title: '本地数据库',
+            items: [
+              ListItem(
+                leading: GlyphIcon(
+                  (dbHealth?.healthy ?? true)
+                      ? AppGlyphs.checkCircle
+                      : AppGlyphs.warning,
+                  color: (dbHealth?.healthy ?? true) ? null : error,
+                  size: 20,
+                ),
+                title: const Text('日志写入状态'),
+                subtitle: Text(_dbHealthSubtitle(dbHealth)),
+                onTap: _refreshDbHealth,
+              ),
+            ],
+            footer:
+                '日志、竞速记录与流量统计由后台直接写入本地数据库。'
+                '出现丢弃或打开失败时，多为数据库被长时间占用，'
+                '点击可重新读取；反复出现请导出运行日志反馈。',
           ),
           generateSection(
             title: '崩溃日志',
@@ -192,6 +225,16 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
   }
 
   /// The subtitle reflects the real count; an unreadable count says so instead of inventing one.
+  /// The subtitle reflects the real count; an unreadable count says so instead of inventing one.
+  String _dbHealthSubtitle(DbWriteHealthSnapshot? health) {
+    if (health == null) return '正在读取写入状态…';
+    if (health.healthy) return '正常，没有日志被丢弃';
+    final dropped = health.droppedRows;
+    final failed = health.openFailures;
+    final cause = health.lastCause.isEmpty ? '' : '（${health.lastCause}）';
+    return '已丢弃 $dropped 条日志，打开失败 $failed 次$cause';
+  }
+
   String _crashSubtitle(int? count) => switch (count) {
     null => '正在读取本机崩溃日志…',
     0 => '当前设备没有崩溃日志',

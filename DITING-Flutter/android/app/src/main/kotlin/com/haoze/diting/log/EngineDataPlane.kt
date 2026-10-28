@@ -115,6 +115,9 @@ class EngineDataPlane(
         runCatching { mirror?.close() }
         if (trafficAttached) runCatching { traffic.close() }
         if (httpAttached) runCatching { http.close() }
+        // Queued DNS / race / bootstrap rows are flushed here: the engine has already stopped, so
+        // nothing appends while they are written.
+        runCatching { LogTableWriters.closeAll() }
         uidCache.clear()
     }
 }

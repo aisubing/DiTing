@@ -177,30 +177,28 @@ class RuleImporter {
   }
 
   /// Deletes one source's rules. Only source rows go: a rule row may be shared.
+  ///
+  /// Two short steps instead of one long transaction: the source rows go in a single statement
+  /// set, then the orphans are swept in bounded id-range batches. A `DELETE ... WHERE id NOT IN
+  /// (SELECT ...)` over a subscription-sized table held the write lock for minutes, which starved
+  /// every other reader and writer of `diting_database` (see the 2026-10-27 log: 183 failed
+  /// `PRAGMA journal_mode` probes, no successful open at all).
   Future<void> removeRulesBySource(String source) async {
     await _db.transaction((txn) async {
-      for (final table in const [
-        'block_rule_source',
-        'allow_rule_source',
-        'rewrite_rule_source',
-        'go_url_rule_source',
-      ]) {
+      for (final table in _sourceTables) {
         await txn.delete(table, where: 'source = ?', whereArgs: [source]);
       }
-      await _deleteOrphanRules(txn);
     });
+    for (final entry in _ruleToSource.entries) {
+      await _deleteOrphanRules(entry.key, entry.value);
+    }
   }
 
   /// Sets `enabled` on all source rows of [source]; the shared rule row keeps its own flag.
   Future<void> setSourceEnabled(String source, bool enabled) async {
     final value = enabled ? 1 : 0;
     await _db.transaction((txn) async {
-      for (final table in const [
-        'block_rule_source',
-        'allow_rule_source',
-        'rewrite_rule_source',
-        'go_url_rule_source',
-      ]) {
+      for (final table in _sourceTables) {
         await txn.update(
           table,
           {'enabled': value},
@@ -212,17 +210,28 @@ class RuleImporter {
   }
 
   /// Drops rule rows that no source references; they would only inflate counts.
-  Future<void> _deleteOrphanRules(DatabaseExecutor txn) async {
-    for (final entry in const {
-      'block_rule': 'block_rule_source',
-      'allow_rule': 'allow_rule_source',
-      'rewrite_rule': 'rewrite_rule_source',
-      'go_url_rule': 'go_url_rule_source',
-    }.entries) {
-      await txn.rawDelete(
-        'DELETE FROM ${entry.key} WHERE id NOT IN '
-        '(SELECT ruleId FROM ${entry.value})',
-      );
+  ///
+  /// Each page is its own transaction, so the write lock is never held longer than one page's
+  /// worth of deletes, and the loop yields so queued reads still get a turn.
+  Future<void> _deleteOrphanRules(String ruleTable, String sourceTable) async {
+    while (true) {
+      final removed = await _db.transaction<int>((txn) async {
+        final rows = await txn.rawQuery(
+          'SELECT id FROM $ruleTable WHERE NOT EXISTS '
+          '(SELECT 1 FROM $sourceTable s WHERE s.ruleId = $ruleTable.id) '
+          'ORDER BY id LIMIT $orphanPageSize',
+        );
+        if (rows.isEmpty) return 0;
+        final ids = [for (final row in rows) row['id'] as int];
+        final placeholders = List.filled(ids.length, '?').join(',');
+        await txn.rawDelete(
+          'DELETE FROM $ruleTable WHERE id IN ($placeholders)',
+          ids,
+        );
+        return ids.length;
+      });
+      if (removed == 0) return;
+      await Future<void>.delayed(Duration.zero);
     }
   }
 
@@ -256,48 +265,48 @@ class RuleImporter {
     required String sourceTable,
     required String source,
     required bool enabled,
-  }) async {
-    if (rules.isEmpty) return 0;
+  }) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    var inserted = 0;
-    await _db.transaction((txn) async {
-      for (final rule in rules) {
-        final ruleId =
-            await _findDomainRule(txn, table, rule) ??
-            await txn.insert(table, {
-              'pattern': rule.pattern,
-              'rawLine': rule.rawLine,
-              'addedAt': now,
-              'enabled': 1,
-              'groupName': null,
-              'important': rule.important ? 1 : 0,
-              'appScope': rule.appScope,
-              'appInverted': rule.appInverted ? 1 : 0,
-              'isWildcard': rule.isWildcard ? 1 : 0,
-              'denyallow': rule.denyallow,
-              'isRegex': rule.isRegex ? 1 : 0,
-              'dnsType': rule.dnsType,
-            });
-        final rows = await txn.insert(sourceTable, {
-          'ruleId': ruleId,
-          'source': source,
-          'enabled': enabled ? 1 : 0,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
-        if (rows > 0) {
-          inserted++;
-        }
-      }
+    return _writeBatched(rules.length, (batch, index) {
+      final rule = rules[index];
+      final key = _domainRuleKey(rule);
+      batch.rawInsert(
+        // Conditional insert, not `INSERT OR IGNORE`: legacy databases have no unique index on
+        // the rule table, so dedupe has to be explicit (the SELECT sees rows written earlier in
+        // the same batch).
+        'INSERT INTO $table '
+        '(pattern, rawLine, addedAt, enabled, groupName, important, appScope, appInverted, '
+        'isWildcard, denyallow, isRegex, dnsType) '
+        'SELECT ?, ?, ?, 1, NULL, ?, ?, ?, ?, ?, ?, ? '
+        'WHERE NOT EXISTS (SELECT 1 FROM $table WHERE ${key.where})',
+        [
+          rule.pattern,
+          rule.rawLine,
+          now,
+          rule.important ? 1 : 0,
+          rule.appScope,
+          rule.appInverted ? 1 : 0,
+          rule.isWildcard ? 1 : 0,
+          rule.denyallow,
+          rule.isRegex ? 1 : 0,
+          rule.dnsType,
+          ...key.args,
+        ],
+      );
+      // Same statement finds the row whether it was just inserted or already existed.
+      batch.rawInsert(
+        'INSERT OR IGNORE INTO $sourceTable (ruleId, source, enabled) '
+        'SELECT id, ?, ? FROM $table WHERE ${key.where} ORDER BY id LIMIT 1',
+        [source, enabled ? 1 : 0, ...key.args],
+      );
     });
-    return inserted;
   }
 
-  Future<int?> _findDomainRule(
-    DatabaseExecutor txn,
-    String table,
-    ParsedRule rule,
-  ) async {
-    // sqflite warns about `IS ?` with null (and will throw later), so nullable columns use `= ?`
-    // when set and `IS NULL` otherwise.
+  /// Unique-key predicate of a domain rule, mirroring the legacy unique index.
+  ///
+  /// sqflite warns about `IS ?` with null (and will throw later), so nullable columns use `= ?`
+  /// when set and `IS NULL` otherwise.
+  ({String where, List<Object?> args}) _domainRuleKey(ParsedRule rule) {
     final where = <String>['pattern = ?', 'important = ?'];
     final args = <Object?>[rule.pattern, rule.important ? 1 : 0];
     final appScope = rule.appScope;
@@ -318,55 +327,70 @@ class RuleImporter {
     }
     where.add('isRegex = ?');
     args.add(rule.isRegex ? 1 : 0);
+    return (where: where.join(' AND '), args: args);
+  }
 
-    final rows = await txn.query(
-      table,
-      columns: ['id'],
-      where: where.join(' AND '),
-      whereArgs: args,
-      limit: 1,
-    );
-    return rows.isEmpty ? null : rows.first['id'] as int;
+  /// Runs [addRule] for every index inside one transaction, with all statements queued in a single
+  /// batch: three statements per rule in one platform round trip instead of three round trips per
+  /// rule, which is what made a 1000-rule chunk take seconds and hold the write lock meanwhile.
+  ///
+  /// [addRule] must add the rule insert and its source insert; the helper appends `SELECT changes()`
+  /// so the returned count is the number of source rows actually written.
+  Future<int> _writeBatched(
+    int count,
+    void Function(Batch batch, int index) addRule,
+  ) async {
+    if (count == 0) return 0;
+    var inserted = 0;
+    await _db.transaction((txn) async {
+      final batch = txn.batch();
+      for (var index = 0; index < count; index++) {
+        addRule(batch, index);
+        batch.rawQuery('SELECT changes() AS c');
+      }
+      final results = await batch.commit(noResult: false);
+      for (var index = 2; index < results.length; index += 3) {
+        final rows = results[index];
+        if (rows is List && rows.isNotEmpty) {
+          inserted += (rows.first as Map)['c'] as int? ?? 0;
+        }
+      }
+    });
+    return inserted;
   }
 
   Future<int> _insertRewriteRules(
     List<ParsedRewriteRule> rules, {
     required String source,
     required bool enabled,
-  }) async {
-    if (rules.isEmpty) return 0;
+  }) {
     final now = DateTime.now().millisecondsSinceEpoch;
-    var inserted = 0;
-    await _db.transaction((txn) async {
-      for (final rule in rules) {
-        final existing = await txn.query(
-          'rewrite_rule',
-          columns: ['id'],
-          where: 'pattern = ? AND targetType = ? AND targetValue = ?',
-          whereArgs: [rule.pattern, rule.targetType, rule.targetValue],
-          limit: 1,
-        );
-        final ruleId = existing.isNotEmpty
-            ? existing.first['id'] as int
-            : await txn.insert('rewrite_rule', {
-                'pattern': rule.pattern,
-                'targetType': rule.targetType,
-                'targetValue': rule.targetValue,
-                'rawLine': rule.rawLine,
-                'addedAt': now,
-                'enabled': 1,
-              });
-        final rows = await txn.insert('rewrite_rule_source', {
-          'ruleId': ruleId,
-          'source': source,
-          'enabled': enabled ? 1 : 0,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
-        if (rows > 0) {
-          inserted++;
-        }
-      }
+    return _writeBatched(rules.length, (batch, index) {
+      final rule = rules[index];
+      batch.rawInsert(
+        'INSERT INTO rewrite_rule '
+        '(pattern, targetType, targetValue, rawLine, addedAt, enabled) '
+        'SELECT ?, ?, ?, ?, ?, 1 '
+        'WHERE NOT EXISTS (SELECT 1 FROM rewrite_rule '
+        'WHERE pattern = ? AND targetType = ? AND targetValue = ?)',
+        [
+          rule.pattern,
+          rule.targetType,
+          rule.targetValue,
+          rule.rawLine,
+          now,
+          rule.pattern,
+          rule.targetType,
+          rule.targetValue,
+        ],
+      );
+      batch.rawInsert(
+        'INSERT OR IGNORE INTO rewrite_rule_source (ruleId, source, enabled) '
+        'SELECT id, ?, ? FROM rewrite_rule '
+        'WHERE pattern = ? AND targetType = ? AND targetValue = ? ORDER BY id LIMIT 1',
+        [source, enabled ? 1 : 0, rule.pattern, rule.targetType, rule.targetValue],
+      );
     });
-    return inserted;
   }
 
   /// URL and path rules go to `go_url_rule`, which has no `appScope` column, so a `$app=` rule is
@@ -375,42 +399,45 @@ class RuleImporter {
     List<ParsedUrlRule> rules, {
     required String source,
     required bool enabled,
-  }) async {
-    if (rules.isEmpty) return 0;
+  }) {
+    final kept = [
+      for (final rule in rules)
+        if (rule.appScope == null || rule.appScope!.isEmpty) rule,
+    ];
     final now = DateTime.now().millisecondsSinceEpoch;
-    var inserted = 0;
-    await _db.transaction((txn) async {
-      for (final rule in rules) {
-        if (rule.appScope != null && rule.appScope!.isNotEmpty) {
-          continue;
-        }
-        final kind = rule.isAllow ? 'allow' : 'block';
-        final existing = await txn.query(
-          'go_url_rule',
-          columns: ['id'],
-          where: 'pattern = ? AND kind = ?',
-          whereArgs: [rule.pattern, kind],
-          limit: 1,
-        );
-        final ruleId = existing.isNotEmpty
-            ? existing.first['id'] as int
-            : await txn.insert('go_url_rule', {
-                'pattern': rule.pattern,
-                'kind': kind,
-                'rawLine': rule.rawLine,
-                'addedAt': now,
-                'enabled': 1,
-              });
-        final rows = await txn.insert('go_url_rule_source', {
-          'ruleId': ruleId,
-          'source': source,
-          'enabled': enabled ? 1 : 0,
-        }, conflictAlgorithm: ConflictAlgorithm.ignore);
-        if (rows > 0) {
-          inserted++;
-        }
-      }
+    return _writeBatched(kept.length, (batch, index) {
+      final rule = kept[index];
+      final kind = rule.isAllow ? 'allow' : 'block';
+      batch.rawInsert(
+        'INSERT INTO go_url_rule (pattern, kind, rawLine, addedAt, enabled) '
+        'SELECT ?, ?, ?, ?, 1 '
+        'WHERE NOT EXISTS (SELECT 1 FROM go_url_rule WHERE pattern = ? AND kind = ?)',
+        [rule.pattern, kind, rule.rawLine, now, rule.pattern, kind],
+      );
+      batch.rawInsert(
+        'INSERT OR IGNORE INTO go_url_rule_source (ruleId, source, enabled) '
+        'SELECT id, ?, ? FROM go_url_rule WHERE pattern = ? AND kind = ? ORDER BY id LIMIT 1',
+        [source, enabled ? 1 : 0, rule.pattern, kind],
+      );
     });
-    return inserted;
   }
+
+  /// Source tables of every rule family, in the order the sweep expects.
+  static const _sourceTables = [
+    'block_rule_source',
+    'allow_rule_source',
+    'rewrite_rule_source',
+    'go_url_rule_source',
+  ];
+
+  /// rule table -> source table, for the orphan sweep.
+  static const _ruleToSource = {
+    'block_rule': 'block_rule_source',
+    'allow_rule': 'allow_rule_source',
+    'rewrite_rule': 'rewrite_rule_source',
+    'go_url_rule': 'go_url_rule_source',
+  };
+
+  /// Rows per orphan-delete transaction; small enough that the write lock is released often.
+  static const orphanPageSize = 2000;
 }

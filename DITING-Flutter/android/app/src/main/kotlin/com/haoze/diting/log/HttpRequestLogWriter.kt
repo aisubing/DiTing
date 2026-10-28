@@ -25,6 +25,10 @@ class HttpRequestLogWriter(
 
     private val flushScheduled = AtomicBoolean(false)
 
+    /// Backoff after a locked database; the pending rows stay queued meanwhile.
+    private var backoffMs = 0L
+    private var retryAtMs = 0L
+
     @Volatile
     private var closed = false
 
@@ -66,6 +70,12 @@ class HttpRequestLogWriter(
         }.onFailure { Log.w(TAG, "Final HTTP log flush did not complete", it) }
         executor.shutdown()
         runCatching { executor.awaitTermination(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
+        val left = synchronized(lock) {
+            val remaining = pending.size
+            pending.clear()
+            remaining
+        }
+        DbWriteHealth.onDropped(left)
     }
 
     private fun submitFlush() {
@@ -103,42 +113,75 @@ class HttpRequestLogWriter(
             copy
         }
 
-        val db = LegacyDb.open(context, databaseName) ?: run {
-            // No database or no such table: retrying cannot help and would grow the buffer.
-            Log.w(TAG, "$databaseName not openable; dropping ${batch.size} HTTP rows")
+        if (System.currentTimeMillis() < retryAtMs) {
+            // Still backing off: keep the rows queued instead of dropping them.
+            requeue(batch)
             return
         }
-        try {
-            // Guard anyway: an INSERT into a missing table would throw per batch.
-            if (!LegacyDb.hasTable(db, TABLE)) {
-                Log.w(TAG, "$databaseName has no $TABLE; dropping ${batch.size} HTTP rows")
+
+        val db = when (val opened = LegacyDb.open(context, databaseName)) {
+            is LegacyDb.Open.Ready -> opened.db
+            LegacyDb.Open.Absent -> {
+                DbWriteHealth.warn(TAG, "$databaseName missing; dropping ${batch.size} HTTP rows")
+                DbWriteHealth.onDropped(batch.size)
                 return
             }
-            db.beginTransaction()
-            try {
-                for (row in batch) {
-                    db.insertWithOnConflict(TABLE, null, row.toValues(), SQLiteDatabase.CONFLICT_IGNORE)
-                }
-                db.setTransactionSuccessful()
-            } catch (t: Throwable) {
-                Log.w(TAG, "Unable to persist HTTP log batch", t)
+            is LegacyDb.Open.Unavailable -> {
                 requeue(batch)
-            } finally {
-                runCatching { db.endTransaction() }
+                backoff()
+                return
             }
+        }
+
+        // Guard anyway: an INSERT into a missing table would throw per batch.
+        if (!LegacyDb.hasTable(db, TABLE)) {
+            DbWriteHealth.warn(TAG, "$databaseName has no $TABLE; dropping ${batch.size} HTTP rows")
+            DbWriteHealth.onDropped(batch.size)
+            return
+        }
+        db.beginTransaction()
+        try {
+            for (row in batch) {
+                db.insertWithOnConflict(TABLE, null, row.toValues(), SQLiteDatabase.CONFLICT_IGNORE)
+            }
+            db.setTransactionSuccessful()
+            resetBackoff()
+        } catch (t: Throwable) {
+            DbWriteHealth.warn(TAG, "Unable to persist HTTP log batch", t)
+            backoff()
+            requeue(batch)
         } finally {
-            runCatching { db.close() }
+            runCatching { db.endTransaction() }
+        }
+    }
+
+    private fun backoff() {
+        synchronized(lock) {
+            backoffMs = if (backoffMs <= 0L) MIN_BACKOFF_MS else minOf(backoffMs * 2, MAX_BACKOFF_MS)
+            retryAtMs = System.currentTimeMillis() + backoffMs
+        }
+    }
+
+    private fun resetBackoff() {
+        synchronized(lock) {
+            backoffMs = 0L
+            retryAtMs = 0L
         }
     }
 
     private fun requeue(batch: List<Row>) {
         synchronized(lock) {
-            if (closed) return
+            if (closed) {
+                // Nothing will flush again: count the tail instead of losing it silently.
+                DbWriteHealth.onDropped(batch.size)
+                return
+            }
             // Prepend so the buffer stays chronological.
             pending.addAll(0, batch)
             // A failing write must not grow the buffer without bound: drop the oldest rows.
             while (pending.size > MAX_PENDING_ROWS) {
                 pending.removeAt(0)
+                DbWriteHealth.onDropped(1)
             }
         }
         // No later event may arrive to hit BATCH_SIZE, so re-arm the timer.
@@ -173,6 +216,9 @@ class HttpRequestLogWriter(
         const val CLOSE_TIMEOUT_MS = 500L
 
         const val MAX_PENDING_ROWS = 500
+
+        const val MIN_BACKOFF_MS = 2_000L
+        const val MAX_BACKOFF_MS = 60_000L
 
         /// Outcomes hidden by the `blocked_and_errors` log mode
         val PASS_THROUGH_OUTCOMES = setOf("allowed", "passthrough")

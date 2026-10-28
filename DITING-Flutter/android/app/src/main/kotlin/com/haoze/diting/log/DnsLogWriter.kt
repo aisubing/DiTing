@@ -1,13 +1,14 @@
 package com.haoze.diting.log
 
+import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 
-/// Writes the engine's batch DNS log JSON into `dns_log`, a table the Flutter side also reads
+/// Writes the engine's batch DNS log JSON into `dns_log`, a table the Flutter side also reads.
+///
+/// Parsing stays here (pure JSON work on the callback thread); the insert is queued so a locked
+/// database retries instead of dropping the batch, and so the engine thread never waits on disk.
 object DnsLogWriter {
     const val DB_NORMAL = "diting_database"
     const val DB_EXPRESS = "diting_express"
@@ -16,53 +17,30 @@ object DnsLogWriter {
     const val MODE_BLOCKED_AND_ERRORS = "blocked_and_errors"
     const val MODE_OFF = "off"
 
-    private const val TAG = "DnsLogWriter"
+    private const val TABLE = "dns_log"
 
     fun writeBatch(context: Context, databaseName: String, mode: String, jsonLogs: String) {
         if (mode == MODE_OFF || jsonLogs.isBlank()) return
         val array = runCatching { JSONArray(jsonLogs) }.getOrNull() ?: return
         if (array.length() == 0) return
 
-        val db = open(context, databaseName) ?: return
-        try {
-            db.beginTransaction()
-            for (i in 0 until array.length()) {
-                val obj = array.optJSONObject(i) ?: continue
-                val entity = toEntity(obj, mode) ?: continue
-                db.insertWithOnConflict(
-                    "dns_log",
-                    null,
-                    android.content.ContentValues().apply {
-                        put("timestamp", entity.timestamp)
-                        put("queryName", entity.queryName)
-                        put("queryType", entity.queryType)
-                        put("result", entity.result)
-                        put("message", entity.message)
-                        put("cached", if (entity.cached) 1 else 0)
-                        put("blockSubscriptionId", entity.blockSubscriptionId)
-                        put("packageName", entity.packageName)
-                    },
-                    SQLiteDatabase.CONFLICT_IGNORE,
-                )
-            }
-            db.setTransactionSuccessful()
-        } catch (t: Throwable) {
-            Log.w(TAG, "Unable to persist DNS log batch", t)
-        } finally {
-            runCatching { db.endTransaction() }
-            runCatching { db.close() }
+        val writer = LogTableWriters.of(context, databaseName, TABLE, "diting-dns-log")
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            val entity = toEntity(obj, mode) ?: continue
+            writer.submit(
+                ContentValues().apply {
+                    put("timestamp", entity.timestamp)
+                    put("queryName", entity.queryName)
+                    put("queryType", entity.queryType)
+                    put("result", entity.result)
+                    put("message", entity.message)
+                    put("cached", if (entity.cached) 1 else 0)
+                    put("blockSubscriptionId", entity.blockSubscriptionId)
+                    put("packageName", entity.packageName)
+                },
+            )
         }
-    }
-
-    private fun open(context: Context, databaseName: String): SQLiteDatabase? {
-        val path = context.getDatabasePath(databaseName)
-        if (!File(path.path).exists()) {
-            // No database yet on a fresh install; Dart creates the schema, so skip.
-            return null
-        }
-        return runCatching {
-            SQLiteDatabase.openDatabase(path.path, null, SQLiteDatabase.OPEN_READWRITE)
-        }.onFailure { Log.w(TAG, "Unable to open $databaseName", it) }.getOrNull()
     }
 
     private fun toEntity(obj: JSONObject, mode: String): LogEntity? {

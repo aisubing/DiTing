@@ -1,6 +1,7 @@
 package com.haoze.diting.log
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -16,6 +17,9 @@ internal object LogRetention {
     private const val INITIAL_DELAY_MS = 30 * 1000L
 
     private const val DAY_MS = 24 * 60 * 60 * 1000L
+
+    /// Rows per `DELETE`; keeps a sweep from holding the write lock for minutes.
+    private const val BATCH_ROWS = 5_000
 
     private const val DEFAULT_LOG_RETENTION_DAYS = 7
     private const val DEFAULT_TRAFFIC_RETENTION_DAYS = 30
@@ -73,32 +77,43 @@ internal object LogRetention {
         if (logDays <= 0) return 0
         val cutoff = System.currentTimeMillis() - logDays * DAY_MS
 
-        val db = LegacyDb.open(context, databaseName) ?: return 0
+        val db = LegacyDb.writable(context, databaseName) ?: return 0
         var deleted = 0
-        try {
-            for (table in PRUNED_LOG_TABLES) {
-                if (!LegacyDb.hasTable(db, table)) continue
+        for (table in PRUNED_LOG_TABLES) {
+            if (!LegacyDb.hasTable(db, table)) continue
+            deleted += pruneTable(db, table, cutoff)
+        }
+        if (includeHttpAndTraffic && LegacyDb.hasTable(db, "app_traffic_daily")) {
+            val trafficDays = settings.trafficRetentionDays()
+            if (trafficDays > 0) {
+                // `date` is `yyyy-MM-dd`, so the cutoff is a date: millis would delete all.
+                val cutoffDate = dayStringAt(
+                    System.currentTimeMillis() - trafficDays * DAY_MS,
+                )
                 deleted += runCatching {
-                    db.delete(table, "timestamp < ?", arrayOf(cutoff.toString()))
+                    db.delete("app_traffic_daily", "date < ?", arrayOf(cutoffDate))
                 }.getOrDefault(0)
             }
-            if (includeHttpAndTraffic && LegacyDb.hasTable(db, "app_traffic_daily")) {
-                val trafficDays = settings.trafficRetentionDays()
-                if (trafficDays > 0) {
-                    // `date` is `yyyy-MM-dd`, so the cutoff is a date: millis would delete all.
-                    val cutoffDate = dayStringAt(
-                        System.currentTimeMillis() - trafficDays * DAY_MS,
-                    )
-                    deleted += runCatching {
-                        db.delete("app_traffic_daily", "date < ?", arrayOf(cutoffDate))
-                    }.getOrDefault(0)
-                }
-            }
-        } finally {
-            runCatching { db.close() }
         }
         if (deleted > 0) Log.i(TAG, "pruned $deleted rows older than $logDays d")
         return deleted
+    }
+
+    /// Deletes in bounded batches: one `DELETE` over millions of rows would hold the write lock for
+    /// minutes, which is exactly what starved the log writers on 2.1.7.
+    private fun pruneTable(db: SQLiteDatabase, table: String, cutoff: Long): Int {
+        var total = 0
+        while (true) {
+            val batch = runCatching {
+                db.delete(
+                    table,
+                    "id IN (SELECT id FROM $table WHERE timestamp < ? LIMIT $BATCH_ROWS)",
+                    arrayOf(cutoff.toString()),
+                )
+            }.getOrDefault(0)
+            total += batch
+            if (batch < BATCH_ROWS) return total
+        }
     }
 
     /// Tables carrying a `timestamp` column in epoch millis

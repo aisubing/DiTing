@@ -31,6 +31,11 @@ class TrafficIngest(
     @Volatile
     private var closed = false
 
+    /// Backoff after a locked/unopenable database, so a stuck lock is retried instead of hammered
+    /// on every 1MB threshold crossing (the 2026-10-27 export showed a 2.5s retry storm).
+    private var backoffMs = 0L
+    private var retryAtMs = 0L
+
     private val flushTask = executor.scheduleWithFixedDelay(
         { writeBuffered() },
         FLUSH_INTERVAL_MS,
@@ -89,10 +94,18 @@ class TrafficIngest(
         flushTask.cancel(false)
         runCatching {
             // Explicit Runnable: `submit { }` is ambiguous with the Callable overload.
-            executor.submit(Runnable { writeBuffered() }).get(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            // Force: the tail must be attempted even while the backoff window is open.
+            executor.submit(Runnable { writeBuffered(force = true) }).get(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         }.onFailure { Log.w(TAG, "Final traffic flush did not complete", it) }
         executor.shutdown()
         runCatching { executor.awaitTermination(CLOSE_TIMEOUT_MS, TimeUnit.MILLISECONDS) }
+        val left = synchronized(lock) {
+            val remaining = buckets.values.sumOf { it.size }
+            buckets.clear()
+            bufferedBytes = 0L
+            remaining
+        }
+        DbWriteHealth.onDropped(left)
     }
 
     private fun submitFlush() {
@@ -104,7 +117,7 @@ class TrafficIngest(
         }
     }
 
-    private fun writeBuffered() {
+    private fun writeBuffered(force: Boolean = false) {
         // Returned from the block, not assigned to a captured `val`: that relies on callsInPlace.
         val snapshot = synchronized(lock) {
             // `closed` must NOT gate this method: close() sets it before the final flush.
@@ -115,39 +128,67 @@ class TrafficIngest(
             copy
         }
 
-        val failed = ArrayList<Pair<String, LinkedHashMap<String, Delta>>>(snapshot.size)
-        val db = LegacyDb.open(context, databaseName)
-        if (db == null) {
-            // No database yet (fresh install) or server mode: retrying would buffer every tick.
-            Log.w(TAG, "$databaseName not openable; dropping traffic buffer")
+        if (!force && System.currentTimeMillis() < retryAtMs) {
+            // Still backing off: keep the deltas buffered instead of losing them.
+            requeue(snapshot)
             return
         }
-        try {
-            // Express has no app_traffic_daily: a wrong database must be a no-op.
-            if (!LegacyDb.hasTable(db, TABLE)) {
-                Log.w(TAG, "$databaseName has no $TABLE; dropping traffic buffer")
+
+        val db = when (val opened = LegacyDb.open(context, databaseName)) {
+            is LegacyDb.Open.Ready -> opened.db
+            LegacyDb.Open.Absent -> {
+                // Fresh install or server mode: retrying would buffer every tick forever.
+                DbWriteHealth.warn(TAG, "$databaseName missing; dropping traffic buffer")
+                DbWriteHealth.onDropped(snapshot.sumOf { it.second.size })
                 return
             }
-            val now = System.currentTimeMillis()
-            for ((date, bucket) in snapshot) {
-                db.beginTransaction()
-                try {
-                    for ((packageName, delta) in bucket) {
-                        if (delta.tx <= 0 && delta.rx <= 0) continue
-                        applyDelta(db, date, packageName, delta, now)
-                    }
-                    db.setTransactionSuccessful()
-                } catch (t: Throwable) {
-                    Log.w(TAG, "Unable to persist traffic batch for $date", t)
-                    failed.add(date to bucket)
-                } finally {
-                    runCatching { db.endTransaction() }
-                }
+            is LegacyDb.Open.Unavailable -> {
+                requeue(snapshot)
+                backoff()
+                return
             }
-        } finally {
-            runCatching { db.close() }
         }
+
+        // Express has no app_traffic_daily: a wrong database must be a no-op.
+        if (!LegacyDb.hasTable(db, TABLE)) {
+            DbWriteHealth.warn(TAG, "$databaseName has no $TABLE; dropping traffic buffer")
+            DbWriteHealth.onDropped(snapshot.sumOf { it.second.size })
+            return
+        }
+
+        val failed = ArrayList<Pair<String, LinkedHashMap<String, Delta>>>(snapshot.size)
+        val now = System.currentTimeMillis()
+        for ((date, bucket) in snapshot) {
+            db.beginTransaction()
+            try {
+                for ((packageName, delta) in bucket) {
+                    if (delta.tx <= 0 && delta.rx <= 0) continue
+                    applyDelta(db, date, packageName, delta, now)
+                }
+                db.setTransactionSuccessful()
+            } catch (t: Throwable) {
+                DbWriteHealth.warn(TAG, "Unable to persist traffic batch for $date", t)
+                failed.add(date to bucket)
+            } finally {
+                runCatching { db.endTransaction() }
+            }
+        }
+        if (failed.isEmpty()) resetBackoff() else backoff()
         if (failed.isNotEmpty()) requeue(failed)
+    }
+
+    private fun backoff() {
+        synchronized(lock) {
+            backoffMs = if (backoffMs <= 0L) MIN_BACKOFF_MS else minOf(backoffMs * 2, MAX_BACKOFF_MS)
+            retryAtMs = System.currentTimeMillis() + backoffMs
+        }
+    }
+
+    private fun resetBackoff() {
+        synchronized(lock) {
+            backoffMs = 0L
+            retryAtMs = 0L
+        }
     }
 
     /// Adds both counters, keeps a stored non-empty `app_name`. ON CONFLICT needs API 30
@@ -172,7 +213,11 @@ class TrafficIngest(
     /// Puts an unwritten batch back under its original date for the next flush
     private fun requeue(failed: List<Pair<String, LinkedHashMap<String, Delta>>>) {
         synchronized(lock) {
-            if (closed) return
+            if (closed) {
+                // Nothing will flush again: count the tail instead of losing it silently.
+                DbWriteHealth.onDropped(failed.sumOf { it.second.size })
+                return
+            }
             for ((date, bucket) in failed) {
                 val target = buckets.getOrPut(date) { LinkedHashMap() }
                 for ((packageName, delta) in bucket) {
@@ -204,6 +249,9 @@ class TrafficIngest(
         const val CLOSE_TIMEOUT_MS = 500L
 
         const val MAX_BUFFERED_BYTES = 8L * 1024L * 1024L
+
+        const val MIN_BACKOFF_MS = 2_000L
+        const val MAX_BACKOFF_MS = 60_000L
 
         /// UPSERT as UPDATE + INSERT. The CASE keeps a non-empty stored name, so it is bound twice
         const val UPDATE_SQL = """

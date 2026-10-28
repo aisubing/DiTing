@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:diting/app/bootstrap.dart';
 import 'package:diting/app/initial_agreement.dart';
 import 'package:diting/app/l10n/ui_strings.dart';
@@ -8,6 +10,7 @@ import 'package:diting/router.dart';
 import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
+import 'package:diting/state/db_health_providers.dart';
 import 'package:diting/state/on_demand_runner.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/settings_providers.dart';
@@ -43,6 +46,21 @@ class _DitingAppState extends ConsumerState<DitingApp> {
   AppLifecycleListener? _lifecycle;
   bool _autoUpdateChecking = false;
 
+  /// The update rewrites the rule tables in long transactions. Running it in the same seconds as
+  /// the first frame's queries is what let a big subscription lock `diting_database` while the
+  /// tunnel's log writers were opening it (2.1.7: 183 failed opens, zero successes). A few seconds
+  /// of head start is enough for the first frame and is invisible to the user.
+  static const _autoUpdateDelay = Duration(seconds: 5);
+
+  Timer? _autoUpdateDelayTimer;
+
+  /// Needed because this state sits above `MaterialApp`: the snack bar that reports a silent
+  /// log-write failure has no `ScaffoldMessenger` ancestor here.
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+
+  /// Only once per app run; a stuck database would otherwise re-toast on every resume.
+  bool _dbHealthReported = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +69,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       _maybeApplyTileStart();
       _maybeRunAutoUpdate();
       _maybeApplyOnDemand();
+      _maybeReportDbHealth();
     });
   }
 
@@ -58,6 +77,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     _maybeApplyTileStart();
     _maybeRunAutoUpdate();
     _maybeApplyOnDemand();
+    _maybeReportDbHealth();
   }
 
   /// Nothing may reach the network or the tunnel before the first-run agreement is accepted;
@@ -93,18 +113,44 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     }
   }
 
+  /// A locked `diting_database` used to fail silently: log pages stayed empty and nothing said so.
+  /// The native writers count what they dropped, so the first frame can say it out loud.
+  Future<void> _maybeReportDbHealth() async {
+    if (_dbHealthReported || !mounted || !_agreementAccepted) return;
+    final health = await ref.read(dbWriteHealthProvider.notifier).refresh();
+    if (!mounted || health.healthy) return;
+    _dbHealthReported = true;
+    _messengerKey.currentState?.showSnackBar(
+      SnackBar(
+        content: Text(
+          '日志写入异常：已丢弃 ${health.droppedRows} 条、打开失败 ${health.openFailures} 次，'
+          '可在「故障排查」查看详情',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    _autoUpdateDelayTimer?.cancel();
     _lifecycle?.dispose();
     super.dispose();
   }
 
-  Future<void> _maybeRunAutoUpdate() async {
+  /// Cancellable so a disposed tree leaves no pending timer behind (widget tests check that).
+  void _maybeRunAutoUpdate() {
     if (_autoUpdateChecking || !mounted || !_agreementAccepted) {
       return;
     }
     _autoUpdateChecking = true;
+    _autoUpdateDelayTimer = Timer(_autoUpdateDelay, _runAutoUpdate);
+  }
+
+  Future<void> _runAutoUpdate() async {
+    _autoUpdateDelayTimer = null;
     try {
+      if (!mounted || !_agreementAccepted) return;
       final run = await ref.read(autoUpdateRunnerProvider).runIfDue();
       if (!mounted) {
         return;
@@ -142,6 +188,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     return MaterialApp.router(
       title: '谛听 DITING',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: _messengerKey,
       routerConfig: _router,
       themeMode: switch (mode) {
         AppThemeMode.system => ThemeMode.system,
