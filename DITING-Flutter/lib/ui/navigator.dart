@@ -3,10 +3,7 @@ import 'dart:async';
 
 import 'package:animations/animations.dart';
 import 'package:diting/ui/context.dart';
-import 'package:diting/ui/deferred_push.dart';
-import 'package:diting/ui/drag_back.dart';
 import 'package:diting/ui/keyboard_inset_hold.dart';
-import 'package:diting/ui/page_transition.dart';
 import 'package:diting/ui/sheet_navigator.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
@@ -15,9 +12,6 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class BaseNavigator {
   static PageRoute<T> _routeOf<T>(BuildContext context, Widget child) {
-    if (!context.isMobileView) {
-      return CommonDesktopRoute(builder: (context) => child);
-    }
     return CommonRoute(builder: (context) => child);
   }
 
@@ -38,7 +32,7 @@ class BaseNavigator {
       });
     }
 
-    final route = CommonDesktopRoute<T>(
+    final route = CommonRoute<T>(
       builder: (_) => _DropWatch(onDropped: reopenIfDropped, child: child),
     );
     unawaited(
@@ -144,81 +138,8 @@ const commonSharedXPageTransitions = SharedAxisPageTransitionsBuilder(
   fillColor: Colors.transparent,
 );
 
-class CommonDesktopRoute<T> extends PageRoute<T>
-    with DragBackRouteMixin<T>, DeferredPushRouteMixin<T> {
-  final Widget Function(BuildContext context) builder;
-
-  CommonDesktopRoute({required this.builder});
-
-  @override
-  Color? get barrierColor => null;
-
-  @override
-  String? get barrierLabel => null;
-
-  @override
-  Widget buildPage(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  ) {
-    return Semantics(
-      scopesRoute: true,
-      explicitChildNodes: true,
-      child: KeyboardInsetHold(child: builder(context)),
-    );
-  }
-
-  @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    return dragBackDetector(
-      isDragBackActive
-          ? dragBackSlide(context, animation, child)
-          : FadeTransition(opacity: animation, child: child),
-    );
-  }
-
-  @override
-  bool get maintainState => true;
-
-  @override
-  Duration get transitionDuration => const Duration(milliseconds: 200);
-
-  @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 200);
-}
-
-class CommonRoute<T> extends PageRoute<T>
-    with
-        DragBackRouteMixin<T>,
-        DeferredPushRouteMixin<T>,
-        SharedXPageRouteMixin<T> {
-  final Widget Function(BuildContext context) builder;
-
-  CommonRoute({required this.builder});
-
-  @override
-  bool sharesMotionWith(Route<dynamic>? route) => route is CommonRoute;
-
-  @override
-  Color backdropOf(Color surface, {required bool dragging}) =>
-      dragging ? Colors.transparent : surface;
-
-  @override
-  Widget buildPage(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  ) {
-    return Semantics(
-      scopesRoute: true,
-      explicitChildNodes: true,
-      child: KeyboardInsetHold(child: builder(context)),
-    );
-  }
+/// A pushed page; the theme's [PageTransitionsTheme] supplies the transition.
+class CommonRoute<T> extends MaterialPageRoute<T> {
+  CommonRoute({required Widget Function(BuildContext context) builder})
+    : super(builder: (context) => KeyboardInsetHold(child: builder(context)));
 }

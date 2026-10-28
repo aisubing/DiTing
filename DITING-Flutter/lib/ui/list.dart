@@ -22,7 +22,6 @@ import 'package:material_ui/material_ui.dart';
 import 'button.dart';
 import 'card.dart';
 import 'navigation_dock.dart';
-import 'open_container.dart';
 import 'popup.dart';
 import 'scaffold.dart';
 import 'sheet.dart';
@@ -54,19 +53,6 @@ final class _CheckboxAction extends _ListItemAction {
   final ValueChanged<bool?>? onChanged;
 
   const _CheckboxAction({required this.value, this.onChanged});
-}
-
-final class _OpenAction extends _ListItemAction {
-  final Widget widget;
-  final ValueChanged<dynamic>? onChanged;
-
-  final bool forceFull;
-
-  const _OpenAction({
-    required this.widget,
-    this.onChanged,
-    required this.forceFull,
-  });
 }
 
 final class _NextAction extends _ListItemAction {

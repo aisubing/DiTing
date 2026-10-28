@@ -31,28 +31,6 @@ class ListItem<T> extends StatelessWidget {
     this.tileTitleAlignment = ListTileTitleAlignment.center,
   }) : _action = const _DefaultAction();
 
-  ListItem.open({
-    super.key,
-    required this.title,
-    this.subtitle,
-    this.leading,
-    this.padding = const EdgeInsets.symmetric(horizontal: 16),
-    this.trailing,
-    required Widget widget,
-    ValueChanged<dynamic>? onChanged,
-    bool forceFull = true,
-    this.horizontalTitleGap,
-    this.color,
-    this.minTileHeight,
-    this.minVerticalPadding = listRowVerticalPadding,
-    this.tileTitleAlignment = ListTileTitleAlignment.center,
-  }) : _action = _OpenAction(
-         widget: widget,
-         onChanged: onChanged,
-         forceFull: forceFull,
-       ),
-       onTap = null;
-
   ListItem.next({
     super.key,
     required this.title,
@@ -167,7 +145,6 @@ class ListItem<T> extends StatelessWidget {
     Widget? leading,
   }) {
     if (position != null) {
-      // OpenContainer reparents the closed tile out of the section's provider.
       return ItemPositionProvider(
         position: position,
         child: DecorationListItem(
@@ -206,39 +183,6 @@ class ListItem<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final position = ItemPositionProvider.of(context)?.position;
     switch (_action) {
-      case final _OpenAction openDelegate:
-        final child = openDelegate.widget;
-        final onChanged = openDelegate.onChanged;
-        if (!context.isMobileView) {
-          return _buildListTile(
-            context,
-            position: position,
-            trailing: _pageTrailing,
-            onTap: () async {
-              final result = await showExtend<dynamic>(
-                context,
-                props: ExtendProps(forceFull: openDelegate.forceFull),
-                builder: (_) => child,
-              );
-              onChanged?.call(result);
-            },
-          );
-        }
-        return OpenContainer<dynamic>(
-          clipBehavior: Clip.none,
-          closedBuilder: (context, action) {
-            return _buildListTile(
-              context,
-              position: position,
-              trailing: _pageTrailing,
-              onTap: action,
-            );
-          },
-          onClosed: onChanged,
-          openBuilder: (_, action) {
-            return child;
-          },
-        );
       case final _NextAction nextDelegate:
         final child = nextDelegate.widget;
 

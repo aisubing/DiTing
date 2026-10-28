@@ -85,12 +85,12 @@ ThemeData buildAppTheme(
   final transparent = spec.transparentPage;
   return ThemeData(
     useMaterial3: true,
-    // Android keeps `material_ui`'s system default transition; listing it explicitly overrides the
-    // custom builders below, otherwise `ZoomPageTransitionsBuilder` is used. Other platforms use
-    // SharedAxis, `fuchsia` excepted.
+    // Android uses the system Activity transition (Android 14+ FadeForwards) for every page and no
+    // predictive back; a missing entry would fall back to `ZoomPageTransitionsBuilder`. Other
+    // platforms use SharedAxis, `fuchsia` excepted.
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
         TargetPlatform.iOS: commonSharedXPageTransitions,
         TargetPlatform.windows: commonSharedXPageTransitions,
         TargetPlatform.macOS: commonSharedXPageTransitions,

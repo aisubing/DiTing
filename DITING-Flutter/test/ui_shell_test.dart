@@ -399,10 +399,10 @@ void _routeTransition() {
     final builder = theme.pageTransitionsTheme.builders[TargetPlatform.android];
     expect(
       builder,
-      isA<PredictiveBackPageTransitionsBuilder>(),
+      isA<FadeForwardsPageTransitionsBuilder>(),
       reason:
-          '缺省会兜底到 ZoomPageTransitionsBuilder，那是 Android 10 的动画，'
-          '不是用户要的系统默认转场',
+          '安卓统一用系统默认的 Activity 转场且不带预测性返回；缺省会兜底到 '
+          'ZoomPageTransitionsBuilder，那是 Android 10 的动画',
     );
   });
 }
