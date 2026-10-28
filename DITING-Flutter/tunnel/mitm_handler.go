@@ -157,21 +157,6 @@ func newMitmTcpHandler(
 	}
 }
 
-func newMitmUdpHandler(filter *MitmFilter, uidr UIDResolver, protectFn func(fd int) bool) UdpFlowHandler {
-	base := newProtectedUdpHandler(uidr, protectFn)
-	return func(conn adapter.UDPConn) {
-		flow := udpFlowID(conn)
-		if flow.serverPort == 443 && filter != nil && filter.HasAllowedUIDs() {
-			uid := resolveFlowUID(uidr, ProtocolUDP, flow)
-			if uid != UIDUnknown && filter.IsUIDAllowed(uid) {
-				_ = conn.Close()
-				return
-			}
-		}
-		base(conn)
-	}
-}
-
 type flowClass int
 
 const (

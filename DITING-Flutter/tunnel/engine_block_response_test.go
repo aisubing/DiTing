@@ -10,7 +10,6 @@
 package tunnel
 
 import (
-	"net"
 	"testing"
 
 	"github.com/miekg/dns"
@@ -194,69 +193,4 @@ func TestFullTunnelBlockEscalatesViaDynamicBlock(t *testing.T) {
 	}
 }
 
-// The escalation must actually change the synthesized packet on the full-tunnel
-// path, not merely the internal accessor.
-func TestHandleBlockedDomainUsesDynamicResponse(t *testing.T) {
-	e := NewEngine()
-	e.storeBlockResponseType(ResponseCustomIP)
-	e.mu.Lock()
-	e.dynamicResponse = dynamicBlockConfig{
-		Enabled:          true,
-		RequestThreshold: 1,
-		WindowSeconds:    60,
-		NXDomainSeconds:  30,
-	}
-	e.mu.Unlock()
 
-	query := new(dns.Msg)
-	query.SetQuestion("chatty.example.", dns.TypeA)
-	query.Id = 0x7777
-	raw, err := query.Pack()
-	if err != nil {
-		t.Fatalf("pack query: %v", err)
-	}
-	info := &DNSQueryInfo{
-		SourceIP:      net.ParseIP("10.0.0.2"),
-		DestIP:        net.ParseIP("1.1.1.1"),
-		SourcePort:    40000,
-		DestPort:      53,
-		RawDNSPayload: raw,
-		Domain:        "chatty.example",
-		QueryType:     dns.TypeA,
-	}
-
-	// First block: threshold is 1, so this one is still below it and keeps the
-	// configured custom-IP answer.
-	first := e.buildBlockedResponseFor(info)
-	if first == nil {
-		t.Fatal("first block produced no packet")
-	}
-	if rcode := dnsRcodeFromTUNPacket(t, first); rcode == dns.RcodeNameError {
-		t.Fatal("first block must not escalate yet")
-	}
-
-	// Second block: the domain has now crossed the threshold.
-	second := e.buildBlockedResponseFor(info)
-	if second == nil {
-		t.Fatal("second block produced no packet")
-	}
-	if rcode := dnsRcodeFromTUNPacket(t, second); rcode != dns.RcodeNameError {
-		t.Fatalf("dynamic escalation did not reach NXDOMAIN, got rcode %d", rcode)
-	}
-}
-
-// dnsRcodeFromTUNPacket unwraps the synthesized IPv4/UDP frame back to the DNS
-// rcode so the tests assert on the bytes the client really receives.
-func dnsRcodeFromTUNPacket(t *testing.T, packet []byte) int {
-	t.Helper()
-	const ipv4Header = 20
-	const udpHeader = 8
-	if len(packet) < ipv4Header+udpHeader+12 {
-		t.Fatalf("packet too short: %d bytes", len(packet))
-	}
-	msg := new(dns.Msg)
-	if err := msg.Unpack(packet[ipv4Header+udpHeader:]); err != nil {
-		t.Fatalf("unpack synthesized DNS payload: %v", err)
-	}
-	return msg.Rcode
-}

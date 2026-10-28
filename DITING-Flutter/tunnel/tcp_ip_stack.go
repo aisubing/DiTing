@@ -9,13 +9,11 @@ package tunnel
 
 import (
 	"fmt"
-	"io"
 	"sync"
 	"sync/atomic"
 
 	"github.com/xjasonlyu/tun2socks/v2/core"
 	"github.com/xjasonlyu/tun2socks/v2/core/adapter"
-	"github.com/xjasonlyu/tun2socks/v2/core/device/iobased"
 	"github.com/xjasonlyu/tun2socks/v2/core/option"
 	gvisorStack "gvisor.dev/gvisor/pkg/tcpip/stack"
 )
@@ -60,23 +58,8 @@ func (s *TcpIpStack) SetUIDResolver(r UIDResolver) {
 	s.uidr = r
 }
 
-func (s *TcpIpStack) Start(rw io.ReadWriter, mtu uint32) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.running.Load() {
-		return fmt.Errorf("tcp/ip stack already running")
-	}
-
-	ep, err := iobased.New(rw, mtu, 0)
-	if err != nil {
-		return fmt.Errorf("create iobased endpoint: %w", err)
-	}
-	return s.startLocked(ep, mtu)
-}
-
-// StartWithEndpoint runs the stack on a caller-provided link endpoint (the
-// full-tunnel path uses tunLinkEndpoint to avoid iobased's per-packet copies).
+// StartWithEndpoint runs the stack on the given link endpoint (StartFull passes
+// tunLinkEndpoint).
 func (s *TcpIpStack) StartWithEndpoint(ep gvisorStack.LinkEndpoint, mtu uint32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

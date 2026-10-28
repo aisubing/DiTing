@@ -1,15 +1,13 @@
 // dns_low_regression_test.go covers the Low-severity triage items that live in
-// the Go tunnel: UDP truncation handling (A-019), the IPv6 UDP checksum ordering
-// bug (A-067), dnsCache.clear() orphan re-linking (A-069), the unbounded cert
+// the Go tunnel: UDP truncation handling (A-019), dnsCache.clear() orphan
+// re-linking (A-069), the unbounded cert
 // cache (A-071), the connLogSeen dedupe set bound (A-073), ApplyDNSConfig
 // partial-application (A-090) and the InjectingReader carry flush at EOF (A-064).
 
 package tunnel
 
 import (
-	"bytes"
 	"crypto/tls"
-	"encoding/binary"
 	"encoding/json"
 	"io"
 	"net"
@@ -77,77 +75,6 @@ func TestDNSCacheRejectsTruncatedResponses(t *testing.T) {
 	if _, hit, _ := cache.get(rawQuery); hit {
 		t.Fatalf("truncated response was served from the cache")
 	}
-}
-
-// --- A-067: IPv6 UDP checksum must cover the payload ------------------------
-
-// verifyIPv6UDPChecksum recomputes the UDP checksum over the finished datagram
-// and confirms it folds to the ones-complement "valid" value.
-func verifyIPv6UDPChecksum(t *testing.T, packet []byte, srcIP, dstIP net.IP) {
-	t.Helper()
-	if len(packet) < ipv6HeaderSize+udpHeaderSize {
-		t.Fatalf("packet too short: %d", len(packet))
-	}
-	udpOffset := ipv6HeaderSize
-	udpLen := int(binary.BigEndian.Uint16(packet[udpOffset+4 : udpOffset+6]))
-
-	// Sum the pseudo-header, then the datagram including the stored checksum.
-	var sum uint32
-	src := srcIP.To16()
-	dst := dstIP.To16()
-	for i := 0; i < 16; i += 2 {
-		sum += uint32(binary.BigEndian.Uint16(src[i : i+2]))
-		sum += uint32(binary.BigEndian.Uint16(dst[i : i+2]))
-	}
-	sum += uint32(udpLen)
-	sum += 17
-	for i := udpOffset; i+1 < udpOffset+udpLen; i += 2 {
-		sum += uint32(binary.BigEndian.Uint16(packet[i : i+2]))
-	}
-	if udpLen%2 != 0 {
-		sum += uint32(packet[udpOffset+udpLen-1]) << 8
-	}
-	for sum > 0xFFFF {
-		sum = (sum >> 16) + (sum & 0xFFFF)
-	}
-	if uint16(sum) != 0xFFFF {
-		t.Fatalf("IPv6 UDP checksum does not verify: folded sum = %#04x", uint16(sum))
-	}
-}
-
-func TestBuildIPv6UDPPacketChecksumCoversPayload(t *testing.T) {
-	srcIP := net.ParseIP("2001:db8::1")
-	dstIP := net.ParseIP("2001:db8::2")
-
-	query := new(dns.Msg)
-	query.SetQuestion("example.com.", dns.TypeAAAA)
-	payload, err := query.Pack()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	packet := buildIPv6UDPPacket(srcIP, dstIP, 5353, 53, payload)
-	verifyIPv6UDPChecksum(t, packet, srcIP, dstIP)
-
-	// The payload must be byte-identical to what was passed in; the checksum used
-	// to be computed before it was copied in, which left the body zeroed during
-	// the sum and the stored checksum permanently wrong.
-	got := packet[ipv6HeaderSize+udpHeaderSize:]
-	if !bytes.Equal(got, payload) {
-		t.Fatalf("payload was not copied verbatim into the datagram")
-	}
-
-	// Two different payloads must produce different checksums: with the old
-	// ordering every checksum depended only on the header.
-	other := append([]byte(nil), payload...)
-	other[len(other)-1] ^= 0xFF
-	otherPacket := buildIPv6UDPPacket(srcIP, dstIP, 5353, 53, other)
-	first := binary.BigEndian.Uint16(packet[ipv6HeaderSize+6 : ipv6HeaderSize+8])
-	second := binary.BigEndian.Uint16(otherPacket[ipv6HeaderSize+6 : ipv6HeaderSize+8])
-	if first == second {
-		t.Fatalf("checksum ignored the payload: both %#04x", first)
-	}
-	verifyIPv6UDPChecksum(t, otherPacket, srcIP, dstIP)
 }
 
 // --- A-069: dnsCache.clear() must not leave re-linkable orphans --------------

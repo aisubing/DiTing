@@ -45,14 +45,6 @@ func (e *Engine) GetDNSCacheEntries(limit int64) string {
 	return e.dnsCache.snapshotJSON(int(limit))
 }
 
-func (e *Engine) GetRouter() *Router {
-	return e.router
-}
-
-func (e *Engine) SetOutboundAdapter(adapter OutboundAdapter) {
-	e.router.SetAdapter(adapter)
-}
-
 func (e *Engine) SetDomainChecker(checker DomainChecker) {
 	e.domainChecker = checker
 }

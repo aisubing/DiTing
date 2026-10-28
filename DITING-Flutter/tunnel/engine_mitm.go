@@ -8,7 +8,6 @@
 package tunnel
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -54,11 +53,13 @@ func (e *Engine) StopStackMitm() {
 	}
 }
 
-func (e *Engine) SetUseTcpStack(enabled bool) {
-	e.useTcpStack.Store(enabled)
-}
+// SetUseTcpStack is kept for gomobile API compatibility: the Android services
+// still call it before StartFull. StartFull always runs the gVisor stack, and
+// the legacy Start() path that this flag switched has been removed.
+func (e *Engine) SetUseTcpStack(enabled bool) {}
 
-func (e *Engine) IsUsingTcpStack() bool { return e.useTcpStack.Load() }
+// IsUsingTcpStack always reports true: StartFull is the only TUN data plane.
+func (e *Engine) IsUsingTcpStack() bool { return true }
 
 func (e *Engine) SetUIDResolver(r UIDResolver) {
 	r = newCachingUIDResolver(r)
@@ -69,78 +70,6 @@ func (e *Engine) SetUIDResolver(r UIDResolver) {
 
 	if stack != nil {
 		stack.SetUIDResolver(r)
-	}
-}
-
-func (e *Engine) startTcpStackParallel() error {
-	pipe := newPacketPipe()
-	stack := NewTcpIpStack()
-
-	e.mu.Lock()
-	uidr := e.uidResolver
-	protectFn := e.protectFn
-	certMgr := e.stackCertMgr
-	filter := e.stackMitmFilter
-	mtu := uint32(defaultTunMTU)
-	e.tcpStack = stack
-	e.mu.Unlock()
-	e.tcpStackPipe.Store(pipe)
-
-	stack.SetUIDResolver(uidr)
-	if certMgr != nil && filter != nil {
-
-		stack.SetTcpHandler(newMitmTcpHandler(certMgr, filter, e, uidr, protectFn))
-
-		stack.SetUdpHandler(newMitmUdpHandler(filter, uidr, protectFn))
-		logf("TcpIpStack: MITM handler registered (TCP + QUIC-suppressing UDP)")
-	} else {
-
-		stack.SetTcpHandler(newProtectedTcpHandler(uidr, protectFn))
-		stack.SetUdpHandler(newProtectedUdpHandler(uidr, protectFn))
-	}
-
-	if err := stack.Start(pipe, mtu); err != nil {
-		e.mu.Lock()
-		e.tcpStack = nil
-		e.mu.Unlock()
-		e.tcpStackPipe.Store(nil)
-		pipe.Close()
-		return fmt.Errorf("stack start: %w", err)
-	}
-
-	go e.runTcpStackOutboundWriter(pipe)
-
-	logf("TcpIpStack: parallel path started (flag=on)")
-	return nil
-}
-
-func (e *Engine) runTcpStackOutboundWriter(p *packetPipe) {
-	e.mu.Lock()
-	tun := e.tunFile
-	e.mu.Unlock()
-	if tun == nil {
-		logf("TcpIpStack: outbound writer started with nil TUN, exiting")
-		return
-	}
-
-	var written, dropped int64
-	defer func() {
-		logf("TcpIpStack: outbound writer stopped (written=%d dropped=%d)", written, dropped)
-	}()
-
-	for {
-		pkt := p.Pop()
-		if pkt == nil {
-			return
-		}
-		_, err := tun.Write(pkt.b)
-		pipeBufPut(pkt)
-		if err != nil {
-			dropped++
-			logf("TcpIpStack: TUN write error after %d packets: %v", written, err)
-			return
-		}
-		written++
 	}
 }
 

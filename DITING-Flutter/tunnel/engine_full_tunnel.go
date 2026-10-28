@@ -85,7 +85,7 @@ func newBufferedTunWithWriter(tun *os.File, writer io.Writer) *bufferedTun {
 
 func (b *bufferedTun) Read(p []byte) (int, error) { return b.tun.Read(p) }
 
-// Write never reports an error: gVisor's iobased endpoint discards the returned
+// Write never reports an error: the link endpoint has no use for the returned
 // error and does not retry, so surfacing one would only lose the packet anyway.
 // Dropping on a full queue is the same policy, and TCP retransmits.
 func (b *bufferedTun) Write(p []byte) (int, error) {

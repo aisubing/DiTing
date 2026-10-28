@@ -1,6 +1,7 @@
 // Package tunnel provides a Go-based DNS tunnel engine for Android ad blocking,
-// compiled with gomobile bind and invoked directly from Android Kotlin. It handles
-// TUN packet processing, DNS query forwarding across multiple protocols (Plain, DoH,
+// compiled with gomobile bind and invoked directly from Android Kotlin. It runs the
+// full-tunnel gVisor data plane (StartFull) and the standalone DNS server
+// (StartStandalone), forwarding DNS across multiple protocols (Plain, DoH,
 // DoT, DoQ), domain rule matching, and full-network filtering. All exported methods
 // adhere strictly to gomobile-compatible types (string, []byte, int, bool).
 //
@@ -12,13 +13,11 @@
 // above the expected live heap so steady-state GC cadence is unchanged.
 //
 // Concurrency & Teardown Architecture:
-// - tcpStackPipe uses atomic.Pointer to allow lock-free DnsInterceptor reads without
-//   racing against engine Stop().
 // - quicDrop controls whether UDP 443 QUIC traffic is dropped (forcing HTTP/3 fallback
 //   to TCP TLS for MITM inspection) or relayed for optimal loading performance.
 // - TUN file descriptors are duplicated to establish independent Go runtime ownership.
 // - Engine teardown executes outside critical mutex locks to guarantee deadlock-free
-//   termination of worker goroutines, interceptor loops, and embedded proxy servers.
+//   termination of worker goroutines, the TUN link endpoint and embedded proxy servers.
 
 package tunnel
 
@@ -108,12 +107,7 @@ type Engine struct {
 	// old running-only check could not distinguish. See claimFullTunnelSession.
 	sessionGen uint64
 
-	router      *Router
-	interceptor *DnsInterceptor
-
-	tcpStack     *TcpIpStack
-	tcpStackPipe atomic.Pointer[packetPipe]
-	useTcpStack  atomic.Bool
+	tcpStack *TcpIpStack
 
 	quicDrop          atomic.Bool
 	blockEncryptedDNS atomic.Bool
@@ -145,9 +139,7 @@ type Engine struct {
 }
 
 func NewEngine() *Engine {
-	router := NewRouter()
 	e := &Engine{
-		router:         router,
 		dnsCache:       newDNSCache(dnsCacheConfig{Enabled: true}),
 		blockedUIDs:    make(map[int]struct{}),
 		trafficTracker: newTrafficTracker(),
@@ -162,69 +154,7 @@ func NewEngine() *Engine {
 	// wired up. The Android layer always pushes the user preference before
 	// starting traffic.
 	e.blockEncryptedDNS.Store(true)
-	e.interceptor = NewDnsInterceptor(e, router)
 	return e
-}
-
-func (e *Engine) Start(fd int, protector SocketProtector) {
-	e.mu.Lock()
-	if e.running {
-		e.mu.Unlock()
-		return
-	}
-	e.running = true
-	e.totalQueries.Store(0)
-	e.blockedQueries.Store(0)
-
-	var protectFn func(fd int) bool
-	if protector != nil {
-		protectFn = func(fd int) bool {
-			return protector.Protect(fd)
-		}
-	}
-	e.protectFn = protectFn
-	e.setResolverLocked(NewResolver(protectFn))
-	e.resolver.SetRaceLogCallback(e.raceLogCallback)
-	e.resolver.SetBootstrapLogCallback(e.bootstrapLogCallback)
-	if e.dnsConfig != nil {
-		e.resolver.UpdateBootstrap(e.dnsConfig.Bootstrap)
-		if err := e.resolver.ConfigureProviders(e.dnsConfig.Mode, e.dnsConfig.Providers); err != nil {
-			logf("Start: DNS snapshot rejected: %v", err)
-		}
-	} else {
-		e.resolver.Configure(ParseProtocol(e.protocol), e.primaryDNS, e.fallbackDNS, e.dohURL)
-	}
-	e.mu.Unlock()
-
-	newFd, err := dupFd(fd)
-	if err != nil {
-		logf("Failed to dup TUN fd %d: %v", fd, err)
-		e.running = false
-		return
-	}
-
-	e.tunFile = os.NewFile(uintptr(newFd), "tun")
-	if e.tunFile == nil {
-		logf("Failed to open TUN fd %d", fd)
-		e.running = false
-		return
-	}
-
-	logf("Engine started, reading from TUN fd=%d", fd)
-
-	if e.useTcpStack.Load() {
-		if err := e.startTcpStackParallel(); err != nil {
-			logf("TcpIpStack parallel start failed, falling back to legacy path: %v", err)
-		}
-	}
-
-	if e.logAggregator != nil {
-		e.logAggregator.start()
-	}
-
-	e.interceptor.Run(e.tunFile)
-
-	logf("Engine stopped")
 }
 
 func (e *Engine) ReleaseTun() {
@@ -246,7 +176,7 @@ func (e *Engine) Stop() {
 	// NewEngine() and must be freed even when no tunnel ever started (A-017).
 	// Everything below is already idempotent, so a second Stop is harmless:
 	// each field is nil-ed on the way out, logAggregator/trafficTracker guard with
-	// running.Swap, packetPipe/bufferedTun use sync.Once, and the mmap tries/blooms
+	// running.Swap, bufferedTun uses sync.Once, and the mmap tries/blooms
 	// nil their own handles inside Close.
 	e.sessionGen++
 	e.running = false
@@ -265,17 +195,8 @@ func (e *Engine) Stop() {
 	e.stackCertMgr = nil
 	e.stackMitmFilter = nil
 
-	if e.interceptor != nil {
-		e.interceptor.Stop()
-	}
-
-	if e.router != nil {
-		e.router.Stop()
-	}
-
 	stack := e.tcpStack
 	e.tcpStack = nil
-	pipe := e.tcpStackPipe.Swap(nil)
 
 	fullDone := e.fullTunnelDone
 	e.fullTunnelDone = nil
@@ -363,9 +284,6 @@ func (e *Engine) Stop() {
 		oldFlowOutbound.Close()
 	}
 
-	if pipe != nil {
-		pipe.Close()
-	}
 	if fullDone != nil {
 		close(fullDone)
 	}
