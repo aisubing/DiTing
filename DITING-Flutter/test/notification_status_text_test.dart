@@ -1,5 +1,5 @@
-// The notification body must match the legacy wording: mode + provider summary, not a bare
-// running/stopped status. The services cannot see the provider catalog, so these strings are the
+// The notification body must stay one grammar across all three modes (`运行中 · <上游>`); the mode
+// name lives in the title. The services cannot see the provider catalog, so these strings are the
 // only source of the default text.
 
 import 'package:diting/data/notifications/notification_status_text.dart';
@@ -10,20 +10,19 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   LegacySettings settings({
     Map<String, Object?> dns = const {},
+    Map<String, Object?> express = const {},
     Map<String, Object?> server = const {},
   }) => LegacySettings(
     MemoryLegacyPrefsStore({
       'dns_vpn_prefs': dns,
+      'diting_express_prefs': express,
       'diting_dns_mode_prefs': server,
     }),
   );
 
-  group('运行中的通知文案', () {
-    test('单一服务显示已连接与服务商名', () {
-      expect(
-        defaultRunningNotificationText(settings(), express: false),
-        '已连接 · 阿里云',
-      );
+  group('运行中的通知正文', () {
+    test('单一服务显示状态与上游名', () {
+      expect(defaultRunningNotificationText(settings()), '运行中 · 阿里云');
     });
 
     test('竞速模式显示解析模式与服务商数量', () {
@@ -35,23 +34,25 @@ void main() {
                 '["preset_alidns_dns","preset_dnspod_dns"]',
           },
         ),
-        express: false,
       );
-      expect(text, '已连接 · [最快响应] 2 个服务商');
+      expect(text, '运行中 · [最快响应] 2 个服务商');
     });
 
-    test('极速模式换前缀，保持旧版格式', () {
-      final text = defaultRunningNotificationText(
-        settings(
-          dns: const {
+    test('极速模式读取自己的配置容器，正文结构不变', () {
+      final expressSettings = LegacySettings(
+        MemoryLegacyPrefsStore({
+          'diting_express_prefs': const {
             'dns_resolution_mode': 'smart_prediction',
             'smart_prediction_provider_ids':
                 '["preset_alidns_doh","preset_dnspod_doh"]',
           },
-        ),
-        express: true,
+        }),
+        dnsContainer: LegacySettings.expressContainer,
       );
-      expect(text, '极速模式运行中 · [智能选择] 2 个服务商');
+      expect(
+        defaultRunningNotificationText(expressSettings),
+        '运行中 · [智能选择] 2 个服务商',
+      );
     });
 
     test('自定义服务商使用其名称', () {
@@ -64,18 +65,14 @@ void main() {
                 '"url":"https://dns.example.com/query","host":"","port":853}]',
           },
         ),
-        express: false,
       );
-      expect(text, '已连接 · 自建 DoH');
+      expect(text, '运行中 · 自建 DoH');
     });
   });
 
-  group('服务器模式通知文案', () {
-    test('显示当前上游与监听端口', () {
-      expect(
-        defaultServerNotificationText(settings()),
-        '当前上游: 阿里云 (223.5.5.5) · 端口 1053',
-      );
+  group('服务器模式通知正文', () {
+    test('显示上游名与监听端口', () {
+      expect(defaultServerNotificationText(settings()), '运行中 · 阿里云 · 端口 1053');
     });
 
     test('跟随所选上游与端口', () {
@@ -87,10 +84,7 @@ void main() {
           },
         ),
       );
-      expect(
-        text,
-        '当前上游: Cloudflare (https://cloudflare-dns.com/dns-query) · 端口 5353',
-      );
+      expect(text, '运行中 · Cloudflare · 端口 5353');
     });
   });
 }

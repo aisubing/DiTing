@@ -279,12 +279,9 @@ class PowerNotifier extends Notifier<PowerState> {
     // snapshot in its own process (trie files + inline extras), so a large
     // subscription can no longer blow the Binder transaction limit.
     final config = buildDnsConfig(settings);
-    // The service only sees the config JSON, so the legacy-style status line is composed here and
-    // read back from prefs by the notification builder.
-    final statusText = defaultRunningNotificationText(
-      settings,
-      express: express,
-    );
+    // The service only sees the config JSON, so the body is composed here and read back from
+    // prefs by the notification builder. Both VPN modes share one shape; the mode is the title.
+    final statusText = defaultRunningNotificationText(settings);
     if (express) {
       settings.setNotificationDefaultExpressText(statusText);
     } else {

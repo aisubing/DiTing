@@ -1,15 +1,18 @@
-/// Legacy-compatible notification bodies.
+/// Notification bodies for the three data planes.
 ///
 /// The foreground services only see the config JSON, which carries provider ids but no display
-/// names, so Dart composes the default status line here and stores it in
-/// `notification_settings_prefs`; a user-defined text still wins natively.
+/// names, so Dart composes the body here and stores it in `notification_settings_prefs`; a
+/// user-defined text still wins natively.
+///
+/// Every mode shares one grammar, `运行中 · <上游>`, and carries its mode name in the title:
+/// `运行中 · 阿里云`, `运行中 · [最快响应] 3 个服务商`, `运行中 · 阿里云 · 端口 1053`.
 library;
 
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 
-/// Legacy wording, kept for the notification even where the UI uses shorter labels.
+/// Legacy wording of the resolution modes; shorter UI labels would not say what is racing.
 const _modeLabels = {
   'single': '单一服务',
   'smart_prediction': '智能选择',
@@ -17,27 +20,22 @@ const _modeLabels = {
   'primary_backup': '依次尝试',
 };
 
-/// `已连接 · [最快响应] 3 个服务商` / `已连接 · 阿里云` / `已连接`; express prefixes
-/// `极速模式运行中` instead, exactly like the legacy builder.
-String defaultRunningNotificationText(
-  LegacySettings settings, {
-  required bool express,
-}) {
+/// `运行中 · [最快响应] 3 个服务商` / `运行中 · 阿里云` / `运行中`.
+///
+/// Normal and express share this shape; the mode itself is the notification title.
+String defaultRunningNotificationText(LegacySettings settings) {
   final config = buildDnsConfig(settings);
-  final prefix = express ? '极速模式运行中' : '已连接';
   final providers = config.providers;
   if (providers.length > 1) {
     final mode = _modeLabels[config.mode] ?? config.mode;
-    return '$prefix · [$mode] ${providers.length} 个服务商';
+    return '运行中 · [$mode] ${providers.length} 个服务商';
   }
-  if (providers.isNotEmpty) return '$prefix · ${providers.first.name}';
-  return prefix;
+  if (providers.isNotEmpty) return '运行中 · ${providers.first.name}';
+  return '运行中';
 }
 
-/// `当前上游: 阿里云 (223.5.5.5) · 端口 1053`: the legacy server body plus the listen port, which
-/// differs from the legacy fixed 53.
+/// `运行中 · 阿里云 · 端口 1053`: the upstream name plus the listen port, which is not 53 here.
 String defaultServerNotificationText(LegacySettings settings) {
   final config = buildServerDnsConfig(settings);
-  return '当前上游: ${config.upstream.name} (${config.upstream.address})'
-      ' · 端口 ${config.port}';
+  return '运行中 · ${config.upstream.name} · 端口 ${config.port}';
 }

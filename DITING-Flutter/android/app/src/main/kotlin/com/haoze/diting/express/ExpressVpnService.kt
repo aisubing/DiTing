@@ -435,11 +435,11 @@ class ExpressVpnService : VpnService() {
             val status = NotificationSettings.runningText(
                 context,
                 NotificationMode.EXPRESS,
-                "极速模式运行中",
+                "运行中",
             )
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("$label · 极速")
+                .setContentTitle("$label · 极速模式")
                 .setContentText(status)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(status))
                 .setContentIntent(openIntent)

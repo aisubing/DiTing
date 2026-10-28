@@ -424,11 +424,11 @@ class DitingDnsServerService : Service() {
             val status = NotificationSettings.runningText(
                 context,
                 NotificationMode.SERVER,
-                "正在监听端口 $port（UDP/TCP）",
+                "运行中 · 端口 $port",
             )
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("$label · 服务器模式运行中")
+                .setContentTitle("$label · 服务器模式")
                 .setContentText(status)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(status))
                 .setContentIntent(openIntent)

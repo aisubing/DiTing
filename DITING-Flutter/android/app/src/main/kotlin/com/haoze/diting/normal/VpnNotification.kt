@@ -41,7 +41,7 @@ object VpnNotification {
         val status = NotificationSettings.runningText(
             context,
             NotificationMode.NORMAL,
-            "已连接",
+            "运行中",
         )
         val speed = if (NotificationSettings.showSpeed(context)) {
             val (tx, rx) = TrafficRateMonitor.snapshot()
@@ -52,7 +52,7 @@ object VpnNotification {
         val body = status + speed
         return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(label)
+            .setContentTitle("$label · 普通模式")
             .setContentText(body)
             // Without an explicit BigTextStyle the two-line speed readout is ellipsised.
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
