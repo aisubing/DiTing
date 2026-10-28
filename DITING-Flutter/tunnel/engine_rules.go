@@ -106,6 +106,7 @@ func (e *Engine) SetTries(adTriePathsCsv, secTriePathsCsv, adBloomPathsCsv, secB
 			logf("Loaded Security Bloom Filter for fast pre-filtering: %s", path)
 		}
 	}
+	e.publishNativeRulesLocked()
 	e.hasNativeRules.Store(len(e.adTries) > 0 || len(e.secTries) > 0)
 }
 
@@ -130,6 +131,7 @@ func (e *Engine) SetImportantTries(pathsCsv string) {
 		}
 		e.importantTries = append(e.importantTries, trie)
 	}
+	e.publishNativeRulesLocked()
 	e.hasImportantRules.Store(len(e.importantTries) > 0)
 }
 
@@ -137,9 +139,7 @@ func (e *Engine) hasImportantMatch(domain string) bool {
 	if !e.hasImportantRules.Load() {
 		return false
 	}
-	e.mu.Lock()
-	tries := e.importantTries
-	e.mu.Unlock()
+	tries := e.loadNativeRules().importantTries
 	for _, trie := range tries {
 		if trie != nil && trie.ContainsOrParent(domain) {
 			return true
@@ -180,12 +180,9 @@ func (e *Engine) checkDomainBlockedAndReason(host string, appName string) (block
 		return false, ""
 	}
 
-	e.mu.Lock()
-	secBlooms := e.secBlooms
-	secTries := e.secTries
-	adBlooms := e.adBlooms
-	adTries := e.adTries
-	e.mu.Unlock()
+	rules := e.loadNativeRules()
+	secBlooms, secTries := rules.secBlooms, rules.secTries
+	adBlooms, adTries := rules.adBlooms, rules.adTries
 
 	for i, secTrie := range secTries {
 		if secTrie == nil {

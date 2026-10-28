@@ -164,6 +164,8 @@ func (e *Engine) ApplyDNSConfig(configJSON string) error {
 	e.storeBlockResponseType(ParseResponseType(strings.ToUpper(cfg.BlockResponse)))
 	e.mu.Lock()
 	e.dynamicResponse = cfg.DynamicResponse
+	dyn := cfg.DynamicResponse
+	e.dynamicRespView.Store(&dyn)
 	e.dnsConfig = &cfg
 	e.mu.Unlock()
 	e.dynamicBlocks.reset()

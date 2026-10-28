@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"sync"
+
+	"github.com/miekg/dns"
 )
 
 type flightCall struct {
@@ -59,42 +61,67 @@ func (g *singleFlightGroup) Do(key string, fn func() ([]byte, error)) (val []byt
 }
 
 func (c *dnsCache) singleFlight(rawQuery []byte, resolveFn func() ([]byte, error)) ([]byte, bool, error) {
+	resp, _, cached, err := c.singleFlightMsg(rawQuery, func() ([]byte, *dns.Msg, error) {
+		raw, err := resolveFn()
+		return raw, nil, err
+	})
+	return resp, cached, err
+}
+
+// singleFlightMsg coalesces concurrent identical queries and caches the answer.
+//
+// The returned *dns.Msg is the unpacked upstream answer and is only non-nil for
+// the caller that actually performed the resolve: it was unpacked once (by the
+// resolver's validation or here for the cache) and is owned by that caller, so
+// it may be mutated. Shared and cached results return nil and must be unpacked
+// by the caller if needed.
+func (c *dnsCache) singleFlightMsg(rawQuery []byte, resolveFn func() ([]byte, *dns.Msg, error)) ([]byte, *dns.Msg, bool, error) {
 	domain, qtype, qclass, queryID, ok := extractQuestionFromRaw(rawQuery)
 	if !ok {
-		resp, err := resolveFn()
-		return resp, false, err
+		resp, msg, err := resolveFn()
+		return resp, msg, false, err
 	}
 
 	if cachedResp, hit, _ := c.get(rawQuery); hit {
-		return cachedResp, true, nil
+		return cachedResp, nil, true, nil
 	}
 
 	key := cacheKey(domain, qtype, qclass)
 
+	var leaderMsg *dns.Msg
 	val, shared, err := c.flight.Do(key, func() ([]byte, error) {
-		res, resErr := resolveFn()
+		res, msg, resErr := resolveFn()
 		if resErr == nil && len(res) > 0 {
-			c.put(rawQuery, res)
+			if msg == nil {
+				msg = new(dns.Msg)
+				if msg.Unpack(res) != nil {
+					msg = nil
+				}
+			}
+			if msg != nil {
+				c.putMsg(rawQuery, res, msg)
+			}
 		}
+		leaderMsg = msg
 		return res, resErr
 	})
 
 	if err != nil {
-		return nil, false, err
+		return nil, nil, false, err
 	}
 
 	if shared {
 		if cachedResp, hit, _ := c.get(rawQuery); hit {
-			return cachedResp, true, nil
+			return cachedResp, nil, true, nil
 		}
 		if len(val) >= 2 {
 			res := make([]byte, len(val))
 			copy(res, val)
 			binary.BigEndian.PutUint16(res[0:2], queryID)
-			return res, true, nil
+			return res, nil, true, nil
 		}
-		return val, true, nil
+		return val, nil, true, nil
 	}
 
-	return val, false, nil
+	return val, leaderMsg, false, nil
 }

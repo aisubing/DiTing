@@ -43,6 +43,20 @@ type CertManager struct {
 	certCache certCacheStore
 
 	flightCache sync.Map
+
+	// leafKey is one P-256 key shared by every minted leaf certificate.
+	// Generating a fresh key per host doubled the per-host minting cost and the
+	// key never leaves this process, so per-host keys bought no isolation.
+	leafKeyOnce sync.Once
+	leafKey     *ecdsa.PrivateKey
+	leafKeyErr  error
+}
+
+func (cm *CertManager) sharedLeafKey() (*ecdsa.PrivateKey, error) {
+	cm.leafKeyOnce.Do(func() {
+		cm.leafKey, cm.leafKeyErr = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	})
+	return cm.leafKey, cm.leafKeyErr
 }
 
 type cachedCert struct {
@@ -393,7 +407,7 @@ func (cm *CertManager) getCertForHost(host string) (*tls.Certificate, error) {
 		return nil, fmt.Errorf("CA not initialized")
 	}
 
-	leafKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	leafKey, err := cm.sharedLeafKey()
 	if err != nil {
 		return nil, fmt.Errorf("generate leaf key for %s: %w", host, err)
 	}

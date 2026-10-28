@@ -2,6 +2,8 @@ package tunnel
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"hash/fnv"
 	"net"
@@ -9,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 // bloomDoubleHash must stay bit-identical to hash/fnv: the Kotlin builder writes
@@ -174,5 +178,54 @@ func TestLogAggregatorFlushesPartialBatch(t *testing.T) {
 		case <-time.After(2 * time.Second):
 			t.Fatalf("round %d: partial batch never flushed", round)
 		}
+	}
+}
+
+// Leaf certificates share one key but must still chain to the CA and carry the
+// right SAN per host.
+func TestCertManagerSharedLeafKeyCertsVerify(t *testing.T) {
+	cm, err := NewCertManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := cm.getCertificateWithDedup("a.example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := cm.getCertificateWithDedup("b.example.org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.PrivateKey != b.PrivateKey {
+		t.Fatal("expected a shared leaf key")
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(cm.caCert)
+	for host, c := range map[string]*tls.Certificate{"a.example.com": a, "b.example.org": b} {
+		leaf, err := x509.ParseCertificate(c.Certificate[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := leaf.Verify(x509.VerifyOptions{DNSName: host, Roots: roots}); err != nil {
+			t.Fatalf("%s: %v", host, err)
+		}
+	}
+}
+
+// The configured-provider path must hand back the message validation already
+// unpacked, and it must match the raw answer.
+func TestValidateDNSResponseReturnsUnpackedMsg(t *testing.T) {
+	q := new(dns.Msg)
+	q.SetQuestion("reuse.example.com.", dns.TypeA)
+	rawQ, _ := q.Pack()
+	resp := new(dns.Msg)
+	resp.SetReply(q)
+	resp.Answer = append(resp.Answer, &dns.A{Hdr: dns.RR_Header{Name: "reuse.example.com.", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60}, A: net.ParseIP("1.2.3.4")})
+	rawR, _ := resp.Pack()
+
+	parsed, _, _ := parseDNSQuery(rawQ)
+	msg, err := validateDNSResponseParsed(parsed, rawQ, rawR)
+	if err != nil || msg == nil || len(msg.Answer) != 1 || msg.Id != q.Id {
+		t.Fatalf("msg=%v err=%v", msg, err)
 	}
 }

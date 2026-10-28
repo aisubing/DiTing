@@ -142,9 +142,15 @@ const defaultUDPIdleTimeout = 30 * time.Second
 // the effective idle timeout stays within [timeout-refresh, timeout].
 const udpDeadlineRefresh = time.Second
 
+// udpRelayBufSize is the per-direction UDP relay buffer. QUIC and DNS/EDNS
+// datagrams are well under it; only IP-fragmented datagrams above 16 KiB
+// (rare on mobile paths, and fragmentation is usually filtered) would be
+// truncated. 64 KiB per direction per flow pinned ~128 KiB per QUIC flow.
+const udpRelayBufSize = 16 * 1024
+
 var udpBufPool = sync.Pool{
 	New: func() any {
-		b := make([]byte, 65535)
+		b := make([]byte, udpRelayBufSize)
 		return &b
 	},
 }

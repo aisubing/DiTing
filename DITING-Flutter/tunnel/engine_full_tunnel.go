@@ -92,6 +92,12 @@ func (b *bufferedTun) Write(p []byte) (int, error) {
 	bufp := tunPacketPool.Get().(*[]byte)
 	pkt := append((*bufp)[:0], p...)
 	*bufp = pkt
+	b.enqueue(bufp)
+	return len(p), nil
+}
+
+// enqueue hands a pooled packet to the drain goroutine, dropping on overflow.
+func (b *bufferedTun) enqueue(bufp *[]byte) {
 	select {
 	case b.out <- bufp:
 	default:
@@ -100,7 +106,6 @@ func (b *bufferedTun) Write(p []byte) (int, error) {
 			logf("StartFull: outbound queue full, dropped %d packet(s)", n)
 		}
 	}
-	return len(p), nil
 }
 
 // drain moves packets from the queue to the TUN device for the whole session.
@@ -197,7 +202,7 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	} else {
 		e.reportOutboundStatus("disabled", "")
 	}
-	e.resolver = NewResolver(protectFn)
+	e.setResolverLocked(NewResolver(protectFn))
 	e.resolver.SetRaceLogCallback(e.raceLogCallback)
 	e.resolver.SetBootstrapLogCallback(e.bootstrapLogCallback)
 	e.resolver.setOutbound(e.flowOutbound)
@@ -282,7 +287,7 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	e.tcpStack = stack
 	e.mu.Unlock()
 
-	if err := stack.Start(btun, uint32(defaultTunMTU)); err != nil {
+	if err := stack.StartWithEndpoint(newTunLinkEndpoint(btun, uint32(defaultTunMTU)), uint32(defaultTunMTU)); err != nil {
 		btun.halt()
 		tunFile.Close()
 		e.mu.Lock()

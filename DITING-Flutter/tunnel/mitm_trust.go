@@ -95,11 +95,16 @@ func upstreamRootPool() *x509.CertPool {
 	return upstreamPool
 }
 
+// upstreamSessionCache lets repeat upstream handshakes resume (TLS 1.3 PSK /
+// 1.2 tickets) instead of a full key exchange plus chain verification each time.
+var upstreamSessionCache = tls.NewLRUClientSessionCache(256)
+
 func upstreamTLSConfig(serverName string, clientCertRequested *bool) *tls.Config {
 	return &tls.Config{
-		ServerName: serverName,
-		RootCAs:    upstreamRootPool(),
-		MinVersion: tls.VersionTLS12,
+		ServerName:         serverName,
+		RootCAs:            upstreamRootPool(),
+		MinVersion:         tls.VersionTLS12,
+		ClientSessionCache: upstreamSessionCache,
 
 		GetClientCertificate: func(req *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 			if clientCertRequested != nil {

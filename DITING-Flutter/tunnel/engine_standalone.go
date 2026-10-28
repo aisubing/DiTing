@@ -194,52 +194,7 @@ func (e *Engine) serveDNS(w dns.ResponseWriter, r *dns.Msg, appOverride string, 
 		}
 	}
 
-	e.mu.Lock()
-	secBlooms := e.secBlooms
-	secTries := e.secTries
-	adBlooms := e.adBlooms
-	adTries := e.adTries
-	e.mu.Unlock()
-
-	var matchedIDs []string
-
-	for i, secTrie := range secTries {
-		if secTrie == nil {
-			continue
-		}
-		var secBloom *BloomFilter
-		if i < len(secBlooms) {
-			secBloom = secBlooms[i]
-		}
-		if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
-			if secTrie.ContainsOrParent(domain) {
-				id := "security"
-				if i < len(e.secTrieIDs) {
-					id = e.secTrieIDs[i]
-				}
-				matchedIDs = append(matchedIDs, id)
-			}
-		}
-	}
-
-	for i, adTrie := range adTries {
-		if adTrie == nil {
-			continue
-		}
-		var adBloom *BloomFilter
-		if i < len(adBlooms) {
-			adBloom = adBlooms[i]
-		}
-		if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
-			if adTrie.ContainsOrParent(domain) {
-				id := "filter_list"
-				if i < len(e.adTrieIDs) {
-					id = e.adTrieIDs[i]
-				}
-				matchedIDs = append(matchedIDs, id)
-			}
-		}
-	}
+	matchedIDs := e.loadNativeRules().matchNativeRules(domain, false)
 
 	if len(matchedIDs) > 0 {
 		e.standaloneBlock(w, r, strings.Join(matchedIDs, ","), appName, startTime)
@@ -285,16 +240,15 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 		return
 	}
 
-	e.mu.Lock()
-	resolver := e.resolver
+	resolver := e.currentResolver()
 	dnsCache := e.dnsCache
-	e.mu.Unlock()
 	if resolver == nil {
 		dns.HandleFailed(w, r)
 		return
 	}
 
 	var respRaw []byte
+	var resolvedMsg *dns.Msg
 	var isCached bool
 	if dnsCache != nil && dnsCache.isEnabled() {
 		cachedResp, hit, targets, ipList, resolvedIPs, isNegative, staleCandidate := dnsCache.getFast(raw)
@@ -350,11 +304,11 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 			}
 		}
 
-		respRaw, isCached, err = dnsCache.singleFlight(raw, func() ([]byte, error) {
-			return resolver.Resolve(raw)
+		respRaw, resolvedMsg, isCached, err = dnsCache.singleFlightMsg(raw, func() ([]byte, *dns.Msg, error) {
+			return resolver.ResolveMsg(raw)
 		})
 	} else {
-		respRaw, err = resolver.Resolve(raw)
+		respRaw, resolvedMsg, err = resolver.ResolveMsg(raw)
 	}
 
 
@@ -367,33 +321,38 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 		return
 	}
 
-	var respMsg dns.Msg
-	if err := respMsg.Unpack(respRaw); err != nil {
+	// resolvedMsg is owned by this call (see singleFlightMsg), so mutating its
+	// Id below is safe; otherwise unpack a private copy.
+	respMsg := resolvedMsg
+	if respMsg == nil {
+		respMsg = new(dns.Msg)
+	}
+	if err := unpackIfNeeded(respMsg, resolvedMsg != nil, respRaw); err != nil {
 		dns.HandleFailed(w, r)
 		e.totalQueries.Add(1)
 		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, time.Since(startTime).Milliseconds(), appName, "", "", err.Error(), false)
 		return
 	}
 
-	if isUpstreamBlockedMsg(&respMsg) {
+	if isUpstreamBlockedMsg(respMsg) {
 		e.totalQueries.Add(1)
 		e.blockedQueries.Add(1)
 		elapsed := time.Since(startTime).Milliseconds()
 		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), true, r.Question[0].Qtype, elapsed, appName, "", "upstream_dns", "", false)
 	} else {
-		if chainBlocked, chainReason := e.checkResponseChain(&respMsg, appName); chainBlocked {
+		if chainBlocked, chainReason := e.checkResponseChain(respMsg, appName); chainBlocked {
 			e.standaloneBlock(w, r, chainReason, appName, startTime)
 			return
 		}
 		e.totalQueries.Add(1)
 		elapsed := time.Since(startTime).Milliseconds()
-		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, resolvedAddressesMsg(&respMsg), "", "", isCached)
-		e.rememberResolvedIPs(r.Question[0].Name, &respMsg)
+		e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, resolvedAddressesMsg(respMsg), "", "", isCached)
+		e.rememberResolvedIPs(r.Question[0].Name, respMsg)
 	}
 
 	respMsg.Id = r.Id
-	e.rememberAppAllowlistResponse(uid, &respMsg)
-	_ = w.WriteMsg(&respMsg)
+	e.rememberAppAllowlistResponse(uid, respMsg)
+	_ = w.WriteMsg(respMsg)
 }
 
 func (e *Engine) StartStandalone(port int) error {
@@ -412,7 +371,7 @@ func (e *Engine) StartStandalone(port int) error {
 		oldTcp6 = e.standaloneTcp6
 		e.standaloneTcp6 = nil
 		oldResolver = e.resolver
-		e.resolver = nil
+		e.setResolverLocked(nil)
 		e.running = false
 	}
 
@@ -420,7 +379,7 @@ func (e *Engine) StartStandalone(port int) error {
 	e.totalQueries.Store(0)
 	e.blockedQueries.Store(0)
 
-	e.resolver = NewResolver(nil)
+	e.setResolverLocked(NewResolver(nil))
 	e.resolver.SetRaceLogCallback(e.raceLogCallback)
 	e.resolver.SetBootstrapLogCallback(e.bootstrapLogCallback)
 	if e.dnsConfig != nil {
@@ -525,7 +484,7 @@ func (e *Engine) StopStandalone() {
 	oldTcp6 := e.standaloneTcp6
 	e.standaloneTcp6 = nil
 	oldResolver := e.resolver
-	e.resolver = nil
+	e.setResolverLocked(nil)
 	e.mu.Unlock()
 
 	if oldUdp != nil {
@@ -546,3 +505,9 @@ func (e *Engine) StopStandalone() {
 	logf("Engine standalone server stopped")
 }
 
+func unpackIfNeeded(msg *dns.Msg, alreadyUnpacked bool, raw []byte) error {
+	if alreadyUnpacked {
+		return nil
+	}
+	return msg.Unpack(raw)
+}

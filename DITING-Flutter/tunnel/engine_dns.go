@@ -118,54 +118,7 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 
 	if e.hasNativeRules.Load() {
 
-		e.mu.Lock()
-		secBlooms := e.secBlooms
-		secTries := e.secTries
-		secTrieIDs := e.secTrieIDs
-		adBlooms := e.adBlooms
-		adTries := e.adTries
-		adTrieIDs := e.adTrieIDs
-		e.mu.Unlock()
-
-		var matchedIDs []string
-
-		for i, secTrie := range secTries {
-			if secTrie == nil {
-				continue
-			}
-			var secBloom *BloomFilter
-			if i < len(secBlooms) {
-				secBloom = secBlooms[i]
-			}
-			if secBloom == nil || secBloom.MightContainDomainOrParent(domain) {
-				if secTrie.ContainsOrParent(domain) {
-					id := "security"
-					if i < len(secTrieIDs) {
-						id = secTrieIDs[i]
-					}
-					matchedIDs = append(matchedIDs, id)
-				}
-			}
-		}
-
-		for i, adTrie := range adTries {
-			if adTrie == nil {
-				continue
-			}
-			var adBloom *BloomFilter
-			if i < len(adBlooms) {
-				adBloom = adBlooms[i]
-			}
-			if adBloom == nil || adBloom.MightContainDomainOrParent(domain) {
-				if adTrie.ContainsOrParent(domain) {
-					id := "filter_list"
-					if i < len(adTrieIDs) {
-						id = adTrieIDs[i]
-					}
-					matchedIDs = append(matchedIDs, id)
-				}
-			}
-		}
+		matchedIDs := e.loadNativeRules().matchNativeRules(domain, false)
 
 		if len(matchedIDs) > 0 {
 			e.handleBlockedDomain(queryInfo, strings.Join(matchedIDs, ","), appName, startTime)
@@ -214,9 +167,7 @@ func (e *Engine) handleDNSQuery(queryInfo *DNSQueryInfo) {
 				e.notifyLog(queryInfo.Domain, false, queryInfo.QueryType, elapsed, appName, staleCandidate.resolvedIPs, "", "", true)
 
 				// Asynchronous background refresh
-				e.mu.Lock()
-				resolver := e.resolver
-				e.mu.Unlock()
+				resolver := e.currentResolver()
 				if resolver != nil {
 					payloadCopy := make([]byte, len(queryInfo.RawDNSPayload))
 					copy(payloadCopy, queryInfo.RawDNSPayload)
@@ -295,22 +246,22 @@ func (e *Engine) handleBlockedDomain(queryInfo *DNSQueryInfo, blockedBy, appName
 
 func (e *Engine) handleForward(queryInfo *DNSQueryInfo, appName string, startTime time.Time) {
 
-	e.mu.Lock()
-	resolver := e.resolver
+	// dnsCache is assigned once in NewEngine; the resolver view is lock-free.
+	resolver := e.currentResolver()
 	dnsCache := e.dnsCache
-	e.mu.Unlock()
 	if resolver == nil {
 
 		return
 	}
 
 	var resp []byte
+	var resolvedMsg *dns.Msg
 	var isCached bool
 	var err error
 
 	if dnsCache != nil && dnsCache.isEnabled() {
-		resp, isCached, err = dnsCache.singleFlight(queryInfo.RawDNSPayload, func() ([]byte, error) {
-			return resolver.Resolve(queryInfo.RawDNSPayload)
+		resp, resolvedMsg, isCached, err = dnsCache.singleFlightMsg(queryInfo.RawDNSPayload, func() ([]byte, *dns.Msg, error) {
+			return resolver.ResolveMsg(queryInfo.RawDNSPayload)
 		})
 		if err != nil {
 			_, _, staleEntry := dnsCache.get(queryInfo.RawDNSPayload)
@@ -337,7 +288,7 @@ func (e *Engine) handleForward(queryInfo *DNSQueryInfo, appName string, startTim
 		}
 
 	} else {
-		resp, err = resolver.Resolve(queryInfo.RawDNSPayload)
+		resp, resolvedMsg, err = resolver.ResolveMsg(queryInfo.RawDNSPayload)
 	}
 
 	if err != nil {
@@ -351,10 +302,16 @@ func (e *Engine) handleForward(queryInfo *DNSQueryInfo, appName string, startTim
 		return
 	}
 
-	var respMsg dns.Msg
-	hasUnpacked := (respMsg.Unpack(resp) == nil)
+	// Reuse the message the resolver/cache already unpacked; only shared or
+	// cached results still need their own unpack.
+	respMsg := resolvedMsg
+	hasUnpacked := respMsg != nil
+	if !hasUnpacked {
+		respMsg = new(dns.Msg)
+		hasUnpacked = respMsg.Unpack(resp) == nil
+	}
 	if hasUnpacked {
-		if chainBlocked, chainReason := e.checkResponseChain(&respMsg, appName); chainBlocked {
+		if chainBlocked, chainReason := e.checkResponseChain(respMsg, appName); chainBlocked {
 			e.handleBlockedDomain(queryInfo, chainReason, appName, startTime)
 			return
 		}
@@ -363,10 +320,10 @@ func (e *Engine) handleForward(queryInfo *DNSQueryInfo, appName string, startTim
 	blocked := false
 	resolvedIPs := ""
 	if hasUnpacked {
-		blocked = isUpstreamBlockedMsg(&respMsg)
+		blocked = isUpstreamBlockedMsg(respMsg)
 		if !blocked {
-			resolvedIPs = resolvedAddressesMsg(&respMsg)
-			e.rememberResolvedIPs(queryInfo.Domain, &respMsg)
+			resolvedIPs = resolvedAddressesMsg(respMsg)
+			e.rememberResolvedIPs(queryInfo.Domain, respMsg)
 		}
 	} else {
 		blocked = isUpstreamBlocked(resp)
@@ -389,7 +346,7 @@ func (e *Engine) handleForward(queryInfo *DNSQueryInfo, appName string, startTim
 
 	var respTTL int64
 	if hasUnpacked {
-		if minTtl, found := extractMinTTL(&respMsg); found {
+		if minTtl, found := extractMinTTL(respMsg); found {
 			respTTL = int64(minTtl)
 		}
 	}

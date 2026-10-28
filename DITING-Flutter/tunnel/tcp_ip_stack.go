@@ -27,7 +27,7 @@ type UdpFlowHandler func(conn adapter.UDPConn)
 type TcpIpStack struct {
 	mu       sync.Mutex
 	stack    *gvisorStack.Stack
-	endpoint *iobased.Endpoint
+	endpoint gvisorStack.LinkEndpoint
 	running  atomic.Bool
 
 	tcpHandler TcpFlowHandler
@@ -72,7 +72,22 @@ func (s *TcpIpStack) Start(rw io.ReadWriter, mtu uint32) error {
 	if err != nil {
 		return fmt.Errorf("create iobased endpoint: %w", err)
 	}
+	return s.startLocked(ep, mtu)
+}
 
+// StartWithEndpoint runs the stack on a caller-provided link endpoint (the
+// full-tunnel path uses tunLinkEndpoint to avoid iobased's per-packet copies).
+func (s *TcpIpStack) StartWithEndpoint(ep gvisorStack.LinkEndpoint, mtu uint32) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.running.Load() {
+		return fmt.Errorf("tcp/ip stack already running")
+	}
+	return s.startLocked(ep, mtu)
+}
+
+func (s *TcpIpStack) startLocked(ep gvisorStack.LinkEndpoint, mtu uint32) error {
 	st, err := core.CreateStack(&core.Config{
 		LinkEndpoint:     ep,
 		TransportHandler: s,

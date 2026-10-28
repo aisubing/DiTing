@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 // encryptedPreferenceWindow is the short grace period given to in-flight
@@ -26,6 +28,7 @@ const encryptedPreferenceWindow = 25 * time.Millisecond
 type scheduleResult struct {
 	provider *configuredProvider
 	response []byte
+	msg      *dns.Msg
 	elapsed  time.Duration
 	err      error
 	index    int
@@ -96,11 +99,11 @@ func (r *Resolver) resolveSmartPrediction(
 	queryType uint16,
 	startTime time.Time,
 	snapshot *resolverSnapshot,
-) ([]byte, error) {
+) ([]byte, *dns.Msg, error) {
 	providers := snapshot.providers
 	n := len(providers)
 	if n == 0 {
-		return nil, fmt.Errorf("no providers available")
+		return nil, nil, fmt.Errorf("no providers available")
 	}
 	if n == 1 {
 		return r.resolveSingle(parentCtx, rawQuery, parsed, queryName, queryType, startTime, providers)
@@ -129,11 +132,11 @@ func (r *Resolver) executeSchedulePlan(
 	startTime time.Time,
 	snapshot *resolverSnapshot,
 	plan schedulePlan,
-) ([]byte, error) {
+) ([]byte, *dns.Msg, error) {
 	candidates := plan.candidates
 	n := len(candidates)
 	if n == 0 {
-		return nil, fmt.Errorf("no providers available")
+		return nil, nil, fmt.Errorf("no providers available")
 	}
 
 	ctx, cancel := context.WithTimeout(parentCtx, queryTimeoutPlain)
@@ -162,10 +165,11 @@ func (r *Resolver) executeSchedulePlan(
 			lastLaunched = prov
 			go func(p *configuredProvider, i int) {
 				defer snapshot.release()
-				resp, elapsed, err := r.queryConfiguredProviderParsed(ctx, p, rawQuery, parsed)
+				resp, msg, elapsed, err := r.queryConfiguredProviderParsed(ctx, p, rawQuery, parsed)
 				resultCh <- scheduleResult{
 					provider: p,
 					response: resp,
+					msg:      msg,
 					elapsed:  elapsed,
 					err:      err,
 					index:    i,
@@ -186,7 +190,7 @@ func (r *Resolver) executeSchedulePlan(
 		}
 	}
 	if spawned == 0 {
-		return nil, fmt.Errorf("snapshot retired: no providers could be acquired")
+		return nil, nil, fmt.Errorf("snapshot retired: no providers could be acquired")
 	}
 
 	var hedgeTimer *time.Timer
@@ -296,7 +300,7 @@ func (r *Resolver) executeSchedulePlan(
 			fallbackUsed:       fallbackTriggered,
 			fallbackSuccess:    fallbackSuccess,
 		})
-		return winner.response, nil
+		return winner.response, winner.msg, nil
 	}
 
 	joinedErr := errors.Join(errs...)
@@ -316,5 +320,5 @@ func (r *Resolver) executeSchedulePlan(
 		fallbackUsed:       fallbackTriggered,
 		errorMessage:       errMsg,
 	})
-	return nil, joinedErr
+	return nil, nil, joinedErr
 }

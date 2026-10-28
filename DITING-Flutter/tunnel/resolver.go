@@ -303,6 +303,17 @@ func (r *Resolver) Resolve(rawQuery []byte) ([]byte, error) {
 }
 
 func (r *Resolver) ResolveContext(ctx context.Context, rawQuery []byte) ([]byte, error) {
+	resp, _, err := r.resolveMsgContext(ctx, rawQuery)
+	return resp, err
+}
+
+// ResolveMsg is Resolve plus the already-unpacked response when the configured
+// provider path validated it; msg is nil on the legacy single-server path.
+func (r *Resolver) ResolveMsg(rawQuery []byte) ([]byte, *dns.Msg, error) {
+	return r.resolveMsgContext(context.Background(), rawQuery)
+}
+
+func (r *Resolver) resolveMsgContext(ctx context.Context, rawQuery []byte) ([]byte, *dns.Msg, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -321,18 +332,18 @@ func (r *Resolver) ResolveContext(ctx context.Context, rawQuery []byte) ([]byte,
 
 	resp, err := r.queryWithContext(ctx, rawQuery, protocol, primary, dohURL)
 	if err == nil {
-		return resp, nil
+		return resp, nil, nil
 	}
 
 	if fallback != "" && fallback != primary {
 		resp, err2 := r.queryWithContext(ctx, rawQuery, ProtocolPlain, fallback, "")
 		if err2 == nil {
-			return resp, nil
+			return resp, nil, nil
 		}
-		return nil, fmt.Errorf("primary (%s): %w; fallback (%s): %v", primary, err, fallback, err2)
+		return nil, nil, fmt.Errorf("primary (%s): %w; fallback (%s): %v", primary, err, fallback, err2)
 	}
 
-	return nil, err
+	return nil, nil, err
 }
 
 func (r *Resolver) query(rawQuery []byte, protocol DNSProtocol, server, dohURL string) ([]byte, error) {

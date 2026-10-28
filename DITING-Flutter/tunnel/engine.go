@@ -7,8 +7,9 @@
 // GC Tuning Rationale:
 // Under high-frequency small-packet DNS workloads, Go runtime default GOGC=100 causes
 // short, frequent GC cycles resulting in CPU bursts and device heating. GOGC=400 trades
-// bounded heap headroom for ~4x fewer GC cycles. A soft memory limit is deliberately
-// omitted to prevent continuous GC cycles when live heap approaches the limit.
+// bounded heap headroom for ~4x fewer GC cycles. A generous soft memory limit
+// (engineSoftMemoryLimit) bounds the worst case on low-RAM devices; it sits well
+// above the expected live heap so steady-state GC cadence is unchanged.
 //
 // Concurrency & Teardown Architecture:
 // - tcpStackPipe uses atomic.Pointer to allow lock-free DnsInterceptor reads without
@@ -35,7 +36,15 @@ import (
 
 func init() {
 	debug.SetGCPercent(400)
+	// Backstop for GOGC=400 on low-RAM devices: without a limit the heap may
+	// grow to ~5x the live set before a cycle runs. The limit is generous next to
+	// the expected live heap (DNS cache, cert cache, per-flow buffers), so it only
+	// takes effect under unusual load; the runtime caps GC CPU near the limit, so
+	// it cannot cause an unbounded GC spiral.
+	debug.SetMemoryLimit(engineSoftMemoryLimit)
 }
+
+const engineSoftMemoryLimit = 128 << 20
 
 type Engine struct {
 	protocol    string
@@ -79,6 +88,12 @@ type Engine struct {
 
 	hasNativeRules    atomic.Bool
 	hasImportantRules atomic.Bool
+
+	// Lock-free read views for the DNS hot path; writers update them under mu
+	// together with the fields they mirror.
+	nativeRules     atomic.Pointer[nativeRuleSnapshot]
+	resolverView    atomic.Pointer[Resolver]
+	dynamicRespView atomic.Pointer[dynamicBlockConfig]
 
 	mu         sync.Mutex
 	callbackMu sync.RWMutex
@@ -168,7 +183,7 @@ func (e *Engine) Start(fd int, protector SocketProtector) {
 		}
 	}
 	e.protectFn = protectFn
-	e.resolver = NewResolver(protectFn)
+	e.setResolverLocked(NewResolver(protectFn))
 	e.resolver.SetRaceLogCallback(e.raceLogCallback)
 	e.resolver.SetBootstrapLogCallback(e.bootstrapLogCallback)
 	if e.dnsConfig != nil {
@@ -271,7 +286,7 @@ func (e *Engine) Stop() {
 	}
 
 	oldResolver := e.resolver
-	e.resolver = nil
+	e.setResolverLocked(nil)
 	oldFlowOutbound := e.flowOutbound
 	e.flowOutbound = nil
 	if oldFlowOutbound != nil {
@@ -299,6 +314,7 @@ func (e *Engine) Stop() {
 		}
 	}
 	e.importantTries = nil
+	e.publishNativeRulesLocked()
 
 	for _, bf := range e.adBlooms {
 		if bf != nil {

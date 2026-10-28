@@ -427,9 +427,16 @@ func (e *Engine) effectiveBlockResponseType(domain string) ResponseType {
 	if e == nil {
 		return fallback
 	}
-	e.mu.Lock()
-	dynamicConfig := e.dynamicResponse
-	e.mu.Unlock()
+	var dynamicConfig dynamicBlockConfig
+	if v := e.dynamicRespView.Load(); v != nil {
+		dynamicConfig = *v
+	} else {
+		// Tests (and any future direct writer) may set the field without the
+		// view; fall back to the locked read so they keep working.
+		e.mu.Lock()
+		dynamicConfig = e.dynamicResponse
+		e.mu.Unlock()
+	}
 	if !dynamicConfig.Enabled {
 		return fallback
 	}

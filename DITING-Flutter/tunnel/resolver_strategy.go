@@ -59,7 +59,9 @@ func extractQueryInfo(rawQuery []byte) (string, uint16) {
 	return name, qtype
 }
 
-func (r *Resolver) resolveConfigured(ctx context.Context, rawQuery []byte, snapshot *resolverSnapshot) ([]byte, error) {
+// resolveConfigured returns the raw answer plus the *dns.Msg that validation
+// already unpacked, so callers do not have to unpack the same bytes again.
+func (r *Resolver) resolveConfigured(ctx context.Context, rawQuery []byte, snapshot *resolverSnapshot) ([]byte, *dns.Msg, error) {
 	parsed, queryName, queryType := parseDNSQuery(rawQuery)
 	startTime := time.Now()
 	mode := snapshot.mode
@@ -87,15 +89,15 @@ func (r *Resolver) resolveSingle(
 	queryType uint16,
 	startTime time.Time,
 	providers []*configuredProvider,
-) ([]byte, error) {
+) ([]byte, *dns.Msg, error) {
 	if len(providers) == 0 {
-		return nil, fmt.Errorf("no providers available")
+		return nil, nil, fmt.Errorf("no providers available")
 	}
 	p := providers[0]
 	ctx, cancel := context.WithTimeout(parentCtx, queryTimeoutPlain)
 	defer cancel()
 
-	resp, elapsed, err := r.queryConfiguredProviderParsed(ctx, p, rawQuery, parsed)
+	resp, msg, elapsed, err := r.queryConfiguredProviderParsed(ctx, p, rawQuery, parsed)
 	totalElapsed := time.Since(startTime).Milliseconds()
 	selectedMs := elapsed.Milliseconds()
 	if err != nil {
@@ -110,7 +112,7 @@ func (r *Resolver) resolveSingle(
 			selectedElapsedMs:  selectedMs,
 			errorMessage:       err.Error(),
 		})
-		return nil, err
+		return nil, nil, err
 	}
 	r.notifyRaceLog(raceLogEvent{
 		queryName:          queryName,
@@ -124,7 +126,7 @@ func (r *Resolver) resolveSingle(
 		winnerProviderID:   p.id,
 		winnerElapsedMs:    selectedMs,
 	})
-	return resp, nil
+	return resp, msg, nil
 }
 
 func providerAttemptTimeout(p *configuredProvider) time.Duration {
@@ -149,10 +151,10 @@ func (r *Resolver) resolvePrimaryBackup(
 	queryType uint16,
 	startTime time.Time,
 	providers []*configuredProvider,
-) ([]byte, error) {
+) ([]byte, *dns.Msg, error) {
 	n := len(providers)
 	if n == 0 {
-		return nil, fmt.Errorf("no providers available")
+		return nil, nil, fmt.Errorf("no providers available")
 	}
 	if n == 1 {
 		return r.resolveSingle(parentCtx, rawQuery, parsed, queryName, queryType, startTime, providers)
@@ -201,7 +203,7 @@ func (r *Resolver) resolvePrimaryBackup(
 		}
 
 		attemptCtx, cancel := context.WithTimeout(budgetCtx, attemptTimeout)
-		resp, elapsed, err := r.queryConfiguredProviderParsed(attemptCtx, provider, rawQuery, parsed)
+		resp, msg, elapsed, err := r.queryConfiguredProviderParsed(attemptCtx, provider, rawQuery, parsed)
 		cancel()
 		if item.idx == 0 {
 			primaryElapsed = elapsed.Milliseconds()
@@ -224,7 +226,7 @@ func (r *Resolver) resolvePrimaryBackup(
 				fallbackUsed:       fallbackUsed,
 				fallbackSuccess:    fallbackSuccess,
 			})
-			return resp, nil
+			return resp, msg, nil
 		}
 		if err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", provider.id, err))
@@ -249,7 +251,7 @@ func (r *Resolver) resolvePrimaryBackup(
 		fallbackUsed:       n > 1,
 		errorMessage:       errMsg,
 	})
-	return nil, joinedErr
+	return nil, nil, joinedErr
 }
 
 func (r *Resolver) resolveParallelRace(
@@ -260,11 +262,11 @@ func (r *Resolver) resolveParallelRace(
 	queryType uint16,
 	startTime time.Time,
 	snapshot *resolverSnapshot,
-) ([]byte, error) {
+) ([]byte, *dns.Msg, error) {
 	providers := snapshot.providers
 	n := len(providers)
 	if n == 0 {
-		return nil, fmt.Errorf("no providers available")
+		return nil, nil, fmt.Errorf("no providers available")
 	}
 	if n == 1 {
 		return r.resolveSingle(parentCtx, rawQuery, parsed, queryName, queryType, startTime, providers)
@@ -294,7 +296,8 @@ func (r *Resolver) resolveParallelRace(
 
 func (r *Resolver) queryConfiguredProvider(ctx context.Context, provider *configuredProvider, rawQuery []byte) (resp []byte, elapsed time.Duration, err error) {
 	parsed, _, _ := parseDNSQuery(rawQuery)
-	return r.queryConfiguredProviderParsed(ctx, provider, rawQuery, parsed)
+	resp, _, elapsed, err = r.queryConfiguredProviderParsed(ctx, provider, rawQuery, parsed)
+	return resp, elapsed, err
 }
 
 func (r *Resolver) queryConfiguredProviderParsed(
@@ -302,7 +305,7 @@ func (r *Resolver) queryConfiguredProviderParsed(
 	provider *configuredProvider,
 	rawQuery []byte,
 	parsed *parsedDNSQuery,
-) (resp []byte, elapsed time.Duration, err error) {
+) (resp []byte, msg *dns.Msg, elapsed time.Duration, err error) {
 	start := time.Now()
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -331,14 +334,15 @@ func (r *Resolver) queryConfiguredProviderParsed(
 			if provider.stats != nil {
 				provider.stats.RecordCensored(elapsed)
 			}
-			return nil, elapsed, err
+			return nil, nil, elapsed, err
 		}
 		if provider.stats != nil {
 			provider.stats.RecordFailure()
 		}
-		return nil, elapsed, err
+		return nil, nil, elapsed, err
 	}
-	if err := validateDNSResponseParsed(parsed, rawQuery, resp); err != nil {
+	msg, err = validateDNSResponseParsed(parsed, rawQuery, resp)
+	if err != nil {
 		if provider.stats != nil {
 			var rcodeErr *upstreamRcodeError
 			if errors.As(err, &rcodeErr) && rcodeErr.isPolicyRejection() {
@@ -347,44 +351,47 @@ func (r *Resolver) queryConfiguredProviderParsed(
 				provider.stats.RecordFailure()
 			}
 		}
-		return nil, elapsed, err
+		return nil, nil, elapsed, err
 	}
 	if provider.stats != nil {
 		provider.stats.RecordSuccess(elapsed)
 	}
-	return resp, elapsed, nil
+	return resp, msg, elapsed, nil
 }
 
 func validateDNSResponse(rawQuery, rawResponse []byte) error {
 	parsed, _, _ := parseDNSQuery(rawQuery)
-	return validateDNSResponseParsed(parsed, rawQuery, rawResponse)
+	_, err := validateDNSResponseParsed(parsed, rawQuery, rawResponse)
+	return err
 }
 
-func validateDNSResponseParsed(parsed *parsedDNSQuery, rawQuery, rawResponse []byte) error {
+// validateDNSResponseParsed checks the answer against the query and returns the
+// unpacked response for reuse by the cache and the engine.
+func validateDNSResponseParsed(parsed *parsedDNSQuery, rawQuery, rawResponse []byte) (*dns.Msg, error) {
 	if parsed == nil {
 		var query dns.Msg
 		if err := query.Unpack(rawQuery); err != nil {
-			return fmt.Errorf("invalid DNS query: %w", err)
+			return nil, fmt.Errorf("invalid DNS query: %w", err)
 		}
 		if query.Response || len(query.Question) == 0 {
-			return fmt.Errorf("invalid DNS query flags or empty question")
+			return nil, fmt.Errorf("invalid DNS query flags or empty question")
 		}
 		parsed = &parsedDNSQuery{id: query.Id, questions: query.Question}
 	}
-	var response dns.Msg
+	response := new(dns.Msg)
 	if err := response.Unpack(rawResponse); err != nil {
-		return fmt.Errorf("invalid DNS response: %w", err)
+		return nil, fmt.Errorf("invalid DNS response: %w", err)
 	}
 	if !response.Response || response.Id != parsed.id {
-		return fmt.Errorf("DNS response transaction mismatch")
+		return nil, fmt.Errorf("DNS response transaction mismatch")
 	}
 	if len(response.Question) != len(parsed.questions) {
-		return fmt.Errorf("DNS response question count mismatch")
+		return nil, fmt.Errorf("DNS response question count mismatch")
 	}
 	for i := range parsed.questions {
 		q, a := parsed.questions[i], response.Question[i]
 		if !strings.EqualFold(q.Name, a.Name) || q.Qtype != a.Qtype || q.Qclass != a.Qclass {
-			return fmt.Errorf("DNS response question mismatch")
+			return nil, fmt.Errorf("DNS response question mismatch")
 		}
 	}
 	// Upstream failure codes must be treated as provider failure so failover
@@ -392,8 +399,8 @@ func validateDNSResponseParsed(parsed *parsedDNSQuery, rawQuery, rawResponse []b
 	// answer and must NOT trigger fallback.
 	switch response.Rcode {
 	case dns.RcodeSuccess, dns.RcodeNameError:
-		return nil
+		return response, nil
 	default:
-		return &upstreamRcodeError{rcode: response.Rcode}
+		return nil, &upstreamRcodeError{rcode: response.Rcode}
 	}
 }
