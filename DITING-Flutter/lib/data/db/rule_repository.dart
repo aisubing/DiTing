@@ -8,9 +8,12 @@ import 'package:diting/data/mock_data.dart';
 import 'package:sqflite/sqflite.dart';
 
 class RuleRepository {
-  RuleRepository(this._db);
+  RuleRepository(this._db, {this.sourceFile});
 
   final Database _db;
+
+  /// Legacy database file this handle was opened from; null for ad-hoc handles (tests, cleanup).
+  final String? sourceFile;
 
   static const _ruleTables = {
     RuleKind.block: 'block_rule',

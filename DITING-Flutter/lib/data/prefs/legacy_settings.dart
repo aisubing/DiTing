@@ -201,17 +201,18 @@ class LegacySettings {
   void setHapticEnabled(bool value) =>
       _store.putBool(uiContainer, 'bottom_bar_haptic_enabled', value);
 
+  /// Dataset-scoped: every data set seeds its own rule database, so the marker cannot be shared.
   bool get defaultWhitelistInitialized =>
-      _bool(uiContainer, 'default_whitelist_initialized', false);
+      _bool(dnsContainer, 'default_whitelist_initialized', false);
 
   int get defaultWhitelistSeededVersion =>
-      _int(uiContainer, 'default_whitelist_seeded_version', 0);
+      _int(dnsContainer, 'default_whitelist_seeded_version', 0);
 
   /// `versionCode * 1000 + 2`, the legacy marker value.
   void markDefaultWhitelistSeeded(int versionCode) {
-    _store.putBool(uiContainer, 'default_whitelist_initialized', true);
+    _store.putBool(dnsContainer, 'default_whitelist_initialized', true);
     _store.putLong(
-      uiContainer,
+      dnsContainer,
       'default_whitelist_seeded_version',
       versionCode * 1000 + 2,
     );

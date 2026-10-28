@@ -5,7 +5,8 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/db/preset_whitelist.dart';
-import 'package:diting/data/db/rule_index_bridge.dart';
+import 'package:diting/data/db/rule_bootstrap.dart';
+import 'package:diting/data/db/rule_dataset_providers.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
@@ -29,10 +30,10 @@ class RulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
 
   RuleRepository? get _repo => ref.read(ruleRepositoryProvider);
 
-  /// Recompiles the native rule tries after a database write, mirroring the legacy app's
-  /// cache refresh inside RuleOperationWorker. Cheap when nothing changed for the trie tables.
+  /// Recompiles the native rule tries of the active data set after a database write, mirroring the
+  /// legacy app's cache refresh inside RuleOperationWorker. Cheap when nothing changed.
   void _refreshIndexes() {
-    unawaited(refreshRuleIndexes(RuleIndexDataset.normal));
+    refreshRuleIndexesForCurrentMode(ref);
   }
 
   @override
@@ -454,3 +455,24 @@ RuleLineParseResult parseRuleLines(
     rejected: rejected,
   );
 }
+
+/// Keeps the rule list in step with the active data set. The startup fill covers the first mode;
+/// every switch to another data set opens its database and reloads that data set's rows here, so
+/// the page can never show another mode's rules while writing into the new one.
+final ruleSnapshotSyncProvider = Provider<void>((ref) {
+  var disposed = false;
+  ref.onDispose(() => disposed = true);
+  ref.listen<RuleRepository?>(ruleRepositoryProvider, (previous, next) {
+    if (identical(previous, next)) return;
+    if (next == null) {
+      ref.read(initialRulesProvider.notifier).clear();
+      return;
+    }
+    unawaited(
+      loadInitialRules(next).then((rules) {
+        if (disposed) return;
+        ref.read(initialRulesProvider.notifier).fill(rules);
+      }),
+    );
+  });
+});

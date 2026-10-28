@@ -262,8 +262,12 @@ enum ResolutionMode {
 
 class ResolutionModeNotifier extends Notifier<ResolutionMode> {
   @override
-  ResolutionMode build() =>
-      ResolutionMode.fromStorageValue(_settings(ref).resolutionModeRaw);
+  ResolutionMode build() {
+    // DNS keys are data-set scoped: following the settings view is what makes a mode switch show
+    // that data set's mode instead of the previous one.
+    ref.watch(legacySettingsProvider);
+    return ResolutionMode.fromStorageValue(_settings(ref).resolutionModeRaw);
+  }
 
   void select(ResolutionMode mode) {
     state = mode;

@@ -21,7 +21,14 @@ class LegacyDatabase {
   /// Null means [fileName] could neither be opened nor created; callers degrade to "no rule
   /// database".
   static Future<Database?> open(String fileName, {bool create = true}) async {
-    final path = p.join(await getDatabasesPath(), fileName);
+    final String path;
+    try {
+      path = p.join(await getDatabasesPath(), fileName);
+    } on StateError {
+      // No sqflite implementation on this host (widget tests, desktop): no rule database. Rule
+      // pages then show their empty state instead of crashing before the first frame.
+      return null;
+    }
     if (!await databaseExists(path)) {
       if (!create) return null;
       return _create(path, fileName);

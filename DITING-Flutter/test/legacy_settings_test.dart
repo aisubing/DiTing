@@ -195,7 +195,14 @@ void _legacySettings() {
     }
 
     test('启动即读到旧设置', () {
-      final container = containerWith(legacyStore());
+      final store = legacyStore();
+      // Server mode reads its own data set, so its resolution mode lives there.
+      store.putString(
+        'diting_dns_mode_prefs',
+        'dns_resolution_mode',
+        'parallel_race',
+      );
+      final container = containerWith(store);
 
       expect(container.read(themeModeProvider), AppThemeMode.dark);
       expect(container.read(paletteProvider), AppPalette.gold);
@@ -238,10 +245,12 @@ void _legacySettings() {
       expect(store.read('dns_vpn_prefs', 'home_power_button_opacity'), 0.6);
       expect(store.read('dns_vpn_prefs', 'home_sentence_running'), '新句子');
       expect(store.read('diting_settings', 'app_work_mode'), 'express');
+      // The mode selected in express mode lands in the express data set, not the global container.
       expect(
-        store.read('dns_vpn_prefs', 'dns_resolution_mode'),
+        store.read('diting_express_prefs', 'dns_resolution_mode'),
         'primary_backup',
       );
+      expect(store.read('dns_vpn_prefs', 'dns_resolution_mode'), isNull);
       expect(store.read('diting_dns_mode_prefs', 'local_listen_port'), 1053);
     });
 

@@ -1,10 +1,15 @@
 // Rule table SQL and app-scoped rules: the blacklist must never treat an app rule as
 // global, and an unavailable rule library must report itself as unavailable.
 
+import 'package:diting/data/db/datasets.dart';
+import 'package:diting/data/db/legacy_database.dart';
 import 'package:diting/data/db/preset_whitelist.dart';
+import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/prefs/legacy_prefs_store.dart';
+import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/state/app_rules_providers.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +19,50 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   group('规则表 SQL', _ruleRepository);
   group('应用独立规则', _appScopedRules);
+  group('数据集规则库', _ruleDataSets);
+}
+
+/// Every work mode opens its own legacy database and records the seed marker in its own container.
+void _ruleDataSets() {
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+
+  test('bootstrapRules 按数据集打开规则库并写数据集种子标记', () async {
+    final store = MemoryLegacyPrefsStore();
+    final settings = LegacySettings(
+      store,
+      dnsContainer: LegacySettings.expressContainer,
+    );
+    addTearDown(() async {
+      final path = await databaseFactory.getDatabasesPath();
+      await databaseFactory.deleteDatabase(
+        '$path/${LegacyDatabase.expressFile}',
+      );
+    });
+
+    final boot = await bootstrapRules(
+      DataSet.express,
+      settings,
+      versionCode: 9,
+    );
+
+    expect(boot.repository, isNotNull);
+    expect(boot.repository!.sourceFile, LegacyDatabase.expressFile);
+    expect(
+      store.read(
+        LegacySettings.expressContainer,
+        'default_whitelist_initialized',
+      ),
+      isTrue,
+    );
+    expect(
+      store.read(LegacySettings.uiContainer, 'default_whitelist_initialized'),
+      isNull,
+    );
+  });
 }
 
 /// Exercises the SQL against the exact 1.4.3 layout, a subset of `AppDatabase` v3

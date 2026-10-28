@@ -10,6 +10,7 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/pages/config/on_demand_capabilities.dart';
+import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/on_demand_runner.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:fake_async/fake_async.dart';
@@ -158,8 +159,8 @@ void _expressMode() {
     }) {
       final store = MemoryLegacyPrefsStore({
         'diting_settings': {'app_work_mode': 'express'},
-        // The UI writes DNS settings to the shared container, so express must read them there.
-        'dns_vpn_prefs': {
+        // The UI and the engine both read the express data set, so its container holds the keys.
+        'diting_express_prefs': {
           'selected_provider_id': 'preset_dnspod_dns',
           'ipv6_mode': 'disabled',
           ...dnsPrefs,
@@ -171,14 +172,13 @@ void _expressMode() {
           legacyPrefsStoreProvider.overrideWithValue(store),
           vpnControllerProvider.overrideWithValue(normal),
           expressVpnControllerProvider.overrideWithValue(express),
-          expressRuleRepositoryProvider.overrideWith((ref) async => null),
         ],
       );
       addTearDown(c.dispose);
       return c;
     }
 
-    test('启动走极速通道、采用共享的 DNS 配置并写 express_vpn_running', () async {
+    test('启动走极速通道、采用极速数据集的 DNS 配置并写 express_vpn_running', () async {
       final normal = FakeVpnController();
       final express = FakeVpnController();
       final c = container(normal: normal, express: express);
@@ -201,18 +201,26 @@ void _expressMode() {
       expect(settings.vpnRunning, isFalse);
     });
 
-    // Regression: the express engine used to read its own dataset container, so the notification
-    // kept showing the default provider after the user picked another resolution mode.
-    test('极速模式通知文案跟随共享的解析模式', () async {
+    // Regression: the app used to write DNS settings to the normal container while the express
+    // engine read `diting_express_prefs`, so the notification ignored the user's selection.
+    test('极速模式里选择的解析模式进入数据集的设置与通知文案', () async {
       final c = container(
         normal: FakeVpnController(),
         express: FakeVpnController(),
-        dnsPrefs: const {
-          'dns_resolution_mode': 'smart_prediction',
-          'smart_prediction_provider_ids':
-              '["preset_alidns_dns","preset_dnspod_dns"]',
-        },
       );
+      c.read(resolutionModeProvider.notifier).select(ResolutionMode.smart);
+      // The settings write is what the dataset switch follows; the engine reads prefs at start.
+      expect(
+        c.read(legacySettingsProvider).dnsContainer,
+        LegacySettings.expressContainer,
+      );
+      expect(
+        c
+            .read(legacyPrefsStoreProvider)
+            .read(LegacySettings.expressContainer, 'dns_resolution_mode'),
+        'smart_prediction',
+      );
+
       await c.read(powerProvider.notifier).toggle();
       expect(c.read(powerProvider), PowerState.running);
       expect(

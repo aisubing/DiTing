@@ -5,7 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:diting/data/db/legacy_database.dart';
-import 'package:diting/data/db/rule_index_bridge.dart';
+import 'package:diting/data/db/rule_dataset_providers.dart';
 import 'package:diting/data/native/platform_bridge.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
@@ -15,31 +15,16 @@ import 'package:diting/data/rules/rule_parser.dart';
 import 'package:diting/data/subscriptions/subscription_fetcher.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
 import 'package:diting/state/config_providers_resources.dart';
-import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
 part 'subscription_mirror_providers.dart';
 
-/// Normal and server mode share `diting_database`; express has its own file.
-final subscriptionDatabaseFileProvider = Provider<String>((ref) {
-  final mode = ref.watch(workModeProvider);
-  return mode == AppWorkMode.express
-      ? LegacyDatabase.expressFile
-      : LegacyDatabase.mainFile;
-});
-
-/// Recompiles the native rule tries of whichever rule database the current mode writes
-/// (`diting_express` in express mode, the main database otherwise).
-void refreshRuleIndexesForCurrentMode(Ref ref) {
-  unawaited(
-    refreshRuleIndexes(
-      ref.read(workModeProvider) == AppWorkMode.express
-          ? RuleIndexDataset.express
-          : RuleIndexDataset.normal,
-    ),
-  );
-}
+/// Subscriptions live in the active data set's rule database, which is why a mode switch reloads
+/// this provider and every reader below it.
+final subscriptionDatabaseFileProvider = Provider<String>(
+  (ref) => ref.watch(activeRuleDatabaseProvider),
+);
 
 /// Null on a fresh install (no legacy file yet), giving an empty list.
 final subscriptionDatabaseProvider = FutureProvider<Database?>(

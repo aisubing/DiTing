@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:diting/app/app.dart';
 import 'package:diting/app/debug_probe.dart';
+import 'package:diting/data/db/datasets.dart';
 import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
@@ -52,7 +53,14 @@ Future<void> main() async {
   // cleanup actions and page display.
   final version = await versionTask;
   stage('version');
-  final rules = await bootstrapRules(settings, versionCode: version.code);
+  // Open the data set the app starts in: the persisted work mode decides the rule database, and a
+  // later mode switch opens its own database on demand.
+  final dataSet = DataSet.fromWorkModeValue(settings.workModeRaw);
+  final rules = await bootstrapRules(
+    dataSet,
+    LegacySettings(store, dnsContainer: dataSet.prefsContainer),
+    versionCode: version.code,
+  );
   stage('rules');
   // Imported fonts must be registered before the first frame: the theme resolves `fontFamily` when
   // it is built, and an unknown family silently falls back to the system default.
@@ -62,7 +70,9 @@ Future<void> main() async {
     overrides: [
       legacyPrefsStoreProvider.overrideWithValue(store),
       appVersionProvider.overrideWithValue(version),
-      ruleRepositoryProvider.overrideWithValue(rules.repository),
+      // The startup handle; `ruleRepositoryProvider` picks it up for its data set and opens any
+      // other data set lazily when the work mode changes.
+      startupRuleRepositoryProvider.overrideWithValue(rules.repository),
       // Real app list via PackageManager (QUERY_ALL_PACKAGES), shared by the four picker pages.
       installedAppsSourceProvider.overrideWithValue(
         MethodChannelInstalledAppsSource(),

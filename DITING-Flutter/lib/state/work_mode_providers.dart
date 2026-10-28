@@ -71,8 +71,11 @@ class WorkModeNotifier extends Notifier<AppWorkMode> {
         unawaited(ref.read(powerProvider.notifier).stop());
       }
     }
-    state = mode;
+    // Persist, then bump, then publish: the dataset-aware settings view has to point at the new
+    // mode's container by the time dependents rebuild.
     ref.read(legacySettingsProvider).setWorkModeRaw(mode.storageValue);
+    ref.read(legacySettingsRevisionProvider.notifier).bump();
+    state = mode;
   }
 }
 

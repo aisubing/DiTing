@@ -1,3 +1,4 @@
+import 'package:diting/data/db/datasets.dart';
 import 'package:diting/data/db/legacy_database.dart';
 import 'package:diting/data/db/preset_whitelist.dart';
 import 'package:diting/data/db/rule_repository.dart';
@@ -9,23 +10,31 @@ import 'package:sqflite/sqflite.dart';
 
 typedef RuleBootstrap = ({RuleRepository? repository});
 
-/// Opens the legacy database and seeds the preset whitelist once per version code, so an upgrade
-/// keeps the passthrough hosts Play services need; [versionCode] has no default.
+/// Opens the data set's rule database and seeds its preset whitelist once per version code, so an
+/// upgrade keeps the passthrough hosts Play services need; [versionCode] has no default.
 ///
+/// [settings] must be the view of that data set, or the seed marker lands in another container.
 /// Only the cheap parts live here: the full-table [RuleRepository.loadAll] that used to run before
 /// `runApp` blocked the first frame for seconds on subscription-sized datasets, so it now runs via
 /// [loadInitialRules] once the UI is up.
 Future<RuleBootstrap> bootstrapRules(
+  DataSet dataSet,
   LegacySettings settings, {
   required int versionCode,
 }) async {
-  final db = await LegacyDatabase.open(LegacyDatabase.mainFile);
+  final db = await LegacyDatabase.open(dataSet.ruleDatabase);
   if (db == null) {
     return (repository: null);
   }
 
-  final repository = RuleRepository(db);
-  await _seedPresetIfNeeded(repository, settings, versionCode);
+  final repository = RuleRepository(db, sourceFile: dataSet.ruleDatabase);
+  if (dataSet.seedsPresetWhitelist) {
+    await seedPresetWhitelistIfNeeded(
+      repository,
+      settings,
+      versionCode: versionCode,
+    );
+  }
   return (repository: repository);
 }
 
@@ -45,11 +54,13 @@ Future<Map<RuleKind, List<MockRule>>> loadInitialRules(
   }
 }
 
-Future<void> _seedPresetIfNeeded(
+/// Public because a data set opened after startup (mode switch) seeds itself through the same
+/// marker check.
+Future<void> seedPresetWhitelistIfNeeded(
   RuleRepository repository,
-  LegacySettings settings,
-  int versionCode,
-) async {
+  LegacySettings settings, {
+  required int versionCode,
+}) async {
   final target = versionCode * 1000 + 2;
   if (settings.defaultWhitelistInitialized &&
       settings.defaultWhitelistSeededVersion == target) {

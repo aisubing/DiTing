@@ -105,14 +105,22 @@ class BackupImportResult {
 }
 
 class BackupImportTarget {
-  const BackupImportTarget({required this.store, required this.database});
+  const BackupImportTarget({
+    required this.store,
+    required this.database,
+    this.dnsContainer,
+  });
 
   final LegacyPrefsStore store;
 
   /// Null on a fresh install; rule and subscription groups then report failure.
   final Database? database;
 
-  LegacySettings get settings => LegacySettings(store);
+  /// Data set container the settings groups land in; null means the normal data set.
+  final String? dnsContainer;
+
+  LegacySettings get settings =>
+      LegacySettings(store, dnsContainer: dnsContainer);
 }
 
 class BackupImporter {

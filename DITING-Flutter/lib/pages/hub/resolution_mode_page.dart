@@ -97,6 +97,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
           ),
           generateSection(
             title: '模式配置',
+            footer: '解析模式与竞速服务商保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。',
             items: [
               for (final option in ResolutionMode.values)
                 ListItem(

@@ -1,41 +1,90 @@
-import 'package:diting/data/db/legacy_database.dart';
+import 'dart:async';
+
+import 'package:diting/data/db/datasets.dart';
+import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/state/app_version_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Null on non-Android hosts, tests and fresh installs without the legacy DB.
-final ruleRepositoryProvider = Provider<RuleRepository?>((ref) => null);
+/// Handle opened before the first frame by `main()` for the startup data set. Reusing it keeps the
+/// normal mode on one connection; tests and hosts without SQLite leave it null.
+final startupRuleRepositoryProvider = Provider<RuleRepository?>((ref) => null);
 
-/// Server mode keeps its own rule dataset (`diting_dns_rules`); opening is lazy and in-place, so
-/// the file's `user_version` and journal mode stay untouched.
-final serverRuleRepositoryProvider = FutureProvider<RuleRepository?>((
-  ref,
-) async {
-  final db = await LegacyDatabase.open(LegacyDatabase.serverFile);
-  return db == null ? null : RuleRepository(db);
+/// Rule handles opened in this process, keyed by database file. Each data set is opened (and its
+/// whitelist seeded) at most once; switching back reuses the handle.
+class RuleRepositoriesNotifier extends Notifier<Map<String, RuleRepository>> {
+  final _opening = <String>{};
+  var _disposed = false;
+
+  @override
+  Map<String, RuleRepository> build() {
+    ref.onDispose(() => _disposed = true);
+    final startup = ref.read(startupRuleRepositoryProvider);
+    final file = startup?.sourceFile;
+    if (startup == null || file == null) return const {};
+    return {file: startup};
+  }
+
+  Future<void> ensure(DataSet dataSet) async {
+    if (state.containsKey(dataSet.ruleDatabase) ||
+        !_opening.add(dataSet.ruleDatabase)) {
+      return;
+    }
+    try {
+      final bootstrap = await bootstrapRules(
+        dataSet,
+        LegacySettings(
+          ref.read(legacyPrefsStoreProvider),
+          dnsContainer: dataSet.prefsContainer,
+        ),
+        versionCode: ref.read(appVersionProvider).code,
+      );
+      final repository = bootstrap.repository;
+      if (repository == null || _disposed) return;
+      state = {...state, dataSet.ruleDatabase: repository};
+    } finally {
+      _opening.remove(dataSet.ruleDatabase);
+    }
+  }
+}
+
+final ruleRepositoriesProvider =
+    NotifierProvider<RuleRepositoriesNotifier, Map<String, RuleRepository>>(
+      RuleRepositoriesNotifier.new,
+    );
+
+/// Rule tables and subscriptions of the active work mode's data set; null while that database is
+/// opening (the first switch to a mode pays one open, later switches are immediate).
+final ruleRepositoryProvider = Provider<RuleRepository?>((ref) {
+  final dataSet = ref.watch(activeDataSetProvider);
+  final repositories = ref.watch(ruleRepositoriesProvider);
+  final repository = repositories[dataSet.ruleDatabase];
+  if (repository == null) {
+    unawaited(ref.read(ruleRepositoriesProvider.notifier).ensure(dataSet));
+  }
+  return repository;
 });
 
-/// Express mode owns `diting_express` (version 2); same tables, separate file.
-final expressRuleRepositoryProvider = FutureProvider<RuleRepository?>((
-  ref,
-) async {
-  final db = await LegacyDatabase.open(LegacyDatabase.expressFile);
-  return db == null ? null : RuleRepository(db);
-});
-
-/// Database snapshot backing `rulesProvider`. Starts empty: the full-table load can take seconds
-/// on subscription-sized datasets, so `main()` fills it after the first frame instead of blocking
-/// `runApp` (the legacy app likewise never waited on rules before its first frame).
+/// Filled once the UI is up (the full-table load must not block the first frame) and refilled by
+/// `ruleSnapshotSyncProvider` when the data set changes.
 class InitialRulesNotifier extends Notifier<Map<RuleKind, List<MockRule>>> {
   @override
-  Map<RuleKind, List<MockRule>> build() => {
-    for (final kind in RuleKind.values) kind: const [],
-  };
+  Map<RuleKind, List<MockRule>> build() => _emptyRules();
 
   void fill(Map<RuleKind, List<MockRule>> rules) => state = rules;
+
+  /// Empties the snapshot while a newly selected data set's database opens, so the page cannot
+  /// keep showing another mode's rows.
+  void clear() => state = _emptyRules();
 }
 
 final initialRulesProvider =
     NotifierProvider<InitialRulesNotifier, Map<RuleKind, List<MockRule>>>(
       InitialRulesNotifier.new,
     );
+
+Map<RuleKind, List<MockRule>> _emptyRules() => {
+  for (final kind in RuleKind.values) kind: const [],
+};

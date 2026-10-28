@@ -1,3 +1,4 @@
+import 'package:diting/data/db/datasets.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,9 +24,29 @@ class LegacySettingsRevision extends Notifier<int> {
 final legacySettingsRevisionProvider =
     NotifierProvider<LegacySettingsRevision, int>(LegacySettingsRevision.new);
 
+/// Active data set, derived from the persisted `app_work_mode`. It watches the write revision, so
+/// `WorkModeNotifier` only has to persist the new mode for every dataset reader to follow.
+class ActiveDataSet extends Notifier<DataSet> {
+  @override
+  DataSet build() {
+    ref.watch(legacySettingsRevisionProvider);
+    final store = ref.watch(legacyPrefsStoreProvider);
+    return DataSet.fromWorkModeValue(LegacySettings(store).workModeRaw);
+  }
+}
+
+final activeDataSetProvider = NotifierProvider<ActiveDataSet, DataSet>(
+  ActiveDataSet.new,
+);
+
+/// DNS-domain settings of the active data set. UI keys stay global: only the dataset container
+/// switches, so theme, background and notification settings never duplicate per mode.
 final legacySettingsProvider = Provider<LegacySettings>((ref) {
   ref.watch(legacySettingsRevisionProvider);
-  return LegacySettings(ref.watch(legacyPrefsStoreProvider));
+  return LegacySettings(
+    ref.watch(legacyPrefsStoreProvider),
+    dnsContainer: ref.watch(activeDataSetProvider).prefsContainer,
+  );
 });
 
 extension LegacySettingsWrite on WidgetRef {

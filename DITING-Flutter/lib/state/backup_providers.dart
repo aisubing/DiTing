@@ -5,7 +5,7 @@ import 'dart:async';
 import 'package:diting/data/backup/backup_exporter.dart';
 import 'package:diting/data/backup/backup_importer.dart';
 import 'package:diting/data/backup/backup_models.dart';
-import 'package:diting/data/db/rule_index_bridge.dart';
+import 'package:diting/data/db/rule_dataset_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/native/platform_bridge.dart';
@@ -14,7 +14,6 @@ import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/state/cleanup_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
-import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class BackupStats {
@@ -44,7 +43,8 @@ final backupStatsProvider = FutureProvider<BackupStats>((ref) async {
   ref.watch(subscriptionRevisionProvider);
   ref.watch(dnsLogRevisionProvider);
   final settings = ref.watch(legacySettingsProvider);
-  final db = await ref.watch(activeLogDatabaseProvider.future);
+  // Rules, subscriptions and their settings all live in the active data set's database.
+  final db = await ref.watch(subscriptionDatabaseProvider.future);
 
   var subscriptions = 0;
   var customRules = 0;
@@ -100,7 +100,7 @@ class BackupActions {
   final Ref _ref;
 
   Future<BackupExportResult> export(Set<BackupGroup> groups) async {
-    final db = await _ref.read(activeLogDatabaseProvider.future);
+    final db = await _ref.read(subscriptionDatabaseProvider.future);
     final result = await _ref
         .read(backupExporterProvider)
         .export(
@@ -133,7 +133,7 @@ class BackupActions {
     String text, {
     String? sourceName,
   }) async {
-    final db = await _ref.read(activeLogDatabaseProvider.future);
+    final db = await _ref.read(subscriptionDatabaseProvider.future);
     final result = await _ref
         .read(backupImporterProvider)
         .import(
@@ -141,6 +141,7 @@ class BackupActions {
           BackupImportTarget(
             store: _ref.read(legacyPrefsStoreProvider),
             database: db,
+            dnsContainer: _ref.read(activeDataSetProvider).prefsContainer,
           ),
           sourceName: sourceName,
         );
@@ -166,10 +167,7 @@ class BackupActions {
     )) {
       return;
     }
-    final dataset = _ref.read(workModeProvider) == AppWorkMode.express
-        ? RuleIndexDataset.express
-        : RuleIndexDataset.normal;
-    unawaited(refreshRuleIndexes(dataset));
+    refreshRuleIndexesForCurrentMode(_ref);
   }
 
   void _invalidate() {

@@ -4,7 +4,7 @@ library;
 
 import 'dart:async';
 
-import 'package:diting/data/db/rule_index_bridge.dart';
+import 'package:diting/data/db/rule_dataset_providers.dart';
 import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/db/rule_repository.dart';
 import 'package:diting/data/mock_data.dart';
@@ -72,9 +72,9 @@ class AppScopedRulesController {
 
   RuleRepository? get _repository => _ref.read(ruleRepositoryProvider);
 
-  /// Keeps the native rule tries in step with app-scoped writes (same main database).
+  /// Keeps the native rule tries in step with app-scoped writes (the active data set's database).
   void _refreshIndexes() {
-    unawaited(refreshRuleIndexes(RuleIndexDataset.normal));
+    refreshRuleIndexesForCurrentMode(_ref);
   }
 
   /// Adds a block / allow rule. Returns false if the DB is unavailable or the rule already exists.

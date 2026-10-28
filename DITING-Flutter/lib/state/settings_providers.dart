@@ -29,8 +29,11 @@ enum LegacyLogMode {
 
 class LogModeNotifier extends Notifier<LegacyLogMode> {
   @override
-  LegacyLogMode build() =>
-      LegacyLogMode.fromStorageValue(_settings(ref).dnsLogModeRaw);
+  LegacyLogMode build() {
+    // `dns_log_mode` lives in the active data set's container.
+    ref.watch(legacySettingsProvider);
+    return LegacyLogMode.fromStorageValue(_settings(ref).dnsLogModeRaw);
+  }
 
   void select(LegacyLogMode mode) {
     state = mode;
@@ -46,7 +49,11 @@ final logModeProvider = NotifierProvider<LogModeNotifier, LegacyLogMode>(
 /// Log retention in days (1-30, default 7).
 class LogRetentionNotifier extends Notifier<int> {
   @override
-  int build() => _settings(ref).logRetentionDays;
+  int build() {
+    // `log_retention_days` is stored per data set, like `dns_log_mode`.
+    ref.watch(legacySettingsProvider);
+    return _settings(ref).logRetentionDays;
+  }
 
   void set(int days) {
     state = days.clamp(1, 30);
@@ -95,6 +102,8 @@ enum LegacyIpv6Mode {
 class ForegroundBackgroundNotifier extends Notifier<ForegroundBackgroundState> {
   @override
   ForegroundBackgroundState build() {
+    // Bypass-LAN and IPv6 are DNS-domain keys; hide-from-recents stays global but shares the state.
+    ref.watch(legacySettingsProvider);
     final settings = _settings(ref);
     return ForegroundBackgroundState(
       hideFromRecents: settings.hideFromRecentsEnabled,

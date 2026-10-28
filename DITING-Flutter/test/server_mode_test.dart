@@ -3,7 +3,6 @@
 
 import 'dart:convert';
 
-import 'package:diting/data/db/rule_providers.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';
@@ -161,7 +160,6 @@ void _serverMode() {
             }),
           ),
           dnsServerControllerProvider.overrideWithValue(controller),
-          serverRuleRepositoryProvider.overrideWith((ref) async => null),
         ],
       );
       addTearDown(c.dispose);
@@ -191,7 +189,6 @@ void _serverMode() {
         overrides: [
           legacyPrefsStoreProvider.overrideWithValue(MemoryLegacyPrefsStore()),
           dnsServerControllerProvider.overrideWithValue(fake),
-          serverRuleRepositoryProvider.overrideWith((ref) async => null),
         ],
       );
       addTearDown(c.dispose);

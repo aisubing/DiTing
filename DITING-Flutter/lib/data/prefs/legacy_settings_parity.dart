@@ -13,10 +13,11 @@ extension LegacySettingsParity on LegacySettings {
   void setDnsLogModeRaw(String storageValue) =>
       _store.putString(dnsContainer, 'dns_log_mode', storageValue);
 
-  int get logRetentionDays => _int(_ui, 'log_retention_days', 7);
+  /// Dataset-scoped: the native retention sweep reads this key from the data set's own container.
+  int get logRetentionDays => _int(dnsContainer, 'log_retention_days', 7);
 
   void setLogRetentionDays(int days) =>
-      _store.putInt(_ui, 'log_retention_days', days.clamp(1, 30));
+      _store.putInt(dnsContainer, 'log_retention_days', days.clamp(1, 30));
 
   bool get floatingLogEnabled => _bool(_ui, 'floating_log_enabled', false);
 

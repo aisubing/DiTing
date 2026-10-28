@@ -12,6 +12,7 @@ import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
 import 'package:diting/state/db_health_providers.dart';
 import 'package:diting/state/on_demand_runner.dart';
+import 'package:diting/state/rules_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -171,6 +172,8 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     final palette = ref.watch(paletteProvider);
     final pureBlack = ref.watch(pureBlackProvider);
     final textScale = ref.watch(textScaleProvider);
+    // Keeps the rule list in step with the work mode's data set (see ruleSnapshotSyncProvider).
+    ref.watch(ruleSnapshotSyncProvider);
     // Font family: `null` follows the platform, otherwise `ThemeData.fontFamily` overrides the whole
     // text theme.
     final fontFamily = ref.watch(selectedFontFamilyProvider);
