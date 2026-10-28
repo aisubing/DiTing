@@ -8,8 +8,8 @@ import 'package:diting/pages/hub/app_rules_store.dart';
 import 'package:diting/state/app_rules_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_list_error_state.dart';
 import 'package:diting/widgets/app_list_view.dart';
-import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/section_slivers.dart';
 import 'package:diting/widgets/unsaved_changes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,21 +252,8 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
                     padding: EdgeInsets.symmetric(vertical: 48),
                     child: Center(child: CommonCircleLoading()),
                   )
-                else if (snapshot.value?.error != null)
-                  EmptyStateBox(
-                    minHeight: 280,
-                    child: NullStatus(
-                      label: '读不到应用列表',
-                      description: snapshot.value!.error,
-                      illustration: NullStatusIllustration.apps,
-                      action: TextButton(
-                        onPressed: () => ref
-                            .read(installedAppsRevisionProvider.notifier)
-                            .bump(),
-                        child: const Text('重试'),
-                      ),
-                    ),
-                  ),
+                else if (snapshot.value?.error case final error?)
+                  AppListErrorState(error: error, minHeight: 280),
               ],
             ),
           ),

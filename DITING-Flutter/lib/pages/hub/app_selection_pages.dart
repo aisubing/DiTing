@@ -5,8 +5,8 @@ import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_error_state.dart';
 import 'package:diting/widgets/app_list_view.dart';
-import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/unsaved_changes.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -328,22 +328,7 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
                       child: Center(child: CommonCircleLoading()),
                     )
                   else if (snapshot.value?.error case final error?)
-                    // The error text has no fixed length, so a hard-coded 260 clips the
-                    // description and puts the save button on top of it.
-                    EmptyStateBox(
-                      minHeight: 260,
-                      child: NullStatus(
-                        label: '读不到应用列表',
-                        description: error,
-                        illustration: NullStatusIllustration.apps,
-                        action: TextButton(
-                          onPressed: () => ref
-                              .read(installedAppsRevisionProvider.notifier)
-                              .bump(),
-                          child: const Text('重试'),
-                        ),
-                      ),
-                    ),
+                    AppListErrorState(error: error),
                 ],
               ),
             ),

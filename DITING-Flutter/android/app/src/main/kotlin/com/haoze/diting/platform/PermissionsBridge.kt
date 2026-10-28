@@ -158,7 +158,8 @@ class PermissionsBridge(private val activity: Activity) : MethodChannel.MethodCa
         }
         pending = result
         // The vendor permission has no AOSP dialog: requestPermissions throws or answers denied
-        // at once, and the fallback is the app settings screen.
+        // at once. The Dart caller opens the settings screen when the request leaves the
+        // permission denied, so a second hand-off here would stack two settings activities.
         runCatching {
             ActivityCompat.requestPermissions(
                 activity,
@@ -167,7 +168,6 @@ class PermissionsBridge(private val activity: Activity) : MethodChannel.MethodCa
             )
         }.onFailure {
             pending = null
-            openAppSettings()
             result.success(states())
         }
     }

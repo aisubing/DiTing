@@ -3,15 +3,16 @@ import 'dart:async';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/pages/hub/http_inspection_bypass_dialog.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/standalone_routes.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_error_state.dart';
 import 'package:diting/widgets/app_list_view.dart';
 import 'package:diting/widgets/section_slivers.dart';
-import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/page_intro.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -354,7 +355,7 @@ class HttpInspectionPage extends ConsumerWidget {
   ) async {
     final value = await showFloatingDialog<String>(
       context: context,
-      child: const _BypassDomainDialog(),
+      child: const HttpInspectionBypassDialog(),
     );
     if (value == null) {
       return;
@@ -501,21 +502,8 @@ class _HttpInspectionAppsPageState
                     padding: EdgeInsets.symmetric(vertical: 48),
                     child: Center(child: CommonCircleLoading()),
                   )
-                else if (snapshot.value?.error != null)
-                  EmptyStateBox(
-                    minHeight: 260,
-                    child: NullStatus(
-                      label: '读不到应用列表',
-                      description: snapshot.value!.error,
-                      illustration: NullStatusIllustration.apps,
-                      action: TextButton(
-                        onPressed: () => ref
-                            .read(installedAppsRevisionProvider.notifier)
-                            .bump(),
-                        child: const Text('重试'),
-                      ),
-                    ),
-                  ),
+                else if (snapshot.value?.error case final error?)
+                  AppListErrorState(error: error),
               ],
             ),
           ),
@@ -561,58 +549,5 @@ class _HttpInspectionAppsPageState
       next.add(packageName);
     }
     _write(next);
-  }
-}
-
-/// Bypass domain dialog. The controller is owned by the dialog: disposing it right after
-/// `await` fires on `pop` mid animation and trips `'_dependents.isEmpty': is not true`.
-class _BypassDomainDialog extends StatefulWidget {
-  const _BypassDomainDialog();
-
-  @override
-  State<_BypassDomainDialog> createState() => _BypassDomainDialogState();
-}
-
-class _BypassDomainDialogState extends State<_BypassDomainDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) {
-      return;
-    }
-    Navigator.of(context).pop(text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CommonDialog(
-      title: '添加绕过域名',
-      hasFields: true,
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        TextButton(onPressed: _submit, child: const Text('添加')),
-      ],
-      child: TextField(
-        controller: _controller,
-        autocorrect: false,
-        autofocus: true,
-        onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          labelText: '域名后缀',
-          hintText: 'example.com',
-          helperText: '匹配该后缀及其子域名；不参与 HTTPS 解密',
-        ),
-      ),
-    );
   }
 }

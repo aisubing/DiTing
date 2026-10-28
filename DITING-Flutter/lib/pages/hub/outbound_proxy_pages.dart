@@ -6,8 +6,8 @@ import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/app_icon_avatar.dart';
+import 'package:diting/widgets/app_list_error_state.dart';
 import 'package:diting/widgets/app_list_view.dart';
-import 'package:diting/widgets/empty_state.dart';
 import 'package:diting/widgets/page_intro.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -480,21 +480,8 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
                     padding: EdgeInsets.symmetric(vertical: 48),
                     child: Center(child: CommonCircleLoading()),
                   )
-                else if (snapshot.value?.error != null)
-                  EmptyStateBox(
-                    minHeight: 260,
-                    child: NullStatus(
-                      label: '读不到应用列表',
-                      description: snapshot.value!.error,
-                      illustration: NullStatusIllustration.apps,
-                      action: TextButton(
-                        onPressed: () => ref
-                            .read(installedAppsRevisionProvider.notifier)
-                            .bump(),
-                        child: const Text('重试'),
-                      ),
-                    ),
-                  ),
+                else if (snapshot.value?.error case final error?)
+                  AppListErrorState(error: error),
               ],
             ),
           ),
