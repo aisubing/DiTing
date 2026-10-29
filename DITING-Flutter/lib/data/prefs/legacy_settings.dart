@@ -11,6 +11,8 @@ part 'legacy_settings_dns.dart';
 part 'legacy_settings_hub.dart';
 part 'legacy_settings_parity.dart';
 part 'legacy_settings_sites.dart';
+part 'legacy_settings_server.dart';
+part 'legacy_settings_appearance.dart';
 
 class LegacySettings {
   LegacySettings(this._store, {String? dnsContainer})
@@ -67,142 +69,8 @@ class LegacySettings {
 
   static const subscriptionAutoUpdatePresetHours = [6, 12, 24, 48];
 
-  String? get themeModeRaw => _string(uiContainer, 'app_theme_mode');
-
-  void setThemeModeRaw(String storageValue) =>
-      _store.putString(uiContainer, 'app_theme_mode', storageValue);
-
-  String? get paletteRaw => _string(uiContainer, 'theme_color_style');
-
-  void setPaletteRaw(String storageValue) =>
-      _store.putString(uiContainer, 'theme_color_style', storageValue);
-
-  /// `none` / `standard` / `ultra`; persisted, since it decides whether the app renders offscreen.
-  String get liquidGlassModeRaw =>
-      _string(uiContainer, 'liquid_glass_mode') ?? 'none';
-
-  void setLiquidGlassModeRaw(String storageValue) =>
-      _store.putString(uiContainer, 'liquid_glass_mode', storageValue);
-
-  /// `floating` / `docked`; persisted for the same reason.
-  String get bottomBarStyleRaw =>
-      _string(uiContainer, 'bottom_bar_style') ?? 'floating';
-
-  void setBottomBarStyleRaw(String storageValue) =>
-      _store.putString(uiContainer, 'bottom_bar_style', storageValue);
-
-  /// `none` / `fade` / `slide` / `scale`; same persistence requirement.
-  String get tabTransitionRaw =>
-      _string(uiContainer, 'tab_transition') ?? 'slide';
-
-  void setTabTransitionRaw(String storageValue) =>
-      _store.putString(uiContainer, 'tab_transition', storageValue);
-
-  /// Pure black theme, only visible in dark mode; off by default as in 1.4.3.
-  bool get pureBlackEnabled => _bool(uiContainer, 'pure_black_theme', false);
-
-  void setPureBlackEnabled(bool value) =>
-      _store.putBool(uiContainer, 'pure_black_theme', value);
-
-  /// Raw linear text scale; `clampTextScale` applies the layout bounds when read.
-  double get textScale => _double(uiContainer, 'app_text_scale', 1);
-
-  void setTextScale(double value) =>
-      _store.putFloat(uiContainer, 'app_text_scale', value);
-
-  /// `ThemeData.fontFamily` override; a missing or empty value means the platform default.
-  String? get fontFamily {
-    final raw = _string(uiContainer, 'app_font_family');
-    return raw == null || raw.isEmpty ? null : raw;
-  }
-
-  void setFontFamily(String? family) =>
-      _store.putString(uiContainer, 'app_font_family', family ?? '');
-
-  /// JSON list of the fonts the user imported; the shape lives in
-  /// `lib/data/fonts/font_repository.dart`, which owns the parsing.
-  String? get importedFontsRaw => _string(uiContainer, 'app_imported_fonts');
-
-  void setImportedFontsRaw(String raw) =>
-      _store.putString(uiContainer, 'app_imported_fonts', raw);
-
-  /// Dashboard card order by `DashboardWidget.name`; null when the board was never edited, so the
-  /// built-in defaults apply while an emptied board still restores as empty.
-  List<String>? get dashboardWidgetOrder {
-    final raw = _string(uiContainer, 'dashboard_widget_order');
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) {
-        return null;
-      }
-      final names = <String>[];
-      for (final item in decoded) {
-        if (item is String && item.isNotEmpty && !names.contains(item)) {
-          names.add(item);
-        }
-      }
-      return names;
-    } on FormatException {
-      return null;
-    }
-  }
-
-  void setDashboardWidgetOrder(List<String> names) => _store.putString(
-    uiContainer,
-    'dashboard_widget_order',
-    jsonEncode(names),
-  );
-
-  /// Which card set [dashboardWidgetOrder] was written with. A missing value means the order
-  /// predates a card that has since moved from a fixed block onto the board, so the notifier
-  /// inserts that card once and stamps the current version.
-  int get dashboardWidgetLayoutVersion =>
-      _int(uiContainer, 'dashboard_widget_layout_version', 0);
-
-  void setDashboardWidgetLayoutVersion(int version) =>
-      _store.putInt(uiContainer, 'dashboard_widget_layout_version', version);
-
-  double get componentOpacity =>
-      _clampedOpacity(_double(uiContainer, 'home_component_opacity', 1));
-
-  /// Per-element opacity falls back to the shared component opacity.
-  double homeOpacity(String storageKey) =>
-      _clampedOpacity(_double(uiContainer, storageKey, componentOpacity));
-
-  void setHomeOpacity(String storageKey, double value) =>
-      _store.putFloat(uiContainer, storageKey, _clampedOpacity(value));
-
-  void setHomeComponentOpacity(double value) => _store.putFloat(
-    uiContainer,
-    'home_component_opacity',
-    _clampedOpacity(value),
-  );
-
   /// Raw legacy keys for backups; pages should use the named accessors.
   LegacyPrefsStore get rawStore => _store;
-
-  ({String running, String stopped}) get homeSentences => (
-    running:
-        _string(uiContainer, 'home_sentence_running') ??
-        defaultRunningSentence(currentL10n),
-    stopped:
-        _string(uiContainer, 'home_sentence_stopped') ??
-        defaultStoppedSentence(currentL10n),
-  );
-
-  void setHomeSentences({required String running, required String stopped}) {
-    _store.putString(uiContainer, 'home_sentence_running', running);
-    _store.putString(uiContainer, 'home_sentence_stopped', stopped);
-  }
-
-  bool get hapticEnabled =>
-      _bool(uiContainer, 'bottom_bar_haptic_enabled', true);
-
-  void setHapticEnabled(bool value) =>
-      _store.putBool(uiContainer, 'bottom_bar_haptic_enabled', value);
 
   /// Dataset-scoped: every data set seeds its own rule database, so the marker cannot be shared.
   bool get defaultWhitelistInitialized =>
@@ -423,70 +291,6 @@ class LegacySettings {
     });
     _store.putBool(uiContainer, 'http_inspection_enabled', enabled);
   }
-
-  int get serverPort => _clampedPort(
-    _int(serverContainer, 'local_listen_port', defaultServerPort),
-  );
-
-  void setServerPort(int port) =>
-      _store.putInt(serverContainer, 'local_listen_port', _clampedPort(port));
-
-  String get serverSelectedUpstreamId =>
-      _stringIn(serverContainer, 'selected_upstream_id') ?? 'preset_alidns_dns';
-
-  void setServerSelectedUpstreamId(String id) =>
-      _store.putString(serverContainer, 'selected_upstream_id', id);
-
-  String? get serverCustomUpstreamsJson =>
-      _stringIn(serverContainer, 'custom_upstreams');
-
-  /// Stored as `[]` rather than removed, which keeps the fact that custom upstreams once existed.
-  void setServerCustomUpstreamsJson(String json) =>
-      _store.putString(serverContainer, 'custom_upstreams', json);
-
-  bool get serverCacheEnabled =>
-      _boolIn(serverContainer, 'cache_enabled', true);
-
-  void setServerCacheEnabled(bool value) =>
-      _store.putBool(serverContainer, 'cache_enabled', value);
-
-  String get serverCachePresetRaw =>
-      _stringIn(serverContainer, 'cache_preset') ?? 'balanced';
-
-  bool get serverAdBlockEnabled =>
-      _boolIn(serverContainer, 'ad_block_enabled', false);
-
-  void setServerAdBlockEnabled(bool value) =>
-      _store.putBool(serverContainer, 'ad_block_enabled', value);
-
-  bool get serverLogQueries => _boolIn(serverContainer, 'log_queries', false);
-
-  bool get serverServiceActive =>
-      _boolIn(serverContainer, 'service_active', false);
-
-  void setServerServiceActive(bool value) =>
-      _store.putBool(serverContainer, 'service_active', value);
-
-  String get serverBlockResponseModeRaw =>
-      _stringIn(serverContainer, 'block_response_mode') ?? 'nxdomain';
-
-  bool get serverDynamicBlockEnabled =>
-      _boolIn(serverContainer, 'block_response_dynamic_enabled', false);
-
-  int get serverDynamicBlockThreshold =>
-      _intIn(serverContainer, 'block_response_dynamic_threshold', 5);
-
-  int get serverDynamicBlockWindowSeconds =>
-      _intIn(serverContainer, 'block_response_dynamic_window_seconds', 60);
-
-  int get serverDynamicBlockNxDomainDurationSeconds => _intIn(
-    serverContainer,
-    'block_response_dynamic_nxdomain_duration_seconds',
-    300,
-  );
-
-  void setServerLogQueries(bool value) =>
-      _store.putBool(serverContainer, 'log_queries', value);
 
   String? _string(String container, String key) {
     final value = _store.read(container, key);
