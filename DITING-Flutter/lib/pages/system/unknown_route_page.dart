@@ -1,6 +1,7 @@
 /// Fallback page for unmatched routes.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -15,7 +16,7 @@ class UnknownRoutePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return CommonScaffold(
-      title: '页面不存在',
+      title: context.l10n.unknownRouteTitle,
       // The body starts at y=0 under the floating app bar, so a centered column would
       // slide under it on narrow screens or large text; `AppBarClearance` reserves room.
       body: AppBarClearance(
@@ -32,7 +33,7 @@ class UnknownRoutePage extends StatelessWidget {
                   color: colorScheme.onSurfaceVariant,
                 ),
                 Text(
-                  '找不到这个页面',
+                  context.l10n.unknownRouteBody,
                   textAlign: TextAlign.center,
                   style: AppTextStyle.title3.of(context, emphasized: true),
                 ),
@@ -46,7 +47,7 @@ class UnknownRoutePage extends StatelessWidget {
                 const SizedBox(height: 4),
                 FilledButton(
                   onPressed: () => Navigator.of(context).maybePop(),
-                  child: const Text('返回'),
+                  child: Text(context.l10n.unknownRouteBack),
                 ),
               ],
             ),

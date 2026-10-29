@@ -1,7 +1,6 @@
 /// User-Agent page (upstream `views/config/user_agents.dart`).
 library;
 
-import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/pages/config/config_common.dart';
 import 'package:diting/state/config_providers_resources.dart';

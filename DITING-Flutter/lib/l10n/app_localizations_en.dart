@@ -3991,4 +3991,555 @@ class AppL10nEn extends AppL10n {
   String logsSubStatsRow(Object count, Object percent, Object status) {
     return '$status | $count blocks | $percent';
   }
+
+  @override
+  String get aboutTitle => 'About';
+
+  @override
+  String get aboutMore => 'More';
+
+  @override
+  String get aboutProject => 'Project';
+
+  @override
+  String get aboutJoinQq => 'Join the QQ group';
+
+  @override
+  String aboutQqGroup(Object number) {
+    return 'Group $number';
+  }
+
+  @override
+  String get aboutSponsor => 'Sponsor';
+
+  @override
+  String get aboutCredits => 'Open-source credits';
+
+  @override
+  String get aboutCreditsUi =>
+      'UI components and interactions are reused from this project';
+
+  @override
+  String get aboutCreditsCore =>
+      'The Go tunnel core was initially forked from this project';
+
+  @override
+  String get aboutCreditsBody =>
+      'Both projects are open source under GPL-3.0, and the copyright of their code and design belongs to their authors. Diting\'s UI layer borrows heavily from FlClash, and its tunnel core derives from an early fork of blockads-android; our sincere thanks to their authors and all contributors.';
+
+  @override
+  String get aboutSettings => 'Settings';
+
+  @override
+  String get aboutStartupCheck => 'Skip the update check at startup';
+
+  @override
+  String get aboutStartupCheckOn =>
+      'Updates are not checked automatically at startup; you can check manually anytime';
+
+  @override
+  String get aboutStartupCheckOff =>
+      'New versions are checked automatically at startup';
+
+  @override
+  String get aboutDisclaimerEntry => 'Terms and disclaimer';
+
+  @override
+  String get aboutDisclaimerEntryBody =>
+      'The full software description, how it works and the disclaimer';
+
+  @override
+  String get aboutOtherContributors => 'Other contributors';
+
+  @override
+  String get aboutSponsorList => 'Sponsors';
+
+  @override
+  String get aboutSponsorListBody => 'Thanks to everyone who supported Diting';
+
+  @override
+  String get aboutBuilderList => 'Contributors';
+
+  @override
+  String get aboutBuilderListBody =>
+      'Thanks to everyone who contributed code and ideas';
+
+  @override
+  String get aboutInstallerFailed => 'The system installer cannot be launched';
+
+  @override
+  String get aboutAppName => 'Diting';
+
+  @override
+  String get aboutTagline =>
+      'A local-first DNS accelerator and traffic filter built on Android VpnService: simple, open source and ad-free.';
+
+  @override
+  String get aboutChecking => 'Checking…';
+
+  @override
+  String get aboutCheckUpdate => 'Check for updates';
+
+  @override
+  String get aboutDownloading => 'Downloading…';
+
+  @override
+  String get aboutInstall => 'Install';
+
+  @override
+  String get aboutDownload => 'Download';
+
+  @override
+  String get aboutCheckingRelease => 'Checking GitHub Releases';
+
+  @override
+  String aboutUpToDate(Object version) {
+    return 'You are on the latest version$version';
+  }
+
+  @override
+  String aboutVersionSuffix(Object version) {
+    return ' ($version)';
+  }
+
+  @override
+  String aboutFoundVersion(Object version) {
+    return 'Version $version found';
+  }
+
+  @override
+  String aboutCurrentSuffix(Object version) {
+    return ' (current $version)';
+  }
+
+  @override
+  String get aboutNew => 'new ';
+
+  @override
+  String get aboutNewVersion => 'a new version';
+
+  @override
+  String aboutUpdatePackage(Object version) {
+    return '$version update package';
+  }
+
+  @override
+  String aboutLinkCopyFallback(Object url) {
+    return 'The browser could not be opened; the link was copied: $url';
+  }
+
+  @override
+  String get devStressLogs => 'Log stress test';
+
+  @override
+  String devStressLogsBody(Object count) {
+    return 'Write $count DNS logs into the active log database for real';
+  }
+
+  @override
+  String get devErrorReport => 'Error reporting self-check';
+
+  @override
+  String get devErrorReportBody =>
+      'Report a test exception through FlutterError to verify the error pipeline';
+
+  @override
+  String get devClearAll => 'Clear all data';
+
+  @override
+  String get devClearAllBody =>
+      'Delete settings, rules and logs to restore the factory state';
+
+  @override
+  String get devVacuum => 'Compact databases';
+
+  @override
+  String get devVacuumBody =>
+      'Run VACUUM on the three local databases to reclaim space from deleted rows';
+
+  @override
+  String get devCancel => 'Cancel';
+
+  @override
+  String get devRun => 'Run';
+
+  @override
+  String devConfirmBody(Object action) {
+    return '$action\n\nThis operation really rewrites local data and cannot be undone.';
+  }
+
+  @override
+  String devActionFailed(Object action, Object error) {
+    return '$action failed: $error';
+  }
+
+  @override
+  String get devStressNoDb =>
+      'Stress test failed: the log database cannot be opened';
+
+  @override
+  String devStressDone(Object count, Object file) {
+    return 'Stress test finished: $count rows written to $file';
+  }
+
+  @override
+  String get devTestException =>
+      'Test exception triggered from developer options';
+
+  @override
+  String get devErrorReported =>
+      'A FlutterError was reported: test exception triggered from developer options';
+
+  @override
+  String get devVacuumNoDb =>
+      'Compaction failed: there are no database files yet';
+
+  @override
+  String devVacuumDone(Object files, Object kb) {
+    return 'Compacted $files, reclaimed $kb KB';
+  }
+
+  @override
+  String get devRestartNeeded => 'Restart required';
+
+  @override
+  String get devLater => 'Later';
+
+  @override
+  String get devQuitNow => 'Quit now';
+
+  @override
+  String get devClearAllDone =>
+      'All data has been cleared; restart the app to start from the factory state.';
+
+  @override
+  String get devOptions => 'Developer options';
+
+  @override
+  String get devDiagnostics => 'Diagnostics';
+
+  @override
+  String get devIpQuality => 'IP quality';
+
+  @override
+  String get devIpQualityBody =>
+      'Probe the egress address and how three public sources classify it';
+
+  @override
+  String get devRequestLogs => 'Request logs';
+
+  @override
+  String get devRequestLogsBody =>
+      'Live request records merged from http_request_log and dns_log';
+
+  @override
+  String get devLogRetention => 'Log retention';
+
+  @override
+  String get devLogRetentionBody =>
+      'Log capacity limits and what DNS request logs record';
+
+  @override
+  String get devTroubleshoot => 'Troubleshooting';
+
+  @override
+  String get devTroubleshootBody =>
+      'Export crash logs, or capture and export runtime logs manually';
+
+  @override
+  String get devDataCleanup => 'Data cleanup';
+
+  @override
+  String get devUnlocked => 'Experimental actions unlocked';
+
+  @override
+  String get devLocked => 'The actions below are unavailable while off';
+
+  @override
+  String get devWarning =>
+      'These actions really rewrite local data (log database, prefs, database files), and \"Clear all data\" cannot be undone; do not enable this in production.';
+
+  @override
+  String get devRunning => 'Running…';
+
+  @override
+  String get sponsorGithub => 'See sponsorship options on GitHub';
+
+  @override
+  String get sponsorReadme => 'Read the sponsorship section in the README';
+
+  @override
+  String get sponsorReadmeCopied =>
+      'The browser could not be opened; the README link was copied';
+
+  @override
+  String get sponsorThanks => 'Acknowledgements';
+
+  @override
+  String get sponsorThanksBody => 'Thanks to everyone who supports the project';
+
+  @override
+  String get sponsorBuildersBody =>
+      'Thanks to everyone who shared ideas and helped test';
+
+  @override
+  String get sponsorUsage => 'Every contribution goes towards';
+
+  @override
+  String get sponsorUsageNewFeatures => 'Ongoing feature development';
+
+  @override
+  String get sponsorUsageBugs => 'Fixing bugs';
+
+  @override
+  String get sponsorUsageTokens => 'Buying tokens';
+
+  @override
+  String get sponsorFreeWays => 'Even without donating, you can';
+
+  @override
+  String get sponsorFreeStar => 'Star the project⭐';
+
+  @override
+  String get sponsorFreeIssue => 'File an issue';
+
+  @override
+  String get sponsorFreePr => 'Open a pull request';
+
+  @override
+  String get sponsorFreeShare => 'Share it with others';
+
+  @override
+  String get sponsorFooter => 'Thanks to everyone who supports the project!';
+
+  @override
+  String get sponsorBuyDrink => 'Buy the author a drink 🧋';
+
+  @override
+  String get sponsorNote =>
+      'If this project helps you, you are welcome to buy the author a drink. Please add your nickname in the payment note so you can be added to the sponsor list.';
+
+  @override
+  String get sponsorAlipay => 'Alipay';
+
+  @override
+  String get sponsorWechat => 'WeChat Pay';
+
+  @override
+  String get sponsorNickname => 'Add your nickname';
+
+  @override
+  String get sponsorScan => 'Scan to sponsor';
+
+  @override
+  String sponsorQrCode(Object label) {
+    return '$label QR code';
+  }
+
+  @override
+  String get sponsorClose => 'Close';
+
+  @override
+  String get sponsorNoteShort =>
+      'Please add your nickname in the payment note so you can be added to the sponsor list.';
+
+  @override
+  String aboutQqCopied(Object number) {
+    return 'QQ was not found; the group number was copied: $number';
+  }
+
+  @override
+  String get disclaimerTitle => 'Disclaimer';
+
+  @override
+  String get disclaimerTerms => 'Full terms';
+
+  @override
+  String get disclaimerSource =>
+      'The authoritative terms are NOTICE.md in the repository and the LICENSE shipped with the app.';
+
+  @override
+  String get ipQualityRedetect => 'Check again';
+
+  @override
+  String get ipQualityEgress => 'Current egress address';
+
+  @override
+  String get ipQualitySources => 'Sources';
+
+  @override
+  String get ipQualitySourcesFooter =>
+      'Sources often disagree on residential vs. hosting: more hits means more confidence, but one source\'s \"risky\" label is not conclusive.';
+
+  @override
+  String get ipQualityQuerying =>
+      'Looking up the egress IP and three intelligence sources…';
+
+  @override
+  String get ipQualityChecking => 'Checking…';
+
+  @override
+  String get ipQualityDetecting => 'Detecting';
+
+  @override
+  String get ipQualityFailed => 'Check failed';
+
+  @override
+  String get ipQualityNotYet => 'Not checked yet';
+
+  @override
+  String get ipQualityDetectingBody =>
+      'Fetching the egress IP and querying the sources, please wait';
+
+  @override
+  String get ipQualityStartBody =>
+      'Tap the button below to check the quality of the current egress IP';
+
+  @override
+  String get ipQualityStart => 'Start checking';
+
+  @override
+  String ipQualityJudgedAs(Object type) {
+    return 'Classified as $type';
+  }
+
+  @override
+  String get ipQualityNotUsed => 'Not used';
+
+  @override
+  String get ipQualityUsed => 'Used';
+
+  @override
+  String devFooterWarning(Object count) {
+    return 'These actions work directly on the local databases, prefs and native channels: the stress test really writes $count rows, compaction runs SQLite VACUUM, and clearing all data deletes everything locally and requires a restart.';
+  }
+
+  @override
+  String get devDataCleanupBody =>
+      'Delete logs, weights, rules and cache by category';
+
+  @override
+  String get devConfigSection => 'Configuration and resources';
+
+  @override
+  String get devCustomResources => 'Custom resources';
+
+  @override
+  String get devCustomResourcesBody =>
+      'Entry points for configuration resources such as User-Agent and on-demand';
+
+  @override
+  String get devUserAgentBody =>
+      'The UA sent with subscription downloads and speed tests';
+
+  @override
+  String get devOnDemand => 'On-demand connection';
+
+  @override
+  String get devOnDemandBody => 'Start the VPN depending on the SSID';
+
+  @override
+  String get devWebdav => 'WebDAV sync';
+
+  @override
+  String get devWebdavBody => 'Upload backups to your own WebDAV server';
+
+  @override
+  String get devUiSection => 'UI and appearance extras';
+
+  @override
+  String get devFontFamilyBody => 'Choose the UI font family on its own page';
+
+  @override
+  String get devFontSizeBody =>
+      'Global text scaling; an inline slider in the appearance settings';
+
+  @override
+  String get devTabAnimation => 'Tab animation';
+
+  @override
+  String get devTabAnimationBody =>
+      'The entrance animation when switching bottom tabs; an inline option in the appearance settings';
+
+  @override
+  String get devExperimental => 'Experimental actions';
+
+  @override
+  String get devLegacyFooter =>
+      'None of the pages under Diagnostics, Configuration and resources or UI and appearance belong to the 1.4.3 interface; they are kept for debugging and component review. The legacy features are still reached through the legacy menus, not this page.';
+
+  @override
+  String get unknownRouteTitle => 'Page not found';
+
+  @override
+  String get unknownRouteBody => 'This page cannot be found';
+
+  @override
+  String get unknownRouteBack => 'Back';
+
+  @override
+  String get disclaimerReadFirst => 'Read before use';
+
+  @override
+  String get disclaimerIntro =>
+      'Diting is an open-source local DNS and traffic observability tool. It does not provide, proxy or relay any network access service, and all data is processed on the device.';
+
+  @override
+  String get disclaimerLawful =>
+      'Use this software in compliance with the laws of your jurisdiction. Using it on any unauthorised network is at your own risk.';
+
+  @override
+  String get disclaimerFirstRun => 'The text confirmed at first launch';
+
+  @override
+  String get disclaimerImmutable => 'Not editable';
+
+  @override
+  String get devFontFamily => 'Font';
+
+  @override
+  String get devFontSize => 'Text size';
+
+  @override
+  String get devWarningTitle => 'Developer mode';
+
+  @override
+  String get devFooterLegacy =>
+      'The pages under Diagnostics, Configuration and resources, and UI and appearance do not belong to the 1.4.3 interface; they are kept for debugging and component review. Legacy features are still reached through the legacy menus, not this page.';
+
+  @override
+  String get ipTypeResidential => 'Residential';
+
+  @override
+  String get ipTypeMobile => 'Mobile';
+
+  @override
+  String get ipTypeBusiness => 'Business';
+
+  @override
+  String get ipTypeHosting => 'Hosting';
+
+  @override
+  String get ipLevelGood => 'Good';
+
+  @override
+  String get ipLevelNormal => 'Fair';
+
+  @override
+  String get ipLevelRisky => 'Risky';
+
+  @override
+  String get ipStatusOk => 'Matched';
+
+  @override
+  String get ipStatusNoType => 'No type';
+
+  @override
+  String get ipStatusTimeout => 'Timed out';
+
+  @override
+  String get ipStatusRateLimited => 'Rate limited';
+
+  @override
+  String get ipStatusMismatch => 'IP mismatch';
 }

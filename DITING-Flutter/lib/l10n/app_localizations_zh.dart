@@ -3801,4 +3801,524 @@ class AppL10nZh extends AppL10n {
   String logsSubStatsRow(Object count, Object percent, Object status) {
     return '$status | 拦截 $count 次 | $percent';
   }
+
+  @override
+  String get aboutTitle => '关于';
+
+  @override
+  String get aboutMore => '更多';
+
+  @override
+  String get aboutProject => '项目';
+
+  @override
+  String get aboutJoinQq => '加入 QQ 群';
+
+  @override
+  String aboutQqGroup(Object number) {
+    return '群号 $number';
+  }
+
+  @override
+  String get aboutSponsor => '赞助';
+
+  @override
+  String get aboutCredits => '开源致谢';
+
+  @override
+  String get aboutCreditsUi => '界面组件与交互实现复用自该项目';
+
+  @override
+  String get aboutCreditsCore => 'Go 隧道内核最初魔改自该项目';
+
+  @override
+  String get aboutCreditsBody =>
+      '上述两个项目均以 GPL-3.0 协议开源，相关代码与设计的版权归各自作者所有。谛听的界面层大量借鉴了 FlClash 的实现思路，隧道内核也源自 blockads-android 的早期改造；在此向它们的作者与所有贡献者致以诚挚谢意。';
+
+  @override
+  String get aboutSettings => '设置';
+
+  @override
+  String get aboutStartupCheck => '关闭启动时检查更新';
+
+  @override
+  String get aboutStartupCheckOn => '应用启动时不自动检查，可随时手动检查';
+
+  @override
+  String get aboutStartupCheckOff => '应用启动时自动检查新版本';
+
+  @override
+  String get aboutDisclaimerEntry => '使用须知与免责声明';
+
+  @override
+  String get aboutDisclaimerEntryBody => '软件说明、运行机制与免责条款全文';
+
+  @override
+  String get aboutOtherContributors => '其他贡献者';
+
+  @override
+  String get aboutSponsorList => '赞助者名单';
+
+  @override
+  String get aboutSponsorListBody => '鸣谢支持谛听项目的赞助者';
+
+  @override
+  String get aboutBuilderList => '共建者名单';
+
+  @override
+  String get aboutBuilderListBody => '感谢为谛听贡献代码与建议的共建者';
+
+  @override
+  String get aboutInstallerFailed => '无法调起系统安装器';
+
+  @override
+  String get aboutAppName => '谛听';
+
+  @override
+  String get aboutTagline =>
+      '基于 Android VpnService 的本地优先 DNS 加速与流量过滤工具，简单易用，开源无广告。';
+
+  @override
+  String get aboutChecking => '检查中…';
+
+  @override
+  String get aboutCheckUpdate => '检查更新';
+
+  @override
+  String get aboutDownloading => '下载中…';
+
+  @override
+  String get aboutInstall => '安装';
+
+  @override
+  String get aboutDownload => '下载';
+
+  @override
+  String get aboutCheckingRelease => '正在检查 GitHub Release';
+
+  @override
+  String aboutUpToDate(Object version) {
+    return '当前已是最新版本$version';
+  }
+
+  @override
+  String aboutVersionSuffix(Object version) {
+    return '（$version）';
+  }
+
+  @override
+  String aboutFoundVersion(Object version) {
+    return '发现 $version版本';
+  }
+
+  @override
+  String aboutCurrentSuffix(Object version) {
+    return '（当前 $version）';
+  }
+
+  @override
+  String get aboutNew => '新';
+
+  @override
+  String get aboutNewVersion => '新版本';
+
+  @override
+  String aboutUpdatePackage(Object version) {
+    return '$version 更新包';
+  }
+
+  @override
+  String aboutLinkCopyFallback(Object url) {
+    return '未能打开浏览器，链接已复制：$url';
+  }
+
+  @override
+  String get devStressLogs => '日志压测';
+
+  @override
+  String devStressLogsBody(Object count) {
+    return '向当前模式的日志库真实写入 $count 条 DNS 日志';
+  }
+
+  @override
+  String get devErrorReport => '错误上报自检';
+
+  @override
+  String get devErrorReportBody => '通过 FlutterError 上报一条测试异常，验证错误链路';
+
+  @override
+  String get devClearAll => '清空全部数据';
+
+  @override
+  String get devClearAllBody => '删除配置、规则与日志，恢复出厂状态';
+
+  @override
+  String get devVacuum => '压缩数据库';
+
+  @override
+  String get devVacuumBody => '对三个本地库执行 VACUUM，回收已删除记录占用的空间';
+
+  @override
+  String get devCancel => '取消';
+
+  @override
+  String get devRun => '执行';
+
+  @override
+  String devConfirmBody(Object action) {
+    return '$action\n\n该操作会真正改写本机数据，无法撤销。';
+  }
+
+  @override
+  String devActionFailed(Object action, Object error) {
+    return '$action失败：$error';
+  }
+
+  @override
+  String get devStressNoDb => '日志压测失败：无法打开日志数据库';
+
+  @override
+  String devStressDone(Object count, Object file) {
+    return '日志压测完成：写入 $count 条到 $file';
+  }
+
+  @override
+  String get devTestException => '开发者选项触发的测试异常';
+
+  @override
+  String get devErrorReported => '已上报一条 FlutterError：开发者选项触发的测试异常';
+
+  @override
+  String get devVacuumNoDb => '压缩数据库失败：本机还没有数据库文件';
+
+  @override
+  String devVacuumDone(Object files, Object kb) {
+    return '已压缩 $files，回收 $kb KB';
+  }
+
+  @override
+  String get devRestartNeeded => '需要重启';
+
+  @override
+  String get devLater => '稍后';
+
+  @override
+  String get devQuitNow => '立即退出';
+
+  @override
+  String get devClearAllDone => '全部数据已清空，需要重新启动应用才能从出厂状态进入。';
+
+  @override
+  String get devOptions => '开发者选项';
+
+  @override
+  String get devDiagnostics => '诊断与观测';
+
+  @override
+  String get devIpQuality => 'IP 质量';
+
+  @override
+  String get devIpQualityBody => '实测出口地址与三个公开情报源的类型判断';
+
+  @override
+  String get devRequestLogs => '请求日志';
+
+  @override
+  String get devRequestLogsBody => '合并 http_request_log 与 dns_log 的实时请求记录';
+
+  @override
+  String get devLogRetention => '日志保留';
+
+  @override
+  String get devLogRetentionBody => '日志容量上限与 DNS 请求日志的记录范围';
+
+  @override
+  String get devTroubleshoot => '故障排查';
+
+  @override
+  String get devTroubleshootBody => '导出崩溃日志，手动抓取并导出运行日志';
+
+  @override
+  String get devDataCleanup => '数据清理';
+
+  @override
+  String get devUnlocked => '实验动作已解锁';
+
+  @override
+  String get devLocked => '关闭时下面的动作不可用';
+
+  @override
+  String get devWarning =>
+      '这里的动作会真的改写本机数据（日志库、prefs、数据库文件），其中「清空全部数据」不可撤销，不要在生产环境打开。';
+
+  @override
+  String get devRunning => '执行中…';
+
+  @override
+  String get sponsorGithub => '在 GitHub 查看赞助方式';
+
+  @override
+  String get sponsorReadme => '查看 README 中的赞助说明';
+
+  @override
+  String get sponsorReadmeCopied => '未能打开浏览器，README 地址已复制';
+
+  @override
+  String get sponsorThanks => '致谢名单';
+
+  @override
+  String get sponsorThanksBody => '感谢每一位支持项目的朋友';
+
+  @override
+  String get sponsorBuildersBody => '感谢提出建议与帮助测试的伙伴';
+
+  @override
+  String get sponsorUsage => '你的每一笔支持都会用于';
+
+  @override
+  String get sponsorUsageNewFeatures => '持续开发新功能';
+
+  @override
+  String get sponsorUsageBugs => '修复 Bug';
+
+  @override
+  String get sponsorUsageTokens => '购买词元';
+
+  @override
+  String get sponsorFreeWays => '即使不捐赠，也欢迎';
+
+  @override
+  String get sponsorFreeStar => '点一个 Star⭐';
+
+  @override
+  String get sponsorFreeIssue => '提交 Issue';
+
+  @override
+  String get sponsorFreePr => '提交 PR';
+
+  @override
+  String get sponsorFreeShare => '分享给更多人';
+
+  @override
+  String get sponsorFooter => '感谢每一位支持项目的朋友！';
+
+  @override
+  String get sponsorBuyDrink => '请作者喝杯蜜雪 🧋';
+
+  @override
+  String get sponsorNote => '如果这个项目帮助到了你，欢迎请作者喝杯蜜雪。付款时请备注昵称，以便同步加入赞助者名单。';
+
+  @override
+  String get sponsorAlipay => '支付宝';
+
+  @override
+  String get sponsorWechat => '微信支付';
+
+  @override
+  String get sponsorNickname => '备注昵称';
+
+  @override
+  String get sponsorScan => '扫码赞助';
+
+  @override
+  String sponsorQrCode(Object label) {
+    return '$label 收款码';
+  }
+
+  @override
+  String get sponsorClose => '关闭';
+
+  @override
+  String get sponsorNoteShort => '付款时请备注昵称，以便同步加入赞助者名单。';
+
+  @override
+  String aboutQqCopied(Object number) {
+    return '未检测到 QQ，群号已复制：$number';
+  }
+
+  @override
+  String get disclaimerTitle => '免责声明';
+
+  @override
+  String get disclaimerTerms => '条款全文';
+
+  @override
+  String get disclaimerSource => '正式条款以仓库 NOTICE.md 与随包 LICENSE 为准。';
+
+  @override
+  String get ipQualityRedetect => '重新检测';
+
+  @override
+  String get ipQualityEgress => '当前出口地址';
+
+  @override
+  String get ipQualitySources => '来源';
+
+  @override
+  String get ipQualitySourcesFooter =>
+      '各来源对「住宅 / 机房」的判断经常互相矛盾：命中数越多越可信，但单一来源的「风险」标签不足以作为结论。';
+
+  @override
+  String get ipQualityQuerying => '正在查询出口 IP 与 3 个情报源…';
+
+  @override
+  String get ipQualityChecking => '检测中…';
+
+  @override
+  String get ipQualityDetecting => '正在检测';
+
+  @override
+  String get ipQualityFailed => '检测失败';
+
+  @override
+  String get ipQualityNotYet => '尚未检测';
+
+  @override
+  String get ipQualityDetectingBody => '正在获取出口 IP 并查询情报源，请稍候';
+
+  @override
+  String get ipQualityStartBody => '点下方按钮开始检测当前出口 IP 的质量';
+
+  @override
+  String get ipQualityStart => '开始检测';
+
+  @override
+  String ipQualityJudgedAs(Object type) {
+    return '判定为$type';
+  }
+
+  @override
+  String get ipQualityNotUsed => '未采用';
+
+  @override
+  String get ipQualityUsed => '已采用';
+
+  @override
+  String devFooterWarning(Object count) {
+    return '这些动作直接作用于本机的数据库、prefs 与 native 通道：日志压测会真的写入 $count 条日志，压缩数据库执行的是 SQLite VACUUM，清空全部数据会删除所有本地数据并要求重启。';
+  }
+
+  @override
+  String get devDataCleanupBody => '按类别删除日志、权重、规则与缓存';
+
+  @override
+  String get devConfigSection => '配置与资源';
+
+  @override
+  String get devCustomResources => '自定义资源';
+
+  @override
+  String get devCustomResourcesBody => 'User-Agent、按需连接等配置资源入口';
+
+  @override
+  String get devUserAgentBody => '订阅下载与测速请求携带的 UA';
+
+  @override
+  String get devOnDemand => '按需连接';
+
+  @override
+  String get devOnDemandBody => '按 SSID 决定是否启动 VPN';
+
+  @override
+  String get devWebdav => 'WebDAV 云同步';
+
+  @override
+  String get devWebdavBody => '把备份真实上传到自建的 WebDAV 服务';
+
+  @override
+  String get devUiSection => '界面与外观保留项';
+
+  @override
+  String get devFontFamilyBody => '选择界面字体族，独立页';
+
+  @override
+  String get devFontSizeBody => '全局文字缩放；在外观设置「界面显示」组内联滑杆';
+
+  @override
+  String get devTabAnimation => 'Tab 动画';
+
+  @override
+  String get devTabAnimationBody => '切换底部标签时的入场动画；在外观设置「背景与动效」组内联选项';
+
+  @override
+  String get devExperimental => '实验动作';
+
+  @override
+  String get devLegacyFooter =>
+      '以上「诊断与观测」「配置与资源」「界面与外观保留项」里的页面都不属于旧版 1.4.3 的界面，保留供调试与组件验收；旧版对应的功能仍按旧版菜单进入，不经过本页。';
+
+  @override
+  String get unknownRouteTitle => '页面不存在';
+
+  @override
+  String get unknownRouteBody => '找不到这个页面';
+
+  @override
+  String get unknownRouteBack => '返回';
+
+  @override
+  String get disclaimerReadFirst => '使用前请阅读';
+
+  @override
+  String get disclaimerIntro =>
+      '谛听是一款开源的本地域名解析与流量观测工具。软件本身不提供、不代理、也不转发任何网络接入服务，全部数据都在本机处理。';
+
+  @override
+  String get disclaimerLawful =>
+      '请在遵守所在地法律法规的前提下使用本软件。将本软件用于任何未经授权的网络环境，后果由使用者自行承担。';
+
+  @override
+  String get disclaimerFirstRun => '首次启动时确认的文本';
+
+  @override
+  String get disclaimerImmutable => '不可修改';
+
+  @override
+  String get devFontFamily => '字体';
+
+  @override
+  String get devFontSize => '字号';
+
+  @override
+  String get devWarningTitle => '开发者模式';
+
+  @override
+  String get devFooterLegacy =>
+      '以上「诊断与观测」「配置与资源」「界面与外观保留项」里的页面都不属于旧版 1.4.3 的界面，保留供调试与组件验收；旧版对应的功能仍按旧版菜单进入，不经过本页。';
+
+  @override
+  String get ipTypeResidential => '住宅';
+
+  @override
+  String get ipTypeMobile => '移动';
+
+  @override
+  String get ipTypeBusiness => '商业';
+
+  @override
+  String get ipTypeHosting => '机房';
+
+  @override
+  String get ipLevelGood => '优秀';
+
+  @override
+  String get ipLevelNormal => '一般';
+
+  @override
+  String get ipLevelRisky => '风险';
+
+  @override
+  String get ipStatusOk => '命中';
+
+  @override
+  String get ipStatusNoType => '无类型';
+
+  @override
+  String get ipStatusTimeout => '超时';
+
+  @override
+  String get ipStatusRateLimited => '限流';
+
+  @override
+  String get ipStatusMismatch => 'IP 不一致';
 }

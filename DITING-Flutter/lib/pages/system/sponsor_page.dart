@@ -1,6 +1,7 @@
 /// Sponsor page, aligned with `ui/SponsorScreen.kt`; QR codes come from the README.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/system/app_info.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/ui/ui.dart';
@@ -16,17 +17,17 @@ class SponsorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      title: '赞助',
+      title: context.l10n.aboutSponsor,
       body: PageBody(
         children: [
           const _SponsorHero(),
           const _PaymentSection(),
           generateSection(
-            title: '在 GitHub 查看赞助方式',
+            title: context.l10n.sponsorGithub,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.link),
-                title: const Text('查看 README 中的赞助说明'),
+                title: Text(context.l10n.sponsorReadme),
                 subtitle: Text(
                   sponsorReadmeUrl.replaceFirst('https://', ''),
                   maxLines: 1,
@@ -36,46 +37,46 @@ class SponsorPage extends StatelessWidget {
                 onTap: () => openLinkOrCopy(
                   context,
                   sponsorReadmeUrl,
-                  '未能打开浏览器，README 地址已复制',
+                  context.l10n.sponsorReadmeCopied,
                 ),
               ),
             ],
           ),
           generateSection(
-            title: '致谢名单',
+            title: context.l10n.sponsorThanks,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.verified,
-                title: '赞助者名单',
-                subtitle: '感谢每一位支持项目的朋友',
+                title: context.l10n.aboutSponsorList,
+                subtitle: context.l10n.sponsorThanksBody,
                 onPressed: () => context.push(HubPaths.sponsorList),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.account,
-                title: '共建者名单',
-                subtitle: '感谢提出建议与帮助测试的伙伴',
+                title: context.l10n.aboutBuilderList,
+                subtitle: context.l10n.sponsorBuildersBody,
                 onPressed: () => context.push(HubPaths.coBuilders),
               ),
             ],
           ),
           generateSection(
-            title: '你的每一笔支持都会用于',
-            items: const [
-              _BulletRow(text: '持续开发新功能'),
-              _BulletRow(text: '修复 Bug'),
-              _BulletRow(text: '购买词元'),
+            title: context.l10n.sponsorUsage,
+            items: [
+              _BulletRow(text: context.l10n.sponsorUsageNewFeatures),
+              _BulletRow(text: context.l10n.sponsorUsageBugs),
+              _BulletRow(text: context.l10n.sponsorUsageTokens),
             ],
           ),
           generateSection(
-            title: '即使不捐赠，也欢迎',
-            items: const [
-              _BulletRow(text: '点一个 Star⭐'),
-              _BulletRow(text: '提交 Issue'),
-              _BulletRow(text: '提交 PR'),
-              _BulletRow(text: '分享给更多人'),
+            title: context.l10n.sponsorFreeWays,
+            items: [
+              _BulletRow(text: context.l10n.sponsorFreeStar),
+              _BulletRow(text: context.l10n.sponsorFreeIssue),
+              _BulletRow(text: context.l10n.sponsorFreePr),
+              _BulletRow(text: context.l10n.sponsorFreeShare),
             ],
           ),
-          const ListFooter(text: '感谢每一位支持项目的朋友！'),
+          ListFooter(text: context.l10n.sponsorFooter),
           const SizedBox(height: 24),
         ],
       ),
@@ -124,7 +125,7 @@ class _SponsorHero extends StatelessWidget {
                             ),
                       ),
                       Text(
-                        '请作者喝杯蜜雪 🧋',
+                        context.l10n.sponsorBuyDrink,
                         style: AppTextStyle.title2.of(
                           context,
                           emphasized: true,
@@ -136,17 +137,16 @@ class _SponsorHero extends StatelessWidget {
               ],
             ),
             Text(
-              '如果这个项目帮助到了你，欢迎请作者喝杯蜜雪。'
-              '付款时请备注昵称，以便同步加入赞助者名单。',
+              context.l10n.sponsorNote,
               style: context.listSubtitleStyle,
             ),
-            const Wrap(
+            Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
-                MetaChip(label: '支付宝'),
-                MetaChip(label: '微信支付'),
-                MetaChip(label: '备注昵称'),
+                MetaChip(label: context.l10n.sponsorAlipay),
+                MetaChip(label: context.l10n.sponsorWechat),
+                MetaChip(label: context.l10n.sponsorNickname),
               ],
             ),
           ],
@@ -164,23 +164,23 @@ class _PaymentSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const ListHeader(title: '扫码赞助'),
+        ListHeader(title: context.l10n.sponsorScan),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             spacing: 12,
-            children: const [
+            children: [
               Expanded(
                 child: _PaymentCard(
                   asset: 'assets/pay/alipay_code.png',
-                  label: '支付宝',
+                  label: context.l10n.sponsorAlipay,
                   glyph: AppGlyphs.qrCode,
                 ),
               ),
               Expanded(
                 child: _PaymentCard(
                   asset: 'assets/pay/wechatpay_code.png',
-                  label: '微信支付',
+                  label: context.l10n.sponsorWechat,
                   glyph: AppGlyphs.qrCode,
                 ),
               ),
@@ -250,12 +250,12 @@ class _PaymentCard extends StatelessWidget {
     showFloatingDialog<void>(
       context: context,
       child: CommonDialog(
-        title: '$label 收款码',
+        title: context.l10n.sponsorQrCode(label),
         width: 320,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
+            child: Text(context.l10n.sponsorClose),
           ),
         ],
         child: Column(
@@ -269,7 +269,7 @@ class _PaymentCard extends StatelessWidget {
               ),
             ),
             Text(
-              '付款时请备注昵称，以便同步加入赞助者名单。',
+              context.l10n.sponsorNoteShort,
               style: context.listCaptionStyle,
               textAlign: TextAlign.center,
             ),

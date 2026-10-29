@@ -3,6 +3,7 @@
 /// rows. Update state renders inline under the bar instead of a separate card.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/hub/recognition_pages.dart';
 import 'package:diting/pages/system/app_info.dart';
 import 'package:diting/pages/system/disclaimer_page.dart';
@@ -25,7 +26,7 @@ class AboutPage extends ConsumerWidget {
     final notifier = ref.read(updateProvider.notifier);
     final disableStartupCheck = ref.watch(startupUpdateCheckProvider);
     return CommonScaffold(
-      title: '关于',
+      title: context.l10n.aboutTitle,
       body: PageBody(
         children: [
           _AboutHero(
@@ -37,57 +38,55 @@ class AboutPage extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           generateSection(
-            title: '更多',
+            title: context.l10n.aboutMore,
             items: [
               _LinkRow(
                 glyph: AppGlyphs.code,
-                title: '项目',
+                title: context.l10n.aboutProject,
                 label: projectRepositoryUrl.replaceFirst('https://', ''),
                 url: projectRepositoryUrl,
               ),
               _LinkRow(
                 glyph: AppGlyphs.send,
-                title: '加入 QQ 群',
-                label: '群号 $qqGroupNumber',
+                title: context.l10n.aboutJoinQq,
+                label: context.l10n.aboutQqGroup(qqGroupNumber),
                 url: qqGroupUri,
               ),
               _LinkRow(
                 glyph: AppGlyphs.star,
-                title: '赞助',
+                title: context.l10n.aboutSponsor,
                 label: sponsorReadmeUrl.replaceFirst('https://', ''),
                 url: sponsorReadmeUrl,
               ),
             ],
           ),
           generateSection(
-            title: '开源致谢',
+            title: context.l10n.aboutCredits,
             items: [
               _LinkRow(
                 glyph: AppGlyphs.palette,
                 title: 'FlClash',
-                label: '界面组件与交互实现复用自该项目',
+                label: context.l10n.aboutCreditsUi,
                 url: flClashRepositoryUrl,
               ),
               _LinkRow(
                 glyph: AppGlyphs.vpn,
                 title: 'blockads-android',
-                label: 'Go 隧道内核最初魔改自该项目',
+                label: context.l10n.aboutCreditsCore,
                 url: blockAdsRepositoryUrl,
               ),
             ],
             footer:
-                '上述两个项目均以 GPL-3.0 协议开源，相关代码与设计的版权归各自作者所有。'
-                '谛听的界面层大量借鉴了 FlClash 的实现思路，隧道内核也源自 blockads-android 的早期改造；'
-                '在此向它们的作者与所有贡献者致以诚挚谢意。',
+                context.l10n.aboutCreditsBody,
           ),
           generateSection(
-            title: '设置',
+            title: context.l10n.aboutSettings,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.clock),
-                title: const Text('关闭启动时检查更新'),
+                title: Text(context.l10n.aboutStartupCheck),
                 subtitle: Text(
-                  disableStartupCheck ? '应用启动时不自动检查，可随时手动检查' : '应用启动时自动检查新版本',
+                  disableStartupCheck ? context.l10n.aboutStartupCheckOn : context.l10n.aboutStartupCheckOff,
                 ),
                 value: disableStartupCheck,
                 onChanged: (value) =>
@@ -95,26 +94,26 @@ class AboutPage extends ConsumerWidget {
               ),
               ListItem.next(
                 leading: const GlyphIcon(AppGlyphs.gavel),
-                title: const Text('使用须知与免责声明'),
-                subtitle: const Text('软件说明、运行机制与免责条款全文'),
+                title: Text(context.l10n.aboutDisclaimerEntry),
+                subtitle: Text(context.l10n.aboutDisclaimerEntryBody),
                 // Acceptance happens in the first-run dialog; this only re-reads it.
                 widget: const DisclaimerPage(),
               ),
             ],
           ),
           generateSection(
-            title: '其他贡献者',
+            title: context.l10n.aboutOtherContributors,
             items: [
               ListItem.next(
                 leading: const GlyphIcon(AppGlyphs.verified),
-                title: const Text('赞助者名单'),
-                subtitle: const Text('鸣谢支持谛听项目的赞助者'),
+                title: Text(context.l10n.aboutSponsorList),
+                subtitle: Text(context.l10n.aboutSponsorListBody),
                 widget: const SponsorListPage(),
               ),
               ListItem.next(
                 leading: const GlyphIcon(AppGlyphs.account),
-                title: const Text('共建者名单'),
-                subtitle: const Text('感谢为谛听贡献代码与建议的共建者'),
+                title: Text(context.l10n.aboutBuilderList),
+                subtitle: Text(context.l10n.aboutBuilderListBody),
                 widget: const CoBuildersPage(),
               ),
             ],
@@ -132,7 +131,7 @@ class AboutPage extends ConsumerWidget {
     final ok = await ref.read(updateProvider.notifier).install();
     if (!context.mounted) return;
     if (!ok) {
-      final reason = ref.read(updateProvider).error ?? '无法调起系统安装器';
+      final reason = ref.read(updateProvider).error ?? context.l10n.aboutInstallerFailed;
       messenger?.showSnackBar(
         SnackBar(
           content: Text(reason),
@@ -190,7 +189,7 @@ class _AboutHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text('谛听', style: AppTextStyle.title2.of(context, emphasized: true)),
+          Text(context.l10n.aboutAppName, style: AppTextStyle.title2.of(context, emphasized: true)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -213,8 +212,7 @@ class _AboutHero extends StatelessWidget {
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Text(
-              '基于 Android VpnService 的本地优先 DNS 加速与流量过滤工具，'
-              '简单易用，开源无广告。',
+              context.l10n.aboutTagline,
               textAlign: TextAlign.center,
               style: AppTextStyle.subheadline
                   .of(context)
@@ -225,7 +223,7 @@ class _AboutHero extends StatelessWidget {
           TonalButton(
             size: TonalButtonSize.bar,
             glyph: AppGlyphs.sync,
-            label: stage == UpdateStage.checking ? '检查中…' : '检查更新',
+            label: stage == UpdateStage.checking ? context.l10n.aboutChecking : context.l10n.aboutCheckUpdate,
             onPressed: onCheck,
           ),
           if (stage == UpdateStage.downloading ||
@@ -245,9 +243,9 @@ class _AboutHero extends StatelessWidget {
                     ? AppGlyphs.check
                     : AppGlyphs.cloudDownload,
                 label: switch (stage) {
-                  UpdateStage.downloading => '下载中…',
-                  UpdateStage.downloaded => '安装',
-                  _ => '下载',
+                  UpdateStage.downloading => context.l10n.aboutDownloading,
+                  UpdateStage.downloaded => context.l10n.aboutInstall,
+                  _ => context.l10n.aboutDownload,
                 },
                 onPressed: stage == UpdateStage.downloaded
                     ? onInstall
@@ -279,23 +277,27 @@ class _AboutHero extends StatelessWidget {
         null => null,
       },
       UpdateStage.checking => (
-        text: '正在检查 GitHub Release',
+        text: context.l10n.aboutCheckingRelease,
         color: colorScheme.onSurfaceVariant,
       ),
       UpdateStage.upToDate => (
-        text: '当前已是最新版本${current == null ? '' : '（$current）'}',
+        text: context.l10n.aboutUpToDate(
+          current == null ? '' : context.l10n.aboutVersionSuffix(current),
+        ),
         color: colorScheme.success,
       ),
       UpdateStage.available => (
         text: [
-          '发现 ${latest ?? '新'}版本',
-          if (current != null) '（当前 $current）',
+          context.l10n.aboutFoundVersion(latest ?? context.l10n.aboutNew),
+          if (current != null) context.l10n.aboutCurrentSuffix(current),
           if (update.error != null) '，${update.error}',
         ].join(),
         color: update.error == null ? colorScheme.primary : colorScheme.error,
       ),
       UpdateStage.downloading || UpdateStage.downloaded => (
-        text: '${latest ?? '新版本'} 更新包',
+        text: context.l10n.aboutUpdatePackage(
+          latest ?? context.l10n.aboutNewVersion,
+        ),
         color: colorScheme.onSurfaceVariant,
       ),
     };
@@ -361,7 +363,8 @@ class _LinkRow extends StatelessWidget {
       title: Text(title),
       subtitle: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: const GlyphIcon(AppGlyphs.openExternal),
-      onTap: () => openLinkOrCopy(context, url, '未能打开浏览器，链接已复制：$url'),
+      onTap: () =>
+          openLinkOrCopy(context, url, context.l10n.aboutLinkCopyFallback(url)),
     );
   }
 }

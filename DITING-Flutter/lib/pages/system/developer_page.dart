@@ -2,6 +2,7 @@
 /// database, native channels or the cleanup service; nothing is simulated.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:io';
 import 'dart:math';
 
@@ -29,39 +30,29 @@ const _stressRowCount = 1000;
 
 /// The four actions that do real work. `title` doubles as the running indicator.
 enum _DeveloperAction {
-  stressLogs(
-    title: '日志压测',
-    subtitle: '向当前模式的日志库真实写入 $_stressRowCount 条 DNS 日志',
-    glyphName: 'logs',
-  ),
-  reportError(
-    title: '错误上报自检',
-    subtitle: '通过 FlutterError 上报一条测试异常，验证错误链路',
-    glyphName: 'error',
-  ),
-  clearAllData(
-    title: '清空全部数据',
-    subtitle: '删除配置、规则与日志，恢复出厂状态',
-    glyphName: 'clearAll',
-    destructive: true,
-  ),
-  vacuum(
-    title: '压缩数据库',
-    subtitle: '对三个本地库执行 VACUUM，回收已删除记录占用的空间',
-    glyphName: 'memory',
-  );
+  stressLogs(glyphName: 'logs'),
+  reportError(glyphName: 'error'),
+  clearAllData(glyphName: 'clearAll', destructive: true),
+  vacuum(glyphName: 'memory');
 
-  const _DeveloperAction({
-    required this.title,
-    required this.subtitle,
-    required this.glyphName,
-    this.destructive = false,
-  });
+  const _DeveloperAction({required this.glyphName, this.destructive = false});
 
-  final String title;
-  final String subtitle;
   final String glyphName;
   final bool destructive;
+
+  String title(AppL10n l10n) => switch (this) {
+    stressLogs => l10n.devStressLogs,
+    reportError => l10n.devErrorReport,
+    clearAllData => l10n.devClearAll,
+    vacuum => l10n.devVacuum,
+  };
+
+  String subtitle(AppL10n l10n) => switch (this) {
+    stressLogs => l10n.devStressLogsBody(_stressRowCount),
+    reportError => l10n.devErrorReportBody,
+    clearAllData => l10n.devClearAllBody,
+    vacuum => l10n.devVacuumBody,
+  };
 }
 
 class DeveloperPage extends ConsumerStatefulWidget {
@@ -81,19 +72,19 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
       final confirmed = await showFloatingDialog<bool>(
         context: context,
         child: CommonDialog(
-          title: action.title,
+          title: action.title(context.l10n),
           destructive: true,
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
+              child: Text(context.l10n.devCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('执行'),
+              child: Text(context.l10n.devRun),
             ),
           ],
-          child: Text('${action.subtitle}\n\n该操作会真正改写本机数据，无法撤销。'),
+          child: Text(context.l10n.devConfirmBody(action.subtitle(context.l10n))),
         ),
       );
       if (confirmed != true || !mounted) return;
@@ -108,7 +99,7 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
         _DeveloperAction.vacuum => await _vacuum(),
       };
     } catch (error) {
-      message = '${action.title}失败：$error';
+      message = context.l10n.devActionFailed(action.title(context.l10n), '$error');
     } finally {
       if (mounted) setState(() => _running = null);
     }
@@ -125,7 +116,7 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
   Future<String> _stressLogs() async {
     final fileName = ref.read(activeLogDatabaseFileProvider);
     final db = await LegacyDatabase.open(fileName);
-    if (db == null) return '日志压测失败：无法打开日志数据库';
+    if (db == null) return context.l10n.devStressNoDb;
     final now = DateTime.now().millisecondsSinceEpoch;
     final random = Random();
     final batch = db.batch();
@@ -142,7 +133,7 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
     }
     final inserted = (await batch.commit(noResult: true)).length;
     ref.read(dnsLogRevisionProvider.notifier).bump();
-    return '日志压测完成：写入 $inserted 条到 $fileName';
+    return context.l10n.devStressDone('$inserted', fileName);
   }
 
   /// Goes through the same handler the framework uses, so it exercises a real error path without
@@ -150,12 +141,12 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
   String _reportError() {
     FlutterError.reportError(
       FlutterErrorDetails(
-        exception: StateError('开发者选项触发的测试异常'),
+        exception: StateError(context.l10n.devTestException),
         library: 'diting.developer',
-        context: ErrorDescription('错误上报自检'),
+        context: ErrorDescription(context.l10n.devErrorReport),
       ),
     );
-    return '已上报一条 FlutterError：开发者选项触发的测试异常';
+    return context.l10n.devErrorReported;
   }
 
   Future<String> _clearAllData() async {
@@ -186,28 +177,28 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
         await db.close();
       }
     }
-    if (touched.isEmpty) return '压缩数据库失败：本机还没有数据库文件';
+    if (touched.isEmpty) return context.l10n.devVacuumNoDb;
     final kb = (freed / 1024).round();
-    return '已压缩 ${touched.join('、')}，回收 ${kb < 0 ? 0 : kb} KB';
+    return context.l10n.devVacuumDone(touched.join('、'), kb < 0 ? 0 : kb);
   }
 
   Future<void> _offerRestart() async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '需要重启',
+        title: context.l10n.devRestartNeeded,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('稍后'),
+            child: Text(context.l10n.devLater),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('立即退出'),
+            child: Text(context.l10n.devQuitNow),
           ),
         ],
-        child: const Text('全部数据已清空，需要重新启动应用才能从出厂状态进入。'),
+        child: Text(context.l10n.devClearAllDone),
       ),
     );
     if (confirmed == true) await SystemNavigator.pop();
@@ -227,7 +218,7 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
   Widget build(BuildContext context) {
     final enabled = ref.watch(developerModeProvider);
     return CommonScaffold(
-      title: '开发者选项',
+      title: context.l10n.devOptions,
       // Avoids `PageBody` (a lazy ListView): this is a directory, and never-built entries stay
       // invisible to the a11y tree and screenshot review. Building them all is cheap.
       body: AppBarClearance(
@@ -237,107 +228,107 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
             children: [
               const _DeveloperModeCard(),
               generateSection(
-                title: '诊断与观测',
+                title: context.l10n.devDiagnostics,
                 items: [
                   NavEntryRow(
                     glyph: AppGlyphs.target,
                     leadingSize: 20,
-                    title: 'IP 质量',
-                    subtitle: '实测出口地址与三个公开情报源的类型判断',
+                    title: context.l10n.devIpQuality,
+                    subtitle: context.l10n.devIpQualityBody,
                     onPressed: () => context.push(SystemPaths.ipQuality),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.requests,
                     leadingSize: 20,
-                    title: '请求日志',
-                    subtitle: '合并 http_request_log 与 dns_log 的实时请求记录',
+                    title: context.l10n.devRequestLogs,
+                    subtitle: context.l10n.devRequestLogsBody,
                     onPressed: () => context.push(ObservabilityPaths.requests),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.logs,
                     leadingSize: 20,
-                    title: '日志保留',
-                    subtitle: '日志容量上限与 DNS 请求日志的记录范围',
+                    title: context.l10n.devLogRetention,
+                    subtitle: context.l10n.devLogRetentionBody,
                     onPressed: () => context.push(HubPaths.logRetention),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.wrench,
                     leadingSize: 20,
-                    title: '故障排查',
-                    subtitle: '导出崩溃日志，手动抓取并导出运行日志',
+                    title: context.l10n.devTroubleshoot,
+                    subtitle: context.l10n.devTroubleshootBody,
                     onPressed: () => context.push(HubPaths.troubleshooting),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.broom,
                     leadingSize: 20,
-                    title: '数据清理',
-                    subtitle: '按类别删除日志、权重、规则与缓存',
+                    title: context.l10n.devDataCleanup,
+                    subtitle: context.l10n.devDataCleanupBody,
                     onPressed: () => context.push(HubPaths.dataCleanup),
                   ),
                 ],
               ),
               generateSection(
-                title: '配置与资源',
+                title: context.l10n.devConfigSection,
                 items: [
                   NavEntryRow(
                     glyph: AppGlyphs.resources,
                     leadingSize: 20,
-                    title: '自定义资源',
-                    subtitle: 'User-Agent、按需连接等配置资源入口',
+                    title: context.l10n.devCustomResources,
+                    subtitle: context.l10n.devCustomResourcesBody,
                     onPressed: () => context.push(ConfigPaths.customResources),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.account,
                     leadingSize: 20,
                     title: 'User-Agent',
-                    subtitle: '订阅下载与测速请求携带的 UA',
+                    subtitle: context.l10n.devUserAgentBody,
                     onPressed: () => context.push(ConfigPaths.userAgents),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.wifi,
                     leadingSize: 20,
-                    title: '按需连接',
-                    subtitle: '按 SSID 决定是否启动 VPN',
+                    title: context.l10n.devOnDemand,
+                    subtitle: context.l10n.devOnDemandBody,
                     onPressed: () => context.push(ConfigPaths.onDemand),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.cloudSync,
                     leadingSize: 20,
-                    title: 'WebDAV 云同步',
-                    subtitle: '把备份真实上传到自建的 WebDAV 服务',
+                    title: context.l10n.devWebdav,
+                    subtitle: context.l10n.devWebdavBody,
                     onPressed: () =>
                         context.push(HubPaths.configTransferWebdav),
                   ),
                 ],
               ),
               generateSection(
-                title: '界面与外观保留项',
+                title: context.l10n.devUiSection,
                 items: [
                   NavEntryRow(
                     glyph: AppGlyphs.font,
                     leadingSize: 20,
-                    title: '字体',
-                    subtitle: '选择界面字体族，独立页',
+                    title: context.l10n.devFontFamily,
+                    subtitle: context.l10n.devFontFamilyBody,
                     onPressed: () => context.push(SystemPaths.fontFamily),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.textSize,
                     leadingSize: 20,
-                    title: '字号',
-                    subtitle: '全局文字缩放；在外观设置「界面显示」组内联滑杆',
+                    title: context.l10n.devFontSize,
+                    subtitle: context.l10n.devFontSizeBody,
                     onPressed: () => context.push(SystemPaths.theme),
                   ),
                   NavEntryRow(
                     glyph: AppGlyphs.motion,
                     leadingSize: 20,
-                    title: 'Tab 动画',
-                    subtitle: '切换底部标签时的入场动画；在外观设置「背景与动效」组内联选项',
+                    title: context.l10n.devTabAnimation,
+                    subtitle: context.l10n.devTabAnimationBody,
                     onPressed: () => context.push(SystemPaths.theme),
                   ),
                 ],
               ),
               generateSection(
-                title: '实验动作',
+                title: context.l10n.devExperimental,
                 items: [
                   for (final action in _DeveloperAction.values)
                     _ActionRow(
@@ -350,15 +341,11 @@ class _DeveloperPageState extends ConsumerState<DeveloperPage> {
                     ),
                 ],
                 footer:
-                    '这些动作直接作用于本机的数据库、prefs 与 native 通道：'
-                    '日志压测会真的写入 $_stressRowCount 条日志，压缩数据库执行的是 SQLite VACUUM，'
-                    '清空全部数据会删除所有本地数据并要求重启。',
+                    context.l10n.devFooterWarning(_stressRowCount),
               ),
-              const ListFooter(
+              ListFooter(
                 text:
-                    '以上「诊断与观测」「配置与资源」「界面与外观保留项」'
-                    '里的页面都不属于旧版 1.4.3 的界面，保留供调试与组件验收；'
-                    '旧版对应的功能仍按旧版菜单进入，不经过本页。',
+                    context.l10n.devFooterLegacy,
               ),
               const DockSpacer(),
             ],
@@ -399,9 +386,12 @@ class _DeveloperModeCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('开发者模式', style: context.listTitleStyle),
                       Text(
-                        enabled ? '实验动作已解锁' : '关闭时下面的动作不可用',
+                        context.l10n.devWarningTitle,
+                        style: context.listTitleStyle,
+                      ),
+                      Text(
+                        enabled ? context.l10n.devUnlocked : context.l10n.devLocked,
                         style: context.listCaptionStyle,
                       ),
                     ],
@@ -416,8 +406,7 @@ class _DeveloperModeCard extends ConsumerWidget {
             ),
             InlineNotice(
               message:
-                  '这里的动作会真的改写本机数据（日志库、prefs、数据库文件），'
-                  '其中「清空全部数据」不可撤销，不要在生产环境打开。',
+                  context.l10n.devWarning,
             ),
           ],
         ),
@@ -449,12 +438,14 @@ class _ActionRow extends StatelessWidget {
         : colorScheme.onSurfaceVariant;
     return ListItem(
       title: Text(
-        action.title,
+        action.title(context.l10n),
         style: action.destructive && enabled
             ? TextStyle(color: colorScheme.error)
             : null,
       ),
-      subtitle: Text(running ? '执行中…' : action.subtitle),
+      subtitle: Text(
+        running ? context.l10n.devRunning : action.subtitle(context.l10n),
+      ),
       leading: running
           ? const SizedBox.square(
               dimension: 20,

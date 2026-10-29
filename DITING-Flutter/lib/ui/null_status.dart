@@ -1,5 +1,4 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
-import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;

@@ -1,7 +1,6 @@
 /// Mini home preview (upstream `views/theme_preview.dart`), painted in a part file.
 library;
 
-import 'package:diting/app/l10n/l10n.dart';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 

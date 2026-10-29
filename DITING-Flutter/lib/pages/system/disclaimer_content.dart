@@ -30,21 +30,18 @@ class DisclaimerIntroCard extends StatelessWidget {
                   color: colorScheme.primary,
                 ),
                 Text(
-                  '使用前请阅读',
+                  context.l10n.disclaimerReadFirst,
                   style: AppTextStyle.title2.of(context, emphasized: true),
                 ),
               ],
             ),
             Text(
-              '谛听是一款开源的本地域名解析与流量观测工具。'
-              '软件本身不提供、不代理、也不转发任何网络接入服务，'
-              '全部数据都在本机处理。',
+              context.l10n.disclaimerIntro,
               style: context.listSubtitleStyle,
             ),
             InlineNotice(
               message:
-                  '请在遵守所在地法律法规的前提下使用本软件。'
-                  '将本软件用于任何未经授权的网络环境，后果由使用者自行承担。',
+                  context.l10n.disclaimerLawful,
               glyphSize: 18,
             ),
           ],
@@ -81,13 +78,13 @@ class InitialAgreementCard extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    '首次启动时确认的文本',
+                    context.l10n.disclaimerFirstRun,
                     style: AppTextStyle.caption1
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                 ),
-                const MetaChip(label: '不可修改'),
+                MetaChip(label: context.l10n.disclaimerImmutable),
               ],
             ),
             Text(

@@ -1,6 +1,7 @@
 /// Disclaimer page, read-only; `initial_agreement_accepted` was accepted at first run.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_system.dart';
 import 'package:diting/pages/system/disclaimer_content.dart';
 import 'package:diting/ui/ui.dart';
@@ -14,15 +15,15 @@ class DisclaimerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return CommonScaffold(
-      title: '免责声明',
+      title: context.l10n.disclaimerTitle,
       body: PageBody(
         children: [
           const DisclaimerIntroCard(),
           const SizedBox(height: 12),
-          const ListHeader(title: '使用须知与免责声明'),
+          ListHeader(title: context.l10n.aboutDisclaimerEntry),
           const InitialAgreementCard(),
           const SizedBox(height: 12),
-          const ListHeader(title: '条款全文'),
+          ListHeader(title: context.l10n.disclaimerTerms),
           for (final term in mockDisclaimerTerms)
             DisclaimerTermCard(term: term),
           const SizedBox(height: 8),
@@ -38,7 +39,7 @@ class DisclaimerPage extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    '正式条款以仓库 NOTICE.md 与随包 LICENSE 为准。',
+                    context.l10n.disclaimerSource,
                     style: context.listCaptionStyle,
                   ),
                 ),

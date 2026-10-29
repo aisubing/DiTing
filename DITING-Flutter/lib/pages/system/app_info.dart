@@ -3,6 +3,7 @@
 /// the system handler and fall back to copying when nothing can handle the scheme.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -60,7 +61,11 @@ Future<void> openLinkOrCopy(
 Future<void> joinQqGroup(BuildContext context) async {
   if (await openExternalLink(qqGroupUri)) return;
   if (!context.mounted) return;
-  await copyToClipboard(context, qqGroupNumber, '未检测到 QQ，群号已复制：$qqGroupNumber');
+  await copyToClipboard(
+    context,
+    qqGroupNumber,
+    context.l10n.aboutQqCopied(qqGroupNumber),
+  );
 }
 
 /// Copy [text] to the clipboard, then show [message]. The clipboard write is async

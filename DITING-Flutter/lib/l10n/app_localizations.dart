@@ -6992,6 +6992,966 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'{status} | 拦截 {count} 次 | {percent}'**
   String logsSubStatsRow(Object count, Object percent, Object status);
+
+  /// No description provided for @aboutTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于'**
+  String get aboutTitle;
+
+  /// No description provided for @aboutMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多'**
+  String get aboutMore;
+
+  /// No description provided for @aboutProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目'**
+  String get aboutProject;
+
+  /// No description provided for @aboutJoinQq.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入 QQ 群'**
+  String get aboutJoinQq;
+
+  /// No description provided for @aboutQqGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'群号 {number}'**
+  String aboutQqGroup(Object number);
+
+  /// No description provided for @aboutSponsor.
+  ///
+  /// In zh, this message translates to:
+  /// **'赞助'**
+  String get aboutSponsor;
+
+  /// No description provided for @aboutCredits.
+  ///
+  /// In zh, this message translates to:
+  /// **'开源致谢'**
+  String get aboutCredits;
+
+  /// No description provided for @aboutCreditsUi.
+  ///
+  /// In zh, this message translates to:
+  /// **'界面组件与交互实现复用自该项目'**
+  String get aboutCreditsUi;
+
+  /// No description provided for @aboutCreditsCore.
+  ///
+  /// In zh, this message translates to:
+  /// **'Go 隧道内核最初魔改自该项目'**
+  String get aboutCreditsCore;
+
+  /// No description provided for @aboutCreditsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'上述两个项目均以 GPL-3.0 协议开源，相关代码与设计的版权归各自作者所有。谛听的界面层大量借鉴了 FlClash 的实现思路，隧道内核也源自 blockads-android 的早期改造；在此向它们的作者与所有贡献者致以诚挚谢意。'**
+  String get aboutCreditsBody;
+
+  /// No description provided for @aboutSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get aboutSettings;
+
+  /// No description provided for @aboutStartupCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭启动时检查更新'**
+  String get aboutStartupCheck;
+
+  /// No description provided for @aboutStartupCheckOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用启动时不自动检查，可随时手动检查'**
+  String get aboutStartupCheckOn;
+
+  /// No description provided for @aboutStartupCheckOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用启动时自动检查新版本'**
+  String get aboutStartupCheckOff;
+
+  /// No description provided for @aboutDisclaimerEntry.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用须知与免责声明'**
+  String get aboutDisclaimerEntry;
+
+  /// No description provided for @aboutDisclaimerEntryBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'软件说明、运行机制与免责条款全文'**
+  String get aboutDisclaimerEntryBody;
+
+  /// No description provided for @aboutOtherContributors.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他贡献者'**
+  String get aboutOtherContributors;
+
+  /// No description provided for @aboutSponsorList.
+  ///
+  /// In zh, this message translates to:
+  /// **'赞助者名单'**
+  String get aboutSponsorList;
+
+  /// No description provided for @aboutSponsorListBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'鸣谢支持谛听项目的赞助者'**
+  String get aboutSponsorListBody;
+
+  /// No description provided for @aboutBuilderList.
+  ///
+  /// In zh, this message translates to:
+  /// **'共建者名单'**
+  String get aboutBuilderList;
+
+  /// No description provided for @aboutBuilderListBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢为谛听贡献代码与建议的共建者'**
+  String get aboutBuilderListBody;
+
+  /// No description provided for @aboutInstallerFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法调起系统安装器'**
+  String get aboutInstallerFailed;
+
+  /// No description provided for @aboutAppName.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听'**
+  String get aboutAppName;
+
+  /// No description provided for @aboutTagline.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于 Android VpnService 的本地优先 DNS 加速与流量过滤工具，简单易用，开源无广告。'**
+  String get aboutTagline;
+
+  /// No description provided for @aboutChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查中…'**
+  String get aboutChecking;
+
+  /// No description provided for @aboutCheckUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新'**
+  String get aboutCheckUpdate;
+
+  /// No description provided for @aboutDownloading.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载中…'**
+  String get aboutDownloading;
+
+  /// No description provided for @aboutInstall.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装'**
+  String get aboutInstall;
+
+  /// No description provided for @aboutDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载'**
+  String get aboutDownload;
+
+  /// No description provided for @aboutCheckingRelease.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查 GitHub Release'**
+  String get aboutCheckingRelease;
+
+  /// No description provided for @aboutUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前已是最新版本{version}'**
+  String aboutUpToDate(Object version);
+
+  /// No description provided for @aboutVersionSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'（{version}）'**
+  String aboutVersionSuffix(Object version);
+
+  /// No description provided for @aboutFoundVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现 {version}版本'**
+  String aboutFoundVersion(Object version);
+
+  /// No description provided for @aboutCurrentSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'（当前 {version}）'**
+  String aboutCurrentSuffix(Object version);
+
+  /// No description provided for @aboutNew.
+  ///
+  /// In zh, this message translates to:
+  /// **'新'**
+  String get aboutNew;
+
+  /// No description provided for @aboutNewVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'新版本'**
+  String get aboutNewVersion;
+
+  /// No description provided for @aboutUpdatePackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'{version} 更新包'**
+  String aboutUpdatePackage(Object version);
+
+  /// No description provided for @aboutLinkCopyFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'未能打开浏览器，链接已复制：{url}'**
+  String aboutLinkCopyFallback(Object url);
+
+  /// No description provided for @devStressLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志压测'**
+  String get devStressLogs;
+
+  /// No description provided for @devStressLogsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'向当前模式的日志库真实写入 {count} 条 DNS 日志'**
+  String devStressLogsBody(Object count);
+
+  /// No description provided for @devErrorReport.
+  ///
+  /// In zh, this message translates to:
+  /// **'错误上报自检'**
+  String get devErrorReport;
+
+  /// No description provided for @devErrorReportBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 FlutterError 上报一条测试异常，验证错误链路'**
+  String get devErrorReportBody;
+
+  /// No description provided for @devClearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空全部数据'**
+  String get devClearAll;
+
+  /// No description provided for @devClearAllBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除配置、规则与日志，恢复出厂状态'**
+  String get devClearAllBody;
+
+  /// No description provided for @devVacuum.
+  ///
+  /// In zh, this message translates to:
+  /// **'压缩数据库'**
+  String get devVacuum;
+
+  /// No description provided for @devVacuumBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'对三个本地库执行 VACUUM，回收已删除记录占用的空间'**
+  String get devVacuumBody;
+
+  /// No description provided for @devCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get devCancel;
+
+  /// No description provided for @devRun.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行'**
+  String get devRun;
+
+  /// No description provided for @devConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'{action}\n\n该操作会真正改写本机数据，无法撤销。'**
+  String devConfirmBody(Object action);
+
+  /// No description provided for @devActionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{action}失败：{error}'**
+  String devActionFailed(Object action, Object error);
+
+  /// No description provided for @devStressNoDb.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志压测失败：无法打开日志数据库'**
+  String get devStressNoDb;
+
+  /// No description provided for @devStressDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志压测完成：写入 {count} 条到 {file}'**
+  String devStressDone(Object count, Object file);
+
+  /// No description provided for @devTestException.
+  ///
+  /// In zh, this message translates to:
+  /// **'开发者选项触发的测试异常'**
+  String get devTestException;
+
+  /// No description provided for @devErrorReported.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上报一条 FlutterError：开发者选项触发的测试异常'**
+  String get devErrorReported;
+
+  /// No description provided for @devVacuumNoDb.
+  ///
+  /// In zh, this message translates to:
+  /// **'压缩数据库失败：本机还没有数据库文件'**
+  String get devVacuumNoDb;
+
+  /// No description provided for @devVacuumDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已压缩 {files}，回收 {kb} KB'**
+  String devVacuumDone(Object files, Object kb);
+
+  /// No description provided for @devRestartNeeded.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要重启'**
+  String get devRestartNeeded;
+
+  /// No description provided for @devLater.
+  ///
+  /// In zh, this message translates to:
+  /// **'稍后'**
+  String get devLater;
+
+  /// No description provided for @devQuitNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即退出'**
+  String get devQuitNow;
+
+  /// No description provided for @devClearAllDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部数据已清空，需要重新启动应用才能从出厂状态进入。'**
+  String get devClearAllDone;
+
+  /// No description provided for @devOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'开发者选项'**
+  String get devOptions;
+
+  /// No description provided for @devDiagnostics.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断与观测'**
+  String get devDiagnostics;
+
+  /// No description provided for @devIpQuality.
+  ///
+  /// In zh, this message translates to:
+  /// **'IP 质量'**
+  String get devIpQuality;
+
+  /// No description provided for @devIpQualityBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'实测出口地址与三个公开情报源的类型判断'**
+  String get devIpQualityBody;
+
+  /// No description provided for @devRequestLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求日志'**
+  String get devRequestLogs;
+
+  /// No description provided for @devRequestLogsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并 http_request_log 与 dns_log 的实时请求记录'**
+  String get devRequestLogsBody;
+
+  /// No description provided for @devLogRetention.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志保留'**
+  String get devLogRetention;
+
+  /// No description provided for @devLogRetentionBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志容量上限与 DNS 请求日志的记录范围'**
+  String get devLogRetentionBody;
+
+  /// No description provided for @devTroubleshoot.
+  ///
+  /// In zh, this message translates to:
+  /// **'故障排查'**
+  String get devTroubleshoot;
+
+  /// No description provided for @devTroubleshootBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出崩溃日志，手动抓取并导出运行日志'**
+  String get devTroubleshootBody;
+
+  /// No description provided for @devDataCleanup.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据清理'**
+  String get devDataCleanup;
+
+  /// No description provided for @devUnlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'实验动作已解锁'**
+  String get devUnlocked;
+
+  /// No description provided for @devLocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭时下面的动作不可用'**
+  String get devLocked;
+
+  /// No description provided for @devWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里的动作会真的改写本机数据（日志库、prefs、数据库文件），其中「清空全部数据」不可撤销，不要在生产环境打开。'**
+  String get devWarning;
+
+  /// No description provided for @devRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行中…'**
+  String get devRunning;
+
+  /// No description provided for @sponsorGithub.
+  ///
+  /// In zh, this message translates to:
+  /// **'在 GitHub 查看赞助方式'**
+  String get sponsorGithub;
+
+  /// No description provided for @sponsorReadme.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看 README 中的赞助说明'**
+  String get sponsorReadme;
+
+  /// No description provided for @sponsorReadmeCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未能打开浏览器，README 地址已复制'**
+  String get sponsorReadmeCopied;
+
+  /// No description provided for @sponsorThanks.
+  ///
+  /// In zh, this message translates to:
+  /// **'致谢名单'**
+  String get sponsorThanks;
+
+  /// No description provided for @sponsorThanksBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢每一位支持项目的朋友'**
+  String get sponsorThanksBody;
+
+  /// No description provided for @sponsorBuildersBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢提出建议与帮助测试的伙伴'**
+  String get sponsorBuildersBody;
+
+  /// No description provided for @sponsorUsage.
+  ///
+  /// In zh, this message translates to:
+  /// **'你的每一笔支持都会用于'**
+  String get sponsorUsage;
+
+  /// No description provided for @sponsorUsageNewFeatures.
+  ///
+  /// In zh, this message translates to:
+  /// **'持续开发新功能'**
+  String get sponsorUsageNewFeatures;
+
+  /// No description provided for @sponsorUsageBugs.
+  ///
+  /// In zh, this message translates to:
+  /// **'修复 Bug'**
+  String get sponsorUsageBugs;
+
+  /// No description provided for @sponsorUsageTokens.
+  ///
+  /// In zh, this message translates to:
+  /// **'购买词元'**
+  String get sponsorUsageTokens;
+
+  /// No description provided for @sponsorFreeWays.
+  ///
+  /// In zh, this message translates to:
+  /// **'即使不捐赠，也欢迎'**
+  String get sponsorFreeWays;
+
+  /// No description provided for @sponsorFreeStar.
+  ///
+  /// In zh, this message translates to:
+  /// **'点一个 Star⭐'**
+  String get sponsorFreeStar;
+
+  /// No description provided for @sponsorFreeIssue.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交 Issue'**
+  String get sponsorFreeIssue;
+
+  /// No description provided for @sponsorFreePr.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交 PR'**
+  String get sponsorFreePr;
+
+  /// No description provided for @sponsorFreeShare.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享给更多人'**
+  String get sponsorFreeShare;
+
+  /// No description provided for @sponsorFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢每一位支持项目的朋友！'**
+  String get sponsorFooter;
+
+  /// No description provided for @sponsorBuyDrink.
+  ///
+  /// In zh, this message translates to:
+  /// **'请作者喝杯蜜雪 🧋'**
+  String get sponsorBuyDrink;
+
+  /// No description provided for @sponsorNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'如果这个项目帮助到了你，欢迎请作者喝杯蜜雪。付款时请备注昵称，以便同步加入赞助者名单。'**
+  String get sponsorNote;
+
+  /// No description provided for @sponsorAlipay.
+  ///
+  /// In zh, this message translates to:
+  /// **'支付宝'**
+  String get sponsorAlipay;
+
+  /// No description provided for @sponsorWechat.
+  ///
+  /// In zh, this message translates to:
+  /// **'微信支付'**
+  String get sponsorWechat;
+
+  /// No description provided for @sponsorNickname.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注昵称'**
+  String get sponsorNickname;
+
+  /// No description provided for @sponsorScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码赞助'**
+  String get sponsorScan;
+
+  /// No description provided for @sponsorQrCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label} 收款码'**
+  String sponsorQrCode(Object label);
+
+  /// No description provided for @sponsorClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get sponsorClose;
+
+  /// No description provided for @sponsorNoteShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'付款时请备注昵称，以便同步加入赞助者名单。'**
+  String get sponsorNoteShort;
+
+  /// No description provided for @aboutQqCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到 QQ，群号已复制：{number}'**
+  String aboutQqCopied(Object number);
+
+  /// No description provided for @disclaimerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'免责声明'**
+  String get disclaimerTitle;
+
+  /// No description provided for @disclaimerTerms.
+  ///
+  /// In zh, this message translates to:
+  /// **'条款全文'**
+  String get disclaimerTerms;
+
+  /// No description provided for @disclaimerSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'正式条款以仓库 NOTICE.md 与随包 LICENSE 为准。'**
+  String get disclaimerSource;
+
+  /// No description provided for @ipQualityRedetect.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新检测'**
+  String get ipQualityRedetect;
+
+  /// No description provided for @ipQualityEgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前出口地址'**
+  String get ipQualityEgress;
+
+  /// No description provided for @ipQualitySources.
+  ///
+  /// In zh, this message translates to:
+  /// **'来源'**
+  String get ipQualitySources;
+
+  /// No description provided for @ipQualitySourcesFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'各来源对「住宅 / 机房」的判断经常互相矛盾：命中数越多越可信，但单一来源的「风险」标签不足以作为结论。'**
+  String get ipQualitySourcesFooter;
+
+  /// No description provided for @ipQualityQuerying.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在查询出口 IP 与 3 个情报源…'**
+  String get ipQualityQuerying;
+
+  /// No description provided for @ipQualityChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测中…'**
+  String get ipQualityChecking;
+
+  /// No description provided for @ipQualityDetecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检测'**
+  String get ipQualityDetecting;
+
+  /// No description provided for @ipQualityFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测失败'**
+  String get ipQualityFailed;
+
+  /// No description provided for @ipQualityNotYet.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未检测'**
+  String get ipQualityNotYet;
+
+  /// No description provided for @ipQualityDetectingBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在获取出口 IP 并查询情报源，请稍候'**
+  String get ipQualityDetectingBody;
+
+  /// No description provided for @ipQualityStartBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'点下方按钮开始检测当前出口 IP 的质量'**
+  String get ipQualityStartBody;
+
+  /// No description provided for @ipQualityStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始检测'**
+  String get ipQualityStart;
+
+  /// No description provided for @ipQualityJudgedAs.
+  ///
+  /// In zh, this message translates to:
+  /// **'判定为{type}'**
+  String ipQualityJudgedAs(Object type);
+
+  /// No description provided for @ipQualityNotUsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未采用'**
+  String get ipQualityNotUsed;
+
+  /// No description provided for @ipQualityUsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已采用'**
+  String get ipQualityUsed;
+
+  /// No description provided for @devFooterWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些动作直接作用于本机的数据库、prefs 与 native 通道：日志压测会真的写入 {count} 条日志，压缩数据库执行的是 SQLite VACUUM，清空全部数据会删除所有本地数据并要求重启。'**
+  String devFooterWarning(Object count);
+
+  /// No description provided for @devDataCleanupBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'按类别删除日志、权重、规则与缓存'**
+  String get devDataCleanupBody;
+
+  /// No description provided for @devConfigSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置与资源'**
+  String get devConfigSection;
+
+  /// No description provided for @devCustomResources.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义资源'**
+  String get devCustomResources;
+
+  /// No description provided for @devCustomResourcesBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'User-Agent、按需连接等配置资源入口'**
+  String get devCustomResourcesBody;
+
+  /// No description provided for @devUserAgentBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅下载与测速请求携带的 UA'**
+  String get devUserAgentBody;
+
+  /// No description provided for @devOnDemand.
+  ///
+  /// In zh, this message translates to:
+  /// **'按需连接'**
+  String get devOnDemand;
+
+  /// No description provided for @devOnDemandBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'按 SSID 决定是否启动 VPN'**
+  String get devOnDemandBody;
+
+  /// No description provided for @devWebdav.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 云同步'**
+  String get devWebdav;
+
+  /// No description provided for @devWebdavBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'把备份真实上传到自建的 WebDAV 服务'**
+  String get devWebdavBody;
+
+  /// No description provided for @devUiSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'界面与外观保留项'**
+  String get devUiSection;
+
+  /// No description provided for @devFontFamilyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择界面字体族，独立页'**
+  String get devFontFamilyBody;
+
+  /// No description provided for @devFontSizeBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'全局文字缩放；在外观设置「界面显示」组内联滑杆'**
+  String get devFontSizeBody;
+
+  /// No description provided for @devTabAnimation.
+  ///
+  /// In zh, this message translates to:
+  /// **'Tab 动画'**
+  String get devTabAnimation;
+
+  /// No description provided for @devTabAnimationBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换底部标签时的入场动画；在外观设置「背景与动效」组内联选项'**
+  String get devTabAnimationBody;
+
+  /// No description provided for @devExperimental.
+  ///
+  /// In zh, this message translates to:
+  /// **'实验动作'**
+  String get devExperimental;
+
+  /// No description provided for @devLegacyFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'以上「诊断与观测」「配置与资源」「界面与外观保留项」里的页面都不属于旧版 1.4.3 的界面，保留供调试与组件验收；旧版对应的功能仍按旧版菜单进入，不经过本页。'**
+  String get devLegacyFooter;
+
+  /// No description provided for @unknownRouteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面不存在'**
+  String get unknownRouteTitle;
+
+  /// No description provided for @unknownRouteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'找不到这个页面'**
+  String get unknownRouteBody;
+
+  /// No description provided for @unknownRouteBack.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回'**
+  String get unknownRouteBack;
+
+  /// No description provided for @disclaimerReadFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用前请阅读'**
+  String get disclaimerReadFirst;
+
+  /// No description provided for @disclaimerIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听是一款开源的本地域名解析与流量观测工具。软件本身不提供、不代理、也不转发任何网络接入服务，全部数据都在本机处理。'**
+  String get disclaimerIntro;
+
+  /// No description provided for @disclaimerLawful.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在遵守所在地法律法规的前提下使用本软件。将本软件用于任何未经授权的网络环境，后果由使用者自行承担。'**
+  String get disclaimerLawful;
+
+  /// No description provided for @disclaimerFirstRun.
+  ///
+  /// In zh, this message translates to:
+  /// **'首次启动时确认的文本'**
+  String get disclaimerFirstRun;
+
+  /// No description provided for @disclaimerImmutable.
+  ///
+  /// In zh, this message translates to:
+  /// **'不可修改'**
+  String get disclaimerImmutable;
+
+  /// No description provided for @devFontFamily.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体'**
+  String get devFontFamily;
+
+  /// No description provided for @devFontSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'字号'**
+  String get devFontSize;
+
+  /// No description provided for @devWarningTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'开发者模式'**
+  String get devWarningTitle;
+
+  /// No description provided for @devFooterLegacy.
+  ///
+  /// In zh, this message translates to:
+  /// **'以上「诊断与观测」「配置与资源」「界面与外观保留项」里的页面都不属于旧版 1.4.3 的界面，保留供调试与组件验收；旧版对应的功能仍按旧版菜单进入，不经过本页。'**
+  String get devFooterLegacy;
+
+  /// No description provided for @ipTypeResidential.
+  ///
+  /// In zh, this message translates to:
+  /// **'住宅'**
+  String get ipTypeResidential;
+
+  /// No description provided for @ipTypeMobile.
+  ///
+  /// In zh, this message translates to:
+  /// **'移动'**
+  String get ipTypeMobile;
+
+  /// No description provided for @ipTypeBusiness.
+  ///
+  /// In zh, this message translates to:
+  /// **'商业'**
+  String get ipTypeBusiness;
+
+  /// No description provided for @ipTypeHosting.
+  ///
+  /// In zh, this message translates to:
+  /// **'机房'**
+  String get ipTypeHosting;
+
+  /// No description provided for @ipLevelGood.
+  ///
+  /// In zh, this message translates to:
+  /// **'优秀'**
+  String get ipLevelGood;
+
+  /// No description provided for @ipLevelNormal.
+  ///
+  /// In zh, this message translates to:
+  /// **'一般'**
+  String get ipLevelNormal;
+
+  /// No description provided for @ipLevelRisky.
+  ///
+  /// In zh, this message translates to:
+  /// **'风险'**
+  String get ipLevelRisky;
+
+  /// No description provided for @ipStatusOk.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中'**
+  String get ipStatusOk;
+
+  /// No description provided for @ipStatusNoType.
+  ///
+  /// In zh, this message translates to:
+  /// **'无类型'**
+  String get ipStatusNoType;
+
+  /// No description provided for @ipStatusTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'超时'**
+  String get ipStatusTimeout;
+
+  /// No description provided for @ipStatusRateLimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'限流'**
+  String get ipStatusRateLimited;
+
+  /// No description provided for @ipStatusMismatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'IP 不一致'**
+  String get ipStatusMismatch;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

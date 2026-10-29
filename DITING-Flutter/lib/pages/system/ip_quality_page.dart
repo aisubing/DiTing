@@ -1,6 +1,7 @@
 /// IP quality (upstream `features/ip_quality/ip_quality_sheet.dart`).
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/state/system_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -12,40 +13,53 @@ import 'package:material_ui/material_ui.dart';
 
 /// The four IP type badge values (upstream `IpType`).
 enum IpType {
-  residential('住宅', AppGlyphs.account),
-  mobile('移动', AppGlyphs.devices),
-  business('商业', AppGlyphs.profiles),
-  hosting('机房', AppGlyphs.cpu);
+  residential(AppGlyphs.account),
+  mobile(AppGlyphs.devices),
+  business(AppGlyphs.profiles),
+  hosting(AppGlyphs.cpu);
 
-  const IpType(this.label, this.glyph);
+  const IpType(this.glyph);
 
-  final String label;
   final Glyph glyph;
+
+  String label(AppL10n l10n) => switch (this) {
+    residential => l10n.ipTypeResidential,
+    mobile => l10n.ipTypeMobile,
+    business => l10n.ipTypeBusiness,
+    hosting => l10n.ipTypeHosting,
+  };
 }
 
 /// IP quality level (upstream `IpQualityLevel`, with matching three-tier colors).
 enum IpQualityLevel {
-  good('优秀'),
-  normal('一般'),
-  risky('风险');
+  good,
+  normal,
+  risky;
 
-  const IpQualityLevel(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    good => l10n.ipLevelGood,
+    normal => l10n.ipLevelNormal,
+    risky => l10n.ipLevelRisky,
+  };
 }
 
 /// Result of one source (upstream `IpQualitySourceStatus`).
 enum IpQualitySourceStatus {
-  ok('命中'),
-  noType('无类型'),
-  timeout('超时'),
-  rateLimited('限流'),
-  failed('失败'),
-  ipMismatch('IP 不一致');
+  ok,
+  noType,
+  timeout,
+  rateLimited,
+  failed,
+  ipMismatch;
 
-  const IpQualitySourceStatus(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    ok => l10n.ipStatusOk,
+    noType => l10n.ipStatusNoType,
+    timeout => l10n.ipStatusTimeout,
+    rateLimited => l10n.ipStatusRateLimited,
+    failed => l10n.commonFailed,
+    ipMismatch => l10n.ipStatusMismatch,
+  };
 
   bool get isError => this != ok;
 }
@@ -94,11 +108,11 @@ class _IpQualityPageState extends ConsumerState<IpQualityPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(ipQualityProvider);
     return CommonScaffold(
-      title: 'IP 质量',
+      title: context.l10n.devIpQuality,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.refresh,
-          tooltip: '重新检测',
+          tooltip: context.l10n.ipQualityRedetect,
           isLoading: state.stage == IpQualityStage.loading,
           onPressed: () => ref.read(ipQualityProvider.notifier).detect(),
         ),
@@ -169,7 +183,7 @@ class IpQualitySheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: 4,
                         children: [
-                          Text('当前出口地址', style: context.listCaptionStyle),
+                          Text(context.l10n.ipQualityEgress, style: context.listCaptionStyle),
                           Text(
                             current.ip,
                             style: AppTextStyle.title2
@@ -183,7 +197,7 @@ class IpQualitySheet extends StatelessWidget {
                       const CommonCircleLoading()
                     else
                       StatusPill(
-                        label: level.label,
+                        label: level.label(context.l10n),
                         color: levelColor,
                         alpha: 0.14,
                         padding: const EdgeInsets.symmetric(
@@ -224,23 +238,22 @@ class IpQualitySheet extends StatelessWidget {
           ),
         ),
         generateSection(
-          title: '来源',
+          title: context.l10n.ipQualitySources,
           items: [
             for (final source in current.sources) _SourceRow(source: source),
           ],
           footer:
-              '各来源对「住宅 / 机房」的判断经常互相矛盾：'
-              '命中数越多越可信，但单一来源的「风险」标签不足以作为结论。',
+              context.l10n.ipQualitySourcesFooter,
         ),
         if (stage == IpQualityStage.loading)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: Text('正在查询出口 IP 与 3 个情报源…', style: context.listCaptionStyle),
+            child: Text(context.l10n.ipQualityQuerying, style: context.listCaptionStyle),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: TonalButton(
-            label: stage == IpQualityStage.loading ? '检测中…' : '重新检测',
+            label: stage == IpQualityStage.loading ? context.l10n.ipQualityChecking : context.l10n.ipQualityRedetect,
             glyph: AppGlyphs.refresh,
             size: TonalButtonSize.section,
             onPressed: stage == IpQualityStage.loading ? null : onRetry,
@@ -292,14 +305,14 @@ class _EmptyReport extends StatelessWidget {
                     spacing: 4,
                     children: [
                       Text(
-                        loading ? '正在检测' : (failed ? '检测失败' : '尚未检测'),
+                        loading ? context.l10n.ipQualityDetecting : (failed ? context.l10n.ipQualityFailed : context.l10n.ipQualityNotYet),
                         style: context.listTitleStyle,
                       ),
                       Text(
                         error ??
                             (loading
-                                ? '正在获取出口 IP 并查询情报源，请稍候'
-                                : '点下方按钮开始检测当前出口 IP 的质量'),
+                                ? context.l10n.ipQualityDetectingBody
+                                : context.l10n.ipQualityStartBody),
                         style: context.listCaptionStyle.copyWith(
                           color: failed ? colorScheme.error : null,
                         ),
@@ -314,7 +327,7 @@ class _EmptyReport extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: TonalButton(
-            label: loading ? '检测中…' : '开始检测',
+            label: loading ? context.l10n.ipQualityChecking : context.l10n.ipQualityStart,
             glyph: AppGlyphs.refresh,
             size: TonalButtonSize.section,
             onPressed: loading ? null : onRetry,
@@ -334,7 +347,7 @@ class _TypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return StatusPill(
-      label: type.label,
+      label: type.label(context.l10n),
       color: colorScheme.secondaryContainer,
       foregroundColor: colorScheme.onSecondaryContainer,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -370,12 +383,14 @@ class _SourceRow extends StatelessWidget {
         runSpacing: 2,
         children: [
           Text(
-            status.label,
+            status.label(context.l10n),
             style: context.listCaptionStyle.copyWith(color: color),
           ),
           if (ipType != null)
             Text(
-              '判定为${_typeOf(ipType).label}',
+              context.l10n.ipQualityJudgedAs(
+                _typeOf(ipType).label(context.l10n),
+              ),
               style: context.listCaptionStyle,
             ),
           if (latency != null)
@@ -392,12 +407,12 @@ class _SourceRow extends StatelessWidget {
       ),
       trailing: status.isError
           ? TonalChip(
-              label: '未采用',
+              label: context.l10n.ipQualityNotUsed,
               color: colorScheme.errorContainer,
               foregroundColor: colorScheme.onErrorContainer,
             )
           : TonalChip(
-              label: '已采用',
+              label: context.l10n.ipQualityUsed,
               color: colorScheme.successContainer,
               foregroundColor: colorScheme.onSuccessContainer,
             ),
