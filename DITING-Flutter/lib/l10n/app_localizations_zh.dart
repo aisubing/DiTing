@@ -5431,4 +5431,188 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get serverStatusErrorText => '服务异常：端口可能已被占用';
+
+  @override
+  String get troubleshootTitle => '故障排查';
+
+  @override
+  String get troubleshootRuntimeLogs => '运行日志';
+
+  @override
+  String get troubleshootRecordLogs => '记录运行日志';
+
+  @override
+  String get troubleshootExportLogs => '导出运行日志';
+
+  @override
+  String get troubleshootClearLogs => '清空运行日志';
+
+  @override
+  String get troubleshootClearLogsBody => '删除本地已记录的全部运行日志文件';
+
+  @override
+  String get troubleshootRecordNote =>
+      '默认关闭。开启后会在通知栏显示状态，关闭软件或手动关闭后即停止记录；日志只保存在本机，不会自动上传。';
+
+  @override
+  String get troubleshootLocalDb => '本地数据库';
+
+  @override
+  String get troubleshootWriteStatus => '日志写入状态';
+
+  @override
+  String get troubleshootWriteStatusNote =>
+      '日志、竞速记录与流量统计由后台直接写入本地数据库。出现丢弃或打开失败时，多为数据库被长时间占用，点击可重新读取；反复出现请导出运行日志反馈。';
+
+  @override
+  String get troubleshootCrashLogs => '崩溃日志';
+
+  @override
+  String get troubleshootExportCrashes => '导出崩溃日志';
+
+  @override
+  String get troubleshootClearCrashes => '清空崩溃日志';
+
+  @override
+  String get troubleshootClearCrashesBody => '删除本地所有已记录的崩溃文件';
+
+  @override
+  String get troubleshootCrashNote =>
+      '发生未捕获异常时自动保存诊断信息与关键日志，仅保存在设备本地，导出后可反馈给开发者。';
+
+  @override
+  String get troubleshootCaptureWarning =>
+      '抓取运行日志会持续读写少量文件，可能导致功耗升高、存储占用增加或产生其他未知影响，不需要时请及时关闭。导出的文件可发送给开发者，配合问题现象与发生时间能更快定位原因。';
+
+  @override
+  String get troubleshootReadingStatus => '正在读取抓取状态…';
+
+  @override
+  String troubleshootRecording(Object size) {
+    return '正在记录，已占用 $size，再次点击可关闭';
+  }
+
+  @override
+  String troubleshootStoppedWithLogs(Object size) {
+    return '已关闭，本地已有 $size 日志可导出';
+  }
+
+  @override
+  String get troubleshootStoppedNoLogs => '已关闭，开启后才会记录运行日志';
+
+  @override
+  String get troubleshootReadingLogs => '正在读取本地日志…';
+
+  @override
+  String get troubleshootNoLogs => '当前设备没有运行日志';
+
+  @override
+  String troubleshootLogCount(Object count, Object size) {
+    return '共 $count 个文件，$size，点击导出文件';
+  }
+
+  @override
+  String get troubleshootReadingHealth => '正在读取写入状态…';
+
+  @override
+  String get troubleshootHealthy => '正常，没有日志被丢弃';
+
+  @override
+  String troubleshootHealthyDetail(Object detail, Object mode) {
+    return '正常，没有日志被丢弃（$mode · $detail）';
+  }
+
+  @override
+  String troubleshootDropped(
+    Object dropped,
+    Object failed,
+    Object reason,
+    Object split,
+  ) {
+    return '已丢弃 $dropped 条日志$split，打开失败 $failed 次$reason';
+  }
+
+  @override
+  String get troubleshootOverflow => '队列溢出';
+
+  @override
+  String get troubleshootTableMissing => '表缺失';
+
+  @override
+  String get troubleshootNoDatabase => '无数据库';
+
+  @override
+  String get troubleshootClosed => '停止时未写完';
+
+  @override
+  String get troubleshootReadingCrashes => '正在读取本机崩溃日志…';
+
+  @override
+  String get troubleshootNoCrashes => '当前设备没有崩溃日志';
+
+  @override
+  String troubleshootCrashCount(Object count) {
+    return '已记录 $count 份崩溃日志，点击导出文件';
+  }
+
+  @override
+  String get troubleshootStoppedToast => '已停止记录运行日志';
+
+  @override
+  String get troubleshootStartTitle => '开启运行日志抓取';
+
+  @override
+  String get troubleshootCancel => '取消';
+
+  @override
+  String get troubleshootConfirmStart => '确定开启';
+
+  @override
+  String get troubleshootStartBody =>
+      '该功能主要用于协助开发者排查问题，开启后会开始记录软件的运行日志，并持续写入本机存储。\n\n抓取期间可能导致功耗升高、存储占用增加，或产生其他未知影响。如非排查问题所需，建议用完即关。\n\n日志只保存在本机，关闭后停止记录；导出后你可以自行发送给开发者。';
+
+  @override
+  String get troubleshootStartedToast => '已开始记录运行日志';
+
+  @override
+  String get troubleshootStartFailedToast => '无法开启日志抓取，请稍后重试';
+
+  @override
+  String get troubleshootNoExportableLogs => '没有可导出的运行日志';
+
+  @override
+  String get troubleshootExportFailed => '导出失败：本机没有可写的导出目录';
+
+  @override
+  String troubleshootExported(Object path) {
+    return '已导出到 $path';
+  }
+
+  @override
+  String get troubleshootConfirm => '确定';
+
+  @override
+  String get troubleshootClearLogsConfirm => '确认清空所有已保存的运行日志吗？该操作不可恢复。';
+
+  @override
+  String troubleshootClearedLogs(Object count) {
+    return '已清空 $count 个日志文件';
+  }
+
+  @override
+  String get troubleshootNoClearableLogs => '没有可清空的运行日志';
+
+  @override
+  String get troubleshootNoExportableCrashes => '没有可导出的崩溃日志';
+
+  @override
+  String get troubleshootClearCrashesConfirm => '确认清空所有已保存的崩溃日志吗？';
+
+  @override
+  String troubleshootClearedCrashes(Object count) {
+    return '已清空 $count 份崩溃日志';
+  }
+
+  @override
+  String get troubleshootNoClearableCrashes => '没有可清空的崩溃日志';
 }

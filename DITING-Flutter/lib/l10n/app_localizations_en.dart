@@ -5737,4 +5737,198 @@ class AppL10nEn extends AppL10n {
   @override
   String get serverStatusErrorText =>
       'Service error: the port may already be in use';
+
+  @override
+  String get troubleshootTitle => 'Troubleshooting';
+
+  @override
+  String get troubleshootRuntimeLogs => 'Runtime logs';
+
+  @override
+  String get troubleshootRecordLogs => 'Record runtime logs';
+
+  @override
+  String get troubleshootExportLogs => 'Export runtime logs';
+
+  @override
+  String get troubleshootClearLogs => 'Clear runtime logs';
+
+  @override
+  String get troubleshootClearLogsBody =>
+      'Delete every runtime log file recorded locally';
+
+  @override
+  String get troubleshootRecordNote =>
+      'Off by default. While on, a status notification is shown and recording stops when the app closes or you turn it off; logs stay on this device and are never uploaded automatically.';
+
+  @override
+  String get troubleshootLocalDb => 'Local database';
+
+  @override
+  String get troubleshootWriteStatus => 'Log write status';
+
+  @override
+  String get troubleshootWriteStatusNote =>
+      'Logs, race records and traffic statistics are written straight into the local database in the background. Dropped rows or open failures usually mean the database was locked for a long time; tap to read again, and export the runtime logs if it keeps happening.';
+
+  @override
+  String get troubleshootCrashLogs => 'Crash logs';
+
+  @override
+  String get troubleshootExportCrashes => 'Export crash logs';
+
+  @override
+  String get troubleshootClearCrashes => 'Clear crash logs';
+
+  @override
+  String get troubleshootClearCrashesBody =>
+      'Delete every crash file recorded locally';
+
+  @override
+  String get troubleshootCrashNote =>
+      'When an uncaught exception happens, diagnostics and key logs are saved on the device only; export them to report the problem.';
+
+  @override
+  String get troubleshootCaptureWarning =>
+      'Capturing runtime logs keeps reading and writing a few files, which may raise power use, increase storage usage or have other unknown effects, so turn it off when done. The exported file can be sent to the developer; describing the symptom and when it happened helps pinpoint the cause.';
+
+  @override
+  String get troubleshootReadingStatus => 'Reading capture status…';
+
+  @override
+  String troubleshootRecording(Object size) {
+    return 'Recording, using $size; tap again to stop';
+  }
+
+  @override
+  String troubleshootStoppedWithLogs(Object size) {
+    return 'Stopped; $size of logs are available to export';
+  }
+
+  @override
+  String get troubleshootStoppedNoLogs =>
+      'Stopped; runtime logs are only recorded while on';
+
+  @override
+  String get troubleshootReadingLogs => 'Reading local logs…';
+
+  @override
+  String get troubleshootNoLogs => 'There are no runtime logs on this device';
+
+  @override
+  String troubleshootLogCount(Object count, Object size) {
+    return '$count files, $size; tap to export';
+  }
+
+  @override
+  String get troubleshootReadingHealth => 'Reading write status…';
+
+  @override
+  String get troubleshootHealthy => 'Healthy, no logs were dropped';
+
+  @override
+  String troubleshootHealthyDetail(Object detail, Object mode) {
+    return 'Healthy, no logs were dropped ($mode · $detail)';
+  }
+
+  @override
+  String troubleshootDropped(
+    Object dropped,
+    Object failed,
+    Object reason,
+    Object split,
+  ) {
+    return '$dropped logs dropped$split, $failed open failures$reason';
+  }
+
+  @override
+  String get troubleshootOverflow => 'Queue overflow';
+
+  @override
+  String get troubleshootTableMissing => 'Missing table';
+
+  @override
+  String get troubleshootNoDatabase => 'No database';
+
+  @override
+  String get troubleshootClosed => 'Unfinished when stopped';
+
+  @override
+  String get troubleshootReadingCrashes => 'Reading crash logs on this device…';
+
+  @override
+  String get troubleshootNoCrashes => 'There are no crash logs on this device';
+
+  @override
+  String troubleshootCrashCount(Object count) {
+    return '$count crash logs recorded; tap to export';
+  }
+
+  @override
+  String get troubleshootStoppedToast => 'Stopped recording runtime logs';
+
+  @override
+  String get troubleshootStartTitle => 'Start capturing runtime logs';
+
+  @override
+  String get troubleshootCancel => 'Cancel';
+
+  @override
+  String get troubleshootConfirmStart => 'Start';
+
+  @override
+  String get troubleshootStartBody =>
+      'This feature mainly helps the developer diagnose problems: while on, the app\'s runtime logs are recorded continuously to local storage.\n\nCapturing may raise power use, increase storage usage or have other unknown effects. Unless you are troubleshooting, turn it off when done.\n\nLogs stay on this device and recording stops when you turn it off; you can export and send them to the developer yourself.';
+
+  @override
+  String get troubleshootStartedToast => 'Started recording runtime logs';
+
+  @override
+  String get troubleshootStartFailedToast =>
+      'Cannot start capturing logs; try again later';
+
+  @override
+  String get troubleshootNoExportableLogs =>
+      'There are no runtime logs to export';
+
+  @override
+  String get troubleshootExportFailed =>
+      'Export failed: there is no writable export directory';
+
+  @override
+  String troubleshootExported(Object path) {
+    return 'Exported to $path';
+  }
+
+  @override
+  String get troubleshootConfirm => 'Confirm';
+
+  @override
+  String get troubleshootClearLogsConfirm =>
+      'Clear all saved runtime logs? This cannot be undone.';
+
+  @override
+  String troubleshootClearedLogs(Object count) {
+    return 'Cleared $count log files';
+  }
+
+  @override
+  String get troubleshootNoClearableLogs =>
+      'There are no runtime logs to clear';
+
+  @override
+  String get troubleshootNoExportableCrashes =>
+      'There are no crash logs to export';
+
+  @override
+  String get troubleshootClearCrashesConfirm => 'Clear all saved crash logs?';
+
+  @override
+  String troubleshootClearedCrashes(Object count) {
+    return 'Cleared $count crash logs';
+  }
+
+  @override
+  String get troubleshootNoClearableCrashes =>
+      'There are no crash logs to clear';
 }

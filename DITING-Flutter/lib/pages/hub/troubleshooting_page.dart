@@ -3,6 +3,7 @@
 /// they share a surface instead of two nearly identical cards in 数据与维护.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/native/db_health_bridge.dart';
@@ -110,25 +111,25 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     final error = context.colorScheme.error;
     final muted = context.colorScheme.onSurfaceVariant;
     return CommonScaffold(
-      title: '故障排查',
+      title: context.l10n.troubleshootTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '运行日志',
+            title: context.l10n.troubleshootRuntimeLogs,
             items: [
               ListItem.toggle(
                 leading: GlyphIcon(
                   capturing ? AppGlyphs.checkCircle : AppGlyphs.logs,
                   size: 20,
                 ),
-                title: const Text('记录运行日志'),
+                title: Text(context.l10n.troubleshootRecordLogs),
                 subtitle: Text(_switchSubtitle(status)),
                 value: capturing,
                 onChanged: _busy ? null : (value) => _onToggle(value),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.export),
-                title: const Text('导出运行日志'),
+                title: Text(context.l10n.troubleshootExportLogs),
                 subtitle: Text(_exportSubtitle(status)),
                 onTap: hasRuntimeLogs ? _exportRuntimeLogs : null,
               ),
@@ -138,19 +139,18 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
                   color: hasRuntimeLogs ? error : muted,
                 ),
                 title: Text(
-                  '清空运行日志',
+                  context.l10n.troubleshootClearLogs,
                   style: hasRuntimeLogs ? TextStyle(color: error) : null,
                 ),
-                subtitle: const Text('删除本地已记录的全部运行日志文件'),
+                subtitle: Text(context.l10n.troubleshootClearLogsBody),
                 onTap: hasRuntimeLogs ? _clearRuntimeLogs : null,
               ),
             ],
             footer:
-                '默认关闭。开启后会在通知栏显示状态，关闭软件或手动关闭后即停止记录；'
-                '日志只保存在本机，不会自动上传。',
+                context.l10n.troubleshootRecordNote,
           ),
           generateSection(
-            title: '本地数据库',
+            title: context.l10n.troubleshootLocalDb,
             items: [
               ListItem(
                 leading: GlyphIcon(
@@ -160,22 +160,20 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
                   color: (dbHealth?.healthy ?? true) ? null : error,
                   size: 20,
                 ),
-                title: const Text('日志写入状态'),
+                title: Text(context.l10n.troubleshootWriteStatus),
                 subtitle: Text(_dbHealthSubtitle(dbHealth)),
                 onTap: _refreshDbHealth,
               ),
             ],
             footer:
-                '日志、竞速记录与流量统计由后台直接写入本地数据库。'
-                '出现丢弃或打开失败时，多为数据库被长时间占用，'
-                '点击可重新读取；反复出现请导出运行日志反馈。',
+                context.l10n.troubleshootWriteStatusNote,
           ),
           generateSection(
-            title: '崩溃日志',
+            title: context.l10n.troubleshootCrashLogs,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.wrench),
-                title: const Text('导出崩溃日志'),
+                title: Text(context.l10n.troubleshootExportCrashes),
                 subtitle: Text(_crashSubtitle(crashCount)),
                 onTap: hasCrashes ? _exportCrashes : null,
               ),
@@ -185,22 +183,19 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
                   color: hasCrashes ? error : muted,
                 ),
                 title: Text(
-                  '清空崩溃日志',
+                  context.l10n.troubleshootClearCrashes,
                   style: hasCrashes ? TextStyle(color: error) : null,
                 ),
-                subtitle: const Text('删除本地所有已记录的崩溃文件'),
+                subtitle: Text(context.l10n.troubleshootClearCrashesBody),
                 onTap: hasCrashes ? _clearCrashes : null,
               ),
             ],
             footer:
-                '发生未捕获异常时自动保存诊断信息与关键日志，仅保存在设备本地，'
-                '导出后可反馈给开发者。',
+                context.l10n.troubleshootCrashNote,
           ),
-          const ListFooter(
+          ListFooter(
             text:
-                '抓取运行日志会持续读写少量文件，可能导致功耗升高、存储占用增加或产生'
-                '其他未知影响，不需要时请及时关闭。导出的文件可发送给开发者，'
-                '配合问题现象与发生时间能更快定位原因。',
+                context.l10n.troubleshootCaptureWarning,
           ),
           const SizedBox(height: 24),
         ],
@@ -209,29 +204,34 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
   }
 
   String _switchSubtitle(RuntimeLogStatus? status) {
-    if (status == null) return '正在读取抓取状态…';
+    if (status == null) return context.l10n.troubleshootReadingStatus;
     if (status.capturing) {
-      return '正在记录，已占用 ${status.sizeLabel}，再次点击可关闭';
+      return context.l10n.troubleshootRecording(status.sizeLabel);
     }
     return status.hasLogs
-        ? '已关闭，本地已有 ${status.sizeLabel} 日志可导出'
-        : '已关闭，开启后才会记录运行日志';
+        ? context.l10n.troubleshootStoppedWithLogs(status.sizeLabel)
+        : context.l10n.troubleshootStoppedNoLogs;
   }
 
   String _exportSubtitle(RuntimeLogStatus? status) {
-    if (status == null) return '正在读取本地日志…';
-    if (!status.hasLogs) return '当前设备没有运行日志';
-    return '共 ${status.fileCount} 个文件，${status.sizeLabel}，点击导出文件';
+    if (status == null) return context.l10n.troubleshootReadingLogs;
+    if (!status.hasLogs) return context.l10n.troubleshootNoLogs;
+    return context.l10n.troubleshootLogCount(
+      status.fileCount,
+      status.sizeLabel,
+    );
   }
 
   /// The subtitle reflects the real count; an unreadable count says so instead of inventing one.
   String _dbHealthSubtitle(DbWriteHealthSnapshot? health) {
-    if (health == null) return '正在读取写入状态…';
+    if (health == null) return context.l10n.troubleshootReadingHealth;
     if (health.healthy) {
       // The probe is what makes this trustworthy: "0 dropped" also happens when nothing writes.
-      if (!health.probeOk) return '正常，没有日志被丢弃';
-      return '正常，没有日志被丢弃（${health.probeJournalMode} · '
-          'busy ${health.probeBusyTimeoutMs}ms）';
+      if (!health.probeOk) return context.l10n.troubleshootHealthy;
+      return context.l10n.troubleshootHealthyDetail(
+        health.probeJournalMode,
+        'busy ${health.probeBusyTimeoutMs}ms',
+      );
     }
     final dropped = health.droppedRows;
     final failed = health.openFailures;
@@ -239,17 +239,22 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
         ? health.probeCause
         : health.lastCause;
     final reason = cause.isEmpty ? '' : '（$cause）';
-    final split = _dropBreakdown(health.droppedByReason);
-    return '已丢弃 $dropped 条日志$split，打开失败 $failed 次$reason';
+    final split = _dropBreakdown(health.droppedByReason, context.l10n);
+    return context.l10n.troubleshootDropped(
+      dropped,
+      split,
+      failed,
+      reason,
+    );
   }
 
   /// "（队列溢出 120 · 表缺失 3）": tells a busy database from a missing table at a glance.
-  static String _dropBreakdown(Map<String, int> byReason) {
-    const labels = {
-      'overflow': '队列溢出',
-      'tableMissing': '表缺失',
-      'noDatabase': '无数据库',
-      'closed': '停止时未写完',
+  static String _dropBreakdown(Map<String, int> byReason, AppL10n l10n) {
+    final labels = {
+      'overflow': l10n.troubleshootOverflow,
+      'tableMissing': l10n.troubleshootTableMissing,
+      'noDatabase': l10n.troubleshootNoDatabase,
+      'closed': l10n.troubleshootClosed,
     };
     final parts = [
       for (final entry in labels.entries)
@@ -260,9 +265,9 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
   }
 
   String _crashSubtitle(int? count) => switch (count) {
-    null => '正在读取本机崩溃日志…',
-    0 => '当前设备没有崩溃日志',
-    _ => '已记录 $count 份崩溃日志，点击导出文件',
+    null => context.l10n.troubleshootReadingCrashes,
+    0 => context.l10n.troubleshootNoCrashes,
+    _ => context.l10n.troubleshootCrashCount(count),
   };
 
   /// Turning on is the risky direction, so it asks first; turning off just stops.
@@ -273,29 +278,25 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
       if (!mounted) return;
       setState(() => _busy = false);
       _syncPolling(false);
-      _toast('已停止记录运行日志');
+      _toast(context.l10n.troubleshootStoppedToast);
       return;
     }
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '开启运行日志抓取',
+        title: context.l10n.troubleshootStartTitle,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.troubleshootCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确定开启'),
+            child: Text(context.l10n.troubleshootConfirmStart),
           ),
         ],
-        child: const Text(
-          '该功能主要用于协助开发者排查问题，开启后会开始记录软件的运行日志，'
-          '并持续写入本机存储。\n\n'
-          '抓取期间可能导致功耗升高、存储占用增加，或产生其他未知影响。'
-          '如非排查问题所需，建议用完即关。\n\n'
-          '日志只保存在本机，关闭后停止记录；导出后你可以自行发送给开发者。',
+        child: Text(
+          context.l10n.troubleshootStartBody,
         ),
       ),
     );
@@ -305,14 +306,14 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     if (!mounted) return;
     setState(() => _busy = false);
     _syncPolling(started);
-    _toast(started ? '已开始记录运行日志' : '无法开启日志抓取，请稍后重试');
+    _toast(started ? context.l10n.troubleshootStartedToast : context.l10n.troubleshootStartFailedToast);
   }
 
   Future<void> _exportRuntimeLogs() async {
     final content = await ref.read(runtimeLogBridgeProvider).read();
     if (!mounted) return;
     if (content.isEmpty) {
-      _toast('没有可导出的运行日志');
+      _toast(context.l10n.troubleshootNoExportableLogs);
       return;
     }
     final path = await PlatformBridge().exportText(
@@ -320,26 +321,30 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
       content: content,
     );
     if (!mounted) return;
-    _toast(path == null ? '导出失败：本机没有可写的导出目录' : '已导出到 $path');
+    _toast(
+      path == null
+          ? context.l10n.troubleshootExportFailed
+          : context.l10n.troubleshootExported(path),
+    );
   }
 
   Future<void> _clearRuntimeLogs() async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '清空运行日志',
+        title: context.l10n.troubleshootClearLogs,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.troubleshootCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确定'),
+            child: Text(context.l10n.troubleshootConfirm),
           ),
         ],
-        child: const Text('确认清空所有已保存的运行日志吗？该操作不可恢复。'),
+        child: Text(context.l10n.troubleshootClearLogsConfirm),
       ),
     );
     if (confirmed != true) return;
@@ -347,7 +352,11 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     if (!mounted) return;
     await ref.read(runtimeLogStatusProvider.notifier).refresh();
     if (!mounted) return;
-    _toast(removed > 0 ? '已清空 $removed 个日志文件' : '没有可清空的运行日志');
+    _toast(
+      removed > 0
+          ? context.l10n.troubleshootClearedLogs('$removed')
+          : context.l10n.troubleshootNoClearableLogs,
+    );
   }
 
   /// Reads the real files, joins them and writes the text to the app's external private
@@ -356,7 +365,7 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     final content = await PlatformBridge().readCrashLogs();
     if (!mounted) return;
     if (content.isEmpty) {
-      _toast('没有可导出的崩溃日志');
+      _toast(context.l10n.troubleshootNoExportableCrashes);
       return;
     }
     final path = await PlatformBridge().exportText(
@@ -364,7 +373,11 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
       content: content,
     );
     if (!mounted) return;
-    _toast(path == null ? '导出失败：本机没有可写的导出目录' : '已导出到 $path');
+    _toast(
+      path == null
+          ? context.l10n.troubleshootExportFailed
+          : context.l10n.troubleshootExported(path),
+    );
   }
 
   String _stamp() => DateTime.now()
@@ -382,19 +395,19 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '清空崩溃日志',
+        title: context.l10n.troubleshootClearCrashes,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.troubleshootCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确定'),
+            child: Text(context.l10n.troubleshootConfirm),
           ),
         ],
-        child: const Text('确认清空所有已保存的崩溃日志吗？'),
+        child: Text(context.l10n.troubleshootClearCrashesConfirm),
       ),
     );
     if (confirmed != true) return;
@@ -404,6 +417,10 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     // and the number shown must be the real one afterwards.
     await _refreshCrashCount();
     if (!mounted) return;
-    _toast(removed > 0 ? '已清空 $removed 份崩溃日志' : '没有可清空的崩溃日志');
+    _toast(
+      removed > 0
+          ? context.l10n.troubleshootClearedCrashes('$removed')
+          : context.l10n.troubleshootNoClearableCrashes,
+    );
   }
 }

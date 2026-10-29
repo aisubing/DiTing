@@ -10016,6 +10016,323 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'服务异常：端口可能已被占用'**
   String get serverStatusErrorText;
+
+  /// No description provided for @troubleshootTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'故障排查'**
+  String get troubleshootTitle;
+
+  /// No description provided for @troubleshootRuntimeLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行日志'**
+  String get troubleshootRuntimeLogs;
+
+  /// No description provided for @troubleshootRecordLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录运行日志'**
+  String get troubleshootRecordLogs;
+
+  /// No description provided for @troubleshootExportLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出运行日志'**
+  String get troubleshootExportLogs;
+
+  /// No description provided for @troubleshootClearLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空运行日志'**
+  String get troubleshootClearLogs;
+
+  /// No description provided for @troubleshootClearLogsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除本地已记录的全部运行日志文件'**
+  String get troubleshootClearLogsBody;
+
+  /// No description provided for @troubleshootRecordNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认关闭。开启后会在通知栏显示状态，关闭软件或手动关闭后即停止记录；日志只保存在本机，不会自动上传。'**
+  String get troubleshootRecordNote;
+
+  /// No description provided for @troubleshootLocalDb.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地数据库'**
+  String get troubleshootLocalDb;
+
+  /// No description provided for @troubleshootWriteStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志写入状态'**
+  String get troubleshootWriteStatus;
+
+  /// No description provided for @troubleshootWriteStatusNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志、竞速记录与流量统计由后台直接写入本地数据库。出现丢弃或打开失败时，多为数据库被长时间占用，点击可重新读取；反复出现请导出运行日志反馈。'**
+  String get troubleshootWriteStatusNote;
+
+  /// No description provided for @troubleshootCrashLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'崩溃日志'**
+  String get troubleshootCrashLogs;
+
+  /// No description provided for @troubleshootExportCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出崩溃日志'**
+  String get troubleshootExportCrashes;
+
+  /// No description provided for @troubleshootClearCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空崩溃日志'**
+  String get troubleshootClearCrashes;
+
+  /// No description provided for @troubleshootClearCrashesBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除本地所有已记录的崩溃文件'**
+  String get troubleshootClearCrashesBody;
+
+  /// No description provided for @troubleshootCrashNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'发生未捕获异常时自动保存诊断信息与关键日志，仅保存在设备本地，导出后可反馈给开发者。'**
+  String get troubleshootCrashNote;
+
+  /// No description provided for @troubleshootCaptureWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓取运行日志会持续读写少量文件，可能导致功耗升高、存储占用增加或产生其他未知影响，不需要时请及时关闭。导出的文件可发送给开发者，配合问题现象与发生时间能更快定位原因。'**
+  String get troubleshootCaptureWarning;
+
+  /// No description provided for @troubleshootReadingStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取抓取状态…'**
+  String get troubleshootReadingStatus;
+
+  /// No description provided for @troubleshootRecording.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在记录，已占用 {size}，再次点击可关闭'**
+  String troubleshootRecording(Object size);
+
+  /// No description provided for @troubleshootStoppedWithLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭，本地已有 {size} 日志可导出'**
+  String troubleshootStoppedWithLogs(Object size);
+
+  /// No description provided for @troubleshootStoppedNoLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭，开启后才会记录运行日志'**
+  String get troubleshootStoppedNoLogs;
+
+  /// No description provided for @troubleshootReadingLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取本地日志…'**
+  String get troubleshootReadingLogs;
+
+  /// No description provided for @troubleshootNoLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备没有运行日志'**
+  String get troubleshootNoLogs;
+
+  /// No description provided for @troubleshootLogCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 个文件，{size}，点击导出文件'**
+  String troubleshootLogCount(Object count, Object size);
+
+  /// No description provided for @troubleshootReadingHealth.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取写入状态…'**
+  String get troubleshootReadingHealth;
+
+  /// No description provided for @troubleshootHealthy.
+  ///
+  /// In zh, this message translates to:
+  /// **'正常，没有日志被丢弃'**
+  String get troubleshootHealthy;
+
+  /// No description provided for @troubleshootHealthyDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'正常，没有日志被丢弃（{mode} · {detail}）'**
+  String troubleshootHealthyDetail(Object detail, Object mode);
+
+  /// No description provided for @troubleshootDropped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已丢弃 {dropped} 条日志{split}，打开失败 {failed} 次{reason}'**
+  String troubleshootDropped(
+    Object dropped,
+    Object failed,
+    Object reason,
+    Object split,
+  );
+
+  /// No description provided for @troubleshootOverflow.
+  ///
+  /// In zh, this message translates to:
+  /// **'队列溢出'**
+  String get troubleshootOverflow;
+
+  /// No description provided for @troubleshootTableMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'表缺失'**
+  String get troubleshootTableMissing;
+
+  /// No description provided for @troubleshootNoDatabase.
+  ///
+  /// In zh, this message translates to:
+  /// **'无数据库'**
+  String get troubleshootNoDatabase;
+
+  /// No description provided for @troubleshootClosed.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止时未写完'**
+  String get troubleshootClosed;
+
+  /// No description provided for @troubleshootReadingCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取本机崩溃日志…'**
+  String get troubleshootReadingCrashes;
+
+  /// No description provided for @troubleshootNoCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备没有崩溃日志'**
+  String get troubleshootNoCrashes;
+
+  /// No description provided for @troubleshootCrashCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已记录 {count} 份崩溃日志，点击导出文件'**
+  String troubleshootCrashCount(Object count);
+
+  /// No description provided for @troubleshootStoppedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'已停止记录运行日志'**
+  String get troubleshootStoppedToast;
+
+  /// No description provided for @troubleshootStartTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启运行日志抓取'**
+  String get troubleshootStartTitle;
+
+  /// No description provided for @troubleshootCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get troubleshootCancel;
+
+  /// No description provided for @troubleshootConfirmStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定开启'**
+  String get troubleshootConfirmStart;
+
+  /// No description provided for @troubleshootStartBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'该功能主要用于协助开发者排查问题，开启后会开始记录软件的运行日志，并持续写入本机存储。\n\n抓取期间可能导致功耗升高、存储占用增加，或产生其他未知影响。如非排查问题所需，建议用完即关。\n\n日志只保存在本机，关闭后停止记录；导出后你可以自行发送给开发者。'**
+  String get troubleshootStartBody;
+
+  /// No description provided for @troubleshootStartedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开始记录运行日志'**
+  String get troubleshootStartedToast;
+
+  /// No description provided for @troubleshootStartFailedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法开启日志抓取，请稍后重试'**
+  String get troubleshootStartFailedToast;
+
+  /// No description provided for @troubleshootNoExportableLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可导出的运行日志'**
+  String get troubleshootNoExportableLogs;
+
+  /// No description provided for @troubleshootExportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出失败：本机没有可写的导出目录'**
+  String get troubleshootExportFailed;
+
+  /// No description provided for @troubleshootExported.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导出到 {path}'**
+  String troubleshootExported(Object path);
+
+  /// No description provided for @troubleshootConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定'**
+  String get troubleshootConfirm;
+
+  /// No description provided for @troubleshootClearLogsConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认清空所有已保存的运行日志吗？该操作不可恢复。'**
+  String get troubleshootClearLogsConfirm;
+
+  /// No description provided for @troubleshootClearedLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清空 {count} 个日志文件'**
+  String troubleshootClearedLogs(Object count);
+
+  /// No description provided for @troubleshootNoClearableLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可清空的运行日志'**
+  String get troubleshootNoClearableLogs;
+
+  /// No description provided for @troubleshootNoExportableCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可导出的崩溃日志'**
+  String get troubleshootNoExportableCrashes;
+
+  /// No description provided for @troubleshootClearCrashesConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认清空所有已保存的崩溃日志吗？'**
+  String get troubleshootClearCrashesConfirm;
+
+  /// No description provided for @troubleshootClearedCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清空 {count} 份崩溃日志'**
+  String troubleshootClearedCrashes(Object count);
+
+  /// No description provided for @troubleshootNoClearableCrashes.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可清空的崩溃日志'**
+  String get troubleshootNoClearableCrashes;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
