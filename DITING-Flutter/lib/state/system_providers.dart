@@ -11,6 +11,7 @@ import 'package:diting/data/tools/ip_quality_checker.dart';
 import 'package:diting/data/update/app_update_checker.dart';
 import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/config_providers_resources.dart';
+import 'package:diting/state/global_mirror_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum DavStatus {
@@ -291,10 +292,10 @@ class UpdateNotifier extends Notifier<UpdateState> {
       clearError: true,
       clearApkPath: true,
     );
-    final result = await ref
+    Future<UpdateDownloadResult> downloadFrom(String url) => ref
         .read(updateBridgeProvider)
         .download(
-          url: info.downloadUrl,
+          url: url,
           version: info.version,
           onProgress: (progress) {
             // The user may leave or re-check mid-download, so only update while still downloading.
@@ -302,6 +303,18 @@ class UpdateNotifier extends Notifier<UpdateState> {
             state = state.copyWith(progress: progress.fraction ?? 0);
           },
         );
+    // The global mirror goes first; a failed mirror retries the original address once.
+    final mirrored = globalMirrorUrl(
+      ref.read(globalMirrorTemplateProvider),
+      info.downloadUrl,
+    );
+    var result = await downloadFrom(mirrored ?? info.downloadUrl);
+    if (!result.ok &&
+        mirrored != null &&
+        state.stage == UpdateStage.downloading) {
+      state = state.copyWith(progress: 0);
+      result = await downloadFrom(info.downloadUrl);
+    }
     if (!result.ok) {
       state = state.copyWith(
         stage: UpdateStage.available,
@@ -337,7 +350,10 @@ class UpdateNotifier extends Notifier<UpdateState> {
 
 /// Update checker; tests may override the endpoint.
 final appUpdateCheckerProvider = Provider<AppUpdateChecker>(
-  (ref) => AppUpdateChecker(userAgent: ref.watch(requestUserAgentProvider)),
+  (ref) => AppUpdateChecker(
+    userAgent: ref.watch(requestUserAgentProvider),
+    mirrorTemplate: ref.watch(globalMirrorTemplateProvider),
+  ),
 );
 
 /// Update download/install channel, replaceable in tests.

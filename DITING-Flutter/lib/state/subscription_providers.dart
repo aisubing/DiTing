@@ -15,6 +15,7 @@ import 'package:diting/data/rules/rule_parser.dart';
 import 'package:diting/data/subscriptions/subscription_fetcher.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';
 import 'package:diting/state/config_providers_resources.dart';
+import 'package:diting/state/global_mirror_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -51,10 +52,11 @@ final subscriptionFileReaderProvider = Provider<PlatformBridge>(
 );
 
 /// Real fetcher; tests inject a fake with `overrideWithValue`. The UA comes from
-/// `/config/user-agents` and the provider rebuilds when that selection changes.
+/// `/config/user-agents`, the fallback mirror from the global mirror setting.
 final subscriptionFetcherProvider = Provider<SubscriptionFetcher>((ref) {
   return HttpSubscriptionFetcher(
     userAgent: ref.watch(requestUserAgentProvider),
+    globalMirrorTemplate: ref.watch(globalMirrorTemplateProvider),
   );
 });
 

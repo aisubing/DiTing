@@ -2,8 +2,10 @@
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/pages/hub/mirror_global_section.dart';
 import 'package:diting/state/auto_update_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
+import 'package:diting/state/global_mirror_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/page_intro.dart';
@@ -269,7 +271,12 @@ class MirrorTemplatesPage extends ConsumerWidget {
       ],
       body: PageBody(
         children: [
-          PageIntroCard(text: '保存常用的订阅下载镜像。添加规则订阅时，可以直接选择这里的模板。'),
+          PageIntroCard(
+            text:
+                '保存常用的下载镜像。开启全局镜像后，订阅与软件更新默认都走所选模板；'
+                '添加订阅时也可以单独指定模板。',
+          ),
+          if (rows != null) GlobalMirrorSection(templates: rows),
           generateSection(
             title: '操作',
             items: [
@@ -311,9 +318,14 @@ class MirrorTemplatesPage extends ConsumerWidget {
                         ),
                         IconButton(
                           tooltip: '删除',
-                          onPressed: () => ref
-                              .read(mirrorTemplateActionsProvider)
-                              .remove(row.id),
+                          onPressed: () async {
+                            await ref
+                                .read(mirrorTemplateActionsProvider)
+                                .remove(row.id);
+                            ref
+                                .read(globalMirrorProvider.notifier)
+                                .templateRemoved(row.template);
+                          },
                           icon: const GlyphIcon(AppGlyphs.delete, size: 20),
                         ),
                       ],
@@ -363,6 +375,11 @@ class MirrorTemplatesPage extends ConsumerWidget {
     final ok = await ref
         .read(mirrorTemplateActionsProvider)
         .update(id: row.id, name: result.name, template: result.template);
+    if (ok) {
+      ref
+          .read(globalMirrorProvider.notifier)
+          .templateChanged(row.template, result.template);
+    }
     if (!ok && context.mounted) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         const SnackBar(

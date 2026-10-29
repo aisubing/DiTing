@@ -87,6 +87,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     this.readTimeout = const Duration(seconds: 60),
     this.userAgent = appFallbackUserAgent,
     this.onProgress,
+    this.globalMirrorTemplate,
   }) : _clientFactory = clientFactory ?? HttpClient.new;
 
   final HttpClient Function() _clientFactory;
@@ -99,18 +100,24 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
   /// Download progress: (bytes read, total bytes, or -1 when unknown).
   final void Function(int received, int total)? onProgress;
 
+  /// Global mirror for rows without their own template; it always falls back to direct.
+  final String? globalMirrorTemplate;
+
   @override
   Future<SubscriptionFetchResult> fetch(
     SubscriptionRecord record, {
     bool useValidators = true,
   }) async {
-    final requestedUrl = _mirrorUrlOf(record);
+    final ownMirror = _mirrorUrlOf(record, record.mirrorTemplate);
+    final requestedUrl =
+        ownMirror ?? _mirrorUrlOf(record, globalMirrorTemplate);
     if (requestedUrl != null) {
       final mirrorResult = await _fetchOnce(
         record,
         requestedUrl,
         useValidators: useValidators,
         usedMirror: true,
+        allowFallback: ownMirror == null || record.mirrorFallback,
       );
       if (mirrorResult != null) {
         return mirrorResult;
@@ -121,14 +128,15 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
       record.url,
       useValidators: useValidators,
       usedMirror: false,
+      allowFallback: false,
     );
     return result ??
         SubscriptionFetchResult.failed('订阅地址不可用', requestedUrl: record.url);
   }
 
   /// Mirror URL, or null without a usable template or for a non-remote record.
-  static String? _mirrorUrlOf(SubscriptionRecord record) {
-    final template = record.mirrorTemplate?.trim();
+  static String? _mirrorUrlOf(SubscriptionRecord record, String? raw) {
+    final template = raw?.trim();
     if (template == null || template.isEmpty || !record.isRemote) {
       return null;
     }
@@ -145,6 +153,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     String requestedUrl, {
     required bool useValidators,
     required bool usedMirror,
+    required bool allowFallback,
   }) async {
     final client = _clientFactory()..connectionTimeout = connectTimeout;
     try {
@@ -171,8 +180,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
-        record,
-        usedMirror,
+        allowFallback,
       );
     } on SocketException catch (error) {
       return _fallbackOr(
@@ -181,8 +189,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
-        record,
-        usedMirror,
+        allowFallback,
       );
     } on HandshakeException {
       return _fallbackOr(
@@ -191,8 +198,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
-        record,
-        usedMirror,
+        allowFallback,
       );
     } on FormatException {
       return _fallbackOr(
@@ -201,8 +207,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
-        record,
-        usedMirror,
+        allowFallback,
       );
     } finally {
       client.close(force: true);
@@ -281,10 +286,9 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
   /// After a mirror failure: null when fallback is allowed, else the failure.
   SubscriptionFetchResult? _fallbackOr(
     SubscriptionFetchResult failure,
-    SubscriptionRecord record,
-    bool usedMirror,
+    bool allowFallback,
   ) {
-    if (usedMirror && record.mirrorFallback) {
+    if (allowFallback) {
       return null;
     }
     return failure;

@@ -74,6 +74,30 @@ extension LegacyHubSettings on LegacySettings {
     value,
   );
 
+  /// Global mirror: when on, remote subscriptions without their own template and app updates
+  /// download through [globalMirrorTemplate]. New keys, absent in 1.4.3.
+  bool get globalMirrorEnabled =>
+      _bool(LegacySettings.uiContainer, 'global_mirror_enabled', false);
+
+  void setGlobalMirrorEnabled(bool value) => _store.putBool(
+    LegacySettings.uiContainer,
+    'global_mirror_enabled',
+    value,
+  );
+
+  /// The template string itself, not a row id: templates live in the per-mode rule database,
+  /// while this setting is global.
+  String? get globalMirrorTemplate {
+    final value = _string(LegacySettings.uiContainer, 'global_mirror_template');
+    return value == null || value.trim().isEmpty ? null : value;
+  }
+
+  void setGlobalMirrorTemplate(String template) => _store.putString(
+    LegacySettings.uiContainer,
+    'global_mirror_template',
+    template,
+  );
+
   /// The custom half of the MITM bypass list; presets from `assets/https_passthrough.txt` are
   /// unioned in, never stored here.
   Set<String> get httpsBypassRules =>

@@ -28,15 +28,18 @@ void _updateChecker() {
   late int status;
   late String body;
   late List<String?> seenUserAgents;
+  late List<String> seenPaths;
 
   setUp(() async {
     status = 200;
     body = '{}';
     seenUserAgents = [];
+    seenPaths = [];
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     url = 'http://127.0.0.1:${server.port}/releases/latest';
     server.listen((request) async {
       seenUserAgents.add(request.headers.value(HttpHeaders.userAgentHeader));
+      seenPaths.add(request.uri.path);
       await utf8.decoder.bind(request).join();
       request.response.statusCode = status;
       request.response.write(body);
@@ -229,6 +232,26 @@ void _updateChecker() {
       ).check('1.4.4');
       expect(result.failed, isTrue);
       expect(result.error, contains('无法连接'));
+    });
+
+    test('全局镜像：先请求镜像地址', () async {
+      body = release(tag: 'v9.9.9');
+      final result = await AppUpdateChecker(
+        releaseUrl: url,
+        mirrorTemplate: 'http://127.0.0.1:${server.port}/m/{url}',
+      ).check('1.4.4');
+      expect(result.hasUpdate, isTrue);
+      expect(seenPaths.single, startsWith('/m/'));
+    });
+
+    test('全局镜像不可达时回退原始地址', () async {
+      body = release(tag: 'v9.9.9');
+      final result = await AppUpdateChecker(
+        releaseUrl: url,
+        mirrorTemplate: 'http://127.0.0.1:1/{url}',
+      ).check('1.4.4');
+      expect(result.hasUpdate, isTrue);
+      expect(seenPaths.single, '/releases/latest');
     });
   });
 }

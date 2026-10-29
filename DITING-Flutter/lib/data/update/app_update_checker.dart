@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:diting/data/http/request_user_agent.dart';
+import 'package:diting/data/subscriptions/subscription_url.dart';
 
 class UpdateInfo {
   const UpdateInfo({
@@ -51,6 +52,7 @@ class AppUpdateChecker {
     this.releaseUrl = defaultReleaseUrl,
     this.timeout = const Duration(seconds: 15),
     this.userAgent = appFallbackUserAgent,
+    this.mirrorTemplate,
   });
 
   /// The legacy `AppUpdateManager.RELEASE_URL`; the compile-time override points at a mirror or a
@@ -67,7 +69,32 @@ class AppUpdateChecker {
   /// `/config/user-agents` override; GitHub 403s a request without one.
   final String userAgent;
 
+  /// Global mirror template; the release query tries it first and falls back to direct.
+  final String? mirrorTemplate;
+
   Future<UpdateCheckResult> check(String currentVersion) async {
+    final mirrored = _mirrored(releaseUrl);
+    if (mirrored != null) {
+      final result = await _checkAt(mirrored, currentVersion);
+      if (!result.failed) return result;
+    }
+    return _checkAt(releaseUrl, currentVersion);
+  }
+
+  String? _mirrored(String url) {
+    final template = mirrorTemplate;
+    if (template == null) return null;
+    try {
+      return buildMirrorUrl(template, url);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  Future<UpdateCheckResult> _checkAt(
+    String releaseUrl,
+    String currentVersion,
+  ) async {
     final client = HttpClient()..connectionTimeout = timeout;
     try {
       final request = await client
