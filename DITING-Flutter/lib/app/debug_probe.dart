@@ -9,7 +9,7 @@ import 'dart:developer' as developer;
 import 'package:diting/ui/inherited.dart';
 import 'package:diting/ui/navigator.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 final List<String> _diagnostics = <String>[];

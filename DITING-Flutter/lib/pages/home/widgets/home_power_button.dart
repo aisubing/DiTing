@@ -2,8 +2,11 @@ import 'dart:math' as math;
 
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
+// The shape names below come from material_new_shapes (which still owns `Morph` and
+// `toPath`); hide material_ui's built-in copies so the import stays unambiguous.
 import 'package:material_new_shapes/material_new_shapes.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart'
+    hide CornerRounding, MaterialShapes, RoundedPolygon;
 
 /// Home power button: stopped, starting, running, stopping. Only the running state morphs:
 /// knob and both halos grow into cookie9Sided together, so no layer keeps the old shape.
