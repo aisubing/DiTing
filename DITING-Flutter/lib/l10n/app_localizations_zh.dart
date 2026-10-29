@@ -5996,4 +5996,1881 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get bootstrapIpAddress => 'IP 地址';
+
+  @override
+  String get caCertTitle => 'CA 证书设置';
+
+  @override
+  String get caCertStatusMissing => '尚未生成：引擎还没有产出 ca.crt';
+
+  @override
+  String get caCertStatusUntrusted => '已生成，但未装进系统信任存储';
+
+  @override
+  String get caCertStatusTrusted => '已生成且已被系统信任';
+
+  @override
+  String get caCertSectionStatus => '证书状态';
+
+  @override
+  String get caCertRootStatus => '根证书状态';
+
+  @override
+  String get caCertVerified => '已验证';
+
+  @override
+  String get caCertUnverified => '未验证';
+
+  @override
+  String get caCertReadFailed => '读取失败';
+
+  @override
+  String get caCertStatusFooter =>
+      '仅已验证的根证书支持流量检查；启用了证书绑定（SSL Pinning）的应用将自动旁路。';
+
+  @override
+  String get caCertSectionActions => '证书操作';
+
+  @override
+  String get caCertGuide => '安装与卸载指南';
+
+  @override
+  String get caCertGuideSubtitle => '查看各机型系统证书的安装、移除及安全说明';
+
+  @override
+  String get caCertInstall => '安装根证书';
+
+  @override
+  String get caCertInstallSubtitle => '交给系统安装器；Android 11 起还需在设置里手动确认';
+
+  @override
+  String get caCertInstalled => '已安装';
+
+  @override
+  String get caCertNotInstalled => '未安装';
+
+  @override
+  String get caCertSaveToDownloads => '保存证书到下载目录';
+
+  @override
+  String get caCertSaveToDownloadsSubtitle => '下载目录里的 .crt 可在系统设置里手动安装';
+
+  @override
+  String get caCertFingerprint => '证书指纹';
+
+  @override
+  String get caCertNoFingerprint => '尚未生成证书时没有指纹';
+
+  @override
+  String get caCertFingerprintSubtitle => 'SHA-256（点击查看完整指纹）';
+
+  @override
+  String get caCertViewPem => '查看证书内容';
+
+  @override
+  String get caCertViewPemSubtitle => '以可复制的 PEM 文本显示，便于拷到别处安装';
+
+  @override
+  String get caCertSectionManage => '证书管理';
+
+  @override
+  String get caCertRegenerate => '重新生成根证书';
+
+  @override
+  String get caCertRegenerateSubtitle => '作废当前私钥并生成新证书，重置后需重新安装';
+
+  @override
+  String get caCertNoCertificate => '还没有可用证书，请先点「重新生成根证书」';
+
+  @override
+  String get caCertInstallDialogBody =>
+      'Android 只允许用户手动把根证书装进「CA 证书」一栏，应用无法静默写入系统信任存储。\n\n点「继续」会先保存一份证书文件到下载目录，再尝试打开系统安装器；若安装器只提示去设置，请用该文件在「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」里手动选中它。';
+
+  @override
+  String caCertSavedTo(String name) {
+    return '证书已存到 $name。';
+  }
+
+  @override
+  String get caCertDownloadsDir => '下载目录';
+
+  @override
+  String caCertSaveFailed(String error) {
+    return '证书文件保存失败（$error）。';
+  }
+
+  @override
+  String get caCertOpenedInstaller => '已打开系统证书安装界面。';
+
+  @override
+  String get caCertOpenedSettings => '系统没有证书安装器，已打开安全设置。';
+
+  @override
+  String get caCertInstallerUnavailable => '无法打开证书安装界面。';
+
+  @override
+  String get caCertManualHint => '若界面只提示前往设置，请在「加密与凭据 → 安装证书 → CA 证书」里手动选中它。';
+
+  @override
+  String caCertSavedHint(String name) {
+    return '已保存到 $name，可在「加密与凭据 → 安装证书」里选中它';
+  }
+
+  @override
+  String get caCertDownloadsFailed => '无法写入下载目录';
+
+  @override
+  String get caCertRegenerateTitle => '重新生成根证书？';
+
+  @override
+  String get caCertRegenerateBody =>
+      '会删除现有的 ca.crt / ca.key 与黑名单缓存。已安装的旧证书随即失效，之前被信任的所有连接都需要重新安装新证书，HTTPS 检查也会被自动关闭。';
+
+  @override
+  String get caCertRegenerateAction => '重新生成';
+
+  @override
+  String caCertGenerateFailed(String error) {
+    return '生成失败：$error';
+  }
+
+  @override
+  String get caCertGenerated => '已生成新证书，请前往系统设置安装';
+
+  @override
+  String get caCertFingerprintTitle => '证书指纹（SHA-256）';
+
+  @override
+  String get caCertFingerprintCopied => '指纹已复制';
+
+  @override
+  String get caCertPemTitle => '根证书 PEM';
+
+  @override
+  String get caCertPemCopied => '证书内容已复制';
+
+  @override
+  String get caCertGuideTitle => 'CA 证书指南';
+
+  @override
+  String get caCertWhyTitle => '为什么需要安装';
+
+  @override
+  String get caCertWhyBody =>
+      'HTTPS 流量检查需要在设备上建立一条本地解密通道。系统只信任「用户」证书区里手工安装的根证书，应用无法代替你点这一步。';
+
+  @override
+  String get caCertStepsTitle => '安装步骤';
+
+  @override
+  String get caCertStep1 => '1. 在「CA 证书设置」里点「安装根证书」，应用会把证书文件存进下载目录，再交给系统安装器。';
+
+  @override
+  String get caCertStep2 =>
+      '2. Android 11 起系统安装器通常只提示前往设置，这是平台限制，不是应用故障。请从「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」里选中下载目录里的那个 .crt 文件。';
+
+  @override
+  String get caCertStep3 => '3. 安装时系统会要求屏幕锁或指纹；设备没有锁屏时无法安装，需先设一个 PIN。';
+
+  @override
+  String get caCertStep4 => '4. 回到本页，状态应变成「已验证」；没变就退出重进该页重新检查。';
+
+  @override
+  String get caCertWhichAppsTitle => '哪些应用能被检查';
+
+  @override
+  String get caCertWhichAppsBody =>
+      '系统只信任「用户」证书区的根证书，而 targetSdk 24（Android 7.0）及以上的应用默认不信任用户证书。只有自带网络安全配置允许用户 CA 的应用，其 HTTPS 才能被解密并看到明文。';
+
+  @override
+  String get caCertWhichAppsWarning =>
+      '其余应用的 HTTPS 请求会被记录为「失败 / client_tls」，这是应用的证书绑定或系统策略导致的，属于预期行为；这类应用应加入绕过规则。';
+
+  @override
+  String get caCertRiskTitle => '卸载与风险';
+
+  @override
+  String get caCertRiskWarning =>
+      '根证书一旦装进用户信任区，任何持有对应私钥的软件都能解密本机流量。不再使用时请到系统设置里删除它，并在本页「重新生成根证书」作废旧私钥。';
+
+  @override
+  String get caCertRiskPinning =>
+      '部分应用使用证书绑定（SSL Pinning），装证书后仍会连接失败；这类应用应加入绕过规则，而不是反复重装证书。';
+
+  @override
+  String get commonCopy => '复制';
+
+  @override
+  String get commonContinue => '继续';
+
+  @override
+  String get commonUnknownReason => '未知原因';
+
+  @override
+  String get autoUpdateTitle => '自动更新设置';
+
+  @override
+  String get autoUpdateSection => '自动更新';
+
+  @override
+  String get autoUpdateRulesSwitch => '自动更新规则订阅';
+
+  @override
+  String get autoUpdateRulesSwitchSubtitle => '启动应用或回到前台时检查是否到期';
+
+  @override
+  String get autoUpdateIntervalSection => '更新频率';
+
+  @override
+  String autoUpdateEveryHours(int hours) {
+    return '每 $hours 小时';
+  }
+
+  @override
+  String get autoUpdateCustomInterval => '自定义更新时间';
+
+  @override
+  String get autoUpdateCustomHint => '输入 1 至 168 小时之间的更新时间';
+
+  @override
+  String get autoUpdateIntervalFooter =>
+      '间隔保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。本机没有后台任务队列：应用在前台（含启动与切回前台）时才检查到期并执行，进程被完全关闭期间不会更新。';
+
+  @override
+  String get autoUpdateStatusSection => '执行状态';
+
+  @override
+  String get autoUpdateNext => '下次预计更新';
+
+  @override
+  String get autoUpdateLast => '上次自动更新';
+
+  @override
+  String get autoUpdateNoRunYet => '本次会话还没有执行过自动更新';
+
+  @override
+  String autoUpdateRunCount(int count) {
+    return '（$count 个订阅）';
+  }
+
+  @override
+  String get autoUpdateStatusFooter => '判据是每条订阅的「上次尝试时间」与上面的间隔；正在手动更新时本轮会让路。';
+
+  @override
+  String get autoUpdateGroupsSection => '分组自动更新';
+
+  @override
+  String get autoUpdateReadingGroups => '读取分组中…';
+
+  @override
+  String get autoUpdateNoGroups => '还没有分组';
+
+  @override
+  String get autoUpdateNoGroupsSubtitle => '在规则订阅页新建分组后，可以在这里单独开关';
+
+  @override
+  String get autoUpdateGroupsFooter =>
+      '仅会自动更新已开启的分组中的网络订阅；写入 `subscription_group` 表。';
+
+  @override
+  String get autoUpdateReadingSubs => '正在读取订阅…';
+
+  @override
+  String get autoUpdateNoCandidates => '没有可自动更新的订阅（需为远程、已启用、且所在分组已开启）';
+
+  @override
+  String get autoUpdateDueNow => '已到期：回到前台时会立即执行';
+
+  @override
+  String autoUpdateRemainingHours(int hours, int minutes) {
+    return '$hours 小时 $minutes 分钟后';
+  }
+
+  @override
+  String autoUpdateRemainingMinutes(int minutes) {
+    return '$minutes 分钟后';
+  }
+
+  @override
+  String autoUpdateNextAt(String moment, String left) {
+    return '$moment（$left）';
+  }
+
+  @override
+  String autoUpdateMoment(int month, int day, String time) {
+    return '$month 月 $day 日 $time';
+  }
+
+  @override
+  String get autoUpdateIntervalLabel => '更新间隔（小时）';
+
+  @override
+  String get autoUpdateIntervalHelper => '1–168 小时';
+
+  @override
+  String get mirrorTplTitle => '镜像站模板';
+
+  @override
+  String get mirrorTplAdd => '添加模板';
+
+  @override
+  String get mirrorTplIntro =>
+      '保存常用的下载镜像。开启全局镜像后，订阅与软件更新默认都走所选模板；添加订阅时也可以单独指定模板。';
+
+  @override
+  String get mirrorTplActions => '操作';
+
+  @override
+  String get mirrorTplFormatExample => '镜像站格式示例';
+
+  @override
+  String get mirrorTplFormatExampleSubtitle => '了解占位符如何组成镜像地址';
+
+  @override
+  String get mirrorTplSaved => '已保存模板';
+
+  @override
+  String get mirrorTplReadFailed => '无法读取镜像站模板';
+
+  @override
+  String get mirrorTplReadFailedSubtitle => '旧库尚未就绪或该表不可用';
+
+  @override
+  String mirrorTplSavedCount(int count) {
+    return '已保存模板（$count）';
+  }
+
+  @override
+  String get mirrorTplReading => '正在读取镜像站模板…';
+
+  @override
+  String get mirrorTplEmpty => '暂无模板。点击右上角「添加模板」开始使用。';
+
+  @override
+  String get mirrorTplDuplicate => '同名模板已存在，请换一个名称';
+
+  @override
+  String get mirrorTplDuplicateSave => '保存失败：名称与已有模板重复';
+
+  @override
+  String get mirrorTplFormatTitle => '镜像站格式';
+
+  @override
+  String get mirrorTplFormatIntro => '镜像地址由固定前缀与占位符组成，下载订阅时会把占位符替换成真实链接。';
+
+  @override
+  String mirrorTplFormatUrl(String token) {
+    return '$token：完整订阅地址';
+  }
+
+  @override
+  String mirrorTplFormatScheme(String token) {
+    return '$token：http 或 https';
+  }
+
+  @override
+  String mirrorTplFormatUrlEncoded(String token) {
+    return '$token：URL 编码后的完整地址';
+  }
+
+  @override
+  String mirrorTplFormatHost(String token) {
+    return '$token：订阅域名';
+  }
+
+  @override
+  String mirrorTplFormatPath(String token) {
+    return '$token：路径部分';
+  }
+
+  @override
+  String mirrorTplFormatPathAndQuery(String token) {
+    return '$token：路径与查询参数';
+  }
+
+  @override
+  String mirrorTplFormatSample(String token) {
+    return '示例：https://ghproxy.example.com/$token';
+  }
+
+  @override
+  String mirrorTplFormatPlaceholders(
+    String url,
+    String scheme,
+    String urlEncoded,
+    String host,
+    String path,
+    String pathAndQuery,
+  ) {
+    return '可用占位符：$url、$scheme、$urlEncoded、$host、$path、$pathAndQuery';
+  }
+
+  @override
+  String get mirrorTplNameLabel => '模板名称';
+
+  @override
+  String get mirrorTplNameHint => '例如：GitHub 镜像';
+
+  @override
+  String get mirrorTplAddressLabel => '模板地址';
+
+  @override
+  String get mirrorTplInvalid => '必须使用 HTTP(S) 并包含至少一个占位符';
+
+  @override
+  String get mirrorTplAddTitle => '添加镜像站模板';
+
+  @override
+  String get mirrorTplEditTitle => '编辑镜像站模板';
+
+  @override
+  String get commonEdit => '编辑';
+
+  @override
+  String get ruleControlUrlNotReadyCa => '未就绪 · 需先安装并验证 CA 根证书';
+
+  @override
+  String get ruleControlUrlNotReadyInspection => '未就绪 · 需在 HTTPS 流量检查中开启';
+
+  @override
+  String get ruleControlUrlNotReadyApps => '未就绪 · 需在 HTTPS 流量检查中选择目标应用';
+
+  @override
+  String get ruleControlUrlPaused => '已暂停 · 未启用解密 URL 过滤与重定向';
+
+  @override
+  String get ruleControlUrlRunning => '运行中 · 解密流量匹配 URL 屏蔽、放行及重定向';
+
+  @override
+  String get ruleControlIntro =>
+      '统一管理域名过滤、URL 规则及规则覆写的总控开关、拦截策略与在线规则订阅。黑名单、白名单与覆写名单可在功能中心中独立管理。';
+
+  @override
+  String get ruleControlFilterSection => '过滤与覆写控制';
+
+  @override
+  String get ruleControlDomainRules => '启用域名规则';
+
+  @override
+  String get ruleControlDomainRulesOn => '开启 DNS 阶段域名屏蔽、白名单放行及 IPv4/IPv6 覆写';
+
+  @override
+  String get ruleControlDomainRulesOff => '已禁用 DNS 域名过滤，查询将直接放行';
+
+  @override
+  String get ruleControlUrlRules => 'URL 规则与内容过滤';
+
+  @override
+  String get ruleControlNotReady => '未就绪';
+
+  @override
+  String get ruleControlPolicySection => '拦截策略';
+
+  @override
+  String get ruleControlBlockResponse => '拦截响应';
+
+  @override
+  String ruleControlDynamicSummary(String mode) {
+    return '动态策略：先 NODATA，高频请求后 $mode';
+  }
+
+  @override
+  String get ruleControlSubsSection => '订阅与更新';
+
+  @override
+  String get ruleControlSubsSubtitle => '管理域名规则与 IPv4/IPv6 覆写订阅源及分组';
+
+  @override
+  String ruleControlCount(int count) {
+    return '$count 个';
+  }
+
+  @override
+  String ruleControlAutoUpdateOn(int hours) {
+    return '已开启 · 每 $hours 小时自动更新';
+  }
+
+  @override
+  String get ruleControlAutoUpdateOff => '已关闭自动更新';
+
+  @override
+  String get ruleControlMirrorSubtitle => '维护订阅下载镜像，可在添加订阅时直接选择';
+
+  @override
+  String get blockResponseFixedSection => '固定响应';
+
+  @override
+  String get blockResponseFixedFooter =>
+      '动态策略开启时会临时覆盖以上选择：先返回 NODATA，高频请求后返回 NXDOMAIN。';
+
+  @override
+  String get blockResponseDynamicSection => '动态策略';
+
+  @override
+  String get blockResponseEnableDynamic => '启用动态策略';
+
+  @override
+  String get blockResponseEnableDynamicSubtitle => '同一域名的所有记录类型合并计数';
+
+  @override
+  String get blockResponseParameters => '动态参数';
+
+  @override
+  String blockResponseParamsSummary(int threshold, int window, int duration) {
+    return '$threshold 次 / $window 秒 / 保持 $duration 秒';
+  }
+
+  @override
+  String get blockResponseDynamicFooter =>
+      '正常客户端会缓存 NODATA 响应。动态策略主要用于持续重试或忽略负缓存的请求。';
+
+  @override
+  String get blockResponseThresholdError => '请求次数需在 2–100 之间';
+
+  @override
+  String get blockResponseWindowError => '统计窗口需在 10–300 秒之间';
+
+  @override
+  String get blockResponseDurationError => '保持时长需在 60–3600 秒之间';
+
+  @override
+  String get blockResponseThresholdLabel => '请求次数';
+
+  @override
+  String get blockResponseThresholdHelper => '2–100 次；第 N+1 次开始升级';
+
+  @override
+  String get blockResponseWindowLabel => '统计窗口（秒）';
+
+  @override
+  String get blockResponseWindowHelper => '10–300 秒';
+
+  @override
+  String get blockResponseDurationLabel => 'NXDOMAIN 保持时长（秒）';
+
+  @override
+  String get blockResponseDurationHelper => '60–3600 秒；首次升级起固定计时';
+
+  @override
+  String get httpInspCheckingCa => '正在检查根证书…';
+
+  @override
+  String get httpInspNoAppsHint => '未选择目标应用，仅保留 DNS 过滤';
+
+  @override
+  String httpInspSelectedHint(int count) {
+    return '已选 $count 个应用，其余直接转发';
+  }
+
+  @override
+  String get httpInspScopeSection => '检查范围';
+
+  @override
+  String get httpInspEnable => '启用 HTTPS 检查';
+
+  @override
+  String get httpInspTargetApps => '目标应用';
+
+  @override
+  String get httpInspNoApps => '未选择任何应用';
+
+  @override
+  String httpInspSelectedApps(int count) {
+    return '已选择 $count 个应用';
+  }
+
+  @override
+  String get httpInspCaCert => 'CA 证书';
+
+  @override
+  String get httpInspCaReady => '证书已安装且指纹匹配，可查看或重置';
+
+  @override
+  String get httpInspContentSection => '解密内容过滤';
+
+  @override
+  String get httpInspUrlRules => '启用 URL 规则与重定向';
+
+  @override
+  String get httpInspNeedEnable => '需先启用 HTTPS 检查';
+
+  @override
+  String get httpInspUrlPaused => '已暂停 · 解密请求直接放行，不应用 URL 规则及 CNAME 重定向';
+
+  @override
+  String get httpInspUrlOn => '开启解密流量下的 URL 屏蔽、放行及 CNAME 重定向';
+
+  @override
+  String get httpInspProtocolSection => '协议与兼容性';
+
+  @override
+  String get httpInspBlockHttp3 => '拦截 HTTP/3 (QUIC)';
+
+  @override
+  String get httpInspBlockHttp3Subtitle => '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭';
+
+  @override
+  String get httpInspBlockDot => '阻断加密 DNS (DoT)';
+
+  @override
+  String get httpInspBlockDotSubtitle => '阻断 TCP 853 端口，防止绕过域名规则';
+
+  @override
+  String get httpInspRequestLogs => '请求日志';
+
+  @override
+  String get httpInspRequestLogsSubtitle => '查看解密明细与自动旁路记录';
+
+  @override
+  String get httpInspBypassFooter =>
+      '写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单合并后交给引擎的 setExtraPassthroughSuffixes。';
+
+  @override
+  String httpInspBypassTitle(int count) {
+    return 'HTTPS 绕过规则（$count）';
+  }
+
+  @override
+  String get httpInspBypassEmpty => '未配置自定义绕过规则';
+
+  @override
+  String get httpInspBypassEmptySubtitle => '内置放行清单始终生效；这里是额外追加的域名后缀';
+
+  @override
+  String get httpInspBypassRowSubtitle => '不参与解密，直接透传';
+
+  @override
+  String get httpInspCaRequiredTitle => '需要先安装根证书';
+
+  @override
+  String get httpInspGoInstall => '前往安装';
+
+  @override
+  String get httpInspCaReadingBody => '正在读取根证书状态，请稍后再试。';
+
+  @override
+  String httpInspCaRequiredBody(String problem) {
+    return 'HTTPS 检查要把解密后的明文交回应用，必须由系统的根证书信任链认可谛听的根证书。当前是「$problem」，所以还不能选择目标应用。\n\n去 CA 证书页生成并安装证书？';
+  }
+
+  @override
+  String get httpInspCaMissing => '尚未生成根证书：前往 CA 证书页生成';
+
+  @override
+  String get httpInspCaNotInstalled => '证书已生成但未安装到系统信任存储';
+
+  @override
+  String get httpInspCaReadyShort => '证书已就绪';
+
+  @override
+  String get httpInspNeedDomainRulesTitle => '还需要开启域名规则';
+
+  @override
+  String get httpInspEnableAll => '全部开启';
+
+  @override
+  String get httpInspNeedDomainRulesBody =>
+      'HTTPS 检查负责解密，域名规则负责决定解密后的流量怎么处理。当前域名规则是关闭状态，只开检查不会有任何拦截效果。\n\n是否同时开启域名规则？';
+
+  @override
+  String get httpInspAppsTitle => '选择检查应用';
+
+  @override
+  String get httpInspSelectVisible => '全选当前结果';
+
+  @override
+  String get httpInspDeselectVisible => '取消当前结果';
+
+  @override
+  String get httpInspAppsIntro =>
+      'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，其他应用直接转发。选择应用会取消其「排除应用」「禁止联网」与应用独立规则状态。';
+
+  @override
+  String httpInspAppsCount(int selected, int visible) {
+    return '已选择 $selected 个应用（可见 $visible）';
+  }
+
+  @override
+  String get commonLater => '稍后';
+
+  @override
+  String get ruleControlSubsTitle => '规则订阅';
+
+  @override
+  String get cleanupIntro => '以下操作会立即删除本机数据，删除后无法恢复。重要规则或配置请在执行前备份。';
+
+  @override
+  String cleanupRunning(String title) {
+    return '正在执行：$title';
+  }
+
+  @override
+  String get cleanupDescLogs => '清除 DNS、HTTP 请求日志、竞速统计及 Bootstrap 解析日志';
+
+  @override
+  String get cleanupDescTraffic => '清除所有应用的历史流量统计记录与实时统计状态';
+
+  @override
+  String get cleanupDescCrash => '清除本地保存的所有 Java 与 Native 异常崩溃日志';
+
+  @override
+  String get cleanupDescDnsCache => '移除已缓存的解析结果，下次访问会重新查询';
+
+  @override
+  String get cleanupDescProviderWeights => '清除智能选择的健康样本，让它重新按默认权重分配流量';
+
+  @override
+  String get cleanupDescBootstrapWeights => '清除 Bootstrap DNS 解析健康样本，重新按默认权重选择';
+
+  @override
+  String get cleanupDescDomainRules => '清除域名屏蔽、白名单、IPv4/IPv6 覆写及对应订阅，恢复预设白名单';
+
+  @override
+  String get cleanupDescAddressRules => '清除 URL 屏蔽、放行和 CNAME 覆写规则，不影响域名规则';
+
+  @override
+  String get cleanupDescSubscriptions => '清除所有网络与本地规则订阅、订阅分组及自动更新任务';
+
+  @override
+  String get cleanupDescAppRules => '清空分应用排除、禁止联网应用、应用白名单及抓包名单';
+
+  @override
+  String get cleanupDescOutboundProxy => '清空出站代理协议、服务器与鉴权信息，恢复直连';
+
+  @override
+  String get cleanupDescCaCertificate => '清除本地生成的 MITM CA 根证书与私钥';
+
+  @override
+  String get cleanupDescDownloadCache => '删除更新安装包、下载临时文件及应用临时缓存';
+
+  @override
+  String get cleanupDescCustomBackground => '清除已配置的自定义壁纸图片缓存及路径记录，恢复默认背景';
+
+  @override
+  String get cleanupDescSettingsGuides => '让所有首次进入说明再次显示，需要重新同意使用协议';
+
+  @override
+  String get cleanupDescAllData => '深度清空所有日志、缓存、规则、订阅、证书与配置，应用将退出';
+
+  @override
+  String get cleanupConfirmLogs =>
+      '确定要删除所有 DNS、HTTP 请求日志、竞速统计和 Bootstrap DNS 解析统计吗？';
+
+  @override
+  String get cleanupConfirmTraffic => '确定要清除所有应用的历史流量统计记录与实时统计状态吗？';
+
+  @override
+  String get cleanupConfirmCrash => '确定要删除所有本地崩溃日志和崩溃统计状态吗？';
+
+  @override
+  String get cleanupConfirmDnsCache => '确定要删除所有本地 DNS 缓存吗？下次访问域名时会重新查询。';
+
+  @override
+  String get cleanupConfirmProviderWeights => '确定要清除所有服务商健康样本并恢复竞速模式默认权重吗？';
+
+  @override
+  String get cleanupConfirmBootstrapWeights =>
+      '确定要清除 Bootstrap DNS 解析健康样本并恢复默认权重吗？';
+
+  @override
+  String get cleanupConfirmDomainRules =>
+      '确定要删除全部域名规则吗？域名屏蔽、白名单、IPv4/IPv6 覆写规则及对应订阅都会被移除，地址规则不受影响。';
+
+  @override
+  String get cleanupConfirmAddressRules =>
+      '确定要删除全部地址规则吗？URL 屏蔽、放行和 CNAME 覆写规则都会被移除，域名规则不受影响。';
+
+  @override
+  String get cleanupConfirmSubscriptions =>
+      '确定要删除所有规则订阅吗？所有订阅链接、分组与订阅导入的规则都会被移除，手动添加的规则不受影响。';
+
+  @override
+  String get cleanupConfirmAppRules =>
+      '确定要重置所有应用控制名单吗？分应用代理排除、禁止联网应用、应用独立白名单以及 HTTP/HTTPS 抓包应用配置都将被清空并恢复默认。';
+
+  @override
+  String get cleanupConfirmOutboundProxy =>
+      '确定要重置出站代理配置吗？出站代理将被禁用，服务器地址、端口及账号密码将被清除。';
+
+  @override
+  String get cleanupConfirmCaCertificate =>
+      '确定要清除本地生成的 HTTPS 抓包 CA 证书和私钥吗？如果系统已安装此证书，清除后需重新生成并导入系统方可继续解密抓包。';
+
+  @override
+  String get cleanupConfirmDownloadCache => '确定要删除下载的更新安装包和临时缓存文件吗？';
+
+  @override
+  String get cleanupConfirmCustomBackground => '确定要清除自定义壁纸缓存并恢复默认外观背景吗？';
+
+  @override
+  String get cleanupConfirmSettingsGuides =>
+      '确定要重置所有应用设置新手引导和首次使用协议吗？这不会删除任何配置、规则、缓存、日志或证书。操作完成后应用将退出；下次打开时需要重新同意使用协议，所有新手引导也会再次显示。';
+
+  @override
+  String get cleanupConfirmAllData =>
+      '确定要执行全面数据清理吗？将依次清理所有日志、流量统计、崩溃记录、DNS 缓存、服务商权重、域名及地址规则、规则订阅、临时缓存及抓包证书。所有自定义配置与规则将被清空，新手引导也将重置，操作完成后应用将退出。';
+
+  @override
+  String get cleanupRestartTitle => '需要重启应用';
+
+  @override
+  String get cleanupRestartBody => '清理已完成。新手引导与使用协议已重置，应用需要重新启动才会生效。';
+
+  @override
+  String get commonConfirm => '确定';
+
+  @override
+  String get transferTitle => '备份与迁移';
+
+  @override
+  String get transferMetricProviders => 'DNS 服务商';
+
+  @override
+  String get transferMetricSubs => '规则订阅';
+
+  @override
+  String get transferMetricCustomRules => '自定义规则';
+
+  @override
+  String get transferMetricListedApps => '名单应用';
+
+  @override
+  String get transferSectionAppConfig => '应用配置备份';
+
+  @override
+  String get transferSectionRules => '规则与订阅配置';
+
+  @override
+  String get transferSectionAppControl => '应用控制与流量管理';
+
+  @override
+  String get transferSectionPersonal => '个性化与通用设置';
+
+  @override
+  String get transferDeselectAll => '全不选';
+
+  @override
+  String get transferImportExportSection => '导入导出';
+
+  @override
+  String get transferExportJson => '导出应用配置 (JSON)';
+
+  @override
+  String get transferExportHintNone => '请先勾选要导出的分组';
+
+  @override
+  String transferExportHintCount(int count) {
+    return '将勾选的 $count 组配置保存为 JSON 文件';
+  }
+
+  @override
+  String get transferImportJson => '导入应用配置 (JSON)';
+
+  @override
+  String get transferImportSubtitle => '从备份文件合并配置，自动跳过本机已存在项目';
+
+  @override
+  String get transferImportExportFooter =>
+      '导出的配置文件包含个人自定义设置，请妥善保管；导入时将合并配置并自动跳过已存在的条目。出站代理的账号密码不在备份范围内。';
+
+  @override
+  String get transferCloudSection => '云端备份';
+
+  @override
+  String get transferWebdav => 'WebDAV 云同步';
+
+  @override
+  String get transferWebdavSubtitle => '把配置文件同步到自建 WebDAV 服务器';
+
+  @override
+  String get transferBusyExporting => '正在生成备份文件…';
+
+  @override
+  String get transferBusySaving => '等待选择保存位置…';
+
+  @override
+  String get transferBusyPickingImport => '等待选择备份文件…';
+
+  @override
+  String get transferExportEmpty => '所选分组没有可导出的内容';
+
+  @override
+  String get transferExportCancelled => '已取消保存';
+
+  @override
+  String transferExportDone(int groups, int items) {
+    return '已导出 $groups 组、共 $items 项';
+  }
+
+  @override
+  String transferExportSkipped(int count) {
+    return '；跳过 $count 项';
+  }
+
+  @override
+  String get transferExportFailed => '导出失败';
+
+  @override
+  String get transferImportCancelled => '已取消导入';
+
+  @override
+  String get transferImportTitle => '导入应用配置';
+
+  @override
+  String get transferImportFailedChip => '导入失败';
+
+  @override
+  String get transferImportDoneChip => '导入完成';
+
+  @override
+  String transferImportSummary(int added, int updated, int skipped) {
+    return '导入汇总：新增 $added 项，更新 $updated 项，跳过 $skipped 项';
+  }
+
+  @override
+  String transferSourceFile(String name) {
+    return '来源文件：$name';
+  }
+
+  @override
+  String transferExportedAt(String time) {
+    return '备份导出于 $time';
+  }
+
+  @override
+  String transferOutcomeRow(String group, String detail) {
+    return '  + $group · $detail';
+  }
+
+  @override
+  String transferFailedGroupRow(String group, String error) {
+    return '  ! $group：$error';
+  }
+
+  @override
+  String get transferNothingChanged => '  （备份中的条目本机都已存在，没有需要变更的内容）';
+
+  @override
+  String transferSubscriptionsNote(int count) {
+    return '包含 $count 个订阅，请进入订阅管理执行规则更新。';
+  }
+
+  @override
+  String get transferDone => '完成';
+
+  @override
+  String transferOutcomeAdded(int count) {
+    return '新增 $count';
+  }
+
+  @override
+  String transferOutcomeUpdated(int count) {
+    return '更新 $count';
+  }
+
+  @override
+  String transferOutcomeSkipped(int count) {
+    return '跳过 $count';
+  }
+
+  @override
+  String get transferNoChange => '无变化';
+
+  @override
+  String get transferOutcomeSeparator => '，';
+
+  @override
+  String get webdavClearConfig => '清空配置';
+
+  @override
+  String get webdavTest => '测试连接';
+
+  @override
+  String get webdavServer => '服务器';
+
+  @override
+  String get webdavUsername => '用户名';
+
+  @override
+  String get webdavPassword => '密码';
+
+  @override
+  String get webdavPath => '远端路径';
+
+  @override
+  String get webdavUpload => '上传备份';
+
+  @override
+  String get webdavDownload => '下载恢复';
+
+  @override
+  String webdavFooter(String hint) {
+    return '「测试连接」会真实发起 WebDAV 请求：PROPFIND 探测目录，不存在则尝试创建。上传与下载走与「备份与迁移」同一份备份格式。$hint密码只存在内存里，不落盘。';
+  }
+
+  @override
+  String get webdavFooterConnected => '连接成功后即可上传或恢复。';
+
+  @override
+  String get webdavNoConfig => '本机没有可备份的配置';
+
+  @override
+  String get webdavUploadFailed => '上传失败';
+
+  @override
+  String get webdavNoCloudBackup => '云端没有可恢复的备份';
+
+  @override
+  String get webdavRestoreTitle => '从云端恢复配置';
+
+  @override
+  String get webdavRestoreFailed => '恢复失败';
+
+  @override
+  String get webdavRestoreDone => '恢复完成';
+
+  @override
+  String webdavRestoreSummary(int added, int updated, int skipped) {
+    return '恢复汇总：新增 $added 项，更新 $updated 项，跳过 $skipped 项';
+  }
+
+  @override
+  String webdavOutcomeRow(String group, int added, int skipped) {
+    return '  + $group · 新增 $added，跳过 $skipped';
+  }
+
+  @override
+  String get webdavNothingChanged => '  （云端备份与本机一致，没有需要变更的内容）';
+
+  @override
+  String get webdavHintIdle => '配置服务器信息后可测试连接';
+
+  @override
+  String get webdavHintConnecting => '正在握手，请稍候';
+
+  @override
+  String get webdavHintConnected => '可上传备份或从云端恢复配置';
+
+  @override
+  String get webdavHintFailed => '检查地址、账号与证书后重试';
+
+  @override
+  String get backupGroupProviders => '自定义 DNS 服务商';
+
+  @override
+  String get backupGroupProvidersDesc => 'DoH、DoT 服务商与解析配置';
+
+  @override
+  String get backupGroupBootstrap => '自定义 Bootstrap IP';
+
+  @override
+  String get backupGroupBootstrapDesc => '引导 DNS 节点与启用状态';
+
+  @override
+  String get backupGroupCache => 'DNS 缓存策略';
+
+  @override
+  String get backupGroupCacheDesc => 'DNS 缓存开关、预设与 TTL 控制';
+
+  @override
+  String get backupGroupOutbound => '出站代理配置';
+
+  @override
+  String get backupGroupOutboundDesc => 'SOCKS5 / HTTP 代理与代理应用，不含账号密码';
+
+  @override
+  String get backupGroupSubscriptions => '网络规则订阅';
+
+  @override
+  String get backupGroupSubscriptionsDesc => '订阅源链接、镜像加速与自动更新';
+
+  @override
+  String get backupGroupDomainRules => '自定义屏蔽域名规则';
+
+  @override
+  String get backupGroupDomainRulesDesc => '手动添加的域名屏蔽规则及状态';
+
+  @override
+  String get backupGroupRewriteDomain => '自定义复写域名规则';
+
+  @override
+  String get backupGroupRewriteDomainDesc => 'IPv4 / IPv6 域名覆写规则';
+
+  @override
+  String get backupGroupRewriteCname => '自定义复写 CNAME 规则';
+
+  @override
+  String get backupGroupRewriteCnameDesc => 'CNAME 域名覆写规则';
+
+  @override
+  String get backupGroupAddressRules => '自定义屏蔽地址规则';
+
+  @override
+  String get backupGroupAddressRulesDesc => 'URL 路径屏蔽规则';
+
+  @override
+  String get backupGroupExcluded => '排除应用名单';
+
+  @override
+  String get backupGroupExcludedDesc => '绕过过滤使用系统 DNS 的应用';
+
+  @override
+  String get backupGroupBlocked => '禁止联网名单';
+
+  @override
+  String get backupGroupBlockedDesc => '服务运行时禁止联网的应用';
+
+  @override
+  String get backupGroupAllowlist => '应用独立规则与放行';
+
+  @override
+  String get backupGroupAllowlistDesc => '单应用放行规则与域名白名单';
+
+  @override
+  String get backupGroupHttpInspection => 'HTTPS 抓包检测配置';
+
+  @override
+  String get backupGroupHttpInspectionDesc => '流量抓包开关与目标应用名单';
+
+  @override
+  String get backupGroupAppearance => '外观与界面个性化';
+
+  @override
+  String get backupGroupAppearanceDesc => '主题风格、组件透明度与标语';
+
+  @override
+  String get backupGroupSystem => '系统与通用设置';
+
+  @override
+  String get backupGroupSystemDesc => '局域网绕行、日志模式、语言与通知';
+
+  @override
+  String webdavUploadedCount(int groups, int items) {
+    return '已上传 $groups 组、共 $items 项';
+  }
+
+  @override
+  String get agentApiEnabled => 'AI 分析已启用';
+
+  @override
+  String get agentApiDisabled => 'AI 分析未启用';
+
+  @override
+  String get agentApiNoProvider => '尚未配置 AI 厂商；请先在「AI 厂商管理」中添加并填写 API Key。';
+
+  @override
+  String agentApiCurrentProvider(String name, String model) {
+    return '当前厂商：$name · $model';
+  }
+
+  @override
+  String get agentApiNoModel => '未选择模型';
+
+  @override
+  String get agentApiKeyConfigured => '密钥已配置';
+
+  @override
+  String agentApiTemperature(String value) {
+    return '温度 $value';
+  }
+
+  @override
+  String get agentApiProviderChip => '请求由你的厂商处理';
+
+  @override
+  String get agentApiReadyHintOn => '补全厂商与密钥后，日志页就能直接发起分析。';
+
+  @override
+  String get agentApiReadyHintOff => '开启后即可在日志页直接发起分析。';
+
+  @override
+  String get agentApiSectionProvider => '厂商与参数';
+
+  @override
+  String agentApiProvidersSubtitle(int count) {
+    return '$count 个已配置厂商 · 选择接口与模型';
+  }
+
+  @override
+  String get agentParamsSubtitle => '系统提示词与采样温度';
+
+  @override
+  String get agentApiSectionTest => '功能测试';
+
+  @override
+  String get agentApiTestDomain => '分析一个域名';
+
+  @override
+  String get agentApiTestDomainSubtitle => '用示例域名真实调用模型，检查安全风险与处置建议';
+
+  @override
+  String get agentApiTestTraffic => '分析最近流量';
+
+  @override
+  String get agentApiTestTrafficSubtitle => '汇总最近 DNS 与 HTTPS 记录后真实调用模型';
+
+  @override
+  String get agentApiTestFooterReady => '两项都会真实请求你配置的厂商并消耗额度。';
+
+  @override
+  String get agentApiTestFooterNotReady => '当前配置不完整（未启用或缺少 API Key），点击会提示先补配置。';
+
+  @override
+  String get agentApiSectionEntries => '分析入口';
+
+  @override
+  String get agentApiCacheTable => 'DNS 缓存表';
+
+  @override
+  String get agentApiCacheTableSubtitle => '点按任意一行，分析该域名的安全风险';
+
+  @override
+  String get agentApiRequests => '请求记录';
+
+  @override
+  String get agentApiRequestsSubtitle => '打开一条请求的详情，底部可分析该域名';
+
+  @override
+  String get agentApiDashboard => '日志仪表盘';
+
+  @override
+  String get agentApiDashboardSubtitle => '「AI 研判」卡片可对最近流量发起整体分析';
+
+  @override
+  String get agentApiEntriesFooter =>
+      '分析结果里的域名可以一键写入白名单或屏蔽规则，写入后启动 DNS VPN 生效。';
+
+  @override
+  String get agentApiSectionReset => '重置设置';
+
+  @override
+  String get agentApiResetItem => '恢复出厂默认配置';
+
+  @override
+  String get agentApiResetSubtitle => '将清空厂商、API Key、提示词与温度';
+
+  @override
+  String get agentApiFooter => 'AI 分析用于辅助研判，不会自动修改规则；所有请求由你配置的厂商处理，密钥只存在本机。';
+
+  @override
+  String get agentApiResetTitle => '恢复默认配置？';
+
+  @override
+  String get agentApiResetBody => '此操作将把所有 AI 分析参数、API Key 与系统提示词恢复为默认设置。';
+
+  @override
+  String get agentApiResetConfirm => '确认恢复';
+
+  @override
+  String get agentProvidersTitle => 'AI 厂商管理';
+
+  @override
+  String get agentProvidersAdd => '添加自定义厂商';
+
+  @override
+  String get agentProvidersIntro =>
+      '点选下方预设厂商会自动预填接口地址；模型名请在编辑页点「拉取模型」从厂商真实返回的列表里选。编辑时若 API Key 留空则保留原密钥。密钥以旧版同一套掩码混淆后存在本机，不额外落明文。';
+
+  @override
+  String get agentProvidersMine => '我的厂商';
+
+  @override
+  String get agentProvidersEmpty => '暂无厂商';
+
+  @override
+  String get agentProvidersEmptySubtitle => '从下方预设厂商目录点选，或点击右上角添加自定义厂商';
+
+  @override
+  String agentProvidersRow(String model, String baseUrl, String key) {
+    return '$model · $baseUrl · $key';
+  }
+
+  @override
+  String get agentProvidersKeyConfigured => '密钥已配置';
+
+  @override
+  String get agentProvidersKeyMissing => '缺少密钥';
+
+  @override
+  String get agentProvidersFooter =>
+      '点一行可切换当前生效厂商；切换会把接口地址、密钥与模型同步到旧版的四个平铺键，避免新版界面与旧版读取来源不一致。';
+
+  @override
+  String get agentProvidersAdded => '已添加';
+
+  @override
+  String get agentProvidersDeleteTitle => '删除厂商';
+
+  @override
+  String agentProvidersDeleteBody(String name) {
+    return '确定要删除「$name」吗？相关 API Key 也会从本机移除。';
+  }
+
+  @override
+  String get agentEditorAddTitle => '添加厂商';
+
+  @override
+  String get agentEditorEditTitle => '编辑厂商';
+
+  @override
+  String get agentEditorPaste => '从剪贴板识别';
+
+  @override
+  String get agentEditorName => '厂商名称';
+
+  @override
+  String get agentEditorBaseUrl => '接口地址';
+
+  @override
+  String get agentEditorModel => '模型名称';
+
+  @override
+  String get agentEditorModelHint => '点「拉取模型」从厂商返回的列表里选';
+
+  @override
+  String get agentEditorKeyKeep => '留空则保留原密钥';
+
+  @override
+  String get agentEditorKeyLocal => '仅保存在本机（旧版同一套掩码）';
+
+  @override
+  String get agentEditorFetching => '请求中…';
+
+  @override
+  String get agentEditorFetch => '拉取模型';
+
+  @override
+  String get agentEditorTest => '测试连接';
+
+  @override
+  String get agentEditorErrorRequired => '请填写名称、以 http(s) 开头的接口地址与模型名';
+
+  @override
+  String get agentEditorErrorBaseUrl => '请先填写接口地址';
+
+  @override
+  String get agentEditorErrorTestNeeds => '测试连接需要接口地址与模型名';
+
+  @override
+  String agentEditorFetched(int count) {
+    return '拉取到 $count 个模型，点下方标签选择';
+  }
+
+  @override
+  String agentEditorFetchFailed(String error) {
+    return '拉取模型失败：$error';
+  }
+
+  @override
+  String agentEditorConnected(String model) {
+    return '连接成功：$model';
+  }
+
+  @override
+  String agentEditorUsage(int tokens) {
+    return '，用量 $tokens tokens';
+  }
+
+  @override
+  String agentEditorConnectFailed(String error) {
+    return '连接失败：$error';
+  }
+
+  @override
+  String get agentParamsTitle => '参数与提示词';
+
+  @override
+  String get agentParamsPromptSection => '系统提示词';
+
+  @override
+  String get agentParamsPromptItem => '系统提示词设定';
+
+  @override
+  String get agentParamsPromptUnset => '未设置（将使用各分析场景的内置提示词）';
+
+  @override
+  String get agentParamsPromptFooter => '留空时域名分析与流量分析各用自己那份内置提示词；填写后两者都以此为准。';
+
+  @override
+  String get agentParamsPromptHint => '例如：你是一名网络安全与 DNS 威胁情报专家……';
+
+  @override
+  String get agentParamsTemperatureSection => '采样温度（Temperature）';
+
+  @override
+  String get agentParamsTemperatureItem => '生成随机度与创造性';
+
+  @override
+  String get agentParamsTemperatureFooter =>
+      '安全研判建议 0.2–0.4：温度越低，结论越稳定、越少自由发挥。';
+
+  @override
+  String get agentParamsTemperatureStrict => '严谨精确（适合安全分析与结构化输出）';
+
+  @override
+  String get agentParamsTemperatureBalanced => '平衡适中（推荐日常综合分析场景）';
+
+  @override
+  String get agentParamsTemperatureWild => '发散多变（输出内容更为丰富自由）';
+
+  @override
+  String get agentParamsTemplateSecurity => '安全威胁分析';
+
+  @override
+  String get agentParamsTemplateTechnical => '极简技术审查';
+
+  @override
+  String get agentParamsTemplatePrivacy => '隐私与遥测审查';
+
+  @override
+  String get agentSheetCopied => '分析结果已复制到剪贴板';
+
+  @override
+  String agentSheetRuleAdded(String kind) {
+    return '已写入$kind，启动 DNS VPN 后生效';
+  }
+
+  @override
+  String agentSheetRuleExists(String kind) {
+    return '该域名已在$kind中';
+  }
+
+  @override
+  String get agentSheetFooter => 'AI 只做研判，不会自动修改规则；结论仅供参考。请求由你配置的厂商处理，密钥只存在本机。';
+
+  @override
+  String get agentSheetDisabledTitle => 'AI 分析功能已关闭';
+
+  @override
+  String get agentSheetDisabledBody => 'AI 分析服务当前处于停用状态。你可以直接在此开启，或前往设置页面管理。';
+
+  @override
+  String get agentSheetEnableAndStart => '开启 AI 分析并继续';
+
+  @override
+  String get agentSheetNoKeyTitle => '未配置 API 密钥';
+
+  @override
+  String get agentSheetNoKeyBody =>
+      '需配置 OpenAI / DeepSeek 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。';
+
+  @override
+  String get agentSheetGoConfigure => '前往配置';
+
+  @override
+  String get agentSheetRunning => '正在进行 AI 分析…';
+
+  @override
+  String agentSheetModel(String model) {
+    return '模型 $model';
+  }
+
+  @override
+  String get agentSheetUnknown => '未知';
+
+  @override
+  String get agentSheetFailed => '分析失败';
+
+  @override
+  String get agentSheetUnknownError => '未知错误';
+
+  @override
+  String get agentSheetCheckSettings => '检查设置';
+
+  @override
+  String get agentSheetNotStarted => '尚未分析';
+
+  @override
+  String get agentSheetSuperseded => '结果已被新的分析取代';
+
+  @override
+  String get agentSheetStartHint => '点下面的按钮开始分析。';
+
+  @override
+  String get agentSheetSupersededHint => '另一个分析请求覆盖了这次会话，重新分析可以取回结论。';
+
+  @override
+  String get agentSheetStart => '开始分析';
+
+  @override
+  String get agentSheetHideDigest => '收起送检摘要';
+
+  @override
+  String get agentSheetShowDigest => '查看送检摘要';
+
+  @override
+  String get agentSheetAddBlock => '加入屏蔽规则';
+
+  @override
+  String get agentSheetCopyResult => '复制结果';
+
+  @override
+  String get agentSheetReanalyze => '重新分析';
+
+  @override
+  String get agentTargetDomainTitle => '域名安全分析';
+
+  @override
+  String get agentTargetTrafficTitle => '网络流量分析';
+
+  @override
+  String get agentTargetTrafficSubtitle => '基于近期 DNS 与 HTTPS 监控数据';
+
+  @override
+  String get agentApiChipKeyMissing => '缺少 API Key';
+
+  @override
+  String get agentSheetAddAllowlist => '加入白名单';
+
+  @override
+  String get featureHubLongPress => '可长按';
+
+  @override
+  String get outboundSaved => '出站代理设置已保存，启动隧道后生效';
+
+  @override
+  String outboundSaveFailed(String error) {
+    return '保存失败：$error';
+  }
+
+  @override
+  String get outboundResetTitle => '重置出站代理？';
+
+  @override
+  String get outboundResetBody => '将删除全部九个出站代理键（包括已加密保存的账号与密码）。';
+
+  @override
+  String get outboundResetDone => '已重置出站代理';
+
+  @override
+  String get outboundResetMenu => '重置出站代理';
+
+  @override
+  String get outboundSectionProxy => '代理';
+
+  @override
+  String get outboundEnable => '启用出站代理功能';
+
+  @override
+  String get outboundApp => '代理应用';
+
+  @override
+  String get outboundHostLabel => '地址';
+
+  @override
+  String get outboundHostHelper => '仅支持 127.0.0.1 或 ::1';
+
+  @override
+  String get outboundUsernameLabel => '账号（可选）';
+
+  @override
+  String get outboundPasswordLabel => '密码（可选）';
+
+  @override
+  String get outboundHttpFooter =>
+      'HTTP CONNECT 不支持 UDP；UDP 会被严格阻断，QUIC 可回退到 TCP。代理应用本身将绕过 DITING。';
+
+  @override
+  String get outboundSocksFooter =>
+      'SOCKS5 通过 UDP ASSOCIATE 转发 UDP。代理应用本身将绕过 DITING，防止流量环路。';
+
+  @override
+  String get outboundStatusOff => '未运行';
+
+  @override
+  String get outboundStatusConnecting => '正在连接';
+
+  @override
+  String get outboundStatusReady => '代理可用';
+
+  @override
+  String get outboundStatusFailed => '连接失败';
+
+  @override
+  String get outboundFooterError => '引擎上报的错误会一直保留到下一次隧道启动，便于回看原因。';
+
+  @override
+  String get outboundFooterReady => '引擎已确认代理可用；修改配置后需要重启隧道才会重新校验。';
+
+  @override
+  String get outboundFooterConnecting => '隧道启动时会校验代理连通性，结果会实时显示在这里。';
+
+  @override
+  String get outboundAppsTitle => '选择代理应用';
+
+  @override
+  String get outboundAppsIntro =>
+      '选择提供本地代理端口的应用。代理应用本身会绕过 DITING。端口由该应用绑定，谛听无法代它监听。';
+
+  @override
+  String outboundAppsCount(int count) {
+    return '已安装应用（$count）';
+  }
+
+  @override
+  String get outboundAppsEmpty => '设备上没有可选的代理应用';
+
+  @override
+  String get resolutionSingleDesc => '所有查询都发往当前选中的服务商。';
+
+  @override
+  String get resolutionSmartDesc => '按历史成功率挑一个，失败后自动换下一个。';
+
+  @override
+  String get resolutionParallelDesc => '同时向所有服务商发起，取最先返回的结果。';
+
+  @override
+  String get resolutionPrimaryBackupDesc => '主服务商优先，超时后才动备用。';
+
+  @override
+  String resolutionProtocolSavedError(String error) {
+    return '协议已保存，运行中的服务未能更新：$error';
+  }
+
+  @override
+  String get resolutionBuiltinProtocol => '内置服务协议';
+
+  @override
+  String get resolutionBuiltinNote =>
+      '仅切换内置服务商使用的 DNS / DoT / DoH 协议；自定义服务商按自身协议展示。';
+
+  @override
+  String get resolutionConfigSection => '模式配置';
+
+  @override
+  String get resolutionConfigFooter =>
+      '解析模式与竞速服务商保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。';
+
+  @override
+  String get resolutionNotConfigured => '未配置';
+
+  @override
+  String resolutionProviderCount(int count) {
+    return '$count 个服务商';
+  }
+
+  @override
+  String get resolutionPickerTitle => '选择解析模式';
+
+  @override
+  String get resolutionMinProviders => '至少保留 2 家服务商';
+
+  @override
+  String get resolutionSingleHint => '选择一个服务商作为唯一查询出口。';
+
+  @override
+  String resolutionRaceHint(int count) {
+    return '已选 $count 家服务商，至少需要 2 家。';
+  }
+
+  @override
+  String get resolutionReady => '已就绪';
+
+  @override
+  String get resolutionPending => '待配置';
+
+  @override
+  String get resolutionSectionSingle => '查询服务';
+
+  @override
+  String get resolutionSectionSmart => '候选服务';
+
+  @override
+  String get resolutionSectionParallel => '同时查询的服务';
+
+  @override
+  String get resolutionSectionBackup => '依次尝试的服务';
+
+  @override
+  String get resolutionNoProviders => '暂无此协议的服务商';
+
+  @override
+  String get resolutionMoveUp => '上移';
+
+  @override
+  String get resolutionMoveDown => '下移';
+
+  @override
+  String get outboundNoApp => '未选择';
+
+  @override
+  String get appRulesSaved => '已保存，启动 DNS VPN 后生效';
+
+  @override
+  String get appRulesClearAllTooltip => '清空全部放行规则';
+
+  @override
+  String get appRulesMasterSection => '总开关';
+
+  @override
+  String get appRulesMasterToggle => '启用单应用域名放行';
+
+  @override
+  String get appRulesNoConfigured => '暂未配置任何应用独立规则';
+
+  @override
+  String appRulesConfiguredSummary(int apps, int domains) {
+    return '已配置 $apps 个应用 · 放行 $domains 个域名';
+  }
+
+  @override
+  String get appRulesMasterFooter =>
+      '为指定应用深度定制网络与解析控制：网络层白名单隔离（只放行列出的域名）、DNS 专属黑/白名单与「默认拦截全部外联」。进入某个应用可分别配置，保存后启动 DNS VPN 时下发。';
+
+  @override
+  String appRulesAppsCount(int count) {
+    return '应用（$count）';
+  }
+
+  @override
+  String get appRulesNoConfigurableApps => '设备上没有可配置的应用';
+
+  @override
+  String get appRulesFooterNoApps => '未读取到任何已安装应用，无法配置应用独立规则。';
+
+  @override
+  String get appRulesFooterSave =>
+      '保存后写入 app_allowlist_enabled 与 app_allowlist_rules_json，启动 DNS VPN 时下发给引擎。';
+
+  @override
+  String get appRulesAddAllowDomain => '添加放行域名';
+
+  @override
+  String get appRulesAppSection => '应用';
+
+  @override
+  String get appRulesBackToList => '返回应用列表';
+
+  @override
+  String get appRulesClearAllTitle => '清空全部放行规则？';
+
+  @override
+  String get appRulesClearAllBody => '将删除所有应用的专属放行域名。保存后生效，黑名单与全阻断设置不受影响。';
+
+  @override
+  String get appRulesRuleExists => '规则已存在或规则库不可用';
+
+  @override
+  String appRulesRuleAdded(String kind) {
+    return '已添加$kind规则';
+  }
+
+  @override
+  String get appRulesDeleteRuleTitle => '删除这条规则？';
+
+  @override
+  String get appRulesFullBlockOn => '已开启全外联拦截模式';
+
+  @override
+  String get appRulesFullBlockOff => '已关闭全外联拦截模式';
+
+  @override
+  String get appRulesAddDnsRule => '添加 DNS 规则';
+
+  @override
+  String get appRulesDnsScopeIntro =>
+      '这些规则写入规则库的 block_rule / allow_rule，带 appScope 只对本应用生效，并随规则快照的 appRules 下发，不会扩大成全局拦截。';
+
+  @override
+  String get appRulesDnsScopeSection => 'DNS 专属黑/白名单';
+
+  @override
+  String get appRulesReadingRules => '正在读取规则库';
+
+  @override
+  String get appRulesWait => '稍候';
+
+  @override
+  String get appRulesRuleDbUnreadable => '读不到规则库';
+
+  @override
+  String get appRulesRuleDbUnavailable => '当前环境无法读写规则库';
+
+  @override
+  String get appRulesNoScopedRules => '未配置 DNS 专属规则';
+
+  @override
+  String get appRulesNoScopedRulesSubtitle => '添加后仅对本应用生效，不影响其他应用';
+
+  @override
+  String appRulesScopedCount(int count) {
+    return 'DNS 专属黑/白名单（$count）';
+  }
+
+  @override
+  String appRulesAllowDomainTitle(int count) {
+    return '专属放行域名（网络层） ($count)';
+  }
+
+  @override
+  String get appRulesNoAllowDomains => '未配置网络放行域名';
+
+  @override
+  String get appRulesNoAllowDomainsSubtitle => '网络层白名单为空时，该应用不受额外限制';
+
+  @override
+  String get appRulesAllowDomainFooter =>
+      '这些域名会写入 app_allowlist_rules_json，由引擎在下一次启动隧道时下发给 setAppAllowlist。';
+
+  @override
+  String get appRulesIsolationSection => '外联与隔离模式';
+
+  @override
+  String get appRulesFullBlockToggle => '默认拦截全部外联';
+
+  @override
+  String get appRulesFullBlockToggleSubtitle => '开启后阻断该应用的所有网络连接，仅放行白名单';
+
+  @override
+  String get appRulesFullBlockOnTitle => '已开启全阻断模式';
+
+  @override
+  String get appRulesFullBlockOnBody => '请确保已添加必要的放行白名单，否则应用可能无法联网。';
+
+  @override
+  String get providerMgmtDeleteTitle => '删除 DNS 服务商';
+
+  @override
+  String providerMgmtDeleteBody(String name) {
+    return '确定删除「$name」吗？删除后无法再作为解析服务使用。';
+  }
+
+  @override
+  String get providerMgmtTitle => '服务商管理';
+
+  @override
+  String get providerMgmtAdd => '新增 DNS 服务商';
+
+  @override
+  String get providerMgmtCurrent => '当前用于解析 DNS';
+
+  @override
+  String get providerMgmtBuiltin => '内置服务商';
+
+  @override
+  String get providerMgmtCustom => '自定义服务商';
+
+  @override
+  String get providerMgmtEmptyCustom => '暂无自定义服务商';
+
+  @override
+  String get providerMgmtEmptyCustomSubtitle => '点击右上角「+」添加 DoH、DoT 或传统 DNS 服务';
+
+  @override
+  String get providerMgmtFooter => '内置服务商由应用维护，只能切换；自定义服务商可编辑或删除。';
+
+  @override
+  String get providerMgmtEditTitle => '编辑 DNS 服务商';
+
+  @override
+  String get providerMgmtAddressLabel => '地址（host:port）';
+
+  @override
+  String get providerMgmtNameRequired => '请填写名称';
+
+  @override
+  String get providerMgmtDohRequired => 'DoH 地址需以 https:// 开头';
+
+  @override
+  String get providerMgmtHostPortRequired => '请填写 host:port 形式的地址';
 }

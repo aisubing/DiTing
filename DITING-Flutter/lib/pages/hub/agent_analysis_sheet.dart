@@ -5,6 +5,7 @@
 /// appear here.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/pages/hub/agent_markdown_view.dart';
@@ -92,7 +93,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
     await Clipboard.setData(ClipboardData(text: content));
     if (!mounted) return;
     ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(const SnackBar(content: Text('分析结果已复制到剪贴板')));
+        ?.showSnackBar(SnackBar(content: Text(context.l10n.agentSheetCopied)));
   }
 
   Future<void> _addRule(RuleKind kind) async {
@@ -104,8 +105,8 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
     if (!mounted) return;
     setState(() {
       _appliedAction = added
-          ? '已写入${kind.title}，启动 DNS VPN 后生效'
-          : '该域名已在${kind.title}中';
+          ? context.l10n.agentSheetRuleAdded(kind.title(context.l10n))
+          : context.l10n.agentSheetRuleExists(kind.title(context.l10n));
     });
   }
 
@@ -115,7 +116,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
     final api = ref.watch(agentApiProvider);
     final mine = state.sessionId == _sessionId && _sessionId != 0;
     return CommonScaffold(
-      title: widget.target.title,
+      title: widget.target.title(context.l10n),
       body: ListView(
         // The sheet title floats over the body, so this top padding is required.
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
@@ -136,11 +137,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: CardNoticeRow(message: message),
             ),
-          const ListFooter(
-            text:
-                'AI 只做研判，不会自动修改规则；结论仅供参考。'
-                '请求由你配置的厂商处理，密钥只存在本机。',
-          ),
+          ListFooter(text: context.l10n.agentSheetFooter),
         ],
       ),
     );
@@ -156,9 +153,9 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
       return [
         _Notice(
           glyph: AppGlyphs.lock,
-          title: 'AI 分析功能已关闭',
-          description: 'AI 分析服务当前处于停用状态。你可以直接在此开启，或前往设置页面管理。',
-          actionLabel: '开启 AI 分析并继续',
+          title: context.l10n.agentSheetDisabledTitle,
+          description: context.l10n.agentSheetDisabledBody,
+          actionLabel: context.l10n.agentSheetEnableAndStart,
           onPressed: _enableAndStart,
         ),
       ];
@@ -167,9 +164,9 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
       return [
         _Notice(
           glyph: AppGlyphs.key,
-          title: '未配置 API 密钥',
-          description: '需配置 OpenAI / DeepSeek 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。',
-          actionLabel: '前往配置',
+          title: context.l10n.agentSheetNoKeyTitle,
+          description: context.l10n.agentSheetNoKeyBody,
+          actionLabel: context.l10n.agentSheetGoConfigure,
           onPressed: () => context.push(HubPaths.agentProviders),
         ),
       ];
@@ -178,10 +175,12 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
       return [
         _Notice(
           glyph: AppGlyphs.sparkle,
-          title: '正在进行 AI 分析…',
-          description: '模型 ${api.activeProvider?.model ?? '未知'}',
+          title: context.l10n.agentSheetRunning,
+          description: context.l10n.agentSheetModel(
+            api.activeProvider?.model ?? context.l10n.agentSheetUnknown,
+          ),
           loading: true,
-          actionLabel: '取消',
+          actionLabel: context.l10n.uiCancel,
           onPressed: () {
             ref.read(agentAnalysisProvider.notifier).cancel();
             setState(() => _sessionId = 0);
@@ -193,12 +192,12 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
       return [
         _Notice(
           glyph: AppGlyphs.error,
-          title: '分析失败',
-          description: state.error ?? '未知错误',
+          title: context.l10n.agentSheetFailed,
+          description: state.error ?? context.l10n.agentSheetUnknownError,
           isError: true,
-          actionLabel: '重试',
+          actionLabel: context.l10n.obsRetry,
           onPressed: _start,
-          secondaryLabel: '检查设置',
+          secondaryLabel: context.l10n.agentSheetCheckSettings,
           onSecondaryPressed: () => context.push(HubPaths.agentProviders),
         ),
       ];
@@ -208,11 +207,11 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
     return [
       _Notice(
         glyph: AppGlyphs.sparkle,
-        title: _sessionId == 0 ? '尚未分析' : '结果已被新的分析取代',
+        title: _sessionId == 0 ? context.l10n.agentSheetNotStarted : context.l10n.agentSheetSuperseded,
         description: _sessionId == 0
-            ? '点下面的按钮开始分析。'
-            : '另一个分析请求覆盖了这次会话，重新分析可以取回结论。',
-        actionLabel: '开始分析',
+            ? context.l10n.agentSheetStartHint
+            : context.l10n.agentSheetSupersededHint,
+        actionLabel: context.l10n.agentSheetStart,
         onPressed: _start,
       ),
     ];
@@ -230,7 +229,7 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
             alignment: Alignment.centerLeft,
             child: TextButton(
               onPressed: () => setState(() => _showDigest = !_showDigest),
-              child: Text(_showDigest ? '收起送检摘要' : '查看送检摘要'),
+              child: Text(_showDigest ? context.l10n.agentSheetHideDigest : context.l10n.agentSheetShowDigest),
             ),
           ),
         ),
@@ -273,14 +272,14 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
                 Expanded(
                   child: TonalButton(
                     glyph: AppGlyphs.checkCircle,
-                    label: '加入白名单',
+                    label: context.l10n.agentSheetAddAllowlist,
                     onPressed: () => _addRule(RuleKind.allow),
                   ),
                 ),
                 Expanded(
                   child: TonalButton(
                     glyph: AppGlyphs.block,
-                    label: '加入屏蔽规则',
+                    label: context.l10n.agentSheetAddBlock,
                     onPressed: () => _addRule(RuleKind.block),
                   ),
                 ),
@@ -292,14 +291,14 @@ class _AgentAnalysisSheetState extends ConsumerState<AgentAnalysisSheet> {
               Expanded(
                 child: TonalButton(
                   glyph: AppGlyphs.copy,
-                  label: '复制结果',
+                  label: context.l10n.agentSheetCopyResult,
                   onPressed: () => _copyResult(content),
                 ),
               ),
               Expanded(
                 child: TonalButton(
                   glyph: AppGlyphs.refresh,
-                  label: '重新分析',
+                  label: context.l10n.agentSheetReanalyze,
                   onPressed: _start,
                 ),
               ),
@@ -338,11 +337,11 @@ class _Header extends StatelessWidget {
               spacing: 2,
               children: [
                 Text(
-                  target.title,
+                  target.title(context.l10n),
                   style: AppTextStyle.headline.of(context, emphasized: true),
                 ),
                 Text(
-                  target.subtitle,
+                  target.subtitle(context.l10n),
                   style: AppTextStyle.footnote
                       .of(context)
                       .copyWith(color: colorScheme.onSurfaceVariant),
@@ -370,7 +369,7 @@ class _ResultMeta extends StatelessWidget {
         runSpacing: 6,
         children: [
           if (state.model case final model? when model.isNotEmpty)
-            MetaChip(label: '模型 $model'),
+            MetaChip(label: context.l10n.agentSheetModel(model)),
           if (state.totalTokens > 0)
             MetaChip(label: '${state.totalTokens} tokens'),
         ],

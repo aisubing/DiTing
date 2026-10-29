@@ -18,12 +18,13 @@ class ResolutionModePage extends ConsumerStatefulWidget {
 }
 
 class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
-  static const _descriptions = {
-    ResolutionMode.single: '所有查询都发往当前选中的服务商。',
-    ResolutionMode.smart: '按历史成功率挑一个，失败后自动换下一个。',
-    ResolutionMode.parallel: '同时向所有服务商发起，取最先返回的结果。',
-    ResolutionMode.primaryBackup: '主服务商优先，超时后才动备用。',
-  };
+  static String _descriptionOf(ResolutionMode mode, AppL10n l10n) =>
+      switch (mode) {
+        ResolutionMode.single => l10n.resolutionSingleDesc,
+        ResolutionMode.smart => l10n.resolutionSmartDesc,
+        ResolutionMode.parallel => l10n.resolutionParallelDesc,
+        ResolutionMode.primaryBackup => l10n.resolutionPrimaryBackupDesc,
+      };
 
   Future<void> _selectPresetProtocol(ProviderProtocol protocol) async {
     if (!ref.read(presetProtocolProvider.notifier).select(protocol)) return;
@@ -33,7 +34,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
     if (error == null || !mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('协议已保存，运行中的服务未能更新：$error'),
+        content: Text(context.l10n.resolutionProtocolSavedError(error)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -51,7 +52,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
         .where((provider) => provider.id == selectedId)
         .firstOrNull;
     return CommonScaffold(
-      title: '解析模式',
+      title: context.l10n.resolutionModeTitle,
       body: PageBody(
         children: [
           Padding(
@@ -73,7 +74,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
                       children: [
                         Text(mode.label(context.l10n), style: context.listTitleStyle),
                         Text(
-                          _descriptions[mode] ?? '',
+                          _descriptionOf(mode, context.l10n),
                           style: context.listSubtitleStyle,
                         ),
                       ],
@@ -91,7 +92,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               spacing: 6,
               children: [
-                Text('内置服务协议', style: context.listTitleStyle),
+                Text(context.l10n.resolutionBuiltinProtocol, style: context.listTitleStyle),
                 SegmentedControl<ProviderProtocol>(
                   segments: [
                     for (final protocol in ProviderProtocol.values)
@@ -101,24 +102,23 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
                   onChanged: _selectPresetProtocol,
                 ),
                 Text(
-                  '仅切换内置服务商使用的 DNS / DoT / DoH 协议；'
-                  '自定义服务商按自身协议展示。',
+                  context.l10n.resolutionBuiltinNote,
                   style: context.listSubtitleStyle,
                 ),
               ],
             ),
           ),
           generateSection(
-            title: '模式配置',
-            footer: '解析模式与竞速服务商保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。',
+            title: context.l10n.resolutionConfigSection,
+            footer: context.l10n.resolutionConfigFooter,
             items: [
               for (final option in ResolutionMode.values)
                 ListItem(
                   leading: GlyphIcon(_glyphOf(option), size: 20),
                   title: Text(option.label(context.l10n)),
-                  subtitle: Text(_descriptions[option] ?? ''),
+                  subtitle: Text(_descriptionOf(option, context.l10n)),
                   trailing: Text(
-                    _summaryOf(option, singleProvider, raceIds.length),
+                    _summaryOf(context.l10n, option, singleProvider, raceIds.length),
                     style: AppTextStyle.footnote
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
@@ -141,12 +141,13 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
   };
 
   static String _summaryOf(
+    AppL10n l10n,
     ResolutionMode mode,
     MockProvider? singleProvider,
     int raceCount,
   ) => switch (mode) {
-    ResolutionMode.single => singleProvider?.name ?? '未配置',
-    _ => '$raceCount 个服务商',
+    ResolutionMode.single => singleProvider?.name ?? l10n.resolutionNotConfigured,
+    _ => l10n.resolutionProviderCount(raceCount),
   };
 
   static String _idOf(ResolutionMode mode) => switch (mode) {
@@ -160,7 +161,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
     showFloatingDialog<void>(
       context: context,
       child: CommonDialog(
-        title: '选择解析模式',
+        title: context.l10n.resolutionPickerTitle,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -168,7 +169,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
               ListItem(
                 leading: GlyphIcon(_glyphOf(mode), size: 20),
                 title: Text(mode.label(context.l10n)),
-                subtitle: Text(_descriptions[mode] ?? ''),
+                subtitle: Text(_descriptionOf(mode, context.l10n)),
                 trailing: mode == current ? const SelectionCheck() : null,
                 onTap: () {
                   ref.read(resolutionModeProvider.notifier).select(mode);
@@ -228,8 +229,8 @@ class _ResolutionModeConfigPageState
     final willRemove = before.contains(provider.id);
     if (willRemove && before.length <= RaceProvidersNotifier.minCount) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(
-          content: Text('至少保留 2 家服务商'),
+        SnackBar(
+          content: Text(context.l10n.resolutionMinProviders),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -303,13 +304,13 @@ class _ResolutionModeConfigPageState
                   Expanded(
                     child: Text(
                       _mode == ResolutionMode.single
-                          ? '选择一个服务商作为唯一查询出口。'
-                          : '已选 $selectedCount 家服务商，至少需要 2 家。',
+                          ? context.l10n.resolutionSingleHint
+                          : context.l10n.resolutionRaceHint(selectedCount),
                       style: context.listSubtitleStyle,
                     ),
                   ),
                   TonalChip(
-                    label: valid ? '已就绪' : '待配置',
+                    label: valid ? context.l10n.resolutionReady : context.l10n.resolutionPending,
                     color: valid
                         ? context.colorScheme.primary
                         : context.raisedSurfaceLevel.colorOf(
@@ -337,10 +338,10 @@ class _ResolutionModeConfigPageState
           ),
           generateSection(
             title: switch (_mode) {
-              ResolutionMode.single => '查询服务',
-              ResolutionMode.smart => '候选服务',
-              ResolutionMode.parallel => '同时查询的服务',
-              ResolutionMode.primaryBackup => '依次尝试的服务',
+              ResolutionMode.single => context.l10n.resolutionSectionSingle,
+              ResolutionMode.smart => context.l10n.resolutionSectionSmart,
+              ResolutionMode.parallel => context.l10n.resolutionSectionParallel,
+              ResolutionMode.primaryBackup => context.l10n.resolutionSectionBackup,
             },
             items: [
               for (final provider in [...ordered, ...rest])
@@ -368,7 +369,7 @@ class _ResolutionModeConfigPageState
                   onTap: () => _select(provider),
                 ),
             ],
-            footer: providers.isEmpty ? '暂无此协议的服务商' : null,
+            footer: providers.isEmpty ? context.l10n.resolutionNoProviders : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -389,12 +390,12 @@ class _OrderButtons extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
-          tooltip: '上移',
+          tooltip: context.l10n.resolutionMoveUp,
           onPressed: onUp,
           icon: const GlyphIcon(AppGlyphs.arrowUp, size: 18),
         ),
         IconButton(
-          tooltip: '下移',
+          tooltip: context.l10n.resolutionMoveDown,
           onPressed: onDown,
           icon: const GlyphIcon(AppGlyphs.arrowDown, size: 18),
         ),

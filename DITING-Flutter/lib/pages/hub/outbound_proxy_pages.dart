@@ -92,6 +92,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
   );
 
   Future<void> _save(OutboundProxyConfig base) async {
+    final l10n = context.l10n;
     final draft = _compose(base);
     // Upstream skips validation while disabled, or a disabled draft could never be saved.
     final error = draft.enabled
@@ -112,9 +113,9 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
           .setStatus(draft.enabled ? 'connecting' : 'disabled', '');
       ref.read(outboundProxyRevisionProvider.notifier).bump();
       _loaded = draft;
-      _toast('出站代理设置已保存，启动隧道后生效');
+      _toast(l10n.outboundSaved);
     } on Object catch (error) {
-      _toast('保存失败：$error');
+      _toast(l10n.outboundSaveFailed('$error'));
     } finally {
       if (mounted) {
         setState(() => _saving = false);
@@ -126,19 +127,19 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '重置出站代理？',
+        title: context.l10n.outboundResetTitle,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.uiCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('重置'),
+            child: Text(context.l10n.uiReset),
           ),
         ],
-        child: const Text('将删除全部九个出站代理键（包括已加密保存的账号与密码）。'),
+        child: Text(context.l10n.outboundResetBody),
       ),
     );
     if (confirmed != true || !mounted) {
@@ -156,7 +157,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
       _username.clear();
       _password.clear();
     });
-    _toast('已重置出站代理');
+    _toast(context.l10n.outboundResetDone);
   }
 
   Set<String>? _installedPackages() {
@@ -180,13 +181,17 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     final config = asyncConfig.value;
     if (config == null) {
       return CommonScaffold(
-        title: '出站代理',
+        title: context.l10n.hubOutboundProxy,
         body: const Center(child: CommonCircleLoading.page()),
       );
     }
     _adopt(config);
     final apps = ref.watch(installedAppsProvider).value;
-    final appLabel = _labelOf(config.proxyAppPackage, apps?.apps ?? const []);
+    final appLabel = _labelOf(
+      context.l10n,
+      config.proxyAppPackage,
+      apps?.apps ?? const [],
+    );
     // Validation problems are shown only while enabled, matching upstream.
     final validation = config.enabled
         ? _compose(config).validationError(
@@ -196,10 +201,10 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
         : null;
     final colorScheme = context.colorScheme;
     return CommonScaffold(
-      title: '出站代理',
+      title: context.l10n.hubOutboundProxy,
       menuItems: [
         CommonPopupMenuItem(
-          label: '重置出站代理',
+          label: context.l10n.outboundResetMenu,
           glyph: AppGlyphs.reset,
           danger: true,
           onPressed: _saving ? null : _reset,
@@ -208,13 +213,13 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
       body: PageBody(
         children: [
           generateSection(
-            title: '代理',
+            title: context.l10n.outboundSectionProxy,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.link),
-                title: const Text('启用出站代理功能'),
+                title: Text(context.l10n.outboundEnable),
                 subtitle: Text(
-                  _statusLabel(config),
+                  _statusLabel(context.l10n, config),
                   style: AppTextStyle.footnote
                       .of(context)
                       .copyWith(color: _statusColor(context, config)),
@@ -235,14 +240,14 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.appsList),
-                title: const Text('代理应用'),
+                title: Text(context.l10n.outboundApp),
                 subtitle: Text(
-                  config.proxyAppPackage.isEmpty ? '未选择' : appLabel,
+                  config.proxyAppPackage.isEmpty ? context.l10n.outboundNoApp : appLabel,
                 ),
                 onTap: () => context.push('/hub/outbound-proxy/apps'),
               ),
             ],
-            footer: _statusFooter(config),
+            footer: _statusFooter(context.l10n, config),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -272,9 +277,9 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
                   child: TextField(
                     controller: _host,
                     autocorrect: false,
-                    decoration: const InputDecoration(
-                      labelText: '地址',
-                      helperText: '仅支持 127.0.0.1 或 ::1',
+                    decoration: InputDecoration(
+                      labelText: context.l10n.outboundHostLabel,
+                      helperText: context.l10n.outboundHostHelper,
                     ),
                   ),
                 ),
@@ -282,7 +287,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
                   child: TextField(
                     controller: _port,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: '端口'),
+                    decoration: InputDecoration(labelText: context.l10n.serverPort),
                   ),
                 ),
               ],
@@ -293,7 +298,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
             child: TextField(
               controller: _username,
               autocorrect: false,
-              decoration: const InputDecoration(labelText: '账号（可选）'),
+              decoration: InputDecoration(labelText: context.l10n.outboundUsernameLabel),
             ),
           ),
           Padding(
@@ -301,17 +306,15 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
             child: TextField(
               controller: _password,
               obscureText: true,
-              decoration: const InputDecoration(labelText: '密码（可选）'),
+              decoration: InputDecoration(labelText: context.l10n.outboundPasswordLabel),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: ListFooter(
               text: config.protocol == OutboundProxyProtocol.http
-                  ? 'HTTP CONNECT 不支持 UDP；UDP 会被严格阻断，QUIC 可回退到 TCP。'
-                        '代理应用本身将绕过 DITING。'
-                  : 'SOCKS5 通过 UDP ASSOCIATE 转发 UDP。代理应用本身将绕过 DITING，'
-                        '防止流量环路。',
+                  ? context.l10n.outboundHttpFooter
+                  : context.l10n.outboundSocksFooter,
             ),
           ),
           if (validation != null)
@@ -330,7 +333,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: TonalButton(
-              label: '保存',
+              label: context.l10n.commonSave,
               onPressed: _saving ? null : () => _save(config),
             ),
           ),
@@ -342,15 +345,17 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
 
   /// The four engine states: disabled, connecting, ready and error. Unknown values display
   /// as disabled, as upstream does.
-  static String _statusLabel(OutboundProxyConfig config) {
+  static String _statusLabel(AppL10n l10n, OutboundProxyConfig config) {
     if (!config.enabled) {
-      return '未运行';
+      return l10n.outboundStatusOff;
     }
     return switch (config.status) {
-      'connecting' => '正在连接',
-      'ready' => '代理可用',
-      'error' => config.statusMessage.isEmpty ? '连接失败' : config.statusMessage,
-      _ => '未运行',
+      'connecting' => l10n.outboundStatusConnecting,
+      'ready' => l10n.outboundStatusReady,
+      'error' => config.statusMessage.isEmpty
+          ? l10n.outboundStatusFailed
+          : config.statusMessage,
+      _ => l10n.outboundStatusOff,
     };
   }
 
@@ -367,21 +372,25 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
     };
   }
 
-  static String? _statusFooter(OutboundProxyConfig config) {
+  static String? _statusFooter(AppL10n l10n, OutboundProxyConfig config) {
     if (!config.enabled) {
       return null;
     }
     return switch (config.status) {
-      'error' => '引擎上报的错误会一直保留到下一次隧道启动，便于回看原因。',
-      'ready' => '引擎已确认代理可用；修改配置后需要重启隧道才会重新校验。',
-      'connecting' => '隧道启动时会校验代理连通性，结果会实时显示在这里。',
+      'error' => l10n.outboundFooterError,
+      'ready' => l10n.outboundFooterReady,
+      'connecting' => l10n.outboundFooterConnecting,
       _ => null,
     };
   }
 
-  static String _labelOf(String packageName, List<InstalledApp> apps) {
+  static String _labelOf(
+    AppL10n l10n,
+    String packageName,
+    List<InstalledApp> apps,
+  ) {
     if (packageName.isEmpty) {
-      return '未选择';
+      return l10n.outboundNoApp;
     }
     for (final app in apps) {
       if (app.packageName == packageName) {
@@ -452,7 +461,7 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
       selected: {selected},
     );
     return CommonScaffold(
-      title: '选择代理应用',
+      title: context.l10n.outboundAppsTitle,
       menuItems: appListMenuItems(
         l10n: context.l10n,
         filter: _filter,
@@ -465,11 +474,7 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
           SliverToBoxAdapter(
             child: Column(
               children: [
-                PageIntroCard(
-                  text:
-                      '选择提供本地代理端口的应用。代理应用本身会绕过 DITING。'
-                      '端口由该应用绑定，谛听无法代它监听。',
-                ),
+                PageIntroCard(text: context.l10n.outboundAppsIntro),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: SearchField(
@@ -489,10 +494,10 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
           ),
           if (!snapshot.isLoading && snapshot.value?.error == null)
             ...appListSlivers(
-              title: '已安装应用（${visible.length}）',
+              title: context.l10n.outboundAppsCount(visible.length),
               itemCount: visible.length,
               footer: visible.isEmpty
-                  ? (apps.isEmpty ? '设备上没有可选的代理应用' : '未找到匹配应用')
+                  ? (apps.isEmpty ? context.l10n.outboundAppsEmpty : context.l10n.appSelectionNoMatch)
                   : null,
               itemBuilder: (context, index) {
                 final app = visible[index];

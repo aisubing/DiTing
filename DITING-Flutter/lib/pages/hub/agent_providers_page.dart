@@ -23,29 +23,24 @@ class AgentProvidersPage extends ConsumerWidget {
     }
     final added = state.providers.map((provider) => provider.presetId).toSet();
     return CommonScaffold(
-      title: 'AI 厂商管理',
+      title: context.l10n.agentProvidersTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加自定义厂商',
+          tooltip: context.l10n.agentProvidersAdd,
           onPressed: () => _edit(context, ref),
         ),
       ],
       body: PageBody(
         children: [
-          PageIntroCard(
-            text:
-                '点选下方预设厂商会自动预填接口地址；模型名请在编辑页点「拉取模型」'
-                '从厂商真实返回的列表里选。编辑时若 API Key 留空则保留原密钥。'
-                '密钥以旧版同一套掩码混淆后存在本机，不额外落明文。',
-          ),
+          PageIntroCard(text: context.l10n.agentProvidersIntro),
           generateSection(
-            title: '我的厂商',
+            title: context.l10n.agentProvidersMine,
             items: [
               if (state.providers.isEmpty)
-                const ListItem(
-                  title: Text('暂无厂商'),
-                  subtitle: Text('从下方预设厂商目录点选，或点击右上角添加自定义厂商'),
+                ListItem(
+                  title: Text(context.l10n.agentProvidersEmpty),
+                  subtitle: Text(context.l10n.agentProvidersEmptySubtitle),
                   leading: GlyphIcon(AppGlyphs.info),
                 ),
               for (final provider in state.providers)
@@ -61,21 +56,27 @@ class AgentProvidersPage extends ConsumerWidget {
                   ),
                   title: Text(provider.name),
                   subtitle: Text(
-                    '${provider.model.isEmpty ? '未选择模型' : provider.model} · '
-                    '${provider.baseUrl} · '
-                    '${provider.hasKey ? '密钥已配置' : '缺少密钥'}',
+                    context.l10n.agentProvidersRow(
+                      provider.model.isEmpty
+                          ? context.l10n.agentApiNoModel
+                          : provider.model,
+                      provider.baseUrl,
+                      provider.hasKey
+                          ? context.l10n.agentApiKeyConfigured
+                          : context.l10n.agentProvidersKeyMissing,
+                    ),
                   ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: '编辑',
+                        tooltip: context.l10n.commonEdit,
                         onPressed: () =>
                             _edit(context, ref, existing: provider),
                         icon: const GlyphIcon(AppGlyphs.edit, size: 20),
                       ),
                       IconButton(
-                        tooltip: '删除',
+                        tooltip: context.l10n.commonDelete,
                         onPressed: () => _delete(context, notifier, provider),
                         icon: const GlyphIcon(AppGlyphs.delete, size: 20),
                       ),
@@ -86,8 +87,7 @@ class AgentProvidersPage extends ConsumerWidget {
             ],
             footer: state.providers.isEmpty
                 ? null
-                : '点一行可切换当前生效厂商；切换会把接口地址、密钥与模型同步到旧版的'
-                      '四个平铺键，避免新版界面与旧版读取来源不一致。',
+                : context.l10n.agentProvidersFooter,
           ),
           for (final entry in groups.entries)
             generateSection(
@@ -104,7 +104,7 @@ class AgentProvidersPage extends ConsumerWidget {
                     title: Text(preset.name),
                     subtitle: Text(preset.baseUrl),
                     trailing: TonalChip(
-                      label: added.contains(preset.id) ? '已添加' : '添加',
+                      label: added.contains(preset.id) ? context.l10n.agentProvidersAdded : context.l10n.formAdd,
                       color: added.contains(preset.id)
                           ? context.raisedSurfaceLevel.colorOf(
                               context.colorScheme,
@@ -163,17 +163,19 @@ class AgentProvidersPage extends ConsumerWidget {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除厂商',
+        title: context.l10n.agentProvidersDeleteTitle,
         destructive: true,
-        child: Text('确定要删除「${provider.name}」吗？相关 API Key 也会从本机移除。'),
+        child: Text(
+          context.l10n.agentProvidersDeleteBody(provider.name),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.uiCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),

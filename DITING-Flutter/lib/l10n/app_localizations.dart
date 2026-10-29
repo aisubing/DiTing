@@ -11023,6 +11023,3391 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'IP 地址'**
   String get bootstrapIpAddress;
+
+  /// No description provided for @caCertTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'CA 证书设置'**
+  String get caCertTitle;
+
+  /// No description provided for @caCertStatusMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未生成：引擎还没有产出 ca.crt'**
+  String get caCertStatusMissing;
+
+  /// No description provided for @caCertStatusUntrusted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已生成，但未装进系统信任存储'**
+  String get caCertStatusUntrusted;
+
+  /// No description provided for @caCertStatusTrusted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已生成且已被系统信任'**
+  String get caCertStatusTrusted;
+
+  /// No description provided for @caCertSectionStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书状态'**
+  String get caCertSectionStatus;
+
+  /// No description provided for @caCertRootStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'根证书状态'**
+  String get caCertRootStatus;
+
+  /// No description provided for @caCertVerified.
+  ///
+  /// In zh, this message translates to:
+  /// **'已验证'**
+  String get caCertVerified;
+
+  /// No description provided for @caCertUnverified.
+  ///
+  /// In zh, this message translates to:
+  /// **'未验证'**
+  String get caCertUnverified;
+
+  /// No description provided for @caCertReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取失败'**
+  String get caCertReadFailed;
+
+  /// No description provided for @caCertStatusFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅已验证的根证书支持流量检查；启用了证书绑定（SSL Pinning）的应用将自动旁路。'**
+  String get caCertStatusFooter;
+
+  /// No description provided for @caCertSectionActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书操作'**
+  String get caCertSectionActions;
+
+  /// No description provided for @caCertGuide.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装与卸载指南'**
+  String get caCertGuide;
+
+  /// No description provided for @caCertGuideSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看各机型系统证书的安装、移除及安全说明'**
+  String get caCertGuideSubtitle;
+
+  /// No description provided for @caCertInstall.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装根证书'**
+  String get caCertInstall;
+
+  /// No description provided for @caCertInstallSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'交给系统安装器；Android 11 起还需在设置里手动确认'**
+  String get caCertInstallSubtitle;
+
+  /// No description provided for @caCertInstalled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已安装'**
+  String get caCertInstalled;
+
+  /// No description provided for @caCertNotInstalled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未安装'**
+  String get caCertNotInstalled;
+
+  /// No description provided for @caCertSaveToDownloads.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存证书到下载目录'**
+  String get caCertSaveToDownloads;
+
+  /// No description provided for @caCertSaveToDownloadsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载目录里的 .crt 可在系统设置里手动安装'**
+  String get caCertSaveToDownloadsSubtitle;
+
+  /// No description provided for @caCertFingerprint.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书指纹'**
+  String get caCertFingerprint;
+
+  /// No description provided for @caCertNoFingerprint.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未生成证书时没有指纹'**
+  String get caCertNoFingerprint;
+
+  /// No description provided for @caCertFingerprintSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'SHA-256（点击查看完整指纹）'**
+  String get caCertFingerprintSubtitle;
+
+  /// No description provided for @caCertViewPem.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看证书内容'**
+  String get caCertViewPem;
+
+  /// No description provided for @caCertViewPemSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'以可复制的 PEM 文本显示，便于拷到别处安装'**
+  String get caCertViewPemSubtitle;
+
+  /// No description provided for @caCertSectionManage.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书管理'**
+  String get caCertSectionManage;
+
+  /// No description provided for @caCertRegenerate.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成根证书'**
+  String get caCertRegenerate;
+
+  /// No description provided for @caCertRegenerateSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'作废当前私钥并生成新证书，重置后需重新安装'**
+  String get caCertRegenerateSubtitle;
+
+  /// No description provided for @caCertNoCertificate.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有可用证书，请先点「重新生成根证书」'**
+  String get caCertNoCertificate;
+
+  /// No description provided for @caCertInstallDialogBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'Android 只允许用户手动把根证书装进「CA 证书」一栏，应用无法静默写入系统信任存储。\n\n点「继续」会先保存一份证书文件到下载目录，再尝试打开系统安装器；若安装器只提示去设置，请用该文件在「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」里手动选中它。'**
+  String get caCertInstallDialogBody;
+
+  /// No description provided for @caCertSavedTo.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书已存到 {name}。'**
+  String caCertSavedTo(String name);
+
+  /// No description provided for @caCertDownloadsDir.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载目录'**
+  String get caCertDownloadsDir;
+
+  /// No description provided for @caCertSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书文件保存失败（{error}）。'**
+  String caCertSaveFailed(String error);
+
+  /// No description provided for @caCertOpenedInstaller.
+  ///
+  /// In zh, this message translates to:
+  /// **'已打开系统证书安装界面。'**
+  String get caCertOpenedInstaller;
+
+  /// No description provided for @caCertOpenedSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统没有证书安装器，已打开安全设置。'**
+  String get caCertOpenedSettings;
+
+  /// No description provided for @caCertInstallerUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开证书安装界面。'**
+  String get caCertInstallerUnavailable;
+
+  /// No description provided for @caCertManualHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'若界面只提示前往设置，请在「加密与凭据 → 安装证书 → CA 证书」里手动选中它。'**
+  String get caCertManualHint;
+
+  /// No description provided for @caCertSavedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存到 {name}，可在「加密与凭据 → 安装证书」里选中它'**
+  String caCertSavedHint(String name);
+
+  /// No description provided for @caCertDownloadsFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法写入下载目录'**
+  String get caCertDownloadsFailed;
+
+  /// No description provided for @caCertRegenerateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成根证书？'**
+  String get caCertRegenerateTitle;
+
+  /// No description provided for @caCertRegenerateBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'会删除现有的 ca.crt / ca.key 与黑名单缓存。已安装的旧证书随即失效，之前被信任的所有连接都需要重新安装新证书，HTTPS 检查也会被自动关闭。'**
+  String get caCertRegenerateBody;
+
+  /// No description provided for @caCertRegenerateAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成'**
+  String get caCertRegenerateAction;
+
+  /// No description provided for @caCertGenerateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成失败：{error}'**
+  String caCertGenerateFailed(String error);
+
+  /// No description provided for @caCertGenerated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已生成新证书，请前往系统设置安装'**
+  String get caCertGenerated;
+
+  /// No description provided for @caCertFingerprintTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书指纹（SHA-256）'**
+  String get caCertFingerprintTitle;
+
+  /// No description provided for @caCertFingerprintCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'指纹已复制'**
+  String get caCertFingerprintCopied;
+
+  /// No description provided for @caCertPemTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'根证书 PEM'**
+  String get caCertPemTitle;
+
+  /// No description provided for @caCertPemCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书内容已复制'**
+  String get caCertPemCopied;
+
+  /// No description provided for @caCertGuideTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'CA 证书指南'**
+  String get caCertGuideTitle;
+
+  /// No description provided for @caCertWhyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'为什么需要安装'**
+  String get caCertWhyTitle;
+
+  /// No description provided for @caCertWhyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 流量检查需要在设备上建立一条本地解密通道。系统只信任「用户」证书区里手工安装的根证书，应用无法代替你点这一步。'**
+  String get caCertWhyBody;
+
+  /// No description provided for @caCertStepsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装步骤'**
+  String get caCertStepsTitle;
+
+  /// No description provided for @caCertStep1.
+  ///
+  /// In zh, this message translates to:
+  /// **'1. 在「CA 证书设置」里点「安装根证书」，应用会把证书文件存进下载目录，再交给系统安装器。'**
+  String get caCertStep1;
+
+  /// No description provided for @caCertStep2.
+  ///
+  /// In zh, this message translates to:
+  /// **'2. Android 11 起系统安装器通常只提示前往设置，这是平台限制，不是应用故障。请从「设置 → 安全 → 加密与凭据 → 安装证书 → CA 证书」里选中下载目录里的那个 .crt 文件。'**
+  String get caCertStep2;
+
+  /// No description provided for @caCertStep3.
+  ///
+  /// In zh, this message translates to:
+  /// **'3. 安装时系统会要求屏幕锁或指纹；设备没有锁屏时无法安装，需先设一个 PIN。'**
+  String get caCertStep3;
+
+  /// No description provided for @caCertStep4.
+  ///
+  /// In zh, this message translates to:
+  /// **'4. 回到本页，状态应变成「已验证」；没变就退出重进该页重新检查。'**
+  String get caCertStep4;
+
+  /// No description provided for @caCertWhichAppsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'哪些应用能被检查'**
+  String get caCertWhichAppsTitle;
+
+  /// No description provided for @caCertWhichAppsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统只信任「用户」证书区的根证书，而 targetSdk 24（Android 7.0）及以上的应用默认不信任用户证书。只有自带网络安全配置允许用户 CA 的应用，其 HTTPS 才能被解密并看到明文。'**
+  String get caCertWhichAppsBody;
+
+  /// No description provided for @caCertWhichAppsWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'其余应用的 HTTPS 请求会被记录为「失败 / client_tls」，这是应用的证书绑定或系统策略导致的，属于预期行为；这类应用应加入绕过规则。'**
+  String get caCertWhichAppsWarning;
+
+  /// No description provided for @caCertRiskTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'卸载与风险'**
+  String get caCertRiskTitle;
+
+  /// No description provided for @caCertRiskWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'根证书一旦装进用户信任区，任何持有对应私钥的软件都能解密本机流量。不再使用时请到系统设置里删除它，并在本页「重新生成根证书」作废旧私钥。'**
+  String get caCertRiskWarning;
+
+  /// No description provided for @caCertRiskPinning.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分应用使用证书绑定（SSL Pinning），装证书后仍会连接失败；这类应用应加入绕过规则，而不是反复重装证书。'**
+  String get caCertRiskPinning;
+
+  /// No description provided for @commonCopy.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制'**
+  String get commonCopy;
+
+  /// No description provided for @commonContinue.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续'**
+  String get commonContinue;
+
+  /// No description provided for @commonUnknownReason.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知原因'**
+  String get commonUnknownReason;
+
+  /// No description provided for @autoUpdateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动更新设置'**
+  String get autoUpdateTitle;
+
+  /// No description provided for @autoUpdateSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动更新'**
+  String get autoUpdateSection;
+
+  /// No description provided for @autoUpdateRulesSwitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动更新规则订阅'**
+  String get autoUpdateRulesSwitch;
+
+  /// No description provided for @autoUpdateRulesSwitchSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动应用或回到前台时检查是否到期'**
+  String get autoUpdateRulesSwitchSubtitle;
+
+  /// No description provided for @autoUpdateIntervalSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新频率'**
+  String get autoUpdateIntervalSection;
+
+  /// No description provided for @autoUpdateEveryHours.
+  ///
+  /// In zh, this message translates to:
+  /// **'每 {hours} 小时'**
+  String autoUpdateEveryHours(int hours);
+
+  /// No description provided for @autoUpdateCustomInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义更新时间'**
+  String get autoUpdateCustomInterval;
+
+  /// No description provided for @autoUpdateCustomHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入 1 至 168 小时之间的更新时间'**
+  String get autoUpdateCustomHint;
+
+  /// No description provided for @autoUpdateIntervalFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'间隔保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。本机没有后台任务队列：应用在前台（含启动与切回前台）时才检查到期并执行，进程被完全关闭期间不会更新。'**
+  String get autoUpdateIntervalFooter;
+
+  /// No description provided for @autoUpdateStatusSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行状态'**
+  String get autoUpdateStatusSection;
+
+  /// No description provided for @autoUpdateNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'下次预计更新'**
+  String get autoUpdateNext;
+
+  /// No description provided for @autoUpdateLast.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次自动更新'**
+  String get autoUpdateLast;
+
+  /// No description provided for @autoUpdateNoRunYet.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次会话还没有执行过自动更新'**
+  String get autoUpdateNoRunYet;
+
+  /// No description provided for @autoUpdateRunCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'（{count} 个订阅）'**
+  String autoUpdateRunCount(int count);
+
+  /// No description provided for @autoUpdateStatusFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'判据是每条订阅的「上次尝试时间」与上面的间隔；正在手动更新时本轮会让路。'**
+  String get autoUpdateStatusFooter;
+
+  /// No description provided for @autoUpdateGroupsSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组自动更新'**
+  String get autoUpdateGroupsSection;
+
+  /// No description provided for @autoUpdateReadingGroups.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取分组中…'**
+  String get autoUpdateReadingGroups;
+
+  /// No description provided for @autoUpdateNoGroups.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有分组'**
+  String get autoUpdateNoGroups;
+
+  /// No description provided for @autoUpdateNoGroupsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在规则订阅页新建分组后，可以在这里单独开关'**
+  String get autoUpdateNoGroupsSubtitle;
+
+  /// No description provided for @autoUpdateGroupsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅会自动更新已开启的分组中的网络订阅；写入 `subscription_group` 表。'**
+  String get autoUpdateGroupsFooter;
+
+  /// No description provided for @autoUpdateReadingSubs.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取订阅…'**
+  String get autoUpdateReadingSubs;
+
+  /// No description provided for @autoUpdateNoCandidates.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可自动更新的订阅（需为远程、已启用、且所在分组已开启）'**
+  String get autoUpdateNoCandidates;
+
+  /// No description provided for @autoUpdateDueNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'已到期：回到前台时会立即执行'**
+  String get autoUpdateDueNow;
+
+  /// No description provided for @autoUpdateRemainingHours.
+  ///
+  /// In zh, this message translates to:
+  /// **'{hours} 小时 {minutes} 分钟后'**
+  String autoUpdateRemainingHours(int hours, int minutes);
+
+  /// No description provided for @autoUpdateRemainingMinutes.
+  ///
+  /// In zh, this message translates to:
+  /// **'{minutes} 分钟后'**
+  String autoUpdateRemainingMinutes(int minutes);
+
+  /// No description provided for @autoUpdateNextAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'{moment}（{left}）'**
+  String autoUpdateNextAt(String moment, String left);
+
+  /// No description provided for @autoUpdateMoment.
+  ///
+  /// In zh, this message translates to:
+  /// **'{month} 月 {day} 日 {time}'**
+  String autoUpdateMoment(int month, int day, String time);
+
+  /// No description provided for @autoUpdateIntervalLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新间隔（小时）'**
+  String get autoUpdateIntervalLabel;
+
+  /// No description provided for @autoUpdateIntervalHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'1–168 小时'**
+  String get autoUpdateIntervalHelper;
+
+  /// No description provided for @mirrorTplTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像站模板'**
+  String get mirrorTplTitle;
+
+  /// No description provided for @mirrorTplAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加模板'**
+  String get mirrorTplAdd;
+
+  /// No description provided for @mirrorTplIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存常用的下载镜像。开启全局镜像后，订阅与软件更新默认都走所选模板；添加订阅时也可以单独指定模板。'**
+  String get mirrorTplIntro;
+
+  /// No description provided for @mirrorTplActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作'**
+  String get mirrorTplActions;
+
+  /// No description provided for @mirrorTplFormatExample.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像站格式示例'**
+  String get mirrorTplFormatExample;
+
+  /// No description provided for @mirrorTplFormatExampleSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'了解占位符如何组成镜像地址'**
+  String get mirrorTplFormatExampleSubtitle;
+
+  /// No description provided for @mirrorTplSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存模板'**
+  String get mirrorTplSaved;
+
+  /// No description provided for @mirrorTplReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取镜像站模板'**
+  String get mirrorTplReadFailed;
+
+  /// No description provided for @mirrorTplReadFailedSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'旧库尚未就绪或该表不可用'**
+  String get mirrorTplReadFailedSubtitle;
+
+  /// No description provided for @mirrorTplSavedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存模板（{count}）'**
+  String mirrorTplSavedCount(int count);
+
+  /// No description provided for @mirrorTplReading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取镜像站模板…'**
+  String get mirrorTplReading;
+
+  /// No description provided for @mirrorTplEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无模板。点击右上角「添加模板」开始使用。'**
+  String get mirrorTplEmpty;
+
+  /// No description provided for @mirrorTplDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'同名模板已存在，请换一个名称'**
+  String get mirrorTplDuplicate;
+
+  /// No description provided for @mirrorTplDuplicateSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败：名称与已有模板重复'**
+  String get mirrorTplDuplicateSave;
+
+  /// No description provided for @mirrorTplFormatTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像站格式'**
+  String get mirrorTplFormatTitle;
+
+  /// No description provided for @mirrorTplFormatIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像地址由固定前缀与占位符组成，下载订阅时会把占位符替换成真实链接。'**
+  String get mirrorTplFormatIntro;
+
+  /// No description provided for @mirrorTplFormatUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'{token}：完整订阅地址'**
+  String mirrorTplFormatUrl(String token);
+
+  /// No description provided for @mirrorTplFormatScheme.
+  ///
+  /// In zh, this message translates to:
+  /// **'{token}：http 或 https'**
+  String mirrorTplFormatScheme(String token);
+
+  /// No description provided for @mirrorTplFormatUrlEncoded.
+  ///
+  /// In zh, this message translates to:
+  /// **'{token}：URL 编码后的完整地址'**
+  String mirrorTplFormatUrlEncoded(String token);
+
+  /// No description provided for @mirrorTplFormatHost.
+  ///
+  /// In zh, this message translates to:
+  /// **'{token}：订阅域名'**
+  String mirrorTplFormatHost(String token);
+
+  /// No description provided for @mirrorTplFormatPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'{token}：路径部分'**
+  String mirrorTplFormatPath(String token);
+
+  /// No description provided for @mirrorTplFormatPathAndQuery.
+  ///
+  /// In zh, this message translates to:
+  /// **'{token}：路径与查询参数'**
+  String mirrorTplFormatPathAndQuery(String token);
+
+  /// No description provided for @mirrorTplFormatSample.
+  ///
+  /// In zh, this message translates to:
+  /// **'示例：https://ghproxy.example.com/{token}'**
+  String mirrorTplFormatSample(String token);
+
+  /// No description provided for @mirrorTplFormatPlaceholders.
+  ///
+  /// In zh, this message translates to:
+  /// **'可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'**
+  String mirrorTplFormatPlaceholders(
+    String url,
+    String scheme,
+    String urlEncoded,
+    String host,
+    String path,
+    String pathAndQuery,
+  );
+
+  /// No description provided for @mirrorTplNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模板名称'**
+  String get mirrorTplNameLabel;
+
+  /// No description provided for @mirrorTplNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：GitHub 镜像'**
+  String get mirrorTplNameHint;
+
+  /// No description provided for @mirrorTplAddressLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模板地址'**
+  String get mirrorTplAddressLabel;
+
+  /// No description provided for @mirrorTplInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'必须使用 HTTP(S) 并包含至少一个占位符'**
+  String get mirrorTplInvalid;
+
+  /// No description provided for @mirrorTplAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加镜像站模板'**
+  String get mirrorTplAddTitle;
+
+  /// No description provided for @mirrorTplEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑镜像站模板'**
+  String get mirrorTplEditTitle;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get commonEdit;
+
+  /// No description provided for @ruleControlUrlNotReadyCa.
+  ///
+  /// In zh, this message translates to:
+  /// **'未就绪 · 需先安装并验证 CA 根证书'**
+  String get ruleControlUrlNotReadyCa;
+
+  /// No description provided for @ruleControlUrlNotReadyInspection.
+  ///
+  /// In zh, this message translates to:
+  /// **'未就绪 · 需在 HTTPS 流量检查中开启'**
+  String get ruleControlUrlNotReadyInspection;
+
+  /// No description provided for @ruleControlUrlNotReadyApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'未就绪 · 需在 HTTPS 流量检查中选择目标应用'**
+  String get ruleControlUrlNotReadyApps;
+
+  /// No description provided for @ruleControlUrlPaused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停 · 未启用解密 URL 过滤与重定向'**
+  String get ruleControlUrlPaused;
+
+  /// No description provided for @ruleControlUrlRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行中 · 解密流量匹配 URL 屏蔽、放行及重定向'**
+  String get ruleControlUrlRunning;
+
+  /// No description provided for @ruleControlIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'统一管理域名过滤、URL 规则及规则覆写的总控开关、拦截策略与在线规则订阅。黑名单、白名单与覆写名单可在功能中心中独立管理。'**
+  String get ruleControlIntro;
+
+  /// No description provided for @ruleControlFilterSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'过滤与覆写控制'**
+  String get ruleControlFilterSection;
+
+  /// No description provided for @ruleControlDomainRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用域名规则'**
+  String get ruleControlDomainRules;
+
+  /// No description provided for @ruleControlDomainRulesOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启 DNS 阶段域名屏蔽、白名单放行及 IPv4/IPv6 覆写'**
+  String get ruleControlDomainRulesOn;
+
+  /// No description provided for @ruleControlDomainRulesOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'已禁用 DNS 域名过滤，查询将直接放行'**
+  String get ruleControlDomainRulesOff;
+
+  /// No description provided for @ruleControlUrlRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'URL 规则与内容过滤'**
+  String get ruleControlUrlRules;
+
+  /// No description provided for @ruleControlNotReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'未就绪'**
+  String get ruleControlNotReady;
+
+  /// No description provided for @ruleControlPolicySection.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截策略'**
+  String get ruleControlPolicySection;
+
+  /// No description provided for @ruleControlBlockResponse.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截响应'**
+  String get ruleControlBlockResponse;
+
+  /// No description provided for @ruleControlDynamicSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态策略：先 NODATA，高频请求后 {mode}'**
+  String ruleControlDynamicSummary(String mode);
+
+  /// No description provided for @ruleControlSubsSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅与更新'**
+  String get ruleControlSubsSection;
+
+  /// No description provided for @ruleControlSubsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理域名规则与 IPv4/IPv6 覆写订阅源及分组'**
+  String get ruleControlSubsSubtitle;
+
+  /// No description provided for @ruleControlCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个'**
+  String ruleControlCount(int count);
+
+  /// No description provided for @ruleControlAutoUpdateOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开启 · 每 {hours} 小时自动更新'**
+  String ruleControlAutoUpdateOn(int hours);
+
+  /// No description provided for @ruleControlAutoUpdateOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭自动更新'**
+  String get ruleControlAutoUpdateOff;
+
+  /// No description provided for @ruleControlMirrorSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'维护订阅下载镜像，可在添加订阅时直接选择'**
+  String get ruleControlMirrorSubtitle;
+
+  /// No description provided for @blockResponseFixedSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'固定响应'**
+  String get blockResponseFixedSection;
+
+  /// No description provided for @blockResponseFixedFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态策略开启时会临时覆盖以上选择：先返回 NODATA，高频请求后返回 NXDOMAIN。'**
+  String get blockResponseFixedFooter;
+
+  /// No description provided for @blockResponseDynamicSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态策略'**
+  String get blockResponseDynamicSection;
+
+  /// No description provided for @blockResponseEnableDynamic.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用动态策略'**
+  String get blockResponseEnableDynamic;
+
+  /// No description provided for @blockResponseEnableDynamicSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'同一域名的所有记录类型合并计数'**
+  String get blockResponseEnableDynamicSubtitle;
+
+  /// No description provided for @blockResponseParameters.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态参数'**
+  String get blockResponseParameters;
+
+  /// No description provided for @blockResponseParamsSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{threshold} 次 / {window} 秒 / 保持 {duration} 秒'**
+  String blockResponseParamsSummary(int threshold, int window, int duration);
+
+  /// No description provided for @blockResponseDynamicFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'正常客户端会缓存 NODATA 响应。动态策略主要用于持续重试或忽略负缓存的请求。'**
+  String get blockResponseDynamicFooter;
+
+  /// No description provided for @blockResponseThresholdError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求次数需在 2–100 之间'**
+  String get blockResponseThresholdError;
+
+  /// No description provided for @blockResponseWindowError.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计窗口需在 10–300 秒之间'**
+  String get blockResponseWindowError;
+
+  /// No description provided for @blockResponseDurationError.
+  ///
+  /// In zh, this message translates to:
+  /// **'保持时长需在 60–3600 秒之间'**
+  String get blockResponseDurationError;
+
+  /// No description provided for @blockResponseThresholdLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求次数'**
+  String get blockResponseThresholdLabel;
+
+  /// No description provided for @blockResponseThresholdHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'2–100 次；第 N+1 次开始升级'**
+  String get blockResponseThresholdHelper;
+
+  /// No description provided for @blockResponseWindowLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计窗口（秒）'**
+  String get blockResponseWindowLabel;
+
+  /// No description provided for @blockResponseWindowHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'10–300 秒'**
+  String get blockResponseWindowHelper;
+
+  /// No description provided for @blockResponseDurationLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'NXDOMAIN 保持时长（秒）'**
+  String get blockResponseDurationLabel;
+
+  /// No description provided for @blockResponseDurationHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'60–3600 秒；首次升级起固定计时'**
+  String get blockResponseDurationHelper;
+
+  /// No description provided for @httpInspCheckingCa.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查根证书…'**
+  String get httpInspCheckingCa;
+
+  /// No description provided for @httpInspNoAppsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择目标应用，仅保留 DNS 过滤'**
+  String get httpInspNoAppsHint;
+
+  /// No description provided for @httpInspSelectedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 个应用，其余直接转发'**
+  String httpInspSelectedHint(int count);
+
+  /// No description provided for @httpInspScopeSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查范围'**
+  String get httpInspScopeSection;
+
+  /// No description provided for @httpInspEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 HTTPS 检查'**
+  String get httpInspEnable;
+
+  /// No description provided for @httpInspTargetApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标应用'**
+  String get httpInspTargetApps;
+
+  /// No description provided for @httpInspNoApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择任何应用'**
+  String get httpInspNoApps;
+
+  /// No description provided for @httpInspSelectedApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {count} 个应用'**
+  String httpInspSelectedApps(int count);
+
+  /// No description provided for @httpInspCaCert.
+  ///
+  /// In zh, this message translates to:
+  /// **'CA 证书'**
+  String get httpInspCaCert;
+
+  /// No description provided for @httpInspCaReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书已安装且指纹匹配，可查看或重置'**
+  String get httpInspCaReady;
+
+  /// No description provided for @httpInspContentSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'解密内容过滤'**
+  String get httpInspContentSection;
+
+  /// No description provided for @httpInspUrlRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 URL 规则与重定向'**
+  String get httpInspUrlRules;
+
+  /// No description provided for @httpInspNeedEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'需先启用 HTTPS 检查'**
+  String get httpInspNeedEnable;
+
+  /// No description provided for @httpInspUrlPaused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停 · 解密请求直接放行，不应用 URL 规则及 CNAME 重定向'**
+  String get httpInspUrlPaused;
+
+  /// No description provided for @httpInspUrlOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启解密流量下的 URL 屏蔽、放行及 CNAME 重定向'**
+  String get httpInspUrlOn;
+
+  /// No description provided for @httpInspProtocolSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'协议与兼容性'**
+  String get httpInspProtocolSection;
+
+  /// No description provided for @httpInspBlockHttp3.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截 HTTP/3 (QUIC)'**
+  String get httpInspBlockHttp3;
+
+  /// No description provided for @httpInspBlockHttp3Subtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭'**
+  String get httpInspBlockHttp3Subtitle;
+
+  /// No description provided for @httpInspBlockDot.
+  ///
+  /// In zh, this message translates to:
+  /// **'阻断加密 DNS (DoT)'**
+  String get httpInspBlockDot;
+
+  /// No description provided for @httpInspBlockDotSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'阻断 TCP 853 端口，防止绕过域名规则'**
+  String get httpInspBlockDotSubtitle;
+
+  /// No description provided for @httpInspRequestLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求日志'**
+  String get httpInspRequestLogs;
+
+  /// No description provided for @httpInspRequestLogsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看解密明细与自动旁路记录'**
+  String get httpInspRequestLogsSubtitle;
+
+  /// No description provided for @httpInspBypassFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单合并后交给引擎的 setExtraPassthroughSuffixes。'**
+  String get httpInspBypassFooter;
+
+  /// No description provided for @httpInspBypassTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 绕过规则（{count}）'**
+  String httpInspBypassTitle(int count);
+
+  /// No description provided for @httpInspBypassEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置自定义绕过规则'**
+  String get httpInspBypassEmpty;
+
+  /// No description provided for @httpInspBypassEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置放行清单始终生效；这里是额外追加的域名后缀'**
+  String get httpInspBypassEmptySubtitle;
+
+  /// No description provided for @httpInspBypassRowSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'不参与解密，直接透传'**
+  String get httpInspBypassRowSubtitle;
+
+  /// No description provided for @httpInspCaRequiredTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要先安装根证书'**
+  String get httpInspCaRequiredTitle;
+
+  /// No description provided for @httpInspGoInstall.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往安装'**
+  String get httpInspGoInstall;
+
+  /// No description provided for @httpInspCaReadingBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取根证书状态，请稍后再试。'**
+  String get httpInspCaReadingBody;
+
+  /// No description provided for @httpInspCaRequiredBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 检查要把解密后的明文交回应用，必须由系统的根证书信任链认可谛听的根证书。当前是「{problem}」，所以还不能选择目标应用。\n\n去 CA 证书页生成并安装证书？'**
+  String httpInspCaRequiredBody(String problem);
+
+  /// No description provided for @httpInspCaMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未生成根证书：前往 CA 证书页生成'**
+  String get httpInspCaMissing;
+
+  /// No description provided for @httpInspCaNotInstalled.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书已生成但未安装到系统信任存储'**
+  String get httpInspCaNotInstalled;
+
+  /// No description provided for @httpInspCaReadyShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书已就绪'**
+  String get httpInspCaReadyShort;
+
+  /// No description provided for @httpInspNeedDomainRulesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'还需要开启域名规则'**
+  String get httpInspNeedDomainRulesTitle;
+
+  /// No description provided for @httpInspEnableAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部开启'**
+  String get httpInspEnableAll;
+
+  /// No description provided for @httpInspNeedDomainRulesBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 检查负责解密，域名规则负责决定解密后的流量怎么处理。当前域名规则是关闭状态，只开检查不会有任何拦截效果。\n\n是否同时开启域名规则？'**
+  String get httpInspNeedDomainRulesBody;
+
+  /// No description provided for @httpInspAppsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择检查应用'**
+  String get httpInspAppsTitle;
+
+  /// No description provided for @httpInspSelectVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'全选当前结果'**
+  String get httpInspSelectVisible;
+
+  /// No description provided for @httpInspDeselectVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消当前结果'**
+  String get httpInspDeselectVisible;
+
+  /// No description provided for @httpInspAppsIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，其他应用直接转发。选择应用会取消其「排除应用」「禁止联网」与应用独立规则状态。'**
+  String get httpInspAppsIntro;
+
+  /// No description provided for @httpInspAppsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {selected} 个应用（可见 {visible}）'**
+  String httpInspAppsCount(int selected, int visible);
+
+  /// No description provided for @commonLater.
+  ///
+  /// In zh, this message translates to:
+  /// **'稍后'**
+  String get commonLater;
+
+  /// No description provided for @ruleControlSubsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则订阅'**
+  String get ruleControlSubsTitle;
+
+  /// No description provided for @cleanupIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下操作会立即删除本机数据，删除后无法恢复。重要规则或配置请在执行前备份。'**
+  String get cleanupIntro;
+
+  /// No description provided for @cleanupRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在执行：{title}'**
+  String cleanupRunning(String title);
+
+  /// No description provided for @cleanupDescLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除 DNS、HTTP 请求日志、竞速统计及 Bootstrap 解析日志'**
+  String get cleanupDescLogs;
+
+  /// No description provided for @cleanupDescTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除所有应用的历史流量统计记录与实时统计状态'**
+  String get cleanupDescTraffic;
+
+  /// No description provided for @cleanupDescCrash.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除本地保存的所有 Java 与 Native 异常崩溃日志'**
+  String get cleanupDescCrash;
+
+  /// No description provided for @cleanupDescDnsCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'移除已缓存的解析结果，下次访问会重新查询'**
+  String get cleanupDescDnsCache;
+
+  /// No description provided for @cleanupDescProviderWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除智能选择的健康样本，让它重新按默认权重分配流量'**
+  String get cleanupDescProviderWeights;
+
+  /// No description provided for @cleanupDescBootstrapWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除 Bootstrap DNS 解析健康样本，重新按默认权重选择'**
+  String get cleanupDescBootstrapWeights;
+
+  /// No description provided for @cleanupDescDomainRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除域名屏蔽、白名单、IPv4/IPv6 覆写及对应订阅，恢复预设白名单'**
+  String get cleanupDescDomainRules;
+
+  /// No description provided for @cleanupDescAddressRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除 URL 屏蔽、放行和 CNAME 覆写规则，不影响域名规则'**
+  String get cleanupDescAddressRules;
+
+  /// No description provided for @cleanupDescSubscriptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除所有网络与本地规则订阅、订阅分组及自动更新任务'**
+  String get cleanupDescSubscriptions;
+
+  /// No description provided for @cleanupDescAppRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空分应用排除、禁止联网应用、应用白名单及抓包名单'**
+  String get cleanupDescAppRules;
+
+  /// No description provided for @cleanupDescOutboundProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空出站代理协议、服务器与鉴权信息，恢复直连'**
+  String get cleanupDescOutboundProxy;
+
+  /// No description provided for @cleanupDescCaCertificate.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除本地生成的 MITM CA 根证书与私钥'**
+  String get cleanupDescCaCertificate;
+
+  /// No description provided for @cleanupDescDownloadCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除更新安装包、下载临时文件及应用临时缓存'**
+  String get cleanupDescDownloadCache;
+
+  /// No description provided for @cleanupDescCustomBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除已配置的自定义壁纸图片缓存及路径记录，恢复默认背景'**
+  String get cleanupDescCustomBackground;
+
+  /// No description provided for @cleanupDescSettingsGuides.
+  ///
+  /// In zh, this message translates to:
+  /// **'让所有首次进入说明再次显示，需要重新同意使用协议'**
+  String get cleanupDescSettingsGuides;
+
+  /// No description provided for @cleanupDescAllData.
+  ///
+  /// In zh, this message translates to:
+  /// **'深度清空所有日志、缓存、规则、订阅、证书与配置，应用将退出'**
+  String get cleanupDescAllData;
+
+  /// No description provided for @cleanupConfirmLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除所有 DNS、HTTP 请求日志、竞速统计和 Bootstrap DNS 解析统计吗？'**
+  String get cleanupConfirmLogs;
+
+  /// No description provided for @cleanupConfirmTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清除所有应用的历史流量统计记录与实时统计状态吗？'**
+  String get cleanupConfirmTraffic;
+
+  /// No description provided for @cleanupConfirmCrash.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除所有本地崩溃日志和崩溃统计状态吗？'**
+  String get cleanupConfirmCrash;
+
+  /// No description provided for @cleanupConfirmDnsCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除所有本地 DNS 缓存吗？下次访问域名时会重新查询。'**
+  String get cleanupConfirmDnsCache;
+
+  /// No description provided for @cleanupConfirmProviderWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清除所有服务商健康样本并恢复竞速模式默认权重吗？'**
+  String get cleanupConfirmProviderWeights;
+
+  /// No description provided for @cleanupConfirmBootstrapWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清除 Bootstrap DNS 解析健康样本并恢复默认权重吗？'**
+  String get cleanupConfirmBootstrapWeights;
+
+  /// No description provided for @cleanupConfirmDomainRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除全部域名规则吗？域名屏蔽、白名单、IPv4/IPv6 覆写规则及对应订阅都会被移除，地址规则不受影响。'**
+  String get cleanupConfirmDomainRules;
+
+  /// No description provided for @cleanupConfirmAddressRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除全部地址规则吗？URL 屏蔽、放行和 CNAME 覆写规则都会被移除，域名规则不受影响。'**
+  String get cleanupConfirmAddressRules;
+
+  /// No description provided for @cleanupConfirmSubscriptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除所有规则订阅吗？所有订阅链接、分组与订阅导入的规则都会被移除，手动添加的规则不受影响。'**
+  String get cleanupConfirmSubscriptions;
+
+  /// No description provided for @cleanupConfirmAppRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要重置所有应用控制名单吗？分应用代理排除、禁止联网应用、应用独立白名单以及 HTTP/HTTPS 抓包应用配置都将被清空并恢复默认。'**
+  String get cleanupConfirmAppRules;
+
+  /// No description provided for @cleanupConfirmOutboundProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要重置出站代理配置吗？出站代理将被禁用，服务器地址、端口及账号密码将被清除。'**
+  String get cleanupConfirmOutboundProxy;
+
+  /// No description provided for @cleanupConfirmCaCertificate.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清除本地生成的 HTTPS 抓包 CA 证书和私钥吗？如果系统已安装此证书，清除后需重新生成并导入系统方可继续解密抓包。'**
+  String get cleanupConfirmCaCertificate;
+
+  /// No description provided for @cleanupConfirmDownloadCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除下载的更新安装包和临时缓存文件吗？'**
+  String get cleanupConfirmDownloadCache;
+
+  /// No description provided for @cleanupConfirmCustomBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要清除自定义壁纸缓存并恢复默认外观背景吗？'**
+  String get cleanupConfirmCustomBackground;
+
+  /// No description provided for @cleanupConfirmSettingsGuides.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要重置所有应用设置新手引导和首次使用协议吗？这不会删除任何配置、规则、缓存、日志或证书。操作完成后应用将退出；下次打开时需要重新同意使用协议，所有新手引导也会再次显示。'**
+  String get cleanupConfirmSettingsGuides;
+
+  /// No description provided for @cleanupConfirmAllData.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要执行全面数据清理吗？将依次清理所有日志、流量统计、崩溃记录、DNS 缓存、服务商权重、域名及地址规则、规则订阅、临时缓存及抓包证书。所有自定义配置与规则将被清空，新手引导也将重置，操作完成后应用将退出。'**
+  String get cleanupConfirmAllData;
+
+  /// No description provided for @cleanupRestartTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要重启应用'**
+  String get cleanupRestartTitle;
+
+  /// No description provided for @cleanupRestartBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理已完成。新手引导与使用协议已重置，应用需要重新启动才会生效。'**
+  String get cleanupRestartBody;
+
+  /// No description provided for @commonConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定'**
+  String get commonConfirm;
+
+  /// No description provided for @transferTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份与迁移'**
+  String get transferTitle;
+
+  /// No description provided for @transferMetricProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务商'**
+  String get transferMetricProviders;
+
+  /// No description provided for @transferMetricSubs.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则订阅'**
+  String get transferMetricSubs;
+
+  /// No description provided for @transferMetricCustomRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义规则'**
+  String get transferMetricCustomRules;
+
+  /// No description provided for @transferMetricListedApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单应用'**
+  String get transferMetricListedApps;
+
+  /// No description provided for @transferSectionAppConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用配置备份'**
+  String get transferSectionAppConfig;
+
+  /// No description provided for @transferSectionRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则与订阅配置'**
+  String get transferSectionRules;
+
+  /// No description provided for @transferSectionAppControl.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用控制与流量管理'**
+  String get transferSectionAppControl;
+
+  /// No description provided for @transferSectionPersonal.
+  ///
+  /// In zh, this message translates to:
+  /// **'个性化与通用设置'**
+  String get transferSectionPersonal;
+
+  /// No description provided for @transferDeselectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全不选'**
+  String get transferDeselectAll;
+
+  /// No description provided for @transferImportExportSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入导出'**
+  String get transferImportExportSection;
+
+  /// No description provided for @transferExportJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出应用配置 (JSON)'**
+  String get transferExportJson;
+
+  /// No description provided for @transferExportHintNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先勾选要导出的分组'**
+  String get transferExportHintNone;
+
+  /// No description provided for @transferExportHintCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'将勾选的 {count} 组配置保存为 JSON 文件'**
+  String transferExportHintCount(int count);
+
+  /// No description provided for @transferImportJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入应用配置 (JSON)'**
+  String get transferImportJson;
+
+  /// No description provided for @transferImportSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从备份文件合并配置，自动跳过本机已存在项目'**
+  String get transferImportSubtitle;
+
+  /// No description provided for @transferImportExportFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出的配置文件包含个人自定义设置，请妥善保管；导入时将合并配置并自动跳过已存在的条目。出站代理的账号密码不在备份范围内。'**
+  String get transferImportExportFooter;
+
+  /// No description provided for @transferCloudSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端备份'**
+  String get transferCloudSection;
+
+  /// No description provided for @transferWebdav.
+  ///
+  /// In zh, this message translates to:
+  /// **'WebDAV 云同步'**
+  String get transferWebdav;
+
+  /// No description provided for @transferWebdavSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'把配置文件同步到自建 WebDAV 服务器'**
+  String get transferWebdavSubtitle;
+
+  /// No description provided for @transferBusyExporting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在生成备份文件…'**
+  String get transferBusyExporting;
+
+  /// No description provided for @transferBusySaving.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待选择保存位置…'**
+  String get transferBusySaving;
+
+  /// No description provided for @transferBusyPickingImport.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待选择备份文件…'**
+  String get transferBusyPickingImport;
+
+  /// No description provided for @transferExportEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选分组没有可导出的内容'**
+  String get transferExportEmpty;
+
+  /// No description provided for @transferExportCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消保存'**
+  String get transferExportCancelled;
+
+  /// No description provided for @transferExportDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导出 {groups} 组、共 {items} 项'**
+  String transferExportDone(int groups, int items);
+
+  /// No description provided for @transferExportSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'；跳过 {count} 项'**
+  String transferExportSkipped(int count);
+
+  /// No description provided for @transferExportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出失败'**
+  String get transferExportFailed;
+
+  /// No description provided for @transferImportCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消导入'**
+  String get transferImportCancelled;
+
+  /// No description provided for @transferImportTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入应用配置'**
+  String get transferImportTitle;
+
+  /// No description provided for @transferImportFailedChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入失败'**
+  String get transferImportFailedChip;
+
+  /// No description provided for @transferImportDoneChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入完成'**
+  String get transferImportDoneChip;
+
+  /// No description provided for @transferImportSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入汇总：新增 {added} 项，更新 {updated} 项，跳过 {skipped} 项'**
+  String transferImportSummary(int added, int updated, int skipped);
+
+  /// No description provided for @transferSourceFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'来源文件：{name}'**
+  String transferSourceFile(String name);
+
+  /// No description provided for @transferExportedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份导出于 {time}'**
+  String transferExportedAt(String time);
+
+  /// No description provided for @transferOutcomeRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'  + {group} · {detail}'**
+  String transferOutcomeRow(String group, String detail);
+
+  /// No description provided for @transferFailedGroupRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'  ! {group}：{error}'**
+  String transferFailedGroupRow(String group, String error);
+
+  /// No description provided for @transferNothingChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'  （备份中的条目本机都已存在，没有需要变更的内容）'**
+  String get transferNothingChanged;
+
+  /// No description provided for @transferSubscriptionsNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含 {count} 个订阅，请进入订阅管理执行规则更新。'**
+  String transferSubscriptionsNote(int count);
+
+  /// No description provided for @transferDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'完成'**
+  String get transferDone;
+
+  /// No description provided for @transferOutcomeAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增 {count}'**
+  String transferOutcomeAdded(int count);
+
+  /// No description provided for @transferOutcomeUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新 {count}'**
+  String transferOutcomeUpdated(int count);
+
+  /// No description provided for @transferOutcomeSkipped.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过 {count}'**
+  String transferOutcomeSkipped(int count);
+
+  /// No description provided for @transferNoChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'无变化'**
+  String get transferNoChange;
+
+  /// No description provided for @transferOutcomeSeparator.
+  ///
+  /// In zh, this message translates to:
+  /// **'，'**
+  String get transferOutcomeSeparator;
+
+  /// No description provided for @webdavClearConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空配置'**
+  String get webdavClearConfig;
+
+  /// No description provided for @webdavTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试连接'**
+  String get webdavTest;
+
+  /// No description provided for @webdavServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器'**
+  String get webdavServer;
+
+  /// No description provided for @webdavUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户名'**
+  String get webdavUsername;
+
+  /// No description provided for @webdavPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码'**
+  String get webdavPassword;
+
+  /// No description provided for @webdavPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'远端路径'**
+  String get webdavPath;
+
+  /// No description provided for @webdavUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传备份'**
+  String get webdavUpload;
+
+  /// No description provided for @webdavDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载恢复'**
+  String get webdavDownload;
+
+  /// No description provided for @webdavFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'「测试连接」会真实发起 WebDAV 请求：PROPFIND 探测目录，不存在则尝试创建。上传与下载走与「备份与迁移」同一份备份格式。{hint}密码只存在内存里，不落盘。'**
+  String webdavFooter(String hint);
+
+  /// No description provided for @webdavFooterConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接成功后即可上传或恢复。'**
+  String get webdavFooterConnected;
+
+  /// No description provided for @webdavNoConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机没有可备份的配置'**
+  String get webdavNoConfig;
+
+  /// No description provided for @webdavUploadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传失败'**
+  String get webdavUploadFailed;
+
+  /// No description provided for @webdavNoCloudBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端没有可恢复的备份'**
+  String get webdavNoCloudBackup;
+
+  /// No description provided for @webdavRestoreTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从云端恢复配置'**
+  String get webdavRestoreTitle;
+
+  /// No description provided for @webdavRestoreFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复失败'**
+  String get webdavRestoreFailed;
+
+  /// No description provided for @webdavRestoreDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复完成'**
+  String get webdavRestoreDone;
+
+  /// No description provided for @webdavRestoreSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复汇总：新增 {added} 项，更新 {updated} 项，跳过 {skipped} 项'**
+  String webdavRestoreSummary(int added, int updated, int skipped);
+
+  /// No description provided for @webdavOutcomeRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'  + {group} · 新增 {added}，跳过 {skipped}'**
+  String webdavOutcomeRow(String group, int added, int skipped);
+
+  /// No description provided for @webdavNothingChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'  （云端备份与本机一致，没有需要变更的内容）'**
+  String get webdavNothingChanged;
+
+  /// No description provided for @webdavHintIdle.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置服务器信息后可测试连接'**
+  String get webdavHintIdle;
+
+  /// No description provided for @webdavHintConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在握手，请稍候'**
+  String get webdavHintConnecting;
+
+  /// No description provided for @webdavHintConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'可上传备份或从云端恢复配置'**
+  String get webdavHintConnected;
+
+  /// No description provided for @webdavHintFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查地址、账号与证书后重试'**
+  String get webdavHintFailed;
+
+  /// No description provided for @backupGroupProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 DNS 服务商'**
+  String get backupGroupProviders;
+
+  /// No description provided for @backupGroupProvidersDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'DoH、DoT 服务商与解析配置'**
+  String get backupGroupProvidersDesc;
+
+  /// No description provided for @backupGroupBootstrap.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 Bootstrap IP'**
+  String get backupGroupBootstrap;
+
+  /// No description provided for @backupGroupBootstrapDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'引导 DNS 节点与启用状态'**
+  String get backupGroupBootstrapDesc;
+
+  /// No description provided for @backupGroupCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 缓存策略'**
+  String get backupGroupCache;
+
+  /// No description provided for @backupGroupCacheDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 缓存开关、预设与 TTL 控制'**
+  String get backupGroupCacheDesc;
+
+  /// No description provided for @backupGroupOutbound.
+  ///
+  /// In zh, this message translates to:
+  /// **'出站代理配置'**
+  String get backupGroupOutbound;
+
+  /// No description provided for @backupGroupOutboundDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'SOCKS5 / HTTP 代理与代理应用，不含账号密码'**
+  String get backupGroupOutboundDesc;
+
+  /// No description provided for @backupGroupSubscriptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络规则订阅'**
+  String get backupGroupSubscriptions;
+
+  /// No description provided for @backupGroupSubscriptionsDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅源链接、镜像加速与自动更新'**
+  String get backupGroupSubscriptionsDesc;
+
+  /// No description provided for @backupGroupDomainRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义屏蔽域名规则'**
+  String get backupGroupDomainRules;
+
+  /// No description provided for @backupGroupDomainRulesDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动添加的域名屏蔽规则及状态'**
+  String get backupGroupDomainRulesDesc;
+
+  /// No description provided for @backupGroupRewriteDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义复写域名规则'**
+  String get backupGroupRewriteDomain;
+
+  /// No description provided for @backupGroupRewriteDomainDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'IPv4 / IPv6 域名覆写规则'**
+  String get backupGroupRewriteDomainDesc;
+
+  /// No description provided for @backupGroupRewriteCname.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义复写 CNAME 规则'**
+  String get backupGroupRewriteCname;
+
+  /// No description provided for @backupGroupRewriteCnameDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'CNAME 域名覆写规则'**
+  String get backupGroupRewriteCnameDesc;
+
+  /// No description provided for @backupGroupAddressRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义屏蔽地址规则'**
+  String get backupGroupAddressRules;
+
+  /// No description provided for @backupGroupAddressRulesDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'URL 路径屏蔽规则'**
+  String get backupGroupAddressRulesDesc;
+
+  /// No description provided for @backupGroupExcluded.
+  ///
+  /// In zh, this message translates to:
+  /// **'排除应用名单'**
+  String get backupGroupExcluded;
+
+  /// No description provided for @backupGroupExcludedDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'绕过过滤使用系统 DNS 的应用'**
+  String get backupGroupExcludedDesc;
+
+  /// No description provided for @backupGroupBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁止联网名单'**
+  String get backupGroupBlocked;
+
+  /// No description provided for @backupGroupBlockedDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务运行时禁止联网的应用'**
+  String get backupGroupBlockedDesc;
+
+  /// No description provided for @backupGroupAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用独立规则与放行'**
+  String get backupGroupAllowlist;
+
+  /// No description provided for @backupGroupAllowlistDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'单应用放行规则与域名白名单'**
+  String get backupGroupAllowlistDesc;
+
+  /// No description provided for @backupGroupHttpInspection.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 抓包检测配置'**
+  String get backupGroupHttpInspection;
+
+  /// No description provided for @backupGroupHttpInspectionDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量抓包开关与目标应用名单'**
+  String get backupGroupHttpInspectionDesc;
+
+  /// No description provided for @backupGroupAppearance.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观与界面个性化'**
+  String get backupGroupAppearance;
+
+  /// No description provided for @backupGroupAppearanceDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'主题风格、组件透明度与标语'**
+  String get backupGroupAppearanceDesc;
+
+  /// No description provided for @backupGroupSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统与通用设置'**
+  String get backupGroupSystem;
+
+  /// No description provided for @backupGroupSystemDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'局域网绕行、日志模式、语言与通知'**
+  String get backupGroupSystemDesc;
+
+  /// No description provided for @webdavUploadedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上传 {groups} 组、共 {items} 项'**
+  String webdavUploadedCount(int groups, int items);
+
+  /// No description provided for @agentApiEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析已启用'**
+  String get agentApiEnabled;
+
+  /// No description provided for @agentApiDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析未启用'**
+  String get agentApiDisabled;
+
+  /// No description provided for @agentApiNoProvider.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未配置 AI 厂商；请先在「AI 厂商管理」中添加并填写 API Key。'**
+  String get agentApiNoProvider;
+
+  /// No description provided for @agentApiCurrentProvider.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前厂商：{name} · {model}'**
+  String agentApiCurrentProvider(String name, String model);
+
+  /// No description provided for @agentApiNoModel.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择模型'**
+  String get agentApiNoModel;
+
+  /// No description provided for @agentApiKeyConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'密钥已配置'**
+  String get agentApiKeyConfigured;
+
+  /// No description provided for @agentApiTemperature.
+  ///
+  /// In zh, this message translates to:
+  /// **'温度 {value}'**
+  String agentApiTemperature(String value);
+
+  /// No description provided for @agentApiProviderChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求由你的厂商处理'**
+  String get agentApiProviderChip;
+
+  /// No description provided for @agentApiReadyHintOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'补全厂商与密钥后，日志页就能直接发起分析。'**
+  String get agentApiReadyHintOn;
+
+  /// No description provided for @agentApiReadyHintOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后即可在日志页直接发起分析。'**
+  String get agentApiReadyHintOff;
+
+  /// No description provided for @agentApiSectionProvider.
+  ///
+  /// In zh, this message translates to:
+  /// **'厂商与参数'**
+  String get agentApiSectionProvider;
+
+  /// No description provided for @agentApiProvidersSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个已配置厂商 · 选择接口与模型'**
+  String agentApiProvidersSubtitle(int count);
+
+  /// No description provided for @agentParamsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统提示词与采样温度'**
+  String get agentParamsSubtitle;
+
+  /// No description provided for @agentApiSectionTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'功能测试'**
+  String get agentApiSectionTest;
+
+  /// No description provided for @agentApiTestDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析一个域名'**
+  String get agentApiTestDomain;
+
+  /// No description provided for @agentApiTestDomainSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'用示例域名真实调用模型，检查安全风险与处置建议'**
+  String get agentApiTestDomainSubtitle;
+
+  /// No description provided for @agentApiTestTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析最近流量'**
+  String get agentApiTestTraffic;
+
+  /// No description provided for @agentApiTestTrafficSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'汇总最近 DNS 与 HTTPS 记录后真实调用模型'**
+  String get agentApiTestTrafficSubtitle;
+
+  /// No description provided for @agentApiTestFooterReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'两项都会真实请求你配置的厂商并消耗额度。'**
+  String get agentApiTestFooterReady;
+
+  /// No description provided for @agentApiTestFooterNotReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前配置不完整（未启用或缺少 API Key），点击会提示先补配置。'**
+  String get agentApiTestFooterNotReady;
+
+  /// No description provided for @agentApiSectionEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析入口'**
+  String get agentApiSectionEntries;
+
+  /// No description provided for @agentApiCacheTable.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 缓存表'**
+  String get agentApiCacheTable;
+
+  /// No description provided for @agentApiCacheTableSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点按任意一行，分析该域名的安全风险'**
+  String get agentApiCacheTableSubtitle;
+
+  /// No description provided for @agentApiRequests.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求记录'**
+  String get agentApiRequests;
+
+  /// No description provided for @agentApiRequestsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开一条请求的详情，底部可分析该域名'**
+  String get agentApiRequestsSubtitle;
+
+  /// No description provided for @agentApiDashboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志仪表盘'**
+  String get agentApiDashboard;
+
+  /// No description provided for @agentApiDashboardSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'「AI 研判」卡片可对最近流量发起整体分析'**
+  String get agentApiDashboardSubtitle;
+
+  /// No description provided for @agentApiEntriesFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析结果里的域名可以一键写入白名单或屏蔽规则，写入后启动 DNS VPN 生效。'**
+  String get agentApiEntriesFooter;
+
+  /// No description provided for @agentApiSectionReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置设置'**
+  String get agentApiSectionReset;
+
+  /// No description provided for @agentApiResetItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复出厂默认配置'**
+  String get agentApiResetItem;
+
+  /// No description provided for @agentApiResetSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空厂商、API Key、提示词与温度'**
+  String get agentApiResetSubtitle;
+
+  /// No description provided for @agentApiFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析用于辅助研判，不会自动修改规则；所有请求由你配置的厂商处理，密钥只存在本机。'**
+  String get agentApiFooter;
+
+  /// No description provided for @agentApiResetTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认配置？'**
+  String get agentApiResetTitle;
+
+  /// No description provided for @agentApiResetBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'此操作将把所有 AI 分析参数、API Key 与系统提示词恢复为默认设置。'**
+  String get agentApiResetBody;
+
+  /// No description provided for @agentApiResetConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认恢复'**
+  String get agentApiResetConfirm;
+
+  /// No description provided for @agentProvidersTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 厂商管理'**
+  String get agentProvidersTitle;
+
+  /// No description provided for @agentProvidersAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加自定义厂商'**
+  String get agentProvidersAdd;
+
+  /// No description provided for @agentProvidersIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'点选下方预设厂商会自动预填接口地址；模型名请在编辑页点「拉取模型」从厂商真实返回的列表里选。编辑时若 API Key 留空则保留原密钥。密钥以旧版同一套掩码混淆后存在本机，不额外落明文。'**
+  String get agentProvidersIntro;
+
+  /// No description provided for @agentProvidersMine.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的厂商'**
+  String get agentProvidersMine;
+
+  /// No description provided for @agentProvidersEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无厂商'**
+  String get agentProvidersEmpty;
+
+  /// No description provided for @agentProvidersEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从下方预设厂商目录点选，或点击右上角添加自定义厂商'**
+  String get agentProvidersEmptySubtitle;
+
+  /// No description provided for @agentProvidersRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'{model} · {baseUrl} · {key}'**
+  String agentProvidersRow(String model, String baseUrl, String key);
+
+  /// No description provided for @agentProvidersKeyConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'密钥已配置'**
+  String get agentProvidersKeyConfigured;
+
+  /// No description provided for @agentProvidersKeyMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'缺少密钥'**
+  String get agentProvidersKeyMissing;
+
+  /// No description provided for @agentProvidersFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'点一行可切换当前生效厂商；切换会把接口地址、密钥与模型同步到旧版的四个平铺键，避免新版界面与旧版读取来源不一致。'**
+  String get agentProvidersFooter;
+
+  /// No description provided for @agentProvidersAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加'**
+  String get agentProvidersAdded;
+
+  /// No description provided for @agentProvidersDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除厂商'**
+  String get agentProvidersDeleteTitle;
+
+  /// No description provided for @agentProvidersDeleteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除「{name}」吗？相关 API Key 也会从本机移除。'**
+  String agentProvidersDeleteBody(String name);
+
+  /// No description provided for @agentEditorAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加厂商'**
+  String get agentEditorAddTitle;
+
+  /// No description provided for @agentEditorEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑厂商'**
+  String get agentEditorEditTitle;
+
+  /// No description provided for @agentEditorPaste.
+  ///
+  /// In zh, this message translates to:
+  /// **'从剪贴板识别'**
+  String get agentEditorPaste;
+
+  /// No description provided for @agentEditorName.
+  ///
+  /// In zh, this message translates to:
+  /// **'厂商名称'**
+  String get agentEditorName;
+
+  /// No description provided for @agentEditorBaseUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'接口地址'**
+  String get agentEditorBaseUrl;
+
+  /// No description provided for @agentEditorModel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型名称'**
+  String get agentEditorModel;
+
+  /// No description provided for @agentEditorModelHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点「拉取模型」从厂商返回的列表里选'**
+  String get agentEditorModelHint;
+
+  /// No description provided for @agentEditorKeyKeep.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则保留原密钥'**
+  String get agentEditorKeyKeep;
+
+  /// No description provided for @agentEditorKeyLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅保存在本机（旧版同一套掩码）'**
+  String get agentEditorKeyLocal;
+
+  /// No description provided for @agentEditorFetching.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求中…'**
+  String get agentEditorFetching;
+
+  /// No description provided for @agentEditorFetch.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取模型'**
+  String get agentEditorFetch;
+
+  /// No description provided for @agentEditorTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试连接'**
+  String get agentEditorTest;
+
+  /// No description provided for @agentEditorErrorRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写名称、以 http(s) 开头的接口地址与模型名'**
+  String get agentEditorErrorRequired;
+
+  /// No description provided for @agentEditorErrorBaseUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先填写接口地址'**
+  String get agentEditorErrorBaseUrl;
+
+  /// No description provided for @agentEditorErrorTestNeeds.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试连接需要接口地址与模型名'**
+  String get agentEditorErrorTestNeeds;
+
+  /// No description provided for @agentEditorFetched.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取到 {count} 个模型，点下方标签选择'**
+  String agentEditorFetched(int count);
+
+  /// No description provided for @agentEditorFetchFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取模型失败：{error}'**
+  String agentEditorFetchFailed(String error);
+
+  /// No description provided for @agentEditorConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接成功：{model}'**
+  String agentEditorConnected(String model);
+
+  /// No description provided for @agentEditorUsage.
+  ///
+  /// In zh, this message translates to:
+  /// **'，用量 {tokens} tokens'**
+  String agentEditorUsage(int tokens);
+
+  /// No description provided for @agentEditorConnectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接失败：{error}'**
+  String agentEditorConnectFailed(String error);
+
+  /// No description provided for @agentParamsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'参数与提示词'**
+  String get agentParamsTitle;
+
+  /// No description provided for @agentParamsPromptSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统提示词'**
+  String get agentParamsPromptSection;
+
+  /// No description provided for @agentParamsPromptItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统提示词设定'**
+  String get agentParamsPromptItem;
+
+  /// No description provided for @agentParamsPromptUnset.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置（将使用各分析场景的内置提示词）'**
+  String get agentParamsPromptUnset;
+
+  /// No description provided for @agentParamsPromptFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空时域名分析与流量分析各用自己那份内置提示词；填写后两者都以此为准。'**
+  String get agentParamsPromptFooter;
+
+  /// No description provided for @agentParamsPromptHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如：你是一名网络安全与 DNS 威胁情报专家……'**
+  String get agentParamsPromptHint;
+
+  /// No description provided for @agentParamsTemperatureSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'采样温度（Temperature）'**
+  String get agentParamsTemperatureSection;
+
+  /// No description provided for @agentParamsTemperatureItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成随机度与创造性'**
+  String get agentParamsTemperatureItem;
+
+  /// No description provided for @agentParamsTemperatureFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'安全研判建议 0.2–0.4：温度越低，结论越稳定、越少自由发挥。'**
+  String get agentParamsTemperatureFooter;
+
+  /// No description provided for @agentParamsTemperatureStrict.
+  ///
+  /// In zh, this message translates to:
+  /// **'严谨精确（适合安全分析与结构化输出）'**
+  String get agentParamsTemperatureStrict;
+
+  /// No description provided for @agentParamsTemperatureBalanced.
+  ///
+  /// In zh, this message translates to:
+  /// **'平衡适中（推荐日常综合分析场景）'**
+  String get agentParamsTemperatureBalanced;
+
+  /// No description provided for @agentParamsTemperatureWild.
+  ///
+  /// In zh, this message translates to:
+  /// **'发散多变（输出内容更为丰富自由）'**
+  String get agentParamsTemperatureWild;
+
+  /// No description provided for @agentParamsTemplateSecurity.
+  ///
+  /// In zh, this message translates to:
+  /// **'安全威胁分析'**
+  String get agentParamsTemplateSecurity;
+
+  /// No description provided for @agentParamsTemplateTechnical.
+  ///
+  /// In zh, this message translates to:
+  /// **'极简技术审查'**
+  String get agentParamsTemplateTechnical;
+
+  /// No description provided for @agentParamsTemplatePrivacy.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私与遥测审查'**
+  String get agentParamsTemplatePrivacy;
+
+  /// No description provided for @agentSheetCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析结果已复制到剪贴板'**
+  String get agentSheetCopied;
+
+  /// No description provided for @agentSheetRuleAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已写入{kind}，启动 DNS VPN 后生效'**
+  String agentSheetRuleAdded(String kind);
+
+  /// No description provided for @agentSheetRuleExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'该域名已在{kind}中'**
+  String agentSheetRuleExists(String kind);
+
+  /// No description provided for @agentSheetFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 只做研判，不会自动修改规则；结论仅供参考。请求由你配置的厂商处理，密钥只存在本机。'**
+  String get agentSheetFooter;
+
+  /// No description provided for @agentSheetDisabledTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析功能已关闭'**
+  String get agentSheetDisabledTitle;
+
+  /// No description provided for @agentSheetDisabledBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析服务当前处于停用状态。你可以直接在此开启，或前往设置页面管理。'**
+  String get agentSheetDisabledBody;
+
+  /// No description provided for @agentSheetEnableAndStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启 AI 分析并继续'**
+  String get agentSheetEnableAndStart;
+
+  /// No description provided for @agentSheetNoKeyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置 API 密钥'**
+  String get agentSheetNoKeyTitle;
+
+  /// No description provided for @agentSheetNoKeyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'需配置 OpenAI / DeepSeek 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。'**
+  String get agentSheetNoKeyBody;
+
+  /// No description provided for @agentSheetGoConfigure.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往配置'**
+  String get agentSheetGoConfigure;
+
+  /// No description provided for @agentSheetRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在进行 AI 分析…'**
+  String get agentSheetRunning;
+
+  /// No description provided for @agentSheetModel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型 {model}'**
+  String agentSheetModel(String model);
+
+  /// No description provided for @agentSheetUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知'**
+  String get agentSheetUnknown;
+
+  /// No description provided for @agentSheetFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析失败'**
+  String get agentSheetFailed;
+
+  /// No description provided for @agentSheetUnknownError.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知错误'**
+  String get agentSheetUnknownError;
+
+  /// No description provided for @agentSheetCheckSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查设置'**
+  String get agentSheetCheckSettings;
+
+  /// No description provided for @agentSheetNotStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未分析'**
+  String get agentSheetNotStarted;
+
+  /// No description provided for @agentSheetSuperseded.
+  ///
+  /// In zh, this message translates to:
+  /// **'结果已被新的分析取代'**
+  String get agentSheetSuperseded;
+
+  /// No description provided for @agentSheetStartHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点下面的按钮开始分析。'**
+  String get agentSheetStartHint;
+
+  /// No description provided for @agentSheetSupersededHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'另一个分析请求覆盖了这次会话，重新分析可以取回结论。'**
+  String get agentSheetSupersededHint;
+
+  /// No description provided for @agentSheetStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始分析'**
+  String get agentSheetStart;
+
+  /// No description provided for @agentSheetHideDigest.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起送检摘要'**
+  String get agentSheetHideDigest;
+
+  /// No description provided for @agentSheetShowDigest.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看送检摘要'**
+  String get agentSheetShowDigest;
+
+  /// No description provided for @agentSheetAddBlock.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入屏蔽规则'**
+  String get agentSheetAddBlock;
+
+  /// No description provided for @agentSheetCopyResult.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制结果'**
+  String get agentSheetCopyResult;
+
+  /// No description provided for @agentSheetReanalyze.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新分析'**
+  String get agentSheetReanalyze;
+
+  /// No description provided for @agentTargetDomainTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'域名安全分析'**
+  String get agentTargetDomainTitle;
+
+  /// No description provided for @agentTargetTrafficTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络流量分析'**
+  String get agentTargetTrafficTitle;
+
+  /// No description provided for @agentTargetTrafficSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'基于近期 DNS 与 HTTPS 监控数据'**
+  String get agentTargetTrafficSubtitle;
+
+  /// No description provided for @agentApiChipKeyMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'缺少 API Key'**
+  String get agentApiChipKeyMissing;
+
+  /// No description provided for @agentSheetAddAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入白名单'**
+  String get agentSheetAddAllowlist;
+
+  /// No description provided for @featureHubLongPress.
+  ///
+  /// In zh, this message translates to:
+  /// **'可长按'**
+  String get featureHubLongPress;
+
+  /// No description provided for @outboundSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'出站代理设置已保存，启动隧道后生效'**
+  String get outboundSaved;
+
+  /// No description provided for @outboundSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败：{error}'**
+  String outboundSaveFailed(String error);
+
+  /// No description provided for @outboundResetTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置出站代理？'**
+  String get outboundResetTitle;
+
+  /// No description provided for @outboundResetBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除全部九个出站代理键（包括已加密保存的账号与密码）。'**
+  String get outboundResetBody;
+
+  /// No description provided for @outboundResetDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重置出站代理'**
+  String get outboundResetDone;
+
+  /// No description provided for @outboundResetMenu.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置出站代理'**
+  String get outboundResetMenu;
+
+  /// No description provided for @outboundSectionProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理'**
+  String get outboundSectionProxy;
+
+  /// No description provided for @outboundEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用出站代理功能'**
+  String get outboundEnable;
+
+  /// No description provided for @outboundApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理应用'**
+  String get outboundApp;
+
+  /// No description provided for @outboundHostLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址'**
+  String get outboundHostLabel;
+
+  /// No description provided for @outboundHostHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅支持 127.0.0.1 或 ::1'**
+  String get outboundHostHelper;
+
+  /// No description provided for @outboundUsernameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号（可选）'**
+  String get outboundUsernameLabel;
+
+  /// No description provided for @outboundPasswordLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码（可选）'**
+  String get outboundPasswordLabel;
+
+  /// No description provided for @outboundHttpFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTP CONNECT 不支持 UDP；UDP 会被严格阻断，QUIC 可回退到 TCP。代理应用本身将绕过 DITING。'**
+  String get outboundHttpFooter;
+
+  /// No description provided for @outboundSocksFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'SOCKS5 通过 UDP ASSOCIATE 转发 UDP。代理应用本身将绕过 DITING，防止流量环路。'**
+  String get outboundSocksFooter;
+
+  /// No description provided for @outboundStatusOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'未运行'**
+  String get outboundStatusOff;
+
+  /// No description provided for @outboundStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在连接'**
+  String get outboundStatusConnecting;
+
+  /// No description provided for @outboundStatusReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理可用'**
+  String get outboundStatusReady;
+
+  /// No description provided for @outboundStatusFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接失败'**
+  String get outboundStatusFailed;
+
+  /// No description provided for @outboundFooterError.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎上报的错误会一直保留到下一次隧道启动，便于回看原因。'**
+  String get outboundFooterError;
+
+  /// No description provided for @outboundFooterReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎已确认代理可用；修改配置后需要重启隧道才会重新校验。'**
+  String get outboundFooterReady;
+
+  /// No description provided for @outboundFooterConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'隧道启动时会校验代理连通性，结果会实时显示在这里。'**
+  String get outboundFooterConnecting;
+
+  /// No description provided for @outboundAppsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择代理应用'**
+  String get outboundAppsTitle;
+
+  /// No description provided for @outboundAppsIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择提供本地代理端口的应用。代理应用本身会绕过 DITING。端口由该应用绑定，谛听无法代它监听。'**
+  String get outboundAppsIntro;
+
+  /// No description provided for @outboundAppsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已安装应用（{count}）'**
+  String outboundAppsCount(int count);
+
+  /// No description provided for @outboundAppsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备上没有可选的代理应用'**
+  String get outboundAppsEmpty;
+
+  /// No description provided for @resolutionSingleDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'所有查询都发往当前选中的服务商。'**
+  String get resolutionSingleDesc;
+
+  /// No description provided for @resolutionSmartDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'按历史成功率挑一个，失败后自动换下一个。'**
+  String get resolutionSmartDesc;
+
+  /// No description provided for @resolutionParallelDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'同时向所有服务商发起，取最先返回的结果。'**
+  String get resolutionParallelDesc;
+
+  /// No description provided for @resolutionPrimaryBackupDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'主服务商优先，超时后才动备用。'**
+  String get resolutionPrimaryBackupDesc;
+
+  /// No description provided for @resolutionProtocolSavedError.
+  ///
+  /// In zh, this message translates to:
+  /// **'协议已保存，运行中的服务未能更新：{error}'**
+  String resolutionProtocolSavedError(String error);
+
+  /// No description provided for @resolutionBuiltinProtocol.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置服务协议'**
+  String get resolutionBuiltinProtocol;
+
+  /// No description provided for @resolutionBuiltinNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅切换内置服务商使用的 DNS / DoT / DoH 协议；自定义服务商按自身协议展示。'**
+  String get resolutionBuiltinNote;
+
+  /// No description provided for @resolutionConfigSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'模式配置'**
+  String get resolutionConfigSection;
+
+  /// No description provided for @resolutionConfigFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析模式与竞速服务商保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。'**
+  String get resolutionConfigFooter;
+
+  /// No description provided for @resolutionNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置'**
+  String get resolutionNotConfigured;
+
+  /// No description provided for @resolutionProviderCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个服务商'**
+  String resolutionProviderCount(int count);
+
+  /// No description provided for @resolutionPickerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择解析模式'**
+  String get resolutionPickerTitle;
+
+  /// No description provided for @resolutionMinProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少保留 2 家服务商'**
+  String get resolutionMinProviders;
+
+  /// No description provided for @resolutionSingleHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择一个服务商作为唯一查询出口。'**
+  String get resolutionSingleHint;
+
+  /// No description provided for @resolutionRaceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 家服务商，至少需要 2 家。'**
+  String resolutionRaceHint(int count);
+
+  /// No description provided for @resolutionReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'已就绪'**
+  String get resolutionReady;
+
+  /// No description provided for @resolutionPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'待配置'**
+  String get resolutionPending;
+
+  /// No description provided for @resolutionSectionSingle.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询服务'**
+  String get resolutionSectionSingle;
+
+  /// No description provided for @resolutionSectionSmart.
+  ///
+  /// In zh, this message translates to:
+  /// **'候选服务'**
+  String get resolutionSectionSmart;
+
+  /// No description provided for @resolutionSectionParallel.
+  ///
+  /// In zh, this message translates to:
+  /// **'同时查询的服务'**
+  String get resolutionSectionParallel;
+
+  /// No description provided for @resolutionSectionBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'依次尝试的服务'**
+  String get resolutionSectionBackup;
+
+  /// No description provided for @resolutionNoProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无此协议的服务商'**
+  String get resolutionNoProviders;
+
+  /// No description provided for @resolutionMoveUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'上移'**
+  String get resolutionMoveUp;
+
+  /// No description provided for @resolutionMoveDown.
+  ///
+  /// In zh, this message translates to:
+  /// **'下移'**
+  String get resolutionMoveDown;
+
+  /// No description provided for @outboundNoApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择'**
+  String get outboundNoApp;
+
+  /// No description provided for @appRulesSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存，启动 DNS VPN 后生效'**
+  String get appRulesSaved;
+
+  /// No description provided for @appRulesClearAllTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空全部放行规则'**
+  String get appRulesClearAllTooltip;
+
+  /// No description provided for @appRulesMasterSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'总开关'**
+  String get appRulesMasterSection;
+
+  /// No description provided for @appRulesMasterToggle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用单应用域名放行'**
+  String get appRulesMasterToggle;
+
+  /// No description provided for @appRulesNoConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂未配置任何应用独立规则'**
+  String get appRulesNoConfigured;
+
+  /// No description provided for @appRulesConfiguredSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'已配置 {apps} 个应用 · 放行 {domains} 个域名'**
+  String appRulesConfiguredSummary(int apps, int domains);
+
+  /// No description provided for @appRulesMasterFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'为指定应用深度定制网络与解析控制：网络层白名单隔离（只放行列出的域名）、DNS 专属黑/白名单与「默认拦截全部外联」。进入某个应用可分别配置，保存后启动 DNS VPN 时下发。'**
+  String get appRulesMasterFooter;
+
+  /// No description provided for @appRulesAppsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用（{count}）'**
+  String appRulesAppsCount(int count);
+
+  /// No description provided for @appRulesNoConfigurableApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备上没有可配置的应用'**
+  String get appRulesNoConfigurableApps;
+
+  /// No description provided for @appRulesFooterNoApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'未读取到任何已安装应用，无法配置应用独立规则。'**
+  String get appRulesFooterNoApps;
+
+  /// No description provided for @appRulesFooterSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存后写入 app_allowlist_enabled 与 app_allowlist_rules_json，启动 DNS VPN 时下发给引擎。'**
+  String get appRulesFooterSave;
+
+  /// No description provided for @appRulesAddAllowDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加放行域名'**
+  String get appRulesAddAllowDomain;
+
+  /// No description provided for @appRulesAppSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get appRulesAppSection;
+
+  /// No description provided for @appRulesBackToList.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回应用列表'**
+  String get appRulesBackToList;
+
+  /// No description provided for @appRulesClearAllTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空全部放行规则？'**
+  String get appRulesClearAllTitle;
+
+  /// No description provided for @appRulesClearAllBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除所有应用的专属放行域名。保存后生效，黑名单与全阻断设置不受影响。'**
+  String get appRulesClearAllBody;
+
+  /// No description provided for @appRulesRuleExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则已存在或规则库不可用'**
+  String get appRulesRuleExists;
+
+  /// No description provided for @appRulesRuleAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加{kind}规则'**
+  String appRulesRuleAdded(String kind);
+
+  /// No description provided for @appRulesDeleteRuleTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除这条规则？'**
+  String get appRulesDeleteRuleTitle;
+
+  /// No description provided for @appRulesFullBlockOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开启全外联拦截模式'**
+  String get appRulesFullBlockOn;
+
+  /// No description provided for @appRulesFullBlockOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭全外联拦截模式'**
+  String get appRulesFullBlockOff;
+
+  /// No description provided for @appRulesAddDnsRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 DNS 规则'**
+  String get appRulesAddDnsRule;
+
+  /// No description provided for @appRulesDnsScopeIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些规则写入规则库的 block_rule / allow_rule，带 appScope 只对本应用生效，并随规则快照的 appRules 下发，不会扩大成全局拦截。'**
+  String get appRulesDnsScopeIntro;
+
+  /// No description provided for @appRulesDnsScopeSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 专属黑/白名单'**
+  String get appRulesDnsScopeSection;
+
+  /// No description provided for @appRulesReadingRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取规则库'**
+  String get appRulesReadingRules;
+
+  /// No description provided for @appRulesWait.
+  ///
+  /// In zh, this message translates to:
+  /// **'稍候'**
+  String get appRulesWait;
+
+  /// No description provided for @appRulesRuleDbUnreadable.
+  ///
+  /// In zh, this message translates to:
+  /// **'读不到规则库'**
+  String get appRulesRuleDbUnreadable;
+
+  /// No description provided for @appRulesRuleDbUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境无法读写规则库'**
+  String get appRulesRuleDbUnavailable;
+
+  /// No description provided for @appRulesNoScopedRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置 DNS 专属规则'**
+  String get appRulesNoScopedRules;
+
+  /// No description provided for @appRulesNoScopedRulesSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加后仅对本应用生效，不影响其他应用'**
+  String get appRulesNoScopedRulesSubtitle;
+
+  /// No description provided for @appRulesScopedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 专属黑/白名单（{count}）'**
+  String appRulesScopedCount(int count);
+
+  /// No description provided for @appRulesAllowDomainTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'专属放行域名（网络层） ({count})'**
+  String appRulesAllowDomainTitle(int count);
+
+  /// No description provided for @appRulesNoAllowDomains.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置网络放行域名'**
+  String get appRulesNoAllowDomains;
+
+  /// No description provided for @appRulesNoAllowDomainsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络层白名单为空时，该应用不受额外限制'**
+  String get appRulesNoAllowDomainsSubtitle;
+
+  /// No description provided for @appRulesAllowDomainFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些域名会写入 app_allowlist_rules_json，由引擎在下一次启动隧道时下发给 setAppAllowlist。'**
+  String get appRulesAllowDomainFooter;
+
+  /// No description provided for @appRulesIsolationSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'外联与隔离模式'**
+  String get appRulesIsolationSection;
+
+  /// No description provided for @appRulesFullBlockToggle.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拦截全部外联'**
+  String get appRulesFullBlockToggle;
+
+  /// No description provided for @appRulesFullBlockToggleSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后阻断该应用的所有网络连接，仅放行白名单'**
+  String get appRulesFullBlockToggleSubtitle;
+
+  /// No description provided for @appRulesFullBlockOnTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开启全阻断模式'**
+  String get appRulesFullBlockOnTitle;
+
+  /// No description provided for @appRulesFullBlockOnBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'请确保已添加必要的放行白名单，否则应用可能无法联网。'**
+  String get appRulesFullBlockOnBody;
+
+  /// No description provided for @providerMgmtDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 DNS 服务商'**
+  String get providerMgmtDeleteTitle;
+
+  /// No description provided for @providerMgmtDeleteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」吗？删除后无法再作为解析服务使用。'**
+  String providerMgmtDeleteBody(String name);
+
+  /// No description provided for @providerMgmtTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务商管理'**
+  String get providerMgmtTitle;
+
+  /// No description provided for @providerMgmtAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增 DNS 服务商'**
+  String get providerMgmtAdd;
+
+  /// No description provided for @providerMgmtCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前用于解析 DNS'**
+  String get providerMgmtCurrent;
+
+  /// No description provided for @providerMgmtBuiltin.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置服务商'**
+  String get providerMgmtBuiltin;
+
+  /// No description provided for @providerMgmtCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义服务商'**
+  String get providerMgmtCustom;
+
+  /// No description provided for @providerMgmtEmptyCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无自定义服务商'**
+  String get providerMgmtEmptyCustom;
+
+  /// No description provided for @providerMgmtEmptyCustomSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右上角「+」添加 DoH、DoT 或传统 DNS 服务'**
+  String get providerMgmtEmptyCustomSubtitle;
+
+  /// No description provided for @providerMgmtFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置服务商由应用维护，只能切换；自定义服务商可编辑或删除。'**
+  String get providerMgmtFooter;
+
+  /// No description provided for @providerMgmtEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 DNS 服务商'**
+  String get providerMgmtEditTitle;
+
+  /// No description provided for @providerMgmtAddressLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址（host:port）'**
+  String get providerMgmtAddressLabel;
+
+  /// No description provided for @providerMgmtNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写名称'**
+  String get providerMgmtNameRequired;
+
+  /// No description provided for @providerMgmtDohRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'DoH 地址需以 https:// 开头'**
+  String get providerMgmtDohRequired;
+
+  /// No description provided for @providerMgmtHostPortRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写 host:port 形式的地址'**
+  String get providerMgmtHostPortRequired;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

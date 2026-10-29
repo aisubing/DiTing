@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -75,17 +76,17 @@ class _ProviderManagementPageState
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除 DNS 服务商',
+        title: context.l10n.providerMgmtDeleteTitle,
         destructive: true,
-        child: Text('确定删除「${provider.name}」吗？删除后无法再作为解析服务使用。'),
+        child: Text(context.l10n.providerMgmtDeleteBody(provider.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.uiCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -108,11 +109,11 @@ class _ProviderManagementPageState
     final selected = _selected;
     final selectedId = ref.watch(selectedProviderProvider);
     return CommonScaffold(
-      title: '服务商管理',
+      title: context.l10n.providerMgmtTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '新增 DNS 服务商',
+          tooltip: context.l10n.providerMgmtAdd,
           onPressed: _add,
         ),
       ],
@@ -135,10 +136,10 @@ class _ProviderManagementPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       spacing: 2,
                       children: [
-                        Text('当前用于解析 DNS', style: context.listTitleStyle),
+                        Text(context.l10n.providerMgmtCurrent, style: context.listTitleStyle),
                         Text(
                           selected == null
-                              ? '未配置'
+                              ? context.l10n.resolutionNotConfigured
                               : '(${selected.protocol.label}) ${selected.name}',
                           style: context.listSubtitleStyle,
                         ),
@@ -162,7 +163,7 @@ class _ProviderManagementPageState
           ),
           if (presets.isNotEmpty)
             generateSection(
-              title: '内置服务商',
+              title: context.l10n.providerMgmtBuiltin,
               items: [
                 for (final provider in presets)
                   _ProviderRow(
@@ -174,7 +175,7 @@ class _ProviderManagementPageState
             ),
           if (customs.isNotEmpty)
             generateSection(
-              title: '自定义服务商',
+              title: context.l10n.providerMgmtCustom,
               items: [
                 for (final provider in customs)
                   _ProviderRow(
@@ -188,16 +189,16 @@ class _ProviderManagementPageState
             )
           else
             generateSection(
-              title: '自定义服务商',
-              items: const [
+              title: context.l10n.providerMgmtCustom,
+              items: [
                 ListItem(
-                  title: Text('暂无自定义服务商'),
-                  subtitle: Text('点击右上角「+」添加 DoH、DoT 或传统 DNS 服务'),
+                  title: Text(context.l10n.providerMgmtEmptyCustom),
+                  subtitle: Text(context.l10n.providerMgmtEmptyCustomSubtitle),
                   leading: GlyphIcon(AppGlyphs.addCircle),
                 ),
               ],
             ),
-          const ListFooter(text: '内置服务商由应用维护，只能切换；自定义服务商可编辑或删除。'),
+          ListFooter(text: context.l10n.providerMgmtFooter),
           const SizedBox(height: 24),
         ],
       ),
@@ -241,13 +242,13 @@ class _ProviderRow extends StatelessWidget {
           if (selected) const SelectionCheck(),
           if (onEdit != null)
             IconButton(
-              tooltip: '编辑',
+              tooltip: context.l10n.commonEdit,
               onPressed: onEdit,
               icon: const GlyphIcon(AppGlyphs.edit, size: 20),
             ),
           if (onDelete != null)
             IconButton(
-              tooltip: '删除',
+              tooltip: context.l10n.commonDelete,
               onPressed: onDelete,
               icon: const GlyphIcon(AppGlyphs.delete, size: 20),
             ),
@@ -305,14 +306,14 @@ class _ProviderEditorState extends State<_ProviderEditor> {
       _ => address.contains(':') && !address.contains('://'),
     };
     if (name.isEmpty) {
-      setState(() => _error = '请填写名称');
+      setState(() => _error = context.l10n.providerMgmtNameRequired);
       return;
     }
     if (!valid) {
       setState(() {
         _error = _protocol == ProviderProtocol.doh
-            ? 'DoH 地址需以 https:// 开头'
-            : '请填写 host:port 形式的地址';
+            ? context.l10n.providerMgmtDohRequired
+            : context.l10n.providerMgmtHostPortRequired;
       });
       return;
     }
@@ -323,7 +324,7 @@ class _ProviderEditorState extends State<_ProviderEditor> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: widget.initial == null ? '新增 DNS 服务商' : '编辑 DNS 服务商',
+      title: widget.initial == null ? context.l10n.providerMgmtAdd : context.l10n.providerMgmtEditTitle,
       hasFields: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -343,15 +344,15 @@ class _ProviderEditorState extends State<_ProviderEditor> {
           ),
           TextField(
             controller: _name,
-            decoration: const InputDecoration(labelText: '名称'),
+            decoration: InputDecoration(labelText: context.l10n.serverName),
           ),
           TextField(
             controller: _address,
             autocorrect: false,
             decoration: InputDecoration(
               labelText: _protocol == ProviderProtocol.doh
-                  ? 'DoH 地址'
-                  : '地址（host:port）',
+                  ? context.l10n.serverDohAddress
+                  : context.l10n.providerMgmtAddressLabel,
               hintText: _protocol == ProviderProtocol.doh
                   ? 'https://dns.example.com/dns-query'
                   : '1.1.1.1:853',
@@ -369,9 +370,9 @@ class _ProviderEditorState extends State<_ProviderEditor> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.uiCancel),
         ),
-        TextButton(onPressed: _save, child: const Text('保存')),
+        TextButton(onPressed: _save, child: Text(context.l10n.commonSave)),
       ],
     );
   }

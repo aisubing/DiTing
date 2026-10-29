@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/standalone_routes.dart';
@@ -20,7 +21,7 @@ class FeatureHubPage extends ConsumerWidget {
     // `hidden_features_set`); filtering lives in the provider so toggling updates immediately.
     final categories = ref.watch(visibleFeatureCategoriesProvider);
     return CommonScaffold(
-      title: '功能中心',
+      title: context.l10n.bottomBarFeatureHub,
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(child: SizedBox(height: context.appBarInset)),
@@ -176,7 +177,7 @@ class _FeatureCardState extends ConsumerState<_FeatureCard> {
                     const Spacer(),
                     if (showLongPressHint)
                       Text(
-                        '可长按',
+                        context.l10n.featureHubLongPress,
                         style: AppTextStyle.caption2
                             .of(context)
                             .copyWith(color: colorScheme.onSurfaceVariant),

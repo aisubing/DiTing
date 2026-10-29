@@ -83,8 +83,8 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
       _lastKey = draft.baselineKey;
     });
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('已保存，启动 DNS VPN 后生效'),
+      SnackBar(
+        content: Text(context.l10n.appRulesSaved),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -132,8 +132,10 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
   Future<bool> _confirmLeave(AppRulesDraft draft) async {
     final choice = await showUnsavedChangesDialog(
       context,
-      title: '保存更改？',
-      message: '「应用独立规则」还有未保存的修改。保存后离开，还是放弃这些修改？',
+      title: context.l10n.commonSaveChangesTitle,
+      message: context.l10n.commonSaveChangesMessageFor(
+        context.l10n.hubAppRules,
+      ),
     );
     if (!mounted) {
       return false;
@@ -169,17 +171,17 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     );
     final hasAllowlist = draft.configuredApps > 0;
     return CommonScaffold(
-      title: '应用独立规则',
+      title: context.l10n.hubAppRules,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.broom,
-          tooltip: '清空全部放行规则',
+          tooltip: context.l10n.appRulesClearAllTooltip,
           onPressed: hasAllowlist ? () => _clearAll(draft) : null,
         ),
       ],
       menuItems: [
         CommonPopupMenuItem(
-          label: '过滤',
+          label: context.l10n.commonFilter,
           glyph: AppGlyphs.filter,
           subItems: [
             for (final option in AppListFilter.values)
@@ -194,7 +196,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           ],
         ),
         CommonPopupMenuItem(
-          label: '排序',
+          label: context.l10n.uiSort,
           glyph: AppGlyphs.sort,
           subItems: [
             for (final option in AppListSort.values)
@@ -209,7 +211,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           ],
         ),
         CommonPopupMenuItem(
-          label: '保存',
+          label: context.l10n.commonSave,
           glyph: AppGlyphs.checkCircle,
           onPressed: draft.dirty ? _save : null,
         ),
@@ -220,26 +222,25 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
             child: Column(
               children: [
                 generateSection(
-                  title: '总开关',
+                  title: context.l10n.appRulesMasterSection,
                   items: [
                     ListItem.toggle(
                       leading: const GlyphIcon(AppGlyphs.verified),
-                      title: const Text('启用单应用域名放行'),
+                      title: Text(context.l10n.appRulesMasterToggle),
                       subtitle: Text(
                         draft.configuredApps == 0
-                            ? '暂未配置任何应用独立规则'
-                            : '已配置 ${draft.configuredApps} 个应用 · '
-                                  '放行 ${draft.totalDomains} 个域名',
+                            ? context.l10n.appRulesNoConfigured
+                            : context.l10n.appRulesConfiguredSummary(
+                                draft.configuredApps,
+                                draft.totalDomains,
+                              ),
                       ),
                       value: draft.master,
                       onChanged: (value) =>
                           setState(() => draft.master = value),
                     ),
                   ],
-                  footer:
-                      '为指定应用深度定制网络与解析控制：网络层白名单隔离（只放行列出的域名）、'
-                      'DNS 专属黑/白名单与「默认拦截全部外联」。进入某个应用可分别配置，'
-                      '保存后启动 DNS VPN 时下发。',
+                  footer: context.l10n.appRulesMasterFooter,
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -260,10 +261,10 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           ),
           if (!snapshot.isLoading && snapshot.value?.error == null)
             ...appListSlivers(
-              title: '应用（${visible.length}）',
+              title: context.l10n.appRulesAppsCount(visible.length),
               itemCount: visible.length,
               footer: visible.isEmpty
-                  ? (apps.isEmpty ? '设备上没有可配置的应用' : '未找到匹配应用')
+                  ? (apps.isEmpty ? context.l10n.appRulesNoConfigurableApps : context.l10n.appSelectionNoMatch)
                   : null,
               itemBuilder: (context, index) {
                 final item = visible[index];
@@ -280,15 +281,14 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: TonalButton(
-                    label: '保存',
+                    label: context.l10n.commonSave,
                     onPressed: draft.dirty ? _save : null,
                   ),
                 ),
                 ListFooter(
                   text: apps.isEmpty
-                      ? '未读取到任何已安装应用，无法配置应用独立规则。'
-                      : '保存后写入 app_allowlist_enabled 与 '
-                            'app_allowlist_rules_json，启动 DNS VPN 时下发给引擎。',
+                      ? context.l10n.appRulesFooterNoApps
+                      : context.l10n.appRulesFooterSave,
                 ),
               ],
             ),
@@ -310,7 +310,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加放行域名',
+          tooltip: context.l10n.appRulesAddAllowDomain,
           onPressed: () => _addDomain(draft, app.packageName),
         ),
       ],
@@ -320,11 +320,11 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
             child: Column(
               children: [
                 generateSection(
-                  title: '应用',
+                  title: context.l10n.appRulesAppSection,
                   items: [
                     ListItem(
                       leading: const GlyphIcon(AppGlyphs.arrowBack, size: 20),
-                      title: const Text('返回应用列表'),
+                      title: Text(context.l10n.appRulesBackToList),
                       subtitle: Text(app.packageName),
                       onTap: () => setState(() => _selected = null),
                     ),
@@ -345,17 +345,17 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '清空全部放行规则？',
+        title: context.l10n.appRulesClearAllTitle,
         destructive: true,
-        child: const Text('将删除所有应用的专属放行域名。保存后生效，黑名单与全阻断设置不受影响。'),
+        child: Text(context.l10n.appRulesClearAllBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.uiCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('清空'),
+            child: Text(context.l10n.commonClearAll),
           ),
         ],
       ),
@@ -393,10 +393,10 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
       return;
     }
     if (!ok) {
-      _tip('规则已存在或规则库不可用');
+      _tip(context.l10n.appRulesRuleExists);
       return;
     }
-    _tip('已添加${result.kind == RuleKind.allow ? '白名单' : '黑名单'}规则');
+    _tip(context.l10n.appRulesRuleAdded(result.kind.title(context.l10n)));
   }
 
   Future<void> _toggleScopedRule(
@@ -413,17 +413,17 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除这条规则？',
+        title: context.l10n.appRulesDeleteRuleTitle,
         destructive: true,
         child: Text(rule.pattern),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.uiCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
       ),
@@ -443,7 +443,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
     if (!mounted) {
       return;
     }
-    _tip(next ? '已开启全外联拦截模式' : '已关闭全外联拦截模式');
+    _tip(next ? context.l10n.appRulesFullBlockOn : context.l10n.appRulesFullBlockOff);
   }
 
   void _tip(String message) {

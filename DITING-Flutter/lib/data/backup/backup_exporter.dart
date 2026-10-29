@@ -80,8 +80,8 @@ class BackupExporter {
       } catch (error) {
         // One failing group must not abort the backup; a partial backup beats none.
         debugPrint('backup export skipped ${group.key}: $error');
-        skipped.add('${group.title}：$error');
-        source.onSkip?.call('${group.title}：$error');
+        skipped.add('${group.title(currentL10n)}：$error');
+        source.onSkip?.call('${group.title(currentL10n)}：$error');
       }
     }
 

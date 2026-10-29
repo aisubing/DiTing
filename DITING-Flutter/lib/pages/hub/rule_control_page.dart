@@ -36,33 +36,29 @@ class RuleControlPage extends ConsumerWidget {
         .of(context)
         .copyWith(color: context.colorScheme.onSurfaceVariant);
     final urlSubtitle = !caReady
-        ? '未就绪 · 需先安装并验证 CA 根证书'
+        ? context.l10n.ruleControlUrlNotReadyCa
         : !settings.httpInspectionEnabled
-        ? '未就绪 · 需在 HTTPS 流量检查中开启'
+        ? context.l10n.ruleControlUrlNotReadyInspection
         : inspectionApps.isEmpty
-        ? '未就绪 · 需在 HTTPS 流量检查中选择目标应用'
+        ? context.l10n.ruleControlUrlNotReadyApps
         : !domainRules
-        ? '已暂停 · 未启用解密 URL 过滤与重定向'
-        : '运行中 · 解密流量匹配 URL 屏蔽、放行及重定向';
+        ? context.l10n.ruleControlUrlPaused
+        : context.l10n.ruleControlUrlRunning;
     return CommonScaffold(
-      title: '规则控制',
+      title: context.l10n.hubRuleControl,
       body: PageBody(
         children: [
-          PageIntroCard(
-            text:
-                '统一管理域名过滤、URL 规则及规则覆写的总控开关、拦截策略与在线规则订阅。'
-                '黑名单、白名单与覆写名单可在功能中心中独立管理。',
-          ),
+          PageIntroCard(text: context.l10n.ruleControlIntro),
           generateSection(
-            title: '过滤与覆写控制',
+            title: context.l10n.ruleControlFilterSection,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.rules),
-                title: const Text('启用域名规则'),
+                title: Text(context.l10n.ruleControlDomainRules),
                 subtitle: Text(
                   domainRules
-                      ? '开启 DNS 阶段域名屏蔽、白名单放行及 IPv4/IPv6 覆写'
-                      : '已禁用 DNS 域名过滤，查询将直接放行',
+                      ? context.l10n.ruleControlDomainRulesOn
+                      : context.l10n.ruleControlDomainRulesOff,
                 ),
                 value: domainRules,
                 onChanged: (value) {
@@ -72,14 +68,14 @@ class RuleControlPage extends ConsumerWidget {
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.target),
-                title: const Text('URL 规则与内容过滤'),
+                title: Text(context.l10n.ruleControlUrlRules),
                 subtitle: Text(urlSubtitle),
                 trailing: Text(
                   settings.httpInspectionEnabled &&
                           settings.addressRulesEnabled &&
                           caReady
-                      ? '运行中'
-                      : '未就绪',
+                      ? context.l10n.stateRunning
+                      : context.l10n.ruleControlNotReady,
                   style: footnote,
                 ),
                 onTap: () => context.push('/hub/https-inspection'),
@@ -87,14 +83,16 @@ class RuleControlPage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '拦截策略',
+            title: context.l10n.ruleControlPolicySection,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.block),
-                title: const Text('拦截响应'),
+                title: Text(context.l10n.ruleControlBlockResponse),
                 subtitle: Text(
                   settings.dynamicBlockEnabled
-                      ? '动态策略：先 NODATA，高频请求后 ${blockMode.label(context.l10n)}'
+                      ? context.l10n.ruleControlDynamicSummary(
+                          blockMode.label(context.l10n),
+                        )
                       : blockMode.label(context.l10n),
                 ),
                 onTap: () => context.push('/hub/rules/block-response'),
@@ -102,34 +100,40 @@ class RuleControlPage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '订阅与更新',
+            title: context.l10n.ruleControlSubsSection,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.cloudSync),
-                title: const Text('规则订阅'),
-                subtitle: const Text('管理域名规则与 IPv4/IPv6 覆写订阅源及分组'),
+                title: Text(context.l10n.ruleControlSubsTitle),
+                subtitle: Text(context.l10n.ruleControlSubsSubtitle),
                 trailing: Text(
-                  subscriptions == null ? '—' : '${subscriptions.length} 个',
+                  subscriptions == null
+                      ? '—'
+                      : context.l10n.ruleControlCount(subscriptions.length),
                   style: footnote,
                 ),
                 onTap: () => context.push(Routes.subscriptions),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.refresh),
-                title: const Text('自动更新设置'),
+                title: Text(context.l10n.autoUpdateTitle),
                 subtitle: Text(
                   autoUpdate.enabled
-                      ? '已开启 · 每 ${autoUpdate.intervalHours} 小时自动更新'
-                      : '已关闭自动更新',
+                      ? context.l10n.ruleControlAutoUpdateOn(
+                          autoUpdate.intervalHours,
+                        )
+                      : context.l10n.ruleControlAutoUpdateOff,
                 ),
                 onTap: () => context.push('/hub/rules/auto-update'),
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.layers),
-                title: const Text('镜像站模板'),
-                subtitle: const Text('维护订阅下载镜像，可在添加订阅时直接选择'),
+                title: Text(context.l10n.mirrorTplTitle),
+                subtitle: Text(context.l10n.ruleControlMirrorSubtitle),
                 trailing: Text(
-                  mirrors == null ? '—' : '${mirrors.length} 个',
+                  mirrors == null
+                      ? '—'
+                      : context.l10n.ruleControlCount(mirrors.length),
                   style: footnote,
                 ),
                 onTap: () => context.push('/hub/rules/mirrors'),
@@ -155,11 +159,11 @@ class BlockResponsePage extends ConsumerWidget {
     final mode = BlockResponseMode.fromStorage(settings.blockResponseModeRaw);
     final policy = DynamicBlockPolicy.read(settings);
     return CommonScaffold(
-      title: '拦截响应',
+      title: context.l10n.ruleControlBlockResponse,
       body: PageBody(
         children: [
           generateSection(
-            title: '固定响应',
+            title: context.l10n.blockResponseFixedSection,
             items: [
               for (final option in BlockResponseMode.values)
                 ListItem(
@@ -176,17 +180,15 @@ class BlockResponsePage extends ConsumerWidget {
                   },
                 ),
             ],
-            footer:
-                '动态策略开启时会临时覆盖以上选择：先返回 NODATA，'
-                '高频请求后返回 NXDOMAIN。',
+            footer: context.l10n.blockResponseFixedFooter,
           ),
           generateSection(
-            title: '动态策略',
+            title: context.l10n.blockResponseDynamicSection,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.motion),
-                title: const Text('启用动态策略'),
-                subtitle: const Text('同一域名的所有记录类型合并计数'),
+                title: Text(context.l10n.blockResponseEnableDynamic),
+                subtitle: Text(context.l10n.blockResponseEnableDynamicSubtitle),
                 value: policy.enabled,
                 onChanged: (value) {
                   policy.copyWith(enabled: value).write(settings);
@@ -195,19 +197,20 @@ class BlockResponsePage extends ConsumerWidget {
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.sliders),
-                title: const Text('动态参数'),
+                title: Text(context.l10n.blockResponseParameters),
                 subtitle: Text(
-                  '${policy.requestThreshold} 次 / ${policy.windowSeconds} 秒 / '
-                  '保持 ${policy.nxDomainDurationSeconds} 秒',
+                  context.l10n.blockResponseParamsSummary(
+                    policy.requestThreshold,
+                    policy.windowSeconds,
+                    policy.nxDomainDurationSeconds,
+                  ),
                 ),
                 onTap: policy.enabled
                     ? () => _editParameters(context, ref, policy)
                     : null,
               ),
             ],
-            footer:
-                '正常客户端会缓存 NODATA 响应。动态策略主要用于持续重试或'
-                '忽略负缓存的请求。',
+            footer: context.l10n.blockResponseDynamicFooter,
           ),
           const SizedBox(height: 24),
         ],
@@ -269,11 +272,11 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
     String? error;
     // Upstream clamps: 2-100 requests, 10-300 s window, 60-3600 s hold.
     if (threshold == null || threshold < 2 || threshold > 100) {
-      error = '请求次数需在 2–100 之间';
+      error = context.l10n.blockResponseThresholdError;
     } else if (window == null || window < 10 || window > 300) {
-      error = '统计窗口需在 10–300 秒之间';
+      error = context.l10n.blockResponseWindowError;
     } else if (duration == null || duration < 60 || duration > 3600) {
-      error = '保持时长需在 60–3600 秒之间';
+      error = context.l10n.blockResponseDurationError;
     }
     if (error != null) {
       setState(() => _error = error);
@@ -292,7 +295,7 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '动态参数',
+      title: context.l10n.blockResponseParameters,
       hasFields: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -302,25 +305,25 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
           TextField(
             controller: _threshold,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '请求次数',
-              helperText: '2–100 次；第 N+1 次开始升级',
+            decoration: InputDecoration(
+              labelText: context.l10n.blockResponseThresholdLabel,
+              helperText: context.l10n.blockResponseThresholdHelper,
             ),
           ),
           TextField(
             controller: _window,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '统计窗口（秒）',
-              helperText: '10–300 秒',
+            decoration: InputDecoration(
+              labelText: context.l10n.blockResponseWindowLabel,
+              helperText: context.l10n.blockResponseWindowHelper,
             ),
           ),
           TextField(
             controller: _duration,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'NXDOMAIN 保持时长（秒）',
-              helperText: '60–3600 秒；首次升级起固定计时',
+            decoration: InputDecoration(
+              labelText: context.l10n.blockResponseDurationLabel,
+              helperText: context.l10n.blockResponseDurationHelper,
             ),
           ),
           if (_error != null)
@@ -335,9 +338,9 @@ class _DynamicParameterDialogState extends State<_DynamicParameterDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.uiCancel),
         ),
-        TextButton(onPressed: _save, child: const Text('保存')),
+        TextButton(onPressed: _save, child: Text(context.l10n.commonSave)),
       ],
     );
   }

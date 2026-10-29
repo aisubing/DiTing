@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -27,23 +28,23 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
     final lastRun = ref.watch(autoUpdateLastRunProvider);
     final enabled = settings.enabled;
     return CommonScaffold(
-      title: '自动更新设置',
+      title: context.l10n.autoUpdateTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '自动更新',
+            title: context.l10n.autoUpdateSection,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.refresh),
-                title: const Text('自动更新规则订阅'),
-                subtitle: const Text('启动应用或回到前台时检查是否到期'),
+                title: Text(context.l10n.autoUpdateRulesSwitch),
+                subtitle: Text(context.l10n.autoUpdateRulesSwitchSubtitle),
                 value: enabled,
                 onChanged: actions.setEnabled,
               ),
             ],
           ),
           generateSection(
-            title: '更新频率',
+            title: context.l10n.autoUpdateIntervalSection,
             items: [
               for (final hours
                   in LegacySettings.subscriptionAutoUpdatePresetHours)
@@ -54,7 +55,7 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
                         : AppGlyphs.clock,
                     size: 20,
                   ),
-                  title: Text('每 $hours 小时'),
+                  title: Text(context.l10n.autoUpdateEveryHours(hours)),
                   trailing: settings.intervalHours == hours
                       ? const SelectionCheck()
                       : null,
@@ -65,11 +66,11 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
                   settings.isCustom ? AppGlyphs.checkCircle : AppGlyphs.sliders,
                   size: 20,
                 ),
-                title: const Text('自定义更新时间'),
+                title: Text(context.l10n.autoUpdateCustomInterval),
                 subtitle: Text(
                   settings.isCustom
-                      ? '每 ${settings.intervalHours} 小时'
-                      : '输入 1 至 168 小时之间的更新时间',
+                      ? context.l10n.autoUpdateEveryHours(settings.intervalHours)
+                      : context.l10n.autoUpdateCustomHint,
                 ),
                 trailing: settings.isCustom ? const SelectionCheck() : null,
                 onTap: enabled
@@ -77,48 +78,47 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
                     : null,
               ),
             ],
-            footer:
-                '间隔保存在当前工作模式的数据集里（普通 / 极速 / 服务器各自独立）。'
-                '本机没有后台任务队列：应用在前台（含启动与切回前台）时才检查到期并执行，'
-                '进程被完全关闭期间不会更新。',
+            footer: context.l10n.autoUpdateIntervalFooter,
           ),
           generateSection(
-            title: '执行状态',
+            title: context.l10n.autoUpdateStatusSection,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.clock),
-                title: const Text('下次预计更新'),
-                subtitle: Text(_nextUpdateText(enabled, settings, candidates)),
+                title: Text(context.l10n.autoUpdateNext),
+                subtitle: Text(
+                  _nextUpdateText(context.l10n, enabled, settings, candidates),
+                ),
               ),
               ListItem(
                 leading: GlyphIcon(
                   lastRun == null ? AppGlyphs.info : AppGlyphs.checkCircle,
                   size: 20,
                 ),
-                title: const Text('上次自动更新'),
+                title: Text(context.l10n.autoUpdateLast),
                 subtitle: Text(
                   lastRun == null
-                      ? '本次会话还没有执行过自动更新'
+                      ? context.l10n.autoUpdateNoRunYet
                       : '${lastRun.summary ?? ''}'
-                            '（${lastRun.ranCount} 个订阅）',
+                            '${context.l10n.autoUpdateRunCount(lastRun.ranCount)}',
                 ),
               ),
             ],
-            footer: '判据是每条订阅的「上次尝试时间」与上面的间隔；正在手动更新时本轮会让路。',
+            footer: context.l10n.autoUpdateStatusFooter,
           ),
           generateSection(
-            title: '分组自动更新',
+            title: context.l10n.autoUpdateGroupsSection,
             items: [
               if (groups == null)
-                const ListItem(
+                ListItem(
                   leading: GlyphIcon(AppGlyphs.layers),
-                  title: Text('读取分组中…'),
+                  title: Text(context.l10n.autoUpdateReadingGroups),
                 )
               else if (groups.isEmpty)
-                const ListItem(
+                ListItem(
                   leading: GlyphIcon(AppGlyphs.layers),
-                  title: Text('还没有分组'),
-                  subtitle: Text('在规则订阅页新建分组后，可以在这里单独开关'),
+                  title: Text(context.l10n.autoUpdateNoGroups),
+                  subtitle: Text(context.l10n.autoUpdateNoGroupsSubtitle),
                 )
               else
                 for (final group in groups)
@@ -131,7 +131,7 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
                         : null,
                   ),
             ],
-            footer: '仅会自动更新已开启的分组中的网络订阅；写入 `subscription_group` 表。',
+            footer: context.l10n.autoUpdateGroupsFooter,
           ),
           const SizedBox(height: 24),
         ],
@@ -156,18 +156,19 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
   /// The "next update" line, covering switch off, no candidates and the earliest due one;
   /// [AutoUpdateRunner.nextDueAt] derives it from the real `lastAttemptAt`.
   String _nextUpdateText(
+    AppL10n l10n,
     bool enabled,
     AutoUpdateSettings settings,
     List<SubscriptionRecord>? candidates,
   ) {
     if (!enabled) {
-      return '自动更新已关闭';
+      return l10n.autoUpdateDisabled;
     }
     if (candidates == null) {
-      return '正在读取订阅…';
+      return l10n.autoUpdateReadingSubs;
     }
     if (candidates.isEmpty) {
-      return '没有可自动更新的订阅（需为远程、已启用、且所在分组已开启）';
+      return l10n.autoUpdateNoCandidates;
     }
     final now = DateTime.now().millisecondsSinceEpoch;
     final due = AutoUpdateRunner.nextDueAt(
@@ -176,23 +177,28 @@ class AutoUpdateSettingsPage extends ConsumerWidget {
       now,
     );
     if (due == null) {
-      return '没有可自动更新的订阅';
+      return l10n.autoUpdateNoSubscriptions;
     }
     if (due <= now) {
-      return '已到期：回到前台时会立即执行';
+      return l10n.autoUpdateDueNow;
     }
     final when = DateTime.fromMillisecondsSinceEpoch(due);
     final remaining = due - now;
     final hours = remaining ~/ 3600000;
     final minutes = (remaining % 3600000) ~/ 60000;
-    final left = hours > 0 ? '$hours 小时 $minutes 分钟后' : '$minutes 分钟后';
-    return '${_formatMoment(when)}（$left）';
+    final left = hours > 0
+        ? l10n.autoUpdateRemainingHours(hours, minutes)
+        : l10n.autoUpdateRemainingMinutes(minutes);
+    return l10n.autoUpdateNextAt(_formatMoment(when, l10n), left);
   }
 
-  static String _formatMoment(DateTime time) {
+  static String _formatMoment(DateTime time, AppL10n l10n) {
     String two(int value) => value.toString().padLeft(2, '0');
-    return '${time.month} 月 ${time.day} 日 '
-        '${two(time.hour)}:${two(time.minute)}';
+    return l10n.autoUpdateMoment(
+      time.month,
+      time.day,
+      '${two(time.hour)}:${two(time.minute)}',
+    );
   }
 }
 
@@ -229,23 +235,23 @@ class _IntervalDialogState extends State<_IntervalDialog> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '自定义更新时间',
+      title: context.l10n.autoUpdateCustomInterval,
       hasFields: true,
       child: TextField(
         controller: _controller,
         keyboardType: TextInputType.number,
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          labelText: '更新间隔（小时）',
-          helperText: '1–168 小时',
+        decoration: InputDecoration(
+          labelText: context.l10n.autoUpdateIntervalLabel,
+          helperText: context.l10n.autoUpdateIntervalHelper,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.uiCancel),
         ),
-        TextButton(onPressed: _submit, child: const Text('保存')),
+        TextButton(onPressed: _submit, child: Text(context.l10n.commonSave)),
       ],
     );
   }
@@ -261,47 +267,43 @@ class MirrorTemplatesPage extends ConsumerWidget {
     final templates = ref.watch(mirrorTemplatesProvider);
     final rows = templates.value;
     return CommonScaffold(
-      title: '镜像站模板',
+      title: context.l10n.mirrorTplTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加模板',
+          tooltip: context.l10n.mirrorTplAdd,
           onPressed: () => _add(context, ref),
         ),
       ],
       body: PageBody(
         children: [
-          PageIntroCard(
-            text:
-                '保存常用的下载镜像。开启全局镜像后，订阅与软件更新默认都走所选模板；'
-                '添加订阅时也可以单独指定模板。',
-          ),
+          PageIntroCard(text: context.l10n.mirrorTplIntro),
           if (rows != null) GlobalMirrorSection(templates: rows),
           generateSection(
-            title: '操作',
+            title: context.l10n.mirrorTplActions,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.info),
-                title: const Text('镜像站格式示例'),
-                subtitle: const Text('了解占位符如何组成镜像地址'),
+                title: Text(context.l10n.mirrorTplFormatExample),
+                subtitle: Text(context.l10n.mirrorTplFormatExampleSubtitle),
                 onTap: () => _showFormatGuide(context),
               ),
             ],
           ),
           if (templates.hasError)
             generateSection(
-              title: '已保存模板',
-              items: const [
+              title: context.l10n.mirrorTplSaved,
+              items: [
                 ListItem(
                   leading: GlyphIcon(AppGlyphs.error),
-                  title: Text('无法读取镜像站模板'),
-                  subtitle: Text('旧库尚未就绪或该表不可用'),
+                  title: Text(context.l10n.mirrorTplReadFailed),
+                  subtitle: Text(context.l10n.mirrorTplReadFailedSubtitle),
                 ),
               ],
             )
           else
             generateSection(
-              title: '已保存模板（${rows?.length ?? 0}）',
+              title: context.l10n.mirrorTplSavedCount(rows?.length ?? 0),
               items: [
                 for (final row in rows ?? const <MirrorTemplateRecord>[])
                   ListItem(
@@ -312,12 +314,12 @@ class MirrorTemplatesPage extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          tooltip: '编辑',
+                          tooltip: context.l10n.commonEdit,
                           onPressed: () => _edit(context, ref, row),
                           icon: const GlyphIcon(AppGlyphs.edit, size: 20),
                         ),
                         IconButton(
-                          tooltip: '删除',
+                          tooltip: context.l10n.commonDelete,
                           onPressed: () async {
                             await ref
                                 .read(mirrorTemplateActionsProvider)
@@ -333,9 +335,9 @@ class MirrorTemplatesPage extends ConsumerWidget {
                   ),
               ],
               footer: rows == null
-                  ? '正在读取镜像站模板…'
+                  ? context.l10n.mirrorTplReading
                   : rows.isEmpty
-                  ? '暂无模板。点击右上角「添加模板」开始使用。'
+                  ? context.l10n.mirrorTplEmpty
                   : null,
             ),
           const SizedBox(height: 24),
@@ -354,8 +356,8 @@ class MirrorTemplatesPage extends ConsumerWidget {
       // The unique index on the name rejects the insert; report it instead of silently
       // doing nothing.
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(
-          content: Text('同名模板已存在，请换一个名称'),
+        SnackBar(
+          content: Text(context.l10n.mirrorTplDuplicate),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -382,8 +384,8 @@ class MirrorTemplatesPage extends ConsumerWidget {
     }
     if (!ok && context.mounted) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(
-          content: Text('保存失败：名称与已有模板重复'),
+        SnackBar(
+          content: Text(context.l10n.mirrorTplDuplicateSave),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -404,26 +406,26 @@ class MirrorTemplatesPage extends ConsumerWidget {
     showFloatingDialog<void>(
       context: context,
       child: CommonDialog(
-        title: '镜像站格式',
+        title: context.l10n.mirrorTplFormatTitle,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 8,
-          children: const [
-            Text('镜像地址由固定前缀与占位符组成，下载订阅时会把占位符替换成真实链接。'),
-            Text('{url}：完整订阅地址'),
-            Text('{scheme}：http 或 https'),
-            Text('{urlEncoded}：URL 编码后的完整地址'),
-            Text('{host}：订阅域名'),
-            Text('{path}：路径部分'),
-            Text('{pathAndQuery}：路径与查询参数'),
-            Text('示例：https://ghproxy.example.com/{url}'),
+          children: [
+            Text(context.l10n.mirrorTplFormatIntro),
+            Text(context.l10n.mirrorTplFormatUrl('{url}')),
+            Text(context.l10n.mirrorTplFormatScheme('{scheme}')),
+            Text(context.l10n.mirrorTplFormatUrlEncoded('{urlEncoded}')),
+            Text(context.l10n.mirrorTplFormatHost('{host}')),
+            Text(context.l10n.mirrorTplFormatPath('{path}')),
+            Text(context.l10n.mirrorTplFormatPathAndQuery('{pathAndQuery}')),
+            Text(context.l10n.mirrorTplFormatSample('{url}')),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('关闭'),
+            child: Text(context.l10n.uiClose),
           ),
         ],
       ),
@@ -474,7 +476,7 @@ class _TemplateDialogState extends State<_TemplateDialog> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: widget.initial == null ? '添加镜像站模板' : '编辑镜像站模板',
+      title: widget.initial == null ? context.l10n.mirrorTplAddTitle : context.l10n.mirrorTplEditTitle,
       hasFields: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -484,24 +486,31 @@ class _TemplateDialogState extends State<_TemplateDialog> {
           TextField(
             controller: _name,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: '模板名称',
-              hintText: '例如：GitHub 镜像',
+            decoration: InputDecoration(
+              labelText: context.l10n.mirrorTplNameLabel,
+              hintText: context.l10n.mirrorTplNameHint,
             ),
           ),
           TextField(
             controller: _template,
             autocorrect: false,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: '模板地址',
+            decoration: InputDecoration(
+              labelText: context.l10n.mirrorTplAddressLabel,
               hintText: 'https://mirror.example.com/{url}',
             ),
           ),
           Text(
             _valid
-                ? '可用占位符：{url}、{scheme}、{urlEncoded}、{host}、{path}、{pathAndQuery}'
-                : '必须使用 HTTP(S) 并包含至少一个占位符',
+                ? context.l10n.mirrorTplFormatPlaceholders(
+                    '{url}',
+                    '{scheme}',
+                    '{urlEncoded}',
+                    '{host}',
+                    '{path}',
+                    '{pathAndQuery}',
+                  )
+                : context.l10n.mirrorTplInvalid,
             style: AppTextStyle.footnote
                 .of(context)
                 .copyWith(
@@ -515,11 +524,11 @@ class _TemplateDialogState extends State<_TemplateDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.uiCancel),
         ),
         TextButton(
           onPressed: _valid && _name.text.trim().isNotEmpty ? _submit : null,
-          child: const Text('保存'),
+          child: Text(context.l10n.commonSave),
         ),
       ],
     );

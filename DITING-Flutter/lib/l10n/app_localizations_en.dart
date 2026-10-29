@@ -6331,4 +6331,2037 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get bootstrapIpAddress => 'IP address';
+
+  @override
+  String get caCertTitle => 'CA certificate settings';
+
+  @override
+  String get caCertStatusMissing =>
+      'Not generated yet: the engine has not produced ca.crt';
+
+  @override
+  String get caCertStatusUntrusted =>
+      'Generated, but not installed in the system trust store';
+
+  @override
+  String get caCertStatusTrusted => 'Generated and trusted by the system';
+
+  @override
+  String get caCertSectionStatus => 'Certificate status';
+
+  @override
+  String get caCertRootStatus => 'Root certificate status';
+
+  @override
+  String get caCertVerified => 'Verified';
+
+  @override
+  String get caCertUnverified => 'Not verified';
+
+  @override
+  String get caCertReadFailed => 'Read failed';
+
+  @override
+  String get caCertStatusFooter =>
+      'Traffic inspection only works with a verified root certificate; apps that use certificate pinning (SSL Pinning) are bypassed automatically.';
+
+  @override
+  String get caCertSectionActions => 'Certificate actions';
+
+  @override
+  String get caCertGuide => 'Install and remove guide';
+
+  @override
+  String get caCertGuideSubtitle =>
+      'How to install, remove and stay safe with the system certificate on each device';
+
+  @override
+  String get caCertInstall => 'Install root certificate';
+
+  @override
+  String get caCertInstallSubtitle =>
+      'Hands off to the system installer; Android 11 and later still need a manual confirmation in Settings';
+
+  @override
+  String get caCertInstalled => 'Installed';
+
+  @override
+  String get caCertNotInstalled => 'Not installed';
+
+  @override
+  String get caCertSaveToDownloads => 'Save certificate to Downloads';
+
+  @override
+  String get caCertSaveToDownloadsSubtitle =>
+      'The .crt in Downloads can be installed by hand from system settings';
+
+  @override
+  String get caCertFingerprint => 'Certificate fingerprint';
+
+  @override
+  String get caCertNoFingerprint =>
+      'There is no fingerprint until a certificate is generated';
+
+  @override
+  String get caCertFingerprintSubtitle =>
+      'SHA-256 (tap to see the full fingerprint)';
+
+  @override
+  String get caCertViewPem => 'View certificate';
+
+  @override
+  String get caCertViewPemSubtitle =>
+      'Shown as copyable PEM text so it can be installed elsewhere';
+
+  @override
+  String get caCertSectionManage => 'Certificate management';
+
+  @override
+  String get caCertRegenerate => 'Regenerate root certificate';
+
+  @override
+  String get caCertRegenerateSubtitle =>
+      'Revokes the current private key and creates a new certificate; reinstall afterwards';
+
+  @override
+  String get caCertNoCertificate =>
+      'No certificate is available yet; tap \"Regenerate root certificate\" first';
+
+  @override
+  String get caCertInstallDialogBody =>
+      'Android only lets the user install a root certificate into the \"CA certificate\" section by hand; the app cannot write to the system trust store silently.\n\nTapping \"Continue\" first saves a certificate file to Downloads and then tries to open the system installer. If the installer only points at Settings, pick that file manually under \"Settings → Security → Encryption & credentials → Install a certificate → CA certificate\".';
+
+  @override
+  String caCertSavedTo(String name) {
+    return 'The certificate was saved to $name.';
+  }
+
+  @override
+  String get caCertDownloadsDir => 'Downloads';
+
+  @override
+  String caCertSaveFailed(String error) {
+    return 'Saving the certificate file failed ($error).';
+  }
+
+  @override
+  String get caCertOpenedInstaller =>
+      'The system certificate installer was opened.';
+
+  @override
+  String get caCertOpenedSettings =>
+      'This system has no certificate installer, so security settings were opened.';
+
+  @override
+  String get caCertInstallerUnavailable =>
+      'Could not open the certificate installer.';
+
+  @override
+  String get caCertManualHint =>
+      'If the screen only points at Settings, select it manually under \"Encryption & credentials → Install a certificate → CA certificate\".';
+
+  @override
+  String caCertSavedHint(String name) {
+    return 'Saved to $name; select it under \"Encryption & credentials → Install a certificate\"';
+  }
+
+  @override
+  String get caCertDownloadsFailed => 'Could not write to Downloads';
+
+  @override
+  String get caCertRegenerateTitle => 'Regenerate the root certificate?';
+
+  @override
+  String get caCertRegenerateBody =>
+      'The existing ca.crt / ca.key and the blocklist cache are deleted. The installed certificate stops working immediately, every previously trusted connection needs the new certificate, and HTTPS inspection is turned off automatically.';
+
+  @override
+  String get caCertRegenerateAction => 'Regenerate';
+
+  @override
+  String caCertGenerateFailed(String error) {
+    return 'Generation failed: $error';
+  }
+
+  @override
+  String get caCertGenerated =>
+      'A new certificate was generated; install it from system settings';
+
+  @override
+  String get caCertFingerprintTitle => 'Certificate fingerprint (SHA-256)';
+
+  @override
+  String get caCertFingerprintCopied => 'Fingerprint copied';
+
+  @override
+  String get caCertPemTitle => 'Root certificate PEM';
+
+  @override
+  String get caCertPemCopied => 'Certificate copied';
+
+  @override
+  String get caCertGuideTitle => 'CA certificate guide';
+
+  @override
+  String get caCertWhyTitle => 'Why installation is required';
+
+  @override
+  String get caCertWhyBody =>
+      'HTTPS traffic inspection needs a local decryption channel on the device. The system only trusts root certificates installed by hand in the \"user\" certificate store, and the app cannot tap that step for you.';
+
+  @override
+  String get caCertStepsTitle => 'Installation steps';
+
+  @override
+  String get caCertStep1 =>
+      '1. Tap \"Install root certificate\" in \"CA certificate settings\"; the app saves the file to Downloads and hands it to the system installer.';
+
+  @override
+  String get caCertStep2 =>
+      '2. Since Android 11 the system installer usually only points at Settings; that is a platform limit, not an app fault. Select the .crt file from Downloads under \"Settings → Security → Encryption & credentials → Install a certificate → CA certificate\".';
+
+  @override
+  String get caCertStep3 =>
+      '3. The system asks for the screen lock or fingerprint; installation is impossible without one, so set a PIN first.';
+
+  @override
+  String get caCertStep4 =>
+      '4. Come back to this page; the status should read \"Verified\". If not, leave and reopen the page to check again.';
+
+  @override
+  String get caCertWhichAppsTitle => 'Which apps can be inspected';
+
+  @override
+  String get caCertWhichAppsBody =>
+      'The system only trusts root certificates in the \"user\" store, and apps with targetSdk 24 (Android 7.0) or later do not trust user certificates by default. Only apps whose network security config allows user CAs can have their HTTPS decrypted and read in plain text.';
+
+  @override
+  String get caCertWhichAppsWarning =>
+      'HTTPS requests from other apps are recorded as \"failed / client_tls\" because of certificate pinning or system policy. That is expected; add those apps to the bypass rules.';
+
+  @override
+  String get caCertRiskTitle => 'Removal and risks';
+
+  @override
+  String get caCertRiskWarning =>
+      'Once the root certificate is in the user trust store, any software holding the matching private key can decrypt this device\'s traffic. When you no longer need it, delete it in system settings and tap \"Regenerate root certificate\" here to revoke the old key.';
+
+  @override
+  String get caCertRiskPinning =>
+      'Some apps use certificate pinning (SSL Pinning) and still fail to connect after the certificate is installed; add them to the bypass rules instead of reinstalling the certificate over and over.';
+
+  @override
+  String get commonCopy => 'Copy';
+
+  @override
+  String get commonContinue => 'Continue';
+
+  @override
+  String get commonUnknownReason => 'Unknown reason';
+
+  @override
+  String get autoUpdateTitle => 'Auto-update settings';
+
+  @override
+  String get autoUpdateSection => 'Auto-update';
+
+  @override
+  String get autoUpdateRulesSwitch => 'Auto-update rule subscriptions';
+
+  @override
+  String get autoUpdateRulesSwitchSubtitle =>
+      'Checks for due subscriptions on launch or when returning to the foreground';
+
+  @override
+  String get autoUpdateIntervalSection => 'Update frequency';
+
+  @override
+  String autoUpdateEveryHours(int hours) {
+    return 'Every $hours hours';
+  }
+
+  @override
+  String get autoUpdateCustomInterval => 'Custom interval';
+
+  @override
+  String get autoUpdateCustomHint =>
+      'Enter an interval between 1 and 168 hours';
+
+  @override
+  String get autoUpdateIntervalFooter =>
+      'The interval is stored in the dataset of the current work mode (normal, speed and server each keep their own). There is no background task queue: due subscriptions are only checked and run while the app is in the foreground (launch and returning to the foreground), never while the process is closed.';
+
+  @override
+  String get autoUpdateStatusSection => 'Run status';
+
+  @override
+  String get autoUpdateNext => 'Next update';
+
+  @override
+  String get autoUpdateLast => 'Last auto-update';
+
+  @override
+  String get autoUpdateNoRunYet => 'No auto-update has run in this session';
+
+  @override
+  String autoUpdateRunCount(int count) {
+    return ' ($count subscriptions)';
+  }
+
+  @override
+  String get autoUpdateStatusFooter =>
+      'The check compares each subscription\'s last attempt with the interval above; a manual update in progress makes this round step aside.';
+
+  @override
+  String get autoUpdateGroupsSection => 'Per-group auto-update';
+
+  @override
+  String get autoUpdateReadingGroups => 'Reading groups…';
+
+  @override
+  String get autoUpdateNoGroups => 'No groups yet';
+
+  @override
+  String get autoUpdateNoGroupsSubtitle =>
+      'Create a group on the rule subscription page to toggle it here';
+
+  @override
+  String get autoUpdateGroupsFooter =>
+      'Only remote subscriptions in enabled groups are updated automatically; stored in the `subscription_group` table.';
+
+  @override
+  String get autoUpdateReadingSubs => 'Reading subscriptions…';
+
+  @override
+  String get autoUpdateNoCandidates =>
+      'No subscription can be auto-updated (it must be remote, enabled, and in an enabled group)';
+
+  @override
+  String get autoUpdateDueNow =>
+      'Due now: it runs as soon as the app returns to the foreground';
+
+  @override
+  String autoUpdateRemainingHours(int hours, int minutes) {
+    return 'in $hours h $minutes min';
+  }
+
+  @override
+  String autoUpdateRemainingMinutes(int minutes) {
+    return 'in $minutes min';
+  }
+
+  @override
+  String autoUpdateNextAt(String moment, String left) {
+    return '$moment ($left)';
+  }
+
+  @override
+  String autoUpdateMoment(int month, int day, String time) {
+    return '$month/$day $time';
+  }
+
+  @override
+  String get autoUpdateIntervalLabel => 'Update interval (hours)';
+
+  @override
+  String get autoUpdateIntervalHelper => '1–168 hours';
+
+  @override
+  String get mirrorTplTitle => 'Mirror templates';
+
+  @override
+  String get mirrorTplAdd => 'Add template';
+
+  @override
+  String get mirrorTplIntro =>
+      'Save the mirrors you use often. With the global mirror on, subscriptions and app updates use the selected template by default; a single subscription can also pick its own template.';
+
+  @override
+  String get mirrorTplActions => 'Actions';
+
+  @override
+  String get mirrorTplFormatExample => 'Mirror format example';
+
+  @override
+  String get mirrorTplFormatExampleSubtitle =>
+      'See how placeholders make up a mirror address';
+
+  @override
+  String get mirrorTplSaved => 'Saved templates';
+
+  @override
+  String get mirrorTplReadFailed => 'Could not read mirror templates';
+
+  @override
+  String get mirrorTplReadFailedSubtitle =>
+      'The legacy database is not ready or the table is unavailable';
+
+  @override
+  String mirrorTplSavedCount(int count) {
+    return 'Saved templates ($count)';
+  }
+
+  @override
+  String get mirrorTplReading => 'Reading mirror templates…';
+
+  @override
+  String get mirrorTplEmpty =>
+      'No templates yet. Tap \"Add template\" in the top right to start.';
+
+  @override
+  String get mirrorTplDuplicate =>
+      'A template with this name already exists; choose another name';
+
+  @override
+  String get mirrorTplDuplicateSave =>
+      'Save failed: the name matches an existing template';
+
+  @override
+  String get mirrorTplFormatTitle => 'Mirror format';
+
+  @override
+  String get mirrorTplFormatIntro =>
+      'A mirror address is a fixed prefix plus placeholders; the placeholders are replaced with the real link when a subscription is downloaded.';
+
+  @override
+  String mirrorTplFormatUrl(String token) {
+    return '$token: full subscription URL';
+  }
+
+  @override
+  String mirrorTplFormatScheme(String token) {
+    return '$token: http or https';
+  }
+
+  @override
+  String mirrorTplFormatUrlEncoded(String token) {
+    return '$token: full URL-encoded address';
+  }
+
+  @override
+  String mirrorTplFormatHost(String token) {
+    return '$token: subscription host';
+  }
+
+  @override
+  String mirrorTplFormatPath(String token) {
+    return '$token: path part';
+  }
+
+  @override
+  String mirrorTplFormatPathAndQuery(String token) {
+    return '$token: path and query';
+  }
+
+  @override
+  String mirrorTplFormatSample(String token) {
+    return 'Example: https://ghproxy.example.com/$token';
+  }
+
+  @override
+  String mirrorTplFormatPlaceholders(
+    String url,
+    String scheme,
+    String urlEncoded,
+    String host,
+    String path,
+    String pathAndQuery,
+  ) {
+    return 'Available placeholders: $url, $scheme, $urlEncoded, $host, $path, $pathAndQuery';
+  }
+
+  @override
+  String get mirrorTplNameLabel => 'Template name';
+
+  @override
+  String get mirrorTplNameHint => 'For example: GitHub mirror';
+
+  @override
+  String get mirrorTplAddressLabel => 'Template address';
+
+  @override
+  String get mirrorTplInvalid =>
+      'Must use HTTP(S) and contain at least one placeholder';
+
+  @override
+  String get mirrorTplAddTitle => 'Add mirror template';
+
+  @override
+  String get mirrorTplEditTitle => 'Edit mirror template';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get ruleControlUrlNotReadyCa =>
+      'Not ready · install and verify the CA root certificate first';
+
+  @override
+  String get ruleControlUrlNotReadyInspection =>
+      'Not ready · turn it on in HTTPS traffic inspection';
+
+  @override
+  String get ruleControlUrlNotReadyApps =>
+      'Not ready · pick target apps in HTTPS traffic inspection';
+
+  @override
+  String get ruleControlUrlPaused =>
+      'Paused · URL filtering and redirects for decrypted traffic are off';
+
+  @override
+  String get ruleControlUrlRunning =>
+      'Running · decrypted traffic is matched against URL block, allow and redirect rules';
+
+  @override
+  String get ruleControlIntro =>
+      'One place for the master switches of domain filtering, URL rules and rule overrides, the block policy and online rule subscriptions. Block, allow and override lists are still managed separately in the hub.';
+
+  @override
+  String get ruleControlFilterSection => 'Filtering and override control';
+
+  @override
+  String get ruleControlDomainRules => 'Enable domain rules';
+
+  @override
+  String get ruleControlDomainRulesOn =>
+      'Blocks, allows and overrides IPv4/IPv6 at the DNS stage';
+
+  @override
+  String get ruleControlDomainRulesOff =>
+      'DNS domain filtering is off; every query is passed through';
+
+  @override
+  String get ruleControlUrlRules => 'URL rules and content filtering';
+
+  @override
+  String get ruleControlNotReady => 'Not ready';
+
+  @override
+  String get ruleControlPolicySection => 'Block policy';
+
+  @override
+  String get ruleControlBlockResponse => 'Block response';
+
+  @override
+  String ruleControlDynamicSummary(String mode) {
+    return 'Dynamic policy: NODATA first, then $mode for frequent requests';
+  }
+
+  @override
+  String get ruleControlSubsSection => 'Subscriptions and updates';
+
+  @override
+  String get ruleControlSubsSubtitle =>
+      'Manage domain rule and IPv4/IPv6 override sources and groups';
+
+  @override
+  String ruleControlCount(int count) {
+    return '$count';
+  }
+
+  @override
+  String ruleControlAutoUpdateOn(int hours) {
+    return 'On · auto-updates every $hours hours';
+  }
+
+  @override
+  String get ruleControlAutoUpdateOff => 'Auto-update is off';
+
+  @override
+  String get ruleControlMirrorSubtitle =>
+      'Manage download mirrors that can be picked when adding a subscription';
+
+  @override
+  String get blockResponseFixedSection => 'Fixed response';
+
+  @override
+  String get blockResponseFixedFooter =>
+      'While the dynamic policy is on it overrides the choice above: NODATA first, then NXDOMAIN for frequent requests.';
+
+  @override
+  String get blockResponseDynamicSection => 'Dynamic policy';
+
+  @override
+  String get blockResponseEnableDynamic => 'Enable dynamic policy';
+
+  @override
+  String get blockResponseEnableDynamicSubtitle =>
+      'All record types of a domain share one counter';
+
+  @override
+  String get blockResponseParameters => 'Dynamic parameters';
+
+  @override
+  String blockResponseParamsSummary(int threshold, int window, int duration) {
+    return '$threshold requests / $window s / hold $duration s';
+  }
+
+  @override
+  String get blockResponseDynamicFooter =>
+      'Well-behaved clients cache the NODATA answer. The dynamic policy mainly targets clients that keep retrying or ignore negative caching.';
+
+  @override
+  String get blockResponseThresholdError =>
+      'Requests must be between 2 and 100';
+
+  @override
+  String get blockResponseWindowError =>
+      'The counting window must be between 10 and 300 seconds';
+
+  @override
+  String get blockResponseDurationError =>
+      'The hold time must be between 60 and 3600 seconds';
+
+  @override
+  String get blockResponseThresholdLabel => 'Requests';
+
+  @override
+  String get blockResponseThresholdHelper => '2–100; upgrades from request N+1';
+
+  @override
+  String get blockResponseWindowLabel => 'Counting window (seconds)';
+
+  @override
+  String get blockResponseWindowHelper => '10–300 seconds';
+
+  @override
+  String get blockResponseDurationLabel => 'NXDOMAIN hold time (seconds)';
+
+  @override
+  String get blockResponseDurationHelper =>
+      '60–3600 seconds; timed from the first upgrade';
+
+  @override
+  String get httpInspCheckingCa => 'Checking the root certificate…';
+
+  @override
+  String get httpInspNoAppsHint =>
+      'No target app selected; only DNS filtering stays on';
+
+  @override
+  String httpInspSelectedHint(int count) {
+    return '$count apps selected; everything else is forwarded directly';
+  }
+
+  @override
+  String get httpInspScopeSection => 'Scope';
+
+  @override
+  String get httpInspEnable => 'Enable HTTPS inspection';
+
+  @override
+  String get httpInspTargetApps => 'Target apps';
+
+  @override
+  String get httpInspNoApps => 'No app selected';
+
+  @override
+  String httpInspSelectedApps(int count) {
+    return '$count apps selected';
+  }
+
+  @override
+  String get httpInspCaCert => 'CA certificate';
+
+  @override
+  String get httpInspCaReady =>
+      'The certificate is installed and the fingerprint matches; view or reset it';
+
+  @override
+  String get httpInspContentSection => 'Decrypted content filtering';
+
+  @override
+  String get httpInspUrlRules => 'Enable URL rules and redirects';
+
+  @override
+  String get httpInspNeedEnable => 'Enable HTTPS inspection first';
+
+  @override
+  String get httpInspUrlPaused =>
+      'Paused · decrypted requests pass through without URL rules or CNAME redirects';
+
+  @override
+  String get httpInspUrlOn =>
+      'Applies URL blocking, allow rules and CNAME redirects to decrypted traffic';
+
+  @override
+  String get httpInspProtocolSection => 'Protocol and compatibility';
+
+  @override
+  String get httpInspBlockHttp3 => 'Block HTTP/3 (QUIC)';
+
+  @override
+  String get httpInspBlockHttp3Subtitle =>
+      'Blocking QUIC pushes traffic back to TCP so it can be decrypted; turn it off if something breaks';
+
+  @override
+  String get httpInspBlockDot => 'Block encrypted DNS (DoT)';
+
+  @override
+  String get httpInspBlockDotSubtitle =>
+      'Blocks TCP port 853 so domain rules cannot be bypassed';
+
+  @override
+  String get httpInspRequestLogs => 'Request logs';
+
+  @override
+  String get httpInspRequestLogsSubtitle =>
+      'See decrypted requests and automatic bypasses';
+
+  @override
+  String get httpInspBypassFooter =>
+      'Stored in https_bypass_rules and merged with the built-in list in assets/https_passthrough.txt for the engine\'s setExtraPassthroughSuffixes.';
+
+  @override
+  String httpInspBypassTitle(int count) {
+    return 'HTTPS bypass rules ($count)';
+  }
+
+  @override
+  String get httpInspBypassEmpty => 'No custom bypass rules';
+
+  @override
+  String get httpInspBypassEmptySubtitle =>
+      'The built-in pass list always applies; these are extra domain suffixes';
+
+  @override
+  String get httpInspBypassRowSubtitle => 'Passed through without decryption';
+
+  @override
+  String get httpInspCaRequiredTitle => 'Install the root certificate first';
+
+  @override
+  String get httpInspGoInstall => 'Go install';
+
+  @override
+  String get httpInspCaReadingBody =>
+      'The root certificate status is still loading; try again in a moment.';
+
+  @override
+  String httpInspCaRequiredBody(String problem) {
+    return 'HTTPS inspection hands decrypted plain text back to the app, so the system trust chain must accept DITING\'s root certificate. The current state is \"$problem\", so target apps cannot be picked yet.\n\nOpen the CA certificate page to generate and install it?';
+  }
+
+  @override
+  String get httpInspCaMissing =>
+      'No root certificate yet: generate one on the CA certificate page';
+
+  @override
+  String get httpInspCaNotInstalled =>
+      'The certificate exists but is not in the system trust store';
+
+  @override
+  String get httpInspCaReadyShort => 'The certificate is ready';
+
+  @override
+  String get httpInspNeedDomainRulesTitle => 'Domain rules also need to be on';
+
+  @override
+  String get httpInspEnableAll => 'Turn both on';
+
+  @override
+  String get httpInspNeedDomainRulesBody =>
+      'HTTPS inspection decrypts traffic and domain rules decide what happens to it. Domain rules are off right now, so inspection alone blocks nothing.\n\nTurn domain rules on as well?';
+
+  @override
+  String get httpInspAppsTitle => 'Choose apps to inspect';
+
+  @override
+  String get httpInspSelectVisible => 'Select all shown';
+
+  @override
+  String get httpInspDeselectVisible => 'Deselect all shown';
+
+  @override
+  String get httpInspAppsIntro =>
+      'Once the Go tunnel takes over traffic, HTTPS inspection only inspects HTTP(S) requests from the selected apps; others are forwarded directly. Selecting an app clears its excluded, blocked and per-app rule state.';
+
+  @override
+  String httpInspAppsCount(int selected, int visible) {
+    return '$selected apps selected ($visible shown)';
+  }
+
+  @override
+  String get commonLater => 'Later';
+
+  @override
+  String get ruleControlSubsTitle => 'Rule subscriptions';
+
+  @override
+  String get cleanupIntro =>
+      'These actions delete data on this device immediately and cannot be undone. Back up important rules or settings first.';
+
+  @override
+  String cleanupRunning(String title) {
+    return 'Running: $title';
+  }
+
+  @override
+  String get cleanupDescLogs =>
+      'Clears DNS and HTTP request logs, race statistics and bootstrap resolution logs';
+
+  @override
+  String get cleanupDescTraffic =>
+      'Clears the traffic history and live counters of every app';
+
+  @override
+  String get cleanupDescCrash =>
+      'Clears all Java and native crash logs stored locally';
+
+  @override
+  String get cleanupDescDnsCache =>
+      'Drops cached answers so the next visit queries again';
+
+  @override
+  String get cleanupDescProviderWeights =>
+      'Clears the health samples of smart selection so traffic follows the default weights again';
+
+  @override
+  String get cleanupDescBootstrapWeights =>
+      'Clears bootstrap DNS health samples so the default weights apply again';
+
+  @override
+  String get cleanupDescDomainRules =>
+      'Clears domain block, allow and IPv4/IPv6 override rules plus their subscriptions, restoring the preset allowlist';
+
+  @override
+  String get cleanupDescAddressRules =>
+      'Clears URL block, allow and CNAME override rules without touching domain rules';
+
+  @override
+  String get cleanupDescSubscriptions =>
+      'Clears every remote and local rule subscription, subscription group and auto-update task';
+
+  @override
+  String get cleanupDescAppRules =>
+      'Empties the per-app exclusions, blocked apps, app allowlists and capture lists';
+
+  @override
+  String get cleanupDescOutboundProxy =>
+      'Clears the outbound proxy protocol, server and credentials, restoring direct connections';
+
+  @override
+  String get cleanupDescCaCertificate =>
+      'Clears the locally generated MITM CA root certificate and private key';
+
+  @override
+  String get cleanupDescDownloadCache =>
+      'Deletes update packages, downloaded temporary files and the app cache';
+
+  @override
+  String get cleanupDescCustomBackground =>
+      'Clears the custom wallpaper cache and its stored path, restoring the default background';
+
+  @override
+  String get cleanupDescSettingsGuides =>
+      'Shows every first-run guide again and asks for the terms once more';
+
+  @override
+  String get cleanupDescAllData =>
+      'Deep-clears every log, cache, rule, subscription, certificate and setting, then exits the app';
+
+  @override
+  String get cleanupConfirmLogs =>
+      'Delete all DNS and HTTP request logs, race statistics and bootstrap DNS statistics?';
+
+  @override
+  String get cleanupConfirmTraffic =>
+      'Clear the traffic history and live counters of every app?';
+
+  @override
+  String get cleanupConfirmCrash =>
+      'Delete all local crash logs and crash statistics?';
+
+  @override
+  String get cleanupConfirmDnsCache =>
+      'Delete the whole local DNS cache? The next visit to a domain will query again.';
+
+  @override
+  String get cleanupConfirmProviderWeights =>
+      'Clear every provider health sample and restore the default race weights?';
+
+  @override
+  String get cleanupConfirmBootstrapWeights =>
+      'Clear the bootstrap DNS health samples and restore the default weights?';
+
+  @override
+  String get cleanupConfirmDomainRules =>
+      'Delete every domain rule? Domain block, allow and IPv4/IPv6 override rules and their subscriptions are removed; address rules are untouched.';
+
+  @override
+  String get cleanupConfirmAddressRules =>
+      'Delete every address rule? URL block, allow and CNAME override rules are removed; domain rules are untouched.';
+
+  @override
+  String get cleanupConfirmSubscriptions =>
+      'Delete every rule subscription? All subscription links, groups and imported rules are removed; rules added by hand are untouched.';
+
+  @override
+  String get cleanupConfirmAppRules =>
+      'Reset every app control list? Per-app proxy exclusions, blocked apps, app allowlists and HTTP/HTTPS capture apps are cleared and restored to defaults.';
+
+  @override
+  String get cleanupConfirmOutboundProxy =>
+      'Reset the outbound proxy? The proxy is disabled and its server address, port and credentials are cleared.';
+
+  @override
+  String get cleanupConfirmCaCertificate =>
+      'Clear the locally generated HTTPS capture CA certificate and private key? If the system already trusts it, you must generate and install a new one before capturing again.';
+
+  @override
+  String get cleanupConfirmDownloadCache =>
+      'Delete downloaded update packages and temporary cache files?';
+
+  @override
+  String get cleanupConfirmCustomBackground =>
+      'Clear the custom wallpaper cache and restore the default background?';
+
+  @override
+  String get cleanupConfirmSettingsGuides =>
+      'Reset every first-run guide and the terms agreement? No setting, rule, cache, log or certificate is deleted. The app exits afterwards; the next launch asks for the terms again and shows all guides once more.';
+
+  @override
+  String get cleanupConfirmAllData =>
+      'Run the full data cleanup? Logs, traffic statistics, crash records, DNS cache, provider weights, domain and address rules, rule subscriptions, temporary caches and capture certificates are cleared in turn. Every custom setting and rule is wiped, the guides are reset, and the app exits when it finishes.';
+
+  @override
+  String get cleanupRestartTitle => 'Restart required';
+
+  @override
+  String get cleanupRestartBody =>
+      'Cleanup finished. The first-run guides and the terms were reset; restart the app for it to take effect.';
+
+  @override
+  String get commonConfirm => 'Confirm';
+
+  @override
+  String get transferTitle => 'Backup and migration';
+
+  @override
+  String get transferMetricProviders => 'DNS providers';
+
+  @override
+  String get transferMetricSubs => 'Rule subscriptions';
+
+  @override
+  String get transferMetricCustomRules => 'Custom rules';
+
+  @override
+  String get transferMetricListedApps => 'Listed apps';
+
+  @override
+  String get transferSectionAppConfig => 'App configuration';
+
+  @override
+  String get transferSectionRules => 'Rules and subscriptions';
+
+  @override
+  String get transferSectionAppControl => 'App control and traffic';
+
+  @override
+  String get transferSectionPersonal => 'Personalization and general';
+
+  @override
+  String get transferDeselectAll => 'Deselect all';
+
+  @override
+  String get transferImportExportSection => 'Import and export';
+
+  @override
+  String get transferExportJson => 'Export app configuration (JSON)';
+
+  @override
+  String get transferExportHintNone => 'Select the groups to export first';
+
+  @override
+  String transferExportHintCount(int count) {
+    return 'Save the $count selected groups to a JSON file';
+  }
+
+  @override
+  String get transferImportJson => 'Import app configuration (JSON)';
+
+  @override
+  String get transferImportSubtitle =>
+      'Merges a backup file and skips items this device already has';
+
+  @override
+  String get transferImportExportFooter =>
+      'The exported file contains your personal settings, so keep it safe. Importing merges the settings and skips items that already exist. Outbound proxy credentials are not part of a backup.';
+
+  @override
+  String get transferCloudSection => 'Cloud backup';
+
+  @override
+  String get transferWebdav => 'WebDAV sync';
+
+  @override
+  String get transferWebdavSubtitle =>
+      'Sync the configuration file to your own WebDAV server';
+
+  @override
+  String get transferBusyExporting => 'Building the backup file…';
+
+  @override
+  String get transferBusySaving => 'Waiting for a save location…';
+
+  @override
+  String get transferBusyPickingImport => 'Waiting for a backup file…';
+
+  @override
+  String get transferExportEmpty =>
+      'The selected groups have nothing to export';
+
+  @override
+  String get transferExportCancelled => 'Save cancelled';
+
+  @override
+  String transferExportDone(int groups, int items) {
+    return 'Exported $groups groups, $items items in total';
+  }
+
+  @override
+  String transferExportSkipped(int count) {
+    return '; $count items skipped';
+  }
+
+  @override
+  String get transferExportFailed => 'Export failed';
+
+  @override
+  String get transferImportCancelled => 'Import cancelled';
+
+  @override
+  String get transferImportTitle => 'Import app configuration';
+
+  @override
+  String get transferImportFailedChip => 'Import failed';
+
+  @override
+  String get transferImportDoneChip => 'Import finished';
+
+  @override
+  String transferImportSummary(int added, int updated, int skipped) {
+    return 'Import summary: $added added, $updated updated, $skipped skipped';
+  }
+
+  @override
+  String transferSourceFile(String name) {
+    return 'Source file: $name';
+  }
+
+  @override
+  String transferExportedAt(String time) {
+    return 'Backup exported at $time';
+  }
+
+  @override
+  String transferOutcomeRow(String group, String detail) {
+    return '  + $group · $detail';
+  }
+
+  @override
+  String transferFailedGroupRow(String group, String error) {
+    return '  ! $group: $error';
+  }
+
+  @override
+  String get transferNothingChanged =>
+      '  (Every item in the backup already exists here; nothing to change)';
+
+  @override
+  String transferSubscriptionsNote(int count) {
+    return 'Contains $count subscriptions; open subscription management to update their rules.';
+  }
+
+  @override
+  String get transferDone => 'Done';
+
+  @override
+  String transferOutcomeAdded(int count) {
+    return '$count added';
+  }
+
+  @override
+  String transferOutcomeUpdated(int count) {
+    return '$count updated';
+  }
+
+  @override
+  String transferOutcomeSkipped(int count) {
+    return '$count skipped';
+  }
+
+  @override
+  String get transferNoChange => 'No changes';
+
+  @override
+  String get transferOutcomeSeparator => ', ';
+
+  @override
+  String get webdavClearConfig => 'Clear settings';
+
+  @override
+  String get webdavTest => 'Test connection';
+
+  @override
+  String get webdavServer => 'Server';
+
+  @override
+  String get webdavUsername => 'Username';
+
+  @override
+  String get webdavPassword => 'Password';
+
+  @override
+  String get webdavPath => 'Remote path';
+
+  @override
+  String get webdavUpload => 'Upload backup';
+
+  @override
+  String get webdavDownload => 'Download and restore';
+
+  @override
+  String webdavFooter(String hint) {
+    return '\"Test connection\" sends a real WebDAV request: PROPFIND probes the folder and creates it when missing. Upload and download use the same backup format as \"Backup and migration\". ${hint}The password is kept in memory only and never written to disk.';
+  }
+
+  @override
+  String get webdavFooterConnected =>
+      'Once connected you can upload or restore. ';
+
+  @override
+  String get webdavNoConfig =>
+      'There is no configuration to back up on this device';
+
+  @override
+  String get webdavUploadFailed => 'Upload failed';
+
+  @override
+  String get webdavNoCloudBackup =>
+      'There is no backup in the cloud to restore';
+
+  @override
+  String get webdavRestoreTitle => 'Restore configuration from the cloud';
+
+  @override
+  String get webdavRestoreFailed => 'Restore failed';
+
+  @override
+  String get webdavRestoreDone => 'Restore finished';
+
+  @override
+  String webdavRestoreSummary(int added, int updated, int skipped) {
+    return 'Restore summary: $added added, $updated updated, $skipped skipped';
+  }
+
+  @override
+  String webdavOutcomeRow(String group, int added, int skipped) {
+    return '  + $group · $added added, $skipped skipped';
+  }
+
+  @override
+  String get webdavNothingChanged =>
+      '  (The cloud backup matches this device; nothing to change)';
+
+  @override
+  String get webdavHintIdle =>
+      'Fill in the server details to test the connection';
+
+  @override
+  String get webdavHintConnecting => 'Handshaking, please wait';
+
+  @override
+  String get webdavHintConnected =>
+      'You can upload a backup or restore from the cloud';
+
+  @override
+  String get webdavHintFailed =>
+      'Check the address, account and certificate, then retry';
+
+  @override
+  String get backupGroupProviders => 'Custom DNS providers';
+
+  @override
+  String get backupGroupProvidersDesc =>
+      'DoH and DoT providers and resolution settings';
+
+  @override
+  String get backupGroupBootstrap => 'Custom bootstrap IPs';
+
+  @override
+  String get backupGroupBootstrapDesc =>
+      'Bootstrap DNS nodes and their switches';
+
+  @override
+  String get backupGroupCache => 'DNS cache policy';
+
+  @override
+  String get backupGroupCacheDesc =>
+      'DNS cache switches, presets and TTL limits';
+
+  @override
+  String get backupGroupOutbound => 'Outbound proxy settings';
+
+  @override
+  String get backupGroupOutboundDesc =>
+      'SOCKS5 / HTTP proxy and proxied apps, without credentials';
+
+  @override
+  String get backupGroupSubscriptions => 'Online rule subscriptions';
+
+  @override
+  String get backupGroupSubscriptionsDesc =>
+      'Subscription links, mirrors and auto-update';
+
+  @override
+  String get backupGroupDomainRules => 'Custom blocked domain rules';
+
+  @override
+  String get backupGroupDomainRulesDesc =>
+      'Blocked domains added by hand and their switches';
+
+  @override
+  String get backupGroupRewriteDomain => 'Custom domain rewrite rules';
+
+  @override
+  String get backupGroupRewriteDomainDesc =>
+      'IPv4 / IPv6 domain override rules';
+
+  @override
+  String get backupGroupRewriteCname => 'Custom CNAME rewrite rules';
+
+  @override
+  String get backupGroupRewriteCnameDesc => 'CNAME override rules';
+
+  @override
+  String get backupGroupAddressRules => 'Custom blocked address rules';
+
+  @override
+  String get backupGroupAddressRulesDesc => 'URL path blocking rules';
+
+  @override
+  String get backupGroupExcluded => 'Excluded apps';
+
+  @override
+  String get backupGroupExcludedDesc =>
+      'Apps that bypass filtering and use the system DNS';
+
+  @override
+  String get backupGroupBlocked => 'Blocked apps';
+
+  @override
+  String get backupGroupBlockedDesc =>
+      'Apps that cannot go online while the service runs';
+
+  @override
+  String get backupGroupAllowlist => 'Per-app rules and allow lists';
+
+  @override
+  String get backupGroupAllowlistDesc =>
+      'Per-app pass rules and domain allowlists';
+
+  @override
+  String get backupGroupHttpInspection => 'HTTPS capture settings';
+
+  @override
+  String get backupGroupHttpInspectionDesc =>
+      'Capture switches and target apps';
+
+  @override
+  String get backupGroupAppearance => 'Appearance and personalization';
+
+  @override
+  String get backupGroupAppearanceDesc =>
+      'Theme, component opacity and taglines';
+
+  @override
+  String get backupGroupSystem => 'System and general settings';
+
+  @override
+  String get backupGroupSystemDesc =>
+      'LAN bypass, log mode, language and notifications';
+
+  @override
+  String webdavUploadedCount(int groups, int items) {
+    return 'Uploaded $groups groups, $items items in total';
+  }
+
+  @override
+  String get agentApiEnabled => 'AI analysis is on';
+
+  @override
+  String get agentApiDisabled => 'AI analysis is off';
+
+  @override
+  String get agentApiNoProvider =>
+      'No AI provider configured yet; add one and fill in the API key under \"AI provider management\" first.';
+
+  @override
+  String agentApiCurrentProvider(String name, String model) {
+    return 'Current provider: $name · $model';
+  }
+
+  @override
+  String get agentApiNoModel => 'No model selected';
+
+  @override
+  String get agentApiKeyConfigured => 'Key configured';
+
+  @override
+  String agentApiTemperature(String value) {
+    return 'Temperature $value';
+  }
+
+  @override
+  String get agentApiProviderChip => 'Requests go to your provider';
+
+  @override
+  String get agentApiReadyHintOn =>
+      'Once the provider and key are filled in, the log pages can start an analysis directly.';
+
+  @override
+  String get agentApiReadyHintOff =>
+      'Turn it on to start an analysis straight from the log pages.';
+
+  @override
+  String get agentApiSectionProvider => 'Provider and parameters';
+
+  @override
+  String agentApiProvidersSubtitle(int count) {
+    return '$count providers configured · choose the endpoint and model';
+  }
+
+  @override
+  String get agentParamsSubtitle => 'System prompt and sampling temperature';
+
+  @override
+  String get agentApiSectionTest => 'Feature test';
+
+  @override
+  String get agentApiTestDomain => 'Analyse a domain';
+
+  @override
+  String get agentApiTestDomainSubtitle =>
+      'Calls the model with a sample domain to check risks and recommended actions';
+
+  @override
+  String get agentApiTestTraffic => 'Analyse recent traffic';
+
+  @override
+  String get agentApiTestTrafficSubtitle =>
+      'Summarises recent DNS and HTTPS records and calls the model';
+
+  @override
+  String get agentApiTestFooterReady =>
+      'Both entries really call your provider and consume quota.';
+
+  @override
+  String get agentApiTestFooterNotReady =>
+      'The configuration is incomplete (off, or no API key); tapping asks you to finish it first.';
+
+  @override
+  String get agentApiSectionEntries => 'Where to analyse';
+
+  @override
+  String get agentApiCacheTable => 'DNS cache table';
+
+  @override
+  String get agentApiCacheTableSubtitle =>
+      'Tap any row to analyse that domain\'s security risk';
+
+  @override
+  String get agentApiRequests => 'Request records';
+
+  @override
+  String get agentApiRequestsSubtitle =>
+      'Open a request\'s details; the domain can be analysed at the bottom';
+
+  @override
+  String get agentApiDashboard => 'Log dashboard';
+
+  @override
+  String get agentApiDashboardSubtitle =>
+      'The \"AI review\" card analyses recent traffic as a whole';
+
+  @override
+  String get agentApiEntriesFooter =>
+      'A domain in the report can be written to the allow or block list in one tap; it takes effect once the DNS VPN starts.';
+
+  @override
+  String get agentApiSectionReset => 'Reset settings';
+
+  @override
+  String get agentApiResetItem => 'Restore factory defaults';
+
+  @override
+  String get agentApiResetSubtitle =>
+      'Clears providers, API keys, prompts and temperature';
+
+  @override
+  String get agentApiFooter =>
+      'AI analysis only helps you judge; it never changes rules by itself. Requests are handled by the provider you configured and the key stays on this device.';
+
+  @override
+  String get agentApiResetTitle => 'Restore the default settings?';
+
+  @override
+  String get agentApiResetBody =>
+      'This restores every AI analysis parameter, API key and system prompt to its default.';
+
+  @override
+  String get agentApiResetConfirm => 'Restore';
+
+  @override
+  String get agentProvidersTitle => 'AI provider management';
+
+  @override
+  String get agentProvidersAdd => 'Add custom provider';
+
+  @override
+  String get agentProvidersIntro =>
+      'Picking a preset below pre-fills the endpoint; choose the model from the provider\'s real list via \"Fetch models\" in the editor. Leaving the API key empty while editing keeps the existing key. Keys are stored on this device with the same obfuscation as before, with no extra plain text.';
+
+  @override
+  String get agentProvidersMine => 'My providers';
+
+  @override
+  String get agentProvidersEmpty => 'No providers yet';
+
+  @override
+  String get agentProvidersEmptySubtitle =>
+      'Pick one from the presets below, or add a custom provider from the top right';
+
+  @override
+  String agentProvidersRow(String model, String baseUrl, String key) {
+    return '$model · $baseUrl · $key';
+  }
+
+  @override
+  String get agentProvidersKeyConfigured => 'Key configured';
+
+  @override
+  String get agentProvidersKeyMissing => 'Key missing';
+
+  @override
+  String get agentProvidersFooter =>
+      'Tap a row to make that provider active; switching also syncs the endpoint, key and model into the four legacy flat keys so the new and old screens never disagree.';
+
+  @override
+  String get agentProvidersAdded => 'Added';
+
+  @override
+  String get agentProvidersDeleteTitle => 'Delete provider';
+
+  @override
+  String agentProvidersDeleteBody(String name) {
+    return 'Delete \"$name\"? Its API key is removed from this device as well.';
+  }
+
+  @override
+  String get agentEditorAddTitle => 'Add provider';
+
+  @override
+  String get agentEditorEditTitle => 'Edit provider';
+
+  @override
+  String get agentEditorPaste => 'Read from clipboard';
+
+  @override
+  String get agentEditorName => 'Provider name';
+
+  @override
+  String get agentEditorBaseUrl => 'Endpoint URL';
+
+  @override
+  String get agentEditorModel => 'Model name';
+
+  @override
+  String get agentEditorModelHint =>
+      'Tap \"Fetch models\" to pick from the provider\'s list';
+
+  @override
+  String get agentEditorKeyKeep => 'Leave empty to keep the current key';
+
+  @override
+  String get agentEditorKeyLocal =>
+      'Stored on this device only (same obfuscation as before)';
+
+  @override
+  String get agentEditorFetching => 'Requesting…';
+
+  @override
+  String get agentEditorFetch => 'Fetch models';
+
+  @override
+  String get agentEditorTest => 'Test connection';
+
+  @override
+  String get agentEditorErrorRequired =>
+      'Fill in a name, an http(s) endpoint and a model name';
+
+  @override
+  String get agentEditorErrorBaseUrl => 'Fill in the endpoint URL first';
+
+  @override
+  String get agentEditorErrorTestNeeds =>
+      'Testing needs an endpoint URL and a model name';
+
+  @override
+  String agentEditorFetched(int count) {
+    return 'Fetched $count models; pick one from the chips below';
+  }
+
+  @override
+  String agentEditorFetchFailed(String error) {
+    return 'Fetching models failed: $error';
+  }
+
+  @override
+  String agentEditorConnected(String model) {
+    return 'Connected: $model';
+  }
+
+  @override
+  String agentEditorUsage(int tokens) {
+    return ', $tokens tokens used';
+  }
+
+  @override
+  String agentEditorConnectFailed(String error) {
+    return 'Connection failed: $error';
+  }
+
+  @override
+  String get agentParamsTitle => 'Parameters and prompt';
+
+  @override
+  String get agentParamsPromptSection => 'System prompt';
+
+  @override
+  String get agentParamsPromptItem => 'System prompt';
+
+  @override
+  String get agentParamsPromptUnset =>
+      'Not set (each analysis scenario uses its built-in prompt)';
+
+  @override
+  String get agentParamsPromptFooter =>
+      'When empty, domain and traffic analysis each use their own built-in prompt; once filled in, both use this one.';
+
+  @override
+  String get agentParamsPromptHint =>
+      'For example: you are a network security and DNS threat intelligence expert…';
+
+  @override
+  String get agentParamsTemperatureSection => 'Sampling temperature';
+
+  @override
+  String get agentParamsTemperatureItem => 'Randomness and creativity';
+
+  @override
+  String get agentParamsTemperatureFooter =>
+      'For security judgements 0.2–0.4 is recommended: the lower the temperature, the steadier and more restrained the answer.';
+
+  @override
+  String get agentParamsTemperatureStrict =>
+      'Precise (good for security analysis and structured output)';
+
+  @override
+  String get agentParamsTemperatureBalanced =>
+      'Balanced (recommended for everyday analysis)';
+
+  @override
+  String get agentParamsTemperatureWild =>
+      'Loose and varied (richer, freer answers)';
+
+  @override
+  String get agentParamsTemplateSecurity => 'Security threat analysis';
+
+  @override
+  String get agentParamsTemplateTechnical => 'Minimal technical review';
+
+  @override
+  String get agentParamsTemplatePrivacy => 'Privacy and telemetry review';
+
+  @override
+  String get agentSheetCopied => 'Report copied to the clipboard';
+
+  @override
+  String agentSheetRuleAdded(String kind) {
+    return 'Added to $kind; it takes effect once the DNS VPN starts';
+  }
+
+  @override
+  String agentSheetRuleExists(String kind) {
+    return 'This domain is already in $kind';
+  }
+
+  @override
+  String get agentSheetFooter =>
+      'AI only helps you judge and never changes rules by itself; the report is for reference. Requests go to the provider you configured and the key stays on this device.';
+
+  @override
+  String get agentSheetDisabledTitle => 'AI analysis is turned off';
+
+  @override
+  String get agentSheetDisabledBody =>
+      'The AI analysis service is disabled. You can turn it on right here or manage it on the settings page.';
+
+  @override
+  String get agentSheetEnableAndStart => 'Turn on AI analysis and continue';
+
+  @override
+  String get agentSheetNoKeyTitle => 'No API key configured';
+
+  @override
+  String get agentSheetNoKeyBody =>
+      'Configure an OpenAI / DeepSeek compatible API key before using AI domain and traffic analysis.';
+
+  @override
+  String get agentSheetGoConfigure => 'Configure';
+
+  @override
+  String get agentSheetRunning => 'AI analysis in progress…';
+
+  @override
+  String agentSheetModel(String model) {
+    return 'Model $model';
+  }
+
+  @override
+  String get agentSheetUnknown => 'Unknown';
+
+  @override
+  String get agentSheetFailed => 'Analysis failed';
+
+  @override
+  String get agentSheetUnknownError => 'Unknown error';
+
+  @override
+  String get agentSheetCheckSettings => 'Check settings';
+
+  @override
+  String get agentSheetNotStarted => 'Not analysed yet';
+
+  @override
+  String get agentSheetSuperseded =>
+      'The result was replaced by a newer analysis';
+
+  @override
+  String get agentSheetStartHint => 'Tap the button below to start.';
+
+  @override
+  String get agentSheetSupersededHint =>
+      'Another analysis replaced this session; running it again brings the result back.';
+
+  @override
+  String get agentSheetStart => 'Start analysis';
+
+  @override
+  String get agentSheetHideDigest => 'Hide the prompt summary';
+
+  @override
+  String get agentSheetShowDigest => 'Show the prompt summary';
+
+  @override
+  String get agentSheetAddBlock => 'Add to block list';
+
+  @override
+  String get agentSheetCopyResult => 'Copy report';
+
+  @override
+  String get agentSheetReanalyze => 'Analyse again';
+
+  @override
+  String get agentTargetDomainTitle => 'Domain security analysis';
+
+  @override
+  String get agentTargetTrafficTitle => 'Network traffic analysis';
+
+  @override
+  String get agentTargetTrafficSubtitle =>
+      'Based on recent DNS and HTTPS monitoring data';
+
+  @override
+  String get agentApiChipKeyMissing => 'API key missing';
+
+  @override
+  String get agentSheetAddAllowlist => 'Add to allowlist';
+
+  @override
+  String get featureHubLongPress => 'Long-press';
+
+  @override
+  String get outboundSaved =>
+      'Outbound proxy settings saved; they take effect once the tunnel starts';
+
+  @override
+  String outboundSaveFailed(String error) {
+    return 'Save failed: $error';
+  }
+
+  @override
+  String get outboundResetTitle => 'Reset the outbound proxy?';
+
+  @override
+  String get outboundResetBody =>
+      'Deletes all nine outbound proxy keys, including the encrypted username and password.';
+
+  @override
+  String get outboundResetDone => 'Outbound proxy reset';
+
+  @override
+  String get outboundResetMenu => 'Reset outbound proxy';
+
+  @override
+  String get outboundSectionProxy => 'Proxy';
+
+  @override
+  String get outboundEnable => 'Enable the outbound proxy';
+
+  @override
+  String get outboundApp => 'Proxy app';
+
+  @override
+  String get outboundHostLabel => 'Address';
+
+  @override
+  String get outboundHostHelper => 'Only 127.0.0.1 or ::1 is supported';
+
+  @override
+  String get outboundUsernameLabel => 'Username (optional)';
+
+  @override
+  String get outboundPasswordLabel => 'Password (optional)';
+
+  @override
+  String get outboundHttpFooter =>
+      'HTTP CONNECT does not support UDP; UDP is blocked outright and QUIC can fall back to TCP. The proxy app itself bypasses DITING.';
+
+  @override
+  String get outboundSocksFooter =>
+      'SOCKS5 forwards UDP through UDP ASSOCIATE. The proxy app itself bypasses DITING so traffic cannot loop.';
+
+  @override
+  String get outboundStatusOff => 'Not running';
+
+  @override
+  String get outboundStatusConnecting => 'Connecting';
+
+  @override
+  String get outboundStatusReady => 'Proxy available';
+
+  @override
+  String get outboundStatusFailed => 'Connection failed';
+
+  @override
+  String get outboundFooterError =>
+      'An error reported by the engine stays until the next tunnel start so you can look back at the cause.';
+
+  @override
+  String get outboundFooterReady =>
+      'The engine confirmed the proxy works; after changing the settings the tunnel must restart to check again.';
+
+  @override
+  String get outboundFooterConnecting =>
+      'The tunnel checks proxy connectivity when it starts and shows the result here live.';
+
+  @override
+  String get outboundAppsTitle => 'Choose the proxy app';
+
+  @override
+  String get outboundAppsIntro =>
+      'Pick the app that provides the local proxy port. The proxy app itself bypasses DITING; it owns the port and DITING cannot listen for it.';
+
+  @override
+  String outboundAppsCount(int count) {
+    return 'Installed apps ($count)';
+  }
+
+  @override
+  String get outboundAppsEmpty =>
+      'There are no proxy apps to pick on this device';
+
+  @override
+  String get resolutionSingleDesc =>
+      'Every query goes to the selected provider.';
+
+  @override
+  String get resolutionSmartDesc =>
+      'Picks one by past success rate and moves on to the next if it fails.';
+
+  @override
+  String get resolutionParallelDesc =>
+      'Asks every provider at once and keeps the first answer.';
+
+  @override
+  String get resolutionPrimaryBackupDesc =>
+      'Prefers the primary provider and only uses the backups after a timeout.';
+
+  @override
+  String resolutionProtocolSavedError(String error) {
+    return 'The protocol was saved but the running service could not be updated: $error';
+  }
+
+  @override
+  String get resolutionBuiltinProtocol => 'Built-in service protocol';
+
+  @override
+  String get resolutionBuiltinNote =>
+      'Only switches the DNS / DoT / DoH protocol used by built-in providers; custom providers keep their own protocol.';
+
+  @override
+  String get resolutionConfigSection => 'Mode configuration';
+
+  @override
+  String get resolutionConfigFooter =>
+      'The resolution mode and race providers are stored in the dataset of the current work mode (normal, speed and server each keep their own).';
+
+  @override
+  String get resolutionNotConfigured => 'Not configured';
+
+  @override
+  String resolutionProviderCount(int count) {
+    return '$count providers';
+  }
+
+  @override
+  String get resolutionPickerTitle => 'Choose the resolution mode';
+
+  @override
+  String get resolutionMinProviders => 'Keep at least 2 providers';
+
+  @override
+  String get resolutionSingleHint => 'Pick one provider as the only way out.';
+
+  @override
+  String resolutionRaceHint(int count) {
+    return '$count providers selected; at least 2 are required.';
+  }
+
+  @override
+  String get resolutionReady => 'Ready';
+
+  @override
+  String get resolutionPending => 'Needs setup';
+
+  @override
+  String get resolutionSectionSingle => 'Query provider';
+
+  @override
+  String get resolutionSectionSmart => 'Candidate providers';
+
+  @override
+  String get resolutionSectionParallel => 'Providers queried in parallel';
+
+  @override
+  String get resolutionSectionBackup => 'Providers tried in order';
+
+  @override
+  String get resolutionNoProviders => 'No provider uses this protocol';
+
+  @override
+  String get resolutionMoveUp => 'Move up';
+
+  @override
+  String get resolutionMoveDown => 'Move down';
+
+  @override
+  String get outboundNoApp => 'Not selected';
+
+  @override
+  String get appRulesSaved => 'Saved; it takes effect once the DNS VPN starts';
+
+  @override
+  String get appRulesClearAllTooltip => 'Clear every allow rule';
+
+  @override
+  String get appRulesMasterSection => 'Master switch';
+
+  @override
+  String get appRulesMasterToggle => 'Enable per-app domain allow lists';
+
+  @override
+  String get appRulesNoConfigured => 'No per-app rules configured yet';
+
+  @override
+  String appRulesConfiguredSummary(int apps, int domains) {
+    return '$apps apps configured · $domains domains allowed';
+  }
+
+  @override
+  String get appRulesMasterFooter =>
+      'Deep customisation of network and resolution control for specific apps: network-level allowlist isolation (only the listed domains pass), DNS-only block and allow lists, and \"block all outbound by default\". Open an app to configure each part; the settings are pushed when the DNS VPN starts.';
+
+  @override
+  String appRulesAppsCount(int count) {
+    return 'Apps ($count)';
+  }
+
+  @override
+  String get appRulesNoConfigurableApps =>
+      'There are no configurable apps on this device';
+
+  @override
+  String get appRulesFooterNoApps =>
+      'No installed apps could be read, so per-app rules cannot be configured.';
+
+  @override
+  String get appRulesFooterSave =>
+      'Saving writes app_allowlist_enabled and app_allowlist_rules_json, which are pushed to the engine when the DNS VPN starts.';
+
+  @override
+  String get appRulesAddAllowDomain => 'Add an allowed domain';
+
+  @override
+  String get appRulesAppSection => 'App';
+
+  @override
+  String get appRulesBackToList => 'Back to the app list';
+
+  @override
+  String get appRulesClearAllTitle => 'Clear every allow rule?';
+
+  @override
+  String get appRulesClearAllBody =>
+      'Deletes the allowed domains of every app. It takes effect on save; block lists and full-block settings are untouched.';
+
+  @override
+  String get appRulesRuleExists =>
+      'The rule already exists or the rule database is unavailable';
+
+  @override
+  String appRulesRuleAdded(String kind) {
+    return 'Added a $kind rule';
+  }
+
+  @override
+  String get appRulesDeleteRuleTitle => 'Delete this rule?';
+
+  @override
+  String get appRulesFullBlockOn => 'Block-all-outbound mode is on';
+
+  @override
+  String get appRulesFullBlockOff => 'Block-all-outbound mode is off';
+
+  @override
+  String get appRulesAddDnsRule => 'Add a DNS rule';
+
+  @override
+  String get appRulesDnsScopeIntro =>
+      'These rules are written to block_rule / allow_rule with an appScope, so they only apply to this app and are pushed with the appRules part of the rule snapshot instead of becoming global blocks.';
+
+  @override
+  String get appRulesDnsScopeSection => 'DNS-only block and allow lists';
+
+  @override
+  String get appRulesReadingRules => 'Reading the rule database';
+
+  @override
+  String get appRulesWait => 'One moment';
+
+  @override
+  String get appRulesRuleDbUnreadable => 'Cannot read the rule database';
+
+  @override
+  String get appRulesRuleDbUnavailable =>
+      'This environment cannot read or write the rule database';
+
+  @override
+  String get appRulesNoScopedRules => 'No DNS-only rules configured';
+
+  @override
+  String get appRulesNoScopedRulesSubtitle =>
+      'Added rules apply to this app only and never to others';
+
+  @override
+  String appRulesScopedCount(int count) {
+    return 'DNS-only block and allow lists ($count)';
+  }
+
+  @override
+  String appRulesAllowDomainTitle(int count) {
+    return 'Allowed domains (network level) ($count)';
+  }
+
+  @override
+  String get appRulesNoAllowDomains => 'No network allow domains configured';
+
+  @override
+  String get appRulesNoAllowDomainsSubtitle =>
+      'While the network allowlist is empty this app is not restricted further';
+
+  @override
+  String get appRulesAllowDomainFooter =>
+      'These domains are written to app_allowlist_rules_json and pushed to setAppAllowlist the next time the tunnel starts.';
+
+  @override
+  String get appRulesIsolationSection => 'Outbound and isolation';
+
+  @override
+  String get appRulesFullBlockToggle => 'Block all outbound by default';
+
+  @override
+  String get appRulesFullBlockToggleSubtitle =>
+      'Blocks every network connection of this app except the allowlist';
+
+  @override
+  String get appRulesFullBlockOnTitle => 'Full block is on';
+
+  @override
+  String get appRulesFullBlockOnBody =>
+      'Make sure the necessary allowlist entries exist, or the app may not be able to go online.';
+
+  @override
+  String get providerMgmtDeleteTitle => 'Delete DNS provider';
+
+  @override
+  String providerMgmtDeleteBody(String name) {
+    return 'Delete \"$name\"? It can no longer be used for resolution afterwards.';
+  }
+
+  @override
+  String get providerMgmtTitle => 'Provider management';
+
+  @override
+  String get providerMgmtAdd => 'Add DNS provider';
+
+  @override
+  String get providerMgmtCurrent => 'Currently resolving DNS';
+
+  @override
+  String get providerMgmtBuiltin => 'Built-in providers';
+
+  @override
+  String get providerMgmtCustom => 'Custom providers';
+
+  @override
+  String get providerMgmtEmptyCustom => 'No custom providers yet';
+
+  @override
+  String get providerMgmtEmptyCustomSubtitle =>
+      'Tap \"+\" in the top right to add a DoH, DoT or plain DNS provider';
+
+  @override
+  String get providerMgmtFooter =>
+      'Built-in providers are maintained by the app and can only be selected; custom ones can be edited or deleted.';
+
+  @override
+  String get providerMgmtEditTitle => 'Edit DNS provider';
+
+  @override
+  String get providerMgmtAddressLabel => 'Address (host:port)';
+
+  @override
+  String get providerMgmtNameRequired => 'Fill in a name';
+
+  @override
+  String get providerMgmtDohRequired =>
+      'A DoH address must start with https://';
+
+  @override
+  String get providerMgmtHostPortRequired =>
+      'Enter an address in host:port form';
 }

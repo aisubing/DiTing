@@ -1,30 +1,66 @@
 /// Backup file: `{format, version, data}`; `data` is keyed by [BackupGroup.key].
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
+
 /// Backup groups; declaration order is the export screen order.
 enum BackupGroup {
-  providers('providers', '自定义 DNS 服务商', 'DoH、DoT 服务商与解析配置'),
-  bootstrap('bootstrap', '自定义 Bootstrap IP', '引导 DNS 节点与启用状态'),
-  cache('cache', 'DNS 缓存策略', 'DNS 缓存开关、预设与 TTL 控制'),
-  outbound('outbound', '出站代理配置', 'SOCKS5 / HTTP 代理与代理应用，不含账号密码'),
-  subscriptions('subscriptions', '网络规则订阅', '订阅源链接、镜像加速与自动更新'),
-  domainRules('domainRules', '自定义屏蔽域名规则', '手动添加的域名屏蔽规则及状态'),
-  rewriteDomain('rewriteDomain', '自定义复写域名规则', 'IPv4 / IPv6 域名覆写规则'),
-  rewriteCname('rewriteCname', '自定义复写 CNAME 规则', 'CNAME 域名覆写规则'),
-  addressRules('addressRules', '自定义屏蔽地址规则', 'URL 路径屏蔽规则'),
-  excluded('excluded', '排除应用名单', '绕过过滤使用系统 DNS 的应用'),
-  blocked('blocked', '禁止联网名单', '服务运行时禁止联网的应用'),
-  allowlist('allowlist', '应用独立规则与放行', '单应用放行规则与域名白名单'),
-  httpInspection('httpInspection', 'HTTPS 抓包检测配置', '流量抓包开关与目标应用名单'),
-  appearance('appearance', '外观与界面个性化', '主题风格、组件透明度与标语'),
-  system('system', '系统与通用设置', '局域网绕行、日志模式、语言与通知');
+  providers('providers'),
+  bootstrap('bootstrap'),
+  cache('cache'),
+  outbound('outbound'),
+  subscriptions('subscriptions'),
+  domainRules('domainRules'),
+  rewriteDomain('rewriteDomain'),
+  rewriteCname('rewriteCname'),
+  addressRules('addressRules'),
+  excluded('excluded'),
+  blocked('blocked'),
+  allowlist('allowlist'),
+  httpInspection('httpInspection'),
+  appearance('appearance'),
+  system('system');
 
-  const BackupGroup(this.key, this.title, this.description);
+  const BackupGroup(this.key);
 
   /// Key in `data`. Never rename: existing backups depend on it.
   final String key;
-  final String title;
-  final String description;
+
+  String title(AppL10n l10n) => switch (this) {
+    BackupGroup.providers => l10n.backupGroupProviders,
+    BackupGroup.bootstrap => l10n.backupGroupBootstrap,
+    BackupGroup.cache => l10n.backupGroupCache,
+    BackupGroup.outbound => l10n.backupGroupOutbound,
+    BackupGroup.subscriptions => l10n.backupGroupSubscriptions,
+    BackupGroup.domainRules => l10n.backupGroupDomainRules,
+    BackupGroup.rewriteDomain => l10n.backupGroupRewriteDomain,
+    BackupGroup.rewriteCname => l10n.backupGroupRewriteCname,
+    BackupGroup.addressRules => l10n.backupGroupAddressRules,
+    BackupGroup.excluded => l10n.backupGroupExcluded,
+    BackupGroup.blocked => l10n.backupGroupBlocked,
+    BackupGroup.allowlist => l10n.backupGroupAllowlist,
+    BackupGroup.httpInspection => l10n.backupGroupHttpInspection,
+    BackupGroup.appearance => l10n.backupGroupAppearance,
+    BackupGroup.system => l10n.backupGroupSystem,
+  };
+
+  String description(AppL10n l10n) => switch (this) {
+    BackupGroup.providers => l10n.backupGroupProvidersDesc,
+    BackupGroup.bootstrap => l10n.backupGroupBootstrapDesc,
+    BackupGroup.cache => l10n.backupGroupCacheDesc,
+    BackupGroup.outbound => l10n.backupGroupOutboundDesc,
+    BackupGroup.subscriptions => l10n.backupGroupSubscriptionsDesc,
+    BackupGroup.domainRules => l10n.backupGroupDomainRulesDesc,
+    BackupGroup.rewriteDomain => l10n.backupGroupRewriteDomainDesc,
+    BackupGroup.rewriteCname => l10n.backupGroupRewriteCnameDesc,
+    BackupGroup.addressRules => l10n.backupGroupAddressRulesDesc,
+    BackupGroup.excluded => l10n.backupGroupExcludedDesc,
+    BackupGroup.blocked => l10n.backupGroupBlockedDesc,
+    BackupGroup.allowlist => l10n.backupGroupAllowlistDesc,
+    BackupGroup.httpInspection => l10n.backupGroupHttpInspectionDesc,
+    BackupGroup.appearance => l10n.backupGroupAppearanceDesc,
+    BackupGroup.system => l10n.backupGroupSystemDesc,
+  };
 
   static BackupGroup? fromKey(String? key) {
     for (final group in values) {

@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -10,40 +11,45 @@ import 'package:material_ui/material_ui.dart';
 class AgentParamsPage extends ConsumerWidget {
   const AgentParamsPage({super.key});
 
-  static const _templates = <String, String>{
-    '安全威胁分析':
-        '你是一名网络安全与 DNS 威胁情报专家。擅长对域名安全性、防盗链、'
+  /// Built-in prompt bodies stay Chinese on purpose: the model is asked in the same language
+  /// as the analysis prompts in `lib/data/agent`, so the reports read consistently.
+  static const _templatePrompts = <String>[
+    '你是一名网络安全与 DNS 威胁情报专家。擅长对域名安全性、防盗链、'
         'DGA 随机特征、恶意软件外联及追踪探针进行分析，并给出明确的处置建议。',
-    '极简技术审查':
-        '你是一名资深网络协议工程师。请对给定的域名和流量快速给出最精炼的'
+    '你是一名资深网络协议工程师。请对给定的域名和流量快速给出最精炼的'
         '技术分类、风险等级与规则处置建议，格式化输出，杜绝多余套话。',
-    '隐私与遥测审查':
-        '你是一名数字隐私与数据保护合规审计师。重点分析该域名是否涉及未经授权的'
+    '你是一名数字隐私与数据保护合规审计师。重点分析该域名是否涉及未经授权的'
         '用户行为遥测、设备指纹追踪或广告归因统计。',
-  };
+  ];
+
+  static List<String> _templateLabels(AppL10n l10n) => [
+    l10n.agentParamsTemplateSecurity,
+    l10n.agentParamsTemplateTechnical,
+    l10n.agentParamsTemplatePrivacy,
+  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(agentApiProvider);
     final notifier = ref.read(agentApiProvider.notifier);
     final temperatureLabel = state.temperature <= 0.3
-        ? '严谨精确（适合安全分析与结构化输出）'
+        ? context.l10n.agentParamsTemperatureStrict
         : state.temperature <= 0.8
-        ? '平衡适中（推荐日常综合分析场景）'
-        : '发散多变（输出内容更为丰富自由）';
+        ? context.l10n.agentParamsTemperatureBalanced
+        : context.l10n.agentParamsTemperatureWild;
     return CommonScaffold(
-      title: '参数与提示词',
+      title: context.l10n.agentParamsTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '系统提示词',
+            title: context.l10n.agentParamsPromptSection,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.compose),
-                title: const Text('系统提示词设定'),
+                title: Text(context.l10n.agentParamsPromptItem),
                 subtitle: Text(
                   state.systemPrompt.isEmpty
-                      ? '未设置（将使用各分析场景的内置提示词）'
+                      ? context.l10n.agentParamsPromptUnset
                       : state.systemPrompt,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
@@ -51,7 +57,7 @@ class AgentParamsPage extends ConsumerWidget {
                 onTap: () => _editPrompt(context, notifier, state.systemPrompt),
               ),
             ],
-            footer: '留空时域名分析与流量分析各用自己那份内置提示词；填写后两者都以此为准。',
+            footer: context.l10n.agentParamsPromptFooter,
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -59,24 +65,27 @@ class AgentParamsPage extends ConsumerWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final entry in _templates.entries)
+                for (final (index, label)
+                    in _templateLabels(context.l10n).indexed)
                   TonalChip(
-                    label: entry.key,
+                    label: label,
                     color: context.raisedSurfaceLevel.colorOf(
                       context.colorScheme,
                     ),
                     foregroundColor: context.colorScheme.onSurfaceVariant,
-                    onPressed: () => notifier.setSystemPrompt(entry.value),
+                    onPressed: () => notifier.setSystemPrompt(
+                      _templatePrompts[index],
+                    ),
                   ),
               ],
             ),
           ),
           generateSection(
-            title: '采样温度（Temperature）',
+            title: context.l10n.agentParamsTemperatureSection,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.motion),
-                title: const Text('生成随机度与创造性'),
+                title: Text(context.l10n.agentParamsTemperatureItem),
                 subtitle: Text(temperatureLabel),
                 trailing: Text(
                   state.temperature.toStringAsFixed(1),
@@ -86,7 +95,7 @@ class AgentParamsPage extends ConsumerWidget {
                 ),
               ),
             ],
-            footer: '安全研判建议 0.2–0.4：温度越低，结论越稳定、越少自由发挥。',
+            footer: context.l10n.agentParamsTemperatureFooter,
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -141,24 +150,24 @@ class _PromptFieldDialogState extends State<_PromptFieldDialog> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '系统提示词',
+      title: context.l10n.agentParamsPromptSection,
       hasFields: true,
       child: TextField(
         controller: _controller,
         minLines: 4,
         maxLines: 8,
-        decoration: const InputDecoration(
-          hintText: '例如：你是一名网络安全与 DNS 威胁情报专家……',
+        decoration: InputDecoration(
+          hintText: context.l10n.agentParamsPromptHint,
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.uiCancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
-          child: const Text('保存'),
+          child: Text(context.l10n.commonSave),
         ),
       ],
     );

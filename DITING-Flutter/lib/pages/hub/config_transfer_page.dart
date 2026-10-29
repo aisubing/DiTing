@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/backup/backup_importer.dart';
 import 'package:diting/data/backup/backup_models.dart';
 import 'package:diting/routes/hub_routes.dart';
@@ -40,7 +41,7 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
   Widget build(BuildContext context) {
     final stats = ref.watch(backupStatsProvider).value;
     return CommonScaffold(
-      title: '备份与迁移',
+      title: context.l10n.transferTitle,
       body: PageBody(
         children: [
           Padding(
@@ -48,13 +49,13 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: _metric(context, 'DNS 服务商', _figure(stats?.providers)),
+                  child: _metric(context, context.l10n.transferMetricProviders, _figure(stats?.providers)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _metric(
                     context,
-                    '规则订阅',
+                    context.l10n.transferMetricSubs,
                     _figure(stats?.subscriptions),
                   ),
                 ),
@@ -66,25 +67,25 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: _metric(context, '自定义规则', _figure(stats?.customRules)),
+                  child: _metric(context, context.l10n.transferMetricCustomRules, _figure(stats?.customRules)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _metric(context, '名单应用', _figure(stats?.listedApps)),
+                  child: _metric(context, context.l10n.transferMetricListedApps, _figure(stats?.listedApps)),
                 ),
               ],
             ),
           ),
-          for (final group in _sections)
+          for (final group in _sections(context.l10n))
             generateSection(
               title: group.title,
-              actions: group.title == '应用配置备份'
+              actions: group.selectable
                   ? [
                       IconButtonData(
                         glyph: _allSelected
                             ? AppGlyphs.deselect
                             : AppGlyphs.selectAll,
-                        tooltip: _allSelected ? '全不选' : '全选',
+                        tooltip: _allSelected ? context.l10n.transferDeselectAll : context.l10n.commonSelectAll,
                         onPressed: _toggleAll,
                       ),
                     ]
@@ -98,8 +99,8 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
                           : AppGlyphs.rules,
                       size: 20,
                     ),
-                    title: Text(item.title),
-                    subtitle: Text(item.description),
+                    title: Text(item.title(context.l10n)),
+                    subtitle: Text(item.description(context.l10n)),
                     trailing: _selected.contains(item)
                         ? const SelectionCheck()
                         : null,
@@ -110,36 +111,34 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
               ],
             ),
           generateSection(
-            title: '导入导出',
+            title: context.l10n.transferImportExportSection,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.export),
-                title: const Text('导出应用配置 (JSON)'),
+                title: Text(context.l10n.transferExportJson),
                 subtitle: Text(
                   _noneSelected
-                      ? '请先勾选要导出的分组'
-                      : '将勾选的 ${_selected.length} 组配置保存为 JSON 文件',
+                      ? context.l10n.transferExportHintNone
+                      : context.l10n.transferExportHintCount(_selected.length),
                 ),
                 onTap: _noneSelected || _busy != null ? null : _export,
               ),
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.importFile),
-                title: const Text('导入应用配置 (JSON)'),
-                subtitle: const Text('从备份文件合并配置，自动跳过本机已存在项目'),
+                title: Text(context.l10n.transferImportJson),
+                subtitle: Text(context.l10n.transferImportSubtitle),
                 onTap: _busy != null ? null : _import,
               ),
             ],
-            footer:
-                '导出的配置文件包含个人自定义设置，请妥善保管；导入时将合并配置并'
-                '自动跳过已存在的条目。出站代理的账号密码不在备份范围内。',
+            footer: context.l10n.transferImportExportFooter,
           ),
           generateSection(
-            title: '云端备份',
+            title: context.l10n.transferCloudSection,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.cloudSync,
-                title: 'WebDAV 云同步',
-                subtitle: '把配置文件同步到自建 WebDAV 服务器',
+                title: context.l10n.transferWebdav,
+                subtitle: context.l10n.transferWebdavSubtitle,
                 onPressed: () => context.push(HubPaths.configTransferWebdav),
               ),
             ],
@@ -163,9 +162,12 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
     );
   }
 
-  static List<({String title, List<BackupGroup> groups})> get _sections => [
+  List<({String title, List<BackupGroup> groups, bool selectable})> _sections(
+    AppL10n l10n,
+  ) => [
     (
-      title: '应用配置备份',
+      title: l10n.transferSectionAppConfig,
+      selectable: true,
       groups: const [
         BackupGroup.providers,
         BackupGroup.bootstrap,
@@ -174,7 +176,8 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
       ],
     ),
     (
-      title: '规则与订阅配置',
+      title: l10n.transferSectionRules,
+      selectable: false,
       groups: const [
         BackupGroup.subscriptions,
         BackupGroup.domainRules,
@@ -184,7 +187,8 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
       ],
     ),
     (
-      title: '应用控制与流量管理',
+      title: l10n.transferSectionAppControl,
+      selectable: false,
       groups: const [
         BackupGroup.excluded,
         BackupGroup.blocked,
@@ -193,7 +197,8 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
       ],
     ),
     (
-      title: '个性化与通用设置',
+      title: l10n.transferSectionPersonal,
+      selectable: false,
       groups: const [BackupGroup.appearance, BackupGroup.system],
     ),
   ];
@@ -215,27 +220,27 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
       );
 
   Future<void> _export() async {
-    setState(() => _busy = '正在生成备份文件…');
+    setState(() => _busy = context.l10n.transferBusyExporting);
     try {
       final actions = ref.read(backupActionsProvider);
       final export = await actions.export(_selected);
       if (!mounted) return;
       if (export.isEmpty) {
-        _toast('所选分组没有可导出的内容');
+        _toast(context.l10n.transferExportEmpty);
         return;
       }
-      setState(() => _busy = '等待选择保存位置…');
+      setState(() => _busy = context.l10n.transferBusySaving);
       final saved = await actions.saveToDocument(export);
       if (!mounted) return;
       if (saved.cancelled) {
-        _toast('已取消保存');
+        _toast(context.l10n.transferExportCancelled);
       } else if (saved.saved) {
         _toast(
-          '已导出 ${export.included.length} 组、共 ${export.totalItems} 项'
-          '${export.skipped.isEmpty ? '' : '；跳过 ${export.skipped.length} 项'}',
+          '${context.l10n.transferExportDone(export.included.length, export.totalItems)}'
+          '${export.skipped.isEmpty ? '' : context.l10n.transferExportSkipped(export.skipped.length)}',
         );
       } else {
-        _toast(saved.error ?? '导出失败');
+        _toast(saved.error ?? context.l10n.transferExportFailed);
       }
     } finally {
       if (mounted) setState(() => _busy = null);
@@ -243,7 +248,7 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
   }
 
   Future<void> _import() async {
-    setState(() => _busy = '等待选择备份文件…');
+    setState(() => _busy = context.l10n.transferBusyPickingImport);
     final BackupImportResult result;
     try {
       result = await ref.read(backupActionsProvider).importFromDocument();
@@ -254,7 +259,7 @@ class _ConfigTransferPageState extends ConsumerState<ConfigTransferPage> {
     }
     if (!mounted) return;
     if (result.cancelled) {
-      _toast('已取消导入');
+      _toast(context.l10n.transferImportCancelled);
       return;
     }
     await showFloatingDialog<void>(
@@ -280,8 +285,8 @@ class _ImportResultDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return CommonDialog(
-      title: '导入应用配置',
-      trailing: MetaChip(label: result.failed ? '导入失败' : '导入完成'),
+      title: context.l10n.transferImportTitle,
+      trailing: MetaChip(label: result.failed ? context.l10n.transferImportFailedChip : context.l10n.transferImportDoneChip),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,52 +299,68 @@ class _ImportResultDialog extends StatelessWidget {
             ),
           ] else ...[
             Text(
-              '导入汇总：新增 ${result.added} 项，更新 ${result.updated} 项，'
-              '跳过 ${result.skipped} 项',
+              context.l10n.transferImportSummary(
+                result.added,
+                result.updated,
+                result.skipped,
+              ),
               style: context.listTitleStyle,
             ),
             if (result.sourceName != null)
               Text(
-                '来源文件：${result.sourceName}',
+                context.l10n.transferSourceFile(result.sourceName!),
                 style: context.listCaptionStyle,
               ),
             if (result.occurredAt != null)
               Text(
-                '备份导出于 ${_dateText(result.occurredAt!)}',
+                context.l10n.transferExportedAt(_dateText(result.occurredAt!)),
                 style: context.listCaptionStyle,
               ),
             for (final outcome in result.changed)
               Text(
-                '  + ${outcome.group.title} · '
-                '${_outcomeText(outcome)}',
+                context.l10n.transferOutcomeRow(
+                  outcome.group.title(context.l10n),
+                  _outcomeText(context.l10n, outcome),
+                ),
               ),
             for (final outcome in result.failedGroups)
               Text(
-                '  ! ${outcome.group.title}：${outcome.error}',
+                context.l10n.transferFailedGroupRow(
+                  outcome.group.title(context.l10n),
+                  outcome.error ?? '',
+                ),
                 style: TextStyle(color: colorScheme.error),
               ),
             if (result.changed.isEmpty && result.failedGroups.isEmpty)
-              const Text('  （备份中的条目本机都已存在，没有需要变更的内容）'),
+              Text(context.l10n.transferNothingChanged),
             if (result.subscriptionCount > 0)
-              Text('包含 ${result.subscriptionCount} 个订阅，请进入订阅管理执行规则更新。'),
+              Text(
+                context.l10n.transferSubscriptionsNote(result.subscriptionCount),
+              ),
           ],
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('完成'),
+          child: Text(context.l10n.transferDone),
         ),
       ],
     );
   }
 
-  String _outcomeText(BackupGroupOutcome outcome) {
+  String _outcomeText(AppL10n l10n, BackupGroupOutcome outcome) {
     final parts = <String>[];
-    if (outcome.added > 0) parts.add('新增 ${outcome.added}');
-    if (outcome.updated > 0) parts.add('更新 ${outcome.updated}');
-    if (outcome.skipped > 0) parts.add('跳过 ${outcome.skipped}');
-    return parts.isEmpty ? '无变化' : parts.join('，');
+    if (outcome.added > 0) parts.add(l10n.transferOutcomeAdded(outcome.added));
+    if (outcome.updated > 0) {
+      parts.add(l10n.transferOutcomeUpdated(outcome.updated));
+    }
+    if (outcome.skipped > 0) {
+      parts.add(l10n.transferOutcomeSkipped(outcome.skipped));
+    }
+    return parts.isEmpty
+        ? l10n.transferNoChange
+        : parts.join(l10n.transferOutcomeSeparator);
   }
 
   static String _dateText(DateTime time) {

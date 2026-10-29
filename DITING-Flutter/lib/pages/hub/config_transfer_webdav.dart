@@ -30,11 +30,11 @@ class _ConfigTransferWebdavPageState
     final field = ref.read(davProvider.notifier);
     final canTransfer = dav.status == DavStatus.connected && !_busy;
     return CommonScaffold(
-      title: 'WebDAV 云同步',
+      title: context.l10n.transferWebdav,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.reset,
-          tooltip: '清空配置',
+          tooltip: context.l10n.webdavClearConfig,
           onPressed: dav.status == DavStatus.connecting
               ? null
               : () => ref.read(davProvider.notifier).reset(),
@@ -57,10 +57,10 @@ class _ConfigTransferWebdavPageState
                     ? () => ref.read(davProvider.notifier).test()
                     : null,
                 saving: dav.status == DavStatus.connecting,
-                saveLabel: '测试连接',
+                saveLabel: context.l10n.webdavTest,
                 children: [
                   FormRowTextField(
-                    title: '服务器',
+                    title: context.l10n.webdavServer,
                     value: dav.server,
                     hintText: 'https://dav.example.com',
                     keyboardType: TextInputType.url,
@@ -72,7 +72,7 @@ class _ConfigTransferWebdavPageState
                     ),
                   ),
                   FormRowTextField(
-                    title: '用户名',
+                    title: context.l10n.webdavUsername,
                     value: dav.username,
                     invalid:
                         dav.status == DavStatus.failed && dav.username.isEmpty,
@@ -84,14 +84,14 @@ class _ConfigTransferWebdavPageState
                     ),
                   ),
                   FormRowSecretTextField(
-                    title: '密码',
+                    title: context.l10n.webdavPassword,
                     controller: _passwordController(),
                     onChanged: (value) => field.update(
                       (state) => state.copyWith(password: value),
                     ),
                   ),
                   FormRowTextField(
-                    title: '远端路径',
+                    title: context.l10n.webdavPath,
                     value: dav.path,
                     hintText: '/diting/',
                     monospace: true,
@@ -109,7 +109,7 @@ class _ConfigTransferWebdavPageState
               children: [
                 Expanded(
                   child: TonalButton(
-                    label: '测试连接',
+                    label: context.l10n.webdavTest,
                     glyph: AppGlyphs.sync,
                     size: TonalButtonSize.section,
                     onPressed: _busy
@@ -119,7 +119,7 @@ class _ConfigTransferWebdavPageState
                 ),
                 Expanded(
                   child: TonalButton(
-                    label: '清空',
+                    label: context.l10n.commonClearAll,
                     glyph: AppGlyphs.broom,
                     size: TonalButtonSize.section,
                     onPressed: _busy
@@ -137,7 +137,7 @@ class _ConfigTransferWebdavPageState
               children: [
                 Expanded(
                   child: TonalButton(
-                    label: '上传备份',
+                    label: context.l10n.webdavUpload,
                     glyph: AppGlyphs.export,
                     size: TonalButtonSize.section,
                     onPressed: canTransfer ? _upload : null,
@@ -145,7 +145,7 @@ class _ConfigTransferWebdavPageState
                 ),
                 Expanded(
                   child: TonalButton(
-                    label: '下载恢复',
+                    label: context.l10n.webdavDownload,
                     glyph: AppGlyphs.importFile,
                     size: TonalButtonSize.section,
                     onPressed: canTransfer ? _download : null,
@@ -155,11 +155,9 @@ class _ConfigTransferWebdavPageState
             ),
           ),
           ListFooter(
-            text:
-                '「测试连接」会真实发起 WebDAV 请求：PROPFIND 探测目录，不存在则'
-                '尝试创建。上传与下载走与「备份与迁移」同一份备份格式。'
-                '${canTransfer ? '' : '连接成功后即可上传或恢复。'}'
-                '密码只存在内存里，不落盘。',
+            text: context.l10n.webdavFooter(
+              canTransfer ? '' : context.l10n.webdavFooterConnected,
+            ),
           ),
           const SizedBox(height: 24),
         ],
@@ -190,7 +188,7 @@ class _ConfigTransferWebdavPageState
       final export = await actions.export(BackupGroup.values.toSet());
       if (!mounted) return;
       if (export.isEmpty) {
-        _toast('本机没有可备份的配置');
+        _toast(context.l10n.webdavNoConfig);
         return;
       }
       final result = await ref
@@ -199,8 +197,11 @@ class _ConfigTransferWebdavPageState
       if (!mounted) return;
       _toast(
         result.succeeded
-            ? '已上传 ${export.included.length} 组、共 ${export.totalItems} 项'
-            : (result.error ?? '上传失败'),
+            ? context.l10n.webdavUploadedCount(
+                export.included.length,
+                export.totalItems,
+              )
+            : (result.error ?? context.l10n.webdavUploadFailed),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -213,7 +214,7 @@ class _ConfigTransferWebdavPageState
       final text = await ref.read(davProvider.notifier).download();
       if (!mounted) return;
       if (text == null) {
-        _toast(ref.read(davProvider).message ?? '云端没有可恢复的备份');
+        _toast(ref.read(davProvider).message ?? context.l10n.webdavNoCloudBackup);
         return;
       }
       final result = await ref
@@ -245,12 +246,12 @@ class _DavImportDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return CommonDialog(
-      title: '从云端恢复配置',
-      trailing: MetaChip(label: result.failed ? '恢复失败' : '恢复完成'),
+      title: context.l10n.webdavRestoreTitle,
+      trailing: MetaChip(label: result.failed ? context.l10n.webdavRestoreFailed : context.l10n.webdavRestoreDone),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('完成'),
+          child: Text(context.l10n.transferDone),
         ),
       ],
       child: Column(
@@ -262,22 +263,31 @@ class _DavImportDialog extends StatelessWidget {
             Text(result.fatalError!, style: TextStyle(color: colorScheme.error))
           else ...[
             Text(
-              '恢复汇总：新增 ${result.added} 项，更新 ${result.updated} 项，'
-              '跳过 ${result.skipped} 项',
+              context.l10n.webdavRestoreSummary(
+                result.added,
+                result.updated,
+                result.skipped,
+              ),
               style: context.listTitleStyle,
             ),
             for (final outcome in result.changed)
               Text(
-                '  + ${outcome.group.title} · '
-                '新增 ${outcome.added}，跳过 ${outcome.skipped}',
+                context.l10n.webdavOutcomeRow(
+                  outcome.group.title(context.l10n),
+                  outcome.added,
+                  outcome.skipped,
+                ),
               ),
             for (final outcome in result.failedGroups)
               Text(
-                '  ! ${outcome.group.title}：${outcome.error}',
+                context.l10n.transferFailedGroupRow(
+                  outcome.group.title(context.l10n),
+                  outcome.error ?? '',
+                ),
                 style: TextStyle(color: colorScheme.error),
               ),
             if (result.changed.isEmpty && result.failedGroups.isEmpty)
-              const Text('  （云端备份与本机一致，没有需要变更的内容）'),
+              Text(context.l10n.webdavNothingChanged),
           ],
         ],
       ),
@@ -328,7 +338,7 @@ class _DavStatusCard extends StatelessWidget {
                   style: context.listTitleStyle.copyWith(color: color),
                 ),
                 Text(
-                  message ?? _hintOf(status),
+                  message ?? _hintOf(context.l10n, status),
                   style: context.listCaptionStyle,
                 ),
               ],
@@ -339,10 +349,10 @@ class _DavStatusCard extends StatelessWidget {
     );
   }
 
-  static String _hintOf(DavStatus status) => switch (status) {
-    DavStatus.idle => '配置服务器信息后可测试连接',
-    DavStatus.connecting => '正在握手，请稍候',
-    DavStatus.connected => '可上传备份或从云端恢复配置',
-    DavStatus.failed => '检查地址、账号与证书后重试',
+  static String _hintOf(AppL10n l10n, DavStatus status) => switch (status) {
+    DavStatus.idle => l10n.webdavHintIdle,
+    DavStatus.connecting => l10n.webdavHintConnecting,
+    DavStatus.connected => l10n.webdavHintConnected,
+    DavStatus.failed => l10n.webdavHintFailed,
   };
 }

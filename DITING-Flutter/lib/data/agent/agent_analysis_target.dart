@@ -2,14 +2,16 @@
 /// target around (and compare two of them) without dragging the prompt text along.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
+
 sealed class AgentAnalysisTarget {
   const AgentAnalysisTarget();
 
   /// Panel title, e.g. 域名安全分析.
-  String get title;
+  String title(AppL10n l10n);
 
   /// One-line context under the title, so a reopened panel still says what it is about.
-  String get subtitle;
+  String subtitle(AppL10n l10n);
 
   /// Domain targets can offer "add to allow/block list"; traffic targets cannot.
   bool get isDomain;
@@ -23,10 +25,10 @@ class AgentDomainTarget extends AgentAnalysisTarget {
   final List<String> contextLogs;
 
   @override
-  String get title => '域名安全分析';
+  String title(AppL10n l10n) => l10n.agentTargetDomainTitle;
 
   @override
-  String get subtitle => domain;
+  String subtitle(AppL10n l10n) => domain;
 
   @override
   bool get isDomain => true;
@@ -45,10 +47,10 @@ class AgentTrafficTarget extends AgentAnalysisTarget {
   const AgentTrafficTarget();
 
   @override
-  String get title => '网络流量分析';
+  String title(AppL10n l10n) => l10n.agentTargetTrafficTitle;
 
   @override
-  String get subtitle => '基于近期 DNS 与 HTTPS 监控数据';
+  String subtitle(AppL10n l10n) => l10n.agentTargetTrafficSubtitle;
 
   @override
   bool get isDomain => false;

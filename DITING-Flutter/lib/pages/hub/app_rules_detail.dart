@@ -12,25 +12,23 @@ extension _AppRulesDetail on _AppRulesPageState {
     final actions = [
       IconButtonData(
         glyph: AppGlyphs.add,
-        tooltip: '添加 DNS 规则',
+        tooltip: context.l10n.appRulesAddDnsRule,
         onPressed: () => _addScopedRule(app),
       ),
     ];
-    const footer =
-        '这些规则写入规则库的 block_rule / allow_rule，带 appScope 只对本应用生效，'
-        '并随规则快照的 appRules 下发，不会扩大成全局拦截。';
+    final footer = context.l10n.appRulesDnsScopeIntro;
     final rules = ref.watch(appScopedRulesProvider(app.packageName));
     if (rules.isLoading) {
       return [
         SliverToBoxAdapter(
           child: generateSection(
-            title: 'DNS 专属黑/白名单',
+            title: context.l10n.appRulesDnsScopeSection,
             actions: actions,
-            items: const [
+            items: [
               ListItem(
                 leading: GlyphIcon(AppGlyphs.info),
-                title: Text('正在读取规则库'),
-                subtitle: Text('稍候'),
+                title: Text(context.l10n.appRulesReadingRules),
+                subtitle: Text(context.l10n.appRulesWait),
               ),
             ],
           ),
@@ -42,13 +40,13 @@ extension _AppRulesDetail on _AppRulesPageState {
       return [
         SliverToBoxAdapter(
           child: generateSection(
-            title: 'DNS 专属黑/白名单',
+            title: context.l10n.appRulesDnsScopeSection,
             actions: actions,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.info),
-                title: const Text('读不到规则库'),
-                subtitle: Text(value?.error ?? '当前环境无法读写规则库'),
+                title: Text(context.l10n.appRulesRuleDbUnreadable),
+                subtitle: Text(value?.error ?? context.l10n.appRulesRuleDbUnavailable),
               ),
             ],
           ),
@@ -60,13 +58,13 @@ extension _AppRulesDetail on _AppRulesPageState {
       return [
         SliverToBoxAdapter(
           child: generateSection(
-            title: 'DNS 专属黑/白名单',
+            title: context.l10n.appRulesDnsScopeSection,
             actions: actions,
-            items: const [
+            items: [
               ListItem(
                 leading: GlyphIcon(AppGlyphs.info),
-                title: Text('未配置 DNS 专属规则'),
-                subtitle: Text('添加后仅对本应用生效，不影响其他应用'),
+                title: Text(context.l10n.appRulesNoScopedRules),
+                subtitle: Text(context.l10n.appRulesNoScopedRulesSubtitle),
               ),
             ],
           ),
@@ -74,7 +72,7 @@ extension _AppRulesDetail on _AppRulesPageState {
       ];
     }
     return lazySectionSlivers(
-      title: 'DNS 专属黑/白名单（${scoped.length}）',
+      title: context.l10n.appRulesScopedCount(scoped.length),
       actions: actions,
       itemCount: scoped.length,
       footer: footer,
@@ -99,7 +97,7 @@ extension _AppRulesDetail on _AppRulesPageState {
     final actions = [
       IconButtonData(
         glyph: AppGlyphs.add,
-        tooltip: '添加放行域名',
+        tooltip: context.l10n.appRulesAddAllowDomain,
         onPressed: () => _addDomain(draft, app.packageName),
       ),
     ];
@@ -107,12 +105,12 @@ extension _AppRulesDetail on _AppRulesPageState {
       return [
         SliverToBoxAdapter(
           child: generateSection(
-            title: '专属放行域名（网络层） (0)',
+            title: context.l10n.appRulesAllowDomainTitle(0),
             actions: actions,
             items: [
-              const ListItem(
-                title: Text('未配置网络放行域名'),
-                subtitle: Text('网络层白名单为空时，该应用不受额外限制'),
+              ListItem(
+                title: Text(context.l10n.appRulesNoAllowDomains),
+                subtitle: Text(context.l10n.appRulesNoAllowDomainsSubtitle),
                 leading: GlyphIcon(AppGlyphs.info),
               ),
             ],
@@ -122,7 +120,7 @@ extension _AppRulesDetail on _AppRulesPageState {
     }
     final sorted = domains.toList()..sort();
     return lazySectionSlivers(
-      title: '专属放行域名（网络层） (${sorted.length})',
+      title: context.l10n.appRulesAllowDomainTitle(sorted.length),
       actions: actions,
       itemCount: sorted.length,
       itemBuilder: (context, index) {
@@ -132,9 +130,7 @@ extension _AppRulesDetail on _AppRulesPageState {
           onDelete: () => _removeDomain(draft, app.packageName, domain),
         );
       },
-      footer:
-          '这些域名会写入 app_allowlist_rules_json，'
-          '由引擎在下一次启动隧道时下发给 setAppAllowlist。',
+      footer: context.l10n.appRulesAllowDomainFooter,
     );
   }
 
@@ -144,20 +140,20 @@ extension _AppRulesDetail on _AppRulesPageState {
     return Column(
       children: [
         generateSection(
-          title: '外联与隔离模式',
+          title: context.l10n.appRulesIsolationSection,
           items: [
             ListItem.toggle(
               leading: const GlyphIcon(AppGlyphs.wifiOff),
-              title: const Text('默认拦截全部外联'),
-              subtitle: const Text('开启后阻断该应用的所有网络连接，仅放行白名单'),
+              title: Text(context.l10n.appRulesFullBlockToggle),
+              subtitle: Text(context.l10n.appRulesFullBlockToggleSubtitle),
               value: fullBlock,
               onChanged: (value) => _toggleFullBlock(app, value),
             ),
             if (fullBlock)
-              const ListItem(
+              ListItem(
                 leading: GlyphIcon(AppGlyphs.info),
-                title: Text('已开启全阻断模式'),
-                subtitle: Text('请确保已添加必要的放行白名单，否则应用可能无法联网。'),
+                title: Text(context.l10n.appRulesFullBlockOnTitle),
+                subtitle: Text(context.l10n.appRulesFullBlockOnBody),
               ),
           ],
         ),

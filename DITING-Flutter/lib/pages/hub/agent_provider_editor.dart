@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/agent/agent_api_client.dart';
 import 'package:diting/data/agent/agent_api_text_parser.dart';
 import 'package:diting/state/agent_providers.dart';
@@ -70,7 +71,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
     final baseUrl = _baseUrl.text.trim();
     final model = _model.text.trim();
     if (name.isEmpty || !baseUrl.startsWith('http') || model.isEmpty) {
-      setState(() => _error = '请填写名称、以 http(s) 开头的接口地址与模型名');
+      setState(() => _error = context.l10n.agentEditorErrorRequired);
       return;
     }
     Navigator.of(context).pop(
@@ -88,7 +89,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
     final baseUrl = _baseUrl.text.trim();
     final key = _effectiveKey;
     if (baseUrl.isEmpty) {
-      setState(() => _error = '请先填写接口地址');
+      setState(() => _error = context.l10n.agentEditorErrorBaseUrl);
       return;
     }
     setState(() {
@@ -102,7 +103,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
       setState(() {
         _models = models;
         _busy = false;
-        _notice = '拉取到 ${models.length} 个模型，点下方标签选择';
+        _notice = context.l10n.agentEditorFetched(models.length);
       });
     } on AgentApiException catch (error) {
       if (!mounted) return;
@@ -114,7 +115,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = '拉取模型失败：$error';
+        _error = context.l10n.agentEditorFetchFailed('$error');
       });
     }
   }
@@ -125,7 +126,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
     final key = _effectiveKey;
     final model = _model.text.trim();
     if (baseUrl.isEmpty || model.isEmpty) {
-      setState(() => _error = '测试连接需要接口地址与模型名');
+      setState(() => _error = context.l10n.agentEditorErrorTestNeeds);
       return;
     }
     setState(() {
@@ -139,10 +140,12 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
         AgentChatConfig(baseUrl: baseUrl, apiKey: key, model: model),
       );
       if (!mounted) return;
-      final usage = result.hasUsage ? '，用量 ${result.totalTokens} tokens' : '';
+      final usage = result.hasUsage
+          ? context.l10n.agentEditorUsage(result.totalTokens)
+          : '';
       setState(() {
         _busy = false;
-        _notice = '连接成功：${result.model}$usage';
+        _notice = context.l10n.agentEditorConnected('${result.model}$usage');
       });
     } on AgentApiException catch (error) {
       if (!mounted) return;
@@ -154,7 +157,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = '连接失败：$error';
+        _error = context.l10n.agentEditorConnectFailed('$error');
       });
     }
   }
@@ -189,7 +192,7 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return CommonDialog(
-      title: widget.existing == null ? '添加厂商' : '编辑厂商',
+      title: widget.existing == null ? context.l10n.agentEditorAddTitle : context.l10n.agentEditorEditTitle,
       hasFields: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -201,27 +204,27 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
             child: TextButton.icon(
               onPressed: _busy ? null : _pasteFromClipboard,
               icon: const GlyphIcon(AppGlyphs.paste, size: 16),
-              label: const Text('从剪贴板识别'),
+              label: Text(context.l10n.agentEditorPaste),
             ),
           ),
           TextField(
             controller: _name,
-            decoration: const InputDecoration(labelText: '厂商名称'),
+            decoration: InputDecoration(labelText: context.l10n.agentEditorName),
           ),
           TextField(
             controller: _baseUrl,
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: '接口地址',
+            decoration: InputDecoration(
+              labelText: context.l10n.agentEditorBaseUrl,
               hintText: 'https://api.example.com/v1',
             ),
           ),
           TextField(
             controller: _model,
             autocorrect: false,
-            decoration: const InputDecoration(
-              labelText: '模型名称',
-              hintText: '点「拉取模型」从厂商返回的列表里选',
+            decoration: InputDecoration(
+              labelText: context.l10n.agentEditorModel,
+              hintText: context.l10n.agentEditorModelHint,
             ),
           ),
           TextField(
@@ -230,8 +233,8 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
             decoration: InputDecoration(
               labelText: 'API Key',
               helperText: widget.existing?.hasKey == true
-                  ? '留空则保留原密钥'
-                  : '仅保存在本机（旧版同一套掩码）',
+                  ? context.l10n.agentEditorKeyKeep
+                  : context.l10n.agentEditorKeyLocal,
             ),
           ),
           if (_models.isNotEmpty)
@@ -256,13 +259,13 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
             spacing: 8,
             children: [
               TonalButton(
-                label: _busy ? '请求中…' : '拉取模型',
+                label: _busy ? context.l10n.agentEditorFetching : context.l10n.agentEditorFetch,
                 glyph: AppGlyphs.cloudDownload,
                 size: TonalButtonSize.section,
                 onPressed: _busy ? null : _fetchModels,
               ),
               TonalButton(
-                label: '测试连接',
+                label: context.l10n.agentEditorTest,
                 glyph: AppGlyphs.checkCircle,
                 size: TonalButtonSize.section,
                 onPressed: _busy ? null : _testConnection,
@@ -288,9 +291,9 @@ class _AgentProviderEditorState extends ConsumerState<AgentProviderEditor> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.uiCancel),
         ),
-        TextButton(onPressed: _save, child: const Text('保存')),
+        TextButton(onPressed: _save, child: Text(context.l10n.commonSave)),
       ],
     );
   }

@@ -38,23 +38,25 @@ class HttpInspectionPage extends ConsumerWidget {
     final encryptedDns = enabled && settings.encryptedDnsBlockingEnabled;
     final bypass = settings.httpsBypassRules;
     final caHint = !caReady
-        ? (ca == null ? '正在检查根证书…' : _caProblem(ca.available, ca.installed))
+        ? (ca == null
+              ? context.l10n.httpInspCheckingCa
+              : _caProblem(context.l10n, ca.available, ca.installed))
         : apps.isEmpty
-        ? '未选择目标应用，仅保留 DNS 过滤'
-        : '已选 ${apps.length} 个应用，其余直接转发';
+        ? context.l10n.httpInspNoAppsHint
+        : context.l10n.httpInspSelectedHint(apps.length);
     return CommonScaffold(
-      title: 'HTTPS 流量检查',
+      title: context.l10n.hubHttpsInspection,
       body: SliverPageBody(
         slivers: [
           SliverToBoxAdapter(
             child: Column(
               children: [
                 generateSection(
-                  title: '检查范围',
+                  title: context.l10n.httpInspScopeSection,
                   items: [
                     ListItem.toggle(
                       leading: const GlyphIcon(AppGlyphs.lock),
-                      title: const Text('启用 HTTPS 检查'),
+                      title: Text(context.l10n.httpInspEnable),
                       subtitle: Text(caHint),
                       value: enabled,
                       onChanged: caReady
@@ -64,13 +66,13 @@ class HttpInspectionPage extends ConsumerWidget {
                     ),
                     ListItem(
                       leading: const GlyphIcon(AppGlyphs.appsList),
-                      title: const Text('目标应用'),
+                      title: Text(context.l10n.httpInspTargetApps),
                       subtitle: Text(
                         !caReady
                             ? caHint
                             : apps.isEmpty
-                            ? '未选择任何应用'
-                            : '已选择 ${apps.length} 个应用',
+                            ? context.l10n.httpInspNoApps
+                            : context.l10n.httpInspSelectedApps(apps.length),
                       ),
                       // A dead row reads as "the app is broken"; explain the missing certificate
                       // instead and offer the one screen that fixes it.
@@ -80,32 +82,36 @@ class HttpInspectionPage extends ConsumerWidget {
                     ),
                     ListItem(
                       leading: const GlyphIcon(AppGlyphs.verified),
-                      title: const Text('CA 证书'),
+                      title: Text(context.l10n.httpInspCaCert),
                       subtitle: Text(
                         ca == null
-                            ? '正在检查根证书…'
+                            ? context.l10n.httpInspCheckingCa
                             : caReady
-                            ? '证书已安装且指纹匹配，可查看或重置'
-                            : _caProblem(ca.available, ca.installed),
+                            ? context.l10n.httpInspCaReady
+                            : _caProblem(
+                                context.l10n,
+                                ca.available,
+                                ca.installed,
+                              ),
                       ),
                       onTap: () => context.push('/hub/https-inspection/ca'),
                     ),
                   ],
                 ),
                 generateSection(
-                  title: '解密内容过滤',
+                  title: context.l10n.httpInspContentSection,
                   items: [
                     ListItem.toggle(
                       leading: const GlyphIcon(AppGlyphs.target),
-                      title: const Text('启用 URL 规则与重定向'),
+                      title: Text(context.l10n.httpInspUrlRules),
                       subtitle: Text(
                         !caReady
                             ? caHint
                             : !enabled
-                            ? '需先启用 HTTPS 检查'
+                            ? context.l10n.httpInspNeedEnable
                             : !urlRules
-                            ? '已暂停 · 解密请求直接放行，不应用 URL 规则及 CNAME 重定向'
-                            : '开启解密流量下的 URL 屏蔽、放行及 CNAME 重定向',
+                            ? context.l10n.httpInspUrlPaused
+                            : context.l10n.httpInspUrlOn,
                       ),
                       value: urlRules,
                       onChanged: enabled
@@ -125,15 +131,15 @@ class HttpInspectionPage extends ConsumerWidget {
                   ],
                 ),
                 generateSection(
-                  title: '协议与兼容性',
+                  title: context.l10n.httpInspProtocolSection,
                   items: [
                     ListItem.toggle(
                       leading: const GlyphIcon(AppGlyphs.bolt),
-                      title: const Text('拦截 HTTP/3 (QUIC)'),
+                      title: Text(context.l10n.httpInspBlockHttp3),
                       subtitle: Text(
                         !enabled
-                            ? '需先启用 HTTPS 检查'
-                            : '阻断 QUIC 促使回退至 TCP 以便解密；若异常请关闭',
+                            ? context.l10n.httpInspNeedEnable
+                            : context.l10n.httpInspBlockHttp3Subtitle,
                       ),
                       value: http3,
                       onChanged: enabled
@@ -152,9 +158,9 @@ class HttpInspectionPage extends ConsumerWidget {
                     ),
                     ListItem.toggle(
                       leading: const GlyphIcon(AppGlyphs.lock),
-                      title: const Text('阻断加密 DNS (DoT)'),
+                      title: Text(context.l10n.httpInspBlockDot),
                       subtitle: Text(
-                        !enabled ? '需先启用 HTTPS 检查' : '阻断 TCP 853 端口，防止绕过域名规则',
+                        !enabled ? context.l10n.httpInspNeedEnable : context.l10n.httpInspBlockDotSubtitle,
                       ),
                       value: encryptedDns,
                       onChanged: enabled
@@ -172,8 +178,8 @@ class HttpInspectionPage extends ConsumerWidget {
                     ),
                     ListItem(
                       leading: const GlyphIcon(AppGlyphs.logs),
-                      title: const Text('请求日志'),
-                      subtitle: const Text('查看解密明细与自动旁路记录'),
+                      title: Text(context.l10n.httpInspRequestLogs),
+                      subtitle: Text(context.l10n.httpInspRequestLogsSubtitle),
                       onTap: () {
                         if (!pushStandalone(context, '/logs')) {
                           openLocation(context, '/logs');
@@ -203,24 +209,22 @@ class HttpInspectionPage extends ConsumerWidget {
     final actions = [
       IconButtonData(
         glyph: AppGlyphs.add,
-        tooltip: '添加绕过域名',
+        tooltip: context.l10n.bypassAddTitle,
         onPressed: () => _addBypass(context, ref, settings, bypass),
       ),
     ];
-    const footer =
-        '写入 https_bypass_rules，与 assets/https_passthrough.txt 的内置清单'
-        '合并后交给引擎的 setExtraPassthroughSuffixes。';
+    final footer = context.l10n.httpInspBypassFooter;
     if (bypass.isEmpty) {
       return [
         SliverToBoxAdapter(
           child: generateSection(
-            title: 'HTTPS 绕过规则（0）',
+            title: context.l10n.httpInspBypassTitle(0),
             actions: actions,
-            items: const [
+            items: [
               ListItem(
                 leading: GlyphIcon(AppGlyphs.info),
-                title: Text('未配置自定义绕过规则'),
-                subtitle: Text('内置放行清单始终生效；这里是额外追加的域名后缀'),
+                title: Text(context.l10n.httpInspBypassEmpty),
+                subtitle: Text(context.l10n.httpInspBypassEmptySubtitle),
               ),
             ],
           ),
@@ -229,7 +233,7 @@ class HttpInspectionPage extends ConsumerWidget {
     }
     final sorted = bypass.toList()..sort();
     return lazySectionSlivers(
-      title: 'HTTPS 绕过规则（${sorted.length}）',
+      title: context.l10n.httpInspBypassTitle(sorted.length),
       actions: actions,
       itemCount: sorted.length,
       footer: footer,
@@ -238,9 +242,9 @@ class HttpInspectionPage extends ConsumerWidget {
         return ListItem(
           leading: const GlyphIcon(AppGlyphs.split, size: 20),
           title: Text(rule, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: const Text('不参与解密，直接透传'),
+          subtitle: Text(context.l10n.httpInspBypassRowSubtitle),
           trailing: IconButton(
-            tooltip: '删除',
+            tooltip: context.l10n.commonDelete,
             onPressed: () {
               settings.setHttpsBypassRules({...bypass}..remove(rule));
               ref.read(legacySettingsRevisionProvider.notifier).bump();
@@ -260,24 +264,24 @@ class HttpInspectionPage extends ConsumerWidget {
     final opened = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '需要先安装根证书',
+        title: context.l10n.httpInspCaRequiredTitle,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('稍后'),
+            child: Text(context.l10n.commonLater),
           ),
           if (state != null)
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('前往安装'),
+              child: Text(context.l10n.httpInspGoInstall),
             ),
         ],
         child: Text(
           state == null
-              ? '正在读取根证书状态，请稍后再试。'
-              : 'HTTPS 检查要把解密后的明文交回应用，必须由系统的根证书信任链认可谛听的'
-                    '根证书。当前是「${_caProblem(state.available, state.installed)}」，'
-                    '所以还不能选择目标应用。\n\n去 CA 证书页生成并安装证书？',
+              ? context.l10n.httpInspCaReadingBody
+              : context.l10n.httpInspCaRequiredBody(
+                  _caProblem(context.l10n, state.available, state.installed),
+                ),
         ),
       ),
     );
@@ -288,14 +292,14 @@ class HttpInspectionPage extends ConsumerWidget {
 
   /// "Certificate exists but is not installed" and "not generated yet" need different copy:
   /// install it from system settings, or regenerate first.
-  static String _caProblem(bool available, bool installed) {
+  static String _caProblem(AppL10n l10n, bool available, bool installed) {
     if (!available) {
-      return '尚未生成根证书：前往 CA 证书页生成';
+      return l10n.httpInspCaMissing;
     }
     if (!installed) {
-      return '证书已生成但未安装到系统信任存储';
+      return l10n.httpInspCaNotInstalled;
     }
-    return '证书已就绪';
+    return l10n.httpInspCaReadyShort;
   }
 
   /// Toggles inspection, asking first when domain rules are off: decrypting traffic with
@@ -318,22 +322,18 @@ class HttpInspectionPage extends ConsumerWidget {
       final confirmed = await showFloatingDialog<bool>(
         context: context,
         child: CommonDialog(
-          title: '还需要开启域名规则',
+          title: context.l10n.httpInspNeedDomainRulesTitle,
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
+              child: Text(context.l10n.uiCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('全部开启'),
+              child: Text(context.l10n.httpInspEnableAll),
             ),
           ],
-          child: const Text(
-            'HTTPS 检查负责解密，域名规则负责决定解密后的流量怎么处理。'
-            '当前域名规则是关闭状态，只开检查不会有任何拦截效果。\n\n'
-            '是否同时开启域名规则？',
-          ),
+          child: Text(context.l10n.httpInspNeedDomainRulesBody),
         ),
       );
       if (confirmed != true || !context.mounted) {
@@ -444,18 +444,18 @@ class _HttpInspectionAppsPageState
     );
     final visiblePackages = {for (final app in visible) app.packageName};
     return CommonScaffold(
-      title: '选择检查应用',
+      title: context.l10n.httpInspAppsTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.selectAll,
-          tooltip: '全选当前结果',
+          tooltip: context.l10n.httpInspSelectVisible,
           onPressed: visible.isEmpty
               ? null
               : () => _write({...selected, ...visiblePackages}),
         ),
         IconButtonData(
           glyph: AppGlyphs.deselect,
-          tooltip: '取消当前结果',
+          tooltip: context.l10n.httpInspDeselectVisible,
           onPressed: visible.isEmpty
               ? null
               : () => _write(selected.difference(visiblePackages)),
@@ -486,12 +486,7 @@ class _HttpInspectionAppsPageState
           SliverToBoxAdapter(
             child: Column(
               children: [
-                PageIntroCard(
-                  text:
-                      'Go 隧道接管流量后，HTTPS 流量检查仅检查所选应用的 HTTP(S) 请求，'
-                      '其他应用直接转发。选择应用会取消其「排除应用」「禁止联网」'
-                      '与应用独立规则状态。',
-                ),
+                PageIntroCard(text: context.l10n.httpInspAppsIntro),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: SearchField(
@@ -511,10 +506,13 @@ class _HttpInspectionAppsPageState
           ),
           if (!snapshot.isLoading && snapshot.value?.error == null)
             ...appListSlivers(
-              title: '已选择 ${selected.length} 个应用（可见 ${visible.length}）',
+              title: context.l10n.httpInspAppsCount(
+                selected.length,
+                visible.length,
+              ),
               itemCount: visible.length,
               footer: visible.isEmpty
-                  ? (apps.isEmpty ? '设备上没有可选的应用' : '未找到匹配应用')
+                  ? (apps.isEmpty ? context.l10n.appSelectionNoAppsAvailable : context.l10n.appSelectionNoMatch)
                   : null,
               itemBuilder: (context, index) {
                 final app = visible[index];
