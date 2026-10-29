@@ -1532,6 +1532,9 @@ class AppL10nEn extends AppL10n {
   String get aiProviderConfigured => 'Configured providers';
 
   @override
+  String get aiProviderExampleName => 'Example provider (edit me)';
+
+  @override
   String get logSubscriptionDeleted => 'Deleted subscription';
 
   @override
@@ -7917,7 +7920,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get agentSheetNoKeyBody =>
-      'Configure an OpenAI / DeepSeek compatible API key before using AI domain and traffic analysis.';
+      'Configure an OpenAI-compatible API key before using AI domain and traffic analysis.';
 
   @override
   String get agentSheetGoConfigure => 'Configure';

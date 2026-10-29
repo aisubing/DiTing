@@ -1475,6 +1475,9 @@ class AppL10nZh extends AppL10n {
   String get aiProviderConfigured => '已配置厂商';
 
   @override
+  String get aiProviderExampleName => '示例厂商（请修改）';
+
+  @override
   String get logSubscriptionDeleted => '已删除订阅';
 
   @override
@@ -7451,8 +7454,7 @@ class AppL10nZh extends AppL10n {
   String get agentSheetNoKeyTitle => '未配置 API 密钥';
 
   @override
-  String get agentSheetNoKeyBody =>
-      '需配置 OpenAI / DeepSeek 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。';
+  String get agentSheetNoKeyBody => '需配置 OpenAI 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。';
 
   @override
   String get agentSheetGoConfigure => '前往配置';

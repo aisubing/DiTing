@@ -136,12 +136,7 @@ class RequestDetailSheet extends StatelessWidget {
               ],
             ),
           ),
-          if (host != null)
-            SectionBlock(
-              title: context.l10n.obsAiAnalysis,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: AgentAnalysisEntryCard(domain: host),
-            ),
+          if (host != null) AgentAnalysisSection(domain: host),
           if (request.message case final message? when message.isNotEmpty)
             SectionBlock(
               title: context.l10n.obsRawRecord,

@@ -9,6 +9,7 @@ import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/routes/standalone_routes.dart';
+import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/log_refresh_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
@@ -58,8 +59,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(logModeProvider);
+    final showAi = ref.watch(agentKeyConfiguredProvider);
     // Compute hero and cards once so _blocksOf does not build two node trees.
-    final blocks = _blocksOf(context, mode);
+    final blocks = _blocksOf(context, mode, showAi);
     // Cards read the density scope, mounted at the same level as the home page.
     return DashboardDensityScopeHost(
       child: CommonScaffold(
@@ -96,6 +98,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   ({Widget hero, List<Widget> cards}) _blocksOf(
     BuildContext context,
     LegacyLogMode mode,
+    bool showAi,
   ) {
     switch (mode) {
       case LegacyLogMode.all:
@@ -104,7 +107,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             title: context.l10n.logsRequestsDashboard,
             description: context.l10n.logsRequestsDashboardBody,
           ),
-          cards: _allMode(context),
+          cards: _allMode(context, showAi),
         );
       case LegacyLogMode.blockedAndErrors:
         return (
@@ -112,7 +115,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             title: context.l10n.logsFocusedDashboard,
             description: context.l10n.logsFocusedDashboardBody,
           ),
-          cards: _filteredMode(context),
+          cards: _filteredMode(context, showAi),
         );
       case LegacyLogMode.off:
         return (
@@ -128,14 +131,14 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   /// All-records mode: eight blocks of bare cards. Horizontal padding always comes
   /// from [_CardColumn], never from the cards themselves, or it doubles up.
-  List<Widget> _allMode(BuildContext context) => [
+  List<Widget> _allMode(BuildContext context, bool showAi) => [
     TrafficMonitorCard(
       // Full screen like the hub entry: the bar belongs to the shell, so only a push on the root
       // navigator hides it and gives the title bar a back arrow.
       onDetail: () => pushStandalone(context, Routes.traffic),
     ),
     const RequestOverviewCard(),
-    const AiInsightCard(),
+    if (showAi) const AiInsightCard(),
     const LogTrafficStructureCard(mode: TrafficStructureMode.all),
     RecentRequestsLogCard(
       onDetail: () => context.push(ObservabilityPaths.requests),
@@ -148,9 +151,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
 
   /// Blocked-and-errors mode: four blocks, without the traffic monitor card, which
   /// the upstream filtered view also omits.
-  List<Widget> _filteredMode(BuildContext context) => [
+  List<Widget> _filteredMode(BuildContext context, bool showAi) => [
     const FilteredHighlightCard(),
-    const AiInsightCard(),
+    if (showAi) const AiInsightCard(),
     const LogTrafficStructureCard(mode: TrafficStructureMode.filtered),
     FilteredRecentLogCard(
       onDetail: () => context.push(ObservabilityPaths.requests),

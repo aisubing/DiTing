@@ -2801,6 +2801,12 @@ abstract class AppL10n {
   /// **'已配置厂商'**
   String get aiProviderConfigured;
 
+  /// No description provided for @aiProviderExampleName.
+  ///
+  /// In zh, this message translates to:
+  /// **'示例厂商（请修改）'**
+  String get aiProviderExampleName;
+
   /// No description provided for @logSubscriptionDeleted.
   ///
   /// In zh, this message translates to:
@@ -13632,7 +13638,7 @@ abstract class AppL10n {
   /// No description provided for @agentSheetNoKeyBody.
   ///
   /// In zh, this message translates to:
-  /// **'需配置 OpenAI / DeepSeek 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。'**
+  /// **'需配置 OpenAI 兼容的 API 密钥后，方可使用 AI 域名与流量分析功能。'**
   String get agentSheetNoKeyBody;
 
   /// No description provided for @agentSheetGoConfigure.

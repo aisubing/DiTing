@@ -94,10 +94,9 @@ class DnsCacheDetailSheet extends StatelessWidget {
             ),
           ),
           if (domain.isNotEmpty)
-            SectionBlock(
-              title: context.l10n.obsAiAnalysis,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: AgentAnalysisEntryCard(domain: domain, title: context.l10n.logsAnalyzeDomain),
+            AgentAnalysisSection(
+              domain: domain,
+              title: context.l10n.logsAnalyzeDomain,
             ),
           ListFooter(
             text:

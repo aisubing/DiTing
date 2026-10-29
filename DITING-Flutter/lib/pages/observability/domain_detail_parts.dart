@@ -8,9 +8,11 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/rules/rule_domain_utils.dart';
 import 'package:diting/pages/hub/agent_analysis_sheet.dart';
 import 'package:diting/pages/observability/observability_common.dart';
+import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/icon_badge.dart';
+import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -259,6 +261,24 @@ class DetailInfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: children,
       ),
+    );
+  }
+}
+
+/// "AI analysis" section for detail sheets; renders nothing until an API key is configured.
+class AgentAnalysisSection extends ConsumerWidget {
+  const AgentAnalysisSection({super.key, required this.domain, this.title});
+
+  final String domain;
+  final String? title;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(agentKeyConfiguredProvider)) return const SizedBox.shrink();
+    return SectionBlock(
+      title: context.l10n.obsAiAnalysis,
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: AgentAnalysisEntryCard(domain: domain, title: title),
     );
   }
 }

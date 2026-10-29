@@ -237,7 +237,7 @@ class AgentApiState {
   );
 }
 
-/// Reads the legacy keys plus provider JSON; missing JSON seeds one migrated or keyless DeepSeek
+/// Reads the legacy keys plus provider JSON; missing JSON seeds one migrated or keyless example
 /// entry.
 AgentApiState loadAgentApiState(LegacySettings settings) {
   final rawProviders = settings.agentAiProvidersJson;
@@ -287,13 +287,14 @@ List<AiProviderConfig> seedProviders(LegacySettings settings, bool firstRun) {
       ),
     ];
   }
-  return const [
+  // A placeholder showing what each field looks like, not a real vendor; AI entries stay hidden
+  // until the user fills in a key.
+  return [
     AiProviderConfig(
-      id: 'preset_deepseek',
-      name: 'DeepSeek',
-      baseUrl: 'https://api.deepseek.com',
-      model: 'deepseek-chat',
-      presetId: 'deepseek',
+      id: 'example',
+      name: currentL10n.aiProviderExampleName,
+      baseUrl: 'https://api.example.com/v1',
+      model: 'model-name',
     ),
   ];
 }
@@ -417,4 +418,12 @@ class AgentApiNotifier extends Notifier<AgentApiState> {
 
 final agentApiProvider = NotifierProvider<AgentApiNotifier, AgentApiState>(
   AgentApiNotifier.new,
+);
+
+/// Whether the active provider has an API key; AI entry points outside the settings page show
+/// only when this is true.
+final agentKeyConfiguredProvider = Provider<bool>(
+  (ref) => ref.watch(
+    agentApiProvider.select((state) => state.activeProvider?.hasKey ?? false),
+  ),
 );
