@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -21,13 +22,13 @@ class ResolutionCard extends ConsumerWidget {
     // Edit mode greys the body only; the segmented control would still switch modes on tap.
     final editing = ref.watch(dashboardEditingProvider);
     return DashboardCard(
-      semanticLabel: '解析模式',
+      semanticLabel: context.l10n.resolutionModeTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.shuffle,
-            title: '解析模式',
+            title: context.l10n.resolutionModeTitle,
             trailing: [
               Text(
                 resolution.label,
@@ -54,7 +55,7 @@ class ResolutionCard extends ConsumerWidget {
                 ),
                 SizedBox(height: 8 * scale),
                 Text(
-                  describeResolutionMode(resolution),
+                  describeResolutionMode(resolution, context.l10n),
                   style: AppTextStyle.footnote
                       .of(context)
                       .copyWith(color: colorScheme.onSurfaceVariant),
@@ -119,13 +120,14 @@ final _endpointLinesProvider = Provider<List<String>>((ref) {
             if (raceIds.contains(provider.id))
               '${provider.protocol.label} · ${provider.address}',
         ];
-  return endpoints.isEmpty ? const ['未选择服务商'] : endpoints;
+  return endpoints.isEmpty ? [currentL10n.resolutionNoProvider] : endpoints;
 });
 
 /// One-line explanation of what the selected mode actually does.
-String describeResolutionMode(ResolutionMode mode) => switch (mode) {
-  ResolutionMode.single => '只用当前选中的服务商，最快但可用性取决于它。',
-  ResolutionMode.smart => '按历史成功率挑一个，失败后自动换下一个。',
-  ResolutionMode.parallel => '同时向所有服务商发起，取最先返回的结果。',
-  ResolutionMode.primaryBackup => '主服务商优先，超时后才动备用。',
-};
+String describeResolutionMode(ResolutionMode mode, AppL10n l10n) =>
+    switch (mode) {
+      ResolutionMode.single => l10n.resolutionSingleSummary,
+      ResolutionMode.smart => l10n.resolutionSmartSummary,
+      ResolutionMode.parallel => l10n.resolutionParallelSummary,
+      ResolutionMode.primaryBackup => l10n.resolutionPrimaryBackupSummary,
+    };

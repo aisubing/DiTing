@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -34,17 +35,17 @@ class IntranetIpCard extends ConsumerWidget {
         ? '$localIp:$port'
         : localIp;
     return DashboardCard(
-      semanticLabel: '内网 IP',
+      semanticLabel: context.l10n.intranetIpTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.devices,
-            title: '内网 IP',
+            title: context.l10n.intranetIpTitle,
             trailing: [
               DashboardIconButton(
                 glyph: AppGlyphs.copy,
-                tooltip: '复制地址',
+                tooltip: context.l10n.intranetCopyAddress,
                 onPressed: address == null
                     ? null
                     : () => _copy(context, address),
@@ -52,14 +53,14 @@ class IntranetIpCard extends ConsumerWidget {
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: onDetail,
                 ),
             ],
           ),
           SizedBox(height: 12 * scale),
           Text(
-            address ?? (loading ? '读取中…' : '无活动网络'),
+            address ?? (loading ? context.l10n.intranetReading : context.l10n.intranetNoActiveNetwork),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: DashboardText.figure(
@@ -93,13 +94,19 @@ class IntranetIpCard extends ConsumerWidget {
                     spacing: 1,
                     children: [
                       Text(
-                        '局域网接入',
+                        context.l10n.intranetLanAccess,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: DashboardText.rowTitle(context),
                       ),
                       Text(
-                        _lanHint(mode, listening, port, localIp.isEmpty),
+                        _lanHint(
+                          mode,
+                          listening,
+                          port,
+                          localIp.isEmpty,
+                          context.l10n,
+                        ),
                         maxLines: 2,
                         style: DashboardText.label(context),
                       ),
@@ -114,7 +121,7 @@ class IntranetIpCard extends ConsumerWidget {
               padding: EdgeInsets.only(top: 8 * scale),
               child: Text(
                 '${info.interfaceName}'
-                '${(info.gateway ?? '').isEmpty ? '' : ' · 网关 ${info.gateway}'}',
+                '${(info.gateway ?? '').isEmpty ? '' : context.l10n.intranetGatewaySuffix(info.gateway!)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: DashboardText.label(context),
@@ -131,14 +138,15 @@ class IntranetIpCard extends ConsumerWidget {
     bool listening,
     int port,
     bool noNetwork,
+    AppL10n l10n,
   ) {
-    if (noNetwork) return '连上 Wi-Fi 或以太网后这里会显示可用地址';
+    if (noNetwork) return l10n.intranetConnectHint;
     if (mode != AppWorkMode.server) {
-      return '${mode.title}不监听局域网，其他设备无法把这里当 DNS';
+      return l10n.intranetModeNotListening(mode.title);
     }
     return listening
-        ? '已监听 0.0.0.0:$port，其他设备把 DNS 指到上面的地址'
-        : '服务未启动：启动后才会绑定 $port 端口';
+        ? l10n.intranetListeningOn(port)
+        : l10n.intranetServiceStopped(port);
   }
 
   static Future<void> _copy(BuildContext context, String text) async {
@@ -146,7 +154,7 @@ class IntranetIpCard extends ConsumerWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('已复制 $text'),
+        content: Text(context.l10n.commonCopied(text)),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 1600),
       ),

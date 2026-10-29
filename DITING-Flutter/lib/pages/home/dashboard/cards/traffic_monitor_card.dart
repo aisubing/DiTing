@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
@@ -19,19 +20,19 @@ class TrafficMonitorCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
     return DashboardCard(
-      semanticLabel: '流量监控',
+      semanticLabel: context.l10n.trafficMonitorTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 12,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.dataUsage,
-            title: '流量监控',
+            title: context.l10n.trafficMonitorTitle,
             trailing: [
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: onDetail,
                 ),
             ],
@@ -45,7 +46,7 @@ class TrafficMonitorCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 2,
                   children: [
-                    Text('今日代理流量', style: DashboardText.label(context)),
+                    Text(context.l10n.trafficMonitorToday, style: DashboardText.label(context)),
                     // The figures refresh every second; only they rebuild, not the card.
                     Consumer(
                       builder: (context, ref, _) {
@@ -73,10 +74,14 @@ class TrafficMonitorCard extends ConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   spacing: 2,
                   children: [
-                    Text('实时速率', style: DashboardText.label(context)),
+                    Text(context.l10n.trafficMonitorLiveRate, style: DashboardText.label(context)),
                     Consumer(
                       builder: (context, ref, _) => Text(
-                        ref.watch(speedSeriesProvider.select(_speedText)),
+                        ref.watch(
+                          speedSeriesProvider.select(
+                            (series) => _speedText(series, context.l10n),
+                          ),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.end,
@@ -97,8 +102,8 @@ class TrafficMonitorCard extends ConsumerWidget {
   }
 }
 
-String _speedText(SpeedSeries series) {
-  if (series.unsupported) return '本模式不统计';
+String _speedText(SpeedSeries series, AppL10n l10n) {
+  if (series.unsupported) return l10n.trafficMonitorNoStats;
   if (series.samples.isEmpty) return '—';
   final last = series.last;
   return '↓ ${dashboardBinarySpeed(last.down)}  '
@@ -203,7 +208,7 @@ class DashboardMetricQuadCard extends StatelessWidget {
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: onDetail,
                 ),
             ],

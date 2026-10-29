@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
@@ -37,18 +38,18 @@ class _MemoryCardState extends ConsumerState<MemoryCard> {
   @override
   Widget build(BuildContext context) {
     return DashboardCard(
-      semanticLabel: '内存信息',
+      semanticLabel: context.l10n.memoryTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.memory,
-            title: '内存信息',
+            title: context.l10n.memoryTitle,
             trailing: [
               if (widget.onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: widget.onDetail,
                 ),
             ],
@@ -114,20 +115,20 @@ class _MemoryFigures extends ConsumerWidget {
           runSpacing: 4,
           children: [
             _Legend(
-              label: 'Java 堆',
+              label: context.l10n.memoryJavaHeap,
               value: memory.javaHeap,
               color: colorScheme.primary,
               available: available,
             ),
             _Legend(
-              label: '原生堆',
+              label: context.l10n.memoryNativeHeap,
               value: memory.nativeHeap,
               color: colors.series2,
               available: available,
             ),
             if (available && memory.systemTotal > 0)
               _Legend(
-                label: '整机可用',
+                label: context.l10n.memorySystemAvailable,
                 value: memory.systemAvail,
                 color: colors.track,
                 available: available,

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 // The shape names below come from material_new_shapes (which still owns `Morph` and
@@ -15,26 +16,29 @@ class HomePowerButton extends StatelessWidget {
     super.key,
     required this.state,
     required this.onPressed,
-    this.runningLabel = '停止',
-    this.stoppedLabel = '开启',
-    this.busyLabel = '启动中',
+    this.runningLabel,
+    this.stoppedLabel,
+    this.busyLabel,
   });
 
   final PowerState state;
   final VoidCallback onPressed;
-  final String runningLabel;
-  final String stoppedLabel;
-  final String busyLabel;
+  final String? runningLabel;
+  final String? stoppedLabel;
+  final String? busyLabel;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final running = state.isRunning;
     final busy = state.isBusy;
+    final l10n = context.l10n;
     final label = switch (state) {
-      PowerState.starting || PowerState.stopping => busyLabel,
-      PowerState.running => runningLabel,
-      PowerState.stopped || PowerState.error => stoppedLabel,
+      PowerState.starting ||
+      PowerState.stopping => busyLabel ?? l10n.powerButtonStarting,
+      PowerState.running => runningLabel ?? l10n.powerButtonStop,
+      PowerState.stopped ||
+      PowerState.error => stoppedLabel ?? l10n.powerButtonStart,
     };
     return Semantics(
       button: true,

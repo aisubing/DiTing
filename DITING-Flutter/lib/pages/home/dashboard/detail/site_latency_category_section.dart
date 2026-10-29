@@ -2,6 +2,7 @@
 /// compact row per site. Tapping a row opens every measured field in a sheet.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/site_latency_categories.dart';
 import 'package:diting/data/site_latency_targets.dart';
@@ -35,10 +36,10 @@ class SiteLatencyCategorySection extends StatelessWidget {
     final measured = [for (final target in targets) ?results[target.id]];
     final alive = measured.where((result) => result.success).length;
     final verdict = probing
-        ? '测速中…'
+        ? context.l10n.siteLatencyTesting
         : measured.isEmpty
-        ? '${targets.length} 个站点'
-        : '$alive / ${targets.length} 通畅';
+        ? context.l10n.siteLatencySitesCount(targets.length)
+        : context.l10n.siteLatencyAliveRatio(alive, targets.length);
     return DashboardDetailCard(
       glyph: category.glyph,
       title: category.label,
@@ -57,7 +58,7 @@ class SiteLatencyCategorySection extends StatelessWidget {
         // `DashboardIconButton` overflows on purpose and needs a bounded height, which the
         // unbounded column of a detail page does not give it.
         IconButton(
-          tooltip: '测速${category.label}',
+          tooltip: context.l10n.siteLatencyTestCategory(category.label),
           onPressed: probing ? null : onProbe,
           icon: const GlyphIcon(AppGlyphs.target, size: 18),
           style: IconButton.styleFrom(
@@ -126,12 +127,12 @@ class SiteLatencyRow extends StatelessWidget {
         ? colorScheme.success
         : colorScheme.error;
     final status = probing
-        ? '测速中…'
+        ? context.l10n.siteLatencyTesting
         : summary == null
-        ? '尚未测速'
+        ? context.l10n.siteLatencyNotTested
         : summary.success
-        ? _latency(summary)
-        : '失败';
+        ? _latency(summary, context.l10n)
+        : context.l10n.commonFailed;
     return Semantics(
       button: true,
       label: '${target.name} $status',
@@ -203,9 +204,9 @@ class SiteLatencyRow extends StatelessWidget {
     );
   }
 
-  static String _latency(PingSummary summary) {
+  static String _latency(PingSummary summary, AppL10n l10n) {
     final avg = summary.avgMs;
-    if (avg == null) return '无回包';
+    if (avg == null) return l10n.siteLatencyNoReply;
     return summary.measuredWithFallback
         ? '${avg.round()} ms*'
         : '${avg.round()} ms';

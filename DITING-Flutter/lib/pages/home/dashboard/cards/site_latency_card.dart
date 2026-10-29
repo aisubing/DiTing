@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/site_latency_targets.dart';
 import 'package:diting/pages/home/dashboard/cards/site_latency_sheet.dart';
@@ -61,18 +62,18 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
         .where((site) => _results[site.id]?.success ?? false)
         .length;
     final verdict = _probing
-        ? '测速中…'
+        ? context.l10n.siteLatencyTesting
         : measured == 0
-        ? '尚未测速'
-        : '$alive / ${sites.length} 通畅';
+        ? context.l10n.siteLatencyNotTested
+        : context.l10n.siteLatencyAliveRatio(alive, sites.length);
     return DashboardCard(
-      semanticLabel: '网络测速',
+      semanticLabel: context.l10n.siteLatencyTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.speed,
-            title: '网络测速',
+            title: context.l10n.siteLatencyTitle,
             leading: [
               DashboardChip(
                 label: verdict,
@@ -88,12 +89,12 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
               if (widget.onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: widget.onDetail,
                 ),
               DashboardIconButton(
                 glyph: AppGlyphs.refresh,
-                tooltip: '重新测速',
+                tooltip: context.l10n.siteLatencyRetest,
                 onPressed: _probing ? null : _probe,
               ),
             ],
@@ -128,8 +129,8 @@ class _SiteLatencyCardState extends ConsumerState<SiteLatencyCard> {
             ),
           SizedBox(height: 8 * scale),
           Text(
-            '最近测速 ${elapsedAgoLabel(_lastRunAt)}'
-            '${primary == null ? '' : ' · 解析服务商 ${primary.name}'}',
+            '${context.l10n.siteLatencyLastRun(elapsedAgoLabel(_lastRunAt))}'
+            '${primary == null ? '' : context.l10n.siteLatencyProviderSuffix(primary.name)}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: DashboardText.label(
@@ -194,10 +195,10 @@ class _SiteCell extends StatelessWidget {
         ? colorScheme.error
         : colorScheme.success;
     final (status, statusColor) = switch (summary) {
-      _ when probing => ('测速中…', colorScheme.onSurfaceVariant),
-      null => ('尚未测速', colorScheme.onSurfaceVariant),
-      final s when !s.success => ('失败', colorScheme.error),
-      final s => (_latencyLabel(s), colorScheme.success),
+      _ when probing => (context.l10n.siteLatencyTesting, colorScheme.onSurfaceVariant),
+      null => (context.l10n.siteLatencyNotTested, colorScheme.onSurfaceVariant),
+      final s when !s.success => (context.l10n.commonFailed, colorScheme.error),
+      final s => (_latencyLabel(s, context.l10n), colorScheme.success),
     };
     return Semantics(
       button: true,
@@ -256,9 +257,9 @@ class _SiteCell extends StatelessWidget {
 
   /// Average round trip. With measuredWithFallback the value comes from a TCP
   /// handshake, so it gets a `*` suffix explained in the tooltip.
-  static String _latencyLabel(PingSummary summary) {
+  static String _latencyLabel(PingSummary summary, AppL10n l10n) {
     final avg = summary.avgMs;
-    if (avg == null) return '无回包';
+    if (avg == null) return l10n.siteLatencyNoReply;
     final rounded = avg.round();
     return summary.measuredWithFallback ? '$rounded ms*' : '$rounded ms';
   }

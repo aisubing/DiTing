@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/dashboard_board.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
@@ -73,10 +74,10 @@ class _HomePageState extends ConsumerState<HomePage>
     final scale = DashboardDensityScope.scaleOf(context);
     return DashboardDensityScopeHost(
       child: CommonScaffold(
-        title: editing ? '编辑仪表盘' : _titleOf(mode),
+        title: editing ? context.l10n.homeEditDashboard : _titleOf(mode, context.l10n),
         primaryAction: IconButtonData(
           glyph: editing ? AppGlyphs.check : AppGlyphs.customize,
-          tooltip: editing ? '完成' : '编辑仪表盘',
+          tooltip: editing ? context.l10n.homeDone : context.l10n.homeEditDashboard,
           onPressed: () => ref.read(dashboardEditingProvider.notifier).toggle(),
         ),
         // The mode is already in the title, so the bar uses a round icon of the same
@@ -84,7 +85,7 @@ class _HomePageState extends ConsumerState<HomePage>
         actions: [
           if (!editing)
             IconButton(
-              tooltip: '切换工作模式',
+              tooltip: context.l10n.homeSwitchWorkMode,
               onPressed: () => context.push(Routes.modeSelect),
               icon: const GlyphIcon(AppGlyphs.swap),
             ),
@@ -136,10 +137,10 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
-  String _titleOf(AppWorkMode mode) => switch (mode) {
-    AppWorkMode.normal => '谛听 · 普通',
-    AppWorkMode.server => '谛听 · 服务器',
-    AppWorkMode.express => '谛听 · 极速',
+  String _titleOf(AppWorkMode mode, AppL10n l10n) => switch (mode) {
+    AppWorkMode.normal => l10n.homeTitleNormal,
+    AppWorkMode.server => l10n.homeTitleServer,
+    AppWorkMode.express => l10n.homeTitleExpress,
   };
 }
 

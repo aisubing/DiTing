@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/intranet_ip_card.dart';
 import 'package:diting/pages/home/dashboard/cards/memory_card.dart';
@@ -129,11 +130,11 @@ class _EmptyBoard extends ConsumerWidget {
       padding: EdgeInsets.fromLTRB(side, 40, side, 0),
       child: NullStatus(
         illustration: NullStatusIllustration.data,
-        label: '仪表盘还没有卡片',
-        description: '进入编辑模式，从「添加卡片」里挑几个放上来。',
+        label: context.l10n.dashboardEmptyLabel,
+        description: context.l10n.dashboardEmptyDescription,
         action: FilledButton.tonal(
           onPressed: () => ref.read(dashboardEditingProvider.notifier).enter(),
-          child: const Text('进入编辑模式'),
+          child: Text(context.l10n.dashboardEnterEditMode),
         ),
       ),
     );
@@ -171,7 +172,7 @@ class _EditingBoard extends ConsumerWidget {
                 ),
                 Expanded(
                   child: Text(
-                    '拖动手柄排序，点右上角移除；改完点右上角「完成」。',
+                    context.l10n.dashboardEditHint,
                     style: AppTextStyle.caption1
                         .of(context)
                         .copyWith(color: colorScheme.onPrimaryContainer),
@@ -185,8 +186,8 @@ class _EditingBoard extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 32),
               child: NullStatus(
                 illustration: NullStatusIllustration.data,
-                label: '卡片都移除了',
-                description: '点下面的「添加卡片」挑一个。',
+                label: context.l10n.dashboardAllRemovedLabel,
+                description: context.l10n.dashboardAllRemovedDescription,
               ),
             )
           else
@@ -310,7 +311,7 @@ class _AddCardRow extends ConsumerWidget {
           builder: (_) => const DashboardEditSheet(),
         ),
         icon: Icon(Icons.add, size: 18, color: colorScheme.primary),
-        label: const Text('添加卡片'),
+        label: Text(context.l10n.dashboardAddCard),
         style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
       ),
     );

@@ -2,6 +2,7 @@
 /// board order to reorder, and the card follows immediately.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/site_latency_categories.dart';
 import 'package:diting/data/site_latency_targets.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -19,10 +20,10 @@ class SiteLatencySitesPage extends ConsumerWidget {
     final selected = ref.watch(dashboardSitesProvider);
     final notifier = ref.read(dashboardSiteIdsProvider.notifier);
     return CommonScaffold(
-      title: '仪表盘站点',
+      title: context.l10n.dashboardSitesTitle,
       actions: [
         IconButton(
-          tooltip: '恢复默认',
+          tooltip: context.l10n.dashboardRestoreDefaults,
           onPressed: () => notifier.reset(),
           icon: const GlyphIcon(AppGlyphs.reset),
         ),
@@ -30,7 +31,7 @@ class SiteLatencySitesPage extends ConsumerWidget {
       body: ListView(
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
-          const ListHeader(title: '仪表盘卡片'),
+          ListHeader(title: context.l10n.dashboardSitesCardSection),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: Column(
@@ -45,9 +46,10 @@ class SiteLatencySitesPage extends ConsumerWidget {
                   ),
                 Text(
                   selectedIds.length >= dashboardSiteCount
-                      ? '卡片只能放 $dashboardSiteCount 个站点，先点掉一个再换别的。'
-                      : '还可以再放 '
-                            '${dashboardSiteCount - selectedIds.length} 个站点。',
+                      ? context.l10n.dashboardSitesFull(dashboardSiteCount)
+                      : context.l10n.dashboardSitesRemaining(
+                          dashboardSiteCount - selectedIds.length,
+                        ),
                   style: AppTextStyle.caption2
                       .of(context)
                       .copyWith(color: context.colorScheme.onSurfaceVariant),
@@ -72,8 +74,10 @@ class SiteLatencySitesPage extends ConsumerWidget {
                           _hint(
                             context,
                             selectedIds.contains(target.id)
-                                ? '卡片至少保留 1 个站点'
-                                : '卡片最多放 $dashboardSiteCount 个站点，先取消一个再选。',
+                                ? context.l10n.dashboardSitesAtLeastOne
+                                : context.l10n.dashboardSitesMax(
+                                    dashboardSiteCount,
+                                  ),
                           );
                         }
                       },
@@ -82,7 +86,7 @@ class SiteLatencySitesPage extends ConsumerWidget {
               ),
             ),
           ],
-          const ListFooter(text: '这四张卡片用的是同一个仪表盘卡片，改动立刻生效；测速在详情页按分类手动触发。'),
+          ListFooter(text: context.l10n.dashboardSitesFooter),
         ],
       ),
     );
@@ -117,7 +121,7 @@ class _SelectedRow extends StatelessWidget {
         spacing: 8,
         children: [
           Text(
-            '第 ${index + 1} 位',
+            context.l10n.dashboardSitesPosition(index + 1),
             style: AppTextStyle.caption2
                 .of(context)
                 .copyWith(color: colorScheme.onSurfaceVariant),

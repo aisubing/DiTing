@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/log_dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
@@ -45,7 +46,7 @@ class TrafficStructureCard extends StatelessWidget {
     required this.segments,
     required this.legends,
     required this.rates,
-    this.badgeLabel = '实时汇总',
+    this.badgeLabel,
   });
 
   final TrafficStructureMode mode;
@@ -57,7 +58,7 @@ class TrafficStructureCard extends StatelessWidget {
   final List<TrafficStructureLegend> legends;
   final List<TrafficStructureRate> rates;
 
-  final String badgeLabel;
+  final String? badgeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +72,11 @@ class TrafficStructureCard extends StatelessWidget {
           DashboardCardHeader(
             glyph: AppGlyphs.dataUsage,
             title: title,
-            trailing: [DashboardChip(label: badgeLabel)],
+            trailing: [
+              DashboardChip(
+                label: badgeLabel ?? context.l10n.trafficStructureLive,
+              ),
+            ],
           ),
           SizedBox(height: 14 * scale),
           Row(
@@ -135,7 +140,7 @@ class LogTrafficStructureCard extends ConsumerWidget {
     final ready = snapshot != null;
     return TrafficStructureCard(
       mode: mode,
-      title: filtered ? '重点流量结构' : '今日流量结构',
+      title: filtered ? context.l10n.trafficStructureFocused : context.l10n.trafficStructureToday,
       total: filtered ? (snapshot?.highlightedTotal ?? 0) : breakdown.total,
       segments: filtered
           ? [
@@ -167,81 +172,89 @@ class LogTrafficStructureCard extends ConsumerWidget {
       legends: filtered
           ? [
               TrafficStructureLegend(
-                label: '过滤',
+                label: context.l10n.logFiltered,
                 value: dashboardCount(breakdown.blocked),
                 color: colorScheme.error,
               ),
               TrafficStructureLegend(
-                label: '失败',
+                label: context.l10n.commonFailed,
                 value: dashboardCount(breakdown.error),
                 color: colorScheme.error.withValues(alpha: 0.7),
               ),
               TrafficStructureLegend(
-                label: '旁路',
+                label: context.l10n.trafficStructureBypass,
                 value: dashboardCount(breakdown.bypassed),
                 color: colorScheme.secondary,
               ),
             ]
           : [
               TrafficStructureLegend(
-                label: '通过',
+                label: context.l10n.logPassed,
                 value: dashboardCount(breakdown.passed),
                 color: colorScheme.primary,
               ),
               TrafficStructureLegend(
-                label: '过滤',
+                label: context.l10n.logFiltered,
                 value: dashboardCount(breakdown.blocked),
                 color: colorScheme.error,
               ),
               TrafficStructureLegend(
-                label: '失败',
+                label: context.l10n.commonFailed,
                 value: dashboardCount(breakdown.error),
                 color: colorScheme.error.withValues(alpha: 0.7),
               ),
               TrafficStructureLegend(
-                label: '旁路',
+                label: context.l10n.trafficStructureBypass,
                 value: dashboardCount(breakdown.bypassed),
                 color: colorScheme.secondary,
               ),
               TrafficStructureLegend(
-                label: '缓存',
+                label: context.l10n.trafficStructureCache,
                 value: dashboardCount(breakdown.cached),
                 color: colorScheme.tertiary,
               ),
             ],
       rates: [
         TrafficStructureRate(
-          label: '竞速成功率',
+          label: context.l10n.trafficStructureRaceRate,
           value: ready
-              ? '${dashboardPercent(race.successRate)} · '
-                    '${dashboardCount(race.requests)} 次 · '
-                    '${dashboardLatency(race.averageElapsedMs)}'
+              ? context.l10n.trafficStructureRateValue(
+                  dashboardPercent(race.successRate),
+                  dashboardCount(race.requests),
+                  dashboardLatency(race.averageElapsedMs),
+                )
               : '—',
           progress: race.successRate,
         ),
         TrafficStructureRate(
-          label: 'Bootstrap 成功率',
+          label: context.l10n.trafficStructureBootstrapRate,
           value: ready
-              ? '${dashboardPercent(bootstrap.successRate)} · '
-                    '${dashboardCount(bootstrap.attempts)} 次 · '
-                    '${dashboardLatency(bootstrap.averageElapsedMs)}'
+              ? context.l10n.trafficStructureRateValue(
+                  dashboardPercent(bootstrap.successRate),
+                  dashboardCount(bootstrap.attempts),
+                  dashboardLatency(bootstrap.averageElapsedMs),
+                )
               : '—',
           progress: bootstrap.successRate,
         ),
         TrafficStructureRate(
-          label: filtered ? '拦截占比' : '拦截率',
+          label: filtered ? context.l10n.trafficStructureBlockedShare : context.l10n.trafficStructureBlockRate,
           value: ready
-              ? '${dashboardPercent(breakdown.blockRate)} · '
-                    '${dashboardCount(breakdown.blocked)} 次'
+              ? context.l10n.trafficStructureShareValue(
+                  dashboardPercent(breakdown.blockRate),
+                  dashboardCount(breakdown.blocked),
+                )
               : '—',
           progress: breakdown.blockRate,
         ),
         if (!filtered)
           TrafficStructureRate(
-            label: '缓存率',
+            label: context.l10n.trafficStructureCacheRate,
             value: ready
-                ? '${dashboardPercent(breakdown.cacheRate)} · '
-                      '${dashboardCount(breakdown.cached)} 次'
+                ? context.l10n.trafficStructureShareValue(
+                    dashboardPercent(breakdown.cacheRate),
+                    dashboardCount(breakdown.cached),
+                  )
                 : '—',
             progress: breakdown.cacheRate,
           ),

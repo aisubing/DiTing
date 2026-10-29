@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
@@ -33,24 +34,24 @@ class StatusDetailPage extends ConsumerWidget {
     final colors = DashboardColors.of(context);
     final health = _healthOf(mode, core, serverStatus, colorScheme);
     return DashboardDetailScaffold(
-      title: '状态详情',
+      title: context.l10n.statusDetailTitle,
       children: [
         DashboardDetailHero(
           glyph: AppGlyphs.clock,
-          label: '运行时长',
+          label: context.l10n.statusUptime,
           // Not running has no figure: "未计时" says it in words where a lone em dash looked
           // like a stray line under the label.
-          value: core.isRunning ? stats.uptimeLabel : '未计时',
+          value: core.isRunning ? stats.uptimeLabel : context.l10n.statusNotTiming,
           color: core.isRunning ? colorScheme.onSurface : null,
           chipLabel: core.label,
           chipColor: health.color,
           hint: core.isRunning
               ? health.summary
-              : '${mode.title}${core.label}，计时已暂停',
+              : context.l10n.statusPausedSummary(mode.title, core.label),
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.status,
-          title: '内核',
+          title: context.l10n.statusCoreSection,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -71,14 +72,14 @@ class StatusDetailPage extends ConsumerWidget {
               const SizedBox(height: 6),
               DashboardDetailRows(
                 rows: [
-                  DashboardDetailRow(label: '工作模式', value: mode.title),
-                  DashboardDetailRow(label: '内核状态', value: core.label),
+                  DashboardDetailRow(label: context.l10n.statusWorkMode, value: mode.title),
+                  DashboardDetailRow(label: context.l10n.statusCoreState, value: core.label),
                   if (mode == AppWorkMode.server)
                     DashboardDetailRow(
-                      label: '监听端口',
+                      label: context.l10n.statusListenPort,
                       value: serverStatus == ServerStatus.running
                           ? '$port'
-                          : '未监听',
+                          : context.l10n.statusNotListening,
                       monospace: true,
                       color: serverStatus == ServerStatus.running
                           ? colorScheme.primary
@@ -91,11 +92,11 @@ class StatusDetailPage extends ConsumerWidget {
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.dns,
-          title: '当前服务商',
-          footer: primary == null ? null : '延迟是该服务商的最近一次实测值，不是本机到目标的往返。',
+          title: context.l10n.statusActiveProvider,
+          footer: primary == null ? null : context.l10n.statusProviderFooter,
           child: primary == null
               ? Text(
-                  '还没有选择服务商。在服务商管理里挑一个，解析才会走真实上游。',
+                  context.l10n.statusNoProviderHint,
                   style: AppTextStyle.subheadline
                       .of(context)
                       .copyWith(color: colorScheme.onSurfaceVariant),
@@ -137,10 +138,9 @@ class StatusDetailPage extends ConsumerWidget {
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.requests,
-          title: '今日计数',
+          title: context.l10n.statusTodayCounts,
           footer:
-              '计数从本次内核启动开始累计，重启或切换工作模式后归零；'
-              '已在服务器模式里做的重置也只清计数，不动规则与缓存。',
+              context.l10n.statusCountsFooter,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             spacing: 14,
@@ -149,19 +149,19 @@ class StatusDetailPage extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: DashboardStatGrid(
                   stats: [
-                    StatItem(label: '查询', value: dashboardCount(stats.queries)),
+                    StatItem(label: context.l10n.statusQueries, value: dashboardCount(stats.queries)),
                     StatItem(
-                      label: '缓存命中',
+                      label: context.l10n.logCacheHits,
                       value: dashboardCount(stats.cacheHits),
                       color: colorScheme.primary,
                     ),
                     StatItem(
-                      label: '已拦截',
+                      label: context.l10n.statusBlocked,
                       value: dashboardCount(stats.blocked),
                       color: colorScheme.error,
                     ),
                     StatItem(
-                      label: '平均时延',
+                      label: context.l10n.statusAverageLatency,
                       // No unit on a missing value: "— ms" reads as a broken number.
                       value: stats.averageLatencyMs <= 0
                           ? '—'
@@ -178,7 +178,7 @@ class StatusDetailPage extends ConsumerWidget {
                   Row(
                     children: [
                       Text(
-                        '缓存命中率',
+                        context.l10n.statusCacheHitRate,
                         style: AppTextStyle.caption1
                             .of(context)
                             .copyWith(color: colorScheme.onSurfaceVariant),
@@ -236,13 +236,14 @@ class StatusDetailPage extends ConsumerWidget {
         : core == CoreState.failed
         ? AppGlyphs.error
         : AppGlyphs.info;
+    final l10n = currentL10n;
     final summary = core.isRunning
         ? mode == AppWorkMode.server
-              ? '本机 DNS 端口可用，局域网设备可把它当作 DNS'
-              : '本机流量已经过谛听，解析与规则都在生效'
+              ? l10n.statusServerPortReady
+              : l10n.statusTunnelActive
         : mode == AppWorkMode.server
-        ? 'DNS 端口未监听，服务器模式当前不提供解析'
-        : '内核未运行，本机流量按系统默认网络走';
+        ? l10n.statusServerPortClosed
+        : l10n.statusCoreStopped;
     return (
       glyph: glyph,
       color: core.isRunning

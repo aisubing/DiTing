@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -17,20 +18,20 @@ class DashboardEditSheet extends ConsumerWidget {
         if (!widgets.contains(widget)) widget,
     ];
     return CommonScaffold(
-      title: '添加卡片',
+      title: context.l10n.dashboardAddCard,
       actions: [
         TextButton(
           onPressed: () => notifier.reset(),
-          child: const Text('恢复默认'),
+          child: Text(context.l10n.dashboardRestoreDefaults),
         ),
       ],
       body: available.isEmpty
-          ? const AppBarClearance(
+          ? AppBarClearance(
               child: Center(
                 child: NullStatus(
                   illustration: NullStatusIllustration.data,
-                  label: '卡片都放上来了',
-                  description: '想减少卡片，请回到编辑模式点卡片右上角的移除。',
+                  label: context.l10n.dashboardAllCardsAdded,
+                  description: context.l10n.dashboardAllCardsAddedDescription,
                 ),
               ),
             )
@@ -41,19 +42,19 @@ class DashboardEditSheet extends ConsumerWidget {
                 bottom: 24,
               ),
               children: [
-                const ListHeader(title: '可添加的卡片'),
+                ListHeader(title: context.l10n.dashboardAvailableCards),
                 for (final widget in available)
                   ListItem(
                     leading: GlyphIcon(_glyphOf(widget)),
                     title: Text(widget.label),
-                    subtitle: Text(_descriptionOf(widget)),
+                    subtitle: Text(_descriptionOf(widget, context.l10n)),
                     trailing: const GlyphIcon(AppGlyphs.addCircle, size: 20),
                     onTap: () {
                       notifier.add(widget);
                       Navigator.of(context).maybePop();
                     },
                   ),
-                const ListFooter(text: '卡片顺序可在编辑模式下拖拽调整。'),
+                ListFooter(text: context.l10n.dashboardOrderHint),
               ],
             ),
     );
@@ -69,13 +70,14 @@ class DashboardEditSheet extends ConsumerWidget {
     DashboardWidget.intranetIp => AppGlyphs.devices,
   };
 
-  static String _descriptionOf(DashboardWidget widget) => switch (widget) {
-    DashboardWidget.provider => '当前解析服务商，点开即可切换或调整竞速列表',
-    DashboardWidget.resolution => '解析模式选择、一句话说明与当前生效的 DNS 地址',
-    DashboardWidget.status => '内核状态、运行时长、当前服务商与今日查询',
-    DashboardWidget.networkSpeed => '上下行实时速率曲线与今日累计流量',
-    DashboardWidget.siteLatency => '自定义 4 个站点的实测延迟，详情页可按分类测速',
-    DashboardWidget.memoryInfo => '本进程 PSS 与 Java / 原生堆构成',
-    DashboardWidget.intranetIp => '当前局域网地址、监听状态与复制入口',
-  };
+  static String _descriptionOf(DashboardWidget widget, AppL10n l10n) =>
+      switch (widget) {
+        DashboardWidget.provider => l10n.dashboardCardProviderDescription,
+        DashboardWidget.resolution => l10n.dashboardCardResolutionDescription,
+        DashboardWidget.status => l10n.dashboardCardStatusDescription,
+        DashboardWidget.networkSpeed => l10n.dashboardCardSpeedDescription,
+        DashboardWidget.siteLatency => l10n.dashboardCardSiteLatencyDescription,
+        DashboardWidget.memoryInfo => l10n.dashboardCardMemoryDescription,
+        DashboardWidget.intranetIp => l10n.dashboardCardIntranetDescription,
+      };
 }

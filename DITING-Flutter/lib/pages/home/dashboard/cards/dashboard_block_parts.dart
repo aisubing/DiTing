@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -18,10 +19,10 @@ String dashboardPercent(double ratio) {
 String dashboardLatency(double milliseconds) => '${milliseconds.round()} ms';
 
 /// Duration text that truncates instead of rounding up, so 3420s reads as 57 min.
-String dashboardDuration(int seconds) {
-  if (seconds >= 3600) return '${seconds ~/ 3600} 小时';
-  if (seconds >= 60) return '${seconds ~/ 60} 分钟';
-  return '$seconds 秒';
+String dashboardDuration(int seconds, AppL10n l10n) {
+  if (seconds >= 3600) return l10n.durationHours(seconds ~/ 3600);
+  if (seconds >= 60) return l10n.durationMinutes(seconds ~/ 60);
+  return l10n.durationSeconds(seconds);
 }
 
 /// Bytes in base 1024, two decimals. Deliberately not [dashboardTraffic] (base 1000):
@@ -358,7 +359,7 @@ class DashboardLogListCard extends StatelessWidget {
     required this.emptyText,
     required this.rows,
     this.onDetail,
-    this.detailTooltip = '详情',
+    this.detailTooltip,
   });
 
   final Glyph glyph;
@@ -366,7 +367,7 @@ class DashboardLogListCard extends StatelessWidget {
   final String emptyText;
   final List<Widget> rows;
   final VoidCallback? onDetail;
-  final String detailTooltip;
+  final String? detailTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -384,7 +385,7 @@ class DashboardLogListCard extends StatelessWidget {
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: detailTooltip,
+                  tooltip: detailTooltip ?? context.l10n.dashboardDetailTooltip,
                   onPressed: onDetail,
                 ),
             ],

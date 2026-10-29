@@ -1,4 +1,5 @@
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/detail/dashboard_detail_parts.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
@@ -17,7 +18,7 @@ class DashboardDetailChart extends StatelessWidget {
     required this.capacity,
     required this.minScale,
     this.caption,
-    this.emptyLabel = '还没有采到样本',
+    this.emptyLabel,
     this.height = 148,
   });
 
@@ -28,7 +29,7 @@ class DashboardDetailChart extends StatelessWidget {
   final int capacity;
   final double minScale;
   final String? caption;
-  final String emptyLabel;
+  final String? emptyLabel;
   final double height;
 
   @override
@@ -55,7 +56,7 @@ class DashboardDetailChart extends StatelessWidget {
             if (values.length < 2)
               Center(
                 child: Text(
-                  emptyLabel,
+                  emptyLabel ?? context.l10n.homeChartEmptyLabel,
                   style: AppTextStyle.caption1
                       .of(context)
                       .copyWith(color: colorScheme.onSurfaceVariant),

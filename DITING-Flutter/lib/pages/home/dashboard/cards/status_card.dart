@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
@@ -30,25 +31,25 @@ class StatusCard extends ConsumerWidget {
       CoreState.stopped => (DashboardChipTone.idle, core.label),
     };
     return DashboardCard(
-      semanticLabel: '状态',
+      semanticLabel: context.l10n.statusTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.status,
-            title: '状态',
+            title: context.l10n.statusTitle,
             leading: [DashboardChip(label: label, tone: tone, dot: true)],
             trailing: [
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: onDetail,
                 ),
             ],
           ),
           SizedBox(height: 12 * scale),
-          Text('运行时长', style: DashboardText.label(context)),
+          Text(context.l10n.statusUptime, style: DashboardText.label(context)),
           SizedBox(height: 2 * scale),
           if (core.isRunning)
             // Stats poll every second; only the figures showing them rebuild.
@@ -74,8 +75,8 @@ class StatusCard extends ConsumerWidget {
               Expanded(
                 flex: 3,
                 child: _StatusCell(
-                  label: '当前服务商',
-                  value: primary?.name ?? '未选择',
+                  label: context.l10n.statusActiveProvider,
+                  value: primary?.name ?? context.l10n.statusNotSelected,
                   hint: primary?.address,
                 ),
               ),
@@ -83,7 +84,7 @@ class StatusCard extends ConsumerWidget {
                 flex: 2,
                 child: Consumer(
                   builder: (context, ref, _) => _StatusCell(
-                    label: '今日查询',
+                    label: context.l10n.statusTodayQueries,
                     value: dashboardCount(
                       ref.watch(serviceStatsProvider.select((s) => s.queries)),
                     ),

@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -29,14 +30,18 @@ class ProviderCard extends ConsumerWidget {
         ? endpointOfProvider(selectedId, catalog)
         : summaryOfProviders(raceIds, catalog);
     return DashboardCard(
-      semanticLabel: single ? '解析服务商' : '竞速服务商',
+      semanticLabel: single
+          ? context.l10n.homeProviderSingleLabel
+          : context.l10n.homeProviderRaceLabel,
       onTap: editing ? null : () => showProviderSheet(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.dns,
-            title: single ? '解析服务商' : '竞速服务商',
+            title: single
+                ? context.l10n.homeProviderSingleLabel
+                : context.l10n.homeProviderRaceLabel,
             trailing: [
               GlyphIcon(
                 AppGlyphs.chevronForward,

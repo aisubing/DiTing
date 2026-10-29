@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/log_dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
@@ -18,33 +19,38 @@ LogDashboardSnapshot? _snapshotOf(WidgetRef ref) =>
 String _figure(int? value) => value == null ? '—' : dashboardCount(value);
 
 class RequestOverviewCard extends ConsumerWidget {
-  const RequestOverviewCard({super.key, this.title = '请求概览', this.onDetail});
+  const RequestOverviewCard({super.key, this.title, this.onDetail});
 
-  final String title;
+  final String? title;
   final VoidCallback? onDetail;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = _snapshotOf(ref)?.breakdown;
     final colorScheme = context.colorScheme;
+    final l10n = context.l10n;
     return DashboardMetricQuadCard(
       glyph: AppGlyphs.requests,
-      title: title,
+      title: title ?? l10n.logRequestsOverview,
       onDetail: onDetail,
       cells: [
         (
-          label: '今日请求',
+          label: l10n.logTodayRequests,
           value: _figure(stats?.total),
           color: colorScheme.primary,
         ),
         (
-          label: '通过',
+          label: l10n.logPassed,
           value: _figure(stats?.passed),
           color: colorScheme.primary,
         ),
-        (label: '过滤', value: _figure(stats?.blocked), color: colorScheme.error),
         (
-          label: '缓存命中',
+          label: l10n.logFiltered,
+          value: _figure(stats?.blocked),
+          color: colorScheme.error,
+        ),
+        (
+          label: l10n.logCacheHits,
           value: _figure(stats?.cached),
           color: colorScheme.tertiary,
         ),
@@ -54,33 +60,38 @@ class RequestOverviewCard extends ConsumerWidget {
 }
 
 class FilteredHighlightCard extends ConsumerWidget {
-  const FilteredHighlightCard({super.key, this.title = '重点记录', this.onDetail});
+  const FilteredHighlightCard({super.key, this.title, this.onDetail});
 
-  final String title;
+  final String? title;
   final VoidCallback? onDetail;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = _snapshotOf(ref)?.breakdown;
     final colorScheme = context.colorScheme;
+    final l10n = context.l10n;
     return DashboardMetricQuadCard(
       glyph: AppGlyphs.rules,
-      title: title,
+      title: title ?? l10n.logHighlights,
       onDetail: onDetail,
       cells: [
         (
-          label: '重点记录',
+          label: l10n.logHighlights,
           value: _figure(stats == null ? null : stats.blocked + stats.error),
           color: colorScheme.primary,
         ),
         (
-          label: '过滤拦截',
+          label: l10n.logBlocked,
           value: _figure(stats?.blocked),
           color: colorScheme.error,
         ),
-        (label: '异常失败', value: _figure(stats?.error), color: colorScheme.error),
         (
-          label: '旁路直连',
+          label: l10n.logFailed,
+          value: _figure(stats?.error),
+          color: colorScheme.error,
+        ),
+        (
+          label: l10n.logBypassed,
           value: _figure(stats?.bypassed),
           color: colorScheme.secondary,
         ),
@@ -100,26 +111,26 @@ class OffModeMetricCard extends ConsumerWidget {
     final colorScheme = context.colorScheme;
     return DashboardMetricQuadCard(
       glyph: AppGlyphs.eyeOff,
-      title: '解析服务概况',
+      title: context.l10n.logOffModeTitle,
       onDetail: onDetail,
       cells: [
         (
-          label: '有效缓存',
+          label: context.l10n.logCacheEntries,
           value: _figure(stats?.cacheEntries),
           color: colorScheme.primary,
         ),
         (
-          label: '累计缓存命中',
+          label: context.l10n.logCacheHitsTotal,
           value: _figure(stats?.cacheHits),
           color: colorScheme.tertiary,
         ),
         (
-          label: '并发竞速请求',
+          label: context.l10n.logRaceRequests,
           value: _figure(stats?.raceRequests),
           color: colorScheme.secondary,
         ),
         (
-          label: 'Bootstrap 尝试',
+          label: context.l10n.logBootstrapAttempts,
           value: _figure(stats?.bootstrapAttempts),
           color: colorScheme.primary,
         ),
@@ -139,8 +150,8 @@ class RecentRequestsLogCard extends ConsumerWidget {
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.requests,
-      title: '最近请求',
-      emptyText: '暂无请求日志',
+      title: context.l10n.logRecentRequests,
+      emptyText: context.l10n.logRecentRequestsEmpty,
       onDetail: onDetail,
       rows: [
         for (final row in rows)
@@ -173,8 +184,8 @@ class FilteredRecentLogCard extends ConsumerWidget {
     ];
     return DashboardLogListCard(
       glyph: AppGlyphs.block,
-      title: '最近拦截与错误',
-      emptyText: '暂无拦截或错误记录',
+      title: context.l10n.logRecentBlocked,
+      emptyText: context.l10n.logRecentBlockedEmpty,
       onDetail: onDetail,
       rows: [
         for (final row in rows)
@@ -200,8 +211,8 @@ class CacheHotspotsCard extends ConsumerWidget {
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.layers,
-      title: '缓存热点',
-      emptyText: '暂无有效缓存',
+      title: context.l10n.logCacheHotspots,
+      emptyText: context.l10n.logCacheHotspotsEmpty,
       onDetail: onDetail,
       rows: [
         for (final row in rows)
@@ -209,9 +220,9 @@ class CacheHotspotsCard extends ConsumerWidget {
             title: row.queryName,
             subtitle:
                 '${row.queryType} · '
-                '${dashboardDuration(row.remainingSeconds)} 后过期 · '
+                '${context.l10n.logExpiresIn(dashboardDuration(row.remainingSeconds, context.l10n))} · '
                 '${dashboardCount(row.responseSize)} B',
-            tag: '${dashboardCount(row.hitCount)} 次',
+            tag: context.l10n.logTimes(dashboardCount(row.hitCount)),
             tagColor: colorScheme.tertiary,
           ),
       ],
@@ -230,15 +241,17 @@ class RaceWinnersCard extends ConsumerWidget {
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.shuffle,
-      title: '竞速胜出',
-      emptyText: '暂无竞速数据',
+      title: context.l10n.logRaceWinners,
+      emptyText: context.l10n.logRaceWinnersEmpty,
       onDetail: onDetail,
       rows: [
         for (final row in rows)
           DashboardLogRow(
             title: row.name,
-            subtitle: '平均胜出耗时 ${dashboardLatency(row.averageElapsedMs)}',
-            tag: '${dashboardCount(row.wins)} 次',
+            subtitle: context.l10n.logAverageWinLatency(
+              dashboardLatency(row.averageElapsedMs),
+            ),
+            tag: context.l10n.logTimes(dashboardCount(row.wins)),
             tagColor: colorScheme.secondary,
           ),
       ],
@@ -258,16 +271,18 @@ class BootstrapDnsCard extends ConsumerWidget {
     return DashboardLogListCard(
       glyph: AppGlyphs.dns,
       title: 'Bootstrap DNS',
-      emptyText: '暂无 Bootstrap 数据',
+      emptyText: context.l10n.logBootstrapDnsEmpty,
       onDetail: onDetail,
       rows: [
         for (final row in rows)
           DashboardLogRow(
             title: row.name,
-            subtitle:
-                '${row.ip} · 成功 ${dashboardPercent(row.successRate)} · '
-                '${dashboardLatency(row.averageElapsedMs)}',
-            tag: '${dashboardCount(row.attempts)} 次',
+            subtitle: context.l10n.logBootstrapRow(
+              row.ip,
+              dashboardPercent(row.successRate),
+              dashboardLatency(row.averageElapsedMs),
+            ),
+            tag: context.l10n.logTimes(dashboardCount(row.attempts)),
             tagColor: colorScheme.primary,
           ),
       ],
@@ -286,17 +301,18 @@ class RuleBlocksCard extends ConsumerWidget {
     final colorScheme = context.colorScheme;
     return DashboardLogListCard(
       glyph: AppGlyphs.rules,
-      title: '规则拦截',
-      emptyText: '暂无规则拦截数据',
+      title: context.l10n.logRuleBlocks,
+      emptyText: context.l10n.logRuleBlocksEmpty,
       onDetail: onDetail,
       rows: [
         for (final row in rows)
           DashboardLogRow(
             title: row.name,
-            subtitle:
-                '${row.statusLabel} · 占全部请求 '
-                '${dashboardPercent(row.rate)}',
-            tag: '${dashboardCount(row.hits)} 次',
+            subtitle: context.l10n.logShareRow(
+              row.statusLabel,
+              dashboardPercent(row.rate),
+            ),
+            tag: context.l10n.logTimes(dashboardCount(row.hits)),
             tagColor: colorScheme.error,
           ),
       ],
@@ -312,19 +328,18 @@ class PrivacyModeCard extends StatelessWidget {
     final scale = DashboardDensityScope.scaleOf(context);
     final colorScheme = context.colorScheme;
     return DashboardCard(
-      semanticLabel: '隐私模式保护中',
+      semanticLabel: context.l10n.logPrivacyMode,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.lock,
-            title: '隐私模式保护中',
-            trailing: [const DashboardChip(label: '日志已关闭')],
+            title: context.l10n.logPrivacyMode,
+            trailing: [DashboardChip(label: context.l10n.logLoggingOff)],
           ),
           SizedBox(height: 12 * scale),
           Text(
-            '重新开启日志后，仪表盘将从新产生的请求开始统计。'
-            '当前各类解析服务与缓存热点均正常工作。',
+            context.l10n.logPrivacyModeBody,
             style: AppTextStyle.subheadline
                 .of(context)
                 .copyWith(color: colorScheme.onSurfaceVariant),
@@ -347,54 +362,61 @@ class ResolutionPerfCard extends ConsumerWidget {
     final quality = snapshot?.quality;
     final latency = quality?.averageLatencyMs;
     return DashboardCard(
-      semanticLabel: '解析效能概况',
+      semanticLabel: context.l10n.logPerfTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.speed,
-            title: '解析效能概况',
-            trailing: [const DashboardChip(label: '今日统计')],
+            title: context.l10n.logPerfTitle,
+            trailing: [DashboardChip(label: context.l10n.logTodayStats)],
           ),
           SizedBox(height: 14 * scale),
           DashboardRateRow(
-            label: '平均解析耗时',
+            label: context.l10n.logAverageLatency,
             value: quality == null
                 ? '—'
                 : latency == null
-                ? '— · 今日暂无计时样本'
-                : '${dashboardLatency(latency)} · '
-                      '${dashboardCount(quality.latencySamples)} 个样本',
+                ? context.l10n.logNoTimingSamples
+                : context.l10n.logSampleValue(
+                    dashboardLatency(latency),
+                    dashboardCount(quality.latencySamples),
+                  ),
             // Latency is not a ratio, so pass 0 to render text only (no bar at progress 0).
             progress: 0,
           ),
           SizedBox(height: 14 * scale),
           DashboardRateRow(
-            label: '缓存命中率',
+            label: context.l10n.logCacheHitRate,
             value: quality == null
                 ? '—'
-                : '${dashboardPercent(quality.cacheHitRate)} · '
-                      '分母为通过 + 失败',
+                : context.l10n.logCacheHitRateValue(
+                    dashboardPercent(quality.cacheHitRate),
+                  ),
             progress: quality?.cacheHitRate ?? 0,
           ),
           SizedBox(height: 14 * scale),
           DashboardRateRow(
-            label: '竞速成功率',
+            label: context.l10n.logRaceSuccessRate,
             value: snapshot == null
                 ? '—'
-                : '${dashboardPercent(snapshot.race.successRate)} · '
-                      '${dashboardCount(snapshot.race.requests)} 次 · '
-                      '${dashboardLatency(snapshot.race.averageElapsedMs)}',
+                : context.l10n.logRateValue(
+                    dashboardPercent(snapshot.race.successRate),
+                    dashboardCount(snapshot.race.requests),
+                    dashboardLatency(snapshot.race.averageElapsedMs),
+                  ),
             progress: snapshot?.race.successRate ?? 0,
           ),
           SizedBox(height: 14 * scale),
           DashboardRateRow(
-            label: 'Bootstrap 成功率',
+            label: context.l10n.logBootstrapSuccessRate,
             value: snapshot == null
                 ? '—'
-                : '${dashboardPercent(snapshot.bootstrap.successRate)} · '
-                      '${dashboardCount(snapshot.bootstrap.attempts)} 次 · '
-                      '${dashboardLatency(snapshot.bootstrap.averageElapsedMs)}',
+                : context.l10n.logRateValue(
+                    dashboardPercent(snapshot.bootstrap.successRate),
+                    dashboardCount(snapshot.bootstrap.attempts),
+                    dashboardLatency(snapshot.bootstrap.averageElapsedMs),
+                  ),
             progress: snapshot?.bootstrap.successRate ?? 0,
           ),
           SizedBox(height: 2 * scale),

@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/site_latency_categories.dart';
 import 'package:diting/data/site_latency_targets.dart';
@@ -42,15 +43,15 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
         ? null
         : averages.reduce((a, b) => a + b) / averages.length;
     return DashboardDetailScaffold(
-      title: '测速详情',
+      title: context.l10n.siteLatencyDetailTitle,
       actions: [
         IconButton(
-          tooltip: '测全部',
+          tooltip: context.l10n.siteLatencyTestAll,
           onPressed: _anyProbing ? null : () => _probe(null),
           icon: const GlyphIcon(AppGlyphs.speed),
         ),
         IconButton(
-          tooltip: '自定义仪表盘站点',
+          tooltip: context.l10n.siteLatencyCustomSites,
           onPressed: () => context.push(HomeDetailPaths.latencySites),
           icon: const GlyphIcon(AppGlyphs.customize),
         ),
@@ -58,52 +59,52 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
       children: [
         DashboardDetailHero(
           glyph: AppGlyphs.target,
-          label: '站点连通性',
+          label: context.l10n.siteLatencyConnectivity,
           value: _anyProbing
-              ? '测速中'
+              ? context.l10n.siteLatencyTestingShort
               : measured.isEmpty
-              ? '未测速'
+              ? context.l10n.siteLatencyNoTest
               : '$alive / ${measured.length}',
           chipLabel: _anyProbing
-              ? '进行中'
+              ? context.l10n.siteLatencyInProgress
               : measured.isEmpty
-              ? '待测'
+              ? context.l10n.siteLatencyPending
               : failed == 0
-              ? '全部通畅'
-              : '$failed 个失败',
+              ? context.l10n.siteLatencyAllReachable
+              : context.l10n.siteLatencyFailedCount(failed),
           chipColor: measured.isEmpty
               ? colorScheme.onSurfaceVariant
               : failed == 0
               ? colorScheme.success
               : colorScheme.warning,
           hint: _anyProbing
-              ? '正在逐个站点测速…'
+              ? context.l10n.siteLatencyTestingEach
               : measured.isEmpty
-              ? '选一个分类点测速，或点右上角测全部。'
-              : '最近测速 ${elapsedAgoLabel(_lastRunAt)}'
-                    '${primary == null ? '' : ' · 解析服务商 ${primary.name}'}',
+              ? context.l10n.siteLatencyPickCategory
+              : '${context.l10n.siteLatencyLastRun(elapsedAgoLabel(_lastRunAt))}'
+                    '${primary == null ? '' : context.l10n.siteLatencyProviderSuffix(primary.name)}',
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.speed,
-          title: '本次结果',
+          title: context.l10n.siteLatencyThisRun,
           child: DashboardStatGrid(
             stats: [
               StatItem(
-                label: '通畅',
+                label: context.l10n.siteLatencyReachable,
                 value: '$alive',
                 color: colorScheme.success,
               ),
               StatItem(
-                label: '失败',
+                label: context.l10n.commonFailed,
                 value: '$failed',
                 color: failed > 0 ? colorScheme.error : null,
               ),
               StatItem(
-                label: '平均往返',
+                label: context.l10n.siteLatencySheetAverage,
                 value: average == null ? '—' : '${average.round()}',
                 unit: average == null ? null : 'ms',
               ),
-              StatItem(label: '已测站点', value: '${measured.length}'),
+              StatItem(label: context.l10n.siteLatencyMeasuredSites, value: '${measured.length}'),
             ],
           ),
         ),
@@ -116,12 +117,7 @@ class _SiteLatencyDetailPageState extends ConsumerState<SiteLatencyDetailPage> {
             lastRunAt: _lastRunAt,
             onProbe: () => _probe(category),
           ),
-        const DashboardDetailNote(
-          text:
-              '每个站点发 3 个 ICMP 回显，取平均值；'
-              '系统 ping 不可用时退回 TCP 握手，会标上 * 号，数值略高于真实往返。'
-              '本应用自身流量不经过 VPN，测的是物理网络。',
-        ),
+        DashboardDetailNote(text: context.l10n.siteLatencyDetailFooterLong),
       ],
     );
   }

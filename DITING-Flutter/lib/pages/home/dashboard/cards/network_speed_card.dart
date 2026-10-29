@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:math' as math;
 
 import 'package:diting/data/dashboard_models.dart';
@@ -24,18 +25,18 @@ class NetworkSpeedCard extends ConsumerWidget {
     final source = ref.watch(speedSeriesProvider.select((s) => s.source));
     final scale = DashboardDensityScope.scaleOf(context);
     return DashboardCard(
-      semanticLabel: '网络速度',
+      semanticLabel: context.l10n.speedTitle,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.speed,
-            title: '网络速度',
+            title: context.l10n.speedTitle,
             trailing: [
               if (onDetail != null)
                 DashboardIconButton(
                   glyph: AppGlyphs.chevronForward,
-                  tooltip: '详情',
+                  tooltip: context.l10n.dashboardDetailTooltip,
                   onPressed: onDetail,
                 ),
             ],
@@ -64,7 +65,8 @@ enum _SpeedDirection {
 
   Glyph get glyph => this == upload ? AppGlyphs.arrowUp : AppGlyphs.arrowDown;
 
-  String get label => this == upload ? '上传' : '下载';
+  String label(AppL10n l10n) =>
+      this == upload ? l10n.speedUpload : l10n.speedDownload;
 
   Color colorOf(BuildContext context) => this == upload
       ? DashboardColors.of(context).series2
@@ -172,8 +174,8 @@ class _SpeedTile extends StatelessWidget {
                       ? Center(
                           child: Text(
                             source == SpeedSource.expressMode
-                                ? '极速模式不统计'
-                                : '当前环境无速率通道',
+                                ? context.l10n.speedExpressNoStats
+                                : context.l10n.speedNoChannel,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: DashboardText.label(context),
@@ -209,7 +211,7 @@ class _SpeedTile extends StatelessWidget {
                         GlyphIcon(direction.glyph, size: 16, color: color),
                         Flexible(
                           child: Text(
-                            direction.label,
+                            direction.label(context.l10n),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyle.footnote
@@ -248,8 +250,10 @@ class _SpeedTile extends StatelessWidget {
                         );
                         return Text(
                           total == null
-                              ? '累计 —'
-                              : '累计 ${dashboardBinaryBytes(total)}',
+                              ? context.l10n.speedTotalDash
+                              : context.l10n.speedTotalAccumulated(
+                                  dashboardBinaryBytes(total),
+                                ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: DashboardText.label(context),

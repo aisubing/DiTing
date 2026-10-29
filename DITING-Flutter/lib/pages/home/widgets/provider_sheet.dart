@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/routes/routes.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/provider_catalog_providers.dart';
@@ -23,12 +24,18 @@ class ProviderSheet extends ConsumerWidget {
     final raceIds = ref.watch(raceProvidersProvider);
     final visible = ref.watch(visibleProvidersProvider);
     return CommonScaffold(
-      title: resolution.isSingle ? '选择解析服务商' : '选择竞速服务商',
+      title: resolution.isSingle
+          ? context.l10n.providerSheetSingleTitle
+          : context.l10n.providerSheetRaceTitle,
       body: ListView(
         // The sheet title floats over the body, so this top padding is required.
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
-          ListHeader(title: resolution.isSingle ? '可选服务商' : '至少选 2 个'),
+          ListHeader(
+            title: resolution.isSingle
+                ? context.l10n.providerSheetSingleOptions
+                : context.l10n.providerSheetRaceMinimum,
+          ),
           for (final provider in visible)
             ListItem(
               leading: GlyphIcon(glyphByName('dns'), size: 20),
@@ -67,7 +74,7 @@ class ProviderSheet extends ConsumerWidget {
           // sheet before pushing, otherwise returning shows it again and looks stuck.
           ListItem(
             leading: const GlyphIcon(AppGlyphs.settings, size: 20),
-            title: const Text('管理服务...'),
+            title: Text(context.l10n.providerSheetManage),
             trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
             onTap: () {
               Navigator.of(context).pop();
@@ -76,7 +83,7 @@ class ProviderSheet extends ConsumerWidget {
           ),
           ListItem(
             leading: const GlyphIcon(AppGlyphs.eye, size: 20),
-            title: const Text('服务显示...'),
+            title: Text(context.l10n.providerSheetVisibility),
             trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
             onTap: () {
               Navigator.of(context).pop();
@@ -85,8 +92,8 @@ class ProviderSheet extends ConsumerWidget {
           ),
           ListFooter(
             text: resolution.isSingle
-                ? '延迟取自上一次解析的健康记录，不是实时值。'
-                : '竞速模式下每个查询会并发发往所有选中服务商。',
+                ? context.l10n.providerSheetSingleFooter
+                : context.l10n.providerSheetRaceFooter,
           ),
         ],
       ),

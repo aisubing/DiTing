@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:math' as math;
 
 import 'package:diting/data/dashboard_models.dart';
@@ -27,53 +28,53 @@ class NetworkSpeedDetailPage extends ConsumerWidget {
     final down = _Stats.of([for (final sample in series.samples) sample.down]);
     final unsupported = series.unsupported;
     return DashboardDetailScaffold(
-      title: '网速详情',
+      title: context.l10n.speedDetailTitle,
       children: [
         DashboardDetailHero(
           glyph: AppGlyphs.speed,
-          label: '当前下载',
-          value: unsupported ? '无数据' : dashboardBinarySpeed(series.last.down),
-          chipLabel: unsupported ? '暂停采样' : '实时',
+          label: context.l10n.speedCurrentDownload,
+          value: unsupported ? context.l10n.commonNoData : dashboardBinarySpeed(series.last.down),
+          chipLabel: unsupported ? context.l10n.speedSamplingPaused : context.l10n.speedLive,
           chipColor: unsupported
               ? colorScheme.onSurfaceVariant
               : colorScheme.success,
           hint: unsupported
-              ? _unsupportedHint(series.source)
-              : '每秒采样一次，下图是最近一分钟。',
+              ? _unsupportedHint(series.source, context.l10n)
+              : context.l10n.speedSamplingHint,
         ),
         DashboardDetailStats(
           stats: [
             StatItem(
-              label: '当前上传',
+              label: context.l10n.speedCurrentUpload,
               value: unsupported ? '—' : dashboardBinarySpeed(series.last.up),
               color: colors.series2,
             ),
             StatItem(
-              label: '下行峰值',
+              label: context.l10n.speedDownloadPeak,
               value: unsupported ? '—' : dashboardBinarySpeed(down.peak),
               color: colorScheme.primary,
             ),
             StatItem(
-              label: '上行峰值',
+              label: context.l10n.speedUploadPeak,
               value: unsupported ? '—' : dashboardBinarySpeed(up.peak),
               color: colors.series2,
             ),
             StatItem(
-              label: '样本',
+              label: context.l10n.speedSamples,
               value: '${series.samples.length}',
               unit: '/$speedSampleCapacity',
             ),
           ],
         ),
         _CurveCard(
-          title: '下载',
+          title: context.l10n.speedDownload,
           color: colorScheme.primary,
           stats: down,
           values: series.downValues(),
           series: series,
         ),
         _CurveCard(
-          title: '上传',
+          title: context.l10n.speedUpload,
           color: colors.series2,
           stats: up,
           values: series.upValues(),
@@ -81,10 +82,10 @@ class NetworkSpeedDetailPage extends ConsumerWidget {
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.dataUsage,
-          title: '今日累计',
+          title: context.l10n.speedTodayTotal,
           child: totals == null
               ? Text(
-                  '流量库还没有今天的记录。',
+                  context.l10n.speedNoTrafficToday,
                   style: AppTextStyle.subheadline
                       .of(context)
                       .copyWith(color: colorScheme.onSurfaceVariant),
@@ -97,19 +98,19 @@ class NetworkSpeedDetailPage extends ConsumerWidget {
                     DashboardDetailRows(
                       rows: [
                         DashboardDetailRow(
-                          label: '下载',
+                          label: context.l10n.speedDownload,
                           value: dashboardBinaryBytes(totals.down),
                           monospace: true,
                           color: colorScheme.primary,
                         ),
                         DashboardDetailRow(
-                          label: '上传',
+                          label: context.l10n.speedUpload,
                           value: dashboardBinaryBytes(totals.up),
                           monospace: true,
                           color: colors.series2,
                         ),
                         DashboardDetailRow(
-                          label: '合计',
+                          label: context.l10n.speedTotal,
                           value: dashboardBinaryBytes(totals.total),
                           monospace: true,
                         ),
@@ -120,21 +121,20 @@ class NetworkSpeedDetailPage extends ConsumerWidget {
         ),
         DashboardDetailNote(
           text: unsupported
-              ? _unsupportedHint(series.source)
-              : '速率来自内核数据面的实时计数，只包含经过隧道转发的流量；'
-                    '本应用自身的探测与测速不计入。今日累计来自应用流量统计，'
-                    '与「流量统计」页同一份数据。',
+              ? _unsupportedHint(series.source, context.l10n)
+              : context.l10n.speedRateFooter,
         ),
       ],
     );
   }
 
   /// Why the curve is empty: one is a product decision, the other a missing host channel.
-  static String _unsupportedHint(SpeedSource source) => switch (source) {
-    SpeedSource.expressMode => '极速模式不经过内核数据面，因此没有逐秒速率；切回普通模式后恢复。',
-    SpeedSource.noNativeChannel => '当前环境没有速率通道（桌面环境或纯 Dart 测试），读不到实时速率。',
-    SpeedSource.available => '',
-  };
+  static String _unsupportedHint(SpeedSource source, AppL10n l10n) =>
+      switch (source) {
+        SpeedSource.expressMode => l10n.speedExpressSource,
+        SpeedSource.noNativeChannel => l10n.speedNoChannelSource,
+        SpeedSource.available => '',
+      };
 }
 
 /// Download/upload split of today's traffic, in the same bar language as the memory page.
@@ -161,14 +161,18 @@ class _TotalsBar extends StatelessWidget {
         Row(
           children: [
             Text(
-              '下行 ${dashboardPercent(totals.total <= 0 ? 0 : totals.down / totals.total)}',
+              context.l10n.speedTotalsDown(
+                dashboardPercent(totals.total <= 0 ? 0 : totals.down / totals.total),
+              ),
               style: AppTextStyle.caption1
                   .of(context)
                   .copyWith(color: colorScheme.onSurfaceVariant),
             ),
             const Spacer(),
             Text(
-              '上行 ${dashboardPercent(totals.total <= 0 ? 0 : totals.up / totals.total)}',
+              context.l10n.speedTotalsUp(
+                dashboardPercent(totals.total <= 0 ? 0 : totals.up / totals.total),
+              ),
               style: AppTextStyle.caption1
                   .of(context)
                   .copyWith(color: colorScheme.onSurfaceVariant),
@@ -207,11 +211,13 @@ class _CurveCard extends StatelessWidget {
       capacity: speedSampleCapacity,
       // 8 KB/s floor, same as the card: idle noise stays a flat line.
       minScale: 8 * 1024,
-      emptyLabel: unsupported ? '当前模式下没有速率数据' : '正在等待第一个样本',
+      emptyLabel: unsupported ? context.l10n.speedNoDataInMode : context.l10n.speedWaitingSample,
       caption: unsupported
           ? null
-          : '峰值 ${dashboardBinarySpeed(stats.peak)} · '
-                '平均 ${dashboardBinarySpeed(stats.average)}',
+          : context.l10n.speedPeakAverage(
+              dashboardBinarySpeed(stats.peak),
+              dashboardBinarySpeed(stats.average),
+            ),
     );
   }
 }

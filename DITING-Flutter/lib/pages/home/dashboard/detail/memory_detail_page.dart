@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
@@ -63,10 +64,10 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
       memory.systemTotal,
     );
     return DashboardDetailScaffold(
-      title: '内存详情',
+      title: context.l10n.memoryDetailTitle,
       actions: [
         IconButton(
-          tooltip: '重新采样',
+          tooltip: context.l10n.memoryResample,
           onPressed: _memory == null ? null : () => _memory!.tick(),
           icon: const GlyphIcon(AppGlyphs.refresh),
         ),
@@ -74,47 +75,50 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
       children: [
         DashboardDetailHero(
           glyph: AppGlyphs.memory,
-          label: '本进程 PSS',
-          value: available ? dashboardBinaryBytes(memory.totalPss) : '不可用',
+          label: context.l10n.memoryProcessPss,
+          value: available ? dashboardBinaryBytes(memory.totalPss) : context.l10n.memoryUnavailable,
           chipLabel: available
-              ? '占整机 ${dashboardPercent(memory.systemShare)}'
-              : '无数据',
+              ? context.l10n.memorySystemShare(
+                  dashboardPercent(memory.systemShare),
+                )
+              : context.l10n.commonNoData,
           chipColor: available
               ? colorScheme.primary
               : colorScheme.onSurfaceVariant,
           hint: available
-              ? '整机已用 ${dashboardBinaryBytes(deviceUsed)} / '
-                    '${dashboardBinaryBytes(memory.systemTotal)}'
-              : '当前环境读不到内存数据（桌面环境或纯 Dart 测试）。',
+              ? context.l10n.memorySystemUsedOf(
+                  dashboardBinaryBytes(deviceUsed),
+                  dashboardBinaryBytes(memory.systemTotal),
+                )
+              : context.l10n.memoryNoChannel,
         ),
         DashboardDetailStats(
           stats: [
             StatItem(
-              label: 'Java 堆',
+              label: context.l10n.memoryJavaHeap,
               value: available ? dashboardBinaryBytes(memory.javaHeap) : '—',
               color: colorScheme.primary,
             ),
             StatItem(
-              label: '原生堆',
+              label: context.l10n.memoryNativeHeap,
               value: available ? dashboardBinaryBytes(memory.nativeHeap) : '—',
               color: colors.series2,
             ),
             StatItem(
-              label: '其它',
+              label: context.l10n.memoryOther,
               value: available ? dashboardBinaryBytes(other) : '—',
             ),
             StatItem(
-              label: '整机可用',
+              label: context.l10n.memorySystemAvailable,
               value: available ? dashboardBinaryBytes(memory.systemAvail) : '—',
             ),
           ],
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.layers,
-          title: '进程构成',
+          title: context.l10n.memoryComposition,
           footer: available
-              ? 'PSS 按共享页的比例计入本进程，因此 Java 堆与原生堆之和小于 PSS，'
-                    '差额是代码、图形缓冲与共享库。'
+              ? context.l10n.memoryCompositionFooter
               : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -131,13 +135,13 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
                 ],
               ),
               DashboardShareLegend(
-                label: 'Java 堆',
+                label: context.l10n.memoryJavaHeap,
                 value: available ? dashboardBinaryBytes(memory.javaHeap) : '—',
                 color: colorScheme.primary,
                 share: _share(memory.javaHeap, memory.totalPss),
               ),
               DashboardShareLegend(
-                label: '原生堆',
+                label: context.l10n.memoryNativeHeap,
                 value: available
                     ? dashboardBinaryBytes(memory.nativeHeap)
                     : '—',
@@ -145,7 +149,7 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
                 share: _share(memory.nativeHeap, memory.totalPss),
               ),
               DashboardShareLegend(
-                label: '其它（代码 / 共享库）',
+                label: context.l10n.memoryOtherCode,
                 value: available ? dashboardBinaryBytes(other) : '—',
                 color: colors.track,
                 share: _share(other, memory.totalPss),
@@ -155,9 +159,9 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.cpu,
-          title: '整机内存',
+          title: context.l10n.memorySystemSection,
           footer: available && memory.systemTotal > 0
-              ? '整机占用 = 总量 - 可用量，包含系统与所有应用；本进程只是其中一份。'
+              ? context.l10n.memorySystemFooter
               : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,13 +174,13 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
                 ],
               ),
               DashboardShareLegend(
-                label: '整机已用',
+                label: context.l10n.memorySystemUsed,
                 value: available ? dashboardBinaryBytes(deviceUsed) : '—',
                 color: colorScheme.primary,
                 share: _share(deviceUsed, memory.systemTotal),
               ),
               DashboardShareLegend(
-                label: '整机可用',
+                label: context.l10n.memorySystemAvailable,
                 value: available
                     ? dashboardBinaryBytes(memory.systemAvail)
                     : '—',
@@ -187,7 +191,7 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
           ),
         ),
         DashboardDetailChart(
-          title: '最近 PSS',
+          title: context.l10n.memoryRecentPss,
           color: colorScheme.primary,
           values: _pss,
           revision: _revision,
@@ -195,11 +199,11 @@ class _MemoryDetailPageState extends ConsumerState<MemoryDetailPage> {
           // 16 MB floor: a flat idle line must not be blown up into noise.
           minScale: 16 * 1024 * 1024,
           height: 128,
-          emptyLabel: '正在采样…',
-          caption: '打开本页后每 2 秒采样一次，最多保留 60 个点；曲线持续上扬说明有内存未释放。',
+          emptyLabel: context.l10n.memorySampling,
+          caption: context.l10n.memoryRecentPssCaption,
         ),
-        const DashboardDetailNote(
-          text: '数据来自 ActivityManager 的 MemoryInfo；切到后台或系统回收后数值会明显下降。',
+        DashboardDetailNote(
+          text: context.l10n.memorySourceFooter,
         ),
       ],
     );

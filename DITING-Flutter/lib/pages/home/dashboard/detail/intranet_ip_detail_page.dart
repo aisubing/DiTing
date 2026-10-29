@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/pages/home/dashboard/detail/dashboard_detail_parts.dart';
@@ -34,10 +35,10 @@ class IntranetIpDetailPage extends ConsumerWidget {
         : localIp;
     final dnsServers = info?.dnsServers ?? const <String>[];
     return DashboardDetailScaffold(
-      title: '内网 IP 详情',
+      title: context.l10n.intranetDetailTitle,
       actions: [
         IconButton(
-          tooltip: '刷新网络信息',
+          tooltip: context.l10n.intranetRefresh,
           onPressed: () => ref.invalidate(networkInfoProvider),
           icon: const GlyphIcon(AppGlyphs.refresh),
         ),
@@ -45,36 +46,36 @@ class IntranetIpDetailPage extends ConsumerWidget {
       children: [
         DashboardDetailHero(
           glyph: AppGlyphs.wifi,
-          label: '本机局域网地址',
-          value: dnsAddress ?? (network.isLoading ? '读取中…' : '无活动网络'),
+          label: context.l10n.intranetLocalAddress,
+          value: dnsAddress ?? (network.isLoading ? context.l10n.intranetReading : context.l10n.intranetNoActiveNetwork),
           monospace: dnsAddress != null,
-          chipLabel: listening ? '可作 DNS' : '仅本机',
+          chipLabel: listening ? context.l10n.intranetUsableAsDns : context.l10n.intranetLocalOnly,
           chipColor: listening
               ? colorScheme.success
               : colorScheme.onSurfaceVariant,
           hint: listening
-              ? '同网段设备把 DNS 指到这个地址即可走本机解析。'
+              ? context.l10n.intranetSameSubnetHint
               : localIp.isEmpty
-              ? '连上 Wi-Fi 或以太网后这里会显示可用地址。'
-              : '${mode.title}不监听局域网，其它设备无法把这里当 DNS。',
+              ? context.l10n.intranetConnectHintSentence
+              : context.l10n.intranetModeNotListeningSentence(mode.title),
         ),
         if (dnsAddress != null)
           _CopyCard(address: dnsAddress, withPort: listening),
         DashboardDetailCard(
           glyph: AppGlyphs.connections,
-          title: '网络概况',
+          title: context.l10n.intranetNetworkOverview,
           child: DashboardStatGrid(
             stats: [
               StatItem(label: 'IPv4', value: localIp.isEmpty ? '—' : localIp),
               StatItem(
                 label: 'VPN',
-                value: info?.vpnActive == true ? '已启用' : '未启用',
+                value: info?.vpnActive == true ? context.l10n.commonEnabled : context.l10n.commonDisabled,
                 color: info?.vpnActive == true ? colorScheme.primary : null,
               ),
-              StatItem(label: 'DNS 服务器', value: '${dnsServers.length}'),
+              StatItem(label: context.l10n.intranetDnsServers, value: '${dnsServers.length}'),
               StatItem(
-                label: '监听端口',
-                value: listening ? '$port' : '未监听',
+                label: context.l10n.statusListenPort,
+                value: listening ? '$port' : context.l10n.statusNotListening,
                 color: listening ? colorScheme.primary : null,
               ),
             ],
@@ -82,14 +83,14 @@ class IntranetIpDetailPage extends ConsumerWidget {
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.wifi,
-          title: '接口',
+          title: context.l10n.intranetInterfaces,
           footer: info == null || info.interfaceName.isEmpty
-              ? '系统没有报告活动网络接口，可能是飞行模式或未联网。'
+              ? context.l10n.intranetNoInterface
               : null,
           child: DashboardDetailRows(
             rows: [
               DashboardDetailRow(
-                label: '网卡',
+                label: context.l10n.intranetAdapter,
                 value: networkInterfaceLabel(info ?? _emptyInfo),
                 monospace: true,
               ),
@@ -106,7 +107,7 @@ class IntranetIpDetailPage extends ConsumerWidget {
                 monospace: true,
               ),
               DashboardDetailRow(
-                label: '网关',
+                label: context.l10n.intranetGateway,
                 value: info?.gateway?.isNotEmpty == true ? info!.gateway! : '—',
                 monospace: true,
               ),
@@ -117,9 +118,8 @@ class IntranetIpDetailPage extends ConsumerWidget {
           glyph: AppGlyphs.dns,
           title: 'DNS',
           footer: info != null && info.privateDns != 'off'
-              ? '系统开启了私人 DNS（${info.privateDns}），'
-                    '系统解析会走加密通道，可能绕过本地服务。'
-              : '系统私人 DNS 未开启，解析请求由本机与代理按模式处理。',
+              ? context.l10n.intranetPrivateDnsOn('${info.privateDns}')
+              : context.l10n.intranetPrivateDnsOff,
           child: dnsServers.isEmpty
               ? Row(
                   spacing: 10,
@@ -131,7 +131,7 @@ class IntranetIpDetailPage extends ConsumerWidget {
                     ),
                     Expanded(
                       child: Text(
-                        '没有读到 DNS 服务器：接口未下发 DNS，或当前环境没有诊断通道。',
+                        context.l10n.intranetNoDnsServer,
                         style: AppTextStyle.subheadline
                             .of(context)
                             .copyWith(color: colorScheme.onSurfaceVariant),
@@ -145,22 +145,20 @@ class IntranetIpDetailPage extends ConsumerWidget {
                     // which server was the primary one.
                     for (final (index, server) in dnsServers.indexed)
                       DashboardDetailRow(
-                        label: index == 0 ? '首选' : '备用 $index',
+                        label: index == 0
+                            ? context.l10n.intranetPrimaryDns
+                            : context.l10n.intranetSecondaryDns(index),
                         value: server,
                         monospace: true,
                       ),
                     DashboardDetailRow(
-                      label: '私人 DNS',
+                      label: context.l10n.intranetPrivateDns,
                       value: info?.privateDns ?? '—',
                     ),
                   ],
                 ),
         ),
-        const DashboardDetailNote(
-          text:
-              '端口只在服务启动时绑定，改动端口后需要重启服务；'
-              '把同网段设备的 DNS 指向上面的地址即可让它们走本机解析。',
-        ),
+        DashboardDetailNote(text: context.l10n.intranetPortFooter),
       ],
     );
   }
@@ -186,7 +184,7 @@ class _CopyCard extends StatelessWidget {
     final colorScheme = context.colorScheme;
     final colors = DashboardColors.of(context);
     return DashboardDetailCard(
-      semanticLabel: '复制地址 $address',
+      semanticLabel: context.l10n.intranetCopyAddressSemantics(address),
       onTap: () => _copy(context, address),
       padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
       child: Row(
@@ -214,7 +212,7 @@ class _CopyCard extends StatelessWidget {
               spacing: 2,
               children: [
                 Text(
-                  withPort ? '复制地址（含端口）' : '复制地址',
+                  withPort ? context.l10n.intranetCopyAddressWithPort : context.l10n.intranetCopyAddress,
                   style: AppTextStyle.subheadline.of(context, emphasized: true),
                 ),
                 Text(
@@ -246,7 +244,7 @@ class _CopyCard extends StatelessWidget {
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('已复制 $text'),
+        content: Text(context.l10n.commonCopied(text)),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 1600),
       ),
