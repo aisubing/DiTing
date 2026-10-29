@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/ui/ui.dart';
@@ -67,14 +68,14 @@ class _UpstreamDialogState extends State<UpstreamDialog> {
   Widget build(BuildContext context) {
     final isDoh = _protocol == DnsProtocol.doh;
     return CommonDialog(
-      title: widget.initial == null ? '添加自定义服务商' : '编辑自定义服务商',
+      title: widget.initial == null ? context.l10n.serverAddCustom : context.l10n.serverEditCustom,
       hasFields: true,
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.configCancel),
         ),
-        TextButton(onPressed: _submit, child: const Text('保存')),
+        TextButton(onPressed: _submit, child: Text(context.l10n.serverSave)),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -97,25 +98,25 @@ class _UpstreamDialogState extends State<UpstreamDialog> {
           ),
           TextField(
             controller: _name,
-            decoration: const InputDecoration(labelText: '名称'),
+            decoration: InputDecoration(labelText: context.l10n.serverName),
           ),
           TextField(
             controller: _address,
             keyboardType: TextInputType.url,
             decoration: InputDecoration(
-              labelText: isDoh ? 'DoH 地址' : '服务器地址',
+              labelText: isDoh ? context.l10n.serverDohAddress : context.l10n.serverAddress,
               helperText: isDoh
-                  ? '必须以 https:// 开头'
-                  : 'IPv4 / IPv6 均可；IPv6 可直接填 [::1]',
+                  ? context.l10n.serverDohPrefix
+                  : context.l10n.serverAddressHint,
             ),
           ),
           if (!isDoh)
             TextField(
               controller: _port,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: '端口',
-                helperText: 'DNS 通常 53，DoT 通常 853',
+              decoration: InputDecoration(
+                labelText: context.l10n.serverPort,
+                helperText: context.l10n.serverPortHint,
               ),
             ),
           if (_error != null)

@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/pages/server/server_actions.dart';
@@ -31,7 +32,9 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     }
     showServerHint(
       context,
-      running ? '已切换到 ${upstream.name}，重启服务后生效' : '已选择 ${upstream.name}',
+      running
+          ? context.l10n.serverSwitched(upstream.name)
+          : context.l10n.serverSelected(upstream.name),
     );
   }
 
@@ -64,7 +67,9 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     setState(() => _protocol = saved.protocol);
     showServerHint(
       context,
-      existing == null ? '已添加 ${saved.name}' : '已保存 ${saved.name}',
+      existing == null
+          ? context.l10n.serverAdded(saved.name)
+          : context.l10n.serverSaved(saved.name),
     );
   }
 
@@ -74,22 +79,21 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除 ${upstream.name}？',
+        title: context.l10n.serverDeleteConfirm(upstream.name),
         destructive: true,
         hasFields: false,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.configCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.configDelete),
           ),
         ],
         child: Text(
-          '${upstream.endpointLabel}\n\n'
-          '如果它正被使用，删除后会回落到第一个内置服务商。',
+          '${upstream.endpointLabel}\n\n${context.l10n.serverDeleteBody}',
         ),
       ),
     );
@@ -98,7 +102,7 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
     }
     final removed = ref.read(serverUpstreamActionsProvider).remove(upstream.id);
     if (removed && mounted) {
-      showServerHint(context, '已删除 ${upstream.name}');
+      showServerHint(context, context.l10n.serverDeleted(upstream.name));
     }
   }
 
@@ -120,10 +124,10 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
         if (_isCustom(upstream)) upstream,
     ];
     return CommonScaffold(
-      title: '上游服务器',
+      title: context.l10n.serverUpstreamTitle,
       actions: [
         IconButton(
-          tooltip: '添加自定义服务商',
+          tooltip: context.l10n.serverAddCustom,
           onPressed: () => _edit(null),
           icon: const GlyphIcon(AppGlyphs.addCircle),
         ),
@@ -134,8 +138,10 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
           // page-wide selection and stays visible when switching to DoH.
           PageIntroText(
             text:
-                '当前用于解析 DNS：(${_protocolLabel(selected.protocol)}) '
-                '${selected.name}',
+                context.l10n.serverCurrentUpstream(
+                  _protocolLabel(selected.protocol),
+                  selected.name,
+                ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
@@ -150,11 +156,11 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
             ),
           ),
           generateSection(
-            title: '内置 DNS 服务商',
+            title: context.l10n.serverBuiltinProviders,
             items: [
               if (presets.isEmpty)
-                const ListItem(
-                  title: Text('暂无内置服务商'),
+                ListItem(
+                  title: Text(context.l10n.serverNoBuiltin),
                   leading: GlyphIcon(AppGlyphs.info),
                 )
               else
@@ -167,12 +173,12 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
             ],
           ),
           generateSection(
-            title: '自定义 DNS 服务商',
+            title: context.l10n.serverCustomProviders,
             items: [
               if (customs.isEmpty)
                 ListItem(
-                  title: const Text('暂无自定义服务商'),
-                  subtitle: const Text('点右上角加号添加 DoH / DoT / 明文 DNS 上游'),
+                  title: Text(context.l10n.serverNoCustom),
+                  subtitle: Text(context.l10n.serverNoCustomBody),
                   leading: const GlyphIcon(AppGlyphs.addCircle),
                   trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 20),
                   onTap: () => _edit(null),
@@ -188,14 +194,13 @@ class _ServerUpstreamPageState extends ConsumerState<ServerUpstreamPage> {
                   ),
               if (customs.isNotEmpty)
                 ListItem(
-                  title: const Text('添加自定义服务商'),
+                  title: Text(context.l10n.serverAddCustom),
                   leading: const GlyphIcon(AppGlyphs.addCircle),
                   onTap: () => _edit(null),
                 ),
             ],
             footer:
-                '服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。'
-                '内置服务商由应用维护，只能切换；自定义项长按可编辑或删除。',
+                context.l10n.serverUpstreamFooter,
           ),
         ],
       ),
@@ -300,12 +305,12 @@ class _RowMenu extends StatelessWidget {
         builder: (_) => CommonPopupMenu(
           items: [
             CommonPopupMenuItem(
-              label: '编辑 $name',
+              label: context.l10n.serverEditName(name),
               glyph: AppGlyphs.edit,
               onPressed: onEdit,
             ),
             CommonPopupMenuItem(
-              label: '删除 $name',
+              label: context.l10n.serverDeleteName(name),
               glyph: AppGlyphs.delete,
               danger: true,
               onPressed: onDelete,

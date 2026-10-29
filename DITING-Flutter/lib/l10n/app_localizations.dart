@@ -9380,6 +9380,642 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'删除 {ssid}'**
   String odDeleteSsidTooltip(Object ssid);
+
+  /// No description provided for @serverSwitched.
+  ///
+  /// In zh, this message translates to:
+  /// **'已切换到 {name}，重启服务后生效'**
+  String serverSwitched(Object name);
+
+  /// No description provided for @serverSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {name}'**
+  String serverSelected(Object name);
+
+  /// No description provided for @serverAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加 {name}'**
+  String serverAdded(Object name);
+
+  /// No description provided for @serverSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存 {name}'**
+  String serverSaved(Object name);
+
+  /// No description provided for @serverDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 {name}？'**
+  String serverDeleteConfirm(Object name);
+
+  /// No description provided for @serverDeleteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'如果它正被使用，删除后会回落到第一个内置服务商。'**
+  String get serverDeleteBody;
+
+  /// No description provided for @serverDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {name}'**
+  String serverDeleted(Object name);
+
+  /// No description provided for @serverUpstreamTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'上游服务器'**
+  String get serverUpstreamTitle;
+
+  /// No description provided for @serverAddCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加自定义服务商'**
+  String get serverAddCustom;
+
+  /// No description provided for @serverCurrentUpstream.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前用于解析 DNS：({protocol}) {name}'**
+  String serverCurrentUpstream(Object name, Object protocol);
+
+  /// No description provided for @serverBuiltinProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置 DNS 服务商'**
+  String get serverBuiltinProviders;
+
+  /// No description provided for @serverNoBuiltin.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无内置服务商'**
+  String get serverNoBuiltin;
+
+  /// No description provided for @serverCustomProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 DNS 服务商'**
+  String get serverCustomProviders;
+
+  /// No description provided for @serverNoCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无自定义服务商'**
+  String get serverNoCustom;
+
+  /// No description provided for @serverNoCustomBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'点右上角加号添加 DoH / DoT / 明文 DNS 上游'**
+  String get serverNoCustomBody;
+
+  /// No description provided for @serverUpstreamFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。内置服务商由应用维护，只能切换；自定义项长按可编辑或删除。'**
+  String get serverUpstreamFooter;
+
+  /// No description provided for @serverEditName.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 {name}'**
+  String serverEditName(Object name);
+
+  /// No description provided for @serverDeleteName.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 {name}'**
+  String serverDeleteName(Object name);
+
+  /// No description provided for @serverEditCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑自定义服务商'**
+  String get serverEditCustom;
+
+  /// No description provided for @serverSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get serverSave;
+
+  /// No description provided for @serverName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get serverName;
+
+  /// No description provided for @serverDohAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'DoH 地址'**
+  String get serverDohAddress;
+
+  /// No description provided for @serverAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器地址'**
+  String get serverAddress;
+
+  /// No description provided for @serverDohPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'必须以 https:// 开头'**
+  String get serverDohPrefix;
+
+  /// No description provided for @serverAddressHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'IPv4 / IPv6 均可；IPv6 可直接填 [::1]'**
+  String get serverAddressHint;
+
+  /// No description provided for @serverPort.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口'**
+  String get serverPort;
+
+  /// No description provided for @serverPortHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 通常 53，DoT 通常 853'**
+  String get serverPortHint;
+
+  /// No description provided for @serverUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备不可用'**
+  String get serverUnavailable;
+
+  /// No description provided for @serverBatteryJoined.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入电池优化白名单'**
+  String get serverBatteryJoined;
+
+  /// No description provided for @serverBatteryNotJoined.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未加入电池优化白名单'**
+  String get serverBatteryNotJoined;
+
+  /// No description provided for @serverClearCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空缓存'**
+  String get serverClearCache;
+
+  /// No description provided for @serverClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空'**
+  String get serverClear;
+
+  /// No description provided for @serverClearCacheBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空本机已缓存的解析结果，下一次查询会重新向上游请求。'**
+  String get serverClearCacheBody;
+
+  /// No description provided for @serverCacheCleared.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存已清空'**
+  String get serverCacheCleared;
+
+  /// No description provided for @serverCacheClearFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空失败：请先启动解析服务再试'**
+  String get serverCacheClearFailed;
+
+  /// No description provided for @serverCacheOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'{preset} · 命中缓存的查询不再请求上游'**
+  String serverCacheOn(Object preset);
+
+  /// No description provided for @serverCacheOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭 · 每次解析都请求上游 DNS'**
+  String get serverCacheOff;
+
+  /// No description provided for @serverModeSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'模式设置'**
+  String get serverModeSettings;
+
+  /// No description provided for @serverProxySettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理与解析设置'**
+  String get serverProxySettings;
+
+  /// No description provided for @serverCacheSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存设置'**
+  String get serverCacheSettings;
+
+  /// No description provided for @serverRuleControl.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则控制'**
+  String get serverRuleControl;
+
+  /// No description provided for @serverRuleControlOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'已开启 · 命中规则按拦截策略返回'**
+  String get serverRuleControlOn;
+
+  /// No description provided for @serverRuleControlOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭 · 使用独立的过滤规则库'**
+  String get serverRuleControlOff;
+
+  /// No description provided for @serverListenPort.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地监听端口'**
+  String get serverListenPort;
+
+  /// No description provided for @serverListenPortBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务在本机监听的端口，默认 1053'**
+  String get serverListenPortBody;
+
+  /// No description provided for @serverRuleManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则管理'**
+  String get serverRuleManagement;
+
+  /// No description provided for @serverBlocklist.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑名单'**
+  String get serverBlocklist;
+
+  /// No description provided for @serverBlocklistBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理域名屏蔽规则，独立规则库'**
+  String get serverBlocklistBody;
+
+  /// No description provided for @serverAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'白名单'**
+  String get serverAllowlist;
+
+  /// No description provided for @serverAllowlistBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理域名放行规则，独立规则库'**
+  String get serverAllowlistBody;
+
+  /// No description provided for @serverHosts.
+  ///
+  /// In zh, this message translates to:
+  /// **'Hosts 覆写'**
+  String get serverHosts;
+
+  /// No description provided for @serverHostsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将指定域名解析到配置的 IP 或 CNAME'**
+  String get serverHostsBody;
+
+  /// No description provided for @serverRulesFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'这三张表只影响服务器模式的独立规则库，与普通模式的规则互不覆盖。'**
+  String get serverRulesFooter;
+
+  /// No description provided for @serverDataReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据与重置'**
+  String get serverDataReset;
+
+  /// No description provided for @serverResetStats.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置运行统计'**
+  String get serverResetStats;
+
+  /// No description provided for @serverResetStatsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空本次运行的统计数据'**
+  String get serverResetStatsBody;
+
+  /// No description provided for @serverBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'后台稳定性'**
+  String get serverBackground;
+
+  /// No description provided for @serverBackgroundBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统会在后台冻结省电名单之外的应用；把它加入白名单，DNS 服务才能在息屏后继续应答局域网查询。'**
+  String get serverBackgroundBody;
+
+  /// No description provided for @serverRunMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行模式'**
+  String get serverRunMode;
+
+  /// No description provided for @serverWizard.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用向导'**
+  String get serverWizard;
+
+  /// No description provided for @serverWizardBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看服务器模式架构原理、局域网配置与就绪指引'**
+  String get serverWizardBody;
+
+  /// No description provided for @serverReselectMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新选择工作模式'**
+  String get serverReselectMode;
+
+  /// No description provided for @serverReselectModeBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'浏览所有工作模式详情并重新选择'**
+  String get serverReselectModeBody;
+
+  /// No description provided for @serverBatteryIgnored.
+  ///
+  /// In zh, this message translates to:
+  /// **'已忽略电池优化'**
+  String get serverBatteryIgnored;
+
+  /// No description provided for @serverBatteryIgnoredShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'已忽略'**
+  String get serverBatteryIgnoredShort;
+
+  /// No description provided for @serverBatteryKeepAlive.
+  ///
+  /// In zh, this message translates to:
+  /// **'保持 DNS 服务在后台稳定运行'**
+  String get serverBatteryKeepAlive;
+
+  /// No description provided for @serverIgnoreBattery.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略电池优化'**
+  String get serverIgnoreBattery;
+
+  /// No description provided for @serverCachePresetConservative.
+  ///
+  /// In zh, this message translates to:
+  /// **'保守'**
+  String get serverCachePresetConservative;
+
+  /// No description provided for @serverCachePresetHighHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'高命中'**
+  String get serverCachePresetHighHit;
+
+  /// No description provided for @serverCachePresetStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准'**
+  String get serverCachePresetStandard;
+
+  /// No description provided for @serverNavOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'概览'**
+  String get serverNavOverview;
+
+  /// No description provided for @serverPortInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入数字'**
+  String get serverPortInvalid;
+
+  /// No description provided for @serverPortRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'范围 {min}–{max}'**
+  String serverPortRange(Object max, Object min);
+
+  /// No description provided for @serverPortChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口已改为 {port}，重启服务后生效'**
+  String serverPortChanged(Object port);
+
+  /// No description provided for @serverResetConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认重置'**
+  String get serverResetConfirm;
+
+  /// No description provided for @serverResetStatsConfirmBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空本次运行的全部统计数据，确认继续吗？'**
+  String get serverResetStatsConfirmBody;
+
+  /// No description provided for @serverStatsReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行统计已重置'**
+  String get serverStatsReset;
+
+  /// No description provided for @serverOverviewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听 · 服务器模式'**
+  String get serverOverviewTitle;
+
+  /// No description provided for @serverSwitchMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换工作模式'**
+  String get serverSwitchMode;
+
+  /// No description provided for @serverChangePort.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改监听端口'**
+  String get serverChangePort;
+
+  /// No description provided for @serverCurrentUpstreamCard.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前上游'**
+  String get serverCurrentUpstreamCard;
+
+  /// No description provided for @serverLanAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'局域网接入'**
+  String get serverLanAccess;
+
+  /// No description provided for @serverLanBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'把同网段设备的 DNS 指向上面这个地址即可；端口只在启动时绑定，改动后需要重启服务。'**
+  String get serverLanBody;
+
+  /// No description provided for @serverNoNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接网络'**
+  String get serverNoNetwork;
+
+  /// No description provided for @serverLanConnectHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'连上 Wi-Fi 或以太网后这里会显示可用地址'**
+  String get serverLanConnectHint;
+
+  /// No description provided for @serverLanPointHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'将局域网其他设备的 DNS 指向此地址'**
+  String get serverLanPointHint;
+
+  /// No description provided for @serverCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制 {text}'**
+  String serverCopied(Object text);
+
+  /// No description provided for @serverServiceStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务状态'**
+  String get serverServiceStatus;
+
+  /// No description provided for @serverTotalQueries.
+  ///
+  /// In zh, this message translates to:
+  /// **'总查询量'**
+  String get serverTotalQueries;
+
+  /// No description provided for @serverCacheHits.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存命中'**
+  String get serverCacheHits;
+
+  /// No description provided for @serverBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拦截'**
+  String get serverBlocked;
+
+  /// No description provided for @serverAverageLatency.
+  ///
+  /// In zh, this message translates to:
+  /// **'平均时延'**
+  String get serverAverageLatency;
+
+  /// No description provided for @serverUptime.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行时长'**
+  String get serverUptime;
+
+  /// No description provided for @serverResetStatsBodyShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空本次运行的全部计数，不清规则与缓存'**
+  String get serverResetStatsBodyShort;
+
+  /// No description provided for @serverModeSettingsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存、规则、后台稳定性与运行模式'**
+  String get serverModeSettingsBody;
+
+  /// No description provided for @serverModeNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器模式不建立 VPN 隧道：它只在本机监听 DNS 端口，因此可以与其它 VPN 共存，也不占用系统的 VPN 槽位；本机应用的查询不会自动经过该服务。'**
+  String get serverModeNote;
+
+  /// No description provided for @serverBusyStarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动中'**
+  String get serverBusyStarting;
+
+  /// No description provided for @serverBusyStopping.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止中'**
+  String get serverBusyStopping;
+
+  /// No description provided for @serverRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止'**
+  String get serverRunning;
+
+  /// No description provided for @serverStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启'**
+  String get serverStopped;
+
+  /// No description provided for @serverListening.
+  ///
+  /// In zh, this message translates to:
+  /// **'监听 0.0.0.0:{port}'**
+  String serverListening(Object port);
+
+  /// No description provided for @serverStatusStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器模式已停止'**
+  String get serverStatusStopped;
+
+  /// No description provided for @serverStatusStarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在启动服务...'**
+  String get serverStatusStarting;
+
+  /// No description provided for @serverStatusRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器模式运行中'**
+  String get serverStatusRunning;
+
+  /// No description provided for @serverStatusStopping.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在停止服务...'**
+  String get serverStatusStopping;
+
+  /// No description provided for @serverStatusErrorText.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务异常：端口可能已被占用'**
+  String get serverStatusErrorText;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

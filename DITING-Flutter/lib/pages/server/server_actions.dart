@@ -1,6 +1,7 @@
 /// Port change and stats reset shared by the three server tabs, so failure copy cannot drift.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -15,7 +16,7 @@ Future<int?> promptServerPort(BuildContext context, int current) async {
   final result = await showFloatingDialog<String>(
     context: Navigator.of(context, rootNavigator: true).context,
     child: InputDialog(
-      title: '本地监听端口',
+      title: context.l10n.serverListenPort,
       value: '$current',
       suffixText: '',
       hintText: '$serverPortMin–$serverPortMax',
@@ -25,10 +26,13 @@ Future<int?> promptServerPort(BuildContext context, int current) async {
       validator: (value) {
         final parsed = int.tryParse(value?.trim() ?? '');
         if (parsed == null) {
-          return '请输入数字';
+          return context.l10n.serverPortInvalid;
         }
         if (parsed < serverPortMin || parsed > serverPortMax) {
-          return '范围 $serverPortMin–$serverPortMax';
+          return currentL10n.serverPortRange(
+            '$serverPortMin',
+            '$serverPortMax',
+          );
         }
         return null;
       },
@@ -45,7 +49,7 @@ Future<void> editServerPort(BuildContext context, WidgetRef ref) async {
   }
   ref.read(serverPortProvider.notifier).set(value);
   if (context.mounted) {
-    showServerHint(context, '端口已改为 $value，重启服务后生效');
+    showServerHint(context, context.l10n.serverPortChanged('$value'));
   }
 }
 
@@ -56,25 +60,25 @@ Future<void> confirmResetServerStats(
   final confirmed = await showFloatingDialog<bool>(
     context: context,
     child: CommonDialog(
-      title: '重置运行统计',
+      title: context.l10n.serverResetStats,
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('取消'),
+          child: Text(context.l10n.configCancel),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('确认重置'),
+          child: Text(context.l10n.serverResetConfirm),
         ),
       ],
-      child: const Text('将清空本次运行的全部统计数据，确认继续吗？'),
+      child: Text(context.l10n.serverResetStatsConfirmBody),
     ),
   );
   if (confirmed != true || !context.mounted) {
     return;
   }
   ref.read(serviceStatsProvider.notifier).reset();
-  showServerHint(context, '运行统计已重置');
+  showServerHint(context, context.l10n.serverStatsReset);
 }
 
 void showServerHint(BuildContext context, String message) {

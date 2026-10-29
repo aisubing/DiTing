@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/pages/server/server_actions.dart';
 import 'package:diting/router.dart';
@@ -35,16 +36,16 @@ class ServerOverviewPage extends ConsumerWidget {
     final running = status == ServerStatus.running;
     final localIpv4 = network.asData?.value.localIpv4 ?? '';
     return CommonScaffold(
-      title: '谛听 · 服务器模式',
+      title: context.l10n.serverOverviewTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.swap,
-          tooltip: '切换工作模式',
+          tooltip: context.l10n.serverSwitchMode,
           onPressed: () => context.push(Routes.modeSelect),
         ),
         IconButtonData(
           glyph: AppGlyphs.sliders,
-          tooltip: '修改监听端口',
+          tooltip: context.l10n.serverChangePort,
           onPressed: () => editServerPort(context, ref),
         ),
       ],
@@ -54,7 +55,7 @@ class ServerOverviewPage extends ConsumerWidget {
           _StatusText(status: status),
           const SizedBox(height: 8),
           generateSection(
-            title: '当前上游',
+            title: context.l10n.serverCurrentUpstreamCard,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.dns,
@@ -66,24 +67,23 @@ class ServerOverviewPage extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           generateSection(
-            title: '局域网接入',
+            title: context.l10n.serverLanAccess,
             // The port binds at startup only: changing it without a restart shows an
             // address nobody listens on and LAN devices time out.
             footer:
-                '把同网段设备的 DNS 指向上面这个地址即可；'
-                '端口只在启动时绑定，改动后需要重启服务。',
+                context.l10n.serverLanBody,
             items: [
               ListItem(
                 title: Text(
-                  localIpv4.isEmpty ? '未连接网络' : '$localIpv4:$port',
+                  localIpv4.isEmpty ? context.l10n.serverNoNetwork : '$localIpv4:$port',
                   style: context.listTitleStyle.copyWith(
                     fontFamily: appMonospaceFontFamily,
                   ),
                 ),
                 subtitle: Text(
                   localIpv4.isEmpty
-                      ? '连上 Wi-Fi 或以太网后这里会显示可用地址'
-                      : '将局域网其他设备的 DNS 指向此地址',
+                      ? context.l10n.serverLanConnectHint
+                      : context.l10n.serverLanPointHint,
                 ),
                 leading: GlyphIcon(
                   localIpv4.isEmpty ? AppGlyphs.wifiOff : AppGlyphs.wifi,
@@ -104,13 +104,16 @@ class ServerOverviewPage extends ConsumerWidget {
                         if (!context.mounted) {
                           return;
                         }
-                        showServerHint(context, '已复制 $address');
+                        showServerHint(
+                          context,
+                          context.l10n.serverCopied(address),
+                        );
                       },
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const ListHeader(title: '服务状态'),
+          ListHeader(title: context.l10n.serverServiceStatus),
           // The stat strip sits directly in `PageBody` without `generateSection`, so it
           // supplies its own horizontal padding.
           Padding(
@@ -119,19 +122,19 @@ class ServerOverviewPage extends ConsumerWidget {
               padding: EdgeInsets.zero,
               child: StatStrip(
                 stats: [
-                  StatItem(label: '总查询量', value: '${stats.queries}'),
+                  StatItem(label: context.l10n.serverTotalQueries, value: '${stats.queries}'),
                   StatItem(
-                    label: '缓存命中',
+                    label: context.l10n.serverCacheHits,
                     value: '${stats.cacheHits}',
                     color: context.colorScheme.primary,
                   ),
                   StatItem(
-                    label: '已拦截',
+                    label: context.l10n.serverBlocked,
                     value: '${stats.blocked}',
                     color: context.colorScheme.error,
                   ),
-                  const StatItem(
-                    label: '平均时延',
+                  StatItem(
+                    label: context.l10n.serverAverageLatency,
                     // The legacy version read `DnsModeStats.latencyMs`, which
                     // `EngineStats.snapshot` lacks, so this
                     // shows a dash rather than 0 or a mock number.
@@ -139,7 +142,7 @@ class ServerOverviewPage extends ConsumerWidget {
                     unit: 'ms',
                   ),
                   StatItem(
-                    label: '运行时长',
+                    label: context.l10n.serverUptime,
                     value: running ? stats.uptimeLabel : '--',
                   ),
                 ],
@@ -151,23 +154,21 @@ class ServerOverviewPage extends ConsumerWidget {
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.reset,
-                title: '重置运行统计',
-                subtitle: '清空本次运行的全部计数，不清规则与缓存',
+                title: context.l10n.serverResetStats,
+                subtitle: context.l10n.serverResetStatsBodyShort,
                 onPressed: () => confirmResetServerStats(context, ref),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.settings,
-                title: '模式设置',
-                subtitle: '缓存、规则、后台稳定性与运行模式',
+                title: context.l10n.serverModeSettings,
+                subtitle: context.l10n.serverModeSettingsBody,
                 onPressed: onOpenSettings,
               ),
             ],
           ),
-          const ListFooter(
+          ListFooter(
             text:
-                '服务器模式不建立 VPN 隧道：它只在本机监听 DNS 端口，'
-                '因此可以与其它 VPN 共存，也不占用系统的 VPN 槽位；'
-                '本机应用的查询不会自动经过该服务。',
+                context.l10n.serverModeNote,
           ),
         ],
       ),
@@ -192,13 +193,13 @@ class _PowerArea extends ConsumerWidget {
         const SizedBox(height: 4),
         HomePowerButton(
           state: _powerStateOf(status),
-          busyLabel: busy ? '启动中' : '停止中',
-          runningLabel: '停止',
-          stoppedLabel: '开启',
+          busyLabel: busy ? context.l10n.serverBusyStarting : context.l10n.serverBusyStopping,
+          runningLabel: context.l10n.serverRunning,
+          stoppedLabel: context.l10n.serverStopped,
           onPressed: () => ref.read(serverStatusProvider.notifier).toggle(),
         ),
         Text(
-          '监听 0.0.0.0:$port',
+          context.l10n.serverListening('$port'),
           style: context.listCaptionStyle.copyWith(
             fontFamily: appMonospaceFontFamily,
           ),
@@ -227,11 +228,11 @@ class _StatusText extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final (text, color) = switch (status) {
-      ServerStatus.stopped => ('服务器模式已停止', colorScheme.onSurfaceVariant),
-      ServerStatus.starting => ('正在启动服务...', colorScheme.primary),
-      ServerStatus.running => ('服务器模式运行中', colorScheme.primary),
-      ServerStatus.stopping => ('正在停止服务...', colorScheme.onSurfaceVariant),
-      ServerStatus.error => ('服务异常：端口可能已被占用', colorScheme.error),
+      ServerStatus.stopped => (context.l10n.serverStatusStopped, colorScheme.onSurfaceVariant),
+      ServerStatus.starting => (context.l10n.serverStatusStarting, colorScheme.primary),
+      ServerStatus.running => (context.l10n.serverStatusRunning, colorScheme.primary),
+      ServerStatus.stopping => (context.l10n.serverStatusStopping, colorScheme.onSurfaceVariant),
+      ServerStatus.error => (context.l10n.serverStatusErrorText, colorScheme.error),
     };
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),

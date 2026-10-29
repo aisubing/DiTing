@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/server/server_overview_page.dart';
 import 'package:diting/pages/server/server_settings_page.dart';
 import 'package:diting/pages/server/server_upstream_page.dart';
@@ -8,7 +9,7 @@ import 'package:material_ui/material_ui.dart';
 /// the whole `AppShell`, so the six-item dock never shows. `IndexedStack` gives upstream
 /// keep-alive.
 class ServerModeShell extends StatefulWidget {
-  const ServerModeShell({super.key});
+  ServerModeShell({super.key});
 
   @override
   State<ServerModeShell> createState() => _ServerModeShellState();
@@ -17,10 +18,10 @@ class ServerModeShell extends StatefulWidget {
 class _ServerModeShellState extends State<ServerModeShell> {
   int _index = 0;
 
-  static const _destinations = <NavigationDockDestination>[
-    NavigationDockDestination(glyph: AppGlyphs.dashboard, label: '概览'),
-    NavigationDockDestination(glyph: AppGlyphs.dns, label: '上游服务器'),
-    NavigationDockDestination(glyph: AppGlyphs.settings, label: '模式设置'),
+  List<NavigationDockDestination> _destinations(AppL10n l10n) => [
+    NavigationDockDestination(glyph: AppGlyphs.dashboard, label: l10n.serverNavOverview),
+    NavigationDockDestination(glyph: AppGlyphs.dns, label: l10n.serverUpstreamTitle),
+    NavigationDockDestination(glyph: AppGlyphs.settings, label: l10n.serverModeSettings),
   ];
 
   void _select(int index) {
@@ -54,7 +55,7 @@ class _ServerModeShellState extends State<ServerModeShell> {
       // No `SafeArea`, for the same reason as the main shell: the dock folds the system bottom
       // inset into its own margin, and padding it here would eat the reserved content gap.
       bottomNavigationBar: NavigationDock(
-        destinations: _destinations,
+        destinations: _destinations(context.l10n),
         selectedIndex: _index,
         onSelected: _select,
       ),

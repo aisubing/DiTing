@@ -5365,4 +5365,376 @@ class AppL10nEn extends AppL10n {
   String odDeleteSsidTooltip(Object ssid) {
     return 'Delete $ssid';
   }
+
+  @override
+  String serverSwitched(Object name) {
+    return 'Switched to $name; restart the service to apply';
+  }
+
+  @override
+  String serverSelected(Object name) {
+    return 'Selected $name';
+  }
+
+  @override
+  String serverAdded(Object name) {
+    return 'Added $name';
+  }
+
+  @override
+  String serverSaved(Object name) {
+    return 'Saved $name';
+  }
+
+  @override
+  String serverDeleteConfirm(Object name) {
+    return 'Delete $name?';
+  }
+
+  @override
+  String get serverDeleteBody =>
+      'If it is in use, the first built-in provider is used after deletion.';
+
+  @override
+  String serverDeleted(Object name) {
+    return 'Deleted $name';
+  }
+
+  @override
+  String get serverUpstreamTitle => 'Upstream servers';
+
+  @override
+  String get serverAddCustom => 'Add a custom provider';
+
+  @override
+  String serverCurrentUpstream(Object name, Object protocol) {
+    return 'Currently resolving DNS: ($protocol) $name';
+  }
+
+  @override
+  String get serverBuiltinProviders => 'Built-in DNS providers';
+
+  @override
+  String get serverNoBuiltin => 'No built-in providers';
+
+  @override
+  String get serverCustomProviders => 'Custom DNS providers';
+
+  @override
+  String get serverNoCustom => 'No custom providers';
+
+  @override
+  String get serverNoCustomBody =>
+      'Tap the plus button to add a DoH / DoT / plaintext DNS upstream';
+
+  @override
+  String get serverUpstreamFooter =>
+      'Server mode uses a single upstream; switch to normal or express mode for racing. Built-in providers are maintained by the app and can only be selected; long-press a custom one to edit or delete it.';
+
+  @override
+  String serverEditName(Object name) {
+    return 'Edit $name';
+  }
+
+  @override
+  String serverDeleteName(Object name) {
+    return 'Delete $name';
+  }
+
+  @override
+  String get serverEditCustom => 'Edit custom provider';
+
+  @override
+  String get serverSave => 'Save';
+
+  @override
+  String get serverName => 'Name';
+
+  @override
+  String get serverDohAddress => 'DoH address';
+
+  @override
+  String get serverAddress => 'Server address';
+
+  @override
+  String get serverDohPrefix => 'Must start with https://';
+
+  @override
+  String get serverAddressHint => 'IPv4 or IPv6; IPv6 can be entered as [::1]';
+
+  @override
+  String get serverPort => 'Port';
+
+  @override
+  String get serverPortHint => 'DNS usually uses 53, DoT usually 853';
+
+  @override
+  String get serverUnavailable => 'Unavailable on this device';
+
+  @override
+  String get serverBatteryJoined =>
+      'Added to the battery optimisation allowlist';
+
+  @override
+  String get serverBatteryNotJoined =>
+      'Not in the battery optimisation allowlist yet';
+
+  @override
+  String get serverClearCache => 'Clear cache';
+
+  @override
+  String get serverClear => 'Clear';
+
+  @override
+  String get serverClearCacheBody =>
+      'Cached answers will be cleared, so the next lookup goes upstream again.';
+
+  @override
+  String get serverCacheCleared => 'Cache cleared';
+
+  @override
+  String get serverCacheClearFailed =>
+      'Clearing failed: start the DNS service first';
+
+  @override
+  String serverCacheOn(Object preset) {
+    return '$preset · cache hits no longer go upstream';
+  }
+
+  @override
+  String get serverCacheOff => 'Off · every lookup goes to the upstream DNS';
+
+  @override
+  String get serverModeSettings => 'Mode settings';
+
+  @override
+  String get serverProxySettings => 'Proxy and resolution';
+
+  @override
+  String get serverCacheSettings => 'Cache settings';
+
+  @override
+  String get serverRuleControl => 'Rule control';
+
+  @override
+  String get serverRuleControlOn =>
+      'On · matched rules return the blocking policy';
+
+  @override
+  String get serverRuleControlOff =>
+      'Off · a separate filter rule library is used';
+
+  @override
+  String get serverListenPort => 'Local listen port';
+
+  @override
+  String get serverListenPortBody =>
+      'The port the DNS service listens on; the default is 1053';
+
+  @override
+  String get serverRuleManagement => 'Rule management';
+
+  @override
+  String get serverBlocklist => 'Blocklist';
+
+  @override
+  String get serverBlocklistBody =>
+      'Manage domain blocking rules in a separate library';
+
+  @override
+  String get serverAllowlist => 'Allowlist';
+
+  @override
+  String get serverAllowlistBody =>
+      'Manage domain allow rules in a separate library';
+
+  @override
+  String get serverHosts => 'Hosts overrides';
+
+  @override
+  String get serverHostsBody =>
+      'Resolve chosen domains to a configured IP or CNAME';
+
+  @override
+  String get serverRulesFooter =>
+      'These three tables only affect the server mode rule library and never override normal mode rules.';
+
+  @override
+  String get serverDataReset => 'Data and reset';
+
+  @override
+  String get serverResetStats => 'Reset runtime statistics';
+
+  @override
+  String get serverResetStatsBody => 'Clear the statistics for this run';
+
+  @override
+  String get serverBackground => 'Background stability';
+
+  @override
+  String get serverBackgroundBody =>
+      'The system freezes apps outside the power-saving allowlist; add this app to it so the DNS service keeps answering LAN queries with the screen off.';
+
+  @override
+  String get serverRunMode => 'Run mode';
+
+  @override
+  String get serverWizard => 'Setup guide';
+
+  @override
+  String get serverWizardBody =>
+      'See how server mode works, how to configure the LAN and how to get ready';
+
+  @override
+  String get serverReselectMode => 'Choose the work mode again';
+
+  @override
+  String get serverReselectModeBody =>
+      'Review every work mode and choose again';
+
+  @override
+  String get serverBatteryIgnored => 'Battery optimisation ignored';
+
+  @override
+  String get serverBatteryIgnoredShort => 'Ignored';
+
+  @override
+  String get serverBatteryKeepAlive =>
+      'Keeps the DNS service running in the background';
+
+  @override
+  String get serverIgnoreBattery => 'Ignore battery optimisation';
+
+  @override
+  String get serverCachePresetConservative => 'Conservative';
+
+  @override
+  String get serverCachePresetHighHit => 'High hit rate';
+
+  @override
+  String get serverCachePresetStandard => 'Standard';
+
+  @override
+  String get serverNavOverview => 'Overview';
+
+  @override
+  String get serverPortInvalid => 'Enter a number';
+
+  @override
+  String serverPortRange(Object max, Object min) {
+    return 'Range $min–$max';
+  }
+
+  @override
+  String serverPortChanged(Object port) {
+    return 'The port is now $port; restart the service to apply';
+  }
+
+  @override
+  String get serverResetConfirm => 'Reset';
+
+  @override
+  String get serverResetStatsConfirmBody =>
+      'All statistics for this run will be cleared. Continue?';
+
+  @override
+  String get serverStatsReset => 'Runtime statistics reset';
+
+  @override
+  String get serverOverviewTitle => 'Diting · Server mode';
+
+  @override
+  String get serverSwitchMode => 'Switch work mode';
+
+  @override
+  String get serverChangePort => 'Change the listen port';
+
+  @override
+  String get serverCurrentUpstreamCard => 'Current upstream';
+
+  @override
+  String get serverLanAccess => 'LAN access';
+
+  @override
+  String get serverLanBody =>
+      'Point devices on the same subnet at the address above; the port is bound only at startup, so restart the service after changing it.';
+
+  @override
+  String get serverNoNetwork => 'No network';
+
+  @override
+  String get serverLanConnectHint =>
+      'An available address appears here once you are on Wi-Fi or Ethernet';
+
+  @override
+  String get serverLanPointHint =>
+      'Point other LAN devices\' DNS at this address';
+
+  @override
+  String serverCopied(Object text) {
+    return 'Copied $text';
+  }
+
+  @override
+  String get serverServiceStatus => 'Service status';
+
+  @override
+  String get serverTotalQueries => 'Total queries';
+
+  @override
+  String get serverCacheHits => 'Cache hits';
+
+  @override
+  String get serverBlocked => 'Blocked';
+
+  @override
+  String get serverAverageLatency => 'Average latency';
+
+  @override
+  String get serverUptime => 'Uptime';
+
+  @override
+  String get serverResetStatsBodyShort =>
+      'Clear every counter for this run without touching rules or cache';
+
+  @override
+  String get serverModeSettingsBody =>
+      'Cache, rules, background stability and run mode';
+
+  @override
+  String get serverModeNote =>
+      'Server mode creates no VPN tunnel: it only listens on a DNS port locally, so it coexists with other VPNs and takes no VPN slot; this device\'s own app queries do not go through it automatically.';
+
+  @override
+  String get serverBusyStarting => 'Starting';
+
+  @override
+  String get serverBusyStopping => 'Stopping';
+
+  @override
+  String get serverRunning => 'Stop';
+
+  @override
+  String get serverStopped => 'Start';
+
+  @override
+  String serverListening(Object port) {
+    return 'Listening on 0.0.0.0:$port';
+  }
+
+  @override
+  String get serverStatusStopped => 'Server mode is stopped';
+
+  @override
+  String get serverStatusStarting => 'Starting the service...';
+
+  @override
+  String get serverStatusRunning => 'Server mode is running';
+
+  @override
+  String get serverStatusStopping => 'Stopping the service...';
+
+  @override
+  String get serverStatusErrorText =>
+      'Service error: the port may already be in use';
 }

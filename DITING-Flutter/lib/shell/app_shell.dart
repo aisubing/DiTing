@@ -23,7 +23,7 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(workModeProvider);
     if (mode == AppWorkMode.server) {
-      return const ServerModeShell();
+      return ServerModeShell();
     }
     final destinations = ref.watch(bottomBarProvider);
     final haptic = ref.watch(hapticProvider);

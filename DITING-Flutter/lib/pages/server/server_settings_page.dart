@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/server/server_actions.dart';
 import 'package:diting/pages/server/server_platform_probe.dart';
@@ -49,12 +50,12 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     }
     setState(() => _battery = state);
     if (state == BatteryOptimizationState.unavailable) {
-      showServerHint(context, '当前设备不可用');
+      showServerHint(context, context.l10n.serverUnavailable);
       return;
     }
     showServerHint(
       context,
-      state == BatteryOptimizationState.ignored ? '已加入电池优化白名单' : '尚未加入电池优化白名单',
+      state == BatteryOptimizationState.ignored ? context.l10n.serverBatteryJoined : context.l10n.serverBatteryNotJoined,
     );
   }
 
@@ -62,19 +63,19 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '清空缓存',
+        title: context.l10n.serverClearCache,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.configCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('清空'),
+            child: Text(context.l10n.serverClear),
           ),
         ],
-        child: const Text('将清空本机已缓存的解析结果，下一次查询会重新向上游请求。'),
+        child: Text(context.l10n.serverClearCacheBody),
       ),
     );
     if (confirmed != true || !mounted) {
@@ -88,7 +89,7 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     setState(() => _clearingCache = false);
     // Only two causes: the service is not running (nothing to clear) or the engine threw.
     // Both mean "not cleared", so the hint is actionable rather than "not wired yet".
-    showServerHint(context, cleared ? '缓存已清空' : '清空失败：请先启动解析服务再试');
+    showServerHint(context, cleared ? context.l10n.serverCacheCleared : context.l10n.serverCacheClearFailed);
   }
 
   @override
@@ -98,18 +99,20 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     final cacheEnabled = settings.serverCacheEnabled;
     final adBlockEnabled = settings.serverAdBlockEnabled;
     final cacheSummary = cacheEnabled
-        ? '${_cachePresetLabel(settings.serverCachePresetRaw)} · 命中缓存的查询不再请求上游'
-        : '已关闭 · 每次解析都请求上游 DNS';
+        ? context.l10n.serverCacheOn(
+            _cachePresetLabel(settings.serverCachePresetRaw, context.l10n),
+          )
+        : context.l10n.serverCacheOff;
     return CommonScaffold(
-      title: '模式设置',
+      title: context.l10n.serverModeSettings,
       body: PageBody(
         children: [
           generateSection(
-            title: '代理与解析设置',
+            title: context.l10n.serverProxySettings,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.memory,
-                title: '缓存设置',
+                title: context.l10n.serverCacheSettings,
                 subtitle: cacheSummary,
                 // Server-mode cache keys live in `diting_dns_mode_prefs`, a different set
                 // from the normal-mode cache page, so this entry only navigates.
@@ -117,15 +120,15 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
               ),
               NavEntryRow(
                 glyph: AppGlyphs.rules,
-                title: '规则控制',
+                title: context.l10n.serverRuleControl,
                 subtitle: adBlockEnabled
-                    ? '已开启 · 命中规则按拦截策略返回'
-                    : '已关闭 · 使用独立的过滤规则库',
+                    ? context.l10n.serverRuleControlOn
+                    : context.l10n.serverRuleControlOff,
                 onPressed: () => context.push(HubPaths.ruleControl),
               ),
               ListItem(
-                title: const Text('本地监听端口'),
-                subtitle: const Text('DNS 服务在本机监听的端口，默认 1053'),
+                title: Text(context.l10n.serverListenPort),
+                subtitle: Text(context.l10n.serverListenPortBody),
                 leading: const GlyphIcon(AppGlyphs.speed),
                 trailing: Text(
                   '$port',
@@ -139,72 +142,71 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
           ),
           const SizedBox(height: 6),
           generateSection(
-            title: '规则管理',
+            title: context.l10n.serverRuleManagement,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.block,
-                title: '黑名单',
-                subtitle: '管理域名屏蔽规则，独立规则库',
+                title: context.l10n.serverBlocklist,
+                subtitle: context.l10n.serverBlocklistBody,
                 onPressed: () => context.push(Routes.rulesOf('block')),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.verified,
-                title: '白名单',
-                subtitle: '管理域名放行规则，独立规则库',
+                title: context.l10n.serverAllowlist,
+                subtitle: context.l10n.serverAllowlistBody,
                 onPressed: () => context.push(Routes.rulesOf('allow')),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.dns,
-                title: 'Hosts 覆写',
-                subtitle: '将指定域名解析到配置的 IP 或 CNAME',
+                title: context.l10n.serverHosts,
+                subtitle: context.l10n.serverHostsBody,
                 // The legacy `REWRITELIST_MANAGEMENT` is the rewrite table; of the three
                 // rule kinds here it maps to `rewrite`.
                 onPressed: () => context.push(Routes.rulesOf('rewrite')),
               ),
             ],
-            footer: '这三张表只影响服务器模式的独立规则库，与普通模式的规则互不覆盖。',
+            footer: context.l10n.serverRulesFooter,
           ),
           const SizedBox(height: 6),
           generateSection(
-            title: '数据与重置',
+            title: context.l10n.serverDataReset,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.broom,
-                title: '清空缓存',
-                subtitle: '移除已缓存的解析结果，下一次查询重新向上游请求',
+                title: context.l10n.serverClearCache,
+                subtitle: context.l10n.serverClearCacheBody,
                 busy: _clearingCache,
                 onPressed: _clearingCache ? null : _clearCache,
               ),
               NavEntryRow(
                 glyph: AppGlyphs.reset,
-                title: '重置运行统计',
-                subtitle: '清空本次运行的统计数据',
+                title: context.l10n.serverResetStats,
+                subtitle: context.l10n.serverResetStatsBody,
                 onPressed: () => confirmResetServerStats(context, ref),
               ),
             ],
           ),
           const SizedBox(height: 6),
           generateSection(
-            title: '后台稳定性',
+            title: context.l10n.serverBackground,
             items: [_batteryRow(context)],
             footer:
-                '系统会在后台冻结省电名单之外的应用；把它加入白名单，'
-                'DNS 服务才能在息屏后继续应答局域网查询。',
+                context.l10n.serverBackgroundBody,
           ),
           const SizedBox(height: 6),
           generateSection(
-            title: '运行模式',
+            title: context.l10n.serverRunMode,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.info,
-                title: '使用向导',
-                subtitle: '查看服务器模式架构原理、局域网配置与就绪指引',
+                title: context.l10n.serverWizard,
+                subtitle: context.l10n.serverWizardBody,
                 onPressed: () => context.push(Routes.modeOnboarding),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.sliders,
-                title: '重新选择工作模式',
-                subtitle: '浏览所有工作模式详情并重新选择',
+                title: context.l10n.serverReselectMode,
+                subtitle: context.l10n.serverReselectModeBody,
                 onPressed: () => context.push(Routes.modeSelect),
               ),
             ],
@@ -219,12 +221,12 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
   Widget _batteryRow(BuildContext context) {
     final colorScheme = context.colorScheme;
     final (subtitle, value, enabled) = switch (_battery) {
-      BatteryOptimizationState.ignored => ('已忽略电池优化', '已忽略', false),
-      BatteryOptimizationState.notIgnored => ('保持 DNS 服务在后台稳定运行', null, true),
-      BatteryOptimizationState.unavailable => ('当前设备不可用', null, false),
+      BatteryOptimizationState.ignored => (context.l10n.serverBatteryIgnored, context.l10n.serverBatteryIgnoredShort, false),
+      BatteryOptimizationState.notIgnored => (context.l10n.serverBatteryKeepAlive, null, true),
+      BatteryOptimizationState.unavailable => (context.l10n.serverUnavailable, null, false),
     };
     return ListItem(
-      title: const Text('忽略电池优化'),
+      title: Text(context.l10n.serverIgnoreBattery),
       subtitle: Text(subtitle),
       leading: GlyphIcon(
         AppGlyphs.bolt,
@@ -244,9 +246,9 @@ class _ServerSettingsPageState extends ConsumerState<ServerSettingsPage> {
     );
   }
 
-  static String _cachePresetLabel(String raw) => switch (raw) {
-    'conservative' => '保守',
-    'high_hit_rate' => '高命中',
-    _ => '标准',
+  static String _cachePresetLabel(String raw, AppL10n l10n) => switch (raw) {
+    'conservative' => l10n.serverCachePresetConservative,
+    'high_hit_rate' => l10n.serverCachePresetHighHit,
+    _ => l10n.serverCachePresetStandard,
   };
 }

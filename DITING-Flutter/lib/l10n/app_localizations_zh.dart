@@ -5082,4 +5082,353 @@ class AppL10nZh extends AppL10n {
   String odDeleteSsidTooltip(Object ssid) {
     return '删除 $ssid';
   }
+
+  @override
+  String serverSwitched(Object name) {
+    return '已切换到 $name，重启服务后生效';
+  }
+
+  @override
+  String serverSelected(Object name) {
+    return '已选择 $name';
+  }
+
+  @override
+  String serverAdded(Object name) {
+    return '已添加 $name';
+  }
+
+  @override
+  String serverSaved(Object name) {
+    return '已保存 $name';
+  }
+
+  @override
+  String serverDeleteConfirm(Object name) {
+    return '删除 $name？';
+  }
+
+  @override
+  String get serverDeleteBody => '如果它正被使用，删除后会回落到第一个内置服务商。';
+
+  @override
+  String serverDeleted(Object name) {
+    return '已删除 $name';
+  }
+
+  @override
+  String get serverUpstreamTitle => '上游服务器';
+
+  @override
+  String get serverAddCustom => '添加自定义服务商';
+
+  @override
+  String serverCurrentUpstream(Object name, Object protocol) {
+    return '当前用于解析 DNS：($protocol) $name';
+  }
+
+  @override
+  String get serverBuiltinProviders => '内置 DNS 服务商';
+
+  @override
+  String get serverNoBuiltin => '暂无内置服务商';
+
+  @override
+  String get serverCustomProviders => '自定义 DNS 服务商';
+
+  @override
+  String get serverNoCustom => '暂无自定义服务商';
+
+  @override
+  String get serverNoCustomBody => '点右上角加号添加 DoH / DoT / 明文 DNS 上游';
+
+  @override
+  String get serverUpstreamFooter =>
+      '服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。内置服务商由应用维护，只能切换；自定义项长按可编辑或删除。';
+
+  @override
+  String serverEditName(Object name) {
+    return '编辑 $name';
+  }
+
+  @override
+  String serverDeleteName(Object name) {
+    return '删除 $name';
+  }
+
+  @override
+  String get serverEditCustom => '编辑自定义服务商';
+
+  @override
+  String get serverSave => '保存';
+
+  @override
+  String get serverName => '名称';
+
+  @override
+  String get serverDohAddress => 'DoH 地址';
+
+  @override
+  String get serverAddress => '服务器地址';
+
+  @override
+  String get serverDohPrefix => '必须以 https:// 开头';
+
+  @override
+  String get serverAddressHint => 'IPv4 / IPv6 均可；IPv6 可直接填 [::1]';
+
+  @override
+  String get serverPort => '端口';
+
+  @override
+  String get serverPortHint => 'DNS 通常 53，DoT 通常 853';
+
+  @override
+  String get serverUnavailable => '当前设备不可用';
+
+  @override
+  String get serverBatteryJoined => '已加入电池优化白名单';
+
+  @override
+  String get serverBatteryNotJoined => '尚未加入电池优化白名单';
+
+  @override
+  String get serverClearCache => '清空缓存';
+
+  @override
+  String get serverClear => '清空';
+
+  @override
+  String get serverClearCacheBody => '将清空本机已缓存的解析结果，下一次查询会重新向上游请求。';
+
+  @override
+  String get serverCacheCleared => '缓存已清空';
+
+  @override
+  String get serverCacheClearFailed => '清空失败：请先启动解析服务再试';
+
+  @override
+  String serverCacheOn(Object preset) {
+    return '$preset · 命中缓存的查询不再请求上游';
+  }
+
+  @override
+  String get serverCacheOff => '已关闭 · 每次解析都请求上游 DNS';
+
+  @override
+  String get serverModeSettings => '模式设置';
+
+  @override
+  String get serverProxySettings => '代理与解析设置';
+
+  @override
+  String get serverCacheSettings => '缓存设置';
+
+  @override
+  String get serverRuleControl => '规则控制';
+
+  @override
+  String get serverRuleControlOn => '已开启 · 命中规则按拦截策略返回';
+
+  @override
+  String get serverRuleControlOff => '已关闭 · 使用独立的过滤规则库';
+
+  @override
+  String get serverListenPort => '本地监听端口';
+
+  @override
+  String get serverListenPortBody => 'DNS 服务在本机监听的端口，默认 1053';
+
+  @override
+  String get serverRuleManagement => '规则管理';
+
+  @override
+  String get serverBlocklist => '黑名单';
+
+  @override
+  String get serverBlocklistBody => '管理域名屏蔽规则，独立规则库';
+
+  @override
+  String get serverAllowlist => '白名单';
+
+  @override
+  String get serverAllowlistBody => '管理域名放行规则，独立规则库';
+
+  @override
+  String get serverHosts => 'Hosts 覆写';
+
+  @override
+  String get serverHostsBody => '将指定域名解析到配置的 IP 或 CNAME';
+
+  @override
+  String get serverRulesFooter => '这三张表只影响服务器模式的独立规则库，与普通模式的规则互不覆盖。';
+
+  @override
+  String get serverDataReset => '数据与重置';
+
+  @override
+  String get serverResetStats => '重置运行统计';
+
+  @override
+  String get serverResetStatsBody => '清空本次运行的统计数据';
+
+  @override
+  String get serverBackground => '后台稳定性';
+
+  @override
+  String get serverBackgroundBody =>
+      '系统会在后台冻结省电名单之外的应用；把它加入白名单，DNS 服务才能在息屏后继续应答局域网查询。';
+
+  @override
+  String get serverRunMode => '运行模式';
+
+  @override
+  String get serverWizard => '使用向导';
+
+  @override
+  String get serverWizardBody => '查看服务器模式架构原理、局域网配置与就绪指引';
+
+  @override
+  String get serverReselectMode => '重新选择工作模式';
+
+  @override
+  String get serverReselectModeBody => '浏览所有工作模式详情并重新选择';
+
+  @override
+  String get serverBatteryIgnored => '已忽略电池优化';
+
+  @override
+  String get serverBatteryIgnoredShort => '已忽略';
+
+  @override
+  String get serverBatteryKeepAlive => '保持 DNS 服务在后台稳定运行';
+
+  @override
+  String get serverIgnoreBattery => '忽略电池优化';
+
+  @override
+  String get serverCachePresetConservative => '保守';
+
+  @override
+  String get serverCachePresetHighHit => '高命中';
+
+  @override
+  String get serverCachePresetStandard => '标准';
+
+  @override
+  String get serverNavOverview => '概览';
+
+  @override
+  String get serverPortInvalid => '请输入数字';
+
+  @override
+  String serverPortRange(Object max, Object min) {
+    return '范围 $min–$max';
+  }
+
+  @override
+  String serverPortChanged(Object port) {
+    return '端口已改为 $port，重启服务后生效';
+  }
+
+  @override
+  String get serverResetConfirm => '确认重置';
+
+  @override
+  String get serverResetStatsConfirmBody => '将清空本次运行的全部统计数据，确认继续吗？';
+
+  @override
+  String get serverStatsReset => '运行统计已重置';
+
+  @override
+  String get serverOverviewTitle => '谛听 · 服务器模式';
+
+  @override
+  String get serverSwitchMode => '切换工作模式';
+
+  @override
+  String get serverChangePort => '修改监听端口';
+
+  @override
+  String get serverCurrentUpstreamCard => '当前上游';
+
+  @override
+  String get serverLanAccess => '局域网接入';
+
+  @override
+  String get serverLanBody => '把同网段设备的 DNS 指向上面这个地址即可；端口只在启动时绑定，改动后需要重启服务。';
+
+  @override
+  String get serverNoNetwork => '未连接网络';
+
+  @override
+  String get serverLanConnectHint => '连上 Wi-Fi 或以太网后这里会显示可用地址';
+
+  @override
+  String get serverLanPointHint => '将局域网其他设备的 DNS 指向此地址';
+
+  @override
+  String serverCopied(Object text) {
+    return '已复制 $text';
+  }
+
+  @override
+  String get serverServiceStatus => '服务状态';
+
+  @override
+  String get serverTotalQueries => '总查询量';
+
+  @override
+  String get serverCacheHits => '缓存命中';
+
+  @override
+  String get serverBlocked => '已拦截';
+
+  @override
+  String get serverAverageLatency => '平均时延';
+
+  @override
+  String get serverUptime => '运行时长';
+
+  @override
+  String get serverResetStatsBodyShort => '清空本次运行的全部计数，不清规则与缓存';
+
+  @override
+  String get serverModeSettingsBody => '缓存、规则、后台稳定性与运行模式';
+
+  @override
+  String get serverModeNote =>
+      '服务器模式不建立 VPN 隧道：它只在本机监听 DNS 端口，因此可以与其它 VPN 共存，也不占用系统的 VPN 槽位；本机应用的查询不会自动经过该服务。';
+
+  @override
+  String get serverBusyStarting => '启动中';
+
+  @override
+  String get serverBusyStopping => '停止中';
+
+  @override
+  String get serverRunning => '停止';
+
+  @override
+  String get serverStopped => '开启';
+
+  @override
+  String serverListening(Object port) {
+    return '监听 0.0.0.0:$port';
+  }
+
+  @override
+  String get serverStatusStopped => '服务器模式已停止';
+
+  @override
+  String get serverStatusStarting => '正在启动服务...';
+
+  @override
+  String get serverStatusRunning => '服务器模式运行中';
+
+  @override
+  String get serverStatusStopping => '正在停止服务...';
+
+  @override
+  String get serverStatusErrorText => '服务异常：端口可能已被占用';
 }
