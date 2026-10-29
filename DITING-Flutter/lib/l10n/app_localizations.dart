@@ -5170,6 +5170,456 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'清空自定义{kind}'**
   String ruleClearCustomForKind(Object kind);
+
+  /// No description provided for @subsPickTxt.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择扩展名为 .txt 的规则文件'**
+  String get subsPickTxt;
+
+  /// No description provided for @subsNoPersistPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统未授予长期读取权限，更新时需要重新选择文件'**
+  String get subsNoPersistPermission;
+
+  /// No description provided for @subsGroupNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组名称不能为空'**
+  String get subsGroupNameRequired;
+
+  /// No description provided for @subsEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑订阅'**
+  String get subsEdit;
+
+  /// No description provided for @subsAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加订阅'**
+  String get subsAdd;
+
+  /// No description provided for @subsSaveTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存订阅'**
+  String get subsSaveTooltip;
+
+  /// No description provided for @subsInfoSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅信息'**
+  String get subsInfoSection;
+
+  /// No description provided for @subsSourceType.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅方式'**
+  String get subsSourceType;
+
+  /// No description provided for @subsSourceLocalPick.
+  ///
+  /// In zh, this message translates to:
+  /// **'从存储中选择一个 .txt 文件'**
+  String get subsSourceLocalPick;
+
+  /// No description provided for @subsSourceRemoteDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'从网络地址下载规则正文'**
+  String get subsSourceRemoteDownload;
+
+  /// No description provided for @subsLocalRuleFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地规则文件'**
+  String get subsLocalRuleFile;
+
+  /// No description provided for @subsLocalFileSubscription.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地文件订阅'**
+  String get subsLocalFileSubscription;
+
+  /// No description provided for @subsPickFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择规则文件'**
+  String get subsPickFile;
+
+  /// No description provided for @subsLocalFileHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅支持 .txt，点击从存储中选择'**
+  String get subsLocalFileHint;
+
+  /// No description provided for @subsLocalFileRepick.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击可重新选择文件'**
+  String get subsLocalFileRepick;
+
+  /// No description provided for @subsChoose.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择'**
+  String get subsChoose;
+
+  /// No description provided for @subsNameOptional.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称（可选）'**
+  String get subsNameOptional;
+
+  /// No description provided for @subsNameEmptyFileName.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则取文件名'**
+  String get subsNameEmptyFileName;
+
+  /// No description provided for @subsUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅地址'**
+  String get subsUrl;
+
+  /// No description provided for @subsNameEmptyUrlTail.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则取链接末段'**
+  String get subsNameEmptyUrlTail;
+
+  /// No description provided for @subsRuleType.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则类型'**
+  String get subsRuleType;
+
+  /// No description provided for @subsKindHostsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅导入 hosts 地址与 CNAME 覆写规则'**
+  String get subsKindHostsHint;
+
+  /// No description provided for @subsKindDomainHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入域名规则与黑白名单'**
+  String get subsKindDomainHint;
+
+  /// No description provided for @subsGroupHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组只影响订阅页的筛选与批量更新，可稍后调整。'**
+  String get subsGroupHint;
+
+  /// No description provided for @subsNewGroupShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'+ 新建'**
+  String get subsNewGroupShort;
+
+  /// No description provided for @subsMirrorTemplateFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像地址会把原始订阅地址改写成镜像前缀，常用于加速 GitHub 等慢速源。'**
+  String get subsMirrorTemplateFooter;
+
+  /// No description provided for @subsAddMirrorTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加镜像站模板'**
+  String get subsAddMirrorTemplate;
+
+  /// No description provided for @subsAddMirrorTemplateSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有模板，先去保存一个常用的镜像前缀'**
+  String get subsAddMirrorTemplateSubtitle;
+
+  /// No description provided for @subsMirrorFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载时先请求镜像地址；镜像失败且开启回退时，再试原始地址。'**
+  String get subsMirrorFooter;
+
+  /// No description provided for @subsUseMirrorTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用镜像站模板'**
+  String get subsUseMirrorTemplate;
+
+  /// No description provided for @subsUseMirrorTemplateSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅源较慢或被限速时，改写下载地址'**
+  String get subsUseMirrorTemplateSubtitle;
+
+  /// No description provided for @subsMirrorTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像模板'**
+  String get subsMirrorTemplate;
+
+  /// No description provided for @subsMirrorFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'失败后回退直连'**
+  String get subsMirrorFallback;
+
+  /// No description provided for @subsMirrorFallbackSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像请求失败时，改用原始订阅地址'**
+  String get subsMirrorFallbackSubtitle;
+
+  /// No description provided for @subsEffectiveUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'实际请求地址'**
+  String get subsEffectiveUrl;
+
+  /// No description provided for @subsNothingToUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可更新的远程订阅'**
+  String get subsNothingToUpdate;
+
+  /// No description provided for @subsDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除订阅'**
+  String get subsDeleteTitle;
+
+  /// No description provided for @subsRenameTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名订阅'**
+  String get subsRenameTitle;
+
+  /// No description provided for @subsNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称不能为空'**
+  String get subsNameRequired;
+
+  /// No description provided for @subsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅'**
+  String get subsTitle;
+
+  /// No description provided for @subsUpdateAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新全部订阅'**
+  String get subsUpdateAll;
+
+  /// No description provided for @subsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅数'**
+  String get subsCount;
+
+  /// No description provided for @subsRuleCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已入库规则'**
+  String get subsRuleCount;
+
+  /// No description provided for @subsAbnormal.
+  ///
+  /// In zh, this message translates to:
+  /// **'异常'**
+  String get subsAbnormal;
+
+  /// No description provided for @subsUpdating.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在更新订阅…'**
+  String get subsUpdating;
+
+  /// No description provided for @subsEmptyLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有订阅'**
+  String get subsEmptyLabel;
+
+  /// No description provided for @subsEmptyDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅可以批量维护规则；更新会下载正文、解析并写入规则库，拦截随之生效。'**
+  String get subsEmptyDescription;
+
+  /// No description provided for @subsUpdateFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新会下载正文、解析成黑/白名单与覆写规则并写入规则库，同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。'**
+  String get subsUpdateFooter;
+
+  /// No description provided for @subsAllGroups.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get subsAllGroups;
+
+  /// No description provided for @subsNewGroupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建分组'**
+  String get subsNewGroupTitle;
+
+  /// No description provided for @subsEditRemoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改链接或收录类型后会立即重新下载，并替换该订阅原有的规则；订阅方式与本地文件不可更改。'**
+  String get subsEditRemoteHint;
+
+  /// No description provided for @subsEditLocalHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地文件通过系统文件选择器读取，应用只保留读取权限；同名的黑白名单与 hosts 订阅互不影响。'**
+  String get subsEditLocalHint;
+
+  /// No description provided for @subsAddRemoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定），保存后会立即下载一次正文并写入规则库。'**
+  String get subsAddRemoteHint;
+
+  /// No description provided for @subsKindLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'收录类型'**
+  String get subsKindLabel;
+
+  /// No description provided for @subsGroupLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'所属分组'**
+  String get subsGroupLabel;
+
+  /// No description provided for @subsMirrorTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像加速'**
+  String get subsMirrorTitle;
+
+  /// No description provided for @subsDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除「{name}」后不可撤销。\n\n删除会同时移除这条订阅贡献的全部规则（来源标签 sub_<id>）。'**
+  String subsDeleteMessage(Object name);
+
+  /// No description provided for @subsTotal.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 个订阅'**
+  String subsTotal(Object count);
+
+  /// No description provided for @subsGroupTotal.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{group}」下 {count} 个订阅'**
+  String subsGroupTotal(Object count, Object group);
+
+  /// No description provided for @subsUpdateNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即更新'**
+  String get subsUpdateNow;
+
+  /// No description provided for @subsReimport.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新导入文件'**
+  String get subsReimport;
+
+  /// No description provided for @subsRename.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名'**
+  String get subsRename;
+
+  /// No description provided for @subsConsecutiveFailures.
+  ///
+  /// In zh, this message translates to:
+  /// **'连续失败 {count} 次'**
+  String subsConsecutiveFailures(Object count);
+
+  /// No description provided for @subsMirrorFallbackShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像 · 可回退'**
+  String get subsMirrorFallbackShort;
+
+  /// No description provided for @subsMirrorNoFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像 · 不回退'**
+  String get subsMirrorNoFallback;
+
+  /// No description provided for @subsLastUpdateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次更新失败'**
+  String get subsLastUpdateFailed;
+
+  /// No description provided for @subsNeverUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'从未成功更新'**
+  String get subsNeverUpdated;
+
+  /// No description provided for @subsRuleCountValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条'**
+  String subsRuleCountValue(Object count);
+
+  /// No description provided for @subsRulesStored.
+  ///
+  /// In zh, this message translates to:
+  /// **'已入库 {count} 条规则；{action}该订阅贡献的规则。'**
+  String subsRulesStored(Object action, Object count);
+
+  /// No description provided for @subsActionRemote.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新会重新下载并替换'**
+  String get subsActionRemote;
+
+  /// No description provided for @subsActionLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新导入会重新读取该文件并替换'**
+  String get subsActionLocal;
+
+  /// No description provided for @subsPickRuleFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择一个规则文件'**
+  String get subsPickRuleFile;
+
+  /// No description provided for @subsChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'更换'**
+  String get subsChange;
+
+  /// No description provided for @subsGroupShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'+ 分组'**
+  String get subsGroupShort;
+
+  /// No description provided for @subsMirrorName.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像 {mirror}'**
+  String subsMirrorName(Object mirror);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

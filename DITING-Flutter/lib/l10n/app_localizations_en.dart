@@ -2912,4 +2912,259 @@ class AppL10nEn extends AppL10n {
   String ruleClearCustomForKind(Object kind) {
     return 'Clear custom $kind';
   }
+
+  @override
+  String get subsPickTxt => 'Pick a rule file with the .txt extension';
+
+  @override
+  String get subsNoPersistPermission =>
+      'The system did not grant persistent read access, so the file must be picked again on update';
+
+  @override
+  String get subsGroupNameRequired => 'The group name cannot be empty';
+
+  @override
+  String get subsEdit => 'Edit subscription';
+
+  @override
+  String get subsAdd => 'Add subscription';
+
+  @override
+  String get subsSaveTooltip => 'Save subscription';
+
+  @override
+  String get subsInfoSection => 'Subscription details';
+
+  @override
+  String get subsSourceType => 'Source type';
+
+  @override
+  String get subsSourceLocalPick => 'Pick a .txt file from storage';
+
+  @override
+  String get subsSourceRemoteDownload => 'Download the rule body from a URL';
+
+  @override
+  String get subsLocalRuleFile => 'Local rule file';
+
+  @override
+  String get subsLocalFileSubscription => 'Local file subscription';
+
+  @override
+  String get subsPickFile => 'Pick a rule file';
+
+  @override
+  String get subsLocalFileHint => 'Only .txt; tap to pick from storage';
+
+  @override
+  String get subsLocalFileRepick => 'Tap to pick another file';
+
+  @override
+  String get subsChoose => 'Choose';
+
+  @override
+  String get subsNameOptional => 'Name (optional)';
+
+  @override
+  String get subsNameEmptyFileName => 'Leave empty to use the file name';
+
+  @override
+  String get subsUrl => 'Subscription URL';
+
+  @override
+  String get subsNameEmptyUrlTail =>
+      'Leave empty to use the last part of the URL';
+
+  @override
+  String get subsRuleType => 'Rule type';
+
+  @override
+  String get subsKindHostsHint =>
+      'Only hosts entries and CNAME rewrites are imported';
+
+  @override
+  String get subsKindDomainHint =>
+      'Domain rules and allow/block lists are imported';
+
+  @override
+  String get subsGroupHint =>
+      'Groups only affect filtering and bulk updates on this page; you can change them later.';
+
+  @override
+  String get subsNewGroupShort => '+ New';
+
+  @override
+  String get subsMirrorTemplateFooter =>
+      'A mirror rewrites the subscription URL with its prefix, which speeds up slow sources such as GitHub.';
+
+  @override
+  String get subsAddMirrorTemplate => 'Add a mirror template';
+
+  @override
+  String get subsAddMirrorTemplateSubtitle =>
+      'No templates yet; save a commonly used mirror prefix first';
+
+  @override
+  String get subsMirrorFooter =>
+      'Downloads try the mirror first and fall back to the original URL when enabled.';
+
+  @override
+  String get subsUseMirrorTemplate => 'Use a mirror template';
+
+  @override
+  String get subsUseMirrorTemplateSubtitle =>
+      'Rewrite the download URL when the source is slow or rate limited';
+
+  @override
+  String get subsMirrorTemplate => 'Mirror template';
+
+  @override
+  String get subsMirrorFallback => 'Fall back to direct';
+
+  @override
+  String get subsMirrorFallbackSubtitle =>
+      'Use the original URL when the mirror fails';
+
+  @override
+  String get subsEffectiveUrl => 'Requested URL';
+
+  @override
+  String get subsNothingToUpdate => 'No remote subscriptions to update';
+
+  @override
+  String get subsDeleteTitle => 'Delete subscription';
+
+  @override
+  String get subsRenameTitle => 'Rename subscription';
+
+  @override
+  String get subsNameRequired => 'The name cannot be empty';
+
+  @override
+  String get subsTitle => 'Subscriptions';
+
+  @override
+  String get subsUpdateAll => 'Update all';
+
+  @override
+  String get subsCount => 'Subscriptions';
+
+  @override
+  String get subsRuleCount => 'Stored rules';
+
+  @override
+  String get subsAbnormal => 'Errors';
+
+  @override
+  String get subsUpdating => 'Updating subscriptions…';
+
+  @override
+  String get subsEmptyLabel => 'No subscriptions yet';
+
+  @override
+  String get subsEmptyDescription =>
+      'Subscriptions maintain rules in bulk: an update downloads the body, parses it into the rule database and blocking follows.';
+
+  @override
+  String get subsUpdateFooter =>
+      'An update downloads the body, parses it into block/allow and rewrite rules and stores them, replacing what the subscription contributed last time. Element-hiding rules are not injected by this app and are not counted.';
+
+  @override
+  String get subsAllGroups => 'All';
+
+  @override
+  String get subsNewGroupTitle => 'New group';
+
+  @override
+  String get subsEditRemoteHint =>
+      'Changing the URL or rule type downloads again immediately and replaces this subscription\'s rules; the source type and local file cannot be changed.';
+
+  @override
+  String get subsEditLocalHint =>
+      'Local files are read through the system picker and the app only keeps read access; allow/block and hosts subscriptions with the same name do not affect each other.';
+
+  @override
+  String get subsAddRemoteHint =>
+      'One URL can back both an allow/block and a hosts subscription (uniqueness is URL + type); saving downloads the body once and stores it.';
+
+  @override
+  String get subsKindLabel => 'Rule type';
+
+  @override
+  String get subsGroupLabel => 'Group';
+
+  @override
+  String get subsMirrorTitle => 'Mirror';
+
+  @override
+  String subsDeleteMessage(Object name) {
+    return 'Deleting \"$name\" cannot be undone.\n\nIt also removes every rule this subscription contributed (source tag sub_<id>).';
+  }
+
+  @override
+  String subsTotal(Object count) {
+    return '$count subscriptions';
+  }
+
+  @override
+  String subsGroupTotal(Object count, Object group) {
+    return '$count subscriptions in \"$group\"';
+  }
+
+  @override
+  String get subsUpdateNow => 'Update now';
+
+  @override
+  String get subsReimport => 'Re-import file';
+
+  @override
+  String get subsRename => 'Rename';
+
+  @override
+  String subsConsecutiveFailures(Object count) {
+    return 'Failed $count times in a row';
+  }
+
+  @override
+  String get subsMirrorFallbackShort => 'Mirror · fallback on';
+
+  @override
+  String get subsMirrorNoFallback => 'Mirror · no fallback';
+
+  @override
+  String get subsLastUpdateFailed => 'Last update failed';
+
+  @override
+  String get subsNeverUpdated => 'Never updated successfully';
+
+  @override
+  String subsRuleCountValue(Object count) {
+    return '$count rules';
+  }
+
+  @override
+  String subsRulesStored(Object action, Object count) {
+    return '$count rules stored; $action the rules this subscription contributed.';
+  }
+
+  @override
+  String get subsActionRemote => 'an update downloads again and replaces';
+
+  @override
+  String get subsActionLocal =>
+      're-importing reads the file again and replaces';
+
+  @override
+  String get subsPickRuleFile => 'Pick a rule file';
+
+  @override
+  String get subsChange => 'Change';
+
+  @override
+  String get subsGroupShort => '+ Group';
+
+  @override
+  String subsMirrorName(Object mirror) {
+    return 'Mirror $mirror';
+  }
 }

@@ -31,8 +31,8 @@ class SubscriptionsPage extends ConsumerWidget {
     ];
     if (targets.isEmpty) {
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        const SnackBar(
-          content: Text('没有可更新的远程订阅'),
+        SnackBar(
+          content: Text(context.l10n.subsNothingToUpdate),
           behavior: SnackBarBehavior.floating,
           duration: Duration(milliseconds: 1600),
         ),
@@ -64,7 +64,7 @@ class SubscriptionsPage extends ConsumerWidget {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除订阅',
+        title: context.l10n.subsDeleteTitle,
         destructive: true,
         actions: [
           TextButton(
@@ -73,12 +73,11 @@ class SubscriptionsPage extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
         child: Text(
-          '删除「${entry.name}」后不可撤销。\n\n'
-          '删除会同时移除这条订阅贡献的全部规则（来源标签 sub_<id>）。',
+          context.l10n.subsDeleteMessage(entry.name),
         ),
       ),
     );
@@ -95,9 +94,9 @@ class SubscriptionsPage extends ConsumerWidget {
     final name = await showFloatingDialog<String>(
       context: context,
       child: InputDialog(
-        title: '重命名订阅',
+        title: context.l10n.subsRenameTitle,
         value: entry.name,
-        validator: (value) => (value ?? '').trim().isEmpty ? '名称不能为空' : null,
+        validator: (value) => (value ?? '').trim().isEmpty ? context.l10n.subsNameRequired : null,
       ),
     );
     if (name != null) {
@@ -123,18 +122,18 @@ class SubscriptionsPage extends ConsumerWidget {
     final failedCount = entries.where((entry) => entry.isFailed).length;
 
     return CommonScaffold(
-      title: '订阅',
+      title: context.l10n.subsTitle,
       isLoading: update.updatingAll,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.refresh,
-          tooltip: '更新全部订阅',
+          tooltip: context.l10n.subsUpdateAll,
           isLoading: update.updatingAll,
           onPressed: update.updatingAll ? null : () => _updateAll(context, ref),
         ),
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加订阅',
+          tooltip: context.l10n.subsAdd,
           onPressed: () => showSheet<void>(
             context: context,
             builder: (_) => const _AddSubscriptionSheet(),
@@ -151,19 +150,19 @@ class SubscriptionsPage extends ConsumerWidget {
                   child: CommonCard(
                     child: StatStrip(
                       stats: [
-                        StatItem(label: '订阅数', value: '${entries.length}'),
+                        StatItem(label: context.l10n.subsCount, value: '${entries.length}'),
                         StatItem(
-                          label: '已启用',
+                          label: context.l10n.commonEnabled,
                           value: '$enabledCount',
                           color: colorScheme.success,
                         ),
                         StatItem(
-                          label: '已入库规则',
+                          label: context.l10n.subsRuleCount,
                           value: _formatCount(lineCount),
                         ),
                         if (failedCount > 0)
                           StatItem(
-                            label: '异常',
+                            label: context.l10n.subsAbnormal,
                             value: '$failedCount',
                             color: colorScheme.destructive,
                           ),
@@ -185,7 +184,7 @@ class SubscriptionsPage extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            Text('正在更新订阅…', style: context.listCaptionStyle),
+                            Text(context.l10n.subsUpdating, style: context.listCaptionStyle),
                             const Spacer(),
                             Text(
                               '${(update.progress * 100).round()}%',
@@ -217,9 +216,11 @@ class SubscriptionsPage extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                   child: Text(
                     groupId == null
-                        ? '共 ${entries.length} 个订阅'
-                        : '「${_groupNameOf(groups, groupId)}」下 '
-                              '${selectedEntries.length} 个订阅',
+                        ? context.l10n.subsTotal(entries.length)
+                        : context.l10n.subsGroupTotal(
+                            _groupNameOf(groups, groupId),
+                            selectedEntries.length,
+                          ),
                     style: context.listCaptionStyle,
                   ),
                 ),
@@ -233,17 +234,16 @@ class SubscriptionsPage extends ConsumerWidget {
               child: EmptyStateBox(
                 minHeight: 300,
                 child: NullStatus(
-                  label: '还没有订阅',
+                  label: context.l10n.subsEmptyLabel,
                   description:
-                      '订阅可以批量维护规则；更新会下载正文、解析并写入规则库，'
-                      '拦截随之生效。',
+                      context.l10n.subsEmptyDescription,
                   illustration: NullStatusIllustration.rules,
                   action: FilledButton(
                     onPressed: () => showSheet<void>(
                       context: context,
                       builder: (_) => const _AddSubscriptionSheet(),
                     ),
-                    child: const Text('添加订阅'),
+                    child: Text(context.l10n.subsAdd),
                   ),
                 ),
               ),
@@ -281,13 +281,12 @@ class SubscriptionsPage extends ConsumerWidget {
                 },
               ),
             ),
-          const SliverToBoxAdapter(
+          SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.fromLTRB(0, 8, 0, 0),
               child: ListFooter(
                 text:
-                    '更新会下载正文、解析成黑/白名单与覆写规则并写入规则库，'
-                    '同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。',
+                    context.l10n.subsUpdateFooter,
               ),
             ),
           ),
@@ -300,9 +299,9 @@ class SubscriptionsPage extends ConsumerWidget {
     final name = await showFloatingDialog<String>(
       context: context,
       child: InputDialog(
-        title: '新建分组',
+        title: context.l10n.subsNewGroupTitle,
         value: '',
-        validator: (value) => (value ?? '').trim().isEmpty ? '分组名称不能为空' : null,
+        validator: (value) => (value ?? '').trim().isEmpty ? context.l10n.subsGroupNameRequired : null,
       ),
     );
     if (name == null) {
@@ -341,7 +340,7 @@ class _GroupChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final options = <(int?, String)>[
-      (null, '全部'),
+      (null, context.l10n.subsAllGroups),
       for (final group in groups) (group.id, group.name),
     ];
     return ChipRow(
@@ -354,7 +353,7 @@ class _GroupChips extends StatelessWidget {
           ),
         // The create chip is a management entry, not a filter, so it is never selected.
         TonalChip(
-          label: '+ 分组',
+          label: context.l10n.subsGroupShort,
           color: context.raisedSurfaceLevel.colorOf(colorScheme),
           foregroundColor: colorScheme.onSurfaceVariant,
           onPressed: onManage,

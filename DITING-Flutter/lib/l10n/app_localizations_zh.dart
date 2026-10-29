@@ -2765,4 +2765,248 @@ class AppL10nZh extends AppL10n {
   String ruleClearCustomForKind(Object kind) {
     return '清空自定义$kind';
   }
+
+  @override
+  String get subsPickTxt => '请选择扩展名为 .txt 的规则文件';
+
+  @override
+  String get subsNoPersistPermission => '系统未授予长期读取权限，更新时需要重新选择文件';
+
+  @override
+  String get subsGroupNameRequired => '分组名称不能为空';
+
+  @override
+  String get subsEdit => '编辑订阅';
+
+  @override
+  String get subsAdd => '添加订阅';
+
+  @override
+  String get subsSaveTooltip => '保存订阅';
+
+  @override
+  String get subsInfoSection => '订阅信息';
+
+  @override
+  String get subsSourceType => '订阅方式';
+
+  @override
+  String get subsSourceLocalPick => '从存储中选择一个 .txt 文件';
+
+  @override
+  String get subsSourceRemoteDownload => '从网络地址下载规则正文';
+
+  @override
+  String get subsLocalRuleFile => '本地规则文件';
+
+  @override
+  String get subsLocalFileSubscription => '本地文件订阅';
+
+  @override
+  String get subsPickFile => '选择规则文件';
+
+  @override
+  String get subsLocalFileHint => '仅支持 .txt，点击从存储中选择';
+
+  @override
+  String get subsLocalFileRepick => '点击可重新选择文件';
+
+  @override
+  String get subsChoose => '选择';
+
+  @override
+  String get subsNameOptional => '名称（可选）';
+
+  @override
+  String get subsNameEmptyFileName => '留空则取文件名';
+
+  @override
+  String get subsUrl => '订阅地址';
+
+  @override
+  String get subsNameEmptyUrlTail => '留空则取链接末段';
+
+  @override
+  String get subsRuleType => '规则类型';
+
+  @override
+  String get subsKindHostsHint => '仅导入 hosts 地址与 CNAME 覆写规则';
+
+  @override
+  String get subsKindDomainHint => '导入域名规则与黑白名单';
+
+  @override
+  String get subsGroupHint => '分组只影响订阅页的筛选与批量更新，可稍后调整。';
+
+  @override
+  String get subsNewGroupShort => '+ 新建';
+
+  @override
+  String get subsMirrorTemplateFooter =>
+      '镜像地址会把原始订阅地址改写成镜像前缀，常用于加速 GitHub 等慢速源。';
+
+  @override
+  String get subsAddMirrorTemplate => '添加镜像站模板';
+
+  @override
+  String get subsAddMirrorTemplateSubtitle => '还没有模板，先去保存一个常用的镜像前缀';
+
+  @override
+  String get subsMirrorFooter => '下载时先请求镜像地址；镜像失败且开启回退时，再试原始地址。';
+
+  @override
+  String get subsUseMirrorTemplate => '使用镜像站模板';
+
+  @override
+  String get subsUseMirrorTemplateSubtitle => '订阅源较慢或被限速时，改写下载地址';
+
+  @override
+  String get subsMirrorTemplate => '镜像模板';
+
+  @override
+  String get subsMirrorFallback => '失败后回退直连';
+
+  @override
+  String get subsMirrorFallbackSubtitle => '镜像请求失败时，改用原始订阅地址';
+
+  @override
+  String get subsEffectiveUrl => '实际请求地址';
+
+  @override
+  String get subsNothingToUpdate => '没有可更新的远程订阅';
+
+  @override
+  String get subsDeleteTitle => '删除订阅';
+
+  @override
+  String get subsRenameTitle => '重命名订阅';
+
+  @override
+  String get subsNameRequired => '名称不能为空';
+
+  @override
+  String get subsTitle => '订阅';
+
+  @override
+  String get subsUpdateAll => '更新全部订阅';
+
+  @override
+  String get subsCount => '订阅数';
+
+  @override
+  String get subsRuleCount => '已入库规则';
+
+  @override
+  String get subsAbnormal => '异常';
+
+  @override
+  String get subsUpdating => '正在更新订阅…';
+
+  @override
+  String get subsEmptyLabel => '还没有订阅';
+
+  @override
+  String get subsEmptyDescription => '订阅可以批量维护规则；更新会下载正文、解析并写入规则库，拦截随之生效。';
+
+  @override
+  String get subsUpdateFooter =>
+      '更新会下载正文、解析成黑/白名单与覆写规则并写入规则库，同时替换该订阅上一次贡献的规则；元素隐藏规则本仓不注入，不计入条数。';
+
+  @override
+  String get subsAllGroups => '全部';
+
+  @override
+  String get subsNewGroupTitle => '新建分组';
+
+  @override
+  String get subsEditRemoteHint =>
+      '修改链接或收录类型后会立即重新下载，并替换该订阅原有的规则；订阅方式与本地文件不可更改。';
+
+  @override
+  String get subsEditLocalHint =>
+      '本地文件通过系统文件选择器读取，应用只保留读取权限；同名的黑白名单与 hosts 订阅互不影响。';
+
+  @override
+  String get subsAddRemoteHint =>
+      '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定），保存后会立即下载一次正文并写入规则库。';
+
+  @override
+  String get subsKindLabel => '收录类型';
+
+  @override
+  String get subsGroupLabel => '所属分组';
+
+  @override
+  String get subsMirrorTitle => '镜像加速';
+
+  @override
+  String subsDeleteMessage(Object name) {
+    return '删除「$name」后不可撤销。\n\n删除会同时移除这条订阅贡献的全部规则（来源标签 sub_<id>）。';
+  }
+
+  @override
+  String subsTotal(Object count) {
+    return '共 $count 个订阅';
+  }
+
+  @override
+  String subsGroupTotal(Object count, Object group) {
+    return '「$group」下 $count 个订阅';
+  }
+
+  @override
+  String get subsUpdateNow => '立即更新';
+
+  @override
+  String get subsReimport => '重新导入文件';
+
+  @override
+  String get subsRename => '重命名';
+
+  @override
+  String subsConsecutiveFailures(Object count) {
+    return '连续失败 $count 次';
+  }
+
+  @override
+  String get subsMirrorFallbackShort => '镜像 · 可回退';
+
+  @override
+  String get subsMirrorNoFallback => '镜像 · 不回退';
+
+  @override
+  String get subsLastUpdateFailed => '上次更新失败';
+
+  @override
+  String get subsNeverUpdated => '从未成功更新';
+
+  @override
+  String subsRuleCountValue(Object count) {
+    return '$count 条';
+  }
+
+  @override
+  String subsRulesStored(Object action, Object count) {
+    return '已入库 $count 条规则；$action该订阅贡献的规则。';
+  }
+
+  @override
+  String get subsActionRemote => '更新会重新下载并替换';
+
+  @override
+  String get subsActionLocal => '重新导入会重新读取该文件并替换';
+
+  @override
+  String get subsPickRuleFile => '请选择一个规则文件';
+
+  @override
+  String get subsChange => '更换';
+
+  @override
+  String get subsGroupShort => '+ 分组';
+
+  @override
+  String subsMirrorName(Object mirror) {
+    return '镜像 $mirror';
+  }
 }

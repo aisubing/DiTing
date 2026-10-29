@@ -77,23 +77,25 @@ class _SubscriptionCard extends StatelessWidget {
                       items: [
                         CommonPopupMenuItem(
                           // Local rows re-read the picked file instead of downloading it.
-                          label: entry.isRemote ? '立即更新' : '重新导入文件',
+                          label: entry.isRemote
+                              ? context.l10n.subsUpdateNow
+                              : context.l10n.subsReimport,
                           glyph: AppGlyphs.refresh,
                           onPressed: busy ? null : onUpdate,
                         ),
                         CommonPopupMenuItem(
-                          label: '编辑订阅',
+                          label: context.l10n.subsEdit,
                           glyph: AppGlyphs.sliders,
                           // Saving may re-download, which must not overlap a running update.
                           onPressed: busy ? null : onConfigure,
                         ),
                         CommonPopupMenuItem(
-                          label: '重命名',
+                          label: context.l10n.subsRename,
                           glyph: AppGlyphs.edit,
                           onPressed: onEdit,
                         ),
                         CommonPopupMenuItem(
-                          label: '删除订阅',
+                          label: context.l10n.subsDeleteTitle,
                           glyph: AppGlyphs.delete,
                           danger: true,
                           onPressed: onDelete,
@@ -114,18 +116,20 @@ class _SubscriptionCard extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 6,
                     children: [
-                      MetaChip(label: _lineCountLabel(entry)),
-                      MetaChip(label: _updatedLabel(entry)),
+                      MetaChip(label: _lineCountLabel(entry, context.l10n)),
+                      MetaChip(label: _updatedLabel(entry, context.l10n)),
                       if (entry.consecutiveFailureCount > 0)
                         MetaChip(
-                          label: '连续失败 ${entry.consecutiveFailureCount} 次',
+                          label: context.l10n.subsConsecutiveFailures(
+                            entry.consecutiveFailureCount,
+                          ),
                         ),
-                      if (!entry.isRemote) const MetaChip(label: '本地文件订阅'),
+                      if (!entry.isRemote) MetaChip(label: context.l10n.subsLocalFileSubscription),
                       if (mirror != null)
                         MetaChip(
                           label: entry.record.mirrorFallback
-                              ? '镜像 · 可回退'
-                              : '镜像 · 不回退',
+                              ? context.l10n.subsMirrorFallbackShort
+                              : context.l10n.subsMirrorNoFallback,
                         ),
                     ],
                   ),
@@ -141,7 +145,7 @@ class _SubscriptionCard extends StatelessWidget {
                   ),
                   if (mirror != null)
                     Text(
-                      '镜像 $mirror',
+                      context.l10n.subsMirrorName(mirror),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.listCaptionStyle.copyWith(
@@ -159,7 +163,7 @@ class _SubscriptionCard extends StatelessWidget {
                         ),
                         Expanded(
                           child: Text(
-                            entry.importError ?? '上次更新失败',
+                            entry.importError ?? context.l10n.subsLastUpdateFailed,
                             style: context.listCaptionStyle.copyWith(
                               color: colorScheme.error,
                             ),
@@ -173,9 +177,12 @@ class _SubscriptionCard extends StatelessWidget {
                       borderRadius: AppRadius.full,
                     ),
                   Text(
-                    '已入库 ${_formatCount(entry.ruleCount)} 条规则；'
-                    '${entry.isRemote ? '更新会重新下载并替换' : '重新导入会重新读取该文件并替换'}'
-                    '该订阅贡献的规则。',
+                    context.l10n.subsRulesStored(
+                      _formatCount(entry.ruleCount),
+                      entry.isRemote
+                          ? context.l10n.subsActionRemote
+                          : context.l10n.subsActionLocal,
+                    ),
                     style: context.listCaptionStyle,
                   ),
                 ],
@@ -193,12 +200,12 @@ class _SubscriptionCard extends StatelessWidget {
     return segment.isEmpty ? uri : segment;
   }
 
-  static String _lineCountLabel(SubscriptionEntry entry) =>
-      '${_formatCount(entry.ruleCount)} 条';
+  static String _lineCountLabel(SubscriptionEntry entry, AppL10n l10n) =>
+      l10n.subsRuleCountValue(_formatCount(entry.ruleCount));
 
-  static String _updatedLabel(SubscriptionEntry entry) {
+  static String _updatedLabel(SubscriptionEntry entry, AppL10n l10n) {
     if (entry.lastUpdated <= 0) {
-      return '从未成功更新';
+      return l10n.subsNeverUpdated;
     }
     return _formatTimestamp(entry.lastUpdated);
   }

@@ -100,7 +100,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
       }
       final name = picked.displayName;
       if (!name.toLowerCase().endsWith('.txt')) {
-        _formError = '请选择扩展名为 .txt 的规则文件';
+        _formError = context.l10n.subsPickTxt;
         return;
       }
       _localUri = picked.uri;
@@ -110,7 +110,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
         _name.text = name.substring(0, name.length - 4);
       }
       if (!picked.persisted) {
-        _localWarning = '系统未授予长期读取权限，更新时需要重新选择文件';
+        _localWarning = context.l10n.subsNoPersistPermission;
       }
     });
   }
@@ -119,9 +119,9 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     final name = await showFloatingDialog<String>(
       context: context,
       child: InputDialog(
-        title: '新建分组',
+        title: context.l10n.subsNewGroupTitle,
         value: '',
-        validator: (value) => (value ?? '').trim().isEmpty ? '分组名称不能为空' : null,
+        validator: (value) => (value ?? '').trim().isEmpty ? context.l10n.subsGroupNameRequired : null,
       ),
     );
     if (name == null || !mounted) {
@@ -140,7 +140,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     }
     final isLocal = _sourceType == SubscriptionSourceType.local;
     final error = isLocal
-        ? (_localUri == null ? '请选择一个规则文件' : null)
+        ? (_localUri == null ? context.l10n.subsPickRuleFile : null)
         : validateSubscriptionUrl(_url.text);
     if (error != null) {
       setState(() => _formError = error);
@@ -254,11 +254,11 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     final template = _selectedTemplate(templates);
 
     return CommonScaffold(
-      title: isEdit ? '编辑订阅' : '添加订阅',
+      title: isEdit ? context.l10n.subsEdit : context.l10n.subsAdd,
       isLoading: _submitting,
       confirmationAction: IconButtonData(
         glyph: AppGlyphs.check,
-        tooltip: '保存订阅',
+        tooltip: context.l10n.subsSaveTooltip,
         onPressed: _submitting ? null : _submit,
       ),
       body: ListView(
@@ -269,57 +269,42 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
         ),
         children: [
           _SheetCard(
-            title: '订阅信息',
+            title: context.l10n.subsInfoSection,
             footer: isEdit
-                ? '修改链接或收录类型后会立即重新下载，并替换该订阅原有的规则；'
-                      '订阅方式与本地文件不可更改。'
+                ? context.l10n.subsEditRemoteHint
                 : isLocal
-                ? '本地文件通过系统文件选择器读取，应用只保留读取权限；'
-                      '同名的黑白名单与 hosts 订阅互不影响。'
-                : '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定），'
-                      '保存后会立即下载一次正文并写入规则库。',
+                ? context.l10n.subsEditLocalHint
+                : context.l10n.subsAddRemoteHint,
             children: [
-              if (!isEdit)
-                ListItem<SubscriptionSourceType>.options(
-                  padding: EdgeInsets.zero,
-                  title: const Text('订阅方式'),
-                  subtitle: Text(isLocal ? '从存储中选择一个 .txt 文件' : '从网络地址下载规则正文'),
-                  options: SubscriptionSourceType.values,
-                  value: _sourceType,
-                  textBuilder: (type) => type.label(context.l10n),
-                  onChanged: (type) => setState(() {
-                    _sourceType = type;
-                    _formError = null;
-                    _localWarning = null;
-                  }),
-                ),
               if (isLocal) ...[
                 if (isEdit)
                   ListItem(
                     padding: EdgeInsets.zero,
                     leading: const GlyphIcon(AppGlyphs.importFile, size: 20),
-                    title: Text(_localName ?? '本地规则文件'),
-                    subtitle: const Text('本地文件订阅'),
+                    title: Text(_localName ?? context.l10n.subsLocalRuleFile),
+                    subtitle: Text(context.l10n.subsLocalFileSubscription),
                   )
                 else
                   ListItem(
                     padding: EdgeInsets.zero,
                     leading: const GlyphIcon(AppGlyphs.importFile, size: 20),
-                    title: Text(_localName ?? '选择规则文件'),
+                    title: Text(_localName ?? context.l10n.subsPickFile),
                     subtitle: Text(
-                      _localName == null ? '仅支持 .txt，点击从存储中选择' : '点击可重新选择文件',
+                      _localName == null ? context.l10n.subsLocalFileHint : context.l10n.subsLocalFileRepick,
                     ),
                     trailing: TonalButton(
                       size: TonalButtonSize.compact,
-                      label: _localName == null ? '选择' : '更换',
+                      label: _localName == null
+                          ? context.l10n.subsChoose
+                          : context.l10n.subsChange,
                       onPressed: _picking ? null : _pickFile,
                     ),
                     onTap: _picking ? null : _pickFile,
                   ),
-                _SheetField(label: '名称（可选）', child: _nameField('留空则取文件名')),
+                _SheetField(label: context.l10n.subsNameOptional, child: _nameField(context.l10n.subsNameEmptyFileName)),
               ] else ...[
                 _SheetField(
-                  label: '订阅地址',
+                  label: context.l10n.subsUrl,
                   child: FilledInputTheme(
                     borderRadius: AppRadius.md,
                     contentPadding: const EdgeInsets.symmetric(
@@ -341,7 +326,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                     ),
                   ),
                 ),
-                _SheetField(label: '名称（可选）', child: _nameField('留空则取链接末段')),
+                _SheetField(label: context.l10n.subsNameOptional, child: _nameField(context.l10n.subsNameEmptyUrlTail)),
               ],
               if (_formError case final message?)
                 InlineNotice(
@@ -361,15 +346,15 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
               preview: _mirrorPreview(template),
             ),
           _SheetCard(
-            title: '规则类型',
+            title: context.l10n.subsRuleType,
             children: [
               ListItem<SubscriptionKind>.options(
                 padding: EdgeInsets.zero,
-                title: const Text('收录类型'),
+                title: Text(context.l10n.subsKindLabel),
                 subtitle: Text(
                   _kind == SubscriptionKind.hosts
-                      ? '仅导入 hosts 地址与 CNAME 覆写规则'
-                      : '导入域名规则与黑白名单',
+                      ? context.l10n.subsKindHostsHint
+                      : context.l10n.subsKindDomainHint,
                 ),
                 options: SubscriptionKind.values,
                 value: _kind,
@@ -377,8 +362,8 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                 onChanged: (kind) => setState(() => _kind = kind),
               ),
               _SheetField(
-                label: '所属分组',
-                hint: '分组只影响订阅页的筛选与批量更新，可稍后调整。',
+                label: context.l10n.subsGroupLabel,
+                hint: context.l10n.subsGroupHint,
                 child: ChipRow(
                   children: [
                     FilterPill(
@@ -393,7 +378,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                         onPressed: () => setState(() => _groupId = group.id),
                       ),
                     TonalChip(
-                      label: '+ 新建',
+                      label: context.l10n.subsNewGroupShort,
                       color: context.raisedSurfaceLevel.colorOf(
                         context.colorScheme,
                       ),
@@ -431,14 +416,14 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     // management page instead of offering a dead toggle.
     if (templates.isEmpty) {
       return _SheetCard(
-        title: '镜像加速',
-        footer: '镜像地址会把原始订阅地址改写成镜像前缀，常用于加速 GitHub 等慢速源。',
+        title: context.l10n.subsMirrorTitle,
+        footer: context.l10n.subsMirrorTemplateFooter,
         children: [
           ListItem(
             padding: EdgeInsets.zero,
             leading: const GlyphIcon(AppGlyphs.layers, size: 20),
-            title: const Text('添加镜像站模板'),
-            subtitle: const Text('还没有模板，先去保存一个常用的镜像前缀'),
+            title: Text(context.l10n.subsAddMirrorTemplate),
+            subtitle: Text(context.l10n.subsAddMirrorTemplateSubtitle),
             trailing: const GlyphIcon(AppGlyphs.chevronForward, size: 18),
             onTap: () => context.push(HubPaths.mirrorTemplates),
           ),
@@ -446,14 +431,14 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
       );
     }
     return _SheetCard(
-      title: '镜像加速',
-      footer: '下载时先请求镜像地址；镜像失败且开启回退时，再试原始地址。',
+      title: context.l10n.subsMirrorTitle,
+      footer: context.l10n.subsMirrorFooter,
       children: [
         ListItem.toggle(
           padding: EdgeInsets.zero,
           leading: const GlyphIcon(AppGlyphs.bolt, size: 20),
-          title: const Text('使用镜像站模板'),
-          subtitle: const Text('订阅源较慢或被限速时，改写下载地址'),
+          title: Text(context.l10n.subsUseMirrorTemplate),
+          subtitle: Text(context.l10n.subsUseMirrorTemplateSubtitle),
           value: _useMirror,
           onChanged: (value) => setState(() {
             _useMirror = value;
@@ -467,7 +452,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
         if (_useMirror) ...[
           ListItem<MirrorTemplateRecord>.options(
             padding: EdgeInsets.zero,
-            title: const Text('镜像模板'),
+            title: Text(context.l10n.subsMirrorTemplate),
             subtitle: selected == null
                 ? null
                 : Text(
@@ -487,8 +472,8 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
           ListItem.toggle(
             padding: EdgeInsets.zero,
             leading: const GlyphIcon(AppGlyphs.swap, size: 20),
-            title: const Text('失败后回退直连'),
-            subtitle: const Text('镜像请求失败时，改用原始订阅地址'),
+            title: Text(context.l10n.subsMirrorFallback),
+            subtitle: Text(context.l10n.subsMirrorFallbackSubtitle),
             value: _mirrorFallback,
             onChanged: (value) => setState(() => _mirrorFallback = value),
           ),
@@ -571,7 +556,7 @@ class _PreviewBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 2,
         children: [
-          Text('实际请求地址', style: context.listCaptionStyle),
+          Text(context.l10n.subsEffectiveUrl, style: context.listCaptionStyle),
           Text(
             url,
             style: context.listCaptionStyle.copyWith(
