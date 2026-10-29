@@ -5615,4 +5615,168 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get troubleshootNoClearableCrashes => '没有可清空的崩溃日志';
+
+  @override
+  String get bypassAddTitle => '添加绕过域名';
+
+  @override
+  String get bypassAdd => '添加';
+
+  @override
+  String get bypassSuffix => '域名后缀';
+
+  @override
+  String get bypassSuffixBody => '匹配该后缀及其子域名；不参与 HTTPS 解密';
+
+  @override
+  String get mirrorGlobal => '全局镜像';
+
+  @override
+  String get mirrorDefault => '默认使用镜像下载';
+
+  @override
+  String get mirrorNeedTemplate => '先添加一个模板后才能开启';
+
+  @override
+  String get mirrorTemplateNote => '订阅下载与软件更新都经由所选模板';
+
+  @override
+  String get mirrorTemplate => '使用的模板';
+
+  @override
+  String get mirrorNote =>
+      '开启后，未单独设置镜像的订阅、检查更新与下载安装包都会先请求镜像，镜像失败时自动改用原始地址。单独设置过镜像的订阅仍按自己的设置。';
+
+  @override
+  String get hiddenFeaturesTitle => '隐藏功能';
+
+  @override
+  String get hiddenFeaturesReset => '恢复全部显示';
+
+  @override
+  String get hiddenFeaturesNote =>
+      '自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。设置会保存到本机，重启后仍然有效。';
+
+  @override
+  String get hiddenFeaturesFooter => '「隐藏功能」卡片固定常驻，确保随时可以在这里恢复。';
+
+  @override
+  String get cacheSettingsTitle => '缓存设置';
+
+  @override
+  String get cacheSection => '缓存';
+
+  @override
+  String get cacheLocalDns => '本地 DNS 缓存';
+
+  @override
+  String get cacheOffNote => '关闭后每次解析都会请求上游 DNS';
+
+  @override
+  String get cachePresetSection => '缓存档位';
+
+  @override
+  String get cachePresetNote =>
+      '建议使用「标准」。档位会自动设置最长 TTL、最短 TTL 和解析失败兜底时间，不再需要手动填写秒数。';
+
+  @override
+  String get recognitionSponsorTitle => '赞助者名单';
+
+  @override
+  String get recognitionSponsorIntro =>
+      '感谢每一位支持谛听项目的朋友！名单默认按赞助时间由早到晚排列，可通过右上角按钮切换为由晚到早；与赞助金额无关，每一份支持都同样珍贵。';
+
+  @override
+  String get recognitionSponsorSection => '赞助者';
+
+  @override
+  String get recognitionBuilderTitle => '共建者名单';
+
+  @override
+  String get recognitionBuilderIntro =>
+      '感谢每一位为谛听提出建议、帮助测试的共建者！名单按用户名称的字母顺序排列，中文名称按拼音排序。';
+
+  @override
+  String get recognitionBuilderSection => '共建者';
+
+  @override
+  String get providerVisibilityTitle => '服务显示';
+
+  @override
+  String get providerVisibilityNote =>
+      '关闭竞速模式时，首页解析服务下拉框仅显示这里选中的服务。当前正在使用的服务会始终保留。';
+
+  @override
+  String providerVisibilityProtocol(Object protocol) {
+    return '$protocol 服务';
+  }
+
+  @override
+  String providerVisibilityAll(Object protocol) {
+    return '全部 $protocol 服务';
+  }
+
+  @override
+  String get providerVisibilityNone => '不显示该类型的服务';
+
+  @override
+  String get providerVisibilityAllOn => '显示该类型的全部服务';
+
+  @override
+  String providerVisibilityCount(Object count) {
+    return '已选择 $count 个服务';
+  }
+
+  @override
+  String get markdownCopyCode => '复制代码';
+
+  @override
+  String get markdownCodeCopied => '代码已复制到剪贴板';
+
+  @override
+  String get recognitionUpdated => '名单已更新';
+
+  @override
+  String get recognitionRefresh => '刷新名单';
+
+  @override
+  String get recognitionSortAsc => '切换为由早到晚';
+
+  @override
+  String get recognitionSortDesc => '切换为由晚到早';
+
+  @override
+  String get recognitionEmpty => '暂时没有名单';
+
+  @override
+  String get recognitionLoadFailed => '名单加载失败';
+
+  @override
+  String get recognitionEmptyBody => '名单由云端下发，点这里拉取一次。';
+
+  @override
+  String get recognitionLoad => '加载名单';
+
+  @override
+  String get recognitionRetry => '重试';
+
+  @override
+  String get recognitionNoMembers => '暂时还没有成员';
+
+  @override
+  String get recognitionNoMembersBody => '名单会随云端配置更新，稍后再来看看。';
+
+  @override
+  String get recognitionRefreshShort => '刷新';
+
+  @override
+  String get recognitionCached => '正在显示本地缓存的名单';
+
+  @override
+  String recognitionLastUpdate(Object time) {
+    return '上次更新：$time';
+  }
+
+  @override
+  String get recognitionCloudNote => '名单由云端下发，进入页面时自动检查更新';
 }

@@ -1,6 +1,7 @@
 /// Shared avatar, row and list skeleton for the recognition lists, so they cannot drift apart.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/recognition/recognition_members.dart';
 import 'package:diting/state/recognition_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -126,7 +127,7 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
     await ref.read(recognitionMembersProvider.notifier).refresh();
     if (!mounted) return;
     final state = ref.read(recognitionMembersProvider).value;
-    _toast(context, state?.error ?? '名单已更新');
+    _toast(context, state?.error ?? context.l10n.recognitionUpdated);
   }
 
   @override
@@ -154,14 +155,14 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.refresh,
-          tooltip: '刷新名单',
+          tooltip: context.l10n.recognitionRefresh,
           isLoading: state.isRefreshing,
           onPressed: _refresh,
         ),
         if (widget.sortable)
           IconButtonData(
             glyph: AppGlyphs.sort,
-            tooltip: _newestFirst ? '切换为由早到晚' : '切换为由晚到早',
+            tooltip: _newestFirst ? context.l10n.recognitionSortAsc : context.l10n.recognitionSortDesc,
             isSelected: _newestFirst,
             onPressed: () => setState(() => _newestFirst = !_newestFirst),
           ),
@@ -178,14 +179,14 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
             EmptyStateBox(
               minHeight: 320,
               child: NullStatus(
-                label: state.error == null ? '暂时没有名单' : '名单加载失败',
-                description: state.error ?? '名单由云端下发，点这里拉取一次。',
+                label: state.error == null ? context.l10n.recognitionEmpty : context.l10n.recognitionLoadFailed,
+                description: state.error ?? context.l10n.recognitionEmptyBody,
                 illustration: state.error == null
                     ? NullStatusIllustration.data
                     : NullStatusIllustration.error,
                 action: TextButton(
                   onPressed: _refresh,
-                  child: Text(state.error == null ? '加载名单' : '重试'),
+                  child: Text(state.error == null ? context.l10n.recognitionLoad : context.l10n.recognitionRetry),
                 ),
               ),
             )
@@ -193,12 +194,12 @@ class _RecognitionListPageState extends ConsumerState<RecognitionListPage> {
             EmptyStateBox(
               minHeight: 280,
               child: NullStatus(
-                label: '暂时还没有成员',
-                description: '名单会随云端配置更新，稍后再来看看。',
+                label: context.l10n.recognitionNoMembers,
+                description: context.l10n.recognitionNoMembersBody,
                 illustration: NullStatusIllustration.data,
                 action: TextButton(
                   onPressed: _refresh,
-                  child: const Text('刷新'),
+                  child: Text(context.l10n.recognitionRefreshShort),
                 ),
               ),
             )
@@ -231,14 +232,14 @@ class _StatusFooter extends StatelessWidget {
     if (state.error != null) {
       parts.add(state.error!);
     } else if (state.fromCache) {
-      parts.add('正在显示本地缓存的名单');
+      parts.add(context.l10n.recognitionCached);
     }
     final updatedAt = state.updatedAt;
     if (updatedAt != null) {
-      parts.add('上次更新：${_formatTime(updatedAt)}');
+      parts.add(context.l10n.recognitionLastUpdate(_formatTime(updatedAt)));
     }
     if (parts.isEmpty) {
-      parts.add('名单由云端下发，进入页面时自动检查更新');
+      parts.add(context.l10n.recognitionCloudNote);
     }
     return ListFooter(text: parts.join(' · '));
   }

@@ -2,6 +2,7 @@
 /// right after `await` fires on `pop` mid animation and trips `'_dependents.isEmpty': is not true`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -33,24 +34,24 @@ class _HttpInspectionBypassDialogState extends State<HttpInspectionBypassDialog>
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '添加绕过域名',
+      title: context.l10n.bypassAddTitle,
       hasFields: true,
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.configCancel),
         ),
-        TextButton(onPressed: _submit, child: const Text('添加')),
+        TextButton(onPressed: _submit, child: Text(context.l10n.bypassAdd)),
       ],
       child: TextField(
         controller: _controller,
         autocorrect: false,
         autofocus: true,
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          labelText: '域名后缀',
+        decoration: InputDecoration(
+          labelText: context.l10n.bypassSuffix,
           hintText: 'example.com',
-          helperText: '匹配该后缀及其子域名；不参与 HTTPS 解密',
+          helperText: context.l10n.bypassSuffixBody,
         ),
       ),
     );

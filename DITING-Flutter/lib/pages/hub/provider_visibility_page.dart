@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/provider_catalog_providers.dart';
@@ -92,13 +93,12 @@ class _ProviderVisibilityPageState
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      title: '服务显示',
+      title: context.l10n.providerVisibilityTitle,
       body: PageBody(
         children: [
           PageIntroCard(
             text:
-                '关闭竞速模式时，首页解析服务下拉框仅显示这里选中的服务。'
-                '当前正在使用的服务会始终保留。',
+                context.l10n.providerVisibilityNote,
           ),
           for (final protocol in ProviderProtocol.values)
             _protocolSection(protocol),
@@ -120,20 +120,20 @@ class _ProviderVisibilityPageState
       protocol.name.toUpperCase(),
     );
     return generateSection(
-      title: '${protocol.label} 服务',
+      title: context.l10n.providerVisibilityProtocol(protocol.label),
       items: [
         ListItem(
           leading: GlyphIcon(
             protocolVisible ? AppGlyphs.checkCircle : AppGlyphs.removeCircle,
             size: 20,
           ),
-          title: Text('全部 ${protocol.label} 服务'),
+          title: Text(context.l10n.providerVisibilityAll(protocol.label)),
           subtitle: Text(
             !protocolVisible
-                ? '不显示该类型的服务'
+                ? context.l10n.providerVisibilityNone
                 : selectedCount == providers.length
-                ? '显示该类型的全部服务'
-                : '已选择 $selectedCount 个服务',
+                ? context.l10n.providerVisibilityAllOn
+                : context.l10n.providerVisibilityCount('$selectedCount'),
           ),
           trailing: CommonCheckBox(
             value: protocolVisible && selectedCount > 0,

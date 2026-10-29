@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/state/global_mirror_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -19,13 +20,13 @@ class GlobalMirrorSection extends ConsumerWidget {
         .where((row) => row.template == mirror.template)
         .firstOrNull;
     return generateSection(
-      title: '全局镜像',
+      title: context.l10n.mirrorGlobal,
       items: [
         ListItem.toggle(
           leading: const GlyphIcon(AppGlyphs.bolt),
-          title: const Text('默认使用镜像下载'),
+          title: Text(context.l10n.mirrorDefault),
           subtitle: Text(
-            templates.isEmpty ? '先添加一个模板后才能开启' : '订阅下载与软件更新都经由所选模板',
+            templates.isEmpty ? context.l10n.mirrorNeedTemplate : context.l10n.mirrorTemplateNote,
           ),
           value: mirror.enabled && templates.isNotEmpty,
           onChanged: templates.isEmpty
@@ -41,7 +42,7 @@ class GlobalMirrorSection extends ConsumerWidget {
         if (mirror.enabled && templates.isNotEmpty)
           ListItem<MirrorTemplateRecord>.options(
             leading: const GlyphIcon(AppGlyphs.layers),
-            title: const Text('使用的模板'),
+            title: Text(context.l10n.mirrorTemplate),
             // The saved string is what downloads use, even if this mode's list lacks it.
             subtitle: Text(
               mirror.template ?? templates.first.template,
@@ -55,8 +56,7 @@ class GlobalMirrorSection extends ConsumerWidget {
           ),
       ],
       footer:
-          '开启后，未单独设置镜像的订阅、检查更新与下载安装包都会先请求镜像，'
-          '镜像失败时自动改用原始地址。单独设置过镜像的订阅仍按自己的设置。',
+          context.l10n.mirrorNote,
     );
   }
 }

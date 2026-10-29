@@ -10333,6 +10333,306 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'没有可清空的崩溃日志'**
   String get troubleshootNoClearableCrashes;
+
+  /// No description provided for @bypassAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加绕过域名'**
+  String get bypassAddTitle;
+
+  /// No description provided for @bypassAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get bypassAdd;
+
+  /// No description provided for @bypassSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'域名后缀'**
+  String get bypassSuffix;
+
+  /// No description provided for @bypassSuffixBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'匹配该后缀及其子域名；不参与 HTTPS 解密'**
+  String get bypassSuffixBody;
+
+  /// No description provided for @mirrorGlobal.
+  ///
+  /// In zh, this message translates to:
+  /// **'全局镜像'**
+  String get mirrorGlobal;
+
+  /// No description provided for @mirrorDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认使用镜像下载'**
+  String get mirrorDefault;
+
+  /// No description provided for @mirrorNeedTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'先添加一个模板后才能开启'**
+  String get mirrorNeedTemplate;
+
+  /// No description provided for @mirrorTemplateNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅下载与软件更新都经由所选模板'**
+  String get mirrorTemplateNote;
+
+  /// No description provided for @mirrorTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用的模板'**
+  String get mirrorTemplate;
+
+  /// No description provided for @mirrorNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后，未单独设置镜像的订阅、检查更新与下载安装包都会先请求镜像，镜像失败时自动改用原始地址。单独设置过镜像的订阅仍按自己的设置。'**
+  String get mirrorNote;
+
+  /// No description provided for @hiddenFeaturesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐藏功能'**
+  String get hiddenFeaturesTitle;
+
+  /// No description provided for @hiddenFeaturesReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复全部显示'**
+  String get hiddenFeaturesReset;
+
+  /// No description provided for @hiddenFeaturesNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。设置会保存到本机，重启后仍然有效。'**
+  String get hiddenFeaturesNote;
+
+  /// No description provided for @hiddenFeaturesFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'「隐藏功能」卡片固定常驻，确保随时可以在这里恢复。'**
+  String get hiddenFeaturesFooter;
+
+  /// No description provided for @cacheSettingsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存设置'**
+  String get cacheSettingsTitle;
+
+  /// No description provided for @cacheSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存'**
+  String get cacheSection;
+
+  /// No description provided for @cacheLocalDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地 DNS 缓存'**
+  String get cacheLocalDns;
+
+  /// No description provided for @cacheOffNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后每次解析都会请求上游 DNS'**
+  String get cacheOffNote;
+
+  /// No description provided for @cachePresetSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存档位'**
+  String get cachePresetSection;
+
+  /// No description provided for @cachePresetNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'建议使用「标准」。档位会自动设置最长 TTL、最短 TTL 和解析失败兜底时间，不再需要手动填写秒数。'**
+  String get cachePresetNote;
+
+  /// No description provided for @recognitionSponsorTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'赞助者名单'**
+  String get recognitionSponsorTitle;
+
+  /// No description provided for @recognitionSponsorIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢每一位支持谛听项目的朋友！名单默认按赞助时间由早到晚排列，可通过右上角按钮切换为由晚到早；与赞助金额无关，每一份支持都同样珍贵。'**
+  String get recognitionSponsorIntro;
+
+  /// No description provided for @recognitionSponsorSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'赞助者'**
+  String get recognitionSponsorSection;
+
+  /// No description provided for @recognitionBuilderTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'共建者名单'**
+  String get recognitionBuilderTitle;
+
+  /// No description provided for @recognitionBuilderIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢每一位为谛听提出建议、帮助测试的共建者！名单按用户名称的字母顺序排列，中文名称按拼音排序。'**
+  String get recognitionBuilderIntro;
+
+  /// No description provided for @recognitionBuilderSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'共建者'**
+  String get recognitionBuilderSection;
+
+  /// No description provided for @providerVisibilityTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务显示'**
+  String get providerVisibilityTitle;
+
+  /// No description provided for @providerVisibilityNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭竞速模式时，首页解析服务下拉框仅显示这里选中的服务。当前正在使用的服务会始终保留。'**
+  String get providerVisibilityNote;
+
+  /// No description provided for @providerVisibilityProtocol.
+  ///
+  /// In zh, this message translates to:
+  /// **'{protocol} 服务'**
+  String providerVisibilityProtocol(Object protocol);
+
+  /// No description provided for @providerVisibilityAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部 {protocol} 服务'**
+  String providerVisibilityAll(Object protocol);
+
+  /// No description provided for @providerVisibilityNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'不显示该类型的服务'**
+  String get providerVisibilityNone;
+
+  /// No description provided for @providerVisibilityAllOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示该类型的全部服务'**
+  String get providerVisibilityAllOn;
+
+  /// No description provided for @providerVisibilityCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {count} 个服务'**
+  String providerVisibilityCount(Object count);
+
+  /// No description provided for @markdownCopyCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制代码'**
+  String get markdownCopyCode;
+
+  /// No description provided for @markdownCodeCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码已复制到剪贴板'**
+  String get markdownCodeCopied;
+
+  /// No description provided for @recognitionUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单已更新'**
+  String get recognitionUpdated;
+
+  /// No description provided for @recognitionRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新名单'**
+  String get recognitionRefresh;
+
+  /// No description provided for @recognitionSortAsc.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换为由早到晚'**
+  String get recognitionSortAsc;
+
+  /// No description provided for @recognitionSortDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换为由晚到早'**
+  String get recognitionSortDesc;
+
+  /// No description provided for @recognitionEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时没有名单'**
+  String get recognitionEmpty;
+
+  /// No description provided for @recognitionLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单加载失败'**
+  String get recognitionLoadFailed;
+
+  /// No description provided for @recognitionEmptyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单由云端下发，点这里拉取一次。'**
+  String get recognitionEmptyBody;
+
+  /// No description provided for @recognitionLoad.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载名单'**
+  String get recognitionLoad;
+
+  /// No description provided for @recognitionRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get recognitionRetry;
+
+  /// No description provided for @recognitionNoMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时还没有成员'**
+  String get recognitionNoMembers;
+
+  /// No description provided for @recognitionNoMembersBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单会随云端配置更新，稍后再来看看。'**
+  String get recognitionNoMembersBody;
+
+  /// No description provided for @recognitionRefreshShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get recognitionRefreshShort;
+
+  /// No description provided for @recognitionCached.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在显示本地缓存的名单'**
+  String get recognitionCached;
+
+  /// No description provided for @recognitionLastUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次更新：{time}'**
+  String recognitionLastUpdate(Object time);
+
+  /// No description provided for @recognitionCloudNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单由云端下发，进入页面时自动检查更新'**
+  String get recognitionCloudNote;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

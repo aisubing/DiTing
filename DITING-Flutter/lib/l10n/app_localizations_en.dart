@@ -5931,4 +5931,174 @@ class AppL10nEn extends AppL10n {
   @override
   String get troubleshootNoClearableCrashes =>
       'There are no crash logs to clear';
+
+  @override
+  String get bypassAddTitle => 'Add a bypass domain';
+
+  @override
+  String get bypassAdd => 'Add';
+
+  @override
+  String get bypassSuffix => 'Domain suffix';
+
+  @override
+  String get bypassSuffixBody =>
+      'Matches the suffix and its subdomains; excluded from HTTPS decryption';
+
+  @override
+  String get mirrorGlobal => 'Global mirror';
+
+  @override
+  String get mirrorDefault => 'Download through the mirror by default';
+
+  @override
+  String get mirrorNeedTemplate => 'Add a template before enabling this';
+
+  @override
+  String get mirrorTemplateNote =>
+      'Subscription downloads and app updates both go through the chosen template';
+
+  @override
+  String get mirrorTemplate => 'Template in use';
+
+  @override
+  String get mirrorNote =>
+      'When on, subscriptions without their own mirror, update checks and package downloads all try the mirror first and fall back to the original address if it fails. Subscriptions with their own mirror keep their own settings.';
+
+  @override
+  String get hiddenFeaturesTitle => 'Hidden features';
+
+  @override
+  String get hiddenFeaturesReset => 'Show everything again';
+
+  @override
+  String get hiddenFeaturesNote =>
+      'Choose which cards the feature hub shows. Turning a switch off hides that card from the hub; everything is shown by default. Hiding only changes the UI and never affects background behaviour or rule enforcement. The setting is stored on this device and survives restarts.';
+
+  @override
+  String get hiddenFeaturesFooter =>
+      'The \"Hidden features\" card always stays so you can restore cards from here at any time.';
+
+  @override
+  String get cacheSettingsTitle => 'Cache settings';
+
+  @override
+  String get cacheSection => 'Cache';
+
+  @override
+  String get cacheLocalDns => 'Local DNS cache';
+
+  @override
+  String get cacheOffNote => 'When off, every lookup goes to the upstream DNS';
+
+  @override
+  String get cachePresetSection => 'Cache preset';
+
+  @override
+  String get cachePresetNote =>
+      'Standard is recommended. Presets set the maximum TTL, minimum TTL and failure fallback automatically, so no manual seconds are needed.';
+
+  @override
+  String get recognitionSponsorTitle => 'Sponsors';
+
+  @override
+  String get recognitionSponsorIntro =>
+      'Thanks to everyone who supports Diting! The list is ordered by sponsorship time, earliest first, and the button in the corner reverses it; the amount is not shown because every contribution matters equally.';
+
+  @override
+  String get recognitionSponsorSection => 'Sponsors';
+
+  @override
+  String get recognitionBuilderTitle => 'Contributors';
+
+  @override
+  String get recognitionBuilderIntro =>
+      'Thanks to everyone who suggested ideas and helped test Diting! Names are sorted alphabetically, with Chinese names sorted by pinyin.';
+
+  @override
+  String get recognitionBuilderSection => 'Contributors';
+
+  @override
+  String get providerVisibilityTitle => 'Provider visibility';
+
+  @override
+  String get providerVisibilityNote =>
+      'With race mode off, the resolver picker on the home page only shows the providers selected here. The one currently in use is always kept.';
+
+  @override
+  String providerVisibilityProtocol(Object protocol) {
+    return '$protocol providers';
+  }
+
+  @override
+  String providerVisibilityAll(Object protocol) {
+    return 'All $protocol providers';
+  }
+
+  @override
+  String get providerVisibilityNone => 'Hide this provider type';
+
+  @override
+  String get providerVisibilityAllOn => 'Show every provider of this type';
+
+  @override
+  String providerVisibilityCount(Object count) {
+    return '$count providers selected';
+  }
+
+  @override
+  String get markdownCopyCode => 'Copy code';
+
+  @override
+  String get markdownCodeCopied => 'Code copied to the clipboard';
+
+  @override
+  String get recognitionUpdated => 'The list was updated';
+
+  @override
+  String get recognitionRefresh => 'Refresh the list';
+
+  @override
+  String get recognitionSortAsc => 'Sort oldest first';
+
+  @override
+  String get recognitionSortDesc => 'Sort newest first';
+
+  @override
+  String get recognitionEmpty => 'No list yet';
+
+  @override
+  String get recognitionLoadFailed => 'The list could not be loaded';
+
+  @override
+  String get recognitionEmptyBody =>
+      'The list is delivered from the cloud; tap to fetch it.';
+
+  @override
+  String get recognitionLoad => 'Load the list';
+
+  @override
+  String get recognitionRetry => 'Retry';
+
+  @override
+  String get recognitionNoMembers => 'No members yet';
+
+  @override
+  String get recognitionNoMembersBody =>
+      'The list updates with the cloud configuration; check back later.';
+
+  @override
+  String get recognitionRefreshShort => 'Refresh';
+
+  @override
+  String get recognitionCached => 'Showing the locally cached list';
+
+  @override
+  String recognitionLastUpdate(Object time) {
+    return 'Last updated: $time';
+  }
+
+  @override
+  String get recognitionCloudNote =>
+      'The list comes from the cloud and is checked for updates when you open the page';
 }

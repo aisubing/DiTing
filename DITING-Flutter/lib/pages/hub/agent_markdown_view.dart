@@ -4,6 +4,7 @@
 /// framed code blocks and a card-wrapped table.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/agent/markdown/markdown_block.dart';
 import 'package:diting/data/agent/markdown/markdown_inline.dart';
 import 'package:diting/ui/ui.dart';
@@ -230,13 +231,13 @@ class _CodeBlock extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: '复制代码',
+                  tooltip: context.l10n.markdownCopyCode,
                   visualDensity: VisualDensity.compact,
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: code));
                     ScaffoldMessenger.maybeOf(
                       context,
-                    )?.showSnackBar(const SnackBar(content: Text('代码已复制到剪贴板')));
+                    )?.showSnackBar(SnackBar(content: Text(context.l10n.markdownCodeCopied)));
                   },
                   icon: const GlyphIcon(AppGlyphs.copy, size: 16),
                 ),

@@ -18,19 +18,19 @@ class CacheSettingsPage extends ConsumerWidget {
     final enabled = settings.cacheEnabled;
     final preset = DnsCachePreset.current(settings);
     return CommonScaffold(
-      title: '缓存设置',
+      title: context.l10n.cacheSettingsTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '缓存',
+            title: context.l10n.cacheSection,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.memory),
-                title: const Text('本地 DNS 缓存'),
+                title: Text(context.l10n.cacheLocalDns),
                 subtitle: Text(
                   enabled
                       ? '${preset.label}：${preset.summary}'
-                      : '关闭后每次解析都会请求上游 DNS',
+                      : context.l10n.cacheOffNote,
                 ),
                 value: enabled,
                 onChanged: (value) {
@@ -42,7 +42,7 @@ class CacheSettingsPage extends ConsumerWidget {
           ),
           if (enabled)
             generateSection(
-              title: '缓存档位',
+              title: context.l10n.cachePresetSection,
               items: [
                 for (final option in DnsCachePreset.values)
                   ListItem(
@@ -62,8 +62,7 @@ class CacheSettingsPage extends ConsumerWidget {
                   ),
               ],
               footer:
-                  '建议使用「标准」。档位会自动设置最长 TTL、最短 TTL 和'
-                  '解析失败兜底时间，不再需要手动填写秒数。',
+                  context.l10n.cachePresetNote,
             ),
           const SizedBox(height: 24),
         ],

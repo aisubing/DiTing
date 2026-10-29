@@ -23,11 +23,11 @@ class HiddenFeaturesPage extends ConsumerWidget {
       l10n: context.l10n,
     );
     return CommonScaffold(
-      title: '隐藏功能',
+      title: context.l10n.hiddenFeaturesTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.reset,
-          tooltip: '恢复全部显示',
+          tooltip: context.l10n.hiddenFeaturesReset,
           onPressed: hidden.isEmpty
               ? null
               : () => ref.read(hiddenFeatureKeysProvider.notifier).resetAll(),
@@ -37,9 +37,7 @@ class HiddenFeaturesPage extends ConsumerWidget {
         children: [
           PageIntroCard(
             text:
-                '自定义在功能中心显示的功能卡片。关闭开关将从功能中心隐藏该卡片，'
-                '默认全部显示。隐藏仅调整界面展示，不会影响功能的后台运行与规则生效。'
-                '设置会保存到本机，重启后仍然有效。',
+                context.l10n.hiddenFeaturesNote,
           ),
           for (final entry in groups.entries)
             generateSection(
@@ -65,7 +63,7 @@ class HiddenFeaturesPage extends ConsumerWidget {
                   ),
               ],
             ),
-          const ListFooter(text: '「隐藏功能」卡片固定常驻，确保随时可以在这里恢复。'),
+          ListFooter(text: context.l10n.hiddenFeaturesFooter),
           const SizedBox(height: 24),
         ],
       ),
