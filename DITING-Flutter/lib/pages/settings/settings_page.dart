@@ -1,23 +1,26 @@
-/// Settings page: the legacy "other settings" list of five groups and six rows.
+/// Settings page: the legacy "other settings" list of five groups, plus the launch auto start and
+/// VPN watchdog switches in the runtime group.
 library;
 
 import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/routes/system_routes.dart';
+import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/nav_entry_row.dart';
 import 'package:diting/widgets/stat_strip.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The only app-bar action (wrench) opens the developer options hub, the single entry point for
 /// pages the legacy app had no menu for. The list stays at the legacy five groups and six rows.
-class SettingsPage extends StatelessWidget {
+class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return CommonScaffold(
       title: context.l10n.hubOtherSettings,
       iconActions: [
@@ -66,6 +69,20 @@ class SettingsPage extends StatelessWidget {
                 title: context.l10n.foregroundTitle,
                 subtitle: context.l10n.settingsForegroundSubtitle,
                 onPressed: () => context.push(SystemPaths.foregroundBackground),
+              ),
+              ListItem.toggle(
+                title: Text(context.l10n.settingsAutoStartTitle),
+                subtitle: Text(context.l10n.settingsAutoStartSubtitle),
+                leading: const GlyphIcon(AppGlyphs.bolt),
+                value: ref.watch(autoStartOnLaunchProvider),
+                onChanged: ref.read(autoStartOnLaunchProvider.notifier).toggle,
+              ),
+              ListItem.toggle(
+                title: Text(context.l10n.settingsVpnWatchdogTitle),
+                subtitle: Text(context.l10n.settingsVpnWatchdogSubtitle),
+                leading: const GlyphIcon(AppGlyphs.vpn),
+                value: ref.watch(vpnWatchdogProvider),
+                onChanged: ref.read(vpnWatchdogProvider.notifier).toggle,
               ),
             ],
           ),

@@ -14955,6 +14955,30 @@ abstract class AppL10n {
   /// **'后台隐藏、通知常驻、绕过局域网'**
   String get settingsForegroundSubtitle;
 
+  /// No description provided for @settingsAutoStartTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动时自动开启'**
+  String get settingsAutoStartTitle;
+
+  /// No description provided for @settingsAutoStartSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'上次未手动关闭时，打开应用自动恢复普通或极速模式'**
+  String get settingsAutoStartSubtitle;
+
+  /// No description provided for @settingsVpnWatchdogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPN 看门狗'**
+  String get settingsVpnWatchdogTitle;
+
+  /// No description provided for @settingsVpnWatchdogSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPN 通道被其他应用占用时持续监测，释放后自动重新连接'**
+  String get settingsVpnWatchdogSubtitle;
+
   /// No description provided for @settingsDataSection.
   ///
   /// In zh, this message translates to:

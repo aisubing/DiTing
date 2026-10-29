@@ -23,6 +23,7 @@ import com.haoze.diting.log.TrafficRateMonitor
 import com.haoze.diting.proxy.OutboundProxyBridge
 import com.haoze.diting.proxy.OutboundProxyScope
 import com.haoze.diting.tile.QuickSettingsTileUpdater
+import com.haoze.diting.watchdog.VpnReclaimer
 import tunnel.Engine
 import tunnel.OutboundProxyStatusCallback
 import tunnel.SocketProtector
@@ -46,6 +47,19 @@ class DitingVpnService : VpnService() {
         onTick = { VpnNotification.refresh(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP) },
     )
 
+    /// Follows a revoke caused by another VPN and reconnects once that VPN lets go of the slot.
+    private val reclaimer = VpnReclaimer(
+        service = this,
+        workMode = "normal",
+        modeTitle = "普通模式",
+        channelId = CHANNEL_ID,
+        notificationId = NOTIFICATION_ID,
+        stopIntent = { stopIntent(this) },
+        restoreIntent = { restoreIntent(this) },
+        onWaitingChanged = { reclaiming = it },
+        onGiveUp = { stopTunnel() },
+    )
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -57,6 +71,8 @@ class DitingVpnService : VpnService() {
             stopTunnel()
             return START_NOT_STICKY
         }
+        // A start, manual or replayed by the watchdog, ends any wait for the slot.
+        reclaimer.cancel()
         val dnsConfig = intent?.getStringExtra(EXTRA_DNS_CONFIG)
         if (dnsConfig.isNullOrBlank()) {
             Log.w(TAG, "start intent without DNS config")
@@ -238,6 +254,17 @@ class DitingVpnService : VpnService() {
 
     @Synchronized
     private fun stopTunnel() {
+        reclaimer.cancel()
+        teardown()
+        setPersistedRunning(this, false)
+        stopForegroundCompat()
+        stopSelf()
+    }
+
+    /// Stops the engine and frees the TUN; the service, its foreground state and the persisted
+    /// running flag are left to the caller.
+    @Synchronized
+    private fun teardown() {
         stopping = true
         val current = engine
         engine = null
@@ -250,9 +277,6 @@ class DitingVpnService : VpnService() {
         releaseResources()
         isRunning = false
         startedAt = 0L
-        setPersistedRunning(this, false)
-        stopForegroundCompat()
-        stopSelf()
     }
 
     /// Flushes buffered traffic / HTTP rows; runs after the engine stopped, so nothing appends
@@ -286,24 +310,25 @@ class DitingVpnService : VpnService() {
     }
 
     override fun onRevoke() {
+        if (reclaimer.shouldFollow()) {
+            // The service stays started and in the foreground so it is alive when the slot
+            // frees up; the persisted flag keeps saying "the user wants this running".
+            Log.w(TAG, "VPN revoked; waiting for the slot to free up")
+            teardown()
+            QuickSettingsTileUpdater.requestTileUpdate(this)
+            reclaimer.begin()
+            // super.onRevoke() would stopSelf().
+            return
+        }
         Log.w(TAG, "VPN permission revoked")
         stopTunnel()
         super.onRevoke()
     }
 
     override fun onDestroy() {
+        reclaimer.cancel()
         if (engine != null || isRunning || dataPlane != null) {
-            stopping = true
-            val current = engine
-            engine = null
-            activeEngine = null
-            runCatching { current?.stop() }
-            runCatching { current?.stopStackMitm() }
-            runCatching { current?.releaseTun() }
-            closeDataPlane()
-            releaseResources()
-            isRunning = false
-            startedAt = 0L
+            teardown()
             setPersistedRunning(this, false)
             stopForegroundCompat()
         }
@@ -417,6 +442,10 @@ class DitingVpnService : VpnService() {
         @Volatile
         var lastError: String? = null
 
+        /// Displaced by another VPN and waiting to reconnect; [isRunning] is false meanwhile.
+        @Volatile
+        var reclaiming: Boolean = false
+
         fun isPersistedRunning(context: Context): Boolean =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getBoolean(KEY_VPN_RUNNING, false)
@@ -440,6 +469,7 @@ class DitingVpnService : VpnService() {
 
         fun status(context: Context): Map<String, Any?> = mapOf(
             "running" to isRunning,
+            "reclaiming" to reclaiming,
             "persisted" to isPersistedRunning(context),
             "error" to lastError,
             // Milliseconds since the tunnel came up; Dart uses it instead of its own clock.

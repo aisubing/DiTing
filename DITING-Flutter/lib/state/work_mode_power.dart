@@ -10,6 +10,10 @@ class PowerNotifier extends Notifier<PowerState> {
 
   bool _disposed = false;
   bool _pendingPermissionStart = false;
+
+  /// Set at build when the tunnel was left running and auto start is on; the first status sync
+  /// that finds it down restarts it instead of clearing the flag.
+  bool _restoreOnLaunch = false;
   Timer? _statsTimer;
   Timer? _guardTimer;
 
@@ -36,6 +40,9 @@ class PowerNotifier extends Notifier<PowerState> {
         ? settings.expressVpnRunning
         : settings.vpnRunning;
     if (persisted) {
+      _restoreOnLaunch =
+          settings.autoStartOnLaunchEnabled &&
+          settings.initialAgreementAccepted;
       // The legacy flag survives process death, so confirm with the native side.
       scheduleMicrotask(syncStatus);
       _armGuard(_launchTimeout);
@@ -53,13 +60,27 @@ class PowerNotifier extends Notifier<PowerState> {
         ? ref.read(expressVpnControllerProvider)
         : ref.read(vpnControllerProvider);
     final settings = ref.read(legacySettingsProvider);
+    // One shot, consumed even when the status call fails.
+    final restore = _restoreOnLaunch;
+    _restoreOnLaunch = false;
     try {
       final status = await controller.status();
       if (_disposed) return;
+      if (restore &&
+          !status.running &&
+          !status.reclaiming &&
+          ref.read(workModeProvider) == mode) {
+        // The service died with the process (reboot, system kill); the user never stopped it.
+        state = PowerState.stopped;
+        await _start();
+        return;
+      }
+      // While reclaiming the user still wants the tunnel; the flag drives the next launch.
+      final wanted = status.running || status.reclaiming;
       if (express) {
-        settings.setExpressVpnRunning(status.running);
+        settings.setExpressVpnRunning(wanted);
       } else {
-        settings.setVpnRunning(status.running);
+        settings.setVpnRunning(wanted);
       }
       if (status.error != null && !status.running) {
         lastError = status.error;
@@ -77,7 +98,8 @@ class PowerNotifier extends Notifier<PowerState> {
             ownsStats: mode != AppWorkMode.server,
             startedAt: status.startedAt,
           );
-      if (status.running) {
+      // Keeps polling while reclaiming so the reconnect shows up without a resume.
+      if (status.running || status.reclaiming) {
         _ensureStatsPolling();
       } else {
         _cancelStatsPolling();
@@ -164,6 +186,10 @@ class PowerNotifier extends Notifier<PowerState> {
     _armGuard(_launchTimeout);
     if (_disposed) return;
     if (!granted) {
+      // Declined: a launch-time restore must not ask again on every start.
+      final settings = ref.read(legacySettingsProvider);
+      settings.setVpnRunning(false);
+      settings.setExpressVpnRunning(false);
       state = PowerState.stopped;
       return;
     }
@@ -259,6 +285,7 @@ class PowerNotifier extends Notifier<PowerState> {
 
   Future<void> stop() async {
     final express = _isExpress;
+    _restoreOnLaunch = false;
     _cancelStatsPolling();
     _pendingPermissionStart = false;
     state = PowerState.stopping;

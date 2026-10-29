@@ -8723,6 +8723,20 @@ class AppL10nEn extends AppL10n {
       'Hide in the background, keep the notification, bypass the LAN';
 
   @override
+  String get settingsAutoStartTitle => 'Start on launch';
+
+  @override
+  String get settingsAutoStartSubtitle =>
+      'Restore normal or express mode when the app opens, unless you stopped it';
+
+  @override
+  String get settingsVpnWatchdogTitle => 'VPN watchdog';
+
+  @override
+  String get settingsVpnWatchdogSubtitle =>
+      'Watch the VPN slot while another app holds it and reconnect once it is free';
+
+  @override
   String get settingsDataSection => 'Data';
 
   @override

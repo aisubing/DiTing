@@ -85,6 +85,70 @@ void _powerGuard() {
     });
   });
 
+  test('开启启动时自动开启后，残留运行标志会重新拉起隧道', () {
+    fakeAsync((async) {
+      final controller = FakeVpnController(prepared: true)
+        ..statusValue = const VpnStatus(running: false, persisted: true);
+      final store = MemoryLegacyPrefsStore({
+        'diting_settings': {'app_work_mode': 'normal'},
+        'dns_vpn_prefs': {
+          'vpn_running': true,
+          'auto_start_on_launch_enabled': true,
+          'initial_agreement_accepted': true,
+        },
+      });
+      final c = ProviderContainer(
+        overrides: [
+          legacyPrefsStoreProvider.overrideWithValue(store),
+          vpnControllerProvider.overrideWithValue(controller),
+          ruleRepositoryProvider.overrideWithValue(null),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      c.read(powerProvider);
+      // Before the 700 ms follow-up sync, which would read the fake's fixed "not running".
+      async.flushMicrotasks();
+      expect(controller.startCalls, 1);
+      expect(c.read(powerProvider), PowerState.running);
+      expect(c.read(legacySettingsProvider).vpnRunning, isTrue);
+    });
+  });
+
+  test('原生正在等待通道释放时不重复启动', () {
+    fakeAsync((async) {
+      final controller = FakeVpnController(prepared: true)
+        ..statusValue = const VpnStatus(
+          running: false,
+          persisted: true,
+          reclaiming: true,
+        );
+      final store = MemoryLegacyPrefsStore({
+        'diting_settings': {'app_work_mode': 'normal'},
+        'dns_vpn_prefs': {
+          'vpn_running': true,
+          'auto_start_on_launch_enabled': true,
+          'initial_agreement_accepted': true,
+        },
+      });
+      final c = ProviderContainer(
+        overrides: [
+          legacyPrefsStoreProvider.overrideWithValue(store),
+          vpnControllerProvider.overrideWithValue(controller),
+          ruleRepositoryProvider.overrideWithValue(null),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      c.read(powerProvider);
+      async.elapse(const Duration(seconds: 1));
+      expect(controller.startCalls, 0);
+      expect(c.read(powerProvider), PowerState.stopped);
+      // The user still wants the tunnel, so the next launch keeps the intent.
+      expect(c.read(legacySettingsProvider).vpnRunning, isTrue);
+    });
+  });
+
   test('启动成功后 watchdog 不再触发', () {
     fakeAsync((async) {
       final controller = FakeVpnController(prepared: true);

@@ -8199,6 +8199,18 @@ class AppL10nZh extends AppL10n {
   String get settingsForegroundSubtitle => '后台隐藏、通知常驻、绕过局域网';
 
   @override
+  String get settingsAutoStartTitle => '启动时自动开启';
+
+  @override
+  String get settingsAutoStartSubtitle => '上次未手动关闭时，打开应用自动恢复普通或极速模式';
+
+  @override
+  String get settingsVpnWatchdogTitle => 'VPN 看门狗';
+
+  @override
+  String get settingsVpnWatchdogSubtitle => 'VPN 通道被其他应用占用时持续监测，释放后自动重新连接';
+
+  @override
   String get settingsDataSection => '数据管理';
 
   @override

@@ -68,6 +68,7 @@ class VpnStatus {
   const VpnStatus({
     required this.running,
     required this.persisted,
+    this.reclaiming = false,
     this.error,
     this.startedAt,
     this.stats = const {},
@@ -75,6 +76,9 @@ class VpnStatus {
 
   final bool running;
   final bool persisted;
+
+  /// Another VPN took the slot and the service waits to reconnect; [running] is false meanwhile.
+  final bool reclaiming;
   final String? error;
 
   /// When the service actually came up, reported by the native side. Null while stopped or on a
@@ -90,6 +94,7 @@ class VpnStatus {
     return VpnStatus(
       running: map['running'] == true,
       persisted: map['persisted'] == true,
+      reclaiming: map['reclaiming'] == true,
       error: map['error'] as String?,
       startedAt: epochMillis(map['startedAt']),
       stats: stats is Map ? Map<String, Object?>.from(stats) : const {},

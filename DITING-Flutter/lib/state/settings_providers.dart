@@ -429,6 +429,40 @@ final startupUpdateCheckProvider =
       StartupUpdateCheckNotifier.new,
     );
 
+/// Settings page switch: the VPN services follow a slot taken by another app and reconnect once
+/// it is free. Read natively, so it only needs persisting.
+class VpnWatchdogNotifier extends Notifier<bool> {
+  @override
+  bool build() => _settings(ref).vpnWatchdogEnabled;
+
+  void toggle(bool value) {
+    state = value;
+    _settings(ref).setVpnWatchdogEnabled(value);
+    _bump(ref);
+  }
+}
+
+final vpnWatchdogProvider = NotifierProvider<VpnWatchdogNotifier, bool>(
+  VpnWatchdogNotifier.new,
+);
+
+/// Settings page switch: the next launch restarts a tunnel that was still meant to run.
+class AutoStartOnLaunchNotifier extends Notifier<bool> {
+  @override
+  bool build() => _settings(ref).autoStartOnLaunchEnabled;
+
+  void toggle(bool value) {
+    state = value;
+    _settings(ref).setAutoStartOnLaunchEnabled(value);
+    _bump(ref);
+  }
+}
+
+final autoStartOnLaunchProvider =
+    NotifierProvider<AutoStartOnLaunchNotifier, bool>(
+      AutoStartOnLaunchNotifier.new,
+    );
+
 class InitialAgreementNotifier extends Notifier<bool> {
   @override
   bool build() => _settings(ref).initialAgreementAccepted;

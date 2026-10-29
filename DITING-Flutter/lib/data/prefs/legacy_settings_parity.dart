@@ -31,6 +31,19 @@ extension LegacySettingsParity on LegacySettings {
   void setHideFromRecentsEnabled(bool value) =>
       _store.putBool(_ui, 'hide_from_recents_enabled', value);
 
+  /// Read natively by the VPN services when another app takes the slot; on by default.
+  bool get vpnWatchdogEnabled => _bool(_ui, 'vpn_watchdog_enabled', true);
+
+  void setVpnWatchdogEnabled(bool value) =>
+      _store.putBool(_ui, 'vpn_watchdog_enabled', value);
+
+  /// Restart the tunnel on launch when it was still meant to run (normal and express only).
+  bool get autoStartOnLaunchEnabled =>
+      _bool(_ui, 'auto_start_on_launch_enabled', false);
+
+  void setAutoStartOnLaunchEnabled(bool value) =>
+      _store.putBool(_ui, 'auto_start_on_launch_enabled', value);
+
   void setBypassLanEnabled(bool value) =>
       _store.putBool(_ui, 'bypass_lan_enabled', value);
 
