@@ -4738,6 +4738,438 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'切换 tab 时给一次轻震'**
   String get fontFamilyHapticSubtitle;
+
+  /// No description provided for @ruleKindBlockTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑名单'**
+  String get ruleKindBlockTitle;
+
+  /// No description provided for @ruleKindBlockSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截匹配的域名'**
+  String get ruleKindBlockSummary;
+
+  /// No description provided for @ruleKindAllowTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'白名单'**
+  String get ruleKindAllowTitle;
+
+  /// No description provided for @ruleKindAllowSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'放行匹配的域名'**
+  String get ruleKindAllowSummary;
+
+  /// No description provided for @ruleKindRewriteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆写'**
+  String get ruleKindRewriteTitle;
+
+  /// No description provided for @ruleKindRewriteSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'改写域名解析结果'**
+  String get ruleKindRewriteSummary;
+
+  /// No description provided for @ruleSourceUser.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户自定义'**
+  String get ruleSourceUser;
+
+  /// No description provided for @ruleSourceSubscription.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则订阅'**
+  String get ruleSourceSubscription;
+
+  /// No description provided for @ruleSourcePreset.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置预设'**
+  String get ruleSourcePreset;
+
+  /// No description provided for @rulePatternRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则内容不能为空'**
+  String get rulePatternRequired;
+
+  /// No description provided for @ruleAllowNeedsAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'该规则为放行规则，请在白名单中添加'**
+  String get ruleAllowNeedsAllowlist;
+
+  /// No description provided for @ruleAlreadyExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'该规则已存在'**
+  String get ruleAlreadyExists;
+
+  /// No description provided for @ruleDomainHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'域名，如 cdn.example.com'**
+  String get ruleDomainHint;
+
+  /// No description provided for @ruleTargetRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标值不能为空'**
+  String get ruleTargetRequired;
+
+  /// No description provided for @ruleTargetHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标值，如 10.0.0.8'**
+  String get ruleTargetHint;
+
+  /// No description provided for @ruleImportant.
+  ///
+  /// In zh, this message translates to:
+  /// **'重要'**
+  String get ruleImportant;
+
+  /// No description provided for @ruleReadOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'只读'**
+  String get ruleReadOnly;
+
+  /// No description provided for @ruleEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑规则'**
+  String get ruleEdit;
+
+  /// No description provided for @ruleDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除规则'**
+  String get ruleDelete;
+
+  /// No description provided for @batchImportDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入完成'**
+  String get batchImportDone;
+
+  /// No description provided for @batchAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量添加规则'**
+  String get batchAddTitle;
+
+  /// No description provided for @batchTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入到'**
+  String get batchTarget;
+
+  /// No description provided for @batchTargetTable.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标规则表'**
+  String get batchTargetTable;
+
+  /// No description provided for @batchTargetTableSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入的规则将写入所选规则表'**
+  String get batchTargetTableSubtitle;
+
+  /// No description provided for @batchPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'每行一条规则，例如：\n||ads.example.com^\n\n空行会被忽略，重复规则自动跳过。'**
+  String get batchPlaceholder;
+
+  /// No description provided for @batchImportable.
+  ///
+  /// In zh, this message translates to:
+  /// **'可导入'**
+  String get batchImportable;
+
+  /// No description provided for @batchDuplicated.
+  ///
+  /// In zh, this message translates to:
+  /// **'重复'**
+  String get batchDuplicated;
+
+  /// No description provided for @batchInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'无效'**
+  String get batchInvalid;
+
+  /// No description provided for @batchInvalidHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下规则未通过校验'**
+  String get batchInvalidHeader;
+
+  /// No description provided for @batchDuplicateHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'已存在，将跳过'**
+  String get batchDuplicateHeader;
+
+  /// No description provided for @ruleClearCustomTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空自定义规则'**
+  String get ruleClearCustomTitle;
+
+  /// No description provided for @commonClearAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空'**
+  String get commonClearAll;
+
+  /// No description provided for @ruleResetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置默认白名单'**
+  String get ruleResetDefault;
+
+  /// No description provided for @commonReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置'**
+  String get commonReset;
+
+  /// No description provided for @rulePresetProtectedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'预设规则受保护'**
+  String get rulePresetProtectedTitle;
+
+  /// No description provided for @ruleAllowEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许编辑默认白名单？'**
+  String get ruleAllowEditTitle;
+
+  /// No description provided for @ruleAllowEditConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然开启'**
+  String get ruleAllowEditConfirm;
+
+  /// No description provided for @ruleTotal.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则总数'**
+  String get ruleTotal;
+
+  /// No description provided for @ruleEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用'**
+  String get ruleEnabled;
+
+  /// No description provided for @ruleRewriteEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆写条目'**
+  String get ruleRewriteEntries;
+
+  /// No description provided for @ruleCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get ruleCustom;
+
+  /// No description provided for @ruleAllowEditDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许编辑默认白名单'**
+  String get ruleAllowEditDefault;
+
+  /// No description provided for @ruleAllowEditDefaultSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭时预设规则只读，避免误放宽放行范围'**
+  String get ruleAllowEditDefaultSubtitle;
+
+  /// No description provided for @ruleNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的规则'**
+  String get ruleNoMatch;
+
+  /// No description provided for @ruleNoMatchDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'换个关键词或筛选条件再试'**
+  String get ruleNoMatchDescription;
+
+  /// No description provided for @ruleAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get ruleAll;
+
+  /// No description provided for @formIssuesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'有几点需要先修正'**
+  String get formIssuesTitle;
+
+  /// No description provided for @formSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get formSave;
+
+  /// No description provided for @formProcessing.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理中…'**
+  String get formProcessing;
+
+  /// No description provided for @formAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get formAdd;
+
+  /// No description provided for @formDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get formDelete;
+
+  /// No description provided for @formHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'说明'**
+  String get formHelp;
+
+  /// No description provided for @formGotIt.
+  ///
+  /// In zh, this message translates to:
+  /// **'知道了'**
+  String get formGotIt;
+
+  /// No description provided for @rulePatternHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则内容，如 ||ads.example.com^'**
+  String get rulePatternHint;
+
+  /// No description provided for @ruleBatchImported.
+  ///
+  /// In zh, this message translates to:
+  /// **'已向{kind}导入 {count} 条规则。'**
+  String ruleBatchImported(Object count, Object kind);
+
+  /// No description provided for @ruleBatchSkippedDuplicates.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过 {count} 条重复规则。'**
+  String ruleBatchSkippedDuplicates(Object count);
+
+  /// No description provided for @ruleBatchAllowRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条放行规则（含 #@#）未导入：该规则为放行规则，请在白名单中添加。'**
+  String ruleBatchAllowRejected(Object count);
+
+  /// No description provided for @ruleBatchImportCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入 {count} 条'**
+  String ruleBatchImportCount(Object count);
+
+  /// No description provided for @ruleBatchMoreDuplicates.
+  ///
+  /// In zh, this message translates to:
+  /// **'等 {count} 条'**
+  String ruleBatchMoreDuplicates(Object count);
+
+  /// No description provided for @ruleAddForKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加{kind}规则'**
+  String ruleAddForKind(Object kind);
+
+  /// No description provided for @ruleEditDefaultPreset.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑默认预设规则'**
+  String get ruleEditDefaultPreset;
+
+  /// No description provided for @ruleEditForKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑{kind}规则'**
+  String ruleEditForKind(Object kind);
+
+  /// No description provided for @ruleDeletePresetMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{pattern}」是内置预设规则，删除后可通过重置默认恢复。'**
+  String ruleDeletePresetMessage(Object pattern);
+
+  /// No description provided for @ruleDeleteSubscriptionMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{pattern}」来自订阅「{name}」，删除后下次更新订阅可能重新出现。'**
+  String ruleDeleteSubscriptionMessage(Object name, Object pattern);
+
+  /// No description provided for @ruleDeleteUserMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{pattern}」吗？此操作不可撤销。'**
+  String ruleDeleteUserMessage(Object pattern);
+
+  /// No description provided for @ruleClearCustomMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将删除全部用户自定义的{kind}规则，订阅与预设规则不受影响。'**
+  String ruleClearCustomMessage(Object kind);
+
+  /// No description provided for @ruleResetMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将内置预设规则恢复为初始内容，你自己添加与订阅带来的规则保留。'**
+  String get ruleResetMessage;
+
+  /// No description provided for @rulePresetProtectedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认白名单规则处于只读状态。请先开启页面顶部的「允许编辑默认白名单」开关，再修改或删除这些规则。'**
+  String get rulePresetProtectedMessage;
+
+  /// No description provided for @ruleAllowEditMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'白名单是放行名单，改动它可能让本应被拦截的流量通过。确认你清楚这条风险后再开启。'**
+  String get ruleAllowEditMessage;
+
+  /// No description provided for @ruleTally.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {matched} 条 · 启用 {enabled}'**
+  String ruleTally(Object enabled, Object matched);
+
+  /// No description provided for @ruleNoRulesForKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有{kind}规则'**
+  String ruleNoRulesForKind(Object kind);
+
+  /// No description provided for @ruleClearCustomForKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空自定义{kind}'**
+  String ruleClearCustomForKind(Object kind);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -60,7 +61,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     await showFloatingDialog<void>(
       context: context,
       child: CommonDialog(
-        title: '导入完成',
+        title: context.l10n.batchImportDone,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -81,14 +82,17 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     required int count,
     required RuleLineParseResult parsed,
   }) {
-    final lines = <String>['已向${_kind.title}导入 $count 条规则。'];
+    final lines = <String>[
+      context.l10n.ruleBatchImported(_kind.title(context.l10n), count),
+    ];
     if (parsed.duplicated.isNotEmpty) {
-      lines.add('跳过 ${parsed.duplicated.length} 条重复规则。');
+      lines.add(
+        context.l10n.ruleBatchSkippedDuplicates(parsed.duplicated.length),
+      );
     }
     if (parsed.rejected.isNotEmpty) {
       lines.add(
-        '${parsed.rejected.length} 条放行规则（含 #@#）未导入：'
-        '该规则为放行规则，请在白名单中添加。',
+        context.l10n.ruleBatchAllowRejected(parsed.rejected.length),
       );
     }
     return lines.join('\n');
@@ -101,7 +105,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
     final canSubmit = parsed.accepted.isNotEmpty;
 
     return CommonScaffold(
-      title: '批量添加规则',
+      title: context.l10n.batchAddTitle,
       resizeToAvoidBottomInset: true,
       // The app bar floats over the body, so the body reserves status bar plus toolbar
       // height or the section header would be drawn underneath it.
@@ -112,14 +116,14 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
           // padding is zero because this ListView already pads 16 horizontally.
           generateSection(
             padding: EdgeInsets.zero,
-            title: '导入到',
+            title: context.l10n.batchTarget,
             items: [
               ListItem<RuleKind>.options(
-                title: const Text('目标规则表'),
-                subtitle: const Text('导入的规则将写入所选规则表'),
+                title: Text(context.l10n.batchTargetTable),
+                subtitle: Text(context.l10n.batchTargetTableSubtitle),
                 options: RuleKind.values,
                 value: _kind,
-                textBuilder: (kind) => kind.title,
+                textBuilder: (kind) => kind.title(context.l10n),
                 onChanged: (kind) => setState(() => _kind = kind),
               ),
             ],
@@ -142,11 +146,8 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                   fontFamily: appMonospaceFontFamily,
                   fontSize: 14,
                 ),
-                decoration: const InputDecoration(
-                  hintText:
-                      '每行一条规则，例如：\n||ads.example.com^\n'
-                      '||tracker.example.net^\n\n'
-                      '空行会被忽略，重复规则自动跳过。',
+                decoration: InputDecoration(
+                  hintText: context.l10n.batchPlaceholder,
                 ),
               ),
             ),
@@ -158,17 +159,17 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
             child: StatStrip(
               stats: [
                 StatItem(
-                  label: '可导入',
+                  label: context.l10n.batchImportable,
                   value: '${parsed.accepted.length}',
                   color: colorScheme.success,
                 ),
                 StatItem(
-                  label: '重复',
+                  label: context.l10n.batchDuplicated,
                   value: '${parsed.duplicated.length}',
                   color: colorScheme.warning,
                 ),
                 StatItem(
-                  label: '无效',
+                  label: context.l10n.batchInvalid,
                   value: '${parsed.rejected.length}',
                   color: parsed.rejected.isEmpty
                       ? null
@@ -184,7 +185,9 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
             height: 48,
             child: FilledButton(
               onPressed: canSubmit ? _submit : null,
-              child: Text('导入 ${parsed.accepted.length} 条'),
+              child: Text(
+                context.l10n.ruleBatchImportCount(parsed.accepted.length),
+              ),
             ),
           ),
           if (parsed.rejected.isNotEmpty)
@@ -206,7 +209,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                             size: 16,
                             color: colorScheme.error,
                           ),
-                          Text('以下规则未通过校验', style: context.listTitleStyle),
+                          Text(context.l10n.batchInvalidHeader, style: context.listTitleStyle),
                         ],
                       ),
                       for (final line in parsed.rejected.take(5))
@@ -219,7 +222,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                           ),
                         ),
                       Text(
-                        '该规则为放行规则，请在白名单中添加',
+                        context.l10n.ruleAllowNeedsAllowlist,
                         style: context.listCaptionStyle.copyWith(
                           color: colorScheme.error,
                         ),
@@ -239,7 +242,7 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     spacing: 4,
                     children: [
-                      Text('已存在，将跳过', style: context.listTitleStyle),
+                      Text(context.l10n.batchDuplicateHeader, style: context.listTitleStyle),
                       for (final line in parsed.duplicated.take(3))
                         Text(
                           line,
@@ -251,7 +254,9 @@ class _BatchEditorPageState extends ConsumerState<BatchEditorPage> {
                         ),
                       if (parsed.duplicated.length > 3)
                         Text(
-                          '等 ${parsed.duplicated.length} 条',
+                          context.l10n.ruleBatchMoreDuplicates(
+                            parsed.duplicated.length,
+                          ),
                           style: context.listCaptionStyle,
                         ),
                     ],

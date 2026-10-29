@@ -36,13 +36,13 @@ class _RuleDialogState extends State<_RuleDialog> {
   String? _validatePattern(String? value) {
     final text = (value ?? '').trim();
     if (text.isEmpty) {
-      return '规则内容不能为空';
+      return context.l10n.rulePatternRequired;
     }
     if (text.contains('#@#')) {
-      return '该规则为放行规则，请在白名单中添加';
+      return context.l10n.ruleAllowNeedsAllowlist;
     }
     if (widget.existingPatterns.contains(text)) {
-      return '该规则已存在';
+      return context.l10n.ruleAlreadyExists;
     }
     return null;
   }
@@ -82,8 +82,8 @@ class _RuleDialogState extends State<_RuleDialog> {
               maxLines: null,
               minLines: 1,
               validator: _validatePattern,
-              decoration: const InputDecoration(
-                hintText: '域名，如 cdn.example.com',
+              decoration: InputDecoration(
+                hintText: context.l10n.ruleDomainHint,
               ),
             ),
             TextFormField(
@@ -91,8 +91,8 @@ class _RuleDialogState extends State<_RuleDialog> {
               maxLines: null,
               minLines: 1,
               validator: (value) =>
-                  (value ?? '').trim().isEmpty ? '目标值不能为空' : null,
-              decoration: const InputDecoration(hintText: '目标值，如 10.0.0.8'),
+                  (value ?? '').trim().isEmpty ? context.l10n.ruleTargetRequired : null,
+              decoration: InputDecoration(hintText: context.l10n.ruleTargetHint),
             ),
           ],
         ),

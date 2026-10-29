@@ -58,15 +58,15 @@ class _RuleRow extends StatelessWidget {
           children: [
             if (rule.important)
               TonalChip(
-                label: '重要',
+                label: context.l10n.ruleImportant,
                 color: colorScheme.warningContainer,
                 foregroundColor: colorScheme.onWarningContainer,
               ),
             if (rule.group case final group?) MetaChip(label: group),
             if (rule.subscriptionName case final name?) MetaChip(label: name),
-            if (protected) const MetaChip(label: '只读'),
+            if (protected) MetaChip(label: context.l10n.ruleReadOnly),
             Text(
-              rule.source.label,
+              rule.source.label(context.l10n),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.listCaptionStyle,
@@ -90,12 +90,12 @@ class _RuleRow extends StatelessWidget {
               popupBuilder: (_) => CommonPopupMenu(
                 items: [
                   CommonPopupMenuItem(
-                    label: '编辑规则',
+                    label: context.l10n.ruleEdit,
                     glyph: AppGlyphs.edit,
                     onPressed: onEdit,
                   ),
                   CommonPopupMenuItem(
-                    label: '删除规则',
+                    label: context.l10n.ruleDelete,
                     glyph: AppGlyphs.delete,
                     danger: true,
                     onPressed: onDelete,

@@ -1,6 +1,7 @@
 /// Network diagnostics: four tabs; `Stack` + `Offstage` keeps each tab state.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/native/dns_latency_bridge.dart';
 import 'package:diting/state/diagnostics_providers.dart';

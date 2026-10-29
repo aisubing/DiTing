@@ -1,6 +1,7 @@
 /// Form building blocks (upstream `form_page.dart` / `form_row.dart`).
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/forms/custom_issue.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +17,7 @@ class FormPage extends StatelessWidget {
     required this.title,
     required this.children,
     this.onSave,
-    this.saveLabel = '保存',
+    this.saveLabel,
     this.error,
     this.saving = false,
     this.padding = const EdgeInsets.symmetric(horizontal: 16),
@@ -29,7 +30,7 @@ class FormPage extends StatelessWidget {
   /// `null` renders a read-only form without a bottom action.
   final VoidCallback? onSave;
 
-  final String saveLabel;
+  final String? saveLabel;
 
   /// Top error bar; it expands itself when non-empty.
   final String? error;
@@ -65,7 +66,9 @@ class FormPage extends StatelessWidget {
           Padding(
             padding: padding.copyWith(top: 4, bottom: 16),
             child: TonalButton(
-              label: saving ? '处理中…' : saveLabel,
+              label: saving
+                  ? context.l10n.formProcessing
+                  : saveLabel ?? context.l10n.formSave,
               glyph: saving ? null : AppGlyphs.check,
               size: TonalButtonSize.section,
               onPressed: saving ? null : onSave,
@@ -186,7 +189,7 @@ class EntryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonMinIconButtonTheme(
       child: IconButton(
-        tooltip: _add ? '添加' : '删除',
+        tooltip: _add ? context.l10n.formAdd : context.l10n.formDelete,
         onPressed: onPressed,
         icon: GlyphIcon(
           _add ? AppGlyphs.addCircle : AppGlyphs.removeCircle,
@@ -208,7 +211,7 @@ class InfoMessageButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return CommonMinIconButtonTheme(
       child: IconButton(
-        tooltip: '说明',
+        tooltip: context.l10n.formHelp,
         onPressed: () => showMessageDialog(context, message),
         icon: GlyphIcon(
           AppGlyphs.info,
@@ -225,11 +228,11 @@ Future<void> showMessageDialog(BuildContext context, String message) =>
     showFloatingDialog<void>(
       context: context,
       child: CommonDialog(
-        title: '说明',
+        title: context.l10n.formHelp,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('知道了'),
+            child: Text(context.l10n.formGotIt),
           ),
         ],
         child: Text(message),

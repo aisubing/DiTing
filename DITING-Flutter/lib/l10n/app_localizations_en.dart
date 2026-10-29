@@ -2661,4 +2661,255 @@ class AppL10nEn extends AppL10n {
   @override
   String get fontFamilyHapticSubtitle =>
       'A short vibration when switching tabs';
+
+  @override
+  String get ruleKindBlockTitle => 'Block list';
+
+  @override
+  String get ruleKindBlockSummary => 'Block matching domains';
+
+  @override
+  String get ruleKindAllowTitle => 'Allow list';
+
+  @override
+  String get ruleKindAllowSummary => 'Let matching domains through';
+
+  @override
+  String get ruleKindRewriteTitle => 'Rewrite';
+
+  @override
+  String get ruleKindRewriteSummary => 'Rewrite DNS answers';
+
+  @override
+  String get ruleSourceUser => 'User defined';
+
+  @override
+  String get ruleSourceSubscription => 'Rule subscription';
+
+  @override
+  String get ruleSourcePreset => 'Built-in preset';
+
+  @override
+  String get rulePatternRequired => 'The rule cannot be empty';
+
+  @override
+  String get ruleAllowNeedsAllowlist =>
+      'This is an allow rule; add it to the allow list instead';
+
+  @override
+  String get ruleAlreadyExists => 'This rule already exists';
+
+  @override
+  String get ruleDomainHint => 'Domain, e.g. cdn.example.com';
+
+  @override
+  String get ruleTargetRequired => 'The target cannot be empty';
+
+  @override
+  String get ruleTargetHint => 'Target, e.g. 10.0.0.8';
+
+  @override
+  String get ruleImportant => 'Important';
+
+  @override
+  String get ruleReadOnly => 'Read only';
+
+  @override
+  String get ruleEdit => 'Edit rule';
+
+  @override
+  String get ruleDelete => 'Delete rule';
+
+  @override
+  String get batchImportDone => 'Import finished';
+
+  @override
+  String get batchAddTitle => 'Add rules in bulk';
+
+  @override
+  String get batchTarget => 'Import into';
+
+  @override
+  String get batchTargetTable => 'Target rule list';
+
+  @override
+  String get batchTargetTableSubtitle =>
+      'Imported rules go into the selected list';
+
+  @override
+  String get batchPlaceholder =>
+      'One rule per line, for example:\n||ads.example.com^\n\nBlank lines are ignored and duplicates are skipped automatically.';
+
+  @override
+  String get batchImportable => 'Importable';
+
+  @override
+  String get batchDuplicated => 'Duplicated';
+
+  @override
+  String get batchInvalid => 'Invalid';
+
+  @override
+  String get batchInvalidHeader => 'These rules failed validation';
+
+  @override
+  String get batchDuplicateHeader => 'Already present, will be skipped';
+
+  @override
+  String get ruleClearCustomTitle => 'Clear custom rules';
+
+  @override
+  String get commonClearAll => 'Clear';
+
+  @override
+  String get ruleResetDefault => 'Reset the default allow list';
+
+  @override
+  String get commonReset => 'Reset';
+
+  @override
+  String get rulePresetProtectedTitle => 'Preset rules are protected';
+
+  @override
+  String get ruleAllowEditTitle => 'Allow editing the default allow list?';
+
+  @override
+  String get ruleAllowEditConfirm => 'Enable anyway';
+
+  @override
+  String get ruleTotal => 'Total rules';
+
+  @override
+  String get ruleEnabled => 'Enabled';
+
+  @override
+  String get ruleRewriteEntries => 'Rewrite entries';
+
+  @override
+  String get ruleCustom => 'Custom';
+
+  @override
+  String get ruleAllowEditDefault => 'Allow editing the default allow list';
+
+  @override
+  String get ruleAllowEditDefaultSubtitle =>
+      'When off, preset rules are read-only so the allow list cannot widen by accident';
+
+  @override
+  String get ruleNoMatch => 'No matching rules';
+
+  @override
+  String get ruleNoMatchDescription => 'Try another keyword or filter';
+
+  @override
+  String get ruleAll => 'All';
+
+  @override
+  String get formIssuesTitle => 'A few things need fixing';
+
+  @override
+  String get formSave => 'Save';
+
+  @override
+  String get formProcessing => 'Working…';
+
+  @override
+  String get formAdd => 'Add';
+
+  @override
+  String get formDelete => 'Delete';
+
+  @override
+  String get formHelp => 'Help';
+
+  @override
+  String get formGotIt => 'Got it';
+
+  @override
+  String get rulePatternHint => 'Rule text, e.g. ||ads.example.com^';
+
+  @override
+  String ruleBatchImported(Object count, Object kind) {
+    return 'Imported $count rules into $kind.';
+  }
+
+  @override
+  String ruleBatchSkippedDuplicates(Object count) {
+    return 'Skipped $count duplicate rules.';
+  }
+
+  @override
+  String ruleBatchAllowRejected(Object count) {
+    return '$count allow rules (with #@#) were not imported: allow rules belong in the allow list.';
+  }
+
+  @override
+  String ruleBatchImportCount(Object count) {
+    return 'Import $count';
+  }
+
+  @override
+  String ruleBatchMoreDuplicates(Object count) {
+    return 'and $count more';
+  }
+
+  @override
+  String ruleAddForKind(Object kind) {
+    return 'Add a $kind rule';
+  }
+
+  @override
+  String get ruleEditDefaultPreset => 'Edit a default preset rule';
+
+  @override
+  String ruleEditForKind(Object kind) {
+    return 'Edit a $kind rule';
+  }
+
+  @override
+  String ruleDeletePresetMessage(Object pattern) {
+    return '\"$pattern\" is a built-in preset rule; resetting the defaults restores it.';
+  }
+
+  @override
+  String ruleDeleteSubscriptionMessage(Object name, Object pattern) {
+    return '\"$pattern\" comes from the subscription \"$name\" and may return on the next update.';
+  }
+
+  @override
+  String ruleDeleteUserMessage(Object pattern) {
+    return 'Delete \"$pattern\"? This cannot be undone.';
+  }
+
+  @override
+  String ruleClearCustomMessage(Object kind) {
+    return 'All user-defined $kind rules will be deleted; subscription and preset rules are untouched.';
+  }
+
+  @override
+  String get ruleResetMessage =>
+      'Restores the built-in preset rules; rules you added and subscription rules are kept.';
+
+  @override
+  String get rulePresetProtectedMessage =>
+      'Default allow list rules are read-only. Turn on \"Allow editing the default allow list\" at the top of the page before changing or deleting them.';
+
+  @override
+  String get ruleAllowEditMessage =>
+      'The allow list lets traffic through, so changing it may pass traffic that should be blocked. Enable this only if you understand the risk.';
+
+  @override
+  String ruleTally(Object enabled, Object matched) {
+    return '$matched total · $enabled enabled';
+  }
+
+  @override
+  String ruleNoRulesForKind(Object kind) {
+    return 'No $kind rules yet';
+  }
+
+  @override
+  String ruleClearCustomForKind(Object kind) {
+    return 'Clear custom $kind';
+  }
 }

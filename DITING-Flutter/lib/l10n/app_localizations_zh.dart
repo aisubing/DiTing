@@ -2519,4 +2519,250 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get fontFamilyHapticSubtitle => '切换 tab 时给一次轻震';
+
+  @override
+  String get ruleKindBlockTitle => '黑名单';
+
+  @override
+  String get ruleKindBlockSummary => '拦截匹配的域名';
+
+  @override
+  String get ruleKindAllowTitle => '白名单';
+
+  @override
+  String get ruleKindAllowSummary => '放行匹配的域名';
+
+  @override
+  String get ruleKindRewriteTitle => '覆写';
+
+  @override
+  String get ruleKindRewriteSummary => '改写域名解析结果';
+
+  @override
+  String get ruleSourceUser => '用户自定义';
+
+  @override
+  String get ruleSourceSubscription => '规则订阅';
+
+  @override
+  String get ruleSourcePreset => '内置预设';
+
+  @override
+  String get rulePatternRequired => '规则内容不能为空';
+
+  @override
+  String get ruleAllowNeedsAllowlist => '该规则为放行规则，请在白名单中添加';
+
+  @override
+  String get ruleAlreadyExists => '该规则已存在';
+
+  @override
+  String get ruleDomainHint => '域名，如 cdn.example.com';
+
+  @override
+  String get ruleTargetRequired => '目标值不能为空';
+
+  @override
+  String get ruleTargetHint => '目标值，如 10.0.0.8';
+
+  @override
+  String get ruleImportant => '重要';
+
+  @override
+  String get ruleReadOnly => '只读';
+
+  @override
+  String get ruleEdit => '编辑规则';
+
+  @override
+  String get ruleDelete => '删除规则';
+
+  @override
+  String get batchImportDone => '导入完成';
+
+  @override
+  String get batchAddTitle => '批量添加规则';
+
+  @override
+  String get batchTarget => '导入到';
+
+  @override
+  String get batchTargetTable => '目标规则表';
+
+  @override
+  String get batchTargetTableSubtitle => '导入的规则将写入所选规则表';
+
+  @override
+  String get batchPlaceholder =>
+      '每行一条规则，例如：\n||ads.example.com^\n\n空行会被忽略，重复规则自动跳过。';
+
+  @override
+  String get batchImportable => '可导入';
+
+  @override
+  String get batchDuplicated => '重复';
+
+  @override
+  String get batchInvalid => '无效';
+
+  @override
+  String get batchInvalidHeader => '以下规则未通过校验';
+
+  @override
+  String get batchDuplicateHeader => '已存在，将跳过';
+
+  @override
+  String get ruleClearCustomTitle => '清空自定义规则';
+
+  @override
+  String get commonClearAll => '清空';
+
+  @override
+  String get ruleResetDefault => '重置默认白名单';
+
+  @override
+  String get commonReset => '重置';
+
+  @override
+  String get rulePresetProtectedTitle => '预设规则受保护';
+
+  @override
+  String get ruleAllowEditTitle => '允许编辑默认白名单？';
+
+  @override
+  String get ruleAllowEditConfirm => '仍然开启';
+
+  @override
+  String get ruleTotal => '规则总数';
+
+  @override
+  String get ruleEnabled => '已启用';
+
+  @override
+  String get ruleRewriteEntries => '覆写条目';
+
+  @override
+  String get ruleCustom => '自定义';
+
+  @override
+  String get ruleAllowEditDefault => '允许编辑默认白名单';
+
+  @override
+  String get ruleAllowEditDefaultSubtitle => '关闭时预设规则只读，避免误放宽放行范围';
+
+  @override
+  String get ruleNoMatch => '没有匹配的规则';
+
+  @override
+  String get ruleNoMatchDescription => '换个关键词或筛选条件再试';
+
+  @override
+  String get ruleAll => '全部';
+
+  @override
+  String get formIssuesTitle => '有几点需要先修正';
+
+  @override
+  String get formSave => '保存';
+
+  @override
+  String get formProcessing => '处理中…';
+
+  @override
+  String get formAdd => '添加';
+
+  @override
+  String get formDelete => '删除';
+
+  @override
+  String get formHelp => '说明';
+
+  @override
+  String get formGotIt => '知道了';
+
+  @override
+  String get rulePatternHint => '规则内容，如 ||ads.example.com^';
+
+  @override
+  String ruleBatchImported(Object count, Object kind) {
+    return '已向$kind导入 $count 条规则。';
+  }
+
+  @override
+  String ruleBatchSkippedDuplicates(Object count) {
+    return '跳过 $count 条重复规则。';
+  }
+
+  @override
+  String ruleBatchAllowRejected(Object count) {
+    return '$count 条放行规则（含 #@#）未导入：该规则为放行规则，请在白名单中添加。';
+  }
+
+  @override
+  String ruleBatchImportCount(Object count) {
+    return '导入 $count 条';
+  }
+
+  @override
+  String ruleBatchMoreDuplicates(Object count) {
+    return '等 $count 条';
+  }
+
+  @override
+  String ruleAddForKind(Object kind) {
+    return '添加$kind规则';
+  }
+
+  @override
+  String get ruleEditDefaultPreset => '编辑默认预设规则';
+
+  @override
+  String ruleEditForKind(Object kind) {
+    return '编辑$kind规则';
+  }
+
+  @override
+  String ruleDeletePresetMessage(Object pattern) {
+    return '「$pattern」是内置预设规则，删除后可通过重置默认恢复。';
+  }
+
+  @override
+  String ruleDeleteSubscriptionMessage(Object name, Object pattern) {
+    return '「$pattern」来自订阅「$name」，删除后下次更新订阅可能重新出现。';
+  }
+
+  @override
+  String ruleDeleteUserMessage(Object pattern) {
+    return '确定删除「$pattern」吗？此操作不可撤销。';
+  }
+
+  @override
+  String ruleClearCustomMessage(Object kind) {
+    return '将删除全部用户自定义的$kind规则，订阅与预设规则不受影响。';
+  }
+
+  @override
+  String get ruleResetMessage => '将内置预设规则恢复为初始内容，你自己添加与订阅带来的规则保留。';
+
+  @override
+  String get rulePresetProtectedMessage =>
+      '默认白名单规则处于只读状态。请先开启页面顶部的「允许编辑默认白名单」开关，再修改或删除这些规则。';
+
+  @override
+  String get ruleAllowEditMessage => '白名单是放行名单，改动它可能让本应被拦截的流量通过。确认你清楚这条风险后再开启。';
+
+  @override
+  String ruleTally(Object enabled, Object matched) {
+    return '共 $matched 条 · 启用 $enabled';
+  }
+
+  @override
+  String ruleNoRulesForKind(Object kind) {
+    return '还没有$kind规则';
+  }
+
+  @override
+  String ruleClearCustomForKind(Object kind) {
+    return '清空自定义$kind';
+  }
 }

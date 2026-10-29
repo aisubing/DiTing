@@ -34,27 +34,38 @@ class MockProvider {
 }
 
 enum RuleKind {
-  block('黑名单', '拦截匹配的域名', 'rules'),
-  allow('白名单', '放行匹配的域名', 'checkCircle'),
-  rewrite('覆写', '改写域名解析结果', 'swap');
+  block('rules'),
+  allow('checkCircle'),
+  rewrite('swap');
 
-  const RuleKind(this.title, this.summary, this.glyphName);
+  const RuleKind(this.glyphName);
 
-  final String title;
-  final String summary;
+  String title(AppL10n l10n) => switch (this) {
+    RuleKind.block => l10n.ruleKindBlockTitle,
+    RuleKind.allow => l10n.ruleKindAllowTitle,
+    RuleKind.rewrite => l10n.ruleKindRewriteTitle,
+  };
+
+  String summary(AppL10n l10n) => switch (this) {
+    RuleKind.block => l10n.ruleKindBlockSummary,
+    RuleKind.allow => l10n.ruleKindAllowSummary,
+    RuleKind.rewrite => l10n.ruleKindRewriteSummary,
+  };
 
   /// Same names as `AppGlyphs` constants; the page maps them to a Glyph.
   final String glyphName;
 }
 
 enum RuleSource {
-  user('用户自定义'),
-  subscription('规则订阅'),
-  preset('内置预设');
+  user,
+  subscription,
+  preset;
 
-  const RuleSource(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    RuleSource.user => l10n.ruleSourceUser,
+    RuleSource.subscription => l10n.ruleSourceSubscription,
+    RuleSource.preset => l10n.ruleSourcePreset,
+  };
 }
 
 class MockRule {

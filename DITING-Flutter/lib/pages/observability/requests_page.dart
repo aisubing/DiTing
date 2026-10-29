@@ -1,6 +1,7 @@
 /// Request list (upstream `views/connection/requests.dart`): `http_request_log` + `dns_log`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/db/dns_query_repository.dart';

@@ -1,6 +1,7 @@
 /// Form issue banners (upstream `features/form/custom_issue.dart`).
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -96,11 +97,11 @@ class CustomIssuesBanner extends StatelessWidget {
   const CustomIssuesBanner({
     super.key,
     required this.issues,
-    this.title = '有几点需要先修正',
+    this.title,
   });
 
   final List<String> issues;
-  final String title;
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +130,7 @@ class CustomIssuesBanner extends StatelessWidget {
                   color: colorScheme.onErrorContainer,
                 ),
                 Text(
-                  title,
+                  title ?? context.l10n.formIssuesTitle,
                   style: AppTextStyle.subheadline
                       .of(context, emphasized: true)
                       .copyWith(color: colorScheme.onErrorContainer),

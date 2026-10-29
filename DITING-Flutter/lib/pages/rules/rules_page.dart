@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/mock_data.dart';
@@ -77,18 +78,18 @@ class _RulesPageState extends ConsumerState<RulesPage> {
         child: InputDialog(
           title: title,
           value: initialPattern,
-          hintText: '规则内容，如 ||ads.example.com^',
+          hintText: context.l10n.rulePatternHint,
           selectAll: initialPattern.isNotEmpty,
           validator: (value) {
             final text = (value ?? '').trim();
             if (text.isEmpty) {
-              return '规则内容不能为空';
+              return context.l10n.rulePatternRequired;
             }
             if (kind != RuleKind.allow && text.contains('#@#')) {
-              return '该规则为放行规则，请在白名单中添加';
+              return context.l10n.ruleAllowNeedsAllowlist;
             }
             if (existingPatterns.contains(text)) {
-              return '该规则已存在';
+              return context.l10n.ruleAlreadyExists;
             }
             return null;
           },
@@ -110,7 +111,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   Future<void> _addRule() async {
     final kind = _kind;
     final result = await _promptRule(
-      title: '添加${kind.title}规则',
+      title: context.l10n.ruleAddForKind(kind.title(context.l10n)),
       initialPattern: '',
       existingPatterns: {
         for (final rule in ref.read(rulesOfKindProvider(kind))) rule.pattern,
@@ -128,8 +129,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     final kind = _kind;
     final result = await _promptRule(
       title: rule.source == RuleSource.preset
-          ? '编辑默认预设规则'
-          : '编辑${kind.title}规则',
+          ? context.l10n.ruleEditDefaultPreset
+          : context.l10n.ruleEditForKind(kind.title(context.l10n)),
       initialPattern: rule.pattern,
       initialTarget: rule.target,
       existingPatterns: {
@@ -149,15 +150,17 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     final kind = _kind;
     final confirmed = await _confirm(
       context,
-      title: '删除规则',
+      title: context.l10n.ruleDelete,
       message: switch (rule.source) {
-        RuleSource.preset => '「${rule.pattern}」是内置预设规则，删除后可通过重置默认恢复。',
+        RuleSource.preset => context.l10n.ruleDeletePresetMessage(rule.pattern),
         RuleSource.subscription =>
-          '「${rule.pattern}」来自订阅「${rule.subscriptionName ?? '规则订阅'}」，'
-              '删除后下次更新订阅可能重新出现。',
-        RuleSource.user => '确定删除「${rule.pattern}」吗？此操作不可撤销。',
+          context.l10n.ruleDeleteSubscriptionMessage(
+            rule.pattern,
+            rule.subscriptionName ?? context.l10n.ruleSourceSubscription,
+          ),
+        RuleSource.user => context.l10n.ruleDeleteUserMessage(rule.pattern),
       },
-      confirmLabel: '删除',
+      confirmLabel: context.l10n.formDelete,
     );
     if (!confirmed || !mounted) {
       return;
@@ -169,9 +172,9 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     final kind = _kind;
     final confirmed = await _confirm(
       context,
-      title: '清空自定义规则',
-      message: '将删除全部用户自定义的${kind.title}规则，订阅与预设规则不受影响。',
-      confirmLabel: '清空',
+      title: context.l10n.ruleClearCustomTitle,
+      message: context.l10n.ruleClearCustomMessage(kind.title(context.l10n)),
+      confirmLabel: context.l10n.commonClearAll,
     );
     if (!confirmed || !mounted) {
       return;
@@ -183,9 +186,9 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     final kind = _kind;
     final confirmed = await _confirm(
       context,
-      title: '重置默认白名单',
-      message: '将内置预设规则恢复为初始内容，你自己添加与订阅带来的规则保留。',
-      confirmLabel: '重置',
+      title: context.l10n.ruleResetDefault,
+      message: context.l10n.ruleResetMessage,
+      confirmLabel: context.l10n.commonReset,
     );
     if (!confirmed || !mounted) {
       return;
@@ -198,16 +201,15 @@ class _RulesPageState extends ConsumerState<RulesPage> {
   Future<void> _showProtectedHint() => showFloatingDialog<void>(
     context: context,
     child: CommonDialog(
-      title: '预设规则受保护',
+      title: context.l10n.rulePresetProtectedTitle,
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: Text(UiLocalizations.of(context).close),
         ),
       ],
-      child: const Text(
-        '默认白名单规则处于只读状态。请先开启页面顶部的'
-        '「允许编辑默认白名单」开关，再修改或删除这些规则。',
+      child: Text(
+        context.l10n.rulePresetProtectedMessage,
       ),
     ),
   );
@@ -219,11 +221,10 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     }
     final confirmed = await _confirm(
       context,
-      title: '允许编辑默认白名单？',
+      title: context.l10n.ruleAllowEditTitle,
       message:
-          '白名单是放行名单，改动它可能让本应被拦截的流量通过。'
-          '确认你清楚这条风险后再开启。',
-      confirmLabel: '仍然开启',
+          context.l10n.ruleAllowEditMessage,
+      confirmLabel: context.l10n.ruleAllowEditConfirm,
     );
     if (!confirmed || !mounted) {
       return;
@@ -246,29 +247,31 @@ class _RulesPageState extends ConsumerState<RulesPage> {
     final searching = _query.isNotEmpty || _sourceFilter != null;
 
     return CommonScaffold(
-      title: kind.title,
+      title: kind.title(context.l10n),
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加${kind.title}规则',
+          tooltip: context.l10n.ruleAddForKind(kind.title(context.l10n)),
           onPressed: _addRule,
         ),
         IconButtonData(
           glyph: AppGlyphs.listAdd,
-          tooltip: '批量添加规则',
+          tooltip: context.l10n.batchAddTitle,
           onPressed: () => context.push(Routes.batchEditor),
         ),
       ],
       menuItems: [
         CommonPopupMenuItem(
-          label: '清空自定义${kind.title}',
+          label: context.l10n.ruleClearCustomForKind(
+            kind.title(context.l10n),
+          ),
           glyph: AppGlyphs.broom,
           danger: true,
           onPressed: tally.custom == 0 ? null : _clearCustom,
         ),
         if (kind == RuleKind.allow)
           CommonPopupMenuItem(
-            label: '重置默认白名单',
+            label: context.l10n.ruleResetDefault,
             glyph: AppGlyphs.reset,
             onPressed: _resetPreset,
           ),
@@ -283,14 +286,14 @@ class _RulesPageState extends ConsumerState<RulesPage> {
                   child: CommonCard(
                     child: StatStrip(
                       stats: [
-                        StatItem(label: '规则总数', value: '${tally.total}'),
+                        StatItem(label: context.l10n.ruleTotal, value: '${tally.total}'),
                         StatItem(
-                          label: '已启用',
+                          label: context.l10n.ruleEnabled,
                           value: '${tally.enabled}',
                           color: context.colorScheme.success,
                         ),
                         StatItem(
-                          label: kind == RuleKind.rewrite ? '覆写条目' : '自定义',
+                          label: kind == RuleKind.rewrite ? context.l10n.ruleRewriteEntries : context.l10n.ruleCustom,
                           value: '${tally.custom}',
                         ),
                       ],
@@ -302,8 +305,8 @@ class _RulesPageState extends ConsumerState<RulesPage> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: CommonCard(
                       child: ListItem.toggle(
-                        title: const Text('允许编辑默认白名单'),
-                        subtitle: const Text('关闭时预设规则只读，避免误放宽放行范围'),
+                        title: Text(context.l10n.ruleAllowEditDefault),
+                        subtitle: Text(context.l10n.ruleAllowEditDefaultSubtitle),
                         value: allowPresetEditable,
                         onChanged: _togglePresetEditing,
                       ),
@@ -328,7 +331,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
                   child: Text(
                     // The counter always reports a number, even zero: the empty state already
                     // says there are no matching rules, and repeating it reads as double render.
-                    '共 ${tally.matched} 条 · 启用 ${tally.matchedEnabled}',
+                    context.l10n.ruleTally(tally.matched, tally.matchedEnabled),
                     style: context.listCaptionStyle,
                   ),
                 ),
@@ -340,14 +343,22 @@ class _RulesPageState extends ConsumerState<RulesPage> {
               child: EmptyStateBox(
                 minHeight: 320,
                 child: NullStatus(
-                  label: searching ? '没有匹配的规则' : '还没有${kind.title}规则',
-                  description: searching ? '换个关键词或筛选条件再试' : kind.summary,
+                  label: searching
+                      ? context.l10n.ruleNoMatch
+                      : context.l10n.ruleNoRulesForKind(
+                          kind.title(context.l10n),
+                        ),
+                  description: searching ? context.l10n.ruleNoMatchDescription : kind.summary(context.l10n),
                   illustration: NullStatusIllustration.rules,
                   action: searching
                       ? null
                       : FilledButton(
                           onPressed: _addRule,
-                          child: Text('添加${kind.title}规则'),
+                          child: Text(
+                            context.l10n.ruleAddForKind(
+                              kind.title(context.l10n),
+                            ),
+                          ),
                         ),
                 ),
               ),
@@ -361,6 +372,7 @@ class _RulesPageState extends ConsumerState<RulesPage> {
                 rules: section.rules,
                 kind: kind,
                 allowPresetEditable: allowPresetEditable,
+                l10n: context.l10n,
                 onToggle: (rule, enabled) => ref
                     .read(rulesProvider.notifier)
                     .toggle(kind, rule.id, enabled),
@@ -385,8 +397,8 @@ class _SourceChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = <(RuleSourceFilter, String)>[
-      (null, '全部'),
-      for (final source in RuleSource.values) (source, source.label),
+      (null, context.l10n.ruleAll),
+      for (final source in RuleSource.values) (source, source.label(context.l10n)),
     ];
     return ChipRow(
       children: [
@@ -433,9 +445,10 @@ List<Widget> ruleSectionSlivers({
   required ValueChanged<MockRule> onEdit,
   required ValueChanged<MockRule> onDelete,
   required VoidCallback onProtected,
+  required AppL10n l10n,
 }) {
   return [
-    SliverToBoxAdapter(child: ListHeader(title: source.label)),
+    SliverToBoxAdapter(child: ListHeader(title: source.label(l10n))),
     SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverList.builder(
