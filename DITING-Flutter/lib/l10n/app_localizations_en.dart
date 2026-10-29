@@ -9010,4 +9010,35 @@ class AppL10nEn extends AppL10n {
   @override
   String get backupErrSystemNotObject =>
       'The system settings section must be an object';
+
+  @override
+  String get outboundScopeTitle => 'Proxy scope';
+
+  @override
+  String get outboundScopeAll => 'All apps';
+
+  @override
+  String get outboundScopeApps => 'Selected apps';
+
+  @override
+  String get outboundScopeAllFooter =>
+      'Connections from every app and DITING\'s own upstream DNS queries go through the proxy.';
+
+  @override
+  String get outboundScopeAppsFooter =>
+      'Only connections from the selected apps go through the proxy. Other apps, connections whose owner cannot be identified and DITING\'s own upstream DNS queries connect directly.';
+
+  @override
+  String get outboundTargets => 'Apps using the proxy';
+
+  @override
+  String get outboundTargetsTitle => 'Choose apps that use the proxy';
+
+  @override
+  String get outboundTargetsIntro =>
+      'Checked apps connect through the proxy; restart the tunnel after a change. The proxy app, DITING and apps in Excluded apps bypass the tunnel and cannot use the proxy, so they are not listed.';
+
+  @override
+  String get outboundProxyTargetsRequired =>
+      'Pick at least one app to use the proxy in Selected apps mode';
 }

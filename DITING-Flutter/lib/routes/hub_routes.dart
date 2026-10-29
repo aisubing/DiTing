@@ -13,6 +13,7 @@ import 'package:diting/pages/hub/hidden_features_page.dart';
 import 'package:diting/pages/hub/http_inspection_page.dart';
 import 'package:diting/pages/hub/log_retention_page.dart';
 import 'package:diting/pages/hub/outbound_proxy_pages.dart';
+import 'package:diting/pages/hub/outbound_proxy_targets_page.dart';
 import 'package:diting/pages/hub/provider_management_page.dart';
 import 'package:diting/pages/hub/provider_visibility_page.dart';
 import 'package:diting/pages/hub/recognition_pages.dart';
@@ -43,6 +44,7 @@ abstract final class HubPaths {
   static const caGuide = '/hub/https-inspection/ca/guide';
   static const outboundProxy = '/hub/outbound-proxy';
   static const outboundProxyApps = '/hub/outbound-proxy/apps';
+  static const outboundProxyTargets = '/hub/outbound-proxy/targets';
   static const agentApi = '/hub/agent';
   static const agentProviders = '/hub/agent/providers';
   static const agentParams = '/hub/agent/params';
@@ -171,6 +173,12 @@ List<RouteBase> hubRoutes() => [
     parentNavigatorKey: rootNavigatorKey,
     pageBuilder: (context, state) =>
         androidDefaultPage(state, const OutboundProxyAppsPage()),
+  ),
+  GoRoute(
+    path: HubPaths.outboundProxyTargets,
+    parentNavigatorKey: rootNavigatorKey,
+    pageBuilder: (context, state) =>
+        androidDefaultPage(state, const OutboundProxyTargetsPage()),
   ),
   GoRoute(
     path: HubPaths.agentApi,

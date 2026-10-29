@@ -21,6 +21,7 @@ import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.log.TrafficRateMonitor
 import com.haoze.diting.proxy.OutboundProxyBridge
+import com.haoze.diting.proxy.OutboundProxyScope
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
@@ -159,7 +160,7 @@ class DitingVpnService : VpnService() {
 
         try {
             val proxyError = goEngine.configureOutboundProxy(
-                proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY }
+                OutboundProxyScope.resolve(this, proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY })
             )
             if (proxyError.isNotBlank()) {
                 // Persisted before failing so the page shows the reason, as the legacy app did.
@@ -554,8 +555,6 @@ class DitingVpnService : VpnService() {
         )
 
         /// Second-resolution TX/RX rates; zeros while stopped, or the last tick if racing the stop
-        
-        
         fun trafficRates(): Map<String, Any?> {
             if (!isRunning) {
                 return mapOf("running" to false, "txBps" to 0L, "rxBps" to 0L)

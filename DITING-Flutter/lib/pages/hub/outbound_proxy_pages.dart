@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
+import 'package:diting/routes/hub_routes.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/outbound_proxy_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -249,6 +250,7 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
             ],
             footer: _statusFooter(context.l10n, config),
           ),
+          _scopeSection(context, config),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: SegmentedControl<OutboundProxyProtocol>(
@@ -340,6 +342,48 @@ class _OutboundProxyPageState extends ConsumerState<OutboundProxyPage> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  /// Proxy scope: all apps (original behaviour) or only the picked target apps.
+  Widget _scopeSection(BuildContext context, OutboundProxyConfig config) {
+    final l10n = context.l10n;
+    final perApp = config.scope == OutboundProxyScope.apps;
+    final count = config.effectiveTargets.length;
+    return generateSection(
+      title: l10n.outboundScopeTitle,
+      items: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: SegmentedControl<OutboundProxyScope>(
+            segments: [
+              (OutboundProxyScope.all, l10n.outboundScopeAll),
+              (OutboundProxyScope.apps, l10n.outboundScopeApps),
+            ],
+            value: config.scope,
+            onChanged: _saving
+                ? (_) {}
+                : (value) async {
+                    await ref
+                        .read(outboundProxyStoreProvider)
+                        .write(config.copyWith(scope: value));
+                    ref.read(outboundProxyRevisionProvider.notifier).bump();
+                  },
+          ),
+        ),
+        if (perApp)
+          ListItem(
+            leading: const GlyphIcon(AppGlyphs.appsList),
+            title: Text(l10n.outboundTargets),
+            subtitle: Text(
+              count == 0
+                  ? l10n.appSelectionNoAppsYet
+                  : l10n.appSelectionCount('$count'),
+            ),
+            onTap: () => context.push(HubPaths.outboundProxyTargets),
+          ),
+      ],
+      footer: perApp ? l10n.outboundScopeAppsFooter : l10n.outboundScopeAllFooter,
     );
   }
 

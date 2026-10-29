@@ -15416,6 +15416,60 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'系统设置分组应为对象'**
   String get backupErrSystemNotObject;
+
+  /// No description provided for @outboundScopeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理范围'**
+  String get outboundScopeTitle;
+
+  /// No description provided for @outboundScopeAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部应用'**
+  String get outboundScopeAll;
+
+  /// No description provided for @outboundScopeApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅选中应用'**
+  String get outboundScopeApps;
+
+  /// No description provided for @outboundScopeAllFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'所有应用的连接以及谛听自身的 DNS 上游查询都经过代理。'**
+  String get outboundScopeAllFooter;
+
+  /// No description provided for @outboundScopeAppsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'只有选中应用的连接经过代理；其他应用、无法识别归属的连接以及谛听自身的 DNS 上游查询直接连接。'**
+  String get outboundScopeAppsFooter;
+
+  /// No description provided for @outboundTargets.
+  ///
+  /// In zh, this message translates to:
+  /// **'走代理的应用'**
+  String get outboundTargets;
+
+  /// No description provided for @outboundTargetsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择走代理的应用'**
+  String get outboundTargetsTitle;
+
+  /// No description provided for @outboundTargetsIntro.
+  ///
+  /// In zh, this message translates to:
+  /// **'勾选的应用会经代理连接网络，修改后需重启隧道生效。代理应用本身、谛听以及「排除应用」中的应用不经过隧道，无法走代理，因此不在列表中。'**
+  String get outboundTargetsIntro;
+
+  /// No description provided for @outboundProxyTargetsRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'「仅选中应用」模式下请至少选择一个走代理的应用'**
+  String get outboundProxyTargetsRequired;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

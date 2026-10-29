@@ -56,6 +56,7 @@ final Map<String, String> topLevelRoutes = {
   'CA 证书指南': HubPaths.caGuide,
   '出站代理': HubPaths.outboundProxy,
   '出站代理应用': HubPaths.outboundProxyApps,
+  '出站代理目标应用': HubPaths.outboundProxyTargets,
   'AI 分析': HubPaths.agentApi,
   'AI 厂商管理': HubPaths.agentProviders,
   'AI 参数与提示词': HubPaths.agentParams,

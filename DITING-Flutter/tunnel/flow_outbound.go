@@ -33,6 +33,32 @@ type outboundProxyConfig struct {
 	Port     int    `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+	// Scope is "all" (default) or "apps". In "apps" mode only flows owned by UIDs are proxied,
+	// and the engine's own DNS upstream dials stay direct.
+	Scope string `json:"scope"`
+	UIDs  []int  `json:"uids"`
+
+	uidSet map[int]struct{}
+}
+
+const outboundScopeApps = "apps"
+
+// perApp reports whether only the selected UIDs are proxied.
+func (c outboundProxyConfig) perApp() bool {
+	return c.Enabled && c.Scope == outboundScopeApps
+}
+
+// proxiesUID reports whether a flow owned by uid goes through the proxy. Unknown owners stay direct
+// in per-app mode so an unselected app is never pushed into the proxy by mistake.
+func (c outboundProxyConfig) proxiesUID(uid int) bool {
+	if !c.perApp() {
+		return true
+	}
+	if uid == UIDUnknown {
+		return false
+	}
+	_, ok := c.uidSet[uid]
+	return ok
 }
 
 type flowOutbound interface {
@@ -107,6 +133,16 @@ func parseOutboundProxyConfig(raw string) (outboundProxyConfig, error) {
 	}
 	if len(cfg.Username) > 255 || len(cfg.Password) > 255 {
 		return cfg, errors.New("SOCKS5 credentials must not exceed 255 bytes")
+	}
+	cfg.Scope = strings.ToLower(strings.TrimSpace(cfg.Scope))
+	if cfg.Scope != outboundScopeApps {
+		cfg.Scope = "all"
+	}
+	cfg.uidSet = make(map[int]struct{}, len(cfg.UIDs))
+	for _, uid := range cfg.UIDs {
+		if uid > 0 {
+			cfg.uidSet[uid] = struct{}{}
+		}
 	}
 	return cfg, nil
 }

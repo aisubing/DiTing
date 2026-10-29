@@ -36,6 +36,7 @@
 /hub/log-retention
 /hub/outbound-proxy
 /hub/outbound-proxy/apps
+/hub/outbound-proxy/targets
 /hub/provider-visibility
 /hub/providers
 /hub/resolution

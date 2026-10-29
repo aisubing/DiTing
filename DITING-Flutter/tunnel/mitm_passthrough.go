@@ -21,8 +21,8 @@ func isTLSClientPort(port int) bool {
 
 func dialUpstream(flow flowID, hostname string, blocker adBlockChecker, protectFn func(fd int) bool) (net.Conn, error) {
 	var outbound flowOutbound
-	if engine, ok := blocker.(*Engine); ok && engine.flowOutbound != nil {
-		outbound = engine.flowOutbound
+	if engine, ok := blocker.(*Engine); ok {
+		outbound = engine.outboundForFlow(flow, ProtocolTCP, protectFn)
 	} else {
 		outbound = newFlowOutbound(outboundProxyConfig{}, protectFn, nil)
 	}

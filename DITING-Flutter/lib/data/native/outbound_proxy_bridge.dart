@@ -23,6 +23,20 @@ enum OutboundProxyProtocol {
       );
 }
 
+/// Which apps the proxy applies to. `all` is the original whole-device behaviour; `apps` proxies only
+/// [OutboundProxyConfig.targetPackages] and keeps DNS upstream queries and every other app direct.
+enum OutboundProxyScope {
+  all('all'),
+  apps('apps');
+
+  const OutboundProxyScope(this.storageValue);
+
+  final String storageValue;
+
+  static OutboundProxyScope fromStorageValue(String? value) =>
+      value == apps.storageValue ? apps : all;
+}
+
 class OutboundProxyConfig {
   const OutboundProxyConfig({
     this.enabled = false,
@@ -32,6 +46,8 @@ class OutboundProxyConfig {
     this.username = '',
     this.password = '',
     this.proxyAppPackage = '',
+    this.scope = OutboundProxyScope.all,
+    this.targetPackages = const {},
     this.status = 'disabled',
     this.statusMessage = '',
   });
@@ -45,6 +61,11 @@ class OutboundProxyConfig {
 
   final String proxyAppPackage;
 
+  final OutboundProxyScope scope;
+
+  /// Apps routed through the proxy when [scope] is [OutboundProxyScope.apps].
+  final Set<String> targetPackages;
+
   /// Engine-reported state: `disabled`, `connecting`, `ready` or `error`.
   final String status;
   final String statusMessage;
@@ -57,6 +78,8 @@ class OutboundProxyConfig {
     String? username,
     String? password,
     String? proxyAppPackage,
+    OutboundProxyScope? scope,
+    Set<String>? targetPackages,
     String? status,
     String? statusMessage,
   }) => OutboundProxyConfig(
@@ -67,6 +90,8 @@ class OutboundProxyConfig {
     username: username ?? this.username,
     password: password ?? this.password,
     proxyAppPackage: proxyAppPackage ?? this.proxyAppPackage,
+    scope: scope ?? this.scope,
+    targetPackages: targetPackages ?? this.targetPackages,
     status: status ?? this.status,
     statusMessage: statusMessage ?? this.statusMessage,
   );
@@ -91,12 +116,22 @@ class OutboundProxyConfig {
       return currentL10n.outboundProxyAppMissing;
     }
     if (username.length > 255 || password.length > 255) return currentL10n.outboundProxyCredentialsTooLong;
+    if (scope == OutboundProxyScope.apps && effectiveTargets.isEmpty) {
+      return currentL10n.outboundProxyTargetsRequired;
+    }
     return null;
   }
 
+  /// Targets without the proxy app: it sits outside the TUN, so selecting it would have no effect.
+  Set<String> get effectiveTargets => {
+    for (final package in targetPackages)
+      if (package.isNotEmpty && package != proxyAppPackage) package,
+  };
+
   /// JSON handed to `Engine.configureOutboundProxy`. `port` must be a JSON number: Go unmarshals
   /// into `Port int` (`tunnel/flow_outbound.go:29`), and a string leaves the proxy silently
-  /// disabled.
+  /// disabled. Per-app scope adds `scope` and `packages`; the VPN service turns `packages` into
+  /// the `uids` the engine matches on.
   String toEngineJson() {
     final encoded = <String, Object>{
       'enabled': enabled,
@@ -117,6 +152,15 @@ class OutboundProxyConfig {
         }}',
       );
     }
+    if (scope == OutboundProxyScope.apps) {
+      final packages = [
+        for (final package in effectiveTargets.toList()..sort())
+          '"${_escape(package)}"',
+      ];
+      parts
+        ..add('"scope":"${scope.storageValue}"')
+        ..add('"packages":[${packages.join(',')}]');
+    }
     return '{${parts.join(',')}}';
   }
 
@@ -134,6 +178,11 @@ class OutboundProxyConfig {
         username: map['username'] as String? ?? '',
         password: map['password'] as String? ?? '',
         proxyAppPackage: map['proxyAppPackage'] as String? ?? '',
+        scope: OutboundProxyScope.fromStorageValue(map['scope'] as String?),
+        targetPackages: {
+          for (final item in (map['targetPackages'] as List?) ?? const [])
+            if (item is String && item.isNotEmpty) item,
+        },
         status: map['status'] as String? ?? 'disabled',
         statusMessage: map['statusMessage'] as String? ?? '',
       );
@@ -176,6 +225,8 @@ class MethodChannelOutboundProxyStore implements OutboundProxyStore {
         'username': config.username,
         'password': config.password,
         'proxyAppPackage': config.proxyAppPackage,
+        'scope': config.scope.storageValue,
+        'targetPackages': config.targetPackages.toList(),
       });
 
   @override

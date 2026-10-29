@@ -126,6 +126,8 @@ type Engine struct {
 	protectFn      func(fd int) bool
 	outboundConfig outboundProxyConfig
 	flowOutbound   flowOutbound
+	// outboundRouteView is the per-session proxy scope snapshot read on the flow path.
+	outboundRouteView atomic.Pointer[outboundRoute]
 
 	fullTunnelDone chan struct{}
 
@@ -210,6 +212,7 @@ func (e *Engine) Stop() {
 	e.setResolverLocked(nil)
 	oldFlowOutbound := e.flowOutbound
 	e.flowOutbound = nil
+	e.outboundRouteView.Store(nil)
 	if oldFlowOutbound != nil {
 		_ = oldFlowOutbound.Close()
 	}

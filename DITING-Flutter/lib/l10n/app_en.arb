@@ -2547,5 +2547,14 @@
   "backupErrProvidersInvalidJson": "The provider configuration is not valid JSON",
   "backupErrBootstrapInvalidJson": "The Bootstrap configuration is not valid JSON",
   "backupErrAppearanceNotObject": "The appearance section must be an object",
-  "backupErrSystemNotObject": "The system settings section must be an object"
+  "backupErrSystemNotObject": "The system settings section must be an object",
+  "outboundScopeTitle": "Proxy scope",
+  "outboundScopeAll": "All apps",
+  "outboundScopeApps": "Selected apps",
+  "outboundScopeAllFooter": "Connections from every app and DITING's own upstream DNS queries go through the proxy.",
+  "outboundScopeAppsFooter": "Only connections from the selected apps go through the proxy. Other apps, connections whose owner cannot be identified and DITING's own upstream DNS queries connect directly.",
+  "outboundTargets": "Apps using the proxy",
+  "outboundTargetsTitle": "Choose apps that use the proxy",
+  "outboundTargetsIntro": "Checked apps connect through the proxy; restart the tunnel after a change. The proxy app, DITING and apps in Excluded apps bypass the tunnel and cannot use the proxy, so they are not listed.",
+  "outboundProxyTargetsRequired": "Pick at least one app to use the proxy in Selected apps mode"
 }

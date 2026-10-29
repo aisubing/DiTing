@@ -3340,5 +3340,14 @@
   "backupErrProvidersInvalidJson": "服务商配置不是合法 JSON",
   "backupErrBootstrapInvalidJson": "Bootstrap 配置不是合法 JSON",
   "backupErrAppearanceNotObject": "外观分组应为对象",
-  "backupErrSystemNotObject": "系统设置分组应为对象"
+  "backupErrSystemNotObject": "系统设置分组应为对象",
+  "outboundScopeTitle": "代理范围",
+  "outboundScopeAll": "全部应用",
+  "outboundScopeApps": "仅选中应用",
+  "outboundScopeAllFooter": "所有应用的连接以及谛听自身的 DNS 上游查询都经过代理。",
+  "outboundScopeAppsFooter": "只有选中应用的连接经过代理；其他应用、无法识别归属的连接以及谛听自身的 DNS 上游查询直接连接。",
+  "outboundTargets": "走代理的应用",
+  "outboundTargetsTitle": "选择走代理的应用",
+  "outboundTargetsIntro": "勾选的应用会经代理连接网络，修改后需重启隧道生效。代理应用本身、谛听以及「排除应用」中的应用不经过隧道，无法走代理，因此不在列表中。",
+  "outboundProxyTargetsRequired": "「仅选中应用」模式下请至少选择一个走代理的应用"
 }

@@ -175,6 +175,30 @@ void _nativeBridge() {
         '"port":7890,"username":"","password":""}',
       );
     });
+
+    test('仅选中应用模式写入 scope 与去掉代理应用后的 packages', () {
+      final json = const OutboundProxyConfig(
+        enabled: true,
+        proxyAppPackage: 'com.proxy',
+        scope: OutboundProxyScope.apps,
+        targetPackages: {'com.b', 'com.proxy', 'com.a'},
+      ).toEngineJson();
+      expect(json, endsWith(',"scope":"apps","packages":["com.a","com.b"]}'));
+    });
+
+    test('仅选中应用模式没有目标应用时校验失败', () {
+      const config = OutboundProxyConfig(
+        enabled: true,
+        proxyAppPackage: 'com.proxy',
+        scope: OutboundProxyScope.apps,
+        targetPackages: {'com.proxy'},
+      );
+      expect(config.validationError(), isNotNull);
+      expect(
+        config.copyWith(targetPackages: {'com.a'}).validationError(),
+        isNull,
+      );
+    });
   });
 
   group('OutboundProxyProtocol.fromStorageValue', () {

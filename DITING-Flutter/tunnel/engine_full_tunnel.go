@@ -197,6 +197,8 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	}
 	e.protectFn = protectFn
 	e.flowOutbound = newFlowOutbound(e.outboundConfig, protectFn, e.reportOutboundStatus)
+	route := newOutboundRoute(e.outboundConfig, e.flowOutbound, protectFn)
+	e.outboundRouteView.Store(route)
 	if e.outboundConfig.Enabled {
 		e.reportOutboundStatus("connecting", "")
 	} else {
@@ -205,7 +207,7 @@ func (e *Engine) StartFull(fd int, protector SocketProtector) {
 	e.setResolverLocked(NewResolver(protectFn))
 	e.resolver.SetRaceLogCallback(e.raceLogCallback)
 	e.resolver.SetBootstrapLogCallback(e.bootstrapLogCallback)
-	e.resolver.setOutbound(e.flowOutbound)
+	e.resolver.setOutbound(route.resolverOutbound())
 	if e.dnsConfig != nil {
 		e.resolver.UpdateBootstrap(e.dnsConfig.Bootstrap)
 		if err := e.resolver.ConfigureProviders(e.dnsConfig.Mode, e.dnsConfig.Providers); err != nil {
@@ -361,10 +363,7 @@ func newFullTunnelUdpHandler(engine *Engine, filter *MitmFilter, uidr UIDResolve
 				return
 			}
 		}
-		outbound := engine.flowOutbound
-		if outbound == nil {
-			outbound = newFlowOutbound(outboundProxyConfig{}, protectFn, nil)
-		}
+		outbound := engine.outboundForUID(uid, protectFn)
 		dst := net.JoinHostPort(flow.serverIP.String(), strconv.Itoa(flow.serverPort))
 		ctx, cancel := context.WithTimeout(context.Background(), flowDialTimeout)
 		remote, err := outbound.DialUDP(ctx, dst)

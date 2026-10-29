@@ -24,6 +24,8 @@ class OutboundProxyBridge(private val context: Context) :
         private const val KEY_USERNAME = "outbound_proxy_username"
         private const val KEY_PASSWORD = "outbound_proxy_password"
         private const val KEY_APP = "outbound_proxy_app"
+        private const val KEY_SCOPE = "outbound_proxy_scope"
+        private const val KEY_TARGET_APPS = "outbound_proxy_target_apps"
         private const val KEY_STATUS = "outbound_proxy_status"
         private const val KEY_STATUS_MESSAGE = "outbound_proxy_status_message"
 
@@ -31,6 +33,7 @@ class OutboundProxyBridge(private val context: Context) :
         private const val DEFAULT_PORT = 7890
         private const val DEFAULT_PROTOCOL = "socks5"
         private const val DEFAULT_STATUS = "disabled"
+        private const val DEFAULT_SCOPE = "all"
 
         /// Keystore unwrap costs tens of ms and `read` runs per page build, so it runs off-thread.
         private val worker = Executors.newSingleThreadExecutor { runnable ->
@@ -87,6 +90,8 @@ class OutboundProxyBridge(private val context: Context) :
                 preferences.getString(KEY_PASSWORD, null),
             ),
             "proxyAppPackage" to preferences.getString(KEY_APP, "").orEmpty(),
+            "scope" to scopeOf(preferences.getString(KEY_SCOPE, null)),
+            "targetPackages" to preferences.getStringSet(KEY_TARGET_APPS, null).orEmpty().toList(),
             "status" to status,
             "statusMessage" to (preferences.getString(KEY_STATUS_MESSAGE, "") ?: ""),
         )
@@ -109,6 +114,12 @@ class OutboundProxyBridge(private val context: Context) :
                 ProxySecretCodec.encrypt(config["password"] as? String ?: ""),
             )
             .putString(KEY_APP, config["proxyAppPackage"] as? String ?: "")
+            .putString(KEY_SCOPE, scopeOf(config["scope"] as? String))
+            .putStringSet(
+                KEY_TARGET_APPS,
+                (config["targetPackages"] as? List<*>).orEmpty()
+                    .filterIsInstance<String>().filter { it.isNotBlank() }.toSet(),
+            )
             .apply()
     }
 
@@ -121,6 +132,8 @@ class OutboundProxyBridge(private val context: Context) :
             .remove(KEY_USERNAME)
             .remove(KEY_PASSWORD)
             .remove(KEY_APP)
+            .remove(KEY_SCOPE)
+            .remove(KEY_TARGET_APPS)
             .remove(KEY_STATUS)
             .remove(KEY_STATUS_MESSAGE)
             .apply()
@@ -137,6 +150,8 @@ class OutboundProxyBridge(private val context: Context) :
         "username" to call.argument<String>("username"),
         "password" to call.argument<String>("password"),
         "proxyAppPackage" to call.argument<String>("proxyAppPackage"),
+        "scope" to call.argument<String>("scope"),
+        "targetPackages" to call.argument<List<String>>("targetPackages"),
     )
 
     /// Unknown values fall back to `socks5`, never persisted as garbage Go cannot parse
@@ -145,6 +160,9 @@ class OutboundProxyBridge(private val context: Context) :
         "socks5" -> "socks5"
         else -> DEFAULT_PROTOCOL
     }
+
+    /// `apps` proxies only the selected packages; anything else keeps the legacy whole-device scope.
+    private fun scopeOf(value: String?): String = if (value == "apps") "apps" else DEFAULT_SCOPE
 
     private fun prefs() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 

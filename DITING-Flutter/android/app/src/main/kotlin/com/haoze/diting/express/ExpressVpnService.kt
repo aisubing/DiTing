@@ -24,6 +24,7 @@ import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.platform.NotificationMode
 import com.haoze.diting.platform.NotificationSettings
 import com.haoze.diting.proxy.OutboundProxyBridge
+import com.haoze.diting.proxy.OutboundProxyScope
 import com.haoze.diting.tile.QuickSettingsTileUpdater
 import tunnel.BatchLogCallback
 import tunnel.Engine
@@ -136,7 +137,7 @@ class ExpressVpnService : VpnService() {
 
         try {
             val proxyError = goEngine.configureOutboundProxy(
-                proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY }
+                OutboundProxyScope.resolve(this, proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY })
             )
             if (proxyError.isNotBlank()) {
                 // Persisted before failing so the page shows the reason, as the legacy app did.

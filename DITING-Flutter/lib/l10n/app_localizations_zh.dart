@@ -8451,4 +8451,33 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get backupErrSystemNotObject => '系统设置分组应为对象';
+
+  @override
+  String get outboundScopeTitle => '代理范围';
+
+  @override
+  String get outboundScopeAll => '全部应用';
+
+  @override
+  String get outboundScopeApps => '仅选中应用';
+
+  @override
+  String get outboundScopeAllFooter => '所有应用的连接以及谛听自身的 DNS 上游查询都经过代理。';
+
+  @override
+  String get outboundScopeAppsFooter =>
+      '只有选中应用的连接经过代理；其他应用、无法识别归属的连接以及谛听自身的 DNS 上游查询直接连接。';
+
+  @override
+  String get outboundTargets => '走代理的应用';
+
+  @override
+  String get outboundTargetsTitle => '选择走代理的应用';
+
+  @override
+  String get outboundTargetsIntro =>
+      '勾选的应用会经代理连接网络，修改后需重启隧道生效。代理应用本身、谛听以及「排除应用」中的应用不经过隧道，无法走代理，因此不在列表中。';
+
+  @override
+  String get outboundProxyTargetsRequired => '「仅选中应用」模式下请至少选择一个走代理的应用';
 }
