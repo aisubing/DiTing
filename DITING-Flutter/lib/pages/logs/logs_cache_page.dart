@@ -1,6 +1,5 @@
-import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/db/dns_cache_repository.dart';
-import 'package:diting/pages/hub/agent_analysis_sheet.dart';
+import 'package:diting/pages/logs/logs_cache_detail.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
@@ -119,10 +118,14 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
           itemCount: entries.length,
           itemBuilder: (context, index) {
             final entry = entries[index];
+            final lastHit = lastHits['${entry.domain}|${entry.queryType}'];
             return ListItem(
               leading: const GlyphIcon(AppGlyphs.layers),
-              onTap: () =>
-                  openAgentAnalysis(context, AgentDomainTarget(entry.domain)),
+              onTap: () => showSheet<void>(
+                context: context,
+                builder: (_) =>
+                    DnsCacheDetailSheet(entry: entry, lastHitAt: lastHit),
+              ),
               title: Row(
                 spacing: 8,
                 children: [
@@ -154,7 +157,7 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '最后命中 ${switch (lastHits['${entry.domain}|${entry.queryType}']) {
+                    '最后命中 ${switch (lastHit) {
                       null => '尚未命中',
                       final at => shortDateTimeOf(at),
                     }}',
@@ -163,21 +166,33 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
                   ),
                 ],
               ),
-              trailing: Text(
-                '剩 ${remainingLabel(entry.remainingTtlSeconds)}',
-                style: AppTextStyle.caption1
-                    .of(context)
-                    .copyWith(
-                      color: entry.remainingTtlSeconds < 30
-                          ? context.colorScheme.warning
-                          : context.colorScheme.success,
-                    ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 4,
+                children: [
+                  Text(
+                    '剩 ${remainingLabel(entry.remainingTtlSeconds)}',
+                    style: AppTextStyle.caption1
+                        .of(context)
+                        .copyWith(
+                          color:
+                              entry.remainingTtlSeconds < cacheExpiringSeconds
+                              ? context.colorScheme.warning
+                              : context.colorScheme.success,
+                        ),
+                  ),
+                  GlyphIcon(
+                    AppGlyphs.chevronForward,
+                    size: 18,
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ],
               ),
             );
           },
           footer:
               '共 ${entries.length} 条，按命中次数与过期时间排序。'
-              '剩余 TTL 少于 30 秒的条目标橙色。点按一行可用 AI 分析该域名。',
+              '剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。',
         ),
       ],
     );

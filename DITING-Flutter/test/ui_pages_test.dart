@@ -5,7 +5,9 @@ import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
 import 'package:diting/data/db/rule_providers.dart';
+import 'package:diting/data/db/dns_cache_repository.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/pages/logs/logs_cache_detail.dart';
 import 'package:diting/pages/observability/requests_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/state/dashboard_providers.dart';
@@ -269,6 +271,40 @@ void _observabilityPages() {
       expect(find.text('复制地址'), findsOneWidget);
       expect(find.textContaining('域名规则无法匹配'), findsOneWidget);
     });
+  });
+
+  testWidgets('DNS 缓存详情复用请求详情的域名操作', (tester) async {
+    await pumpPage(
+      tester,
+      DnsCacheDetailSheet(
+        entry: DnsCacheRecord(
+          domain: 'cdn.example.com',
+          queryType: 1,
+          expiresAt: DateTime.now().millisecondsSinceEpoch + 300 * 1000,
+          hitCount: 12,
+          originalTtlSeconds: 600,
+          responseSize: 64,
+        ),
+      ),
+      providerOverrides: [
+        ruleRepositoryProvider.overrideWith((ref) => null),
+        initialRulesProvider.overrideWith(_EmptyRules.new),
+      ],
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('复制域名'), findsOneWidget);
+    expect(find.text('尚未命中'), findsOneWidget);
+
+    await tester.tap(find.text('加入白名单'));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DnsCacheDetailSheet)),
+    );
+    expect(
+      container.read(rulesOfKindProvider(RuleKind.allow)).single.pattern,
+      'cdn.example.com',
+    );
+    expect(find.text('已在白名单'), findsOneWidget);
   });
 
   group('流量页', () {

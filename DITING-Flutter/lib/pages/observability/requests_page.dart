@@ -3,20 +3,14 @@ library;
 
 import 'dart:async';
 
-import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
-import 'package:diting/data/mock_data.dart';
-import 'package:diting/data/rules/rule_domain_utils.dart';
-import 'package:diting/pages/hub/agent_analysis_sheet.dart';
+import 'package:diting/pages/observability/domain_detail_parts.dart';
 import 'package:diting/pages/observability/observability_common.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/observability_providers.dart';
-import 'package:diting/state/rules_providers.dart';
 import 'package:diting/ui/ui.dart';
-import 'package:diting/widgets/icon_badge.dart';
 import 'package:diting/widgets/stat_strip.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
