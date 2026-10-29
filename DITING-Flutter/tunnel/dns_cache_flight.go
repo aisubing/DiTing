@@ -76,17 +76,20 @@ func (c *dnsCache) singleFlight(rawQuery []byte, resolveFn func() ([]byte, error
 // it may be mutated. Shared and cached results return nil and must be unpacked
 // by the caller if needed.
 func (c *dnsCache) singleFlightMsg(rawQuery []byte, resolveFn func() ([]byte, *dns.Msg, error)) ([]byte, *dns.Msg, bool, error) {
-	domain, qtype, qclass, queryID, ok := extractQuestionFromRaw(rawQuery)
+	keyBytes, _, ok := appendQuestionKey(make([]byte, 0, 64), rawQuery)
 	if !ok {
 		resp, msg, err := resolveFn()
 		return resp, msg, false, err
 	}
+	queryID := binary.BigEndian.Uint16(rawQuery[0:2])
 
-	if cachedResp, hit, _ := c.get(rawQuery); hit {
+	// Re-check without touching the counters: the caller's getFast already
+	// recorded this query as a miss.
+	if entry, cachedResp, stale := c.lookup(rawQuery, false); entry != nil && !stale {
 		return cachedResp, nil, true, nil
 	}
 
-	key := cacheKey(domain, qtype, qclass)
+	key := string(keyBytes)
 
 	var leaderMsg *dns.Msg
 	val, shared, err := c.flight.Do(key, func() ([]byte, error) {
@@ -111,7 +114,7 @@ func (c *dnsCache) singleFlightMsg(rawQuery []byte, resolveFn func() ([]byte, *d
 	}
 
 	if shared {
-		if cachedResp, hit, _ := c.get(rawQuery); hit {
+		if entry, cachedResp, stale := c.lookup(rawQuery, false); entry != nil && !stale {
 			return cachedResp, nil, true, nil
 		}
 		if len(val) >= 2 {

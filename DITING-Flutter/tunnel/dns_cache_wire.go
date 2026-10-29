@@ -5,73 +5,86 @@ package tunnel
 
 import (
 	"encoding/binary"
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/miekg/dns"
 )
 
-func extractQuestionFromRaw(rawQuery []byte) (string, uint16, uint16, uint16, bool) {
-	if len(rawQuery) < 12 {
-		return "", 0, 0, 0, false
+// appendQuestionKey appends the cache key of the first question in wire to dst
+// and returns it with the length of the name part. The key has the same
+// "name:qtype:qclass" form as cacheKey, with the name lowercased (ASCII) and
+// labels joined by '.'. Building it straight from the wire bytes into a caller
+// buffer lets the hit path look the entry up without allocating.
+func appendQuestionKey(dst, wire []byte) ([]byte, int, bool) {
+	if len(wire) < 12 || binary.BigEndian.Uint16(wire[4:6]) == 0 {
+		return dst, 0, false
 	}
-	queryID := binary.BigEndian.Uint16(rawQuery[0:2])
-	qdCount := binary.BigEndian.Uint16(rawQuery[4:6])
-	if qdCount == 0 {
-		return "", 0, 0, 0, false
-	}
-
-	offset, ok := skipDNSName(rawQuery, 12)
-	if !ok || offset+4 > len(rawQuery) {
-		return "", 0, 0, 0, false
-	}
-
-	qtype := binary.BigEndian.Uint16(rawQuery[offset : offset+2])
-	qclass := binary.BigEndian.Uint16(rawQuery[offset+2 : offset+4])
-
-	name, err := parseDNSName(rawQuery, 12)
-	if err != nil {
-		return "", 0, 0, 0, false
-	}
-
-	return strings.ToLower(strings.TrimSuffix(name, ".")), qtype, qclass, queryID, true
-}
-
-func parseDNSName(wire []byte, offset int) (string, error) {
-	var sb strings.Builder
-	visited := 0
-	curr := offset
-	for curr < len(wire) {
+	start := len(dst)
+	curr, end, jumps := 12, -1, 0
+	for {
+		if curr >= len(wire) {
+			return dst, 0, false
+		}
 		length := int(wire[curr])
 		if length == 0 {
+			if end < 0 {
+				end = curr + 1
+			}
 			break
 		}
-		if (length & 0xc0) == 0xc0 {
+		switch length & 0xc0 {
+		case 0xc0:
 			if curr+2 > len(wire) {
-				return "", fmt.Errorf("truncated compression pointer")
+				return dst, 0, false
 			}
-			ptr := int(binary.BigEndian.Uint16(wire[curr:curr+2]) & 0x3fff)
-			curr = ptr
-			visited++
-			if visited > 64 {
-				return "", fmt.Errorf("compression loop")
+			if end < 0 {
+				end = curr + 2
 			}
+			jumps++
+			if jumps > 64 {
+				return dst, 0, false
+			}
+			curr = int(binary.BigEndian.Uint16(wire[curr:curr+2]) & 0x3fff)
 			continue
-		}
-		if (length & 0xc0) != 0 {
-			return "", fmt.Errorf("invalid label length format")
+		case 0:
+		default:
+			return dst, 0, false
 		}
 		curr++
 		if curr+length > len(wire) {
-			return "", fmt.Errorf("truncated label")
+			return dst, 0, false
 		}
-		if sb.Len() > 0 {
-			sb.WriteByte('.')
+		if len(dst) > start {
+			dst = append(dst, '.')
 		}
-		sb.Write(wire[curr : curr+length])
+		for _, b := range wire[curr : curr+length] {
+			if 'A' <= b && b <= 'Z' {
+				b += 'a' - 'A'
+			}
+			dst = append(dst, b)
+		}
 		curr += length
 	}
-	return sb.String(), nil
+	if end+4 > len(wire) {
+		return dst, 0, false
+	}
+	nameLen := len(dst) - start
+	dst = append(dst, ':')
+	dst = strconv.AppendUint(dst, uint64(binary.BigEndian.Uint16(wire[end:end+2])), 10)
+	dst = append(dst, ':')
+	dst = strconv.AppendUint(dst, uint64(binary.BigEndian.Uint16(wire[end+2:end+4])), 10)
+	return dst, nameLen, true
+}
+
+// parseKeyQuestion splits a key built by appendQuestionKey back into its parts.
+func parseKeyQuestion(key string, nameLen int) (domain string, qtype, qclass uint16) {
+	domain = key[:nameLen]
+	rest := key[nameLen+1:]
+	sep := strings.IndexByte(rest, ':')
+	t, _ := strconv.ParseUint(rest[:sep], 10, 16)
+	cl, _ := strconv.ParseUint(rest[sep+1:], 10, 16)
+	return domain, uint16(t), uint16(cl)
 }
 
 func skipDNSName(wire []byte, offset int) (int, bool) {

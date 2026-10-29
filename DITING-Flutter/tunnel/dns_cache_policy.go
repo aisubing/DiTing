@@ -51,6 +51,15 @@ func fnv32(s string) uint32 {
 	return h
 }
 
+func fnv32Bytes(b []byte) uint32 {
+	h := uint32(2166136261)
+	for _, x := range b {
+		h ^= uint32(x)
+		h *= 16777619
+	}
+	return h
+}
+
 func (c *dnsCache) calculateEffectiveTTL(upstreamTTL uint32, cfg dnsCacheConfig) time.Duration {
 	ttl := int64(upstreamTTL)
 	switch strings.ToLower(cfg.Mode) {
@@ -99,8 +108,13 @@ func (c *dnsCache) calculateNegativeTTL(soaTTL uint32, found bool, cfg dnsCacheC
 	return time.Duration(negTTL) * time.Second
 }
 
+// cleanerInterval paces the background sweep. Lookups already evict expired
+// entries lazily and the LRU bounds memory, so the sweep only reclaims entries
+// nobody asks for again and can run rarely.
+const cleanerInterval = 60 * time.Second
+
 func (c *dnsCache) startCleaner() {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(cleanerInterval)
 	go func() {
 		for {
 			select {
@@ -116,14 +130,23 @@ func (c *dnsCache) startCleaner() {
 
 func (c *dnsCache) cleanupExpired(now time.Time) {
 	for _, shard := range c.shards {
-		shard.mu.Lock()
-		for key, entry := range shard.entries {
+		// Scan under the read lock first so idle shards never block lookups.
+		shard.mu.RLock()
+		expired := false
+		for _, entry := range shard.entries {
 			if entry != nil && now.After(entry.staleUntil) {
-				delete(shard.entries, key)
-				if entry.elem != nil {
-					shard.lruList.Remove(entry.elem)
-					entry.elem = nil
-				}
+				expired = true
+				break
+			}
+		}
+		shard.mu.RUnlock()
+		if !expired {
+			continue
+		}
+		shard.mu.Lock()
+		for _, entry := range shard.entries {
+			if entry != nil && now.After(entry.staleUntil) {
+				c.removeLocked(shard, entry)
 				c.evictions.Add(1)
 			}
 		}

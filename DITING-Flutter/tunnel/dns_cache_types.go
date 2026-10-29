@@ -13,6 +13,14 @@ import (
 const (
 	numDNSCacheShards      = 64
 	defaultMaxCacheEntries = 4096
+
+	// lruPromoteInterval throttles LRU promotion: a hit only takes the shard
+	// write lock when the entry has not been hit within this window. Hot entries
+	// stay near the front anyway, so recency stays accurate at this granularity.
+	lruPromoteInterval = time.Second
+
+	// maxCacheKeyLen bounds a wire-built key: a 255-byte name plus ":65535:65535".
+	maxCacheKeyLen = 256 + 12
 )
 
 type dnsCacheConfig struct {
@@ -53,7 +61,10 @@ type cacheEntry struct {
 
 	hitCount  atomic.Uint64
 	lastHitAt atomic.Int64
-	elem      *list.Element
+	// refreshing is set while a stale-while-revalidate refresh is in flight, so
+	// a burst of stale hits starts one background resolve instead of one each.
+	refreshing atomic.Bool
+	elem       *list.Element
 }
 
 type cacheShard struct {

@@ -11,8 +11,8 @@ package tunnel
 
 import (
 	"container/list"
+	"encoding/binary"
 	"encoding/json"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,8 +20,9 @@ import (
 )
 
 type dnsCache struct {
-	configMu   sync.RWMutex
-	config     dnsCacheConfig
+	// config is swapped atomically: the hit path reads it once per query
+	// without touching a lock shared by every DNS goroutine.
+	config     atomic.Pointer[dnsCacheConfig]
 	shards     [numDNSCacheShards]*cacheShard
 	maxEntries int
 
@@ -47,7 +48,6 @@ func newDNSCache(cfg dnsCacheConfig) *dnsCache {
 	}
 
 	cache := &dnsCache{
-		config:      cfg,
 		maxEntries:  maxEntries,
 		stopCleaner: make(chan struct{}),
 		flight: singleFlightGroup{
@@ -63,39 +63,36 @@ func newDNSCache(cfg dnsCacheConfig) *dnsCache {
 		}
 	}
 
+	cache.config.Store(&cfg)
 	cache.startCleaner()
 	return cache
 }
 
 func (c *dnsCache) updatePolicy(cfg dnsCacheConfig) {
 	normalizeDNSCacheConfig(&cfg)
-	c.configMu.Lock()
-	c.config = cfg
-	c.configMu.Unlock()
+	prev := c.config.Swap(&cfg)
+	// A disabled cache is never read, so release its memory right away.
+	if prev != nil && prev.Enabled && !cfg.Enabled {
+		c.clear()
+	}
 }
 
 func (c *dnsCache) getConfig() dnsCacheConfig {
-	c.configMu.RLock()
-	defer c.configMu.RUnlock()
-	return c.config
+	return *c.config.Load()
 }
 
 func (c *dnsCache) isEnabled() bool {
-	c.configMu.RLock()
-	defer c.configMu.RUnlock()
-	return c.config.Enabled
+	return c.config.Load().Enabled
 }
 
 func (c *dnsCache) isStaleFallbackEnabled() bool {
-	c.configMu.RLock()
-	defer c.configMu.RUnlock()
-	return c.config.Enabled && c.config.StaleFallbackEnabled
+	cfg := c.config.Load()
+	return cfg.Enabled && cfg.StaleFallbackEnabled
 }
 
 func (c *dnsCache) isNegativeCacheEnabled() bool {
-	c.configMu.RLock()
-	defer c.configMu.RUnlock()
-	return c.config.Enabled && c.config.NegativeTTLEnabled
+	cfg := c.config.Load()
+	return cfg.Enabled && cfg.NegativeTTLEnabled
 }
 
 func (c *dnsCache) close() {
@@ -132,6 +129,10 @@ func (c *dnsCache) shard(key string) *cacheShard {
 	return c.shards[fnv32(key)%numDNSCacheShards]
 }
 
+func (c *dnsCache) shardOf(key []byte) *cacheShard {
+	return c.shards[fnv32Bytes(key)%numDNSCacheShards]
+}
+
 func (c *dnsCache) getEntry(key string) *cacheEntry {
 	shard := c.shard(key)
 	shard.mu.RLock()
@@ -142,84 +143,14 @@ func (c *dnsCache) getEntry(key string) *cacheEntry {
 // getFast is the zero-copy fast path used by engine_dns.go.
 // Returns patched wire bytes, hit status, pre-indexed CNAME targets, pre-extracted IPs, negative flag, and stale candidate.
 func (c *dnsCache) getFast(rawQuery []byte) (response []byte, hit bool, targets []chainTarget, ipList []string, resolvedIPs string, isNegative bool, staleCandidate *cacheEntry) {
-	cfg := c.getConfig()
-	if !cfg.Enabled {
+	entry, resp, stale := c.lookup(rawQuery, true)
+	if entry == nil {
 		return nil, false, nil, nil, "", false, nil
 	}
-
-	domain, qtype, qclass, queryID, ok := extractQuestionFromRaw(rawQuery)
-	if !ok {
-		return nil, false, nil, nil, "", false, nil
-	}
-
-	key := cacheKey(domain, qtype, qclass)
-	now := time.Now()
-	shard := c.shard(key)
-
-	shard.mu.RLock()
-	entry, exists := shard.entries[key]
-	if !exists || entry == nil {
-		shard.mu.RUnlock()
-		c.totalMisses.Add(1)
-		return nil, false, nil, nil, "", false, nil
-	}
-
-	// Case 1: Fresh Cache Hit
-	if now.Before(entry.expiresAt) {
-		remaining := entry.expiresAt.Sub(now)
-		remainingSec := uint32(remaining.Seconds())
-		if remainingSec == 0 {
-			remainingSec = 1
-		}
-
-		entry.hitCount.Add(1)
-		entry.lastHitAt.Store(now.UnixNano())
-		c.totalHits.Add(1)
-		if entry.isNegative {
-			c.negativeHits.Add(1)
-		}
-
-		patched := patchWireResponse(entry.wire, entry.ttlOffsets, queryID, remainingSec)
-		entryTargets := entry.chainTargets
-		entryIPs := entry.ipList
-		entryResolved := entry.resolvedIPs
-		entryNeg := entry.isNegative
-		elem := entry.elem
-		shard.mu.RUnlock()
-
-		// LRU promotion on hit (promotes if not already at the front)
-		if elem != nil && shard.lruList.Front() != elem {
-			shard.mu.Lock()
-			if elem.Value != nil && shard.lruList.Front() != elem {
-				shard.lruList.MoveToFront(elem)
-			}
-			shard.mu.Unlock()
-		}
-
-		return patched, true, entryTargets, entryIPs, entryResolved, entryNeg, nil
-	}
-
-	// Case 2: Stale Hit candidate
-	if cfg.StaleFallbackEnabled && now.Before(entry.staleUntil) {
-		shard.mu.RUnlock()
+	if stale {
 		return nil, false, entry.chainTargets, entry.ipList, entry.resolvedIPs, entry.isNegative, entry
 	}
-
-	shard.mu.RUnlock()
-
-	// Case 3: Completely expired - lazy eviction
-	shard.mu.Lock()
-	if e, ok := shard.entries[key]; ok && e == entry && now.After(e.staleUntil) {
-		delete(shard.entries, key)
-		if e.elem != nil {
-			shard.lruList.Remove(e.elem)
-			e.elem = nil
-		}
-	}
-	shard.mu.Unlock()
-
-	c.totalMisses.Add(1)
-	return nil, false, nil, nil, "", false, nil
+	return resp, true, entry.chainTargets, entry.ipList, entry.resolvedIPs, entry.isNegative, nil
 }
 
 // get maintains backwards compatibility with standard signature.
@@ -228,16 +159,99 @@ func (c *dnsCache) get(rawQuery []byte) (response []byte, hit bool, staleCandida
 	return resp, hit, stale
 }
 
-func (c *dnsCache) buildStaleResponse(rawQuery []byte, entry *cacheEntry) []byte {
-	if entry == nil || len(entry.wire) < 12 {
-		return nil
+// lookup finds the entry for rawQuery. A fresh hit returns the entry and its
+// patched response; a stale-fallback candidate returns the entry with stale
+// set. When count is false the lookup is an internal re-check (single-flight)
+// and leaves the hit/miss counters alone, so each client query is counted once.
+func (c *dnsCache) lookup(rawQuery []byte, count bool) (entry *cacheEntry, response []byte, stale bool) {
+	cfg := c.config.Load()
+	if !cfg.Enabled || len(rawQuery) < 12 {
+		return nil, nil, false
 	}
-	_, _, _, queryID, ok := extractQuestionFromRaw(rawQuery)
+	var buf [maxCacheKeyLen]byte
+	key, _, ok := appendQuestionKey(buf[:0], rawQuery)
 	if !ok {
+		return nil, nil, false
+	}
+	queryID := binary.BigEndian.Uint16(rawQuery[0:2])
+	now := time.Now()
+	shard := c.shardOf(key)
+
+	shard.mu.RLock()
+	// string(key) in a map index does not allocate.
+	entry = shard.entries[string(key)]
+	if entry == nil {
+		shard.mu.RUnlock()
+		if count {
+			c.totalMisses.Add(1)
+		}
+		return nil, nil, false
+	}
+
+	if now.Before(entry.expiresAt) {
+		remainingSec := uint32(entry.expiresAt.Sub(now) / time.Second)
+		if remainingSec == 0 {
+			remainingSec = 1
+		}
+		response = patchWireResponse(entry.wire, entry.ttlOffsets, queryID, remainingSec)
+		elem := entry.elem
+		shard.mu.RUnlock()
+
+		nowNano := now.UnixNano()
+		lastHit := entry.lastHitAt.Swap(nowNano)
+		if count {
+			entry.hitCount.Add(1)
+			c.totalHits.Add(1)
+			if entry.isNegative {
+				c.negativeHits.Add(1)
+			}
+		}
+		// Promote at most once per lruPromoteInterval: a hot entry hit many
+		// times a second would otherwise take the shard write lock on every
+		// query and serialize readers.
+		if elem != nil && nowNano-lastHit >= int64(lruPromoteInterval) {
+			shard.mu.Lock()
+			if elem.Value != nil && shard.lruList.Front() != elem {
+				shard.lruList.MoveToFront(elem)
+			}
+			shard.mu.Unlock()
+		}
+		return entry, response, false
+	}
+
+	if cfg.StaleFallbackEnabled && now.Before(entry.staleUntil) {
+		shard.mu.RUnlock()
+		return entry, nil, true
+	}
+	shard.mu.RUnlock()
+
+	// Completely expired: lazy eviction.
+	shard.mu.Lock()
+	if e := shard.entries[string(key)]; e == entry {
+		c.removeLocked(shard, e)
+	}
+	shard.mu.Unlock()
+	if count {
+		c.totalMisses.Add(1)
+	}
+	return nil, nil, false
+}
+
+// removeLocked drops e from its shard; the caller holds shard.mu.
+func (c *dnsCache) removeLocked(shard *cacheShard, e *cacheEntry) {
+	delete(shard.entries, e.key)
+	if e.elem != nil {
+		shard.lruList.Remove(e.elem)
+		e.elem = nil
+	}
+}
+
+func (c *dnsCache) buildStaleResponse(rawQuery []byte, entry *cacheEntry) []byte {
+	if entry == nil || len(entry.wire) < 12 || len(rawQuery) < 12 {
 		return nil
 	}
 	c.staleHits.Add(1)
-	return patchWireResponse(entry.wire, entry.ttlOffsets, queryID, 1)
+	return patchWireResponse(entry.wire, entry.ttlOffsets, binary.BigEndian.Uint16(rawQuery[0:2]), 1)
 }
 
 func (c *dnsCache) put(rawQuery, rawResponse []byte) bool {
@@ -262,7 +276,7 @@ func (c *dnsCache) putMsg(rawQuery, rawResponse []byte, respMsg *dns.Msg) bool {
 		return false
 	}
 
-	domain, qtype, qclass, _, ok := extractQuestionFromRaw(rawQuery)
+	keyBytes, nameLen, ok := appendQuestionKey(make([]byte, 0, 64), rawQuery)
 	if !ok {
 		return false
 	}
@@ -301,7 +315,8 @@ func (c *dnsCache) putMsg(rawQuery, rawResponse []byte, respMsg *dns.Msg) bool {
 	wireCopy := make([]byte, len(rawResponse))
 	copy(wireCopy, rawResponse)
 
-	key := cacheKey(domain, qtype, qclass)
+	key := string(keyBytes)
+	domain, qtype, qclass := parseKeyQuestion(key, nameLen)
 	entry := &cacheEntry{
 		key:          key,
 		domain:       domain,
@@ -327,11 +342,7 @@ func (c *dnsCache) putMsg(rawQuery, rawResponse []byte, respMsg *dns.Msg) bool {
 	defer shard.mu.Unlock()
 
 	if old, exists := shard.entries[key]; exists {
-		if old.elem != nil {
-			shard.lruList.Remove(old.elem)
-			old.elem = nil
-		}
-		delete(shard.entries, key)
+		c.removeLocked(shard, old)
 	} else if len(shard.entries) >= shard.maxEntries {
 		back := shard.lruList.Back()
 		if back != nil {

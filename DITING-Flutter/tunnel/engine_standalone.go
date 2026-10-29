@@ -293,13 +293,16 @@ func (e *Engine) standaloneForward(w dns.ResponseWriter, r *dns.Msg, appName str
 				elapsed := time.Since(startTime).Milliseconds()
 				e.notifyLog(strings.TrimSuffix(r.Question[0].Name, "."), false, r.Question[0].Qtype, elapsed, appName, staleCandidate.resolvedIPs, "", "", true)
 
-				go func() {
-					rawCopy := make([]byte, len(raw))
-					copy(rawCopy, raw)
-					_, _, _ = dnsCache.singleFlight(rawCopy, func() ([]byte, error) {
-						return resolver.Resolve(rawCopy)
-					})
-				}()
+				// One background refresh per stale entry: a burst of stale hits
+				// would otherwise spawn a goroutine and copy the query for each.
+				if staleCandidate.refreshing.CompareAndSwap(false, true) {
+					go func() {
+						defer staleCandidate.refreshing.Store(false)
+						_, _, _ = dnsCache.singleFlight(raw, func() ([]byte, error) {
+							return resolver.Resolve(raw)
+						})
+					}()
+				}
 				return
 			}
 		}
