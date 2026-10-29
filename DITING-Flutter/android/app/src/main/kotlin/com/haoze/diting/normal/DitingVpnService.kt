@@ -11,22 +11,20 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.haoze.diting.R
+import com.haoze.diting.core.rule.EngineRuleLoader
 import com.haoze.diting.core.rule.RuleDataset
-import com.haoze.diting.core.rule.RuleSnapshotStore
 import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineLogCallbacks
 import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.PackageUids
-import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.log.TrafficRateMonitor
 import com.haoze.diting.proxy.OutboundProxyBridge
 import com.haoze.diting.proxy.OutboundProxyScope
 import com.haoze.diting.tile.QuickSettingsTileUpdater
-import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.OutboundProxyStatusCallback
-import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 import java.io.File
 
@@ -42,8 +40,11 @@ class DitingVpnService : VpnService() {
     @Volatile
     private var stopping = false
 
-    @Volatile
-    private var speedTicker: Thread? = null
+    private val speedTicker = SpeedTicker(
+        context = this,
+        active = { isRunning && !stopping },
+        onTick = { VpnNotification.refresh(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP) },
+    )
 
     override fun onCreate() {
         super.onCreate()
@@ -64,7 +65,8 @@ class DitingVpnService : VpnService() {
         }
         // Persisted so the quick settings tile (and a future reboot restore) can rebuild the same
         // start intent: Dart computes the config, the extras do not survive elsewhere.
-        rememberStartConfig(
+        VpnStartConfig.remember(
+            context = this,
             dnsConfig = dnsConfig,
             proxyJson = intent.getStringExtra(EXTRA_OUTBOUND_PROXY).orEmpty(),
             proxyAppPackage = intent.getStringExtra(EXTRA_PROXY_APP).orEmpty(),
@@ -87,32 +89,6 @@ class DitingVpnService : VpnService() {
             inspectionEnabled = intent.getBooleanExtra(EXTRA_INSPECTION_ENABLED, false),
         )
         return START_NOT_STICKY
-    }
-
-    /// Stores the configuration of the current start so `restoreIntent` can replay it. Rules are
-    /// not part of it: the service rebuilds the engine snapshot from the rule database.
-    private fun rememberStartConfig(
-        dnsConfig: String,
-        proxyJson: String,
-        proxyAppPackage: String,
-        bypassLan: Boolean,
-        ipv6Mode: String,
-        excludedPackages: Set<String>,
-        blockedPackages: Set<String>,
-        inspectionPackages: Set<String>,
-        inspectionEnabled: Boolean,
-    ) {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
-            .putString(KEY_LAST_DNS_CONFIG, dnsConfig)
-            .putString(KEY_LAST_OUTBOUND_PROXY, proxyJson)
-            .putString(KEY_LAST_PROXY_APP, proxyAppPackage)
-            .putBoolean(KEY_LAST_BYPASS_LAN, bypassLan)
-            .putString(KEY_LAST_IPV6_MODE, ipv6Mode)
-            .putStringSet(KEY_LAST_EXCLUDED_PACKAGES, excludedPackages)
-            .putStringSet(KEY_LAST_BLOCKED_PACKAGES, blockedPackages)
-            .putStringSet(KEY_LAST_INSPECTION_PACKAGES, inspectionPackages)
-            .putBoolean(KEY_LAST_INSPECTION_ENABLED, inspectionEnabled)
-            .apply()
     }
 
     @Synchronized
@@ -160,7 +136,7 @@ class DitingVpnService : VpnService() {
 
         try {
             val proxyError = goEngine.configureOutboundProxy(
-                OutboundProxyScope.resolve(this, proxyJson.ifBlank { DEFAULT_OUTBOUND_PROXY })
+                OutboundProxyScope.resolve(this, proxyJson.ifBlank { VpnStartConfig.DEFAULT_OUTBOUND_PROXY })
             )
             if (proxyError.isNotBlank()) {
                 // Persisted before failing so the page shows the reason, as the legacy app did.
@@ -179,46 +155,7 @@ class DitingVpnService : VpnService() {
             val logMode = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
                 .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
                 ?: DnsLogWriter.MODE_ALL
-            goEngine.setBatchLogCallback(object : BatchLogCallback {
-                override fun onDNSQueryBatch(jsonLogs: String) {
-                    DnsLogWriter.writeBatch(this@DitingVpnService, DnsLogWriter.DB_NORMAL, logMode, jsonLogs)
-                }
-            })
-            goEngine.setRaceLogCallback(object : RaceLogCallback {
-                override fun onRaceResult(
-                    queryName: String,
-                    queryType: Long,
-                    strategy: String,
-                    providerCount: Long,
-                    success: Boolean,
-                    elapsedMs: Long,
-                    selectedProviderID: String,
-                    selectedElapsedMs: Long,
-                    winnerProviderID: String,
-                    winnerElapsedMs: Long,
-                    fallbackUsed: Boolean,
-                    fallbackSuccess: Boolean,
-                    errorMessage: String,
-                ) {
-                    RaceLogWriter.write(
-                        this@DitingVpnService,
-                        DnsLogWriter.DB_NORMAL,
-                        queryName = queryName,
-                        queryType = queryType.toInt(),
-                        strategy = strategy,
-                        providerCount = providerCount.toInt(),
-                        success = success,
-                        elapsedMs = elapsedMs,
-                        selectedProviderId = selectedProviderID,
-                        selectedElapsedMs = selectedElapsedMs,
-                        winnerProviderId = winnerProviderID,
-                        winnerElapsedMs = winnerElapsedMs,
-                        fallbackUsed = fallbackUsed,
-                        fallbackSuccess = fallbackSuccess,
-                        errorMessage = errorMessage,
-                    )
-                }
-            })
+            EngineLogCallbacks.attach(goEngine, this, DnsLogWriter.DB_NORMAL, logMode)
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
 
@@ -278,15 +215,7 @@ class DitingVpnService : VpnService() {
                 // that can take seconds, and onStartCommand would otherwise ANR the service.
                 // Applied before startFull so the tunnel comes up with filtering already armed.
                 try {
-                    val snapshot = RuleSnapshotStore.buildSnapshotJson(this, RuleDataset.NORMAL)
-                    val snapshotError = goEngine.applyRuleSnapshot(snapshot)
-                    if (snapshotError.isNotBlank()) {
-                        Log.w(TAG, "applyRuleSnapshot failed: $snapshotError")
-                    }
-                    val rewriteRules = RuleSnapshotStore.buildRewriteRulesJson(this, RuleDataset.NORMAL)
-                    if (rewriteRules.isNotBlank()) {
-                        goEngine.setRewriteRules(rewriteRules)
-                    }
+                    EngineRuleLoader.apply(this, goEngine, RuleDataset.NORMAL, TAG)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Unable to build rule snapshot", t)
                     if (!stopping) {
@@ -402,30 +331,9 @@ class DitingVpnService : VpnService() {
     private fun buildNotification(): Notification =
         VpnNotification.build(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP)
 
-    /// Ticks the notification's speed line; a daemon thread, as this module has no coroutines
-    private fun startSpeedTicker() {
-        if (speedTicker != null) return
-        speedTicker = Thread({
-            val power = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-            while (isRunning && !stopping) {
-                val onScreen = power?.isInteractive ?: true
-                try {
-                    Thread.sleep(if (onScreen) SCREEN_ON_INTERVAL_MS else SCREEN_OFF_INTERVAL_MS)
-                } catch (interrupted: InterruptedException) {
-                    return@Thread
-                }
-                VpnNotification.refresh(this, CHANNEL_ID, NOTIFICATION_ID, ACTION_STOP)
-            }
-        }, "diting-speed-ticker").apply {
-            isDaemon = true
-            start()
-        }
-    }
+    private fun startSpeedTicker() = speedTicker.start()
 
-    private fun stopSpeedTicker() {
-        speedTicker?.interrupt()
-        speedTicker = null
-    }
+    private fun stopSpeedTicker() = speedTicker.stop()
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -482,30 +390,15 @@ class DitingVpnService : VpnService() {
         private const val CHANNEL_ID = "diting_vpn"
         private const val NOTIFICATION_ID = 1001
 
-    /// Speed refresh cadence: 1 s with the screen on (the readout is per-second), 10 s off
-    private const val SCREEN_ON_INTERVAL_MS = 1000L
-    private const val SCREEN_OFF_INTERVAL_MS = 10_000L
         internal const val PREFS_NAME = "dns_vpn_prefs"
         private const val KEY_VPN_RUNNING = "vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"
 
         // Last start configuration, replayed by the quick settings tile.
         internal const val KEY_LAST_DNS_CONFIG = "last_dns_config"
-        private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
-        private const val KEY_LAST_PROXY_APP = "last_outbound_proxy_app"
-        private const val KEY_LAST_BYPASS_LAN = "last_bypass_lan"
-        private const val KEY_LAST_IPV6_MODE = "last_ipv6_mode"
-        private const val KEY_LAST_EXCLUDED_PACKAGES = "last_excluded_packages"
-        private const val KEY_LAST_BLOCKED_PACKAGES = "last_blocked_packages"
-        private const val KEY_LAST_INSPECTION_PACKAGES = "last_inspection_packages"
-        private const val KEY_LAST_INSPECTION_ENABLED = "last_inspection_enabled"
 
         /// Same directory the legacy app used: an upgraded install keeps its trusted root CA
         private const val MITM_DIR = "go-mitm"
-
-        // Not wired from Flutter yet; an explicit disabled config stops Go logging a parse failure.
-        private const val DEFAULT_OUTBOUND_PROXY =
-            """{"enabled":false,"protocol":"SOCKS5","host":"127.0.0.1","port":7890,"username":"","password":""}"""
 
         @Volatile
         var isRunning: Boolean = false
@@ -592,26 +485,6 @@ class DitingVpnService : VpnService() {
 
         /// Rebuilds the last start intent so the tile can restart the tunnel without Dart, which
         /// is where the DNS config is computed. Null until the service was started at least once.
-        fun restoreIntent(context: Context): Intent? {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val dnsConfig = prefs.getString(KEY_LAST_DNS_CONFIG, null)
-            if (dnsConfig.isNullOrBlank()) return null
-            return startIntent(
-                context = context,
-                dnsConfig = dnsConfig,
-                proxyJson = prefs.getString(KEY_LAST_OUTBOUND_PROXY, null)
-                    ?: DEFAULT_OUTBOUND_PROXY,
-                bypassLan = prefs.getBoolean(KEY_LAST_BYPASS_LAN, true),
-                ipv6Mode = prefs.getString(KEY_LAST_IPV6_MODE, null) ?: "auto",
-                excludedPackages = prefs.getStringSet(KEY_LAST_EXCLUDED_PACKAGES, null)
-                    .orEmpty().toList(),
-                proxyAppPackage = prefs.getString(KEY_LAST_PROXY_APP, null).orEmpty(),
-                blockedPackages = prefs.getStringSet(KEY_LAST_BLOCKED_PACKAGES, null)
-                    .orEmpty().toList(),
-                inspectionPackages = prefs.getStringSet(KEY_LAST_INSPECTION_PACKAGES, null)
-                    .orEmpty().toList(),
-                inspectionEnabled = prefs.getBoolean(KEY_LAST_INSPECTION_ENABLED, false),
-            )
-        }
+        fun restoreIntent(context: Context): Intent? = VpnStartConfig.restoreIntent(context)
     }
 }

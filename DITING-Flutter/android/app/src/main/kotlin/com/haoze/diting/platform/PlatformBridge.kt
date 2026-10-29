@@ -5,7 +5,6 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -20,23 +19,6 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
 
     companion object {
         const val CHANNEL = "com.haoze.diting/platform"
-
-        /// Both must be cleared: an upgraded install still has files in the old one
-        private const val CRASH_DIR = "crash"
-        private const val LEGACY_CRASH_DIR = "crash_logs"
-
-        private const val CRASH_PREFS = "diting_crash_state"
-
-        private val CRASH_STATE_KEYS = arrayOf(
-            "consecutive_crash_count",
-            "has_manually_exported",
-            "pending_auto_export_notice",
-            "last_recorded_native_exit_time",
-        )
-
-        private const val BACKGROUND_CACHE_FILE = "custom_background_cached.png"
-        private const val BACKGROUND_CACHE_TMP = "custom_background_cached.tmp"
-        private const val BACKGROUND_MARKER_FILE = "custom_background_uri.txt"
 
         private const val REQUEST_EXPORT_DOCUMENT = 0x5701
         private const val REQUEST_IMPORT_DOCUMENT = 0x5702
@@ -54,15 +36,16 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
 
         private const val EXPORT_DIR = "exports"
 
-        /// Must match the updater's download directory, or cleanup deletes nothing
-        private const val UPDATE_DIR = "app-update"
-
         private const val HIDE_FROM_RECENTS_KEY = "hide_from_recents_enabled"
 
         private const val UI_PREFS = "dns_vpn_prefs"
     }
 
     private val context: Context get() = activity
+
+    private val storage = AppStorageCleaner(activity)
+
+    private val wifi = WifiSsidReader(activity)
 
     fun register(messenger: BinaryMessenger) {
         MethodChannel(messenger, CHANNEL).setMethodCallHandler(this)
@@ -83,16 +66,16 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
             "applyRecentsPrivacy" -> applyRecentsPrivacy(call, result)
             "isIgnoringBatteryOptimizations" -> result.success(isIgnoringBatteryOptimizations())
             "requestIgnoreBatteryOptimizations" -> requestIgnoreBatteryOptimizations(result)
-            "crashLogCount" -> result.success(crashLogCount())
-            "readCrashLogs" -> result.success(readCrashLogs())
-            "clearCrashLogs" -> clearCrashLogs(result)
+            "crashLogCount" -> result.success(storage.crashLogCount())
+            "readCrashLogs" -> result.success(storage.readCrashLogs())
+            "clearCrashLogs" -> result.success(storage.clearCrashLogs())
             "exportText" -> exportText(call, result)
             "memoryInfo" -> result.success(memoryInfo())
             // Null means "cannot tell" (no permission); "" means "not on Wi-Fi".
-            "currentSsid" -> result.success(currentSsid())
+            "currentSsid" -> result.success(wifi.currentSsid())
             // File-system cleanup sqflite cannot reach: it only sees `databases/`.
-            "clearUpdateCache" -> result.success(clearUpdateCache(call.argument<Boolean>("includeTemp") ?: true))
-            "clearCustomBackgroundCache" -> result.success(clearCustomBackgroundCache())
+            "clearUpdateCache" -> result.success(storage.clearUpdateCache(call.argument<Boolean>("includeTemp") ?: true))
+            "clearCustomBackgroundCache" -> result.success(storage.clearCustomBackgroundCache())
             // Both are picker round trips; the answer arrives through onActivityResult.
             "exportDocument" -> exportDocument(call, result)
             "importDocument" -> importDocument(call, result)
@@ -435,59 +418,6 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
         return power.isIgnoringBatteryOptimizations(context.packageName)
     }
 
-    /// The SSID of the joined Wi-Fi. Null means the answer is unknowable (permission denied or
-    /// location services off) and the page must say so rather than show a made-up name; an empty
-    /// string means "not on Wi-Fi". Android 10+ needs a location permission for `getConnectionInfo`
-    /// to return a real SSID, and Android 13+ additionally gates it behind NEARBY_WIFI_DEVICES.
-    private fun currentSsid(): String? {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            !hasPermission(android.Manifest.permission.NEARBY_WIFI_DEVICES) &&
-            !hasPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-        ) {
-            return null
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-            !hasPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-        ) {
-            return null
-        }
-        // Location services off also blanks the SSID, so report "unknown" instead of "".
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && !isLocationEnabled()) {
-            return null
-        }
-        val wifi = context.applicationContext
-            .getSystemService(Context.WIFI_SERVICE) as? WifiManager
-        @Suppress("DEPRECATION")
-        val info = runCatching { wifi?.connectionInfo }.getOrNull() ?: return null
-        @Suppress("DEPRECATION")
-        val ssid = info.ssid
-        if (ssid.isNullOrBlank()) return ""
-        // Android quotes SSIDs, and some builds (emulators) escape them a second time, so strip
-        // every surrounding quote instead of exactly one pair; an unassociated network reports the
-        // sentinel `<unknown ssid>`.
-        val unquoted = ssid.trim().trim('"').trim()
-        if (unquoted == WifiManager.UNKNOWN_SSID) return ""
-        return unquoted
-    }
-
-    private fun hasPermission(permission: String): Boolean =
-        androidx.core.content.ContextCompat.checkSelfPermission(context, permission) ==
-            android.content.pm.PackageManager.PERMISSION_GRANTED
-
-    private fun isLocationEnabled(): Boolean = runCatching {
-        val manager = context.getSystemService(Context.LOCATION_SERVICE)
-            as? android.location.LocationManager ?: return false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            manager.isLocationEnabled
-        } else {
-            @Suppress("DEPRECATION")
-            manager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) ||
-                @Suppress("DEPRECATION")
-                manager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER)
-        }
-    }.getOrDefault(false)
-
-
     private fun requestIgnoreBatteryOptimizations(result: MethodChannel.Result) {
         // Newer Android opens the optimisation list; the settings screen keeps the button useful.
         val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
@@ -502,97 +432,6 @@ class PlatformBridge(private val activity: Activity) : MethodChannel.MethodCallH
         }
         val ok = runCatching { activity.startActivity(intent) }.isSuccess
         result.success(ok)
-    }
-
-    private fun crashDir(): File = File(context.filesDir, CRASH_DIR).apply { mkdirs() }
-
-    private fun crashLogCount(): Int = crashFiles().size
-
-    private fun readCrashLogs(): String {
-        val files = crashFiles()
-        if (files.isEmpty()) return ""
-        val header = buildString {
-            append("=".repeat(80)).append('\n')
-            append("                 DITING CRASH LOGS EXPORT (${files.size} REPORT(S))\n")
-            append("                 Exported: ").append(timestamp()).append('\n')
-            append("=".repeat(80)).append("\n\n")
-        }
-        val body = files.joinToString("\n\n") { file ->
-            buildString {
-                append("---- ").append(file.name).append(" ----\n")
-                // A tombstone is hundreds of lines; a truncated read still keeps the useful head.
-                append(runCatching { file.readText() }.getOrDefault("(无法读取该文件)"))
-            }
-        }
-        return header + body
-    }
-
-    /// Reports from both directories, newest first
-    private fun crashFiles(): List<File> {
-        val files = mutableListOf<File>()
-        for (dir in arrayOf(crashDir(), File(context.filesDir, LEGACY_CRASH_DIR))) {
-            if (!dir.exists()) continue
-            dir.listFiles()?.forEach { if (it.isFile) files.add(it) }
-        }
-        return files.sortedByDescending { it.lastModified() }
-    }
-
-    private fun timestamp(): String =
-        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
-            .format(java.util.Date())
-
-    /// Clears the crash records and resets the streak keys, or the crash-loop threshold trips again
-    private fun clearCrashLogs(result: MethodChannel.Result) {
-        var removed = 0
-        removed += deleteContents(crashDir())
-        removed += deleteContents(File(context.filesDir, LEGACY_CRASH_DIR))
-        runCatching {
-            val prefs = context.getSharedPreferences(CRASH_PREFS, Context.MODE_PRIVATE)
-            val editor = prefs.edit()
-            CRASH_STATE_KEYS.forEach { editor.remove(it) }
-            editor.apply()
-        }
-        result.success(removed)
-    }
-
-    /// Deletes downloaded APKs, and with `includeTemp` both cache dirs; returns the count
-    private fun clearUpdateCache(includeTemp: Boolean): Int {
-        var removed = deleteContents(File(context.filesDir, UPDATE_DIR))
-        if (includeTemp) {
-            removed += deleteContents(context.cacheDir)
-            removed += deleteContents(context.externalCacheDir)
-        }
-        return removed
-    }
-
-    /// Deletes the cached wallpaper and its marker; otherwise a stale URI is re-read
-    private fun clearCustomBackgroundCache(): Int {
-        val root = context.filesDir
-        var removed = 0
-        val names = arrayOf(
-            BACKGROUND_CACHE_FILE,
-            BACKGROUND_CACHE_TMP,
-            BACKGROUND_MARKER_FILE,
-        )
-        for (name in names) {
-            val file = File(root, name)
-            if (file.exists() && file.delete()) removed++
-        }
-        // Per-URI copies live in `background/bg_*.png`; they must go too, or the preview survives.
-        removed += deleteContents(File(root, "background"))
-        return removed
-    }
-
-    private fun deleteContents(dir: File?): Int {
-        if (dir == null || !dir.exists()) return 0
-        var removed = 0
-        dir.listFiles()?.forEach { file ->
-            val ok = runCatching {
-                if (file.isDirectory) file.deleteRecursively() else file.delete()
-            }.getOrDefault(false)
-            if (ok) removed++
-        }
-        return removed
     }
 
     /// Process plus device totals, in KB. Never add `totalPss` to the heaps:

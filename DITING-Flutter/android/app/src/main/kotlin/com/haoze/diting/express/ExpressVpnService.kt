@@ -14,22 +14,20 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.haoze.diting.MainActivity
 import com.haoze.diting.R
+import com.haoze.diting.core.rule.EngineRuleLoader
 import com.haoze.diting.core.rule.RuleDataset
-import com.haoze.diting.core.rule.RuleSnapshotStore
 import com.haoze.diting.log.DnsLogWriter
+import com.haoze.diting.log.EngineLogCallbacks
 import com.haoze.diting.log.EngineDataPlane
 import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.LogRetention
-import com.haoze.diting.log.RaceLogWriter
 import com.haoze.diting.platform.NotificationMode
 import com.haoze.diting.platform.NotificationSettings
 import com.haoze.diting.proxy.OutboundProxyBridge
 import com.haoze.diting.proxy.OutboundProxyScope
 import com.haoze.diting.tile.QuickSettingsTileUpdater
-import tunnel.BatchLogCallback
 import tunnel.Engine
 import tunnel.OutboundProxyStatusCallback
-import tunnel.RaceLogCallback
 import tunnel.SocketProtector
 
 /// Express-mode VpnService: same Go engine as normal mode, but the TUN only owns DNS routes.
@@ -155,46 +153,7 @@ class ExpressVpnService : VpnService() {
             val logMode = getSharedPreferences(SETTINGS_PREFS, MODE_PRIVATE)
                 .getString(KEY_LOG_MODE, DnsLogWriter.MODE_ALL)
                 ?: DnsLogWriter.MODE_ALL
-            goEngine.setBatchLogCallback(object : BatchLogCallback {
-                override fun onDNSQueryBatch(jsonLogs: String) {
-                    DnsLogWriter.writeBatch(this@ExpressVpnService, DnsLogWriter.DB_EXPRESS, logMode, jsonLogs)
-                }
-            })
-            goEngine.setRaceLogCallback(object : RaceLogCallback {
-                override fun onRaceResult(
-                    queryName: String,
-                    queryType: Long,
-                    strategy: String,
-                    providerCount: Long,
-                    success: Boolean,
-                    elapsedMs: Long,
-                    selectedProviderID: String,
-                    selectedElapsedMs: Long,
-                    winnerProviderID: String,
-                    winnerElapsedMs: Long,
-                    fallbackUsed: Boolean,
-                    fallbackSuccess: Boolean,
-                    errorMessage: String,
-                ) {
-                    RaceLogWriter.write(
-                        this@ExpressVpnService,
-                        DnsLogWriter.DB_EXPRESS,
-                        queryName = queryName,
-                        queryType = queryType.toInt(),
-                        strategy = strategy,
-                        providerCount = providerCount.toInt(),
-                        success = success,
-                        elapsedMs = elapsedMs,
-                        selectedProviderId = selectedProviderID,
-                        selectedElapsedMs = selectedElapsedMs,
-                        winnerProviderId = winnerProviderID,
-                        winnerElapsedMs = winnerElapsedMs,
-                        fallbackUsed = fallbackUsed,
-                        fallbackSuccess = fallbackSuccess,
-                        errorMessage = errorMessage,
-                    )
-                }
-            })
+            EngineLogCallbacks.attach(goEngine, this, DnsLogWriter.DB_EXPRESS, logMode)
             goEngine.setFilterDNS(true)
             goEngine.setUseTcpStack(true)
 
@@ -230,15 +189,7 @@ class ExpressVpnService : VpnService() {
                 // that can take seconds, and onStartCommand would otherwise ANR the service.
                 // Applied before startFull so the tunnel comes up with filtering already armed.
                 try {
-                    val snapshot = RuleSnapshotStore.buildSnapshotJson(this, RuleDataset.EXPRESS)
-                    val snapshotError = goEngine.applyRuleSnapshot(snapshot)
-                    if (snapshotError.isNotBlank()) {
-                        Log.w(TAG, "applyRuleSnapshot failed: $snapshotError")
-                    }
-                    val rewriteRules = RuleSnapshotStore.buildRewriteRulesJson(this, RuleDataset.EXPRESS)
-                    if (rewriteRules.isNotBlank()) {
-                        goEngine.setRewriteRules(rewriteRules)
-                    }
+                    EngineRuleLoader.apply(this, goEngine, RuleDataset.EXPRESS, TAG)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Unable to build rule snapshot", t)
                     if (!stopping) {
