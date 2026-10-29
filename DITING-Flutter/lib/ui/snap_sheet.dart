@@ -19,6 +19,7 @@ import 'sheet_navigator.dart';
 part 'snap_sheet_a.dart';
 part 'snap_sheet_b.dart';
 part 'snap_sheet_c.dart';
+part 'snap_sheet_d.dart';
 
 /// Receives the sheet's own scroll controller, or null with no detents to drag between.
 typedef SnapSheetBuilder = Widget Function(

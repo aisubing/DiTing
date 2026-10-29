@@ -42,6 +42,7 @@ part 'scaffold_c.dart';
 part 'scaffold_d.dart';
 part 'scaffold_e.dart';
 part 'scaffold_f.dart';
+part 'scaffold_g.dart';
 
 typedef OnKeywordsUpdateCallback = void Function(List<String> keywords);
 

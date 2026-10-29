@@ -22,6 +22,7 @@ part 'navigation_dock_b.dart';
 part 'navigation_dock_c.dart';
 part 'navigation_dock_d.dart';
 part 'navigation_dock_e.dart';
+part 'navigation_dock_f.dart';
 
 const double _barHeight = 62;
 const double _barPadding = 4;

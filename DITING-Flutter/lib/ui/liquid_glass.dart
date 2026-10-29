@@ -14,6 +14,8 @@ part 'liquid_glass_capture_c.dart';
 part 'liquid_glass_b.dart';
 part 'liquid_glass_c.dart';
 part 'liquid_glass_d.dart';
+part 'liquid_glass_capture_d.dart';
+part 'liquid_glass_e.dart';
 
 const _shaderAsset = 'shaders/liquid_glass.frag';
 const _glowIn = Duration(milliseconds: 120);
