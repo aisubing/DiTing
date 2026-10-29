@@ -391,13 +391,13 @@ class ExpressVpnService : VpnService() {
 
         private const val CHANNEL_ID = "channel_express"
         private const val NOTIFICATION_ID = 2003
-        private const val PREFS_NAME = "express_vpn_prefs"
+        internal const val PREFS_NAME = "express_vpn_prefs"
         private const val KEY_VPN_RUNNING = "express_vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"
         private const val SETTINGS_PREFS = "diting_express_prefs"
 
         // Last start configuration, replayed by the quick settings tile.
-        private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
+        internal const val KEY_LAST_DNS_CONFIG = "last_dns_config"
         private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
         private const val KEY_LAST_PROXY_APP = "last_outbound_proxy_app"
         private const val KEY_LAST_IPV6_MODE = "last_ipv6_mode"

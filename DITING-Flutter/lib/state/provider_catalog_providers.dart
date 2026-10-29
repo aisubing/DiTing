@@ -278,3 +278,68 @@ final raceProvidersProvider =
     NotifierProvider<RaceProvidersNotifier, Set<String>>(
       RaceProvidersNotifier.new,
     );
+
+/// Presets whose protocol follows the built-in protocol switch (legacy
+/// `SWITCHABLE_PRESET_PROVIDER_NAMES`); every other provider keeps its own protocol.
+const _switchablePresetNames = {'阿里云', '腾讯云 DNSPod'};
+
+/// The same preset in [protocol], or [id] unchanged for custom and non-switchable providers.
+String presetIdForProtocol(String id, DnsProtocol protocol) {
+  final preset = defaultDnsProviders.where((p) => p.id == id).firstOrNull;
+  if (preset == null || !_switchablePresetNames.contains(preset.name)) {
+    return id;
+  }
+  return defaultDnsProviders
+          .where((p) => p.name == preset.name && p.protocol == protocol)
+          .firstOrNull
+          ?.id ??
+      id;
+}
+
+/// Built-in service protocol (`preset_dns_service`, stored as `DNS` / `DOT` / `DOH`).
+class PresetProtocolNotifier extends Notifier<ProviderProtocol> {
+  @override
+  ProviderProtocol build() => switch (ref
+      .watch(legacySettingsProvider)
+      .presetDnsServiceRaw
+      .toUpperCase()) {
+    'DOT' => ProviderProtocol.dot,
+    'DOH' => ProviderProtocol.doh,
+    _ => ProviderProtocol.dns,
+  };
+
+  /// Remaps the switchable presets in all four modes' selections, as legacy
+  /// `setPresetDnsService` does, then stores the protocol. Returns false when nothing changed.
+  bool select(ProviderProtocol protocol) {
+    if (state == protocol) return false;
+    final settings = ref.read(legacySettingsProvider);
+    final target = _dnsProtocolOf(protocol);
+    String remap(String id) => presetIdForProtocol(id, target);
+    List<String> remapAll(List<String> ids) => ids.map(remap).toSet().toList();
+
+    settings.setSelectedProviderId(remap(settings.selectedProviderId));
+    settings.setSmartPredictionProviderIds(
+      remapAll(settings.smartPredictionProviderIds),
+    );
+    settings.setParallelRaceProviderIds(
+      remapAll(settings.parallelRaceProviderIds),
+    );
+    settings.setPrimaryBackupProviderIds(
+      remapAll(settings.primaryBackupProviderIds),
+    );
+    settings.setPresetDnsServiceRaw(switch (protocol) {
+      ProviderProtocol.dns => 'DNS',
+      ProviderProtocol.dot => 'DOT',
+      ProviderProtocol.doh => 'DOH',
+    });
+    state = protocol;
+    ref.invalidate(selectedProviderProvider);
+    ref.invalidate(raceProvidersProvider);
+    return true;
+  }
+}
+
+final presetProtocolProvider =
+    NotifierProvider<PresetProtocolNotifier, ProviderProtocol>(
+      PresetProtocolNotifier.new,
+    );

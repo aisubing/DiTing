@@ -151,6 +151,9 @@ abstract class VpnController {
 
   /// Live up/down rates, polled at 1 Hz. A missing channel returns idle rates.
   Future<VpnTrafficRates> trafficRates();
+
+  /// Hot-applies [dnsConfig] to the running engine; null on success, otherwise the reason.
+  Future<String?> applyDnsConfig(String dnsConfig);
 }
 
 class MethodChannelVpnController implements VpnController {
@@ -211,6 +214,20 @@ class MethodChannelVpnController implements VpnController {
   Future<VpnStatus> status() async {
     _ensureHandler();
     return VpnStatus.fromMap(await _channel.invokeMethod<Object?>('status'));
+  }
+
+  @override
+  Future<String?> applyDnsConfig(String dnsConfig) async {
+    _ensureHandler();
+    try {
+      return await _channel.invokeMethod<String>('applyDnsConfig', {
+        'dnsConfig': dnsConfig,
+      });
+    } on MissingPluginException {
+      return '当前平台不支持';
+    } on PlatformException catch (error) {
+      return error.message ?? error.code;
+    }
   }
 
   @override

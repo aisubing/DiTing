@@ -39,6 +39,13 @@ class ExpressVpnBridge(
                     "unsupported" to true,
                 )
             )
+            // Null on success, otherwise the error text.
+            "applyDnsConfig" -> result.success(
+                RuntimeDnsConfig.applyExpress(
+                    activity,
+                    call.argument<String>("dnsConfig").orEmpty(),
+                )
+            )
             else -> result.notImplemented()
         }
     }

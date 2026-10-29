@@ -484,12 +484,12 @@ class DitingVpnService : VpnService() {
     /// Speed refresh cadence: 1 s with the screen on (the readout is per-second), 10 s off
     private const val SCREEN_ON_INTERVAL_MS = 1000L
     private const val SCREEN_OFF_INTERVAL_MS = 10_000L
-        private const val PREFS_NAME = "dns_vpn_prefs"
+        internal const val PREFS_NAME = "dns_vpn_prefs"
         private const val KEY_VPN_RUNNING = "vpn_running"
         private const val KEY_LOG_MODE = "dns_log_mode"
 
         // Last start configuration, replayed by the quick settings tile.
-        private const val KEY_LAST_DNS_CONFIG = "last_dns_config"
+        internal const val KEY_LAST_DNS_CONFIG = "last_dns_config"
         private const val KEY_LAST_OUTBOUND_PROXY = "last_outbound_proxy"
         private const val KEY_LAST_PROXY_APP = "last_outbound_proxy_app"
         private const val KEY_LAST_BYPASS_LAN = "last_bypass_lan"

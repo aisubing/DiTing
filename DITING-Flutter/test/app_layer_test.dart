@@ -4,6 +4,8 @@ import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/app/theme/manager.dart';
 import 'package:diting/data/mock_data.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/data/vpn/dns_config_builder.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -229,6 +231,38 @@ void _appLayer() {
       await c.read(powerProvider.notifier).toggle();
       expect(c.read(powerProvider), PowerState.error);
       expect(c.read(powerProvider.notifier).lastError, 'boom');
+    });
+
+    test('切换内置协议会重映射内置服务商并热更新运行中的引擎', () async {
+      final fake = FakeVpnController();
+      final c = ProviderContainer(
+        overrides: [vpnControllerProvider.overrideWithValue(fake)],
+      );
+      addTearDown(c.dispose);
+      await c.read(powerProvider.notifier).toggle();
+      expect(c.read(presetProtocolProvider), ProviderProtocol.dns);
+
+      expect(
+        c.read(presetProtocolProvider.notifier).select(ProviderProtocol.doh),
+        isTrue,
+      );
+      expect(c.read(selectedProviderProvider), 'preset_alidns_doh');
+      expect(c.read(legacySettingsProvider).parallelRaceProviderIds, [
+        'preset_alidns_doh',
+        'preset_dnspod_doh',
+      ]);
+      // Non-switchable presets keep their own protocol.
+      expect(
+        presetIdForProtocol('preset_google_dns', DnsProtocol.doh),
+        'preset_google_dns',
+      );
+
+      expect(
+        await c.read(powerProvider.notifier).applyDnsConfigIfRunning(),
+        isNull,
+      );
+      expect(fake.applyDnsConfigCalls, 1);
+      expect(fake.lastAppliedDnsConfig, contains('preset_alidns_doh'));
     });
 
     test('端口夹在 1024–65535', () {

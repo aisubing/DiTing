@@ -59,4 +59,14 @@ class FakeVpnController implements VpnController {
     trafficRatesCalls++;
     return ratesValue;
   }
+
+  int applyDnsConfigCalls = 0;
+  String? lastAppliedDnsConfig;
+
+  @override
+  Future<String?> applyDnsConfig(String dnsConfig) async {
+    applyDnsConfigCalls++;
+    lastAppliedDnsConfig = dnsConfig;
+    return null;
+  }
 }

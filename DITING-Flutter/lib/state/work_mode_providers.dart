@@ -393,6 +393,28 @@ class PowerNotifier extends Notifier<PowerState> {
 
   void fail() => state = PowerState.error;
 
+  /// Pushes the current DNS settings to the running tunnel (legacy
+  /// `RuntimeDnsSettingsRefresher.refreshIfRunning`); a stopped tunnel reads them on next start.
+  /// Returns null when applied or nothing runs, otherwise the reason.
+  Future<String?> applyDnsConfigIfRunning() async {
+    if (!state.isRunning) return null;
+    final settings = ref.read(legacySettingsProvider);
+    final express = _isExpress;
+    final statusText = defaultRunningNotificationText(settings);
+    if (express) {
+      settings.setNotificationDefaultExpressText(statusText);
+    } else {
+      settings.setNotificationDefaultRunningText(statusText);
+    }
+    try {
+      return await _controller.applyDnsConfig(
+        buildDnsConfig(settings).encode(settings),
+      );
+    } catch (error) {
+      return _messageOf(error);
+    }
+  }
+
   void reset() => state = PowerState.stopped;
 }
 

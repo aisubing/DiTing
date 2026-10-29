@@ -1,6 +1,5 @@
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/appearance_providers.dart';
-import 'package:diting/state/provider_catalog_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -25,11 +24,24 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
     ResolutionMode.primaryBackup: '主服务商优先，超时后才动备用。',
   };
 
-  ProviderProtocol _protocol = ProviderProtocol.doh;
+  Future<void> _selectPresetProtocol(ProviderProtocol protocol) async {
+    if (!ref.read(presetProtocolProvider.notifier).select(protocol)) return;
+    final error = await ref
+        .read(powerProvider.notifier)
+        .applyDnsConfigIfRunning();
+    if (error == null || !mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text('协议已保存，运行中的服务未能更新：$error'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(resolutionModeProvider);
+    final presetProtocol = ref.watch(presetProtocolProvider);
     final selectedId = ref.watch(selectedProviderProvider);
     final raceIds = ref.watch(raceProvidersProvider);
     final colorScheme = context.colorScheme;
@@ -84,8 +96,8 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
                     for (final protocol in ProviderProtocol.values)
                       (protocol, protocol.label),
                   ],
-                  value: _protocol,
-                  onChanged: (value) => setState(() => _protocol = value),
+                  value: presetProtocol,
+                  onChanged: _selectPresetProtocol,
                 ),
                 Text(
                   '仅切换内置服务商使用的 DNS / DoT / DoH 协议；'
@@ -181,7 +193,8 @@ class ResolutionModeConfigPage extends ConsumerStatefulWidget {
 
 class _ResolutionModeConfigPageState
     extends ConsumerState<ResolutionModeConfigPage> {
-  ProviderProtocol _protocol = ProviderProtocol.doh;
+  /// Local filter; null follows the built-in protocol until the user picks one here.
+  ProviderProtocol? _protocol;
   late List<String> _order;
 
   ResolutionMode get _mode => switch (widget.modeId) {
@@ -251,8 +264,10 @@ class _ResolutionModeConfigPageState
     final selectedId = ref.watch(selectedProviderProvider);
     final raceIds = ref.watch(raceProvidersProvider);
     final catalog = ref.watch(dnsProviderCatalogProvider);
+    final ProviderProtocol protocol =
+        _protocol ?? ref.watch(presetProtocolProvider);
     final providers = catalog
-        .where((provider) => provider.protocol == _protocol)
+        .where((provider) => provider.protocol == protocol)
         .toList(growable: false);
     final selectedCount = _single ? 1 : raceIds.length;
     final valid = _single
@@ -261,7 +276,7 @@ class _ResolutionModeConfigPageState
     final ordered = [
       for (final id in _order)
         ...catalog.where(
-          (provider) => provider.id == id && provider.protocol == _protocol,
+          (provider) => provider.id == id && provider.protocol == protocol,
         ),
     ];
     final rest = [
@@ -312,10 +327,10 @@ class _ResolutionModeConfigPageState
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SegmentedControl<ProviderProtocol>(
               segments: [
-                for (final protocol in ProviderProtocol.values)
-                  (protocol, protocol.label),
+                for (final option in ProviderProtocol.values)
+                  (option, option.label),
               ],
-              value: _protocol,
+              value: protocol,
               onChanged: (value) => setState(() => _protocol = value),
             ),
           ),

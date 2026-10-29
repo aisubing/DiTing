@@ -31,6 +31,13 @@ class VpnBridge(
             }
             "status" -> result.success(DitingVpnService.status(activity))
             "trafficRates" -> result.success(DitingVpnService.trafficRates())
+            // Null on success, otherwise the error text.
+            "applyDnsConfig" -> result.success(
+                RuntimeDnsConfig.applyNormal(
+                    activity,
+                    call.argument<String>("dnsConfig").orEmpty(),
+                )
+            )
             else -> result.notImplemented()
         }
     }
