@@ -58,6 +58,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- sqflite opens without WAL by default, and Android resets the journal mode on every
+             open: the Flutter connection could switch diting_database back to TRUNCATE, after
+             which each Dart read blocked the native log writers. Keep both sides on WAL. -->
+        <meta-data
+            android:name="com.tekartik.sqflite.wal_enabled"
+            android:value="true" />
         <!-- In-app update: serves APKs from filesDir/app-update as content:// URIs to
              the system installer. Paths are declared in res/xml/file_paths.xml. -->
         <provider

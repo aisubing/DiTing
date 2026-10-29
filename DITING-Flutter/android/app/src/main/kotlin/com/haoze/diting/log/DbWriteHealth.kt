@@ -14,16 +14,46 @@ internal object DbWriteHealth {
     private const val TAG = "DbWriteHealth"
     private const val WARN_WINDOW_MS = 60_000L
 
+    /// Why rows were thrown away. 2.1.9 only had one total, and "181558 dropped, no cause" could
+    /// not tell a full queue from a table check that failed once and latched.
+    enum class DropReason(val key: String) {
+        /// The bounded queue was full because the database stayed busy for too long.
+        OVERFLOW("overflow"),
+
+        /// The table really is not in the file (wrong database, or schema not created yet).
+        TABLE_MISSING("tableMissing"),
+
+        /// No database file at all.
+        NO_DATABASE("noDatabase"),
+
+        /// The writer was closed with rows it could no longer write.
+        CLOSED("closed"),
+    }
+
     private val droppedRows = AtomicLong(0)
+    private val droppedBy = DropReason.entries.associateWith { AtomicLong(0) }
     private val openFailures = AtomicLong(0)
     private val suppressed = AtomicLong(0)
 
+    @Volatile
     private var lastWarnAt = 0L
+
+    @Volatile
     private var lastCause: String? = null
 
-    /// Rows that could not be persisted at all (buffer over the cap, or a table that never exists).
-    fun onDropped(rows: Int) {
-        if (rows > 0) droppedRows.addAndGet(rows.toLong())
+    @Volatile
+    private var lastDrop: String? = null
+
+    /// Rows that could not be persisted at all. Called per row on overflow, so the logging path is
+    /// gated by a volatile read before it takes the [warn] lock.
+    fun onDropped(rows: Int, reason: DropReason, table: String) {
+        if (rows <= 0) return
+        droppedRows.addAndGet(rows.toLong())
+        droppedBy.getValue(reason).addAndGet(rows.toLong())
+        lastDrop = "$table:${reason.key}"
+        if (System.currentTimeMillis() - lastWarnAt >= WARN_WINDOW_MS) {
+            warn(TAG, "dropped $rows row(s) from $table (${reason.key})")
+        }
     }
 
     fun onOpenFailure(databaseName: String, cause: Throwable?) {
@@ -49,6 +79,8 @@ internal object DbWriteHealth {
     /// Payload for the diagnostics channel; zero counters and an empty cause mean "healthy".
     fun snapshot(): Map<String, Any> = mapOf(
         "droppedRows" to droppedRows.get(),
+        "droppedByReason" to droppedBy.entries.associate { (reason, count) -> reason.key to count.get() },
+        "lastDrop" to (lastDrop ?: ""),
         "openFailures" to openFailures.get(),
         "suppressed" to suppressed.get(),
         "lastCause" to (lastCause ?: ""),

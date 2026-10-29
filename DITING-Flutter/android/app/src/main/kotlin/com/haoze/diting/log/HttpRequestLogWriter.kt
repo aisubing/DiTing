@@ -1,9 +1,9 @@
 package com.haoze.diting.log
 
-import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteStatement
 import android.util.Log
+import com.haoze.diting.log.DbWriteHealth.DropReason
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
@@ -75,7 +75,7 @@ class HttpRequestLogWriter(
             pending.clear()
             remaining
         }
-        DbWriteHealth.onDropped(left)
+        DbWriteHealth.onDropped(left, DropReason.CLOSED, TABLE)
     }
 
     private fun submitFlush() {
@@ -122,8 +122,7 @@ class HttpRequestLogWriter(
         val db = when (val opened = LegacyDb.open(context, databaseName)) {
             is LegacyDb.Open.Ready -> opened.db
             LegacyDb.Open.Absent -> {
-                DbWriteHealth.warn(TAG, "$databaseName missing; dropping ${batch.size} HTTP rows")
-                DbWriteHealth.onDropped(batch.size)
+                DbWriteHealth.onDropped(batch.size, DropReason.NO_DATABASE, TABLE)
                 return
             }
             is LegacyDb.Open.Unavailable -> {
@@ -134,24 +133,39 @@ class HttpRequestLogWriter(
         }
 
         // Guard anyway: an INSERT into a missing table would throw per batch.
-        if (!LegacyDb.hasTable(db, TABLE)) {
-            DbWriteHealth.warn(TAG, "$databaseName has no $TABLE; dropping ${batch.size} HTTP rows")
-            DbWriteHealth.onDropped(batch.size)
-            return
-        }
-        db.beginTransaction()
-        try {
-            for (row in batch) {
-                db.insertWithOnConflict(TABLE, null, row.toValues(), SQLiteDatabase.CONFLICT_IGNORE)
+        when (LegacyDb.tableState(db, TABLE)) {
+            LegacyDb.TableState.PRESENT -> Unit
+            LegacyDb.TableState.MISSING -> {
+                DbWriteHealth.warn(TAG, "$databaseName has no $TABLE; dropping HTTP rows")
+                DbWriteHealth.onDropped(batch.size, DropReason.TABLE_MISSING, TABLE)
+                return
             }
-            db.setTransactionSuccessful()
+            LegacyDb.TableState.ERROR -> {
+                // A failed lookup is a busy database, not a missing table: keep the rows.
+                backoff()
+                requeue(batch)
+                return
+            }
+        }
+        try {
+            db.beginTransaction()
+            try {
+                // One compiled statement per batch instead of one SQL build per row.
+                db.compileStatement(INSERT_SQL).use { statement ->
+                    for (row in batch) {
+                        row.bindTo(statement)
+                        statement.executeInsert()
+                    }
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
             resetBackoff()
         } catch (t: Throwable) {
             DbWriteHealth.warn(TAG, "Unable to persist HTTP log batch", t)
             backoff()
             requeue(batch)
-        } finally {
-            runCatching { db.endTransaction() }
         }
     }
 
@@ -170,20 +184,24 @@ class HttpRequestLogWriter(
     }
 
     private fun requeue(batch: List<Row>) {
+        var overflow = 0
+        var wasClosed = false
         synchronized(lock) {
-            if (closed) {
-                // Nothing will flush again: count the tail instead of losing it silently.
-                DbWriteHealth.onDropped(batch.size)
-                return
-            }
-            // Prepend so the buffer stays chronological.
-            pending.addAll(0, batch)
-            // A failing write must not grow the buffer without bound: drop the oldest rows.
-            while (pending.size > MAX_PENDING_ROWS) {
-                pending.removeAt(0)
-                DbWriteHealth.onDropped(1)
+            wasClosed = closed
+            if (!wasClosed) {
+                // Prepend so the buffer stays chronological.
+                pending.addAll(0, batch)
+                // A failing write must not grow the buffer without bound: drop the oldest rows.
+                overflow = pending.size - MAX_PENDING_ROWS
+                if (overflow > 0) pending.subList(0, overflow).clear()
             }
         }
+        if (wasClosed) {
+            // Nothing will flush again: count the tail instead of losing it silently.
+            DbWriteHealth.onDropped(batch.size, DropReason.CLOSED, TABLE)
+            return
+        }
+        DbWriteHealth.onDropped(overflow, DropReason.OVERFLOW, TABLE)
         // No later event may arrive to hit BATCH_SIZE, so re-arm the timer.
         scheduleDelayedFlush()
     }
@@ -196,15 +214,16 @@ class HttpRequestLogWriter(
         val outcome: String,
         val matchedRule: String?,
     ) {
-        /// `blockSubscriptionId` stays NULL: it needs a rule snapshot this port does not keep
-        fun toValues(): ContentValues = ContentValues().apply {
-            put("timestamp", timestamp)
-            put("packageName", packageName)
-            put("authority", authority)
-            put("protocol", protocol)
-            put("outcome", outcome)
-            put("matchedRule", matchedRule)
-            putNull("blockSubscriptionId")
+        /// Binds in [INSERT_SQL] order; `blockSubscriptionId` stays NULL there, it needs a rule
+        /// snapshot this port does not keep.
+        fun bindTo(statement: SQLiteStatement) {
+            statement.clearBindings()
+            statement.bindLong(1, timestamp)
+            statement.bindString(2, packageName)
+            if (authority == null) statement.bindNull(3) else statement.bindString(3, authority)
+            statement.bindString(4, protocol)
+            statement.bindString(5, outcome)
+            if (matchedRule == null) statement.bindNull(6) else statement.bindString(6, matchedRule)
         }
     }
 
@@ -215,10 +234,15 @@ class HttpRequestLogWriter(
         const val FLUSH_INTERVAL_MS = 500L
         const val CLOSE_TIMEOUT_MS = 500L
 
-        const val MAX_PENDING_ROWS = 500
+        /// Large enough to ride out a 30 s backoff under heavy MITM traffic.
+        const val MAX_PENDING_ROWS = 5_000
+
+        const val INSERT_SQL = "INSERT OR IGNORE INTO http_request_log " +
+            "(timestamp, packageName, authority, protocol, outcome, matchedRule, blockSubscriptionId) " +
+            "VALUES (?, ?, ?, ?, ?, ?, NULL)"
 
         const val MIN_BACKOFF_MS = 2_000L
-        const val MAX_BACKOFF_MS = 60_000L
+        const val MAX_BACKOFF_MS = 30_000L
 
         /// Outcomes hidden by the `blocked_and_errors` log mode
         val PASS_THROUGH_OUTCOMES = setOf("allowed", "passthrough")

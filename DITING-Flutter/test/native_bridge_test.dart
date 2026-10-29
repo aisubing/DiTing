@@ -489,6 +489,24 @@ void _dbHealthBridge() {
     expect(health.probeCause, contains('SQLITE_OK'));
   });
 
+  test('丢弃按原因拆分透传，最近一次丢弃带表名', () async {
+    mockResult({
+      'droppedRows': 7,
+      'droppedByReason': {'overflow': 5, 'tableMissing': 2, 'closed': 0},
+      'lastDrop': 'dns_log:overflow',
+      'openFailures': 0,
+      'probeOk': true,
+    });
+    final health = await DbHealthBridge().status();
+    expect(health.healthy, isFalse);
+    expect(health.droppedByReason, {
+      'overflow': 5,
+      'tableMissing': 2,
+      'closed': 0,
+    });
+    expect(health.lastDrop, 'dns_log:overflow');
+  });
+
   test('首次安装还没有库文件时不算故障', () async {
     mockResult({
       'droppedRows': 0,

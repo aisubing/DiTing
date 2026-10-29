@@ -235,9 +235,28 @@ class _TroubleshootingPageState extends ConsumerState<TroubleshootingPage>
     }
     final dropped = health.droppedRows;
     final failed = health.openFailures;
-    final cause = health.lastCause.isEmpty ? health.probeCause : health.lastCause;
+    final cause = health.lastCause.isEmpty
+        ? health.probeCause
+        : health.lastCause;
     final reason = cause.isEmpty ? '' : '（$cause）';
-    return '已丢弃 $dropped 条日志，打开失败 $failed 次$reason';
+    final split = _dropBreakdown(health.droppedByReason);
+    return '已丢弃 $dropped 条日志$split，打开失败 $failed 次$reason';
+  }
+
+  /// "（队列溢出 120 · 表缺失 3）": tells a busy database from a missing table at a glance.
+  static String _dropBreakdown(Map<String, int> byReason) {
+    const labels = {
+      'overflow': '队列溢出',
+      'tableMissing': '表缺失',
+      'noDatabase': '无数据库',
+      'closed': '停止时未写完',
+    };
+    final parts = [
+      for (final entry in labels.entries)
+        if ((byReason[entry.key] ?? 0) > 0)
+          '${entry.value} ${byReason[entry.key]}',
+    ];
+    return parts.isEmpty ? '' : '（${parts.join(' · ')}）';
   }
 
   String _crashSubtitle(int? count) => switch (count) {

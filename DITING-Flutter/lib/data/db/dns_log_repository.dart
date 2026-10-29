@@ -38,47 +38,40 @@ class DnsLogRepository {
     return [for (final row in rows) _fromRow(row)];
   }
 
-  /// PASSED and REWRITTEN count as passed; latency comes from the same scan as the list.
+  /// PASSED and REWRITTEN count as passed. Aggregated in SQL: the dashboard re-runs this every 10 s,
+  /// and shipping every row of a busy day (100k+) over the platform channel to regex it in Dart
+  /// was the most expensive read in the app. `elapsed=` parsing mirrors [elapsedMsOf]: SQLite's
+  /// integer cast stops at the `ms` suffix.
   Future<DnsLogDailyStats> dailyStats({DateTime? since}) async {
     final start = (since ?? _startOfToday()).millisecondsSinceEpoch;
-    final rows = await _db.query(
-      'dns_log',
-      columns: ['result', 'cached', 'message'],
-      where: 'timestamp >= ?',
-      whereArgs: [start],
+    final rows = await _db.rawQuery(
+      'SELECT COUNT(*) AS total, '
+      "COALESCE(SUM(result = 'BLOCKED'), 0) AS blocked, "
+      "COALESCE(SUM(result = 'ERROR'), 0) AS error, "
+      "COALESCE(SUM(result NOT IN ('BLOCKED', 'ERROR') AND cached = 1), 0) AS cached, "
+      'COALESCE(SUM(e IS NOT NULL), 0) AS samples, '
+      'COALESCE(SUM(e), 0) AS elapsedTotal '
+      'FROM (SELECT result, cached, '
+      "CASE WHEN p > 0 AND substr(message, p + 8, 1) BETWEEN '0' AND '9' "
+      'THEN CAST(substr(message, p + 8) AS INTEGER) END AS e '
+      "FROM (SELECT result, cached, message, instr(message, 'elapsed=') AS p "
+      'FROM dns_log WHERE timestamp >= ?))',
+      [start],
     );
-    var passed = 0;
-    var blocked = 0;
-    var error = 0;
-    var cached = 0;
-    var latencyTotal = 0;
-    var latencyCount = 0;
-    for (final row in rows) {
-      final result = row['result'] as String? ?? 'PASSED';
-      final isCached = (row['cached'] as num?)?.toInt() == 1;
-      switch (result) {
-        case 'BLOCKED':
-          blocked++;
-        case 'ERROR':
-          error++;
-        default:
-          passed++;
-          if (isCached) cached++;
-      }
-      final elapsed = elapsedMsOf(row['message'] as String?);
-      if (elapsed != null) {
-        latencyTotal += elapsed;
-        latencyCount++;
-      }
-    }
+    final row = rows.isEmpty ? const <String, Object?>{} : rows.first;
+    int read(String key) => (row[key] as num?)?.toInt() ?? 0;
+    final total = read('total');
+    final blocked = read('blocked');
+    final error = read('error');
+    final samples = read('samples');
     return DnsLogDailyStats(
-      total: rows.length,
-      passed: passed,
+      total: total,
+      passed: total - blocked - error,
       blocked: blocked,
       error: error,
-      cached: cached,
-      averageLatencyMs: latencyCount == 0 ? 0 : latencyTotal ~/ latencyCount,
-      latencySamples: latencyCount,
+      cached: read('cached'),
+      averageLatencyMs: samples == 0 ? 0 : read('elapsedTotal') ~/ samples,
+      latencySamples: samples,
     );
   }
 

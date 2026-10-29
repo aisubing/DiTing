@@ -11,6 +11,8 @@ const dbHealthChannelName = 'com.haoze.diting/db_health';
 class DbWriteHealthSnapshot {
   const DbWriteHealthSnapshot({
     this.droppedRows = 0,
+    this.droppedByReason = const {},
+    this.lastDrop = '',
     this.openFailures = 0,
     this.lastCause = '',
     this.probeOk = false,
@@ -22,6 +24,13 @@ class DbWriteHealthSnapshot {
 
   /// Rows thrown away because they could not be buffered or persisted at all.
   final int droppedRows;
+
+  /// [droppedRows] split by native `DropReason` key: `overflow`, `tableMissing`, `noDatabase`,
+  /// `closed`. Zero entries are kept, so a missing key means an older native side.
+  final Map<String, int> droppedByReason;
+
+  /// `table:reason` of the latest drop, e.g. `dns_log:overflow`.
+  final String lastDrop;
 
   /// How many times opening the database failed (a locked file, not a missing one).
   final int openFailures;
@@ -51,6 +60,8 @@ class DbWriteHealthSnapshot {
     if (raw is! Map) return unavailable;
     return DbWriteHealthSnapshot(
       droppedRows: (raw['droppedRows'] as num?)?.toInt() ?? 0,
+      droppedByReason: _counts(raw['droppedByReason']),
+      lastDrop: raw['lastDrop'] as String? ?? '',
       openFailures: (raw['openFailures'] as num?)?.toInt() ?? 0,
       lastCause: raw['lastCause'] as String? ?? '',
       probeOk: raw['probeOk'] as bool? ?? false,
@@ -60,6 +71,15 @@ class DbWriteHealthSnapshot {
       probeCause: raw['probeCause'] as String? ?? '',
     );
   }
+}
+
+Map<String, int> _counts(Object? raw) {
+  if (raw is! Map) return const {};
+  return {
+    for (final entry in raw.entries)
+      if (entry.key is String && entry.value is num)
+        entry.key as String: (entry.value as num).toInt(),
+  };
 }
 
 class DbHealthBridge {

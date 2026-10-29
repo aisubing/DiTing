@@ -4,6 +4,9 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.util.Log
 import java.io.File
+import java.util.Collections
+import java.util.WeakHashMap
+import java.util.concurrent.ConcurrentHashMap
 
 /// Owns the one writable connection per database file used by the native readers and writers.
 ///
@@ -28,7 +31,16 @@ internal object LegacyDb {
         class Unavailable(val cause: Throwable?) : Open
     }
 
+    /// Result of [tableState]. 2.1.9 folded every query failure into "missing", so one
+    /// `SQLITE_BUSY` on `sqlite_master` latched a writer into dropping every row it received.
+    enum class TableState { PRESENT, MISSING, ERROR }
+
     private val connections = HashMap<String, SQLiteDatabase>()
+
+    /// Tables seen on a connection. Only positive answers are cached: the app never drops a log
+    /// table, while a missing one can appear once the Dart side creates the schema.
+    private val knownTables: MutableMap<SQLiteDatabase, MutableSet<String>> =
+        Collections.synchronizedMap(WeakHashMap())
 
     @Synchronized
     fun open(context: Context, databaseName: String): Open {
@@ -46,13 +58,21 @@ internal object LegacyDb {
                 SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.ENABLE_WRITE_AHEAD_LOGGING,
             ).also { db ->
                 db.setBusyTimeout(BUSY_TIMEOUT_MS)
+                // WAL + NORMAL syncs at checkpoints, not on every log-batch commit (Room did the
+                // same for 1.4.3); a power cut can lose the last commits but never corrupts.
+                db.pragmaString("PRAGMA synchronous = NORMAL")
+                val journal = db.pragmaString("PRAGMA journal_mode")
                 // One line per open (the connection is cached, so opens are rare): the next log
                 // export can tell whether the connection really is WAL with a busy timeout.
                 Log.i(
                     TAG,
-                    "opened $databaseName journal=${db.pragmaString("PRAGMA journal_mode")} " +
+                    "opened $databaseName journal=$journal " +
                         "busy=${db.pragmaLong("PRAGMA busy_timeout")}ms v${db.version}",
                 )
+                if (!journal.equals("wal", ignoreCase = true)) {
+                    // A non-WAL file makes every Dart read block these writers' commits.
+                    DbWriteHealth.warn(TAG, "$databaseName is not in WAL mode (journal=$journal)")
+                }
             }
         }.fold(
             onSuccess = { db ->
@@ -126,10 +146,30 @@ internal object LegacyDb {
         connections.clear()
     }
 
-    fun hasTable(db: SQLiteDatabase, table: String): Boolean = runCatching {
-        db.rawQuery(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
-            arrayOf(table),
-        ).use { it.moveToFirst() }
-    }.getOrDefault(false)
+    /// Whether [table] exists. A failed lookup (locked, I/O) is [TableState.ERROR], never
+    /// [TableState.MISSING]: writers retry the former and only drop rows on the latter.
+    fun tableState(db: SQLiteDatabase, table: String): TableState {
+        if (knownTables[db]?.contains(table) == true) return TableState.PRESENT
+        return try {
+            val found = db.rawQuery(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+                arrayOf(table),
+            ).use { it.moveToFirst() }
+            if (found) {
+                synchronized(knownTables) {
+                    knownTables.getOrPut(db) { ConcurrentHashMap.newKeySet() }.add(table)
+                }
+                TableState.PRESENT
+            } else {
+                TableState.MISSING
+            }
+        } catch (t: Throwable) {
+            DbWriteHealth.warn(TAG, "table lookup for $table failed", t)
+            TableState.ERROR
+        }
+    }
+
+    /// For readers, where "not readable right now" and "missing" both mean "skip".
+    fun hasTable(db: SQLiteDatabase, table: String): Boolean =
+        tableState(db, table) == TableState.PRESENT
 }
