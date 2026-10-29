@@ -2,6 +2,7 @@
 /// `.../api/paas/v4`, SiliconFlow `.../v1`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -57,7 +58,7 @@ class AgentCancelToken {
   /// Throws [AgentApiException] when the token was already cancelled, so callers cannot start a
   /// request that is doomed from the start.
   void throwIfCancelled() {
-    if (_cancelled) throw const AgentApiException('分析已取消');
+    if (_cancelled) throw AgentApiException(currentL10n.agentApiCancelled);
   }
 
   void _register(void Function() onCancel) {
@@ -113,7 +114,7 @@ class AgentApiClient {
   static String resolveChatCompletionsEndpoint(String rawBaseUrl) {
     final trimmed = rawBaseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
     if (trimmed.isEmpty) {
-      throw const AgentApiException('接口地址为空，请先在「AI 厂商管理」里填写');
+      throw AgentApiException(currentL10n.agentApiEmptyEndpoint);
     }
     if (trimmed.endsWith('/chat/completions')) return trimmed;
     if (trimmed.endsWith('/v1')) return '$trimmed/chat/completions';
@@ -129,7 +130,7 @@ class AgentApiClient {
   static String resolveModelsEndpoint(String rawBaseUrl) {
     final trimmed = rawBaseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
     if (trimmed.isEmpty) {
-      throw const AgentApiException('接口地址为空，请先在「AI 厂商管理」里填写');
+      throw AgentApiException(currentL10n.agentApiEmptyEndpoint);
     }
     if (trimmed.endsWith('/chat/completions')) {
       return '${trimmed.substring(0, trimmed.length - '/chat/completions'.length)}/models';
@@ -159,11 +160,11 @@ class AgentApiClient {
     );
     final decoded = jsonDecode(body);
     if (decoded is! Map) {
-      throw const AgentApiException('服务端未返回模型列表（响应不是 JSON 对象）');
+      throw AgentApiException(currentL10n.agentApiNoModelListJson);
     }
     final array = decoded['data'] ?? decoded['models'] ?? decoded['result'];
     if (array is! List) {
-      throw const AgentApiException('服务端未返回模型列表（响应中缺少 data 字段）');
+      throw AgentApiException(currentL10n.agentApiNoModelListData);
     }
     final ids = <String>{};
     for (final item in array) {
@@ -182,7 +183,7 @@ class AgentApiClient {
       if (id != null) ids.add(id);
     }
     if (ids.isEmpty) {
-      throw const AgentApiException('接口未返回任何模型，请手动填写模型名称');
+      throw AgentApiException(currentL10n.agentApiNoModels);
     }
     return ids.toList()..sort();
   }
@@ -190,7 +191,7 @@ class AgentApiClient {
   /// Connectivity probe: one very short message, to check key and model name.
   Future<AgentChatResult> testConnection(AgentChatConfig config) {
     if (!config.hasKey) {
-      throw const AgentApiException('API Key 不能为空');
+      throw AgentApiException(currentL10n.agentApiKeyEmpty);
     }
     return chat(
       config,
@@ -215,7 +216,7 @@ class AgentApiClient {
     AgentCancelToken? cancelToken,
   }) async {
     if (!config.hasKey) {
-      throw const AgentApiException('API Key 不能为空，请先在 AI 分析设置中配置');
+      throw AgentApiException(currentL10n.agentApiKeyEmptyHint);
     }
     final endpoint = resolveChatCompletionsEndpoint(config.baseUrl);
     final payload = <String, Object?>{
@@ -237,7 +238,7 @@ class AgentApiClient {
   AgentChatResult _parseChat(String body, {required String fallbackModel}) {
     final decoded = jsonDecode(body);
     if (decoded is! Map) {
-      throw const AgentApiException('服务端响应不是 JSON 对象');
+      throw AgentApiException(currentL10n.agentApiResponseNotJsonObject);
     }
     final choices = decoded['choices'];
     String content = '';
@@ -254,7 +255,7 @@ class AgentApiClient {
       }
     }
     if (content.isEmpty) {
-      throw const AgentApiException('模型返回了空内容，请检查模型名称或稍后重试');
+      throw AgentApiException(currentL10n.agentApiEmptyContent);
     }
     final usage = decoded['usage'];
     int readUsage(String key) =>
@@ -281,7 +282,7 @@ class AgentApiClient {
   }) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !uri.hasScheme) {
-      throw AgentApiException('接口地址不合法：$url');
+      throw AgentApiException(currentL10n.agentApiBadUrl(url));
     }
     final client = HttpClient()..connectionTimeout = connectTimeout;
     cancelToken?.throwIfCancelled();
@@ -324,21 +325,23 @@ class AgentApiClient {
     } on Object catch (error) {
       // A cancelled request surfaces as SocketException/HttpException from the closed client.
       if (cancelToken?.isCancelled ?? false) {
-        throw const AgentApiException('分析已取消');
+        throw AgentApiException(currentL10n.agentApiCancelled);
       }
       if (error is TimeoutException) {
-        throw const AgentApiException('请求超时：模型服务在限定时间内没有响应');
+        throw AgentApiException(currentL10n.agentApiTimeout);
       }
       if (error is SocketException) {
         throw AgentApiException(
-          '无法连接模型服务（${error.osError?.message ?? error.message}）',
+          currentL10n.agentApiUnreachable(
+            error.osError?.message ?? error.message,
+          ),
         );
       }
       if (error is HandshakeException) {
-        throw const AgentApiException('TLS 握手失败：服务端证书不可信或协议不匹配');
+        throw AgentApiException(currentL10n.agentApiTls);
       }
       if (error is FormatException) {
-        throw const AgentApiException('服务端响应不是合法 JSON');
+        throw AgentApiException(currentL10n.agentApiInvalidJson);
       }
       rethrow;
     } finally {
@@ -364,16 +367,20 @@ class AgentApiClient {
       // A non-JSON body (gateway HTML page) still maps by status code below.
     }
     final hint = switch (status) {
-      401 => 'API Key 无效或已过期',
-      403 => '密钥无权访问该模型，或该地区被限制',
-      404 => '接口地址或模型名称不存在（404）',
-      429 => '请求过于频繁或额度用尽（429）',
-      >= 500 => '模型服务暂时不可用（$status）',
-      _ => '请求失败（$status）',
+      401 => currentL10n.agentApiBadKey,
+      403 => currentL10n.agentApiNoAccess,
+      404 => currentL10n.agentApiModelNotFound,
+      429 => currentL10n.agentApiRateLimited,
+      >= 500 => currentL10n.agentApiUnavailable(status),
+      _ => currentL10n.agentApiRequestFailed(status),
     };
     final detail = serverMessage.isEmpty
         ? ''
-        : '：${serverMessage.length > 200 ? '${serverMessage.substring(0, 200)}…' : serverMessage}';
+        : currentL10n.agentApiServerDetail(
+            serverMessage.length > 200
+                ? '${serverMessage.substring(0, 200)}…'
+                : serverMessage,
+          );
     return '$hint$detail';
   }
 }

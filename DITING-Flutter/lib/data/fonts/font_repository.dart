@@ -2,6 +2,7 @@
 /// restarts. The app bundles no fonts of its own, so this is the only source of non-system faces.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -146,12 +147,12 @@ class FontRepository {
       return const FontImportResult.cancelled();
     }
     if (!picked.isOk) {
-      return FontImportResult.failed(picked.error ?? '无法导入该字体');
+      return FontImportResult.failed(picked.error ?? currentL10n.fontImportFailed);
     }
     final path = picked.path!;
     final file = File(path);
     if (!await file.exists()) {
-      return const FontImportResult.failed('无法读取该字体文件');
+      return FontImportResult.failed(currentL10n.fontReadFailed);
     }
     final base = _baseName(picked.name ?? file.uri.pathSegments.last);
     final font = ImportedFont(
@@ -161,7 +162,7 @@ class FontRepository {
     );
     if (!await _register(font)) {
       await _bridge.deleteFontFile(path);
-      return const FontImportResult.failed('无法解析该字体文件，请确认它是完整的 TTF/OTF');
+      return FontImportResult.failed(currentL10n.fontParseFailed);
     }
     settings.setImportedFonts([...fonts, font]);
     return FontImportResult(font: font);
@@ -221,7 +222,7 @@ class FontRepository {
     final dot = fileName.lastIndexOf('.');
     final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
     final trimmed = stem.trim();
-    return trimmed.isEmpty ? '自定义字体' : trimmed;
+    return trimmed.isEmpty ? currentL10n.fontCustomName : trimmed;
   }
 }
 

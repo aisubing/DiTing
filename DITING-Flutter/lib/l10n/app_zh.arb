@@ -2940,5 +2940,405 @@
   "providerMgmtAddressLabel": "地址（host:port）",
   "providerMgmtNameRequired": "请填写名称",
   "providerMgmtDohRequired": "DoH 地址需以 https:// 开头",
-  "providerMgmtHostPortRequired": "请填写 host:port 形式的地址"
+  "providerMgmtHostPortRequired": "请填写 host:port 形式的地址",
+  "notifModeSingle": "单一服务",
+  "notifModeSmart": "智能选择",
+  "notifModeParallel": "最快响应",
+  "notifModeBackup": "依次尝试",
+  "notifRunningMode": "运行中 · [{mode}] {count} 个服务商",
+  "@notifRunningMode": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifRunningProvider": "运行中 · {name}",
+  "@notifRunningProvider": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRunningServer": "运行中 · {name} · 端口 {port}",
+  "@notifRunningServer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "platformNoSaveDialog": "无法打开保存对话框：{error}",
+  "@platformNoSaveDialog": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "platformNoFilePicker": "无法打开文件选择器：{error}",
+  "@platformNoFilePicker": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "platformNoFilePickerShort": "无法打开文件选择器",
+  "platformNoLocalRead": "当前环境不支持读取本地文件",
+  "platformReadFailed": "无法读取该文件：{error}",
+  "@platformReadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "platformNoSystemPicker": "当前环境不支持系统文件选择器",
+  "updateConnectFailed": "检查更新失败：无法连接（{error}）",
+  "@updateConnectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "updateTlsFailed": "检查更新失败：TLS 证书校验不通过",
+  "updateBadJson": "检查更新失败：服务器返回的内容不是合法 JSON",
+  "updateRateLimited": "检查更新失败：GitHub 接口限流（未认证请求每小时 60 次），请稍后再试或直接访问项目发布页",
+  "updateForbidden": "检查更新失败：GitHub 拒绝访问（HTTP 403）",
+  "updateNotFound": "检查更新失败：仓库或发布页不存在（HTTP 404）",
+  "updateServerError": "检查更新失败：GitHub 服务异常（HTTP {status}）",
+  "@updateServerError": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "updateUnexpectedStatus": "检查更新失败：GitHub 返回 {status}",
+  "@updateUnexpectedStatus": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "updateResponseNotJson": "检查更新失败：响应不是合法 JSON",
+  "updateUnexpectedFormat": "检查更新失败：响应格式不符合预期",
+  "updateMissingTag": "检查更新失败：最新版本缺少 tag_name",
+  "updateNoApk": "最新版本未提供 Android APK",
+  "updateBadDownloadUrl": "更新包下载地址无效",
+  "updateApkFileName": "谛听-{version}.apk",
+  "@updateApkFileName": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "agentApiEmptyEndpoint": "接口地址为空，请先在「AI 厂商管理」里填写",
+  "agentApiNoModelListJson": "服务端未返回模型列表（响应不是 JSON 对象）",
+  "agentApiNoModelListData": "服务端未返回模型列表（响应中缺少 data 字段）",
+  "agentApiNoModels": "接口未返回任何模型，请手动填写模型名称",
+  "agentApiKeyEmpty": "API Key 不能为空",
+  "agentApiKeyEmptyHint": "API Key 不能为空，请先在 AI 分析设置中配置",
+  "agentApiResponseNotJsonObject": "服务端响应不是 JSON 对象",
+  "agentApiEmptyContent": "模型返回了空内容，请检查模型名称或稍后重试",
+  "agentApiBadUrl": "接口地址不合法：{url}",
+  "@agentApiBadUrl": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "agentApiCancelled": "分析已取消",
+  "agentApiTimeout": "请求超时：模型服务在限定时间内没有响应",
+  "agentApiUnreachable": "无法连接模型服务（{error}）",
+  "@agentApiUnreachable": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "agentApiTls": "TLS 握手失败：服务端证书不可信或协议不匹配",
+  "agentApiInvalidJson": "服务端响应不是合法 JSON",
+  "agentApiBadKey": "API Key 无效或已过期",
+  "agentApiNoAccess": "密钥无权访问该模型，或该地区被限制",
+  "agentApiModelNotFound": "接口地址或模型名称不存在（404）",
+  "agentApiRateLimited": "请求过于频繁或额度用尽（429）",
+  "agentApiUnavailable": "模型服务暂时不可用（{status}）",
+  "@agentApiUnavailable": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "agentApiRequestFailed": "请求失败（{status}）",
+  "@agentApiRequestFailed": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "agentApiServerDetail": "：{message}",
+  "@agentApiServerDetail": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "davProbeNoWrite": "服务器可达但无法创建目录，请检查账号是否具备写入权限",
+  "davProbeConnect": "无法连接到服务器：{error}",
+  "@davProbeConnect": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "davProbeTls": "TLS 握手失败：服务器证书不被信任（自签证书需在系统里安装）",
+  "davProbeHttp": "HTTP 请求失败，请检查服务器是否支持 WebDAV",
+  "davUploadConnect": "上传失败：无法连接服务器（{error}）",
+  "@davUploadConnect": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "davUploadTls": "上传失败：TLS 证书不被信任",
+  "davDownloadHttp": "下载失败（HTTP {status}）",
+  "@davDownloadHttp": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "davStatus401": "认证失败：用户名或密码不正确",
+  "davStatus403": "服务器拒绝访问：该账号没有读写此目录的权限",
+  "davStatus404": "服务器上找不到该目录",
+  "davStatus405": "服务器不允许该操作（可能未启用 WebDAV）",
+  "davStatus409": "目标目录不存在，无法写入",
+  "davStatus507": "服务器存储空间不足",
+  "davStatus5xx": "服务器内部错误（HTTP {status}）",
+  "@davStatus5xx": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "davStatusOther": "服务器返回 HTTP {status}",
+  "@davStatusOther": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "ipQualityNoExitIp": "无法获取当前出口 IP：网络不可达或探测服务超时",
+  "ipQualityNoSourceResult": "所有 IP 情报源均未返回结果，请检查网络后重试",
+  "disclaimerTerm1Title": "一、软件性质",
+  "disclaimerTerm1Content": "谛听是一款开源的本地域名解析与流量观测工具，不以任何形式提供网络接入服务。软件本身不含任何服务器、节点或订阅内容，也不代替任何网络服务商。",
+  "disclaimerTerm2Title": "二、使用方式",
+  "disclaimerTerm2Content": "用户应仅在自有设备与自有网络上使用本软件。将本软件用于任何网络接入、绕过计费或在未授权网络上运行的行为，均超出软件设计用途。",
+  "disclaimerTerm3Title": "三、责任范围",
+  "disclaimerTerm3Content": "因使用或无法使用本软件导致的任何直接或间接损失，包括但不限于数据丢失、服务中断、设备损坏，作者与贡献者均不承担责任。",
+  "disclaimerTerm4Title": "四、第三方组件",
+  "disclaimerTerm4Content": "本软件的界面组件层移植自 DITING（GPL-3.0-or-later），并使用了 material_ui、material_color_utilities 等开源组件。各组件的许可条款见仓库 NOTICE.md，使用本软件即表示同时接受这些条款。",
+  "disclaimerTerm5Title": "五、无担保",
+  "disclaimerTerm5Content": "本软件按「现状」提供，不附带任何明示或暗示的担保，包括但不限于适销性、特定用途适用性与不侵权的担保。",
+  "disclaimerTerm6Title": "六、责任限制",
+  "disclaimerTerm6Content": "在法律允许的最大范围内，作者不对任何间接、附带、特殊或后果性损害负责，即使已被告知此类损害的可能性。",
+  "disclaimerTerm7Title": "七、隐私",
+  "disclaimerTerm7Content": "本软件默认不收集、不上传任何用户数据。日志与规则仅保存在本地；若用户主动配置 WebDAV 备份，数据将上传至用户自行指定的服务器。",
+  "disclaimerTerm8Title": "八、许可",
+  "disclaimerTerm8Content": "本软件以 GPL-3.0-or-later 发布。你可以自由使用、修改与再分发，但衍生作品必须沿用同一许可并保留原始版权声明。",
+  "disclaimerTerm9Title": "九、条款变更",
+  "disclaimerTerm9Content": "作者保留随时修改本免责声明的权利。变更后的条款随新版本一同发布，继续使用即视为接受修改后的条款。",
+  "disclaimerTerm10Title": "十、接受条款",
+  "disclaimerTerm10Content": "在继续使用本软件前，请确认你已阅读、理解并同意上述全部条款。若不同意，请立即停止使用并卸载本软件。",
+  "settingsModeSubtitle": "切换普通模式或服务器模式",
+  "settingsPerformanceSection": "性能优化",
+  "settingsCacheSubtitle": "缓存已解析的域名，减少重复查询",
+  "settingsLogModeSubtitle": "选择 DNS 请求日志的记录范围",
+  "settingsRuntimeSection": "运行行为",
+  "settingsForegroundSubtitle": "后台隐藏、通知常驻、绕过局域网",
+  "settingsDataSection": "数据管理",
+  "settingsLanguageSubtitle": "选择应用界面语言",
+  "settingsWizardSubtitle": "查看当前工作模式的架构原理、权限配置与上手指引",
+  "backupErrEmpty": "文件内容为空",
+  "backupErrInvalidJson": "不是合法的 JSON：{error}",
+  "@backupErrInvalidJson": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "backupErrRootNotObject": "备份文件的根节点必须是 JSON 对象",
+  "backupErrNotDiting": "这不是谛听的备份文件：既没有 format 标记，也没有 formatVersion 版本号",
+  "backupErrNoVersion": "备份文件缺少版本号",
+  "backupErrVersionTooHigh": "备份版本 {version} 高于本版应用支持的 {max}，请升级应用后再导入",
+  "@backupErrVersionTooHigh": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "backupErrNoData": "备份文件缺少 data 段",
+  "backupErrProvidersNotArray": "服务商分组应为数组",
+  "backupErrBootstrapNotObject": "Bootstrap 分组应为对象",
+  "backupErrCacheNotObject": "缓存分组应为对象",
+  "backupErrOutboundNotObject": "出站代理分组应为对象",
+  "backupErrBlockedNotObject": "禁止联网分组应为对象",
+  "backupErrAppRulesNotObject": "应用独立规则分组应为对象",
+  "backupErrInspectionNotObject": "HTTPS 抓包分组应为对象",
+  "backupErrSubsNotObject": "订阅分组应为对象",
+  "backupErrNoRuleDbSubs": "本机还没有规则库，无法导入订阅",
+  "backupErrRulesNotArray": "规则分组应为数组",
+  "backupErrNoRuleDbRules": "本机还没有规则库，无法导入规则",
+  "backupErrRewriteNotArray": "覆写规则分组应为数组",
+  "backupErrNoRuleDbRewrite": "本机还没有规则库，无法导入覆写规则",
+  "backupErrAddressNotArray": "地址规则分组应为数组",
+  "backupErrNoRuleDbAddress": "本机还没有规则库，无法导入地址规则",
+  "agentPasteEmpty": "剪贴板为空",
+  "agentPasteBoth": "已自动识别并填入服务地址与 API Key",
+  "agentPasteBaseUrl": "已填入服务地址",
+  "agentPasteKey": "已填入 API Key",
+  "agentPasteJson": "已从 JSON 中识别并更新 API 配置",
+  "logDirect": "{protocol} 直连",
+  "@logDirect": {
+    "placeholders": {
+      "protocol": {
+        "type": "String"
+      }
+    }
+  },
+  "logDirectWithApp": "{protocol} 直连 · {app}",
+  "@logDirectWithApp": {
+    "placeholders": {
+      "protocol": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "subsErrUrlUnavailable": "订阅地址不可用",
+  "subsErrTimeout": "下载超时（读取 {seconds} 秒）",
+  "@subsErrTimeout": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "subsErrTls": "TLS 握手失败，请检查证书或镜像地址",
+  "subsErrEmptyResponse": "订阅响应为空",
+  "subsErrUnreachable": "网络不可达",
+  "subsErrUnreachableCode": "网络不可达：{code}",
+  "@subsErrUnreachableCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "subsErrUnsupported": "当前环境不支持网络订阅更新",
+  "subsErrMirrorPlaceholder": "镜像模板必须包含 {list}",
+  "@subsErrMirrorPlaceholder": {
+    "placeholders": {
+      "list": {
+        "type": "String"
+      }
+    }
+  },
+  "subsErrRawUrlInvalid": "原始订阅地址格式无效",
+  "subsErrMirrorScheme": "镜像模板生成的地址必须使用 HTTP 或 HTTPS",
+  "subsErrEmpty": "订阅地址不能为空",
+  "subsErrBadFormat": "订阅地址格式无效",
+  "subsErrNotHttp": "订阅链接必须使用 HTTP 或 HTTPS",
+  "subsErrNoHost": "订阅地址缺少主机名",
+  "siteCategoryShopping": "购物",
+  "siteCategoryVideo": "视频",
+  "siteCategoryMusic": "音乐",
+  "siteCategorySocial": "社交",
+  "siteCategoryDeveloper": "开发者",
+  "siteCategoryGame": "游戏",
+  "outboundProxyHostInvalid": "代理地址仅支持 127.0.0.1 或 ::1",
+  "outboundProxyPortRange": "代理端口必须在 1 到 65535 之间",
+  "outboundProxyAppRequired": "请选择提供本地代理端口的应用",
+  "outboundProxySelfNotAllowed": "不能选择 DITING 自身作为代理应用",
+  "outboundProxyAppMissing": "所选代理应用未安装",
+  "outboundProxyCredentialsTooLong": "代理账号或密码过长",
+  "updateDownloadNoPath": "下载失败：未返回安装包路径",
+  "updateDownloadUnsupported": "当前设备不支持应用内下载，请用浏览器打开下载地址",
+  "updateDownloadFailedCode": "下载失败（{code}）",
+  "@updateDownloadFailedCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "dnsLatencySuccessRate": "成功率 {success}/{attempts}",
+  "@dnsLatencySuccessRate": {
+    "placeholders": {
+      "success": {
+        "type": "int"
+      },
+      "attempts": {
+        "type": "int"
+      }
+    }
+  },
+  "dnsLatencyUnsupported": "当前设备不支持测速",
+  "dnsLatencyChannelFailedCode": "测速通道调用失败（{code}）",
+  "@dnsLatencyChannelFailedCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "dnsLatencyChannelFailedDetail": "测速通道调用失败：{detail}",
+  "@dnsLatencyChannelFailedDetail": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "fontImportFailed": "无法导入该字体",
+  "fontReadFailed": "无法读取该字体文件",
+  "fontParseFailed": "无法解析该字体文件，请确认它是完整的 TTF/OTF",
+  "fontCustomName": "自定义字体",
+  "recognitionAvatarTooLarge": "头像体积超限",
+  "recognitionConfigTooLarge": "名单配置过大",
+  "taglineRunning": "谛听万象，明察清浊",
+  "taglineStopped": "收耳静眠，归于无声",
+  "backupErrProvidersInvalidJson": "服务商配置不是合法 JSON",
+  "backupErrBootstrapInvalidJson": "Bootstrap 配置不是合法 JSON",
+  "backupErrAppearanceNotObject": "外观分组应为对象",
+  "backupErrSystemNotObject": "系统设置分组应为对象"
 }

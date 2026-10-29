@@ -2,6 +2,7 @@
 /// validation never overwrites the cache.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -172,7 +173,7 @@ class RecognitionMembersRepository {
       var total = 0;
       await for (final chunk in response.timeout(timeout)) {
         total += chunk.length;
-        if (total > maxAvatarBytes) throw const HttpException('头像体积超限');
+        if (total > maxAvatarBytes) throw HttpException(currentL10n.recognitionAvatarTooLarge);
         builder.add(chunk);
       }
       return builder.takeBytes();
@@ -189,7 +190,7 @@ class RecognitionMembersRepository {
     var total = 0;
     await for (final chunk in response) {
       total += chunk.length;
-      if (total > limit) throw const HttpException('名单配置过大');
+      if (total > limit) throw HttpException(currentL10n.recognitionConfigTooLarge);
       builder.add(chunk);
     }
     return utf8.decode(builder.takeBytes());

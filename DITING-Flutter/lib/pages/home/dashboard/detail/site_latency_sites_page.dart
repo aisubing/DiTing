@@ -58,7 +58,7 @@ class SiteLatencySitesPage extends ConsumerWidget {
             ),
           ),
           for (final category in SiteCategory.values) ...[
-            ListHeader(title: category.label),
+            ListHeader(title: category.label(context.l10n)),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
               child: Column(

@@ -7,7 +7,9 @@ extension _BackupImportSettings on BackupImporter {
     BackupImportTarget target,
   ) {
     if (value is! Map) {
-      throw const BackupFormatException('外观分组应为对象');
+      throw BackupFormatException(
+        currentL10n.backupErrAppearanceNotObject,
+      );
     }
     final settings = target.settings;
     var added = 0;
@@ -136,7 +138,9 @@ extension _BackupImportSettings on BackupImporter {
   /// backup reports nothing new.
   BackupGroupOutcome _importSystem(Object? value, BackupImportTarget target) {
     if (value is! Map) {
-      throw const BackupFormatException('系统设置分组应为对象');
+      throw BackupFormatException(
+        currentL10n.backupErrSystemNotObject,
+      );
     }
     final settings = target.settings;
     var added = 0;

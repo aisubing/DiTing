@@ -36,6 +36,7 @@
 | `fix_labels.py` | 给报错的 `.label/.title/...` 访问补上 `(context.l10n)` |
 | `fix_parts.py` | 修正 `part of` 文件的 import（保留在父库上） |
 | `add_imports.py` / `drop_unused.py` | 补 / 删 l10n import |
+| `find_key.py <文案>` | 查某个中文（或 `--en` 英文）文案已有哪些 key，避免重复建键 |
 
 标准流程：
 
@@ -63,26 +64,41 @@ flutter analyze lib && flutter test
 工作模式 / 网络诊断工具 / 自定义资源 / 按需连接 / 服务器模式 / 故障排查，以及功能中心的
 镜像、隐藏功能、缓存、服务显示、应用规则、应用选择、日志模式、引导解析等页面。
 
-## 待办（剩余中文文案）
+功能中心其余页面：CA 证书、订阅工具（自动更新与镜像模板）、规则控制与拦截响应、
+HTTPS 流量检查、数据清理、备份与迁移、WebDAV 云同步、出站代理、解析模式、
+服务商管理、应用独立规则（含详情面板）、AI 分析 / 厂商管理 / 厂商编辑 / 参数与提示词 /
+分析结果面板，以及「其他设置」页。
 
-`lib/pages/hub/` 其余页面（约 660 行含中文）：
+数据层：`dashboard_models`（状态与卡片枚举）、`notification_status_text`、
+`backup_models` / `backup_importer` / `backup_exporter` / `backup_import_*`、
+`dav_client`、`agent_api_client`、`agent_api_text_parser`、`app_update_checker`、
+`platform_bridge`、`ca_bridge`、`outbound_proxy_bridge`、`update_bridge`、
+`dns_latency_bridge`、`permissions_bridge`、`font_repository`、`data_cleanup_service`、
+`subscription_fetcher` / `subscription_url`、`mock_system`（免责声明全文）、
+`site_latency_categories`、`log_dashboard_rows` / `log_dashboard_models`、
+`mock_content` 的运行时长与 `legacy_settings` 的默认标语。
 
-- `ca_certificate_pages.dart`（76）、`subscription_tools_pages.dart`（70）、
-  `http_inspection_page.dart`（58）、`rule_control_page.dart`（52）、
-  `data_cleanup_page.dart`（50）、`config_transfer_page.dart`（44）、
-  `agent_api_page.dart`（40）、`outbound_proxy_pages.dart`（38）、
-  `app_rules_page.dart`（35）、`config_transfer_webdav.dart`（30）、
-  `agent_analysis_sheet.dart`（28）、`app_rules_detail.dart`（25）、
-  `provider_management_page.dart`（25）、`resolution_mode_page.dart`（25）、
-  `agent_settings_pages.dart`（24）、`agent_provider_editor.dart`（20）、
-  `agent_providers_page.dart`（19）。
+## 按设计保留中文的部分
 
-数据层剩余：`mock_system.dart`、`ip_quality_checker.dart`、`agent_api_client.dart`、
-`app_update_checker.dart`、`dav_client.dart`、`backup_models.dart`、
-`notification_status_text.dart`、`dashboard_models.dart`、`agent_traffic_summary.dart`、
-`platform_bridge.dart`、`markdown_inline.dart` 等。
-`lib/data/agent/` 的 AI 提示词模板与原始日志格式按设计保持中文。
+- `lib/data/agent/`：AI 提示词模板（`agent_prompts.dart`、`agent_settings_pages.dart`
+  里的预设提示词正文）、流量统计摘要（`agent_traffic_summary.dart`）与 Markdown 判读关键词
+  （`markdown_inline.dart`）。提示词与模型输出保持同一种语言，报告才不会中英混排。
+- 协议 / 解析映射：IP 质量的 `'住宅' / '命中' / '限流'` 等状态与类型、`'机房' / '移动'`
+  分类关键字，`dns_query_repository` / `http_request_repository` 的 SQL 与状态码，
+  `site_latency_targets` 的站点名（品牌名），`mock_providers` 的演示数据，
+  `config_resource_store` 与 `recognition_members` 的配置校验（仅 debug / 开发可见）。
+- 代码注释与文档保持中文。
 
+## 测试注意事项
+
+- `test/support/app_host.dart` 与 `test/support/test_hooks.dart` 固定为中文环境，
+  断言中文文案的用例不需要改动。
+- 枚举字段变成方法后，测试里的 `kind.title` 要改成 `kind.title(l10n)`；
+  `l10n` 可用 `lookupAppL10n(const Locale('zh'))`（需 `import 'package:flutter/widgets.dart'
+  show Locale;`）或测试宿主里的实例。
+- 数据层现在用 `currentL10n`：断言错误文案的用例依赖测试宿主先设定中文环境；
+  常量构造（如 `FontPickResult.unavailable()`）因此不再是 `const`。
+- `test/app_layer_test.dart` 的枚举文案守卫会遍历 `AppL10n.supportedLocales`。
 ## 测试注意事项
 
 - `test/support/app_host.dart` 与 `test/support/test_hooks.dart` 固定为中文环境，

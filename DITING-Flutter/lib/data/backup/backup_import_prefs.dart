@@ -13,7 +13,7 @@ extension _BackupImportPrefs on BackupImporter {
     } else if (value is Map && value['items'] is List) {
       incoming = value['items'] as List<Object?>;
     } else {
-      throw const BackupFormatException('服务商分组应为数组');
+      throw BackupFormatException(currentL10n.backupErrProvidersNotArray);
     }
     final existing = _decodeProviders(target.settings.userProvidersJson);
     final byName = {for (final item in existing) _nameOf(item): item};
@@ -251,7 +251,7 @@ extension _BackupImportPrefs on BackupImporter {
     BackupImportTarget target,
   ) {
     if (value is! Map) {
-      throw const BackupFormatException('Bootstrap 分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrBootstrapNotObject);
     }
     final settings = target.settings;
     var added = 0;
@@ -310,7 +310,7 @@ extension _BackupImportPrefs on BackupImporter {
   /// Written through `applyCachePreset` so the engine never sees a new mode with an old TTL.
   BackupGroupOutcome _importCache(Object? value, BackupImportTarget target) {
     if (value is! Map) {
-      throw const BackupFormatException('缓存分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrCacheNotObject);
     }
     final settings = target.settings;
     // Missing keys fall back to local values so all nine stay consistent.
@@ -377,7 +377,7 @@ extension _BackupImportPrefs on BackupImporter {
   /// fail to connect.
   BackupGroupOutcome _importOutbound(Object? value, BackupImportTarget target) {
     if (value is! Map) {
-      throw const BackupFormatException('出站代理分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrOutboundNotObject);
     }
     var restored = 0;
     var skipped = 0;

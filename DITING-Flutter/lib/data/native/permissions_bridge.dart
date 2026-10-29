@@ -3,20 +3,24 @@
 /// a missing channel is a desktop/test host, not a failure.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 
 const permissionsChannelName = 'com.haoze.diting/permissions';
 
 /// The permissions the onboarding lists, per work mode. Names match the Kotlin `states()` keys.
 enum AppPermission {
-  vpn('VPN 连接'),
-  notification('通知'),
-  appList('应用列表'),
-  batteryOptimization('忽略电池优化');
+  vpn,
+  notification,
+  appList,
+  batteryOptimization;
 
-  const AppPermission(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    AppPermission.vpn => l10n.permVpn,
+    AppPermission.notification => l10n.permNotification,
+    AppPermission.appList => l10n.permAppList,
+    AppPermission.batteryOptimization => l10n.permBattery,
+  };
 
   static AppPermission? fromKey(String key) {
     for (final value in values) {
@@ -75,7 +79,7 @@ class PermissionSnapshot {
 /// and resolves with a fresh snapshot once the user is done.
 class PermissionsBridge {
   PermissionsBridge({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel(permissionsChannelName);
+    : _channel = channel ?? MethodChannel(permissionsChannelName);
 
   final MethodChannel _channel;
 

@@ -21,7 +21,7 @@ extension _BackupImportLists on BackupImporter {
 
   BackupGroupOutcome _importBlocked(Object? value, BackupImportTarget target) {
     if (value is! Map) {
-      throw const BackupFormatException('禁止联网分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrBlockedNotObject);
     }
     final incoming = _stringSet(value['packages']);
     final settings = target.settings;
@@ -44,7 +44,7 @@ extension _BackupImportLists on BackupImporter {
     BackupImportTarget target,
   ) {
     if (value is! Map) {
-      throw const BackupFormatException('应用独立规则分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrAppRulesNotObject);
     }
     final rules = value['rules'];
     final settings = target.settings;
@@ -81,7 +81,7 @@ extension _BackupImportLists on BackupImporter {
     BackupImportTarget target,
   ) {
     if (value is! Map) {
-      throw const BackupFormatException('HTTPS 抓包分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrInspectionNotObject);
     }
     final incoming = _stringSet(value['packages']);
     final settings = target.settings;

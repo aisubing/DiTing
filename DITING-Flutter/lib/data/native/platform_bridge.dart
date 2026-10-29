@@ -2,6 +2,7 @@
 /// logs and text export. Notification settings bypass this channel.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/process_memory.dart';
 import 'package:flutter/services.dart';
 
@@ -145,9 +146,11 @@ class PlatformBridge {
       });
       return DocumentSaveResult.fromMap(raw);
     } on MissingPluginException {
-      return const DocumentSaveResult.unavailable();
+      return DocumentSaveResult.unavailable();
     } on PlatformException catch (error) {
-      return DocumentSaveResult.failed('无法打开保存对话框：${error.message}');
+      return DocumentSaveResult.failed(
+        currentL10n.platformNoSaveDialog(error.message ?? ''),
+      );
     }
   }
 
@@ -156,9 +159,11 @@ class PlatformBridge {
       final raw = await _channel.invokeMethod<Object?>('importDocument');
       return DocumentOpenResult.fromMap(raw);
     } on MissingPluginException {
-      return const DocumentOpenResult.unavailable();
+      return DocumentOpenResult.unavailable();
     } on PlatformException catch (error) {
-      return DocumentOpenResult.failed('无法打开文件选择器：${error.message}');
+      return DocumentOpenResult.failed(
+        currentL10n.platformNoFilePicker(error.message ?? ''),
+      );
     }
   }
 
@@ -171,9 +176,11 @@ class PlatformBridge {
       );
       return PersistedTextFile.fromMap(raw);
     } on MissingPluginException {
-      return const PersistedTextFile.unavailable();
+      return PersistedTextFile.unavailable();
     } on PlatformException catch (error) {
-      return PersistedTextFile.failed('无法打开文件选择器：${error.message}');
+      return PersistedTextFile.failed(
+        currentL10n.platformNoFilePicker(error.message ?? ''),
+      );
     }
   }
 
@@ -184,9 +191,9 @@ class PlatformBridge {
       final raw = await _channel.invokeMethod<Object?>('pickFontFile');
       return FontPickResult.fromMap(raw);
     } on MissingPluginException {
-      return const FontPickResult.unavailable();
+      return FontPickResult.unavailable();
     } on PlatformException catch (error) {
-      return FontPickResult.failed(error.message ?? '无法打开文件选择器');
+      return FontPickResult.failed(error.message ?? currentL10n.platformNoFilePickerShort);
     }
   }
 
@@ -209,9 +216,11 @@ class PlatformBridge {
       });
       return PersistedTextRead.fromMap(raw);
     } on MissingPluginException {
-      return const PersistedTextRead.failed('当前环境不支持读取本地文件');
+      return PersistedTextRead.failed(currentL10n.platformNoLocalRead);
     } on PlatformException catch (error) {
-      return PersistedTextRead.failed('无法读取该文件：${error.message}');
+      return PersistedTextRead.failed(
+        currentL10n.platformReadFailed(error.message ?? ''),
+      );
     }
   }
 
@@ -248,11 +257,11 @@ class DocumentSaveResult {
     this.error,
   });
 
-  const DocumentSaveResult.unavailable()
+  DocumentSaveResult.unavailable()
     : saved = false,
       name = null,
       cancelled = false,
-      error = '当前环境不支持系统文件选择器';
+      error = currentL10n.platformNoSystemPicker;
 
   const DocumentSaveResult.failed(String this.error)
     : saved = false,
@@ -283,11 +292,11 @@ class DocumentOpenResult {
     this.error,
   });
 
-  const DocumentOpenResult.unavailable()
+  DocumentOpenResult.unavailable()
     : text = null,
       name = null,
       cancelled = false,
-      error = '当前环境不支持系统文件选择器';
+      error = currentL10n.platformNoSystemPicker;
 
   const DocumentOpenResult.failed(String this.error)
     : text = null,
@@ -321,13 +330,13 @@ class PersistedTextFile {
     this.error,
   });
 
-  const PersistedTextFile.unavailable()
+  PersistedTextFile.unavailable()
     : uri = null,
       name = null,
       text = null,
       persisted = false,
       cancelled = false,
-      error = '当前环境不支持系统文件选择器';
+      error = currentL10n.platformNoSystemPicker;
 
   const PersistedTextFile.failed(String this.error)
     : uri = null,
@@ -373,12 +382,12 @@ class FontPickResult {
     this.error,
   });
 
-  const FontPickResult.unavailable()
+  FontPickResult.unavailable()
     : path = null,
       name = null,
       bytes = 0,
       cancelled = false,
-      error = '当前环境不支持系统文件选择器';
+      error = currentL10n.platformNoSystemPicker;
 
   const FontPickResult.failed(String this.error)
     : path = null,

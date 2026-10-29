@@ -30,10 +30,10 @@ bool isConnectionLog({
 /// move into `DnsLogRepository.dailyStats`.
 String dnsResultLabelOf(String result, {required bool isConnection}) =>
     switch (result) {
-      'PASSED' => isConnection ? currentL10n.commonBypass : '通过',
+      'PASSED' => isConnection ? currentL10n.commonBypass : currentL10n.logPassed,
       'REWRITTEN' => currentL10n.commonRewrite,
-      'BLOCKED' => '过滤',
-      'ERROR' => '失败',
+      'BLOCKED' => currentL10n.logFiltered,
+      'ERROR' => currentL10n.commonFailed,
       _ => result,
     };
 
@@ -65,8 +65,8 @@ String dnsRowMetaOf({
   if (connection) {
     final protocol = queryName.startsWith('UDP') ? 'UDP' : 'TCP';
     return packageName == null || packageName.isEmpty
-        ? '$protocol 直连'
-        : '$protocol 直连 · $packageName';
+        ? currentL10n.logDirect(protocol)
+        : currentL10n.logDirectWithApp(protocol, packageName);
   }
   final parts = <String>[dnsTypeName(queryType)];
   if (cached) parts.add(currentL10n.logRowCacheHit);
@@ -122,10 +122,10 @@ LogRecentRequest logRecentRequestOfHttp(HttpRequestRecord row) {
     source: 'HTTPS',
     meta: meta,
     resultLabel: switch (status) {
-      LogRowStatus.filtered => '过滤',
+      LogRowStatus.filtered => currentL10n.logFiltered,
       LogRowStatus.bypassed => currentL10n.commonBypass,
-      LogRowStatus.failed => '失败',
-      _ => '通过',
+      LogRowStatus.failed => currentL10n.commonFailed,
+      _ => currentL10n.logPassed,
     },
     status: status,
   );

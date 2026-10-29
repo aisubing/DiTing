@@ -1,5 +1,7 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
+
 /// Ring buffer shaped like upstream `FixedList`: fixed length, append-only, redrawn via [revision].
 class RingBuffer<T> {
   RingBuffer(this.maxLength, {List<T>? initial})
@@ -56,14 +58,17 @@ class TrafficTotals {
 
 /// Core state; the service card disables probes and greys the dot when stopped.
 enum CoreState {
-  running('运行中'),
-  stopped('已停止'),
-  starting('启动中'),
-  failed('启动失败');
+  running,
+  stopped,
+  starting,
+  failed;
 
-  const CoreState(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    CoreState.running => l10n.stateRunning,
+    CoreState.stopped => l10n.stateStopped,
+    CoreState.starting => l10n.stateStarting,
+    CoreState.failed => l10n.powerStateError,
+  };
 
   bool get isRunning => this == CoreState.running;
 }
@@ -76,19 +81,25 @@ enum CoreState {
 /// dashboards look like one page, so home keeps the local device view instead.
 enum DashboardWidget {
   /// Picked service provider; `解析服务商` in single mode, `竞速服务商` in the other modes.
-  provider('解析服务商'),
+  provider,
 
   /// Resolution mode plus the endpoints currently in use.
-  resolution('解析模式'),
-  status('状态'),
-  networkSpeed('网络速度'),
-  siteLatency('网络测速'),
-  memoryInfo('内存信息'),
-  intranetIp('内网 IP');
+  resolution,
+  status,
+  networkSpeed,
+  siteLatency,
+  memoryInfo,
+  intranetIp;
 
-  const DashboardWidget(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    DashboardWidget.provider => l10n.homeProviderSingleLabel,
+    DashboardWidget.resolution => l10n.resolutionModeTitle,
+    DashboardWidget.status => l10n.statusTitle,
+    DashboardWidget.networkSpeed => l10n.speedTitle,
+    DashboardWidget.siteLatency => l10n.siteLatencyTitle,
+    DashboardWidget.memoryInfo => l10n.memoryTitle,
+    DashboardWidget.intranetIp => l10n.intranetIpTitle,
+  };
 }
 
 /// One card for every widget home owns, in the order a fresh install shows them.

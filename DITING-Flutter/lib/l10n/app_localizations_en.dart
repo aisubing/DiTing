@@ -8364,4 +8364,650 @@ class AppL10nEn extends AppL10n {
   @override
   String get providerMgmtHostPortRequired =>
       'Enter an address in host:port form';
+
+  @override
+  String get notifModeSingle => 'Single provider';
+
+  @override
+  String get notifModeSmart => 'Smart pick';
+
+  @override
+  String get notifModeParallel => 'Fastest answer';
+
+  @override
+  String get notifModeBackup => 'Try in order';
+
+  @override
+  String notifRunningMode(String mode, int count) {
+    return 'Running · [$mode] $count providers';
+  }
+
+  @override
+  String notifRunningProvider(String name) {
+    return 'Running · $name';
+  }
+
+  @override
+  String notifRunningServer(String name, int port) {
+    return 'Running · $name · port $port';
+  }
+
+  @override
+  String platformNoSaveDialog(String error) {
+    return 'Could not open the save dialog: $error';
+  }
+
+  @override
+  String platformNoFilePicker(String error) {
+    return 'Could not open the file picker: $error';
+  }
+
+  @override
+  String get platformNoFilePickerShort => 'Could not open the file picker';
+
+  @override
+  String get platformNoLocalRead => 'This environment cannot read local files';
+
+  @override
+  String platformReadFailed(String error) {
+    return 'Could not read that file: $error';
+  }
+
+  @override
+  String get platformNoSystemPicker =>
+      'This environment has no system file picker';
+
+  @override
+  String updateConnectFailed(String error) {
+    return 'Update check failed: cannot connect ($error)';
+  }
+
+  @override
+  String get updateTlsFailed =>
+      'Update check failed: TLS certificate verification failed';
+
+  @override
+  String get updateBadJson =>
+      'Update check failed: the server did not return valid JSON';
+
+  @override
+  String get updateRateLimited =>
+      'Update check failed: the GitHub API is rate limited (60 unauthenticated requests per hour). Try again later or open the releases page directly';
+
+  @override
+  String get updateForbidden =>
+      'Update check failed: GitHub refused the request (HTTP 403)';
+
+  @override
+  String get updateNotFound =>
+      'Update check failed: the repository or release page does not exist (HTTP 404)';
+
+  @override
+  String updateServerError(int status) {
+    return 'Update check failed: GitHub is having problems (HTTP $status)';
+  }
+
+  @override
+  String updateUnexpectedStatus(int status) {
+    return 'Update check failed: GitHub returned $status';
+  }
+
+  @override
+  String get updateResponseNotJson =>
+      'Update check failed: the response is not valid JSON';
+
+  @override
+  String get updateUnexpectedFormat =>
+      'Update check failed: the response has an unexpected shape';
+
+  @override
+  String get updateMissingTag =>
+      'Update check failed: the latest release has no tag_name';
+
+  @override
+  String get updateNoApk => 'The latest release has no Android APK';
+
+  @override
+  String get updateBadDownloadUrl => 'The update download URL is invalid';
+
+  @override
+  String updateApkFileName(String version) {
+    return 'DITING-$version.apk';
+  }
+
+  @override
+  String get agentApiEmptyEndpoint =>
+      'The endpoint URL is empty; fill it in under AI provider management first';
+
+  @override
+  String get agentApiNoModelListJson =>
+      'The server did not return a model list (the response is not a JSON object)';
+
+  @override
+  String get agentApiNoModelListData =>
+      'The server did not return a model list (the data field is missing)';
+
+  @override
+  String get agentApiNoModels =>
+      'The endpoint returned no models; type the model name by hand';
+
+  @override
+  String get agentApiKeyEmpty => 'The API key cannot be empty';
+
+  @override
+  String get agentApiKeyEmptyHint =>
+      'The API key cannot be empty; configure it in the AI analysis settings first';
+
+  @override
+  String get agentApiResponseNotJsonObject =>
+      'The server response is not a JSON object';
+
+  @override
+  String get agentApiEmptyContent =>
+      'The model returned nothing; check the model name or try again later';
+
+  @override
+  String agentApiBadUrl(String url) {
+    return 'Invalid endpoint URL: $url';
+  }
+
+  @override
+  String get agentApiCancelled => 'Analysis cancelled';
+
+  @override
+  String get agentApiTimeout =>
+      'Request timed out: the model service did not answer in time';
+
+  @override
+  String agentApiUnreachable(String error) {
+    return 'Could not reach the model service ($error)';
+  }
+
+  @override
+  String get agentApiTls =>
+      'TLS handshake failed: the server certificate is untrusted or the protocol does not match';
+
+  @override
+  String get agentApiInvalidJson => 'The server response is not valid JSON';
+
+  @override
+  String get agentApiBadKey => 'The API key is invalid or expired';
+
+  @override
+  String get agentApiNoAccess =>
+      'The key cannot access this model, or the region is restricted';
+
+  @override
+  String get agentApiModelNotFound =>
+      'The endpoint or model name does not exist (404)';
+
+  @override
+  String get agentApiRateLimited =>
+      'Too many requests or the quota is exhausted (429)';
+
+  @override
+  String agentApiUnavailable(int status) {
+    return 'The model service is unavailable right now ($status)';
+  }
+
+  @override
+  String agentApiRequestFailed(int status) {
+    return 'Request failed ($status)';
+  }
+
+  @override
+  String agentApiServerDetail(String message) {
+    return ': $message';
+  }
+
+  @override
+  String get davProbeNoWrite =>
+      'The server is reachable but the folder cannot be created; check that the account may write there';
+
+  @override
+  String davProbeConnect(String error) {
+    return 'Could not connect to the server: $error';
+  }
+
+  @override
+  String get davProbeTls =>
+      'TLS handshake failed: the server certificate is not trusted (self-signed certificates must be installed in the system)';
+
+  @override
+  String get davProbeHttp =>
+      'The HTTP request failed; check that the server supports WebDAV';
+
+  @override
+  String davUploadConnect(String error) {
+    return 'Upload failed: could not reach the server ($error)';
+  }
+
+  @override
+  String get davUploadTls =>
+      'Upload failed: the TLS certificate is not trusted';
+
+  @override
+  String davDownloadHttp(int status) {
+    return 'Download failed (HTTP $status)';
+  }
+
+  @override
+  String get davStatus401 =>
+      'Authentication failed: the username or password is wrong';
+
+  @override
+  String get davStatus403 =>
+      'The server refused access: this account may not read or write that folder';
+
+  @override
+  String get davStatus404 => 'That folder does not exist on the server';
+
+  @override
+  String get davStatus405 =>
+      'The server does not allow that operation (WebDAV may be off)';
+
+  @override
+  String get davStatus409 =>
+      'The target folder does not exist, so nothing can be written';
+
+  @override
+  String get davStatus507 => 'The server is out of storage space';
+
+  @override
+  String davStatus5xx(int status) {
+    return 'Server error (HTTP $status)';
+  }
+
+  @override
+  String davStatusOther(int status) {
+    return 'The server returned HTTP $status';
+  }
+
+  @override
+  String get ipQualityNoExitIp =>
+      'Could not get the current exit IP: the network is unreachable or the probe timed out';
+
+  @override
+  String get ipQualityNoSourceResult =>
+      'No IP intelligence source returned a result; check the network and try again';
+
+  @override
+  String get disclaimerTerm1Title => '1. Nature of the software';
+
+  @override
+  String get disclaimerTerm1Content =>
+      'DITING is an open-source local domain resolution and traffic observation tool; it does not provide network access of any kind. The software ships with no servers, nodes or subscription content, and does not stand in for any network service provider.';
+
+  @override
+  String get disclaimerTerm2Title => '2. How it may be used';
+
+  @override
+  String get disclaimerTerm2Content =>
+      'Use the software only on devices and networks you own. Using it for network access, to bypass billing, or on networks you are not authorised to use falls outside its intended purpose.';
+
+  @override
+  String get disclaimerTerm3Title => '3. Scope of responsibility';
+
+  @override
+  String get disclaimerTerm3Content =>
+      'The authors and contributors accept no liability for any direct or indirect loss arising from the use of, or inability to use, this software, including but not limited to data loss, service interruption and device damage.';
+
+  @override
+  String get disclaimerTerm4Title => '4. Third-party components';
+
+  @override
+  String get disclaimerTerm4Content =>
+      'The UI component layer is ported from DITING (GPL-3.0-or-later) and uses open-source components such as material_ui and material_color_utilities. The licence of each component is listed in NOTICE.md in the repository; using this software means accepting those terms as well.';
+
+  @override
+  String get disclaimerTerm5Title => '5. No warranty';
+
+  @override
+  String get disclaimerTerm5Content =>
+      'The software is provided \"as is\", without any express or implied warranty, including but not limited to the warranties of merchantability, fitness for a particular purpose and non-infringement.';
+
+  @override
+  String get disclaimerTerm6Title => '6. Limitation of liability';
+
+  @override
+  String get disclaimerTerm6Content =>
+      'To the fullest extent permitted by law, the authors are not liable for any indirect, incidental, special or consequential damage, even if advised of the possibility of such damage.';
+
+  @override
+  String get disclaimerTerm7Title => '7. Privacy';
+
+  @override
+  String get disclaimerTerm7Content =>
+      'By default the software collects and uploads no user data. Logs and rules stay on the device; if you configure a WebDAV backup yourself, the data is uploaded to the server you specify.';
+
+  @override
+  String get disclaimerTerm8Title => '8. Licence';
+
+  @override
+  String get disclaimerTerm8Content =>
+      'The software is released under GPL-3.0-or-later. You may use, modify and redistribute it freely, but derivative works must keep the same licence and the original copyright notices.';
+
+  @override
+  String get disclaimerTerm9Title => '9. Changes to these terms';
+
+  @override
+  String get disclaimerTerm9Content =>
+      'The authors may revise this disclaimer at any time. Revised terms ship with new versions, and continued use means you accept them.';
+
+  @override
+  String get disclaimerTerm10Title => '10. Accepting the terms';
+
+  @override
+  String get disclaimerTerm10Content =>
+      'Before continuing, confirm that you have read, understood and agreed to all of the terms above. If you do not agree, stop using the software and uninstall it.';
+
+  @override
+  String get settingsModeSubtitle => 'Switch between normal and server mode';
+
+  @override
+  String get settingsPerformanceSection => 'Performance';
+
+  @override
+  String get settingsCacheSubtitle =>
+      'Cache resolved domains to avoid repeated lookups';
+
+  @override
+  String get settingsLogModeSubtitle =>
+      'Choose how much of the DNS request log is recorded';
+
+  @override
+  String get settingsRuntimeSection => 'Runtime behaviour';
+
+  @override
+  String get settingsForegroundSubtitle =>
+      'Hide in the background, keep the notification, bypass the LAN';
+
+  @override
+  String get settingsDataSection => 'Data';
+
+  @override
+  String get settingsLanguageSubtitle => 'Choose the app language';
+
+  @override
+  String get settingsWizardSubtitle =>
+      'See how the current work mode works, its permissions and a getting-started guide';
+
+  @override
+  String get backupErrEmpty => 'The file is empty';
+
+  @override
+  String backupErrInvalidJson(String error) {
+    return 'Not valid JSON: $error';
+  }
+
+  @override
+  String get backupErrRootNotObject =>
+      'The root of a backup file must be a JSON object';
+
+  @override
+  String get backupErrNotDiting =>
+      'This is not a DITING backup: it has neither a format marker nor a formatVersion number';
+
+  @override
+  String get backupErrNoVersion => 'The backup file has no version number';
+
+  @override
+  String backupErrVersionTooHigh(String version, int max) {
+    return 'The backup version $version is higher than the supported $max; update the app before importing';
+  }
+
+  @override
+  String get backupErrNoData => 'The backup file has no data section';
+
+  @override
+  String get backupErrProvidersNotArray =>
+      'The providers section must be an array';
+
+  @override
+  String get backupErrBootstrapNotObject =>
+      'The Bootstrap section must be an object';
+
+  @override
+  String get backupErrCacheNotObject => 'The cache section must be an object';
+
+  @override
+  String get backupErrOutboundNotObject =>
+      'The outbound proxy section must be an object';
+
+  @override
+  String get backupErrBlockedNotObject =>
+      'The blocked apps section must be an object';
+
+  @override
+  String get backupErrAppRulesNotObject =>
+      'The per-app rules section must be an object';
+
+  @override
+  String get backupErrInspectionNotObject =>
+      'The HTTPS capture section must be an object';
+
+  @override
+  String get backupErrSubsNotObject =>
+      'The subscriptions section must be an object';
+
+  @override
+  String get backupErrNoRuleDbSubs =>
+      'This device has no rule database yet, so subscriptions cannot be imported';
+
+  @override
+  String get backupErrRulesNotArray => 'The rules section must be an array';
+
+  @override
+  String get backupErrNoRuleDbRules =>
+      'This device has no rule database yet, so rules cannot be imported';
+
+  @override
+  String get backupErrRewriteNotArray =>
+      'The override rules section must be an array';
+
+  @override
+  String get backupErrNoRuleDbRewrite =>
+      'This device has no rule database yet, so override rules cannot be imported';
+
+  @override
+  String get backupErrAddressNotArray =>
+      'The address rules section must be an array';
+
+  @override
+  String get backupErrNoRuleDbAddress =>
+      'This device has no rule database yet, so address rules cannot be imported';
+
+  @override
+  String get agentPasteEmpty => 'The clipboard is empty';
+
+  @override
+  String get agentPasteBoth =>
+      'Recognised and filled in the endpoint and API key';
+
+  @override
+  String get agentPasteBaseUrl => 'Endpoint filled in';
+
+  @override
+  String get agentPasteKey => 'API key filled in';
+
+  @override
+  String get agentPasteJson =>
+      'Recognised the API settings from the JSON and updated them';
+
+  @override
+  String logDirect(String protocol) {
+    return '$protocol direct';
+  }
+
+  @override
+  String logDirectWithApp(String protocol, String app) {
+    return '$protocol direct · $app';
+  }
+
+  @override
+  String get subsErrUrlUnavailable => 'The subscription URL is not usable';
+
+  @override
+  String subsErrTimeout(int seconds) {
+    return 'Download timed out (read $seconds s)';
+  }
+
+  @override
+  String get subsErrTls =>
+      'TLS handshake failed; check the certificate or the mirror address';
+
+  @override
+  String get subsErrEmptyResponse => 'The subscription response was empty';
+
+  @override
+  String get subsErrUnreachable => 'Network unreachable';
+
+  @override
+  String subsErrUnreachableCode(String code) {
+    return 'Network unreachable: $code';
+  }
+
+  @override
+  String get subsErrUnsupported =>
+      'This environment cannot update online subscriptions';
+
+  @override
+  String subsErrMirrorPlaceholder(String list) {
+    return 'A mirror template must contain $list';
+  }
+
+  @override
+  String get subsErrRawUrlInvalid =>
+      'The original subscription URL is not valid';
+
+  @override
+  String get subsErrMirrorScheme =>
+      'The address built from the mirror template must use HTTP or HTTPS';
+
+  @override
+  String get subsErrEmpty => 'The subscription URL cannot be empty';
+
+  @override
+  String get subsErrBadFormat => 'The subscription URL is not valid';
+
+  @override
+  String get subsErrNotHttp => 'A subscription link must use HTTP or HTTPS';
+
+  @override
+  String get subsErrNoHost => 'The subscription URL has no host name';
+
+  @override
+  String get siteCategoryShopping => 'Shopping';
+
+  @override
+  String get siteCategoryVideo => 'Video';
+
+  @override
+  String get siteCategoryMusic => 'Music';
+
+  @override
+  String get siteCategorySocial => 'Social';
+
+  @override
+  String get siteCategoryDeveloper => 'Developer';
+
+  @override
+  String get siteCategoryGame => 'Games';
+
+  @override
+  String get outboundProxyHostInvalid =>
+      'The proxy address must be 127.0.0.1 or ::1';
+
+  @override
+  String get outboundProxyPortRange =>
+      'The proxy port must be between 1 and 65535';
+
+  @override
+  String get outboundProxyAppRequired =>
+      'Pick the app that provides the local proxy port';
+
+  @override
+  String get outboundProxySelfNotAllowed =>
+      'DITING cannot be its own proxy app';
+
+  @override
+  String get outboundProxyAppMissing =>
+      'The selected proxy app is not installed';
+
+  @override
+  String get outboundProxyCredentialsTooLong =>
+      'The proxy username or password is too long';
+
+  @override
+  String get updateDownloadNoPath =>
+      'Download failed: no package path was returned';
+
+  @override
+  String get updateDownloadUnsupported =>
+      'This device cannot download inside the app; open the download URL in a browser';
+
+  @override
+  String updateDownloadFailedCode(String code) {
+    return 'Download failed ($code)';
+  }
+
+  @override
+  String dnsLatencySuccessRate(int success, int attempts) {
+    return 'Success $success/$attempts';
+  }
+
+  @override
+  String get dnsLatencyUnsupported =>
+      'This device does not support latency tests';
+
+  @override
+  String dnsLatencyChannelFailedCode(String code) {
+    return 'The latency channel failed ($code)';
+  }
+
+  @override
+  String dnsLatencyChannelFailedDetail(String detail) {
+    return 'The latency channel failed: $detail';
+  }
+
+  @override
+  String get fontImportFailed => 'Could not import that font';
+
+  @override
+  String get fontReadFailed => 'Could not read that font file';
+
+  @override
+  String get fontParseFailed =>
+      'Could not parse that font file; make sure it is a complete TTF/OTF';
+
+  @override
+  String get fontCustomName => 'Custom font';
+
+  @override
+  String get recognitionAvatarTooLarge => 'The avatar file is too large';
+
+  @override
+  String get recognitionConfigTooLarge => 'The list configuration is too large';
+
+  @override
+  String get taglineRunning => 'Listen to all things, tell clear from murky';
+
+  @override
+  String get taglineStopped => 'Ears at rest, back to silence';
+
+  @override
+  String get backupErrProvidersInvalidJson =>
+      'The provider configuration is not valid JSON';
+
+  @override
+  String get backupErrBootstrapInvalidJson =>
+      'The Bootstrap configuration is not valid JSON';
+
+  @override
+  String get backupErrAppearanceNotObject =>
+      'The appearance section must be an object';
+
+  @override
+  String get backupErrSystemNotObject =>
+      'The system settings section must be an object';
 }

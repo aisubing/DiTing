@@ -3,6 +3,7 @@
 /// app can write.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 
 const httpsInspectionChannelName = 'com.haoze.diting/https_inspection';
@@ -159,9 +160,12 @@ class UnavailableCaCertificateService implements CaCertificateService {
 
   @override
   Future<CaInstallResult> install() async =>
-      const CaInstallResult.none('证书通道不可用');
+      CaInstallResult.none(currentL10n.caChannelUnavailable);
 
   @override
   Future<CaSaveResult> saveToDownloads() async =>
-      const CaSaveResult(saved: false, error: '证书通道不可用');
+      CaSaveResult(
+        saved: false,
+        error: currentL10n.caChannelUnavailable,
+      );
 }

@@ -3,6 +3,7 @@
 /// paste shapes; returns data instead of applying it so it stays testable without a widget.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 /// One parse attempt. Empty fields mean "leave what the user typed alone".
@@ -67,7 +68,7 @@ String _stripNoise(String input) => input
 AgentApiTextParseResult parseAgentApiText(String raw) {
   final text = raw.trim();
   if (text.isEmpty) {
-    return const AgentApiTextParseResult(message: '剪贴板为空');
+    return AgentApiTextParseResult(message: currentL10n.agentPasteEmpty);
   }
 
   // 1. A JSON config, the shape every provider's docs paste.
@@ -92,7 +93,7 @@ AgentApiTextParseResult parseAgentApiText(String raw) {
     return AgentApiTextParseResult(
       baseUrl: sanitizeAgentApiInput(foundUrl),
       apiKey: sanitizeAgentApiInput(foundKey),
-      message: '已自动识别并填入服务地址与 API Key',
+      message: currentL10n.agentPasteBoth,
     );
   }
 
@@ -103,14 +104,14 @@ AgentApiTextParseResult parseAgentApiText(String raw) {
       !text.contains('sk-')) {
     return AgentApiTextParseResult(
       baseUrl: sanitizeAgentApiInput(foundUrl),
-      message: '已填入服务地址',
+      message: currentL10n.agentPasteBaseUrl,
     );
   }
 
   // 4. Treat the whole thing as a key, joining lines the field would have cut off.
   return AgentApiTextParseResult(
     apiKey: sanitizeAgentApiInput(text.replaceFirst('Bearer ', '')),
-    message: '已填入 API Key',
+    message: currentL10n.agentPasteKey,
   );
 }
 
@@ -139,6 +140,6 @@ AgentApiTextParseResult? _parseJsonConfig(String text) {
     apiKey: key.isEmpty ? null : sanitizeAgentApiInput(key),
     baseUrl: url.isEmpty ? null : sanitizeAgentApiInput(url),
     model: model.isEmpty ? null : sanitizeAgentApiInput(model),
-    message: '已从 JSON 中识别并更新 API 配置',
+    message: currentL10n.agentPasteJson,
   );
 }

@@ -8,11 +8,11 @@ extension _BackupImportRules on BackupImporter {
     BackupImportTarget target,
   ) async {
     if (value is! Map) {
-      throw const BackupFormatException('订阅分组应为对象');
+      throw BackupFormatException(currentL10n.backupErrSubsNotObject);
     }
     final db = target.database;
     if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入订阅');
+      throw BackupFormatException(currentL10n.backupErrNoRuleDbSubs);
     }
     final repository = SubscriptionRepository(db);
     final groupsValue = value['groups'];
@@ -126,11 +126,11 @@ extension _BackupImportRuleTables on BackupImporter {
     BackupGroup group,
   ) async {
     if (value is! List) {
-      throw const BackupFormatException('规则分组应为数组');
+      throw BackupFormatException(currentL10n.backupErrRulesNotArray);
     }
     final db = target.database;
     if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入规则');
+      throw BackupFormatException(currentL10n.backupErrNoRuleDbRules);
     }
     final existing = {'block': <String>{}, 'allow': <String>{}};
     final repository = RuleRepository(db);
@@ -225,11 +225,11 @@ extension _BackupImportRuleTables on BackupImporter {
     BackupGroup group,
   ) async {
     if (value is! List) {
-      throw const BackupFormatException('覆写规则分组应为数组');
+      throw BackupFormatException(currentL10n.backupErrRewriteNotArray);
     }
     final db = target.database;
     if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入覆写规则');
+      throw BackupFormatException(currentL10n.backupErrNoRuleDbRewrite);
     }
     var added = 0;
     var skipped = 0;
@@ -313,11 +313,11 @@ extension _BackupImportRuleTables on BackupImporter {
     BackupImportTarget target,
   ) async {
     if (value is! List) {
-      throw const BackupFormatException('地址规则分组应为数组');
+      throw BackupFormatException(currentL10n.backupErrAddressNotArray);
     }
     final db = target.database;
     if (db == null) {
-      throw const BackupFormatException('本机还没有规则库，无法导入地址规则');
+      throw BackupFormatException(currentL10n.backupErrNoRuleDbAddress);
     }
     var added = 0;
     var skipped = 0;

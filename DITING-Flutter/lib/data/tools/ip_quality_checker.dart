@@ -2,6 +2,7 @@
 /// answers into one report.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -111,14 +112,14 @@ class IpQualityChecker {
     try {
       final probe = await _myIp(client);
       if (probe == null) {
-        return const IpQualityError(
-          IpQualityFailure('无法获取当前出口 IP：网络不可达或探测服务超时'),
+        return IpQualityError(
+          IpQualityFailure(currentL10n.ipQualityNoExitIp),
         );
       }
       final sources = await _querySources(client, probe);
       if (sources.every((source) => !source.isHit)) {
-        return const IpQualityError(
-          IpQualityFailure('所有 IP 情报源均未返回结果，请检查网络后重试'),
+        return IpQualityError(
+          IpQualityFailure(currentL10n.ipQualityNoSourceResult),
         );
       }
       return IpQualitySuccess(_summarize(probe, sources));

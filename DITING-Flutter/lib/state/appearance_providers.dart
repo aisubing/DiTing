@@ -135,8 +135,8 @@ class HomeSentenceNotifier
 
   void reset() {
     state = (
-      running: LegacySettings.defaultRunningSentence,
-      stopped: LegacySettings.defaultStoppedSentence,
+      running: LegacySettings.defaultRunningSentence(currentL10n),
+      stopped: LegacySettings.defaultStoppedSentence(currentL10n),
     );
     _settings(ref)
         .setHomeSentences(running: state.running, stopped: state.stopped);

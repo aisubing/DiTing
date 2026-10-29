@@ -1,5 +1,7 @@
 // The 1.4.3 persistence contract: containers, key names, defaults, legacy semantics.
 
+import 'package:diting/app/l10n/l10n.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/native/background_bridge.dart';
@@ -69,11 +71,11 @@ void _legacySettings() {
       expect(settings.componentOpacity, 1);
       expect(
         settings.homeSentences.running,
-        LegacySettings.defaultRunningSentence,
+        LegacySettings.defaultRunningSentence(lookupAppL10n(const Locale('zh'))),
       );
       expect(
         settings.homeSentences.stopped,
-        LegacySettings.defaultStoppedSentence,
+        LegacySettings.defaultStoppedSentence(lookupAppL10n(const Locale('zh'))),
       );
       expect(settings.bottomBarIds, LegacySettings.defaultBottomBarIds);
       expect(settings.hapticEnabled, isTrue);

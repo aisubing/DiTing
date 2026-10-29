@@ -2,6 +2,7 @@
 /// verbatim.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
@@ -33,8 +34,8 @@ class LegacySettings {
   /// The foreground service reads this container, not `dns_vpn_prefs`.
   static const notificationContainer = 'notification_settings_prefs';
 
-  static const defaultRunningSentence = '谛听万象，明察清浊';
-  static const defaultStoppedSentence = '收耳静眠，归于无声';
+  static String defaultRunningSentence(AppL10n l10n) => l10n.taglineRunning;
+  static String defaultStoppedSentence(AppL10n l10n) => l10n.taglineStopped;
 
   static const defaultBottomBarIds = ['home', 'feature_hub', 'log_dashboard'];
 
@@ -185,9 +186,11 @@ class LegacySettings {
 
   ({String running, String stopped}) get homeSentences => (
     running:
-        _string(uiContainer, 'home_sentence_running') ?? defaultRunningSentence,
+        _string(uiContainer, 'home_sentence_running') ??
+        defaultRunningSentence(currentL10n),
     stopped:
-        _string(uiContainer, 'home_sentence_stopped') ?? defaultStoppedSentence,
+        _string(uiContainer, 'home_sentence_stopped') ??
+        defaultStoppedSentence(currentL10n),
   );
 
   void setHomeSentences({required String running, required String stopped}) {

@@ -25,12 +25,14 @@ class ServiceStats {
     final hours = uptime.inHours;
     final minutes = uptime.inMinutes % 60;
     final seconds = uptime.inSeconds % 60;
+    final l10n = currentL10n;
     if (hours > 0) {
-      return '$hours小时$minutes分$seconds秒';
+      return '${l10n.durationHours(hours)}${l10n.durationMinutes(minutes)}'
+          '${l10n.durationSeconds(seconds)}';
     }
     if (minutes > 0) {
-      return '$minutes分$seconds秒';
+      return '${l10n.durationMinutes(minutes)}${l10n.durationSeconds(seconds)}';
     }
-    return '$seconds秒';
+    return l10n.durationSeconds(seconds);
   }
 }

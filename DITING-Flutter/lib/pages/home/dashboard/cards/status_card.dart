@@ -25,10 +25,10 @@ class StatusCard extends ConsumerWidget {
     final scale = DashboardDensityScope.scaleOf(context);
     final colorScheme = context.colorScheme;
     final (tone, label) = switch (core) {
-      CoreState.running => (DashboardChipTone.ok, core.label),
-      CoreState.starting => (DashboardChipTone.idle, core.label),
-      CoreState.failed => (DashboardChipTone.warn, core.label),
-      CoreState.stopped => (DashboardChipTone.idle, core.label),
+      CoreState.running => (DashboardChipTone.ok, core.label(context.l10n)),
+      CoreState.starting => (DashboardChipTone.idle, core.label(context.l10n)),
+      CoreState.failed => (DashboardChipTone.warn, core.label(context.l10n)),
+      CoreState.stopped => (DashboardChipTone.idle, core.label(context.l10n)),
     };
     return DashboardCard(
       semanticLabel: context.l10n.statusTitle,

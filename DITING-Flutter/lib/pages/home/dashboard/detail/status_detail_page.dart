@@ -43,11 +43,11 @@ class StatusDetailPage extends ConsumerWidget {
           // like a stray line under the label.
           value: core.isRunning ? stats.uptimeLabel : context.l10n.statusNotTiming,
           color: core.isRunning ? colorScheme.onSurface : null,
-          chipLabel: core.label,
+          chipLabel: core.label(context.l10n),
           chipColor: health.color,
           hint: core.isRunning
               ? health.summary
-              : context.l10n.statusPausedSummary(mode.title, core.label),
+              : context.l10n.statusPausedSummary(mode.title, core.label(context.l10n)),
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.status,
@@ -73,7 +73,7 @@ class StatusDetailPage extends ConsumerWidget {
               DashboardDetailRows(
                 rows: [
                   DashboardDetailRow(label: context.l10n.statusWorkMode, value: mode.title(context.l10n)),
-                  DashboardDetailRow(label: context.l10n.statusCoreState, value: core.label),
+                  DashboardDetailRow(label: context.l10n.statusCoreState, value: core.label(context.l10n)),
                   if (mode == AppWorkMode.server)
                     DashboardDetailRow(
                       label: context.l10n.statusListenPort,

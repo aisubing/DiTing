@@ -382,7 +382,7 @@ void _fontRepository() {
     });
 
     test('无通道的降级结果给出可读原因', () {
-      const result = FontPickResult.unavailable();
+      final result = FontPickResult.unavailable();
       expect(result.isOk, isFalse);
       expect(result.error, isNotNull);
     });

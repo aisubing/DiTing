@@ -8,16 +8,18 @@
 /// `运行中 · 阿里云`, `运行中 · [最快响应] 3 个服务商`, `运行中 · 阿里云 · 端口 1053`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
 
 /// Legacy wording of the resolution modes; shorter UI labels would not say what is racing.
-const _modeLabels = {
-  'single': '单一服务',
-  'smart_prediction': '智能选择',
-  'parallel_race': '最快响应',
-  'primary_backup': '依次尝试',
+String _modeLabel(String mode, AppL10n l10n) => switch (mode) {
+  'single' => l10n.notifModeSingle,
+  'smart_prediction' => l10n.notifModeSmart,
+  'parallel_race' => l10n.notifModeParallel,
+  'primary_backup' => l10n.notifModeBackup,
+  _ => mode,
 };
 
 /// `运行中 · [最快响应] 3 个服务商` / `运行中 · 阿里云` / `运行中`.
@@ -27,15 +29,17 @@ String defaultRunningNotificationText(LegacySettings settings) {
   final config = buildDnsConfig(settings);
   final providers = config.providers;
   if (providers.length > 1) {
-    final mode = _modeLabels[config.mode] ?? config.mode;
-    return '运行中 · [$mode] ${providers.length} 个服务商';
+    final mode = _modeLabel(config.mode, currentL10n);
+    return currentL10n.notifRunningMode(mode, providers.length);
   }
-  if (providers.isNotEmpty) return '运行中 · ${providers.first.name}';
-  return '运行中';
+  if (providers.isNotEmpty) {
+    return currentL10n.notifRunningProvider(providers.first.name);
+  }
+  return currentL10n.stateRunning;
 }
 
 /// `运行中 · 阿里云 · 端口 1053`: the upstream name plus the listen port, which is not 53 here.
 String defaultServerNotificationText(LegacySettings settings) {
   final config = buildServerDnsConfig(settings);
-  return '运行中 · ${config.upstream.name} · 端口 ${config.port}';
+  return currentL10n.notifRunningServer(config.upstream.name, config.port);
 }

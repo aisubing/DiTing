@@ -3,6 +3,7 @@
 /// needs a FileProvider `content://` URI.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 
 const _updateChannelName = 'com.haoze.diting/update';
@@ -64,14 +65,14 @@ class UpdateBridge {
         'version': version,
       });
       if (path == null || path.isEmpty) {
-        return const UpdateDownloadResult.failed('下载失败：未返回安装包路径');
+        return UpdateDownloadResult.failed(currentL10n.updateDownloadNoPath);
       }
       return UpdateDownloadResult.success(path);
     } on MissingPluginException {
-      return const UpdateDownloadResult.failed('当前设备不支持应用内下载，请用浏览器打开下载地址');
+      return UpdateDownloadResult.failed(currentL10n.updateDownloadUnsupported);
     } on PlatformException catch (error) {
       return UpdateDownloadResult.failed(
-        error.message ?? '下载失败（${error.code}）',
+        error.message ?? currentL10n.updateDownloadFailedCode(error.code),
       );
     } finally {
       _channel.setMethodCallHandler(null);

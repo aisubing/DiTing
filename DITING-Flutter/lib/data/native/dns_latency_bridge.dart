@@ -3,6 +3,7 @@
 /// `success=false` plus `message`, never an exception; `MissingPluginException` means no channel.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 
 const dnsLatencyChannelName = 'com.haoze.diting/dns_latency';
@@ -90,7 +91,8 @@ class DnsLatencySample {
 
   final List<int> samplesMs;
 
-  String get successRateLabel => '成功率 $successCount/$attempts';
+  String get successRateLabel =>
+      currentL10n.dnsLatencySuccessRate(successCount, attempts);
 
   static DnsLatencySample fromMap(Map<Object?, Object?> map) {
     final rawSamples = map['elapsedSamplesMs'];
@@ -120,12 +122,12 @@ class DnsLatencySample {
 
 /// The host has no latency channel, which is not the same as every probe failing.
 class DnsLatencyUnavailable implements Exception {
-  const DnsLatencyUnavailable([this.message = '当前设备不支持测速']);
+  const DnsLatencyUnavailable([this.message]);
 
-  final String message;
+  final String? message;
 
   @override
-  String toString() => message;
+  String toString() => message ?? currentL10n.dnsLatencyUnsupported;
 }
 
 abstract class DnsLatencyRunner {
@@ -184,8 +186,8 @@ class MethodChannelDnsLatencyRunner implements DnsLatencyRunner {
       final detail = error.message;
       throw DnsLatencyUnavailable(
         detail == null || detail.isEmpty
-            ? '测速通道调用失败（${error.code}）'
-            : '测速通道调用失败：$detail',
+            ? currentL10n.dnsLatencyChannelFailedCode(error.code)
+            : currentL10n.dnsLatencyChannelFailedDetail(detail),
       );
     }
     if (raw is! List) return const [];

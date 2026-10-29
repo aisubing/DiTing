@@ -2,6 +2,7 @@
 // False positive: fields are private `_xxx`, and Dart forbids named parameters starting with `_`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/cleanup/cleanup_models.dart';
 import 'package:diting/data/cleanup/cleanup_sql.dart';
 import 'package:diting/data/db/rule_repository.dart';
@@ -97,7 +98,10 @@ class DataCleanupService {
       };
     } catch (error) {
       debugPrint('data cleanup failed: ${action.name} ($error)');
-      return CleanupResult.failed(action, '清理失败：$error');
+      return CleanupResult.failed(
+        action,
+        currentL10n.cleanupFailed('$error'),
+      );
     }
   }
 
@@ -268,14 +272,14 @@ class DataCleanupService {
   /// Credentials live in the AndroidKeyStore, so the reset goes through native.
   Future<CleanupResult> _resetOutboundProxy() async {
     await _outboundProxy.reset();
-    return _result(CleanupAction.outboundProxy, 1, detail: '已恢复直连');
+    return _result(CleanupAction.outboundProxy, 1, detail: currentL10n.cleanupProxyRestored);
   }
 
   /// `inspect(regenerate: true)` is the only call that deletes the CA files.
   Future<CleanupResult> _resetCaCertificate() async {
     await _ca.inspect(regenerate: true);
     _settings.setHttpsInspectionReady(false);
-    return _result(CleanupAction.caCertificate, 1, detail: '需重新生成并导入系统证书');
+    return _result(CleanupAction.caCertificate, 1, detail: currentL10n.cleanupCaNeedsReimport);
   }
 
   /// Both halves must run, or stale files or a lying UI remain.

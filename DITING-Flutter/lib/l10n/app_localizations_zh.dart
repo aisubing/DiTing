@@ -7873,4 +7873,582 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get providerMgmtHostPortRequired => '请填写 host:port 形式的地址';
+
+  @override
+  String get notifModeSingle => '单一服务';
+
+  @override
+  String get notifModeSmart => '智能选择';
+
+  @override
+  String get notifModeParallel => '最快响应';
+
+  @override
+  String get notifModeBackup => '依次尝试';
+
+  @override
+  String notifRunningMode(String mode, int count) {
+    return '运行中 · [$mode] $count 个服务商';
+  }
+
+  @override
+  String notifRunningProvider(String name) {
+    return '运行中 · $name';
+  }
+
+  @override
+  String notifRunningServer(String name, int port) {
+    return '运行中 · $name · 端口 $port';
+  }
+
+  @override
+  String platformNoSaveDialog(String error) {
+    return '无法打开保存对话框：$error';
+  }
+
+  @override
+  String platformNoFilePicker(String error) {
+    return '无法打开文件选择器：$error';
+  }
+
+  @override
+  String get platformNoFilePickerShort => '无法打开文件选择器';
+
+  @override
+  String get platformNoLocalRead => '当前环境不支持读取本地文件';
+
+  @override
+  String platformReadFailed(String error) {
+    return '无法读取该文件：$error';
+  }
+
+  @override
+  String get platformNoSystemPicker => '当前环境不支持系统文件选择器';
+
+  @override
+  String updateConnectFailed(String error) {
+    return '检查更新失败：无法连接（$error）';
+  }
+
+  @override
+  String get updateTlsFailed => '检查更新失败：TLS 证书校验不通过';
+
+  @override
+  String get updateBadJson => '检查更新失败：服务器返回的内容不是合法 JSON';
+
+  @override
+  String get updateRateLimited =>
+      '检查更新失败：GitHub 接口限流（未认证请求每小时 60 次），请稍后再试或直接访问项目发布页';
+
+  @override
+  String get updateForbidden => '检查更新失败：GitHub 拒绝访问（HTTP 403）';
+
+  @override
+  String get updateNotFound => '检查更新失败：仓库或发布页不存在（HTTP 404）';
+
+  @override
+  String updateServerError(int status) {
+    return '检查更新失败：GitHub 服务异常（HTTP $status）';
+  }
+
+  @override
+  String updateUnexpectedStatus(int status) {
+    return '检查更新失败：GitHub 返回 $status';
+  }
+
+  @override
+  String get updateResponseNotJson => '检查更新失败：响应不是合法 JSON';
+
+  @override
+  String get updateUnexpectedFormat => '检查更新失败：响应格式不符合预期';
+
+  @override
+  String get updateMissingTag => '检查更新失败：最新版本缺少 tag_name';
+
+  @override
+  String get updateNoApk => '最新版本未提供 Android APK';
+
+  @override
+  String get updateBadDownloadUrl => '更新包下载地址无效';
+
+  @override
+  String updateApkFileName(String version) {
+    return '谛听-$version.apk';
+  }
+
+  @override
+  String get agentApiEmptyEndpoint => '接口地址为空，请先在「AI 厂商管理」里填写';
+
+  @override
+  String get agentApiNoModelListJson => '服务端未返回模型列表（响应不是 JSON 对象）';
+
+  @override
+  String get agentApiNoModelListData => '服务端未返回模型列表（响应中缺少 data 字段）';
+
+  @override
+  String get agentApiNoModels => '接口未返回任何模型，请手动填写模型名称';
+
+  @override
+  String get agentApiKeyEmpty => 'API Key 不能为空';
+
+  @override
+  String get agentApiKeyEmptyHint => 'API Key 不能为空，请先在 AI 分析设置中配置';
+
+  @override
+  String get agentApiResponseNotJsonObject => '服务端响应不是 JSON 对象';
+
+  @override
+  String get agentApiEmptyContent => '模型返回了空内容，请检查模型名称或稍后重试';
+
+  @override
+  String agentApiBadUrl(String url) {
+    return '接口地址不合法：$url';
+  }
+
+  @override
+  String get agentApiCancelled => '分析已取消';
+
+  @override
+  String get agentApiTimeout => '请求超时：模型服务在限定时间内没有响应';
+
+  @override
+  String agentApiUnreachable(String error) {
+    return '无法连接模型服务（$error）';
+  }
+
+  @override
+  String get agentApiTls => 'TLS 握手失败：服务端证书不可信或协议不匹配';
+
+  @override
+  String get agentApiInvalidJson => '服务端响应不是合法 JSON';
+
+  @override
+  String get agentApiBadKey => 'API Key 无效或已过期';
+
+  @override
+  String get agentApiNoAccess => '密钥无权访问该模型，或该地区被限制';
+
+  @override
+  String get agentApiModelNotFound => '接口地址或模型名称不存在（404）';
+
+  @override
+  String get agentApiRateLimited => '请求过于频繁或额度用尽（429）';
+
+  @override
+  String agentApiUnavailable(int status) {
+    return '模型服务暂时不可用（$status）';
+  }
+
+  @override
+  String agentApiRequestFailed(int status) {
+    return '请求失败（$status）';
+  }
+
+  @override
+  String agentApiServerDetail(String message) {
+    return '：$message';
+  }
+
+  @override
+  String get davProbeNoWrite => '服务器可达但无法创建目录，请检查账号是否具备写入权限';
+
+  @override
+  String davProbeConnect(String error) {
+    return '无法连接到服务器：$error';
+  }
+
+  @override
+  String get davProbeTls => 'TLS 握手失败：服务器证书不被信任（自签证书需在系统里安装）';
+
+  @override
+  String get davProbeHttp => 'HTTP 请求失败，请检查服务器是否支持 WebDAV';
+
+  @override
+  String davUploadConnect(String error) {
+    return '上传失败：无法连接服务器（$error）';
+  }
+
+  @override
+  String get davUploadTls => '上传失败：TLS 证书不被信任';
+
+  @override
+  String davDownloadHttp(int status) {
+    return '下载失败（HTTP $status）';
+  }
+
+  @override
+  String get davStatus401 => '认证失败：用户名或密码不正确';
+
+  @override
+  String get davStatus403 => '服务器拒绝访问：该账号没有读写此目录的权限';
+
+  @override
+  String get davStatus404 => '服务器上找不到该目录';
+
+  @override
+  String get davStatus405 => '服务器不允许该操作（可能未启用 WebDAV）';
+
+  @override
+  String get davStatus409 => '目标目录不存在，无法写入';
+
+  @override
+  String get davStatus507 => '服务器存储空间不足';
+
+  @override
+  String davStatus5xx(int status) {
+    return '服务器内部错误（HTTP $status）';
+  }
+
+  @override
+  String davStatusOther(int status) {
+    return '服务器返回 HTTP $status';
+  }
+
+  @override
+  String get ipQualityNoExitIp => '无法获取当前出口 IP：网络不可达或探测服务超时';
+
+  @override
+  String get ipQualityNoSourceResult => '所有 IP 情报源均未返回结果，请检查网络后重试';
+
+  @override
+  String get disclaimerTerm1Title => '一、软件性质';
+
+  @override
+  String get disclaimerTerm1Content =>
+      '谛听是一款开源的本地域名解析与流量观测工具，不以任何形式提供网络接入服务。软件本身不含任何服务器、节点或订阅内容，也不代替任何网络服务商。';
+
+  @override
+  String get disclaimerTerm2Title => '二、使用方式';
+
+  @override
+  String get disclaimerTerm2Content =>
+      '用户应仅在自有设备与自有网络上使用本软件。将本软件用于任何网络接入、绕过计费或在未授权网络上运行的行为，均超出软件设计用途。';
+
+  @override
+  String get disclaimerTerm3Title => '三、责任范围';
+
+  @override
+  String get disclaimerTerm3Content =>
+      '因使用或无法使用本软件导致的任何直接或间接损失，包括但不限于数据丢失、服务中断、设备损坏，作者与贡献者均不承担责任。';
+
+  @override
+  String get disclaimerTerm4Title => '四、第三方组件';
+
+  @override
+  String get disclaimerTerm4Content =>
+      '本软件的界面组件层移植自 DITING（GPL-3.0-or-later），并使用了 material_ui、material_color_utilities 等开源组件。各组件的许可条款见仓库 NOTICE.md，使用本软件即表示同时接受这些条款。';
+
+  @override
+  String get disclaimerTerm5Title => '五、无担保';
+
+  @override
+  String get disclaimerTerm5Content =>
+      '本软件按「现状」提供，不附带任何明示或暗示的担保，包括但不限于适销性、特定用途适用性与不侵权的担保。';
+
+  @override
+  String get disclaimerTerm6Title => '六、责任限制';
+
+  @override
+  String get disclaimerTerm6Content =>
+      '在法律允许的最大范围内，作者不对任何间接、附带、特殊或后果性损害负责，即使已被告知此类损害的可能性。';
+
+  @override
+  String get disclaimerTerm7Title => '七、隐私';
+
+  @override
+  String get disclaimerTerm7Content =>
+      '本软件默认不收集、不上传任何用户数据。日志与规则仅保存在本地；若用户主动配置 WebDAV 备份，数据将上传至用户自行指定的服务器。';
+
+  @override
+  String get disclaimerTerm8Title => '八、许可';
+
+  @override
+  String get disclaimerTerm8Content =>
+      '本软件以 GPL-3.0-or-later 发布。你可以自由使用、修改与再分发，但衍生作品必须沿用同一许可并保留原始版权声明。';
+
+  @override
+  String get disclaimerTerm9Title => '九、条款变更';
+
+  @override
+  String get disclaimerTerm9Content =>
+      '作者保留随时修改本免责声明的权利。变更后的条款随新版本一同发布，继续使用即视为接受修改后的条款。';
+
+  @override
+  String get disclaimerTerm10Title => '十、接受条款';
+
+  @override
+  String get disclaimerTerm10Content =>
+      '在继续使用本软件前，请确认你已阅读、理解并同意上述全部条款。若不同意，请立即停止使用并卸载本软件。';
+
+  @override
+  String get settingsModeSubtitle => '切换普通模式或服务器模式';
+
+  @override
+  String get settingsPerformanceSection => '性能优化';
+
+  @override
+  String get settingsCacheSubtitle => '缓存已解析的域名，减少重复查询';
+
+  @override
+  String get settingsLogModeSubtitle => '选择 DNS 请求日志的记录范围';
+
+  @override
+  String get settingsRuntimeSection => '运行行为';
+
+  @override
+  String get settingsForegroundSubtitle => '后台隐藏、通知常驻、绕过局域网';
+
+  @override
+  String get settingsDataSection => '数据管理';
+
+  @override
+  String get settingsLanguageSubtitle => '选择应用界面语言';
+
+  @override
+  String get settingsWizardSubtitle => '查看当前工作模式的架构原理、权限配置与上手指引';
+
+  @override
+  String get backupErrEmpty => '文件内容为空';
+
+  @override
+  String backupErrInvalidJson(String error) {
+    return '不是合法的 JSON：$error';
+  }
+
+  @override
+  String get backupErrRootNotObject => '备份文件的根节点必须是 JSON 对象';
+
+  @override
+  String get backupErrNotDiting =>
+      '这不是谛听的备份文件：既没有 format 标记，也没有 formatVersion 版本号';
+
+  @override
+  String get backupErrNoVersion => '备份文件缺少版本号';
+
+  @override
+  String backupErrVersionTooHigh(String version, int max) {
+    return '备份版本 $version 高于本版应用支持的 $max，请升级应用后再导入';
+  }
+
+  @override
+  String get backupErrNoData => '备份文件缺少 data 段';
+
+  @override
+  String get backupErrProvidersNotArray => '服务商分组应为数组';
+
+  @override
+  String get backupErrBootstrapNotObject => 'Bootstrap 分组应为对象';
+
+  @override
+  String get backupErrCacheNotObject => '缓存分组应为对象';
+
+  @override
+  String get backupErrOutboundNotObject => '出站代理分组应为对象';
+
+  @override
+  String get backupErrBlockedNotObject => '禁止联网分组应为对象';
+
+  @override
+  String get backupErrAppRulesNotObject => '应用独立规则分组应为对象';
+
+  @override
+  String get backupErrInspectionNotObject => 'HTTPS 抓包分组应为对象';
+
+  @override
+  String get backupErrSubsNotObject => '订阅分组应为对象';
+
+  @override
+  String get backupErrNoRuleDbSubs => '本机还没有规则库，无法导入订阅';
+
+  @override
+  String get backupErrRulesNotArray => '规则分组应为数组';
+
+  @override
+  String get backupErrNoRuleDbRules => '本机还没有规则库，无法导入规则';
+
+  @override
+  String get backupErrRewriteNotArray => '覆写规则分组应为数组';
+
+  @override
+  String get backupErrNoRuleDbRewrite => '本机还没有规则库，无法导入覆写规则';
+
+  @override
+  String get backupErrAddressNotArray => '地址规则分组应为数组';
+
+  @override
+  String get backupErrNoRuleDbAddress => '本机还没有规则库，无法导入地址规则';
+
+  @override
+  String get agentPasteEmpty => '剪贴板为空';
+
+  @override
+  String get agentPasteBoth => '已自动识别并填入服务地址与 API Key';
+
+  @override
+  String get agentPasteBaseUrl => '已填入服务地址';
+
+  @override
+  String get agentPasteKey => '已填入 API Key';
+
+  @override
+  String get agentPasteJson => '已从 JSON 中识别并更新 API 配置';
+
+  @override
+  String logDirect(String protocol) {
+    return '$protocol 直连';
+  }
+
+  @override
+  String logDirectWithApp(String protocol, String app) {
+    return '$protocol 直连 · $app';
+  }
+
+  @override
+  String get subsErrUrlUnavailable => '订阅地址不可用';
+
+  @override
+  String subsErrTimeout(int seconds) {
+    return '下载超时（读取 $seconds 秒）';
+  }
+
+  @override
+  String get subsErrTls => 'TLS 握手失败，请检查证书或镜像地址';
+
+  @override
+  String get subsErrEmptyResponse => '订阅响应为空';
+
+  @override
+  String get subsErrUnreachable => '网络不可达';
+
+  @override
+  String subsErrUnreachableCode(String code) {
+    return '网络不可达：$code';
+  }
+
+  @override
+  String get subsErrUnsupported => '当前环境不支持网络订阅更新';
+
+  @override
+  String subsErrMirrorPlaceholder(String list) {
+    return '镜像模板必须包含 $list';
+  }
+
+  @override
+  String get subsErrRawUrlInvalid => '原始订阅地址格式无效';
+
+  @override
+  String get subsErrMirrorScheme => '镜像模板生成的地址必须使用 HTTP 或 HTTPS';
+
+  @override
+  String get subsErrEmpty => '订阅地址不能为空';
+
+  @override
+  String get subsErrBadFormat => '订阅地址格式无效';
+
+  @override
+  String get subsErrNotHttp => '订阅链接必须使用 HTTP 或 HTTPS';
+
+  @override
+  String get subsErrNoHost => '订阅地址缺少主机名';
+
+  @override
+  String get siteCategoryShopping => '购物';
+
+  @override
+  String get siteCategoryVideo => '视频';
+
+  @override
+  String get siteCategoryMusic => '音乐';
+
+  @override
+  String get siteCategorySocial => '社交';
+
+  @override
+  String get siteCategoryDeveloper => '开发者';
+
+  @override
+  String get siteCategoryGame => '游戏';
+
+  @override
+  String get outboundProxyHostInvalid => '代理地址仅支持 127.0.0.1 或 ::1';
+
+  @override
+  String get outboundProxyPortRange => '代理端口必须在 1 到 65535 之间';
+
+  @override
+  String get outboundProxyAppRequired => '请选择提供本地代理端口的应用';
+
+  @override
+  String get outboundProxySelfNotAllowed => '不能选择 DITING 自身作为代理应用';
+
+  @override
+  String get outboundProxyAppMissing => '所选代理应用未安装';
+
+  @override
+  String get outboundProxyCredentialsTooLong => '代理账号或密码过长';
+
+  @override
+  String get updateDownloadNoPath => '下载失败：未返回安装包路径';
+
+  @override
+  String get updateDownloadUnsupported => '当前设备不支持应用内下载，请用浏览器打开下载地址';
+
+  @override
+  String updateDownloadFailedCode(String code) {
+    return '下载失败（$code）';
+  }
+
+  @override
+  String dnsLatencySuccessRate(int success, int attempts) {
+    return '成功率 $success/$attempts';
+  }
+
+  @override
+  String get dnsLatencyUnsupported => '当前设备不支持测速';
+
+  @override
+  String dnsLatencyChannelFailedCode(String code) {
+    return '测速通道调用失败（$code）';
+  }
+
+  @override
+  String dnsLatencyChannelFailedDetail(String detail) {
+    return '测速通道调用失败：$detail';
+  }
+
+  @override
+  String get fontImportFailed => '无法导入该字体';
+
+  @override
+  String get fontReadFailed => '无法读取该字体文件';
+
+  @override
+  String get fontParseFailed => '无法解析该字体文件，请确认它是完整的 TTF/OTF';
+
+  @override
+  String get fontCustomName => '自定义字体';
+
+  @override
+  String get recognitionAvatarTooLarge => '头像体积超限';
+
+  @override
+  String get recognitionConfigTooLarge => '名单配置过大';
+
+  @override
+  String get taglineRunning => '谛听万象，明察清浊';
+
+  @override
+  String get taglineStopped => '收耳静眠，归于无声';
+
+  @override
+  String get backupErrProvidersInvalidJson => '服务商配置不是合法 JSON';
+
+  @override
+  String get backupErrBootstrapInvalidJson => 'Bootstrap 配置不是合法 JSON';
+
+  @override
+  String get backupErrAppearanceNotObject => '外观分组应为对象';
+
+  @override
+  String get backupErrSystemNotObject => '系统设置分组应为对象';
 }

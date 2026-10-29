@@ -2,6 +2,7 @@
 /// integers; APK assets prefer `arm64-v8a`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -118,11 +119,13 @@ class AppUpdateChecker {
       }
       return parseLatestRelease(body, currentVersion);
     } on SocketException catch (error) {
-      return UpdateCheckResult.failed('检查更新失败：无法连接（${error.message}）');
+      return UpdateCheckResult.failed(
+        currentL10n.updateConnectFailed(error.message),
+      );
     } on HandshakeException {
-      return const UpdateCheckResult.failed('检查更新失败：TLS 证书校验不通过');
+      return UpdateCheckResult.failed(currentL10n.updateTlsFailed);
     } on FormatException {
-      return const UpdateCheckResult.failed('检查更新失败：服务器返回的内容不是合法 JSON');
+      return UpdateCheckResult.failed(currentL10n.updateBadJson);
     } finally {
       client.close(force: true);
     }
@@ -132,14 +135,13 @@ class AppUpdateChecker {
   /// refusal; the body `message` tells them apart.
   static String _statusMessage(int status, String body) {
     if (status == 403 && body.contains('rate limit')) {
-      return '检查更新失败：GitHub 接口限流（未认证请求每小时 60 次），'
-          '请稍后再试或直接访问项目发布页';
+      return currentL10n.updateRateLimited;
     }
     return switch (status) {
-      403 => '检查更新失败：GitHub 拒绝访问（HTTP 403）',
-      404 => '检查更新失败：仓库或发布页不存在（HTTP 404）',
-      >= 500 => '检查更新失败：GitHub 服务异常（HTTP $status）',
-      _ => '检查更新失败：GitHub 返回 $status',
+      403 => currentL10n.updateForbidden,
+      404 => currentL10n.updateNotFound,
+      >= 500 => currentL10n.updateServerError(status),
+      _ => currentL10n.updateUnexpectedStatus(status),
     };
   }
 
@@ -153,14 +155,14 @@ class AppUpdateChecker {
     try {
       decoded = jsonDecode(payload);
     } on FormatException {
-      return const UpdateCheckResult.failed('检查更新失败：响应不是合法 JSON');
+      return UpdateCheckResult.failed(currentL10n.updateResponseNotJson);
     }
     if (decoded is! Map) {
-      return const UpdateCheckResult.failed('检查更新失败：响应格式不符合预期');
+      return UpdateCheckResult.failed(currentL10n.updateUnexpectedFormat);
     }
     final remoteVersion = '${decoded['tag_name'] ?? ''}'.trim();
     if (remoteVersion.isEmpty) {
-      return const UpdateCheckResult.failed('检查更新失败：最新版本缺少 tag_name');
+      return UpdateCheckResult.failed(currentL10n.updateMissingTag);
     }
     if (!isNewerVersion(remoteVersion, currentVersion)) {
       return UpdateCheckResult.upToDate(currentVersion: currentVersion);
@@ -168,18 +170,20 @@ class AppUpdateChecker {
 
     final asset = _pickAsset(decoded['assets']);
     if (asset == null) {
-      return const UpdateCheckResult.failed('最新版本未提供 Android APK');
+      return UpdateCheckResult.failed(currentL10n.updateNoApk);
     }
     final downloadUrl = '${asset['browser_download_url'] ?? ''}'.trim();
     if (downloadUrl.isEmpty) {
-      return const UpdateCheckResult.failed('更新包下载地址无效');
+      return UpdateCheckResult.failed(currentL10n.updateBadDownloadUrl);
     }
     final name = '${asset['name'] ?? ''}'.trim();
     return UpdateCheckResult.available(
       UpdateInfo(
         version: remoteVersion.replaceFirst(RegExp(r'^v'), ''),
         downloadUrl: downloadUrl,
-        fileName: name.isEmpty ? '谛听-$remoteVersion.apk' : name,
+        fileName: name.isEmpty
+            ? currentL10n.updateApkFileName(remoteVersion)
+            : name,
         releaseNotes: '${decoded['body'] ?? ''}'.trim(),
       ),
       currentVersion: currentVersion,

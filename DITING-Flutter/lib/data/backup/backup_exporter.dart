@@ -151,7 +151,9 @@ class BackupExporter {
         if (decoded is List) items = decoded;
       } on FormatException {
         // Skip corrupt JSON rather than propagate the damage to a restore.
-        throw const BackupFormatException('服务商配置不是合法 JSON');
+        throw BackupFormatException(
+          currentL10n.backupErrProvidersInvalidJson,
+        );
       }
     }
     return {'items': items, 'selection': _providerSelection(settings)};
@@ -241,7 +243,9 @@ class BackupExporter {
       try {
         parsed = jsonDecode(custom);
       } on FormatException {
-        throw const BackupFormatException('Bootstrap 配置不是合法 JSON');
+        throw BackupFormatException(
+          currentL10n.backupErrBootstrapInvalidJson,
+        );
       }
     }
     return {

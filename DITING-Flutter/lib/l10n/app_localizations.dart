@@ -14408,6 +14408,1014 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'请填写 host:port 形式的地址'**
   String get providerMgmtHostPortRequired;
+
+  /// No description provided for @notifModeSingle.
+  ///
+  /// In zh, this message translates to:
+  /// **'单一服务'**
+  String get notifModeSingle;
+
+  /// No description provided for @notifModeSmart.
+  ///
+  /// In zh, this message translates to:
+  /// **'智能选择'**
+  String get notifModeSmart;
+
+  /// No description provided for @notifModeParallel.
+  ///
+  /// In zh, this message translates to:
+  /// **'最快响应'**
+  String get notifModeParallel;
+
+  /// No description provided for @notifModeBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'依次尝试'**
+  String get notifModeBackup;
+
+  /// No description provided for @notifRunningMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行中 · [{mode}] {count} 个服务商'**
+  String notifRunningMode(String mode, int count);
+
+  /// No description provided for @notifRunningProvider.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行中 · {name}'**
+  String notifRunningProvider(String name);
+
+  /// No description provided for @notifRunningServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行中 · {name} · 端口 {port}'**
+  String notifRunningServer(String name, int port);
+
+  /// No description provided for @platformNoSaveDialog.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开保存对话框：{error}'**
+  String platformNoSaveDialog(String error);
+
+  /// No description provided for @platformNoFilePicker.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开文件选择器：{error}'**
+  String platformNoFilePicker(String error);
+
+  /// No description provided for @platformNoFilePickerShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开文件选择器'**
+  String get platformNoFilePickerShort;
+
+  /// No description provided for @platformNoLocalRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持读取本地文件'**
+  String get platformNoLocalRead;
+
+  /// No description provided for @platformReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取该文件：{error}'**
+  String platformReadFailed(String error);
+
+  /// No description provided for @platformNoSystemPicker.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持系统文件选择器'**
+  String get platformNoSystemPicker;
+
+  /// No description provided for @updateConnectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：无法连接（{error}）'**
+  String updateConnectFailed(String error);
+
+  /// No description provided for @updateTlsFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：TLS 证书校验不通过'**
+  String get updateTlsFailed;
+
+  /// No description provided for @updateBadJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：服务器返回的内容不是合法 JSON'**
+  String get updateBadJson;
+
+  /// No description provided for @updateRateLimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：GitHub 接口限流（未认证请求每小时 60 次），请稍后再试或直接访问项目发布页'**
+  String get updateRateLimited;
+
+  /// No description provided for @updateForbidden.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：GitHub 拒绝访问（HTTP 403）'**
+  String get updateForbidden;
+
+  /// No description provided for @updateNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：仓库或发布页不存在（HTTP 404）'**
+  String get updateNotFound;
+
+  /// No description provided for @updateServerError.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：GitHub 服务异常（HTTP {status}）'**
+  String updateServerError(int status);
+
+  /// No description provided for @updateUnexpectedStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：GitHub 返回 {status}'**
+  String updateUnexpectedStatus(int status);
+
+  /// No description provided for @updateResponseNotJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：响应不是合法 JSON'**
+  String get updateResponseNotJson;
+
+  /// No description provided for @updateUnexpectedFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：响应格式不符合预期'**
+  String get updateUnexpectedFormat;
+
+  /// No description provided for @updateMissingTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败：最新版本缺少 tag_name'**
+  String get updateMissingTag;
+
+  /// No description provided for @updateNoApk.
+  ///
+  /// In zh, this message translates to:
+  /// **'最新版本未提供 Android APK'**
+  String get updateNoApk;
+
+  /// No description provided for @updateBadDownloadUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新包下载地址无效'**
+  String get updateBadDownloadUrl;
+
+  /// No description provided for @updateApkFileName.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听-{version}.apk'**
+  String updateApkFileName(String version);
+
+  /// No description provided for @agentApiEmptyEndpoint.
+  ///
+  /// In zh, this message translates to:
+  /// **'接口地址为空，请先在「AI 厂商管理」里填写'**
+  String get agentApiEmptyEndpoint;
+
+  /// No description provided for @agentApiNoModelListJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务端未返回模型列表（响应不是 JSON 对象）'**
+  String get agentApiNoModelListJson;
+
+  /// No description provided for @agentApiNoModelListData.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务端未返回模型列表（响应中缺少 data 字段）'**
+  String get agentApiNoModelListData;
+
+  /// No description provided for @agentApiNoModels.
+  ///
+  /// In zh, this message translates to:
+  /// **'接口未返回任何模型，请手动填写模型名称'**
+  String get agentApiNoModels;
+
+  /// No description provided for @agentApiKeyEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 不能为空'**
+  String get agentApiKeyEmpty;
+
+  /// No description provided for @agentApiKeyEmptyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 不能为空，请先在 AI 分析设置中配置'**
+  String get agentApiKeyEmptyHint;
+
+  /// No description provided for @agentApiResponseNotJsonObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务端响应不是 JSON 对象'**
+  String get agentApiResponseNotJsonObject;
+
+  /// No description provided for @agentApiEmptyContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型返回了空内容，请检查模型名称或稍后重试'**
+  String get agentApiEmptyContent;
+
+  /// No description provided for @agentApiBadUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'接口地址不合法：{url}'**
+  String agentApiBadUrl(String url);
+
+  /// No description provided for @agentApiCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析已取消'**
+  String get agentApiCancelled;
+
+  /// No description provided for @agentApiTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求超时：模型服务在限定时间内没有响应'**
+  String get agentApiTimeout;
+
+  /// No description provided for @agentApiUnreachable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法连接模型服务（{error}）'**
+  String agentApiUnreachable(String error);
+
+  /// No description provided for @agentApiTls.
+  ///
+  /// In zh, this message translates to:
+  /// **'TLS 握手失败：服务端证书不可信或协议不匹配'**
+  String get agentApiTls;
+
+  /// No description provided for @agentApiInvalidJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务端响应不是合法 JSON'**
+  String get agentApiInvalidJson;
+
+  /// No description provided for @agentApiBadKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 无效或已过期'**
+  String get agentApiBadKey;
+
+  /// No description provided for @agentApiNoAccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'密钥无权访问该模型，或该地区被限制'**
+  String get agentApiNoAccess;
+
+  /// No description provided for @agentApiModelNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'接口地址或模型名称不存在（404）'**
+  String get agentApiModelNotFound;
+
+  /// No description provided for @agentApiRateLimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求过于频繁或额度用尽（429）'**
+  String get agentApiRateLimited;
+
+  /// No description provided for @agentApiUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型服务暂时不可用（{status}）'**
+  String agentApiUnavailable(int status);
+
+  /// No description provided for @agentApiRequestFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求失败（{status}）'**
+  String agentApiRequestFailed(int status);
+
+  /// No description provided for @agentApiServerDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'：{message}'**
+  String agentApiServerDetail(String message);
+
+  /// No description provided for @davProbeNoWrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器可达但无法创建目录，请检查账号是否具备写入权限'**
+  String get davProbeNoWrite;
+
+  /// No description provided for @davProbeConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法连接到服务器：{error}'**
+  String davProbeConnect(String error);
+
+  /// No description provided for @davProbeTls.
+  ///
+  /// In zh, this message translates to:
+  /// **'TLS 握手失败：服务器证书不被信任（自签证书需在系统里安装）'**
+  String get davProbeTls;
+
+  /// No description provided for @davProbeHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTP 请求失败，请检查服务器是否支持 WebDAV'**
+  String get davProbeHttp;
+
+  /// No description provided for @davUploadConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传失败：无法连接服务器（{error}）'**
+  String davUploadConnect(String error);
+
+  /// No description provided for @davUploadTls.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传失败：TLS 证书不被信任'**
+  String get davUploadTls;
+
+  /// No description provided for @davDownloadHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败（HTTP {status}）'**
+  String davDownloadHttp(int status);
+
+  /// No description provided for @davStatus401.
+  ///
+  /// In zh, this message translates to:
+  /// **'认证失败：用户名或密码不正确'**
+  String get davStatus401;
+
+  /// No description provided for @davStatus403.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器拒绝访问：该账号没有读写此目录的权限'**
+  String get davStatus403;
+
+  /// No description provided for @davStatus404.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器上找不到该目录'**
+  String get davStatus404;
+
+  /// No description provided for @davStatus405.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器不允许该操作（可能未启用 WebDAV）'**
+  String get davStatus405;
+
+  /// No description provided for @davStatus409.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标目录不存在，无法写入'**
+  String get davStatus409;
+
+  /// No description provided for @davStatus507.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器存储空间不足'**
+  String get davStatus507;
+
+  /// No description provided for @davStatus5xx.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器内部错误（HTTP {status}）'**
+  String davStatus5xx(int status);
+
+  /// No description provided for @davStatusOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器返回 HTTP {status}'**
+  String davStatusOther(int status);
+
+  /// No description provided for @ipQualityNoExitIp.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法获取当前出口 IP：网络不可达或探测服务超时'**
+  String get ipQualityNoExitIp;
+
+  /// No description provided for @ipQualityNoSourceResult.
+  ///
+  /// In zh, this message translates to:
+  /// **'所有 IP 情报源均未返回结果，请检查网络后重试'**
+  String get ipQualityNoSourceResult;
+
+  /// No description provided for @disclaimerTerm1Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'一、软件性质'**
+  String get disclaimerTerm1Title;
+
+  /// No description provided for @disclaimerTerm1Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听是一款开源的本地域名解析与流量观测工具，不以任何形式提供网络接入服务。软件本身不含任何服务器、节点或订阅内容，也不代替任何网络服务商。'**
+  String get disclaimerTerm1Content;
+
+  /// No description provided for @disclaimerTerm2Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'二、使用方式'**
+  String get disclaimerTerm2Title;
+
+  /// No description provided for @disclaimerTerm2Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户应仅在自有设备与自有网络上使用本软件。将本软件用于任何网络接入、绕过计费或在未授权网络上运行的行为，均超出软件设计用途。'**
+  String get disclaimerTerm2Content;
+
+  /// No description provided for @disclaimerTerm3Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'三、责任范围'**
+  String get disclaimerTerm3Title;
+
+  /// No description provided for @disclaimerTerm3Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'因使用或无法使用本软件导致的任何直接或间接损失，包括但不限于数据丢失、服务中断、设备损坏，作者与贡献者均不承担责任。'**
+  String get disclaimerTerm3Content;
+
+  /// No description provided for @disclaimerTerm4Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'四、第三方组件'**
+  String get disclaimerTerm4Title;
+
+  /// No description provided for @disclaimerTerm4Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'本软件的界面组件层移植自 DITING（GPL-3.0-or-later），并使用了 material_ui、material_color_utilities 等开源组件。各组件的许可条款见仓库 NOTICE.md，使用本软件即表示同时接受这些条款。'**
+  String get disclaimerTerm4Content;
+
+  /// No description provided for @disclaimerTerm5Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'五、无担保'**
+  String get disclaimerTerm5Title;
+
+  /// No description provided for @disclaimerTerm5Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'本软件按「现状」提供，不附带任何明示或暗示的担保，包括但不限于适销性、特定用途适用性与不侵权的担保。'**
+  String get disclaimerTerm5Content;
+
+  /// No description provided for @disclaimerTerm6Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'六、责任限制'**
+  String get disclaimerTerm6Title;
+
+  /// No description provided for @disclaimerTerm6Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'在法律允许的最大范围内，作者不对任何间接、附带、特殊或后果性损害负责，即使已被告知此类损害的可能性。'**
+  String get disclaimerTerm6Content;
+
+  /// No description provided for @disclaimerTerm7Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'七、隐私'**
+  String get disclaimerTerm7Title;
+
+  /// No description provided for @disclaimerTerm7Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'本软件默认不收集、不上传任何用户数据。日志与规则仅保存在本地；若用户主动配置 WebDAV 备份，数据将上传至用户自行指定的服务器。'**
+  String get disclaimerTerm7Content;
+
+  /// No description provided for @disclaimerTerm8Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'八、许可'**
+  String get disclaimerTerm8Title;
+
+  /// No description provided for @disclaimerTerm8Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'本软件以 GPL-3.0-or-later 发布。你可以自由使用、修改与再分发，但衍生作品必须沿用同一许可并保留原始版权声明。'**
+  String get disclaimerTerm8Content;
+
+  /// No description provided for @disclaimerTerm9Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'九、条款变更'**
+  String get disclaimerTerm9Title;
+
+  /// No description provided for @disclaimerTerm9Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'作者保留随时修改本免责声明的权利。变更后的条款随新版本一同发布，继续使用即视为接受修改后的条款。'**
+  String get disclaimerTerm9Content;
+
+  /// No description provided for @disclaimerTerm10Title.
+  ///
+  /// In zh, this message translates to:
+  /// **'十、接受条款'**
+  String get disclaimerTerm10Title;
+
+  /// No description provided for @disclaimerTerm10Content.
+  ///
+  /// In zh, this message translates to:
+  /// **'在继续使用本软件前，请确认你已阅读、理解并同意上述全部条款。若不同意，请立即停止使用并卸载本软件。'**
+  String get disclaimerTerm10Content;
+
+  /// No description provided for @settingsModeSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换普通模式或服务器模式'**
+  String get settingsModeSubtitle;
+
+  /// No description provided for @settingsPerformanceSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'性能优化'**
+  String get settingsPerformanceSection;
+
+  /// No description provided for @settingsCacheSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存已解析的域名，减少重复查询'**
+  String get settingsCacheSubtitle;
+
+  /// No description provided for @settingsLogModeSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择 DNS 请求日志的记录范围'**
+  String get settingsLogModeSubtitle;
+
+  /// No description provided for @settingsRuntimeSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行行为'**
+  String get settingsRuntimeSection;
+
+  /// No description provided for @settingsForegroundSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'后台隐藏、通知常驻、绕过局域网'**
+  String get settingsForegroundSubtitle;
+
+  /// No description provided for @settingsDataSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据管理'**
+  String get settingsDataSection;
+
+  /// No description provided for @settingsLanguageSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择应用界面语言'**
+  String get settingsLanguageSubtitle;
+
+  /// No description provided for @settingsWizardSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看当前工作模式的架构原理、权限配置与上手指引'**
+  String get settingsWizardSubtitle;
+
+  /// No description provided for @backupErrEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件内容为空'**
+  String get backupErrEmpty;
+
+  /// No description provided for @backupErrInvalidJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'不是合法的 JSON：{error}'**
+  String backupErrInvalidJson(String error);
+
+  /// No description provided for @backupErrRootNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件的根节点必须是 JSON 对象'**
+  String get backupErrRootNotObject;
+
+  /// No description provided for @backupErrNotDiting.
+  ///
+  /// In zh, this message translates to:
+  /// **'这不是谛听的备份文件：既没有 format 标记，也没有 formatVersion 版本号'**
+  String get backupErrNotDiting;
+
+  /// No description provided for @backupErrNoVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件缺少版本号'**
+  String get backupErrNoVersion;
+
+  /// No description provided for @backupErrVersionTooHigh.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份版本 {version} 高于本版应用支持的 {max}，请升级应用后再导入'**
+  String backupErrVersionTooHigh(String version, int max);
+
+  /// No description provided for @backupErrNoData.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份文件缺少 data 段'**
+  String get backupErrNoData;
+
+  /// No description provided for @backupErrProvidersNotArray.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务商分组应为数组'**
+  String get backupErrProvidersNotArray;
+
+  /// No description provided for @backupErrBootstrapNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'Bootstrap 分组应为对象'**
+  String get backupErrBootstrapNotObject;
+
+  /// No description provided for @backupErrCacheNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存分组应为对象'**
+  String get backupErrCacheNotObject;
+
+  /// No description provided for @backupErrOutboundNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'出站代理分组应为对象'**
+  String get backupErrOutboundNotObject;
+
+  /// No description provided for @backupErrBlockedNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁止联网分组应为对象'**
+  String get backupErrBlockedNotObject;
+
+  /// No description provided for @backupErrAppRulesNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用独立规则分组应为对象'**
+  String get backupErrAppRulesNotObject;
+
+  /// No description provided for @backupErrInspectionNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 抓包分组应为对象'**
+  String get backupErrInspectionNotObject;
+
+  /// No description provided for @backupErrSubsNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅分组应为对象'**
+  String get backupErrSubsNotObject;
+
+  /// No description provided for @backupErrNoRuleDbSubs.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机还没有规则库，无法导入订阅'**
+  String get backupErrNoRuleDbSubs;
+
+  /// No description provided for @backupErrRulesNotArray.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则分组应为数组'**
+  String get backupErrRulesNotArray;
+
+  /// No description provided for @backupErrNoRuleDbRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机还没有规则库，无法导入规则'**
+  String get backupErrNoRuleDbRules;
+
+  /// No description provided for @backupErrRewriteNotArray.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆写规则分组应为数组'**
+  String get backupErrRewriteNotArray;
+
+  /// No description provided for @backupErrNoRuleDbRewrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机还没有规则库，无法导入覆写规则'**
+  String get backupErrNoRuleDbRewrite;
+
+  /// No description provided for @backupErrAddressNotArray.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址规则分组应为数组'**
+  String get backupErrAddressNotArray;
+
+  /// No description provided for @backupErrNoRuleDbAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机还没有规则库，无法导入地址规则'**
+  String get backupErrNoRuleDbAddress;
+
+  /// No description provided for @agentPasteEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'剪贴板为空'**
+  String get agentPasteEmpty;
+
+  /// No description provided for @agentPasteBoth.
+  ///
+  /// In zh, this message translates to:
+  /// **'已自动识别并填入服务地址与 API Key'**
+  String get agentPasteBoth;
+
+  /// No description provided for @agentPasteBaseUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'已填入服务地址'**
+  String get agentPasteBaseUrl;
+
+  /// No description provided for @agentPasteKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'已填入 API Key'**
+  String get agentPasteKey;
+
+  /// No description provided for @agentPasteJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'已从 JSON 中识别并更新 API 配置'**
+  String get agentPasteJson;
+
+  /// No description provided for @logDirect.
+  ///
+  /// In zh, this message translates to:
+  /// **'{protocol} 直连'**
+  String logDirect(String protocol);
+
+  /// No description provided for @logDirectWithApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'{protocol} 直连 · {app}'**
+  String logDirectWithApp(String protocol, String app);
+
+  /// No description provided for @subsErrUrlUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅地址不可用'**
+  String get subsErrUrlUnavailable;
+
+  /// No description provided for @subsErrTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载超时（读取 {seconds} 秒）'**
+  String subsErrTimeout(int seconds);
+
+  /// No description provided for @subsErrTls.
+  ///
+  /// In zh, this message translates to:
+  /// **'TLS 握手失败，请检查证书或镜像地址'**
+  String get subsErrTls;
+
+  /// No description provided for @subsErrEmptyResponse.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅响应为空'**
+  String get subsErrEmptyResponse;
+
+  /// No description provided for @subsErrUnreachable.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络不可达'**
+  String get subsErrUnreachable;
+
+  /// No description provided for @subsErrUnreachableCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络不可达：{code}'**
+  String subsErrUnreachableCode(String code);
+
+  /// No description provided for @subsErrUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持网络订阅更新'**
+  String get subsErrUnsupported;
+
+  /// No description provided for @subsErrMirrorPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像模板必须包含 {list}'**
+  String subsErrMirrorPlaceholder(String list);
+
+  /// No description provided for @subsErrRawUrlInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'原始订阅地址格式无效'**
+  String get subsErrRawUrlInvalid;
+
+  /// No description provided for @subsErrMirrorScheme.
+  ///
+  /// In zh, this message translates to:
+  /// **'镜像模板生成的地址必须使用 HTTP 或 HTTPS'**
+  String get subsErrMirrorScheme;
+
+  /// No description provided for @subsErrEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅地址不能为空'**
+  String get subsErrEmpty;
+
+  /// No description provided for @subsErrBadFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅地址格式无效'**
+  String get subsErrBadFormat;
+
+  /// No description provided for @subsErrNotHttp.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅链接必须使用 HTTP 或 HTTPS'**
+  String get subsErrNotHttp;
+
+  /// No description provided for @subsErrNoHost.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅地址缺少主机名'**
+  String get subsErrNoHost;
+
+  /// No description provided for @siteCategoryShopping.
+  ///
+  /// In zh, this message translates to:
+  /// **'购物'**
+  String get siteCategoryShopping;
+
+  /// No description provided for @siteCategoryVideo.
+  ///
+  /// In zh, this message translates to:
+  /// **'视频'**
+  String get siteCategoryVideo;
+
+  /// No description provided for @siteCategoryMusic.
+  ///
+  /// In zh, this message translates to:
+  /// **'音乐'**
+  String get siteCategoryMusic;
+
+  /// No description provided for @siteCategorySocial.
+  ///
+  /// In zh, this message translates to:
+  /// **'社交'**
+  String get siteCategorySocial;
+
+  /// No description provided for @siteCategoryDeveloper.
+  ///
+  /// In zh, this message translates to:
+  /// **'开发者'**
+  String get siteCategoryDeveloper;
+
+  /// No description provided for @siteCategoryGame.
+  ///
+  /// In zh, this message translates to:
+  /// **'游戏'**
+  String get siteCategoryGame;
+
+  /// No description provided for @outboundProxyHostInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理地址仅支持 127.0.0.1 或 ::1'**
+  String get outboundProxyHostInvalid;
+
+  /// No description provided for @outboundProxyPortRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理端口必须在 1 到 65535 之间'**
+  String get outboundProxyPortRange;
+
+  /// No description provided for @outboundProxyAppRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择提供本地代理端口的应用'**
+  String get outboundProxyAppRequired;
+
+  /// No description provided for @outboundProxySelfNotAllowed.
+  ///
+  /// In zh, this message translates to:
+  /// **'不能选择 DITING 自身作为代理应用'**
+  String get outboundProxySelfNotAllowed;
+
+  /// No description provided for @outboundProxyAppMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选代理应用未安装'**
+  String get outboundProxyAppMissing;
+
+  /// No description provided for @outboundProxyCredentialsTooLong.
+  ///
+  /// In zh, this message translates to:
+  /// **'代理账号或密码过长'**
+  String get outboundProxyCredentialsTooLong;
+
+  /// No description provided for @updateDownloadNoPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败：未返回安装包路径'**
+  String get updateDownloadNoPath;
+
+  /// No description provided for @updateDownloadUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备不支持应用内下载，请用浏览器打开下载地址'**
+  String get updateDownloadUnsupported;
+
+  /// No description provided for @updateDownloadFailedCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败（{code}）'**
+  String updateDownloadFailedCode(String code);
+
+  /// No description provided for @dnsLatencySuccessRate.
+  ///
+  /// In zh, this message translates to:
+  /// **'成功率 {success}/{attempts}'**
+  String dnsLatencySuccessRate(int success, int attempts);
+
+  /// No description provided for @dnsLatencyUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备不支持测速'**
+  String get dnsLatencyUnsupported;
+
+  /// No description provided for @dnsLatencyChannelFailedCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速通道调用失败（{code}）'**
+  String dnsLatencyChannelFailedCode(String code);
+
+  /// No description provided for @dnsLatencyChannelFailedDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速通道调用失败：{detail}'**
+  String dnsLatencyChannelFailedDetail(String detail);
+
+  /// No description provided for @fontImportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法导入该字体'**
+  String get fontImportFailed;
+
+  /// No description provided for @fontReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取该字体文件'**
+  String get fontReadFailed;
+
+  /// No description provided for @fontParseFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法解析该字体文件，请确认它是完整的 TTF/OTF'**
+  String get fontParseFailed;
+
+  /// No description provided for @fontCustomName.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义字体'**
+  String get fontCustomName;
+
+  /// No description provided for @recognitionAvatarTooLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'头像体积超限'**
+  String get recognitionAvatarTooLarge;
+
+  /// No description provided for @recognitionConfigTooLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单配置过大'**
+  String get recognitionConfigTooLarge;
+
+  /// No description provided for @taglineRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听万象，明察清浊'**
+  String get taglineRunning;
+
+  /// No description provided for @taglineStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'收耳静眠，归于无声'**
+  String get taglineStopped;
+
+  /// No description provided for @backupErrProvidersInvalidJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务商配置不是合法 JSON'**
+  String get backupErrProvidersInvalidJson;
+
+  /// No description provided for @backupErrBootstrapInvalidJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'Bootstrap 配置不是合法 JSON'**
+  String get backupErrBootstrapInvalidJson;
+
+  /// No description provided for @backupErrAppearanceNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观分组应为对象'**
+  String get backupErrAppearanceNotObject;
+
+  /// No description provided for @backupErrSystemNotObject.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统设置分组应为对象'**
+  String get backupErrSystemNotObject;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

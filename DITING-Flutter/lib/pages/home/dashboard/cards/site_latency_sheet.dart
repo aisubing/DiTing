@@ -34,7 +34,7 @@ class SiteLatencyTargetSheet extends StatelessWidget {
           ListItem(
             leading: const GlyphIcon(AppGlyphs.link, size: 20),
             title: Text(context.l10n.siteLatencySheetCategory),
-            trailing: Text(target.category.label),
+            trailing: Text(target.category.label(context.l10n)),
           ),
           ListItem(
             leading: const GlyphIcon(AppGlyphs.link, size: 20),

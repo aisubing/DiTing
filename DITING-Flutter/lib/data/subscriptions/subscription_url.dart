@@ -2,6 +2,7 @@
 /// `{urlEncoded}` rules are frozen, since templates are persisted.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 const mirrorPlaceholders = <String>{
@@ -21,8 +22,10 @@ String? normalizeMirrorTemplate(String? template) {
     return null;
   }
   if (!mirrorPlaceholders.any(normalized.contains)) {
-    throw const FormatException(
-      '镜像模板必须包含 {url}、{urlEncoded}、{scheme}、{host}、{path} 或 {pathAndQuery}',
+    throw FormatException(
+      currentL10n.subsErrMirrorPlaceholder(
+        '{url}、{urlEncoded}、{scheme}、{host}、{path} 或 {pathAndQuery}',
+      ),
     );
   }
   buildMirrorUrl(normalized, 'https://example.com/rules.txt');
@@ -34,7 +37,7 @@ String? normalizeMirrorTemplate(String? template) {
 String buildMirrorUrl(String template, String originalUrl) {
   final uri = Uri.tryParse(originalUrl);
   if (uri == null) {
-    throw const FormatException('原始订阅地址格式无效');
+    throw FormatException(currentL10n.subsErrRawUrlInvalid);
   }
   final path = uri.path.isEmpty ? '/' : uri.path;
   final pathAndQuery = uri.query.isEmpty ? path : '$path?${uri.query}';
@@ -46,7 +49,7 @@ String buildMirrorUrl(String template, String originalUrl) {
       .replaceAll('{pathAndQuery}', pathAndQuery)
       .replaceAll('{path}', path);
   if (!result.startsWith('https://') && !result.startsWith('http://')) {
-    throw const FormatException('镜像模板生成的地址必须使用 HTTP 或 HTTPS');
+    throw FormatException(currentL10n.subsErrMirrorScheme);
   }
   return result;
 }
@@ -112,17 +115,17 @@ int countEffectiveRuleLines(String content) {
 String? validateSubscriptionUrl(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) {
-    return '订阅地址不能为空';
+    return currentL10n.subsErrEmpty;
   }
   final uri = Uri.tryParse(trimmed);
   if (uri == null || !uri.hasScheme) {
-    return '订阅地址格式无效';
+    return currentL10n.subsErrBadFormat;
   }
   if (uri.scheme != 'https' && uri.scheme != 'http') {
-    return '订阅链接必须使用 HTTP 或 HTTPS';
+    return currentL10n.subsErrNotHttp;
   }
   if (uri.host.isEmpty) {
-    return '订阅地址缺少主机名';
+    return currentL10n.subsErrNoHost;
   }
   return null;
 }

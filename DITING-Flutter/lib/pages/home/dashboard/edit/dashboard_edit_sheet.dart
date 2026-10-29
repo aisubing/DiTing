@@ -46,7 +46,7 @@ class DashboardEditSheet extends ConsumerWidget {
                 for (final widget in available)
                   ListItem(
                     leading: GlyphIcon(_glyphOf(widget)),
-                    title: Text(widget.label),
+                    title: Text(widget.label(context.l10n)),
                     subtitle: Text(_descriptionOf(widget, context.l10n)),
                     trailing: const GlyphIcon(AppGlyphs.addCircle, size: 20),
                     onTap: () {

@@ -1,6 +1,7 @@
 // Site latency card and detail page: nothing probes on open, and each category
 // button touches only its own sites.
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -10,6 +11,7 @@ import 'package:diting/pages/home/dashboard/cards/site_latency_card.dart';
 import 'package:diting/pages/home/dashboard/detail/site_latency_detail_page.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/diagnostics_providers.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -138,13 +140,18 @@ void _siteLatencyPage() {
     expect(find.text('未测速'), findsOneWidget);
     expect(find.text('待测'), findsOneWidget);
     // The page lists every category, in enum order; the list is lazy, so walk it.
+    final l10n = lookupAppL10n(const Locale('zh'));
     for (final category in SiteCategory.values) {
       await tester.dragUntilVisible(
-        find.text(category.label),
+        find.text(category.label(l10n)),
         find.byType(Scrollable).first,
         const Offset(0, -280),
       );
-      expect(find.text(category.label), findsWidgets, reason: category.label);
+      expect(
+        find.text(category.label(l10n)),
+        findsWidgets,
+        reason: category.label(l10n),
+      );
     }
     expect(runner.pingCalls, isEmpty);
   });
@@ -153,7 +160,10 @@ void _siteLatencyPage() {
     await pumpPage(tester, const SiteLatencyDetailPage());
 
     final search = siteLatencyInCategory(SiteCategory.search);
-    final button = find.byTooltip('测速${SiteCategory.search.label}');
+    final l10n = lookupAppL10n(const Locale('zh'));
+    final button = find.byTooltip(
+      '测速${SiteCategory.search.label(l10n)}',
+    );
     await tester.tap(button);
     await tester.pumpAndSettle();
 

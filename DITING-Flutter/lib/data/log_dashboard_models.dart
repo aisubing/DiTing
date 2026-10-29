@@ -1,5 +1,7 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
+
 enum LogRowStatus { passed, filtered, failed, bypassed, cached }
 
 /// DNS resolution quality from today's `dns_log` rows. [cacheHitRate] divides by `passed + error`
@@ -319,8 +321,8 @@ class LogSubscriptionBlock {
   final double rate;
 
   String get statusLabel {
-    if (deleted) return '已删除';
-    return enabled ? '已启用' : '已禁用';
+    if (deleted) return currentL10n.subscriptionDeleted;
+    return enabled ? currentL10n.commonEnabled : currentL10n.subscriptionDisabled;
   }
 
   // Value equality lets an unchanged refresh skip rebuilding the cards.

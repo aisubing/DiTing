@@ -24,7 +24,7 @@ class DisclaimerPage extends StatelessWidget {
           const InitialAgreementCard(),
           const SizedBox(height: 12),
           ListHeader(title: context.l10n.disclaimerTerms),
-          for (final term in mockDisclaimerTerms)
+          for (final term in mockDisclaimerTerms(context.l10n))
             DisclaimerTermCard(term: term),
           const SizedBox(height: 8),
           Padding(

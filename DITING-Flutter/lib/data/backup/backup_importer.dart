@@ -185,16 +185,18 @@ class BackupImporter {
   _ParsedBackup _parse(String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) {
-      throw const BackupFormatException('文件内容为空');
+      throw BackupFormatException(currentL10n.backupErrEmpty);
     }
     Object? decoded;
     try {
       decoded = jsonDecode(trimmed);
     } on FormatException catch (error) {
-      throw BackupFormatException('不是合法的 JSON：${error.message}');
+      throw BackupFormatException(
+        currentL10n.backupErrInvalidJson(error.message),
+      );
     }
     if (decoded is! Map) {
-      throw const BackupFormatException('备份文件的根节点必须是 JSON 对象');
+      throw BackupFormatException(currentL10n.backupErrRootNotObject);
     }
     final exportedAt = decoded['exportedAt'];
     final timestamp = exportedAt is int
@@ -213,23 +215,25 @@ class BackupImporter {
           legacyFormat: true,
         );
       }
-      throw const BackupFormatException(
-        '这不是谛听的备份文件：既没有 format 标记，也没有 formatVersion 版本号',
+      throw BackupFormatException(
+        currentL10n.backupErrNotDiting,
       );
     }
     final version = decoded['version'];
     if (version is! int) {
-      throw const BackupFormatException('备份文件缺少版本号');
+      throw BackupFormatException(currentL10n.backupErrNoVersion);
     }
     if (version > BackupFormat.maxReadableVersion) {
       throw BackupFormatException(
-        '备份版本 $version 高于本版应用支持的 ${BackupFormat.maxReadableVersion}，'
-        '请升级应用后再导入',
+        currentL10n.backupErrVersionTooHigh(
+          '$version',
+          BackupFormat.maxReadableVersion,
+        ),
       );
     }
     final data = decoded['data'];
     if (data is! Map) {
-      throw const BackupFormatException('备份文件缺少 data 段');
+      throw BackupFormatException(currentL10n.backupErrNoData);
     }
     return _ParsedBackup(
       data: {for (final entry in data.entries) '${entry.key}': entry.value},

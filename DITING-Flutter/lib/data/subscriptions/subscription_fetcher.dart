@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -131,7 +132,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
       allowFallback: false,
     );
     return result ??
-        SubscriptionFetchResult.failed('订阅地址不可用', requestedUrl: record.url);
+        SubscriptionFetchResult.failed(currentL10n.subsErrUrlUnavailable, requestedUrl: record.url);
   }
 
   /// Mirror URL, or null without a usable template or for a non-remote record.
@@ -176,7 +177,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     } on TimeoutException {
       return _fallbackOr(
         SubscriptionFetchResult.failed(
-          '下载超时（读取 ${readTimeout.inSeconds} 秒）',
+          currentL10n.subsErrTimeout(readTimeout.inSeconds),
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
@@ -194,7 +195,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     } on HandshakeException {
       return _fallbackOr(
         SubscriptionFetchResult.failed(
-          'TLS 握手失败，请检查证书或镜像地址',
+          currentL10n.subsErrTls,
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
@@ -203,7 +204,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     } on FormatException {
       return _fallbackOr(
         SubscriptionFetchResult.failed(
-          '订阅地址格式无效',
+          currentL10n.subsErrBadFormat,
           requestedUrl: requestedUrl,
           usedMirror: usedMirror,
         ),
@@ -265,7 +266,7 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
     final body = await _readBody(response);
     if (body.isEmpty) {
       return SubscriptionFetchResult.failed(
-        '订阅响应为空',
+        currentL10n.subsErrEmptyResponse,
         requestedUrl: requestedUrl,
         usedMirror: usedMirror,
       );
@@ -306,7 +307,9 @@ class HttpSubscriptionFetcher implements SubscriptionFetcher {
 
   static String _networkErrorText(SocketException error) {
     final code = error.osError?.message;
-    return code == null || code.isEmpty ? '网络不可达' : '网络不可达：$code';
+    return code == null || code.isEmpty
+        ? currentL10n.subsErrUnreachable
+        : currentL10n.subsErrUnreachableCode(code);
   }
 }
 
@@ -318,5 +321,5 @@ class UnavailableSubscriptionFetcher implements SubscriptionFetcher {
   Future<SubscriptionFetchResult> fetch(
     SubscriptionRecord record, {
     bool useValidators = true,
-  }) async => const SubscriptionFetchResult.failed('当前环境不支持网络订阅更新');
+  }) async => SubscriptionFetchResult.failed(currentL10n.subsErrUnsupported);
 }

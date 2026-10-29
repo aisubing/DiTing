@@ -3,6 +3,7 @@
 /// part of the config: Android lets only one app bind a loopback port.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 
 /// Matches 1.4.3 `OutboundProxyProtocol`; `storageValue` is parsed by the Go engine.
@@ -78,18 +79,18 @@ class OutboundProxyConfig {
     Set<String>? installedPackages,
   }) {
     if (host != '127.0.0.1' && host != '::1') {
-      return '代理地址仅支持 127.0.0.1 或 ::1';
+      return currentL10n.outboundProxyHostInvalid;
     }
-    if (port < 1 || port > 65535) return '代理端口必须在 1 到 65535 之间';
-    if (proxyAppPackage.trim().isEmpty) return '请选择提供本地代理端口的应用';
+    if (port < 1 || port > 65535) return currentL10n.outboundProxyPortRange;
+    if (proxyAppPackage.trim().isEmpty) return currentL10n.outboundProxyAppRequired;
     if (selfPackage != null && proxyAppPackage == selfPackage) {
-      return '不能选择 DITING 自身作为代理应用';
+      return currentL10n.outboundProxySelfNotAllowed;
     }
     if (installedPackages != null &&
         !installedPackages.contains(proxyAppPackage)) {
-      return '所选代理应用未安装';
+      return currentL10n.outboundProxyAppMissing;
     }
-    if (username.length > 255 || password.length > 255) return '代理账号或密码过长';
+    if (username.length > 255 || password.length > 255) return currentL10n.outboundProxyCredentialsTooLong;
     return null;
   }
 

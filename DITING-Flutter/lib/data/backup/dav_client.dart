@@ -1,6 +1,7 @@
 /// Minimal WebDAV client: PROPFIND, MKCOL, PUT, GET. Credentials stay in memory.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -88,16 +89,18 @@ class DavClient {
         // A missing directory is normal on first use; failing to create it is not.
         final created = await _mkcol(client, credentials);
         if (created) return const DavProbeResult.ok(created: true);
-        return const DavProbeResult.failed('服务器可达但无法创建目录，请检查账号是否具备写入权限');
+        return DavProbeResult.failed(currentL10n.davProbeNoWrite);
       }
       return DavProbeResult.failed(_statusMessage(status), statusCode: status);
     } on SocketException catch (error) {
       // Unreachable address, DNS failure and closed port look alike to users.
-      return DavProbeResult.failed('无法连接到服务器：${error.message}');
+      return DavProbeResult.failed(
+        currentL10n.davProbeConnect(error.message),
+      );
     } on HandshakeException {
-      return const DavProbeResult.failed('TLS 握手失败：服务器证书不被信任（自签证书需在系统里安装）');
+      return DavProbeResult.failed(currentL10n.davProbeTls);
     } on HttpException {
-      return DavProbeResult.failed('HTTP 请求失败，请检查服务器是否支持 WebDAV');
+      return DavProbeResult.failed(currentL10n.davProbeHttp);
     } finally {
       client.close(force: true);
     }
@@ -137,9 +140,11 @@ class DavClient {
         statusCode: response.statusCode,
       );
     } on SocketException catch (error) {
-      return DavProbeResult.failed('上传失败：无法连接服务器（${error.message}）');
+      return DavProbeResult.failed(
+        currentL10n.davUploadConnect(error.message),
+      );
     } on HandshakeException {
-      return const DavProbeResult.failed('上传失败：TLS 证书不被信任');
+      return DavProbeResult.failed(currentL10n.davUploadTls);
     } finally {
       client.close(force: true);
     }
@@ -167,7 +172,9 @@ class DavClient {
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         await response.drain<void>();
-        throw HttpException('下载失败（HTTP ${response.statusCode}）');
+        throw HttpException(
+          currentL10n.davDownloadHttp(response.statusCode),
+        );
       }
       return await response.transform(utf8.decoder).join().timeout(timeout);
     } finally {
@@ -217,13 +224,13 @@ class DavClient {
   }
 
   String _statusMessage(int status) => switch (status) {
-    401 => '认证失败：用户名或密码不正确',
-    403 => '服务器拒绝访问：该账号没有读写此目录的权限',
-    404 => '服务器上找不到该目录',
-    405 => '服务器不允许该操作（可能未启用 WebDAV）',
-    409 => '目标目录不存在，无法写入',
-    507 => '服务器存储空间不足',
-    >= 500 => '服务器内部错误（HTTP $status）',
-    _ => '服务器返回 HTTP $status',
+    401 => currentL10n.davStatus401,
+    403 => currentL10n.davStatus403,
+    404 => currentL10n.davStatus404,
+    405 => currentL10n.davStatus405,
+    409 => currentL10n.davStatus409,
+    507 => currentL10n.davStatus507,
+    >= 500 => currentL10n.davStatus5xx(status),
+    _ => currentL10n.davStatusOther(status),
   };
 }

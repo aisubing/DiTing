@@ -42,7 +42,7 @@ class SiteLatencyCategorySection extends StatelessWidget {
         : context.l10n.siteLatencyAliveRatio(alive, targets.length);
     return DashboardDetailCard(
       glyph: category.glyph,
-      title: category.label,
+      title: category.label(context.l10n),
       trailing: [
         Text(
           verdict,
@@ -58,7 +58,9 @@ class SiteLatencyCategorySection extends StatelessWidget {
         // `DashboardIconButton` overflows on purpose and needs a bounded height, which the
         // unbounded column of a detail page does not give it.
         IconButton(
-          tooltip: context.l10n.siteLatencyTestCategory(category.label),
+          tooltip: context.l10n.siteLatencyTestCategory(
+            category.label(context.l10n),
+          ),
           onPressed: probing ? null : onProbe,
           icon: const GlyphIcon(AppGlyphs.target, size: 18),
           style: IconButton.styleFrom(
