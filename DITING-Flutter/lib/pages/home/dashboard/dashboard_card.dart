@@ -41,8 +41,9 @@ class DashboardCard extends StatelessWidget {
               children: [
                 SizedBox(height: DashboardEditBar.height, child: editBar),
                 const SizedBox(height: DashboardEditBar.gap),
-                // Dim the body only, so the edit bar keeps its colors.
-                DisabledMask(status: true, child: child),
+                // Dim the body only, so the edit bar keeps its colors. Editing wins over the
+                // card's own buttons: a tap mid-arrangement would read as a lost drag.
+                IgnorePointer(child: DisabledMask(status: true, child: child)),
               ],
             ),
     );
@@ -58,7 +59,7 @@ class DashboardCard extends StatelessWidget {
         ),
         child: Material(
           type: MaterialType.transparency,
-          child: onTap == null
+          child: onTap == null || editBar != null
               ? content
               : FocusRing(
                   shape: shape,

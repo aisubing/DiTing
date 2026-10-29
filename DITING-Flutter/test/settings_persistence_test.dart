@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/dashboard_models.dart';
 import 'package:diting/data/http/request_user_agent.dart';
+import 'package:diting/data/log_dashboard_widgets.dart';
 import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/data/prefs/config_resource_store.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
@@ -17,6 +18,9 @@ import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/config_providers_resources.dart';
 import 'package:diting/state/dashboard_providers.dart';
+import 'package:diting/state/hub_settings_providers.dart';
+import 'package:diting/state/log_dashboard_layout_providers.dart';
+import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/site_latency_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -120,6 +124,70 @@ void _settingsPersistence() {
         container().read(dashboardWidgetsProvider),
         defaultDashboardWidgets,
       );
+    });
+  });
+
+  group('日志仪表盘按日志模式各自保存布局', () {
+    test('没有落盘时用该模式的默认卡片', () {
+      for (final mode in LegacyLogMode.values) {
+        expect(
+          container().read(logDashboardWidgetsProvider(mode)),
+          logDashboardCatalogOf(mode),
+        );
+      }
+    });
+
+    test('改一个模式不影响另一个，重新打开后仍在', () {
+      container()
+          .read(logDashboardWidgetsProvider(LegacyLogMode.all).notifier)
+          .remove(LogDashboardWidget.hero);
+      final reopened = container();
+      expect(
+        reopened.read(logDashboardWidgetsProvider(LegacyLogMode.all)),
+        isNot(contains(LogDashboardWidget.hero)),
+      );
+      expect(
+        reopened.read(logDashboardWidgetsProvider(LegacyLogMode.off)),
+        contains(LogDashboardWidget.hero),
+      );
+    });
+
+    test('不属于该模式的卡片读取时跳过、也加不进去', () {
+      store.putString(
+        'dns_vpn_prefs',
+        'log_dashboard_widget_order_off',
+        '["trafficMonitor","privacyMode"]',
+      );
+      final instance = container();
+      final provider = logDashboardWidgetsProvider(LegacyLogMode.off);
+      expect(instance.read(provider), [LogDashboardWidget.privacyMode]);
+      instance.read(provider.notifier).add(LogDashboardWidget.trafficMonitor);
+      expect(instance.read(provider), [LogDashboardWidget.privacyMode]);
+    });
+
+    test('隐藏 AI 卡时拖动排序不丢失它的位置', () {
+      final instance = ProviderContainer(
+        overrides: [
+          legacyPrefsStoreProvider.overrideWithValue(store),
+          agentKeyConfiguredProvider.overrideWithValue(false),
+        ],
+      );
+      addTearDown(instance.dispose);
+      const mode = LegacyLogMode.blockedAndErrors;
+      final visible = instance.read(visibleLogDashboardWidgetsProvider(mode));
+      expect(visible, isNot(contains(LogDashboardWidget.aiInsight)));
+      // Move the hero (visible index 0) below the highlight card.
+      instance
+          .read(logDashboardWidgetsProvider(mode).notifier)
+          .moveVisible(visible, 0, 1);
+      expect(instance.read(logDashboardWidgetsProvider(mode)), [
+        LogDashboardWidget.filteredHighlight,
+        LogDashboardWidget.hero,
+        LogDashboardWidget.aiInsight,
+        LogDashboardWidget.trafficStructure,
+        LogDashboardWidget.recentBlocked,
+        LogDashboardWidget.ruleBlocks,
+      ]);
     });
   });
 

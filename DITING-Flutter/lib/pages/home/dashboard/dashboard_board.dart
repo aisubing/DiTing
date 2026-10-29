@@ -220,10 +220,10 @@ class _EditingBoard extends ConsumerWidget {
                       children: [
                         ReorderableDragStartListener(
                           index: index,
-                          child: _DragBadge(),
+                          child: const DashboardDragBadge(),
                         ),
                         const Spacer(),
-                        _RemoveBadge(
+                        DashboardRemoveBadge(
                           onPressed: () => ref
                               .read(dashboardWidgetsProvider.notifier)
                               .remove(widget),
@@ -246,8 +246,9 @@ class _EditingBoard extends ConsumerWidget {
   }
 }
 
-class _RemoveBadge extends StatelessWidget {
-  const _RemoveBadge({required this.onPressed});
+/// Remove badge of an edit-mode card, shared by home and the log dashboard.
+class DashboardRemoveBadge extends StatelessWidget {
+  const DashboardRemoveBadge({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
@@ -274,7 +275,10 @@ class _RemoveBadge extends StatelessWidget {
   }
 }
 
-class _DragBadge extends StatelessWidget {
+/// Drag handle badge of an edit-mode card.
+class DashboardDragBadge extends StatelessWidget {
+  const DashboardDragBadge({super.key});
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;

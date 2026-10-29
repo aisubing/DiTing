@@ -8494,4 +8494,64 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get outboundProxyTargetsRequired => '「仅选中应用」模式下请至少选择一个走代理的应用';
+
+  @override
+  String get logDashboardCardHero => '仪表盘标题';
+
+  @override
+  String get logDashboardCardTrafficStructure => '流量结构';
+
+  @override
+  String logDashboardEditHint(Object mode) {
+    return '正在编辑「$mode」模式的布局，切换日志模式后各自独立。拖动手柄排序，点右上角移除。';
+  }
+
+  @override
+  String get logDashboardModeFooter => '这里只列出当前日志模式能显示数据的卡片。';
+
+  @override
+  String get logDashboardCardHeroDescription => '页面顶部的标题与一句话说明，随日志模式变化';
+
+  @override
+  String get logDashboardCardTrafficMonitorDescription => '上下行实时速率与今日累计流量';
+
+  @override
+  String get logDashboardCardRequestOverviewDescription => '今日请求、放行、拦截与缓存命中计数';
+
+  @override
+  String get logDashboardCardHighlightDescription => '今日拦截、错误与旁路的重点计数';
+
+  @override
+  String get logDashboardCardPrivacyDescription => '说明日志已关闭、不记录任何请求';
+
+  @override
+  String get logDashboardCardOffMetricDescription =>
+      '缓存条目、缓存命中、竞速与 Bootstrap 次数';
+
+  @override
+  String get logDashboardCardPerfDescription => '平均延迟、缓存命中率与竞速、Bootstrap 成功率';
+
+  @override
+  String get logDashboardCardAiDescription => '用 AI 研判今日流量，复用上一次的报告';
+
+  @override
+  String get logDashboardCardTrafficStructureDescription => '今日请求结果构成的环形图';
+
+  @override
+  String get logDashboardCardRecentRequestsDescription => '最近几条请求记录';
+
+  @override
+  String get logDashboardCardRecentBlockedDescription => '最近几条拦截与错误记录';
+
+  @override
+  String get logDashboardCardCacheDescription => '命中次数最多的缓存域名';
+
+  @override
+  String get logDashboardCardRaceDescription => '竞速中胜出最多的上游';
+
+  @override
+  String get logDashboardCardBootstrapDescription => 'Bootstrap DNS 的解析次数与成功率';
+
+  @override
+  String get logDashboardCardRuleBlocksDescription => '拦截次数最多的规则来源';
 }

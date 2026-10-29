@@ -8,6 +8,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/pages/about/about_page.dart';
 import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
+import 'package:diting/pages/home/dashboard/dashboard_board.dart';
 import 'package:diting/pages/home/dashboard/detail/network_speed_detail_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
 import 'package:diting/pages/hub/feature_hub_page.dart';
@@ -284,6 +285,22 @@ void _appShell() {
       await tester.pumpAndSettle();
       expect(find.byType(TrafficPage), findsNothing);
       expect(find.byType(NavigationDock), findsOneWidget);
+    });
+
+    // Regression: a page outside the bar must report -1, not light up "home"
+    testWidgets('日志仪表盘编辑模式可移除卡片，完成后卡片不再显示', (tester) async {
+      await pumpApp(tester, initialLocation: Routes.logs, dock: userDock);
+      expect(find.text('请求日志仪表盘'), findsOneWidget);
+      await tester.tap(find.byTooltip('编辑仪表盘'));
+      await tester.pumpAndSettle();
+      // The hero is the first card; its remove badge is the first one.
+      await tester.tap(find.byType(DashboardRemoveBadge).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('完成'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('请求日志仪表盘'), findsNothing);
+      expect(find.text('流量监控'), findsOneWidget);
     });
 
     // Regression: a page outside the bar must report -1, not light up "home"

@@ -62,16 +62,20 @@ class LogsDashboardHero extends StatelessWidget {
     super.key,
     required this.title,
     required this.description,
+    this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 4),
   });
 
   final String title;
   final String description;
 
+  /// Inside the card column the column already supplies the side gutter.
+  final EdgeInsets padding;
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

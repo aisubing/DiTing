@@ -15500,6 +15500,120 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'「仅选中应用」模式下请至少选择一个走代理的应用'**
   String get outboundProxyTargetsRequired;
+
+  /// No description provided for @logDashboardCardHero.
+  ///
+  /// In zh, this message translates to:
+  /// **'仪表盘标题'**
+  String get logDashboardCardHero;
+
+  /// No description provided for @logDashboardCardTrafficStructure.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量结构'**
+  String get logDashboardCardTrafficStructure;
+
+  /// No description provided for @logDashboardEditHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在编辑「{mode}」模式的布局，切换日志模式后各自独立。拖动手柄排序，点右上角移除。'**
+  String logDashboardEditHint(Object mode);
+
+  /// No description provided for @logDashboardModeFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里只列出当前日志模式能显示数据的卡片。'**
+  String get logDashboardModeFooter;
+
+  /// No description provided for @logDashboardCardHeroDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面顶部的标题与一句话说明，随日志模式变化'**
+  String get logDashboardCardHeroDescription;
+
+  /// No description provided for @logDashboardCardTrafficMonitorDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'上下行实时速率与今日累计流量'**
+  String get logDashboardCardTrafficMonitorDescription;
+
+  /// No description provided for @logDashboardCardRequestOverviewDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'今日请求、放行、拦截与缓存命中计数'**
+  String get logDashboardCardRequestOverviewDescription;
+
+  /// No description provided for @logDashboardCardHighlightDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'今日拦截、错误与旁路的重点计数'**
+  String get logDashboardCardHighlightDescription;
+
+  /// No description provided for @logDashboardCardPrivacyDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'说明日志已关闭、不记录任何请求'**
+  String get logDashboardCardPrivacyDescription;
+
+  /// No description provided for @logDashboardCardOffMetricDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存条目、缓存命中、竞速与 Bootstrap 次数'**
+  String get logDashboardCardOffMetricDescription;
+
+  /// No description provided for @logDashboardCardPerfDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'平均延迟、缓存命中率与竞速、Bootstrap 成功率'**
+  String get logDashboardCardPerfDescription;
+
+  /// No description provided for @logDashboardCardAiDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'用 AI 研判今日流量，复用上一次的报告'**
+  String get logDashboardCardAiDescription;
+
+  /// No description provided for @logDashboardCardTrafficStructureDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'今日请求结果构成的环形图'**
+  String get logDashboardCardTrafficStructureDescription;
+
+  /// No description provided for @logDashboardCardRecentRequestsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近几条请求记录'**
+  String get logDashboardCardRecentRequestsDescription;
+
+  /// No description provided for @logDashboardCardRecentBlockedDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近几条拦截与错误记录'**
+  String get logDashboardCardRecentBlockedDescription;
+
+  /// No description provided for @logDashboardCardCacheDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中次数最多的缓存域名'**
+  String get logDashboardCardCacheDescription;
+
+  /// No description provided for @logDashboardCardRaceDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'竞速中胜出最多的上游'**
+  String get logDashboardCardRaceDescription;
+
+  /// No description provided for @logDashboardCardBootstrapDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'Bootstrap DNS 的解析次数与成功率'**
+  String get logDashboardCardBootstrapDescription;
+
+  /// No description provided for @logDashboardCardRuleBlocksDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截次数最多的规则来源'**
+  String get logDashboardCardRuleBlocksDescription;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

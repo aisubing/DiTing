@@ -9058,4 +9058,78 @@ class AppL10nEn extends AppL10n {
   @override
   String get outboundProxyTargetsRequired =>
       'Pick at least one app to use the proxy in Selected apps mode';
+
+  @override
+  String get logDashboardCardHero => 'Dashboard title';
+
+  @override
+  String get logDashboardCardTrafficStructure => 'Traffic structure';
+
+  @override
+  String logDashboardEditHint(Object mode) {
+    return 'Editing the layout for $mode; each log mode keeps its own. Drag the handle to reorder, tap the top-right badge to remove.';
+  }
+
+  @override
+  String get logDashboardModeFooter =>
+      'Only cards that have data in the current log mode are listed.';
+
+  @override
+  String get logDashboardCardHeroDescription =>
+      'Title and one-line summary at the top, following the log mode';
+
+  @override
+  String get logDashboardCardTrafficMonitorDescription =>
+      'Live up and down rates and today\'s traffic';
+
+  @override
+  String get logDashboardCardRequestOverviewDescription =>
+      'Today\'s requests, passed, blocked and cache hits';
+
+  @override
+  String get logDashboardCardHighlightDescription =>
+      'Today\'s blocks, errors and bypasses';
+
+  @override
+  String get logDashboardCardPrivacyDescription =>
+      'Explains that logging is off and nothing is recorded';
+
+  @override
+  String get logDashboardCardOffMetricDescription =>
+      'Cache entries, cache hits, race and bootstrap counts';
+
+  @override
+  String get logDashboardCardPerfDescription =>
+      'Average latency, cache hit rate, race and bootstrap success';
+
+  @override
+  String get logDashboardCardAiDescription =>
+      'AI review of today\'s traffic, reusing the last report';
+
+  @override
+  String get logDashboardCardTrafficStructureDescription =>
+      'Ring chart of today\'s request results';
+
+  @override
+  String get logDashboardCardRecentRequestsDescription =>
+      'The latest request records';
+
+  @override
+  String get logDashboardCardRecentBlockedDescription =>
+      'The latest blocks and errors';
+
+  @override
+  String get logDashboardCardCacheDescription => 'Most-hit cached domains';
+
+  @override
+  String get logDashboardCardRaceDescription =>
+      'Upstreams that win races most often';
+
+  @override
+  String get logDashboardCardBootstrapDescription =>
+      'Bootstrap DNS lookups and success rate';
+
+  @override
+  String get logDashboardCardRuleBlocksDescription =>
+      'Rule sources that block the most';
 }

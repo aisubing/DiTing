@@ -87,8 +87,24 @@ extension LegacyAppearanceSettings on LegacySettings {
 
   /// Dashboard card order by `DashboardWidget.name`; null when the board was never edited, so the
   /// built-in defaults apply while an emptied board still restores as empty.
-  List<String>? get dashboardWidgetOrder {
-    final raw = _string(LegacySettings.uiContainer, 'dashboard_widget_order');
+  List<String>? get dashboardWidgetOrder => _decodeWidgetNames(
+    _string(LegacySettings.uiContainer, 'dashboard_widget_order'),
+  );
+
+  /// Log dashboard card order for one log mode (`LegacyLogMode.storageValue`); each mode keeps
+  /// its own layout because each mode shows a different card set. Null means never edited.
+  List<String>? logDashboardWidgetOrder(String mode) => _decodeWidgetNames(
+    _string(LegacySettings.uiContainer, 'log_dashboard_widget_order_$mode'),
+  );
+
+  void setLogDashboardWidgetOrder(String mode, List<String> names) =>
+      _store.putString(
+        LegacySettings.uiContainer,
+        'log_dashboard_widget_order_$mode',
+        jsonEncode(names),
+      );
+
+  List<String>? _decodeWidgetNames(String? raw) {
     if (raw == null || raw.isEmpty) {
       return null;
     }
