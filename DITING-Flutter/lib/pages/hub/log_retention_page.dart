@@ -20,11 +20,11 @@ class LogRetentionPage extends ConsumerWidget {
     final retentionDays = ref.watch(logRetentionProvider);
     final floatingLog = ref.watch(floatingLogProvider);
     return CommonScaffold(
-      title: '日志模式',
+      title: context.l10n.logRetentionTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: 'DNS 请求日志',
+            title: context.l10n.logRetentionDnsLogs,
             items: [
               for (final option in LegacyLogMode.values)
                 ListItem(
@@ -39,25 +39,25 @@ class LogRetentionPage extends ConsumerWidget {
                       ref.read(logModeProvider.notifier).select(option),
                 ),
             ],
-            footer: '关闭后不会删除已有日志，重新开启即可继续查看。',
+            footer: context.l10n.logRetentionOffNote,
           ),
           generateSection(
-            title: '悬浮窗',
+            title: context.l10n.logRetentionOverlay,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.eye),
-                title: const Text('悬浮窗日志'),
-                subtitle: const Text('VPN 运行且应用在后台时显示悬浮球，点击查看最近请求'),
+                title: Text(context.l10n.logRetentionOverlayLogs),
+                subtitle: Text(context.l10n.logRetentionOverlayBody),
                 value: floatingLog,
                 onChanged: (value) =>
                     ref.read(floatingLogProvider.notifier).toggle(value),
               ),
             ],
-            footer: '需要系统悬浮窗权限；回到应用前台时悬浮窗会自动隐藏。',
+            footer: context.l10n.logRetentionOverlayNote,
           ),
           if (mode != LegacyLogMode.off)
             generateSection(
-              title: '自动清理时间',
+              title: context.l10n.logRetentionCleanup,
               items: [
                 for (final days in _retentionOptions)
                   ListItem(
@@ -67,7 +67,7 @@ class LogRetentionPage extends ConsumerWidget {
                           : AppGlyphs.clock,
                       size: 20,
                     ),
-                    title: Text('保留 $days 天'),
+                    title: Text(context.l10n.logRetentionKeepDays('$days')),
                     trailing: retentionDays == days
                         ? const SelectionCheck()
                         : null,
@@ -76,8 +76,7 @@ class LogRetentionPage extends ConsumerWidget {
                   ),
               ],
               footer:
-                  '超过所选时间的请求日志由隧道服务每小时清理一次'
-                  '（首次在启动 30 秒后）。关闭日志不会删除已有记录。',
+                  context.l10n.logRetentionCleanupNote,
             ),
           const SizedBox(height: 24),
         ],

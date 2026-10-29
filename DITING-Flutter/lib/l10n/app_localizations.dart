@@ -10633,6 +10633,396 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'名单由云端下发，进入页面时自动检查更新'**
   String get recognitionCloudNote;
+
+  /// No description provided for @appRulesAllowCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{package} · {count} 个放行域名'**
+  String appRulesAllowCount(Object count, Object package);
+
+  /// No description provided for @appRulesConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'已配置'**
+  String get appRulesConfigured;
+
+  /// No description provided for @appRulesSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get appRulesSystem;
+
+  /// No description provided for @appRulesIncludeSub.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含子域名'**
+  String get appRulesIncludeSub;
+
+  /// No description provided for @appRulesDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get appRulesDelete;
+
+  /// No description provided for @appRulesAddDomainTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加放行域名'**
+  String get appRulesAddDomainTitle;
+
+  /// No description provided for @appRulesCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get appRulesCancel;
+
+  /// No description provided for @appRulesAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get appRulesAdd;
+
+  /// No description provided for @appRulesDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'域名'**
+  String get appRulesDomain;
+
+  /// No description provided for @appRulesDomainHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'只填裸域名；包含子域名，不需要写通配符或 @@ 前缀'**
+  String get appRulesDomainHint;
+
+  /// No description provided for @appRulesAllowlistRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'白名单（放行）'**
+  String get appRulesAllowlistRow;
+
+  /// No description provided for @appRulesBlocklistRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑名单（拦截）'**
+  String get appRulesBlocklistRow;
+
+  /// No description provided for @appRulesImportant.
+  ///
+  /// In zh, this message translates to:
+  /// **'重要'**
+  String get appRulesImportant;
+
+  /// No description provided for @appRulesDisable.
+  ///
+  /// In zh, this message translates to:
+  /// **'停用'**
+  String get appRulesDisable;
+
+  /// No description provided for @appRulesEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用'**
+  String get appRulesEnable;
+
+  /// No description provided for @appRulesAddRuleTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 DNS 规则'**
+  String get appRulesAddRuleTitle;
+
+  /// No description provided for @appRulesRuleDomainHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'只填裸域名；仅对本应用生效'**
+  String get appRulesRuleDomainHint;
+
+  /// No description provided for @appRulesBlocklist.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑名单'**
+  String get appRulesBlocklist;
+
+  /// No description provided for @appRulesAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'白名单'**
+  String get appRulesAllowlist;
+
+  /// No description provided for @logRetentionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志模式'**
+  String get logRetentionTitle;
+
+  /// No description provided for @logRetentionDnsLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 请求日志'**
+  String get logRetentionDnsLogs;
+
+  /// No description provided for @logRetentionOffNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后不会删除已有日志，重新开启即可继续查看。'**
+  String get logRetentionOffNote;
+
+  /// No description provided for @logRetentionOverlay.
+  ///
+  /// In zh, this message translates to:
+  /// **'悬浮窗'**
+  String get logRetentionOverlay;
+
+  /// No description provided for @logRetentionOverlayLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'悬浮窗日志'**
+  String get logRetentionOverlayLogs;
+
+  /// No description provided for @logRetentionOverlayBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPN 运行且应用在后台时显示悬浮球，点击查看最近请求'**
+  String get logRetentionOverlayBody;
+
+  /// No description provided for @logRetentionOverlayNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要系统悬浮窗权限；回到应用前台时悬浮窗会自动隐藏。'**
+  String get logRetentionOverlayNote;
+
+  /// No description provided for @logRetentionCleanup.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动清理时间'**
+  String get logRetentionCleanup;
+
+  /// No description provided for @logRetentionKeepDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留 {days} 天'**
+  String logRetentionKeepDays(Object days);
+
+  /// No description provided for @logRetentionCleanupNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'超过所选时间的请求日志由隧道服务每小时清理一次（首次在启动 30 秒后）。关闭日志不会删除已有记录。'**
+  String get logRetentionCleanupNote;
+
+  /// No description provided for @appBlockTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁止联网应用'**
+  String get appBlockTitle;
+
+  /// No description provided for @appBlockInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'通过本机 VPN 按 UID 阻止所选应用的全部网络连接。共享同一 UID 的应用会一并受影响。'**
+  String get appBlockInfo;
+
+  /// No description provided for @appBlockToggle.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用禁止联网'**
+  String get appBlockToggle;
+
+  /// No description provided for @appBlockToggleEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未选择应用；开启后不会阻断流量'**
+  String get appBlockToggleEmpty;
+
+  /// No description provided for @appBlockSelection.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁止联网的应用'**
+  String get appBlockSelection;
+
+  /// No description provided for @appExcludeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'排除应用'**
+  String get appExcludeTitle;
+
+  /// No description provided for @appExcludeInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'排除后，应用将使用系统 DNS，不参与本应用的过滤、缓存、日志和统计。'**
+  String get appExcludeInfo;
+
+  /// No description provided for @appExcludeSelection.
+  ///
+  /// In zh, this message translates to:
+  /// **'排除的应用'**
+  String get appExcludeSelection;
+
+  /// No description provided for @appSelectionSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存，启动 DNS VPN 后生效'**
+  String get appSelectionSaved;
+
+  /// No description provided for @appSelectionSaveTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存更改？'**
+  String get appSelectionSaveTitle;
+
+  /// No description provided for @appSelectionSaveBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{title}」的选择还没保存。保存后离开，还是放弃这些修改？'**
+  String appSelectionSaveBody(Object title);
+
+  /// No description provided for @appSelectionSwitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'开关'**
+  String get appSelectionSwitch;
+
+  /// No description provided for @appSelectionNoAppsYet.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未选择应用'**
+  String get appSelectionNoAppsYet;
+
+  /// No description provided for @appSelectionCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {count} 个应用'**
+  String appSelectionCount(Object count);
+
+  /// No description provided for @appSelectionNoAppsAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备上没有可选的应用'**
+  String get appSelectionNoAppsAvailable;
+
+  /// No description provided for @appSelectionNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到匹配应用'**
+  String get appSelectionNoMatch;
+
+  /// No description provided for @appSelectionSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get appSelectionSave;
+
+  /// No description provided for @appSelectionNothingRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'未读取到任何已安装应用；此处的勾选保存后不会命中任何应用。'**
+  String get appSelectionNothingRead;
+
+  /// No description provided for @appSelectionExclusiveNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'勾选会同时取消该应用在「排除应用」「禁止联网」「HTTPS 检查」与应用独立规则里的选择。'**
+  String get appSelectionExclusiveNote;
+
+  /// No description provided for @bootstrapTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'引导解析设置'**
+  String get bootstrapTitle;
+
+  /// No description provided for @bootstrapAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增 Bootstrap IP'**
+  String get bootstrapAdd;
+
+  /// No description provided for @bootstrapGlobal.
+  ///
+  /// In zh, this message translates to:
+  /// **'全局开关'**
+  String get bootstrapGlobal;
+
+  /// No description provided for @bootstrapEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 Bootstrap IP'**
+  String get bootstrapEnable;
+
+  /// No description provided for @bootstrapEnableBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用独立递归 DNS 解析加密服务商域名，支持智能权重优选与自动回退'**
+  String get bootstrapEnableBody;
+
+  /// No description provided for @bootstrapEnableNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后将通过加权算法动态优选 Bootstrap IP；关闭后将通过系统 DNS 解析加密上游域名。'**
+  String get bootstrapEnableNote;
+
+  /// No description provided for @bootstrapBuiltin.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置 Bootstrap IP'**
+  String get bootstrapBuiltin;
+
+  /// No description provided for @bootstrapCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 Bootstrap IP'**
+  String get bootstrapCustom;
+
+  /// No description provided for @bootstrapNoCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无自定义 Bootstrap IP。点击右上角「新增」添加。'**
+  String get bootstrapNoCustom;
+
+  /// No description provided for @bootstrapNoSample.
+  ///
+  /// In zh, this message translates to:
+  /// **'{ip} · 暂无样本'**
+  String bootstrapNoSample(Object ip);
+
+  /// No description provided for @bootstrapAverage.
+  ///
+  /// In zh, this message translates to:
+  /// **' · 平均 {ms}ms'**
+  String bootstrapAverage(Object ms);
+
+  /// No description provided for @bootstrapFailures.
+  ///
+  /// In zh, this message translates to:
+  /// **' · 失败 {count}'**
+  String bootstrapFailures(Object count);
+
+  /// No description provided for @bootstrapStats.
+  ///
+  /// In zh, this message translates to:
+  /// **'{ip}{latency} · 样本 {samples} · 成功 {success}%{failures}'**
+  String bootstrapStats(
+    Object failures,
+    Object ip,
+    Object latency,
+    Object samples,
+    Object success,
+  );
+
+  /// No description provided for @bootstrapInvalidIp.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写合法的 IPv4 或 IPv6 地址'**
+  String get bootstrapInvalidIp;
+
+  /// No description provided for @bootstrapNameOptional.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称（可选）'**
+  String get bootstrapNameOptional;
+
+  /// No description provided for @bootstrapIpAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'IP 地址'**
+  String get bootstrapIpAddress;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -31,23 +31,23 @@ class BootstrapSettingsPage extends ConsumerWidget {
         if (row.id.isNotEmpty) row.id: row,
     };
     return CommonScaffold(
-      title: '引导解析设置',
+      title: context.l10n.bootstrapTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '新增 Bootstrap IP',
+          tooltip: context.l10n.bootstrapAdd,
           onPressed: () => _add(context, ref, custom),
         ),
       ],
       body: PageBody(
         children: [
           generateSection(
-            title: '全局开关',
+            title: context.l10n.bootstrapGlobal,
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.language),
-                title: const Text('启用 Bootstrap IP'),
-                subtitle: const Text('使用独立递归 DNS 解析加密服务商域名，支持智能权重优选与自动回退'),
+                title: Text(context.l10n.bootstrapEnable),
+                subtitle: Text(context.l10n.bootstrapEnableBody),
                 value: enabled,
                 onChanged: (value) {
                   settings.setBootstrapEnabled(value);
@@ -56,11 +56,10 @@ class BootstrapSettingsPage extends ConsumerWidget {
               ),
             ],
             footer:
-                '开启后将通过加权算法动态优选 Bootstrap IP；'
-                '关闭后将通过系统 DNS 解析加密上游域名。',
+                context.l10n.bootstrapEnableNote,
           ),
           generateSection(
-            title: '内置 Bootstrap IP',
+            title: context.l10n.bootstrapBuiltin,
             items: [
               for (final entry in defaultBootstrapEntries(context.l10n))
                 _BootstrapRow(
@@ -78,7 +77,7 @@ class BootstrapSettingsPage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '自定义 Bootstrap IP',
+            title: context.l10n.bootstrapCustom,
             items: [
               for (final entry in custom)
                 _BootstrapRow(
@@ -103,7 +102,7 @@ class BootstrapSettingsPage extends ConsumerWidget {
                   ]),
                 ),
             ],
-            footer: custom.isEmpty ? '暂无自定义 Bootstrap IP。点击右上角「新增」添加。' : null,
+            footer: custom.isEmpty ? context.l10n.bootstrapNoCustom : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -225,14 +224,21 @@ class _BootstrapRow extends StatelessWidget {
   String get _subtitle {
     final row = stat;
     if (row == null || row.attempts == 0) {
-      return '${entry.ip} · 暂无样本';
+      return currentL10n.bootstrapNoSample(entry.ip);
     }
     final success = (row.successes * 100 / row.attempts).round();
     final latency = row.averageElapsedMs == null
         ? ''
-        : ' · 平均 ${row.averageElapsedMs!.round()}ms';
-    return '${entry.ip}$latency · 样本 ${row.attempts} · 成功 $success%'
-        '${row.failures > 0 ? ' · 失败 ${row.failures}' : ''}';
+        : currentL10n.bootstrapAverage('${row.averageElapsedMs!.round()}');
+    return currentL10n.bootstrapStats(
+      entry.ip,
+      latency,
+      '${row.attempts}',
+      '$success',
+      row.failures > 0
+          ? currentL10n.bootstrapFailures('${row.failures}')
+          : '',
+    );
   }
 
   @override
@@ -254,7 +260,7 @@ class _BootstrapRow extends StatelessWidget {
           ),
           if (onDelete != null)
             IconButton(
-              tooltip: '删除',
+              tooltip: context.l10n.appRulesDelete,
               onPressed: enabled ? onDelete : null,
               icon: const GlyphIcon(AppGlyphs.delete, size: 20),
             ),
@@ -290,7 +296,7 @@ class _BootstrapEditorState extends State<_BootstrapEditor> {
       r'^((25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(25[0-5]|2[0-4]\d|1?\d?\d)$|^[0-9a-fA-F:]+$',
     ).hasMatch(ip);
     if (!valid) {
-      setState(() => _error = '请填写合法的 IPv4 或 IPv6 地址');
+      setState(() => _error = currentL10n.bootstrapInvalidIp);
       return;
     }
     Navigator.of(context).pop((name: _name.text.trim(), ip: ip));
@@ -299,7 +305,7 @@ class _BootstrapEditorState extends State<_BootstrapEditor> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '新增 Bootstrap IP',
+      title: context.l10n.bootstrapAdd,
       hasFields: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -308,12 +314,14 @@ class _BootstrapEditorState extends State<_BootstrapEditor> {
         children: [
           TextField(
             controller: _name,
-            decoration: const InputDecoration(labelText: '名称（可选）'),
+            decoration: InputDecoration(
+              labelText: context.l10n.bootstrapNameOptional,
+            ),
           ),
           TextField(
             controller: _ip,
             autocorrect: false,
-            decoration: const InputDecoration(labelText: 'IP 地址'),
+            decoration: InputDecoration(labelText: context.l10n.bootstrapIpAddress),
           ),
           if (_error != null)
             Text(
@@ -327,9 +335,9 @@ class _BootstrapEditorState extends State<_BootstrapEditor> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.appRulesCancel),
         ),
-        TextButton(onPressed: _save, child: const Text('保存')),
+        TextButton(onPressed: _save, child: Text(context.l10n.appSelectionSave)),
       ],
     );
   }

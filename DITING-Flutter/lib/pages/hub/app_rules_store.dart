@@ -1,6 +1,7 @@
 /// Draft model, filtering and rows for per-app rules; split out to stay under the line cap.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -167,7 +168,7 @@ class AppRuleAppRow extends StatelessWidget {
       leading: AppIconAvatar(packageName: app.packageName),
       title: Text(app.label, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(
-        '${app.packageName} · $domainCount 个放行域名',
+        context.l10n.appRulesAllowCount(app.packageName, domainCount),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: AppTextStyle.footnote.of(context),
@@ -178,8 +179,8 @@ class AppRuleAppRow extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               spacing: 6,
               children: [
-                if (configured) const MetaChip(label: '已配置'),
-                if (app.isSystem) const MetaChip(label: '系统'),
+                if (configured) MetaChip(label: context.l10n.appRulesConfigured),
+                if (app.isSystem) MetaChip(label: context.l10n.appRulesSystem),
               ],
             )
           : null,
@@ -203,9 +204,9 @@ class AppAllowDomainRow extends StatelessWidget {
     return ListItem(
       leading: const GlyphIcon(AppGlyphs.verified, size: 20),
       title: Text(domain, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: const Text('包含子域名'),
+      subtitle: Text(context.l10n.appRulesIncludeSub),
       trailing: IconButton(
-        tooltip: '删除',
+        tooltip: context.l10n.appRulesDelete,
         onPressed: onDelete,
         icon: const GlyphIcon(AppGlyphs.delete, size: 20),
       ),
@@ -250,24 +251,24 @@ class _AllowDomainDialogState extends State<_AllowDomainDialog> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '添加放行域名',
+      title: context.l10n.appRulesAddDomainTitle,
       hasFields: true,
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.appRulesCancel),
         ),
-        TextButton(onPressed: _submit, child: const Text('添加')),
+        TextButton(onPressed: _submit, child: Text(context.l10n.appRulesAdd)),
       ],
       child: TextField(
         controller: _controller,
         autocorrect: false,
         autofocus: true,
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(
-          labelText: '域名',
+        decoration: InputDecoration(
+          labelText: context.l10n.appRulesDomain,
           hintText: 'api.example.com',
-          helperText: '只填裸域名；包含子域名，不需要写通配符或 @@ 前缀',
+          helperText: context.l10n.appRulesDomainHint,
         ),
       ),
     );
@@ -298,13 +299,13 @@ class AppScopedRuleRow extends StatelessWidget {
             : context.colorScheme.error,
       ),
       title: Text(rule.pattern, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(isAllow ? '白名单（放行）' : '黑名单（拦截）'),
+      subtitle: Text(isAllow ? context.l10n.appRulesAllowlistRow : context.l10n.appRulesBlocklistRow),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (rule.important) const MetaChip(label: '重要'),
+          if (rule.important) MetaChip(label: context.l10n.appRulesImportant),
           IconButton(
-            tooltip: rule.enabled ? '停用' : '启用',
+            tooltip: rule.enabled ? context.l10n.appRulesDisable : context.l10n.appRulesEnable,
             onPressed: () => onToggle(!rule.enabled),
             icon: GlyphIcon(
               rule.enabled ? AppGlyphs.check : AppGlyphs.close,
@@ -312,7 +313,7 @@ class AppScopedRuleRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: '删除',
+            tooltip: context.l10n.appRulesDelete,
             onPressed: onDelete,
             icon: const GlyphIcon(AppGlyphs.delete, size: 20),
           ),
@@ -364,21 +365,21 @@ class _ScopedRuleDialogState extends State<_ScopedRuleDialog> {
   @override
   Widget build(BuildContext context) {
     return CommonDialog(
-      title: '添加 DNS 规则',
+      title: context.l10n.appRulesAddRuleTitle,
       hasFields: true,
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.appRulesCancel),
         ),
-        TextButton(onPressed: _submit, child: const Text('添加')),
+        TextButton(onPressed: _submit, child: Text(context.l10n.appRulesAdd)),
       ],
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SegmentedControl<RuleKind>(
-            segments: const [(RuleKind.block, '黑名单'), (RuleKind.allow, '白名单')],
+            segments: [(RuleKind.block, context.l10n.appRulesBlocklist), (RuleKind.allow, context.l10n.appRulesAllowlist)],
             value: _kind,
             onChanged: (value) => setState(() => _kind = value),
           ),
@@ -388,10 +389,10 @@ class _ScopedRuleDialogState extends State<_ScopedRuleDialog> {
             autocorrect: false,
             autofocus: true,
             onSubmitted: (_) => _submit(),
-            decoration: const InputDecoration(
-              labelText: '域名',
+            decoration: InputDecoration(
+              labelText: context.l10n.appRulesDomain,
               hintText: 'ads.example.com',
-              helperText: '只填裸域名；仅对本应用生效',
+              helperText: context.l10n.appRulesRuleDomainHint,
             ),
           ),
         ],

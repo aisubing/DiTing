@@ -22,11 +22,11 @@ class BlockedAppsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(legacySettingsProvider);
     return _AppSelectionScaffold(
-      title: '禁止联网应用',
-      info: '通过本机 VPN 按 UID 阻止所选应用的全部网络连接。共享同一 UID 的应用会一并受影响。',
-      enableToggleTitle: '启用禁止联网',
-      enableToggleEmptyHint: '尚未选择应用；开启后不会阻断流量',
-      selectionTitle: '禁止联网的应用',
+      title: context.l10n.appBlockTitle,
+      info: context.l10n.appBlockInfo,
+      enableToggleTitle: context.l10n.appBlockToggle,
+      enableToggleEmptyHint: context.l10n.appBlockToggleEmpty,
+      selectionTitle: context.l10n.appBlockSelection,
       icon: AppGlyphs.wifiOff,
       selected: settings.blockedAppPackages,
       enabled: settings.blockedAppsEnabled,
@@ -64,9 +64,9 @@ class ExcludedAppsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(legacySettingsProvider);
     return _AppSelectionScaffold(
-      title: '排除应用',
-      info: '排除后，应用将使用系统 DNS，不参与本应用的过滤、缓存、日志和统计。',
-      selectionTitle: '排除的应用',
+      title: context.l10n.appExcludeTitle,
+      info: context.l10n.appExcludeInfo,
+      selectionTitle: context.l10n.appExcludeSelection,
       icon: AppGlyphs.appsList,
       selected: settings.excludedPackages,
       enabled: true,
@@ -221,8 +221,8 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
       _initial = {..._selected};
     });
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      const SnackBar(
-        content: Text('已保存，启动 DNS VPN 后生效'),
+      SnackBar(
+        content: Text(context.l10n.appSelectionSaved),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -238,8 +238,8 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
   Future<bool> _confirmLeave() async {
     final choice = await showUnsavedChangesDialog(
       context,
-      title: '保存更改？',
-      message: '「${widget.title}」的选择还没保存。保存后离开，还是放弃这些修改？',
+      title: context.l10n.appSelectionSaveTitle,
+      message: context.l10n.appSelectionSaveBody(widget.title),
     );
     if (!mounted) {
       return false;
@@ -300,15 +300,17 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
                 children: [
                   if (widget.showToggle && widget.enableToggleTitle != null)
                     generateSection(
-                      title: '开关',
+                      title: context.l10n.appSelectionSwitch,
                       items: [
                         ListItem.toggle(
                           leading: const GlyphIcon(AppGlyphs.wifiOff),
                           title: Text(widget.enableToggleTitle!),
                           subtitle: Text(
                             _selected.isEmpty
-                                ? (widget.enableToggleEmptyHint ?? '尚未选择应用')
-                                : '已选择 ${_selected.length} 个应用',
+                                ? (widget.enableToggleEmptyHint ?? context.l10n.appSelectionNoAppsYet)
+                                : context.l10n.appSelectionCount(
+                                    '${_selected.length}',
+                                  ),
                           ),
                           value: _enabled,
                           onChanged: (value) =>
@@ -339,7 +341,7 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
                 title: '${widget.selectionTitle}（${_selected.length}）',
                 itemCount: visible.length,
                 footer: visible.isEmpty
-                    ? (apps.isEmpty ? '设备上没有可选的应用' : '未找到匹配应用')
+                    ? (apps.isEmpty ? context.l10n.appSelectionNoAppsAvailable : context.l10n.appSelectionNoMatch)
                     : null,
                 itemBuilder: (context, index) {
                   final app = visible[index];
@@ -370,15 +372,14 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: TonalButton(
-                      label: '保存',
+                      label: context.l10n.appSelectionSave,
                       onPressed: dirty ? _save : null,
                     ),
                   ),
                   ListFooter(
                     text: apps.isEmpty
-                        ? '未读取到任何已安装应用；此处的勾选保存后不会命中任何应用。'
-                        : '勾选会同时取消该应用在「排除应用」「禁止联网」「HTTPS 检查」'
-                              '与应用独立规则里的选择。',
+                        ? context.l10n.appSelectionNothingRead
+                        : context.l10n.appSelectionExclusiveNote,
                   ),
                 ],
               ),

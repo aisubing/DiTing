@@ -6101,4 +6101,234 @@ class AppL10nEn extends AppL10n {
   @override
   String get recognitionCloudNote =>
       'The list comes from the cloud and is checked for updates when you open the page';
+
+  @override
+  String appRulesAllowCount(Object count, Object package) {
+    return '$package · $count allowed domains';
+  }
+
+  @override
+  String get appRulesConfigured => 'Configured';
+
+  @override
+  String get appRulesSystem => 'System';
+
+  @override
+  String get appRulesIncludeSub => 'Includes subdomains';
+
+  @override
+  String get appRulesDelete => 'Delete';
+
+  @override
+  String get appRulesAddDomainTitle => 'Add an allowed domain';
+
+  @override
+  String get appRulesCancel => 'Cancel';
+
+  @override
+  String get appRulesAdd => 'Add';
+
+  @override
+  String get appRulesDomain => 'Domain';
+
+  @override
+  String get appRulesDomainHint =>
+      'Enter the bare domain only; subdomains are included, so no wildcard or @@ prefix is needed';
+
+  @override
+  String get appRulesAllowlistRow => 'Allowlist (allowed)';
+
+  @override
+  String get appRulesBlocklistRow => 'Blocklist (blocked)';
+
+  @override
+  String get appRulesImportant => 'Important';
+
+  @override
+  String get appRulesDisable => 'Disable';
+
+  @override
+  String get appRulesEnable => 'Enable';
+
+  @override
+  String get appRulesAddRuleTitle => 'Add a DNS rule';
+
+  @override
+  String get appRulesRuleDomainHint =>
+      'Enter the bare domain only; it applies to this app only';
+
+  @override
+  String get appRulesBlocklist => 'Blocklist';
+
+  @override
+  String get appRulesAllowlist => 'Allowlist';
+
+  @override
+  String get logRetentionTitle => 'Log mode';
+
+  @override
+  String get logRetentionDnsLogs => 'DNS request logs';
+
+  @override
+  String get logRetentionOffNote =>
+      'Turning this off does not delete existing logs; turn it back on to keep reading them.';
+
+  @override
+  String get logRetentionOverlay => 'Floating window';
+
+  @override
+  String get logRetentionOverlayLogs => 'Floating window logs';
+
+  @override
+  String get logRetentionOverlayBody =>
+      'Shows a floating bubble while the VPN runs in the background; tap it to see recent requests';
+
+  @override
+  String get logRetentionOverlayNote =>
+      'Requires the system overlay permission; the bubble hides automatically when the app returns to the foreground.';
+
+  @override
+  String get logRetentionCleanup => 'Automatic cleanup';
+
+  @override
+  String logRetentionKeepDays(Object days) {
+    return 'Keep $days days';
+  }
+
+  @override
+  String get logRetentionCleanupNote =>
+      'Request logs older than the selected age are cleaned up hourly by the tunnel service (the first run is 30 seconds after start). Turning logs off does not delete existing records.';
+
+  @override
+  String get appBlockTitle => 'Apps blocked from the internet';
+
+  @override
+  String get appBlockInfo =>
+      'Blocks all network access for the selected apps by UID through the local VPN. Apps sharing the same UID are affected too.';
+
+  @override
+  String get appBlockToggle => 'Block the internet';
+
+  @override
+  String get appBlockToggleEmpty =>
+      'No apps selected yet; enabling blocks nothing';
+
+  @override
+  String get appBlockSelection => 'Blocked apps';
+
+  @override
+  String get appExcludeTitle => 'Excluded apps';
+
+  @override
+  String get appExcludeInfo =>
+      'Excluded apps use the system DNS and take no part in this app\'s filtering, cache, logs or statistics.';
+
+  @override
+  String get appExcludeSelection => 'Excluded apps';
+
+  @override
+  String get appSelectionSaved =>
+      'Saved; it takes effect once the DNS VPN starts';
+
+  @override
+  String get appSelectionSaveTitle => 'Save changes?';
+
+  @override
+  String appSelectionSaveBody(Object title) {
+    return 'The selection for \"$title\" is not saved. Save it before leaving, or discard the changes?';
+  }
+
+  @override
+  String get appSelectionSwitch => 'Switch';
+
+  @override
+  String get appSelectionNoAppsYet => 'No apps selected yet';
+
+  @override
+  String appSelectionCount(Object count) {
+    return '$count apps selected';
+  }
+
+  @override
+  String get appSelectionNoAppsAvailable =>
+      'There are no selectable apps on this device';
+
+  @override
+  String get appSelectionNoMatch => 'No matching apps';
+
+  @override
+  String get appSelectionSave => 'Save';
+
+  @override
+  String get appSelectionNothingRead =>
+      'No installed apps could be read, so any selection saved here matches nothing.';
+
+  @override
+  String get appSelectionExclusiveNote =>
+      'Selecting an app clears its selection under Excluded apps, Blocked apps, HTTPS inspection and per-app rules.';
+
+  @override
+  String get bootstrapTitle => 'Bootstrap resolution';
+
+  @override
+  String get bootstrapAdd => 'Add a Bootstrap IP';
+
+  @override
+  String get bootstrapGlobal => 'Global switch';
+
+  @override
+  String get bootstrapEnable => 'Enable Bootstrap IP';
+
+  @override
+  String get bootstrapEnableBody =>
+      'Resolves encrypted provider domains with a separate recursive DNS, with weighted selection and automatic fallback';
+
+  @override
+  String get bootstrapEnableNote =>
+      'When on, Bootstrap IPs are chosen dynamically with a weighted algorithm; when off, encrypted upstream domains are resolved through the system DNS.';
+
+  @override
+  String get bootstrapBuiltin => 'Built-in Bootstrap IPs';
+
+  @override
+  String get bootstrapCustom => 'Custom Bootstrap IPs';
+
+  @override
+  String get bootstrapNoCustom =>
+      'No custom Bootstrap IPs yet. Tap \"Add\" in the corner to create one.';
+
+  @override
+  String bootstrapNoSample(Object ip) {
+    return '$ip · no samples';
+  }
+
+  @override
+  String bootstrapAverage(Object ms) {
+    return ' · average ${ms}ms';
+  }
+
+  @override
+  String bootstrapFailures(Object count) {
+    return ' · $count failed';
+  }
+
+  @override
+  String bootstrapStats(
+    Object failures,
+    Object ip,
+    Object latency,
+    Object samples,
+    Object success,
+  ) {
+    return '$ip$latency · $samples samples · $success% succeeded$failures';
+  }
+
+  @override
+  String get bootstrapInvalidIp => 'Enter a valid IPv4 or IPv6 address';
+
+  @override
+  String get bootstrapNameOptional => 'Name (optional)';
+
+  @override
+  String get bootstrapIpAddress => 'IP address';
 }

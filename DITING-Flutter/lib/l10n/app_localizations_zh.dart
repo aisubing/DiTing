@@ -5779,4 +5779,221 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get recognitionCloudNote => '名单由云端下发，进入页面时自动检查更新';
+
+  @override
+  String appRulesAllowCount(Object count, Object package) {
+    return '$package · $count 个放行域名';
+  }
+
+  @override
+  String get appRulesConfigured => '已配置';
+
+  @override
+  String get appRulesSystem => '系统';
+
+  @override
+  String get appRulesIncludeSub => '包含子域名';
+
+  @override
+  String get appRulesDelete => '删除';
+
+  @override
+  String get appRulesAddDomainTitle => '添加放行域名';
+
+  @override
+  String get appRulesCancel => '取消';
+
+  @override
+  String get appRulesAdd => '添加';
+
+  @override
+  String get appRulesDomain => '域名';
+
+  @override
+  String get appRulesDomainHint => '只填裸域名；包含子域名，不需要写通配符或 @@ 前缀';
+
+  @override
+  String get appRulesAllowlistRow => '白名单（放行）';
+
+  @override
+  String get appRulesBlocklistRow => '黑名单（拦截）';
+
+  @override
+  String get appRulesImportant => '重要';
+
+  @override
+  String get appRulesDisable => '停用';
+
+  @override
+  String get appRulesEnable => '启用';
+
+  @override
+  String get appRulesAddRuleTitle => '添加 DNS 规则';
+
+  @override
+  String get appRulesRuleDomainHint => '只填裸域名；仅对本应用生效';
+
+  @override
+  String get appRulesBlocklist => '黑名单';
+
+  @override
+  String get appRulesAllowlist => '白名单';
+
+  @override
+  String get logRetentionTitle => '日志模式';
+
+  @override
+  String get logRetentionDnsLogs => 'DNS 请求日志';
+
+  @override
+  String get logRetentionOffNote => '关闭后不会删除已有日志，重新开启即可继续查看。';
+
+  @override
+  String get logRetentionOverlay => '悬浮窗';
+
+  @override
+  String get logRetentionOverlayLogs => '悬浮窗日志';
+
+  @override
+  String get logRetentionOverlayBody => 'VPN 运行且应用在后台时显示悬浮球，点击查看最近请求';
+
+  @override
+  String get logRetentionOverlayNote => '需要系统悬浮窗权限；回到应用前台时悬浮窗会自动隐藏。';
+
+  @override
+  String get logRetentionCleanup => '自动清理时间';
+
+  @override
+  String logRetentionKeepDays(Object days) {
+    return '保留 $days 天';
+  }
+
+  @override
+  String get logRetentionCleanupNote =>
+      '超过所选时间的请求日志由隧道服务每小时清理一次（首次在启动 30 秒后）。关闭日志不会删除已有记录。';
+
+  @override
+  String get appBlockTitle => '禁止联网应用';
+
+  @override
+  String get appBlockInfo => '通过本机 VPN 按 UID 阻止所选应用的全部网络连接。共享同一 UID 的应用会一并受影响。';
+
+  @override
+  String get appBlockToggle => '启用禁止联网';
+
+  @override
+  String get appBlockToggleEmpty => '尚未选择应用；开启后不会阻断流量';
+
+  @override
+  String get appBlockSelection => '禁止联网的应用';
+
+  @override
+  String get appExcludeTitle => '排除应用';
+
+  @override
+  String get appExcludeInfo => '排除后，应用将使用系统 DNS，不参与本应用的过滤、缓存、日志和统计。';
+
+  @override
+  String get appExcludeSelection => '排除的应用';
+
+  @override
+  String get appSelectionSaved => '已保存，启动 DNS VPN 后生效';
+
+  @override
+  String get appSelectionSaveTitle => '保存更改？';
+
+  @override
+  String appSelectionSaveBody(Object title) {
+    return '「$title」的选择还没保存。保存后离开，还是放弃这些修改？';
+  }
+
+  @override
+  String get appSelectionSwitch => '开关';
+
+  @override
+  String get appSelectionNoAppsYet => '尚未选择应用';
+
+  @override
+  String appSelectionCount(Object count) {
+    return '已选择 $count 个应用';
+  }
+
+  @override
+  String get appSelectionNoAppsAvailable => '设备上没有可选的应用';
+
+  @override
+  String get appSelectionNoMatch => '未找到匹配应用';
+
+  @override
+  String get appSelectionSave => '保存';
+
+  @override
+  String get appSelectionNothingRead => '未读取到任何已安装应用；此处的勾选保存后不会命中任何应用。';
+
+  @override
+  String get appSelectionExclusiveNote =>
+      '勾选会同时取消该应用在「排除应用」「禁止联网」「HTTPS 检查」与应用独立规则里的选择。';
+
+  @override
+  String get bootstrapTitle => '引导解析设置';
+
+  @override
+  String get bootstrapAdd => '新增 Bootstrap IP';
+
+  @override
+  String get bootstrapGlobal => '全局开关';
+
+  @override
+  String get bootstrapEnable => '启用 Bootstrap IP';
+
+  @override
+  String get bootstrapEnableBody => '使用独立递归 DNS 解析加密服务商域名，支持智能权重优选与自动回退';
+
+  @override
+  String get bootstrapEnableNote =>
+      '开启后将通过加权算法动态优选 Bootstrap IP；关闭后将通过系统 DNS 解析加密上游域名。';
+
+  @override
+  String get bootstrapBuiltin => '内置 Bootstrap IP';
+
+  @override
+  String get bootstrapCustom => '自定义 Bootstrap IP';
+
+  @override
+  String get bootstrapNoCustom => '暂无自定义 Bootstrap IP。点击右上角「新增」添加。';
+
+  @override
+  String bootstrapNoSample(Object ip) {
+    return '$ip · 暂无样本';
+  }
+
+  @override
+  String bootstrapAverage(Object ms) {
+    return ' · 平均 ${ms}ms';
+  }
+
+  @override
+  String bootstrapFailures(Object count) {
+    return ' · 失败 $count';
+  }
+
+  @override
+  String bootstrapStats(
+    Object failures,
+    Object ip,
+    Object latency,
+    Object samples,
+    Object success,
+  ) {
+    return '$ip$latency · 样本 $samples · 成功 $success%$failures';
+  }
+
+  @override
+  String get bootstrapInvalidIp => '请填写合法的 IPv4 或 IPv6 地址';
+
+  @override
+  String get bootstrapNameOptional => '名称（可选）';
+
+  @override
+  String get bootstrapIpAddress => 'IP 地址';
 }
