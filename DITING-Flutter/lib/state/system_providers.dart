@@ -2,6 +2,7 @@
 /// lives in the pages.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/backup/dav_client.dart';
@@ -15,14 +16,17 @@ import 'package:diting/state/global_mirror_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum DavStatus {
-  idle('未连接'),
-  connecting('连接中'),
-  connected('连接成功'),
-  failed('连接失败');
+  idle,
+  connecting,
+  connected,
+  failed;
 
-  const DavStatus(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    DavStatus.idle => l10n.davStatusIdle,
+    DavStatus.connecting => l10n.davStatusConnecting,
+    DavStatus.connected => l10n.davStatusConnected,
+    DavStatus.failed => l10n.davStatusFailed,
+  };
 }
 
 class DavState {
@@ -81,7 +85,7 @@ class DavNotifier extends Notifier<DavState> {
     if (!state.isConfigured) {
       state = state.copyWith(
         status: DavStatus.failed,
-        message: '服务器地址与用户名不能为空',
+        message: currentL10n.webdavEmptyCredentials,
       );
       return;
     }
@@ -97,7 +101,7 @@ class DavNotifier extends Notifier<DavState> {
     if (result.succeeded) {
       state = state.copyWith(
         status: DavStatus.connected,
-        message: result.created ? '目录不存在，已自动创建' : null,
+        message: result.created ? currentL10n.webdavDirectoryCreated : null,
       );
       return;
     }
@@ -125,7 +129,7 @@ class DavNotifier extends Notifier<DavState> {
       content: content,
     );
     state = result.succeeded
-        ? state.copyWith(status: DavStatus.connected, message: '已上传到云端')
+        ? state.copyWith(status: DavStatus.connected, message: currentL10n.webdavUploaded)
         : state.copyWith(status: DavStatus.failed, message: result.error);
     return result;
   }
@@ -136,8 +140,8 @@ class DavNotifier extends Notifier<DavState> {
     try {
       final text = await _client.getText(credentials, name: remoteFileName);
       state = text == null
-          ? state.copyWith(status: DavStatus.connected, message: '云端还没有备份文件')
-          : state.copyWith(status: DavStatus.connected, message: '已从云端取回备份');
+          ? state.copyWith(status: DavStatus.connected, message: currentL10n.webdavNoBackup)
+          : state.copyWith(status: DavStatus.connected, message: currentL10n.webdavDownloaded);
       return text;
     } on Object catch (error) {
       state = state.copyWith(status: DavStatus.failed, message: '$error');
@@ -187,16 +191,21 @@ final developerModeProvider = NotifierProvider<DeveloperModeNotifier, bool>(
 );
 
 enum UpdateStage {
-  idle('未检查'),
-  checking('检查中'),
-  upToDate('已是最新'),
-  available('发现新版本'),
-  downloading('下载中'),
-  downloaded('下载完成');
+  idle,
+  checking,
+  upToDate,
+  available,
+  downloading,
+  downloaded;
 
-  const UpdateStage(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    UpdateStage.idle => l10n.updateStageIdle,
+    UpdateStage.checking => l10n.updateStageChecking,
+    UpdateStage.upToDate => l10n.updateStageUpToDate,
+    UpdateStage.available => l10n.updateStageAvailable,
+    UpdateStage.downloading => l10n.updateStageDownloading,
+    UpdateStage.downloaded => l10n.updateStageDownloaded,
+  };
 
   bool get isBusy => this == checking || this == downloading;
 }
@@ -283,7 +292,7 @@ class UpdateNotifier extends Notifier<UpdateState> {
     if (state.stage.isBusy) return;
     final info = state.info;
     if (info == null) {
-      state = state.copyWith(error: '请先检查更新');
+      state = state.copyWith(error: currentL10n.updateCheckFirst);
       return;
     }
     state = state.copyWith(
@@ -334,12 +343,12 @@ class UpdateNotifier extends Notifier<UpdateState> {
   Future<bool> install() async {
     final path = state.apkPath;
     if (path == null) {
-      state = state.copyWith(error: '请先下载更新包');
+      state = state.copyWith(error: currentL10n.updateDownloadFirst);
       return false;
     }
     final ok = await ref.read(updateBridgeProvider).install(path);
     if (!ok) {
-      state = state.copyWith(error: '无法调起系统安装器，请稍后重试');
+      state = state.copyWith(error: currentL10n.updateInstallerUnavailable);
       return false;
     }
     return true;
@@ -364,14 +373,17 @@ final updateProvider = NotifierProvider<UpdateNotifier, UpdateState>(
 );
 
 enum IpQualityStage {
-  idle('未检测'),
-  loading('检测中'),
-  loaded('检测完成'),
-  failed('检测失败');
+  idle,
+  loading,
+  loaded,
+  failed;
 
-  const IpQualityStage(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    IpQualityStage.idle => l10n.ipQualityStageIdle,
+    IpQualityStage.loading => l10n.ipQualityStageLoading,
+    IpQualityStage.loaded => l10n.ipQualityStageLoaded,
+    IpQualityStage.failed => l10n.ipQualityStageFailed,
+  };
 }
 
 class IpQualityState {

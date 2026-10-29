@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
@@ -35,7 +36,7 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
                   items: [
                     LogStatsRangeSelector<SubscriptionStatsRange>(
                       values: SubscriptionStatsRange.values,
-                      labelOf: (option) => option.label,
+                      labelOf: (option) => option.label(context.l10n),
                       value: range,
                       onChanged: (value) => ref
                           .read(subscriptionStatsRangeProvider.notifier)

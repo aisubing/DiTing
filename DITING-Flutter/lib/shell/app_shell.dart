@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/pages/server/server_mode_shell.dart';
 import 'package:diting/router.dart';
@@ -116,7 +117,7 @@ class _Dock extends StatelessWidget {
       for (final destination in destinations)
         NavigationDockDestination(
           glyph: destination.glyph,
-          label: destination.label,
+          label: destination.label(context.l10n),
         ),
     ];
     if (_wantsFallbackBar(context, destinations, style)) {
@@ -262,7 +263,7 @@ class _FallbackBar extends StatelessWidget {
         for (final destination in destinations)
           NavigationDestination(
             icon: GlyphIcon(destination.glyph),
-            label: destination.label,
+            label: destination.label(context.l10n),
           ),
       ],
     );

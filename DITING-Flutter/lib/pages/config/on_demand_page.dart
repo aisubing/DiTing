@@ -1,6 +1,7 @@
 /// On-demand page (upstream `views/config/on_demand.dart`).
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/pages/config/config_common.dart';
 import 'package:diting/pages/config/on_demand_capabilities.dart';
@@ -149,7 +150,7 @@ Future<void> _setEnabled(
   }
   final outcome = await ref.read(onDemandRunnerProvider).apply(force: true);
   if (!context.mounted) return;
-  showConfigHint(context, outcome.label);
+  showConfigHint(context, outcome.label(context.l10n));
 }
 
 /// Re-evaluates the whitelist against the current network; the page has no network callback, so
@@ -157,7 +158,7 @@ Future<void> _setEnabled(
 Future<void> _applyNow(BuildContext context, WidgetRef ref) async {
   final outcome = await ref.read(onDemandRunnerProvider).apply(force: true);
   if (!context.mounted) return;
-  showConfigHint(context, outcome.label);
+  showConfigHint(context, outcome.label(context.l10n));
 }
 
 /// What the whitelist decides for the network the device is on now. The card exists because a

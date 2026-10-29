@@ -169,7 +169,7 @@ class ThemePage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.sliders),
                 options: BottomBarStyle.values,
                 value: barStyle,
-                textBuilder: (value) => value.label,
+                textBuilder: (value) => value.label(context.l10n),
                 onChanged: (value) =>
                     ref.read(bottomBarStyleProvider.notifier).select(value),
               ),
@@ -179,17 +179,17 @@ class ThemePage extends ConsumerWidget {
                 leading: const GlyphIcon(AppGlyphs.motion),
                 options: TabTransition.values,
                 value: transition,
-                textBuilder: (value) => value.label,
+                textBuilder: (value) => value.label(context.l10n),
                 onChanged: (value) =>
                     ref.read(tabTransitionProvider.notifier).select(value),
               ),
               ListItem<LiquidGlassMode>.options(
                 title: const Text('Liquid 玻璃'),
-                subtitle: Text(glass.label),
+                subtitle: Text(glass.label(context.l10n)),
                 leading: const GlyphIcon(AppGlyphs.liquidGlass),
                 options: LiquidGlassMode.values,
                 value: glass,
-                textBuilder: (value) => value.label,
+                textBuilder: (value) => value.label(context.l10n),
                 onChanged: (value) =>
                     ref.read(liquidGlassModeProvider.notifier).select(value),
               ),

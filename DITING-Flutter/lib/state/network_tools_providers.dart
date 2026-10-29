@@ -2,6 +2,7 @@
 /// last two persist.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/native/dns_latency_bridge.dart';
@@ -257,7 +258,7 @@ class LatencyTestNotifier extends Notifier<LatencyTestState> {
       state = LatencyTestState(
         results: state.results,
         unavailable: state.unavailable,
-        error: '请先选择至少一个测速服务商',
+        error: currentL10n.speedTestSelectProvider,
       );
       return;
     }
@@ -266,7 +267,7 @@ class LatencyTestNotifier extends Notifier<LatencyTestState> {
       state = LatencyTestState(
         results: state.results,
         unavailable: state.unavailable,
-        error: '请输入用于测速的域名',
+        error: currentL10n.speedTestEmptyDomain,
       );
       return;
     }

@@ -2,6 +2,7 @@
 /// keys.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -71,12 +72,15 @@ final textScaleProvider = NotifierProvider<TextScaleNotifier, double>(
 /// Opacity of the home blocks that are not dashboard cards (`home_*_opacity`). The provider and
 /// resolution blocks became cards, so their transparency is no longer configurable here.
 enum HomeLayer {
-  powerButton('启动按钮', 'home_power_button_opacity'),
-  poem('首页古诗', 'home_poem_opacity');
+  powerButton('home_power_button_opacity'),
+  poem('home_poem_opacity');
 
-  const HomeLayer(this.label, this.storageKey);
+  const HomeLayer(this.storageKey);
 
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    HomeLayer.powerButton => l10n.homeLayerPowerButton,
+    HomeLayer.poem => l10n.homeLayerPoem,
+  };
 
   /// Legacy `AppearanceSettingsStore` key names.
   final String storageKey;
@@ -146,16 +150,23 @@ final homeSentenceProvider =
 
 /// Selectable bottom bar tabs: 2 to [maxDockDestinations].
 enum BottomBarDestination {
-  home('首页', 'home', AppGlyphs.dashboard),
-  featureHub('功能中心', 'feature_hub', AppGlyphs.puzzle),
-  logDashboard('日志仪表盘', 'log_dashboard', AppGlyphs.logs),
-  appTraffic('应用流量', 'app_traffic_stats', AppGlyphs.dataUsage),
-  networkTools('网络工具', 'network_tools', AppGlyphs.tools),
-  settings('设置', 'settings', AppGlyphs.settings);
+  home('home', AppGlyphs.dashboard),
+  featureHub('feature_hub', AppGlyphs.puzzle),
+  logDashboard('log_dashboard', AppGlyphs.logs),
+  appTraffic('app_traffic_stats', AppGlyphs.dataUsage),
+  networkTools('network_tools', AppGlyphs.tools),
+  settings('settings', AppGlyphs.settings);
 
-  const BottomBarDestination(this.label, this.storageValue, this.glyph);
+  const BottomBarDestination(this.storageValue, this.glyph);
 
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    BottomBarDestination.home => l10n.bottomBarHome,
+    BottomBarDestination.featureHub => l10n.bottomBarFeatureHub,
+    BottomBarDestination.logDashboard => l10n.bottomBarLogDashboard,
+    BottomBarDestination.appTraffic => l10n.bottomBarAppTraffic,
+    BottomBarDestination.networkTools => l10n.bottomBarNetworkTools,
+    BottomBarDestination.settings => l10n.bottomBarSettings,
+  };
 
   /// Ids as stored in the legacy `bottom_bar_destinations` array.
   final String storageValue;
@@ -256,14 +267,19 @@ final hapticProvider = NotifierProvider<HapticNotifier, bool>(
 
 /// Resolution mode: single resolver or race (upstream `ResolutionSettingsStore`).
 enum ResolutionMode {
-  single('单服务商', 'single'),
-  smart('智能选择', 'smart_prediction'),
-  parallel('并行竞速', 'parallel_race'),
-  primaryBackup('主备切换', 'primary_backup');
+  single('single'),
+  smart('smart_prediction'),
+  parallel('parallel_race'),
+  primaryBackup('primary_backup');
 
-  const ResolutionMode(this.label, this.storageValue);
+  const ResolutionMode(this.storageValue);
 
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    ResolutionMode.single => l10n.resolutionModeSingle,
+    ResolutionMode.smart => l10n.resolutionModeSmart,
+    ResolutionMode.parallel => l10n.resolutionModeParallel,
+    ResolutionMode.primaryBackup => l10n.resolutionModePrimaryBackup,
+  };
 
   /// Legacy `dns_resolution_mode` values; enum names differ from stored values.
   final String storageValue;

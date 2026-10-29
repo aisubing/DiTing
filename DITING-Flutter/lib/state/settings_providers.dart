@@ -13,15 +13,25 @@ void _bump(Ref ref) => ref.read(legacySettingsRevisionProvider.notifier).bump();
 
 /// Log recording mode, the three 1.4.3 `DnsLogModeScreen` values; swaps the dashboard body.
 enum LegacyLogMode {
-  all('all', '记录全部', '请求、命中、竞速与拦截都进日志'),
-  blockedAndErrors('blocked_and_errors', '仅拦截与错误', '只记录被拦截与出错的请求'),
-  off('off', '关闭日志', '不记录任何请求，节省空间');
+  all('all'),
+  blockedAndErrors('blocked_and_errors'),
+  off('off');
 
-  const LegacyLogMode(this.storageValue, this.label, this.description);
+  const LegacyLogMode(this.storageValue);
 
   final String storageValue;
-  final String label;
-  final String description;
+
+  String label(AppL10n l10n) => switch (this) {
+    LegacyLogMode.all => l10n.logModeAllLabel,
+    LegacyLogMode.blockedAndErrors => l10n.logModeBlockedLabel,
+    LegacyLogMode.off => l10n.logModeOffLabel,
+  };
+
+  String description(AppL10n l10n) => switch (this) {
+    LegacyLogMode.all => l10n.logModeAllDescription,
+    LegacyLogMode.blockedAndErrors => l10n.logModeBlockedDescription,
+    LegacyLogMode.off => l10n.logModeOffDescription,
+  };
 
   static LegacyLogMode fromStorageValue(String? value) => values.firstWhere(
     (mode) => mode.storageValue == value,
@@ -85,15 +95,25 @@ final floatingLogProvider = NotifierProvider<FloatingLogNotifier, bool>(
 
 /// IPv6 mode; `VpnRouteConfig` only distinguishes `auto` from the rest.
 enum LegacyIpv6Mode {
-  auto('auto', '自动', '按当前网络能力决定是否启用'),
-  disable('disable', '关闭', '隧道内不启用 IPv6'),
-  prefer('prefer', '优先', '尽量走 IPv6，失败再回落');
+  auto('auto'),
+  disable('disable'),
+  prefer('prefer');
 
-  const LegacyIpv6Mode(this.storageValue, this.label, this.description);
+  const LegacyIpv6Mode(this.storageValue);
 
   final String storageValue;
-  final String label;
-  final String description;
+
+  String label(AppL10n l10n) => switch (this) {
+    LegacyIpv6Mode.auto => l10n.ipv6AutoLabel,
+    LegacyIpv6Mode.disable => l10n.ipv6DisableLabel,
+    LegacyIpv6Mode.prefer => l10n.ipv6PreferLabel,
+  };
+
+  String description(AppL10n l10n) => switch (this) {
+    LegacyIpv6Mode.auto => l10n.ipv6AutoDescription,
+    LegacyIpv6Mode.disable => l10n.ipv6DisableDescription,
+    LegacyIpv6Mode.prefer => l10n.ipv6PreferDescription,
+  };
 
   static LegacyIpv6Mode fromStorageValue(String? value) => values.firstWhere(
     (mode) => mode.storageValue == value,
@@ -356,7 +376,7 @@ class CustomBackgroundNotifier extends Notifier<CustomBackgroundState> {
       return null;
     }
     if (result.cancelled) return null;
-    return '当前设备没有可用的图片选择器';
+    return currentL10n.imagePickerUnavailable;
   }
 }
 

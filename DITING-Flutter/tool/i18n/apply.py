@@ -35,7 +35,7 @@ def add_import(source):
     return IMPORT + '\n' + source
 
 
-def main(batch_path, files):
+def main(batch_path, files, scope='context'):
     batch = json.loads(Path(batch_path).read_text(encoding='utf-8'))
     glossary = {}
     for key, value in batch.items():
@@ -43,6 +43,7 @@ def main(batch_path, files):
         if zh in glossary:
             sys.exit(f'{zh} maps to both {glossary[zh]} and {key}')
         glossary[zh] = key
+    receiver = 'context.l10n' if scope == 'context' else 'currentL10n'
     for name in files:
         path = Path(name)
         source = path.read_text(encoding='utf-8')
@@ -52,11 +53,16 @@ def main(batch_path, files):
             literal = "'" + zh + "'"
             if literal in source:
                 hits += source.count(literal)
-                source = source.replace(literal, f'context.l10n.{key}')
+                source = source.replace(literal, f'{receiver}.{key}')
         if source != before:
             path.write_text(add_import(source), encoding='utf-8')
         print(f'{name}: {hits} replaced')
 
 
 if __name__ == '__main__':
-    main(sys.argv[1], sys.argv[2:])
+    args = sys.argv[1:]
+    scope = 'context'
+    if args and args[0].startswith('--l10n='):
+        scope = args[0].split('=', 1)[1]
+        args = args[1:]
+    main(args[0], args[1:], scope)

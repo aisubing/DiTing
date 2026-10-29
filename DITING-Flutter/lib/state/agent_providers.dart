@@ -1,6 +1,7 @@
 /// AI analysis layer: client, model listing, connectivity test and the state machine for one run.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/agent/agent_api_client.dart';
 import 'package:diting/data/agent/agent_prompts.dart';
@@ -102,7 +103,7 @@ class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
         sessionId: session,
         target: target,
         phase: AgentAnalysisPhase.failure,
-        error: '尚未配置可用的 API Key，请先在「AI 厂商管理」里填写并选中该厂商。',
+        error: currentL10n.agentApiKeyMissing,
         startedAt: state.startedAt,
       );
       return session;
@@ -171,7 +172,7 @@ class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
         sessionId: session,
         target: target,
         phase: AgentAnalysisPhase.failure,
-        error: '分析失败：$error',
+        error: currentL10n.agentAnalysisFailed('$error'),
         promptDigest: state.promptDigest,
         startedAt: state.startedAt,
       );
@@ -198,7 +199,7 @@ class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
             final message = row.message;
             logs.add(
               'DNS: ${row.domain} -> ${row.result}'
-              '${message == null || message.isEmpty ? '（无附加信息）' : '（$message）'}',
+              '${message == null || message.isEmpty ? currentL10n.agentNoExtraInfo : '（$message）'}',
             );
           }
         }
@@ -210,15 +211,15 @@ class AgentAnalysisNotifier extends Notifier<AgentAnalysisState> {
       case AgentTrafficTarget():
         if (db == null) {
           // Without the legacy DB this feature is unavailable, not "no traffic".
-          throw const AgentApiException(
-            '未找到旧版数据库，无法读取 DNS 与 HTTPS 日志；请先启动一次服务。',
+          throw AgentApiException(
+            currentL10n.agentNoLegacyDatabase,
           );
         }
         final summary = await summarizeRecentTraffic(
           dnsRepository: DnsLogRepository(db),
           httpRepository: express ? null : HttpRequestRepository(db),
           httpUnavailableReason: express
-              ? '极速模式只做窄路由 DNS 加速，不产生 HTTPS 检查记录'
+              ? currentL10n.agentExpressNoHttps
               : null,
         );
         // Recorded before the request so the "查看送检摘要" panel has it while running. Guarded:

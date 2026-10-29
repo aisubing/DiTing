@@ -88,7 +88,7 @@ class StatusCard extends ConsumerWidget {
                     value: dashboardCount(
                       ref.watch(serviceStatsProvider.select((s) => s.queries)),
                     ),
-                    hint: mode.title,
+                    hint: mode.title(context.l10n),
                   ),
                 ),
               ),

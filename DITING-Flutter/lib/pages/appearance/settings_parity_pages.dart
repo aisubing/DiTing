@@ -412,11 +412,11 @@ class SettingsBackgroundPage extends ConsumerWidget {
               ),
               ListItem<LegacyIpv6Mode>.options(
                 title: const Text('IPv6'),
-                subtitle: Text(state.ipv6Mode.description),
+                subtitle: Text(state.ipv6Mode.description(context.l10n)),
                 leading: const GlyphIcon(AppGlyphs.link),
                 options: LegacyIpv6Mode.values,
                 value: state.ipv6Mode,
-                textBuilder: (mode) => mode.label,
+                textBuilder: (mode) => mode.label(context.l10n),
                 onChanged: notifier.setIpv6Mode,
               ),
             ],

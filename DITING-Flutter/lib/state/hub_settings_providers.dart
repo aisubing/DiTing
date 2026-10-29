@@ -2,6 +2,7 @@
 /// `dns_vpn_prefs`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/agent/key_obfuscator.dart';
@@ -91,106 +92,103 @@ class AiProviderPreset {
   final String baseUrl;
 }
 
-const aiProviderPresetMainland = '国内厂商';
-const aiProviderPresetOverseas = '海外厂商';
-const aiProviderPresetAggregator = '聚合与本地部署';
-
-/// Mirrors the legacy `AiProviderPresets.all` (16 entries).
-const aiProviderPresets = <AiProviderPreset>[
+/// Mirrors the legacy `AiProviderPresets.all` (16 entries). The brand names are proper nouns, so
+/// only the Chinese ones change with the language.
+List<AiProviderPreset> aiProviderPresets(AppL10n l10n) => <AiProviderPreset>[
   AiProviderPreset(
     id: 'deepseek',
     name: 'DeepSeek',
-    group: aiProviderPresetMainland,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://api.deepseek.com',
   ),
   AiProviderPreset(
     id: 'zhipu',
-    name: '智谱 GLM',
-    group: aiProviderPresetMainland,
+    name: l10n.aiProviderZhipu,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
   ),
   AiProviderPreset(
     id: 'moonshot',
-    name: 'Kimi（月之暗面）',
-    group: aiProviderPresetMainland,
+    name: l10n.aiProviderMoonshot,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://api.moonshot.cn/v1',
   ),
   AiProviderPreset(
     id: 'dashscope',
-    name: '阿里云百炼（通义千问）',
-    group: aiProviderPresetMainland,
+    name: l10n.aiProviderDashscope,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   ),
   AiProviderPreset(
     id: 'volcengine-ark',
-    name: '火山方舟（豆包）',
-    group: aiProviderPresetMainland,
+    name: l10n.aiProviderVolcengine,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
   ),
   AiProviderPreset(
     id: 'minimax',
     name: 'MiniMax',
-    group: aiProviderPresetMainland,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://api.minimax.io/v1',
   ),
   AiProviderPreset(
     id: 'qianfan',
-    name: '百度千帆（ERNIE）',
-    group: aiProviderPresetMainland,
+    name: l10n.aiProviderQianfan,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://qianfan.baidubce.com/v2',
   ),
   AiProviderPreset(
     id: 'stepfun',
-    name: '阶跃星辰',
-    group: aiProviderPresetMainland,
+    name: l10n.aiProviderStepfun,
+    group: l10n.aiPresetMainland,
     baseUrl: 'https://api.stepfun.com/v1',
   ),
   AiProviderPreset(
     id: 'openai',
     name: 'OpenAI',
-    group: aiProviderPresetOverseas,
+    group: l10n.aiPresetOverseas,
     baseUrl: 'https://api.openai.com/v1',
   ),
   AiProviderPreset(
     id: 'gemini',
     name: 'Google Gemini',
-    group: aiProviderPresetOverseas,
+    group: l10n.aiPresetOverseas,
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
   ),
   AiProviderPreset(
     id: 'xai',
     name: 'xAI Grok',
-    group: aiProviderPresetOverseas,
+    group: l10n.aiPresetOverseas,
     baseUrl: 'https://api.x.ai/v1',
   ),
   AiProviderPreset(
     id: 'mistral',
     name: 'Mistral AI',
-    group: aiProviderPresetOverseas,
+    group: l10n.aiPresetOverseas,
     baseUrl: 'https://api.mistral.ai/v1',
   ),
   AiProviderPreset(
     id: 'groq',
     name: 'Groq',
-    group: aiProviderPresetOverseas,
+    group: l10n.aiPresetOverseas,
     baseUrl: 'https://api.groq.com/openai/v1',
   ),
   AiProviderPreset(
     id: 'siliconflow',
-    name: '硅基流动',
-    group: aiProviderPresetAggregator,
+    name: l10n.aiProviderSiliconflow,
+    group: l10n.aiPresetAggregator,
     baseUrl: 'https://api.siliconflow.cn/v1',
   ),
   AiProviderPreset(
     id: 'openrouter',
     name: 'OpenRouter',
-    group: aiProviderPresetAggregator,
+    group: l10n.aiPresetAggregator,
     baseUrl: 'https://openrouter.ai/api/v1',
   ),
   AiProviderPreset(
     id: 'ollama',
-    name: 'Ollama（本机）',
-    group: aiProviderPresetAggregator,
+    name: l10n.aiProviderOllamaLocal,
+    group: l10n.aiPresetAggregator,
     baseUrl: 'http://localhost:11434/v1',
   ),
 ];
@@ -282,7 +280,7 @@ List<AiProviderConfig> seedProviders(LegacySettings settings, bool firstRun) {
     return [
       AiProviderConfig(
         id: 'migrated_default',
-        name: '已配置厂商',
+        name: currentL10n.aiProviderConfigured,
         baseUrl: settings.agentApiBaseUrl,
         model: settings.agentApiModel,
         sealedKey: sealApiKey(settings.agentApiKey),

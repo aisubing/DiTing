@@ -1,6 +1,7 @@
 /// Traffic stats: time window plus per-app ranking, read from `app_traffic_daily`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/pages/observability/observability_common.dart';
 import 'package:diting/state/dashboard_providers.dart';
@@ -163,7 +164,7 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              _LiveRateCard(windowLabel: window.label),
+              _LiveRateCard(windowLabel: window.label(context.l10n)),
               const SizedBox(height: 10),
               _AttributionBanner(
                 onTap: () => showSheet<void>(

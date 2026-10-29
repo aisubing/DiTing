@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/backup/backup_exporter.dart';
@@ -124,7 +125,7 @@ class BackupActions {
     if (picked.cancelled) return const BackupImportResult.cancelled();
     if (picked.error != null) return BackupImportResult.failed(picked.error!);
     final text = picked.text;
-    if (text == null) return const BackupImportResult.failed('无法读取所选文件');
+    if (text == null) return BackupImportResult.failed(currentL10n.backupReadFileFailed);
     return importText(text, sourceName: picked.name);
   }
 

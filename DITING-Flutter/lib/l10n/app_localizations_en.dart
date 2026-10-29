@@ -1148,4 +1148,688 @@ class AppL10nEn extends AppL10n {
   @override
   String get siteLatencyDetailFooterLong =>
       'Each site gets three ICMP echo requests and the average is used; when system ping is unavailable the TCP handshake is used instead, marked with *, and reads slightly higher than the real round trip. This app\'s own traffic bypasses the VPN, so the physical network is measured.';
+
+  @override
+  String get homeLayerPowerButton => 'Start button';
+
+  @override
+  String get homeLayerPoem => 'Home poem';
+
+  @override
+  String get bottomBarHome => 'Home';
+
+  @override
+  String get bottomBarFeatureHub => 'Feature hub';
+
+  @override
+  String get bottomBarLogDashboard => 'Log dashboard';
+
+  @override
+  String get bottomBarAppTraffic => 'App traffic';
+
+  @override
+  String get bottomBarNetworkTools => 'Network tools';
+
+  @override
+  String get bottomBarSettings => 'Settings';
+
+  @override
+  String get bottomBarStyleFloating => 'Floating';
+
+  @override
+  String get bottomBarStyleDocked => 'Docked';
+
+  @override
+  String get tabTransitionNone => 'None';
+
+  @override
+  String get tabTransitionFade => 'Fade';
+
+  @override
+  String get tabTransitionSlide => 'Slide';
+
+  @override
+  String get tabTransitionScale => 'Scale';
+
+  @override
+  String get commonOff => 'Off';
+
+  @override
+  String get glassModeStandard => 'Standard';
+
+  @override
+  String get glassModeUltra => 'Ultra';
+
+  @override
+  String get previewBrightnessLight => 'Light';
+
+  @override
+  String get previewBrightnessDark => 'Dark';
+
+  @override
+  String get resolutionModeSingle => 'Single resolver';
+
+  @override
+  String get resolutionModeSmart => 'Smart selection';
+
+  @override
+  String get resolutionModeParallel => 'Parallel race';
+
+  @override
+  String get resolutionModePrimaryBackup => 'Primary + backup';
+
+  @override
+  String get workModeNormalTitle => 'Normal mode';
+
+  @override
+  String get workModeNormalBadge => 'Recommended';
+
+  @override
+  String get workModeNormalSummary =>
+      'Full DNS resolution, block/allow lists, HTTPS inspection and network control';
+
+  @override
+  String get workModeServerTitle => 'Server mode';
+
+  @override
+  String get workModeServerBadge => 'Lightweight';
+
+  @override
+  String get workModeServerSummary =>
+      'Pure DNS proxy with resolution acceleration, low power';
+
+  @override
+  String get workModeExpressTitle => 'Express mode';
+
+  @override
+  String get workModeExpressBadge => 'Express';
+
+  @override
+  String get workModeExpressSummary =>
+      'Pure Kotlin DNS acceleration and rule filtering, Android 7+ (64-bit)';
+
+  @override
+  String get stateStopped => 'Stopped';
+
+  @override
+  String get stateStarting => 'Starting';
+
+  @override
+  String get stateRunning => 'Running';
+
+  @override
+  String get stateStopping => 'Stopping';
+
+  @override
+  String get powerStateError => 'Failed to start';
+
+  @override
+  String get serverStatusError => 'Error';
+
+  @override
+  String get logModeAllLabel => 'Log everything';
+
+  @override
+  String get logModeAllDescription =>
+      'Requests, cache hits, races and blocks all go to the log';
+
+  @override
+  String get logModeBlockedLabel => 'Blocks and errors only';
+
+  @override
+  String get logModeBlockedDescription =>
+      'Only blocked and failed requests are recorded';
+
+  @override
+  String get logModeOffLabel => 'Logging off';
+
+  @override
+  String get logModeOffDescription => 'Nothing is recorded, saving space';
+
+  @override
+  String get ipv6AutoLabel => 'Auto';
+
+  @override
+  String get ipv6AutoDescription => 'Enable depending on the current network';
+
+  @override
+  String get ipv6DisableLabel => 'Off';
+
+  @override
+  String get ipv6DisableDescription => 'No IPv6 inside the tunnel';
+
+  @override
+  String get ipv6PreferLabel => 'Prefer';
+
+  @override
+  String get ipv6PreferDescription => 'Prefer IPv6 and fall back when it fails';
+
+  @override
+  String get commonToday => 'Today';
+
+  @override
+  String get logWindowSevenDays => '7 days';
+
+  @override
+  String get logWindowSevenDaysRecent => 'Last 7 days';
+
+  @override
+  String get commonAll => 'All';
+
+  @override
+  String get trafficWindowWeek => 'This week';
+
+  @override
+  String get trafficWindowMonth => 'This month';
+
+  @override
+  String get trafficSortTotal => 'By total traffic';
+
+  @override
+  String get trafficSortDownload => 'By download traffic';
+
+  @override
+  String get trafficSortUpload => 'By upload traffic';
+
+  @override
+  String get davStatusIdle => 'Not connected';
+
+  @override
+  String get davStatusConnecting => 'Connecting';
+
+  @override
+  String get davStatusConnected => 'Connected';
+
+  @override
+  String get davStatusFailed => 'Connection failed';
+
+  @override
+  String get updateStageIdle => 'Not checked';
+
+  @override
+  String get updateStageChecking => 'Checking';
+
+  @override
+  String get updateStageUpToDate => 'Up to date';
+
+  @override
+  String get updateStageAvailable => 'Update available';
+
+  @override
+  String get updateStageDownloading => 'Downloading';
+
+  @override
+  String get updateStageDownloaded => 'Downloaded';
+
+  @override
+  String get ipQualityStageIdle => 'Not tested';
+
+  @override
+  String get ipQualityStageLoading => 'Checking';
+
+  @override
+  String get ipQualityStageLoaded => 'Check complete';
+
+  @override
+  String get ipQualityStageFailed => 'Check failed';
+
+  @override
+  String get subscriptionDeleted => 'Deleted';
+
+  @override
+  String get subscriptionDisabled => 'Disabled';
+
+  @override
+  String get subscriptionUngrouped => 'Ungrouped';
+
+  @override
+  String get providerNotTested => 'Not tested';
+
+  @override
+  String get elapsedJustNow => 'just now';
+
+  @override
+  String elapsedSecondsAgo(Object count) {
+    return '${count}s ago';
+  }
+
+  @override
+  String elapsedMinutesAgo(Object count) {
+    return '${count}m ago';
+  }
+
+  @override
+  String elapsedHoursAgo(Object count) {
+    return '${count}h ago';
+  }
+
+  @override
+  String elapsedDaysAgo(Object count) {
+    return '${count}d ago';
+  }
+
+  @override
+  String providerRaceSummary(Object count, Object names) {
+    return '$count selected: $names';
+  }
+
+  @override
+  String get rulesDbUnavailable =>
+      'The rule database is not readable in this environment';
+
+  @override
+  String get agentApiKeyMissing =>
+      'No usable API key yet. Fill one in under AI provider management and select that provider.';
+
+  @override
+  String get agentNoExtraInfo => '(no extra information)';
+
+  @override
+  String get agentNoLegacyDatabase =>
+      'The legacy database was not found, so DNS and HTTPS logs cannot be read. Start the service once first.';
+
+  @override
+  String get agentExpressNoHttps =>
+      'Express mode only accelerates DNS on a narrow route and produces no HTTPS inspection records';
+
+  @override
+  String get autoUpdateDisabled => 'Automatic updates are off';
+
+  @override
+  String get autoUpdateNoSubscriptions =>
+      'No subscriptions to update automatically';
+
+  @override
+  String get autoUpdateNotDue => 'Not due yet';
+
+  @override
+  String get autoUpdateBusy =>
+      'A manual update is running; this round is skipped';
+
+  @override
+  String get cleanupGroupRuntime => 'Runtime data';
+
+  @override
+  String get cleanupGroupWeights => 'Weight data';
+
+  @override
+  String get cleanupGroupRules => 'Rules and subscriptions';
+
+  @override
+  String get cleanupGroupStorage => 'Storage and security';
+
+  @override
+  String get cleanupGroupGuides => 'Guides and reset';
+
+  @override
+  String get backupReadFileFailed => 'The selected file cannot be read';
+
+  @override
+  String get caChannelUnavailable => 'The certificate channel is unavailable';
+
+  @override
+  String get caInstallUnavailable =>
+      'The certificate installer cannot be opened';
+
+  @override
+  String get caDownloadDirUnavailable =>
+      'The download directory is not writable';
+
+  @override
+  String get fontSystemDefault => 'System default';
+
+  @override
+  String get diagnosticsChannelUnavailable =>
+      'The diagnostics channel is unavailable (no native implementation on this platform)';
+
+  @override
+  String get diagnosticsUnsupported => 'This diagnostic is not supported here';
+
+  @override
+  String get diagnosticsPingUnsupported => 'Ping probing is not supported here';
+
+  @override
+  String get diagnosticsTraceUnsupported =>
+      'Route tracing is not supported here';
+
+  @override
+  String get diagnosticsDnsUnsupported => 'DNS queries are not supported here';
+
+  @override
+  String get diagnosticsEmptyTarget => 'Enter a target to probe';
+
+  @override
+  String get diagnosticsTargetHasSpace => 'The target cannot contain spaces';
+
+  @override
+  String get diagnosticsAnswerUpstream => 'Upstream resolution';
+
+  @override
+  String get diagnosticsAnswerCache => 'Cache hit';
+
+  @override
+  String get diagnosticsAnswerRewrite => 'Rewrite rule';
+
+  @override
+  String get diagnosticsAnswerBlocked => 'Blocked by a rule';
+
+  @override
+  String get diagnosticsAnswerFailed => 'Query failed';
+
+  @override
+  String get diagnosticsNoActiveNetwork => 'No active network';
+
+  @override
+  String get aiPresetMainland => 'Mainland providers';
+
+  @override
+  String get aiPresetOverseas => 'Overseas providers';
+
+  @override
+  String get aiPresetAggregator => 'Aggregators and local deployments';
+
+  @override
+  String get aiProviderConfigured => 'Configured providers';
+
+  @override
+  String get logSubscriptionDeleted => 'Deleted subscription';
+
+  @override
+  String get logRaceFastest => 'Fastest response';
+
+  @override
+  String get logRaceSmart => 'Smart selection';
+
+  @override
+  String get logRaceSequential => 'Try in order';
+
+  @override
+  String get logRaceSingle => 'Single resolver';
+
+  @override
+  String get providerNoProviderSelected => 'No resolver selected';
+
+  @override
+  String get onDemandDisabled => 'On-demand connection is off; nothing changed';
+
+  @override
+  String get onDemandServerMode =>
+      'Server mode uses no tunnel; nothing changed';
+
+  @override
+  String get onDemandUnknownSsid =>
+      'The current Wi-Fi cannot be read; nothing changed';
+
+  @override
+  String get onDemandSameNetwork =>
+      'The network has not changed; the VPN state stays as it is';
+
+  @override
+  String get onDemandNoWifi => 'Not on Wi-Fi, so the VPN was disconnected';
+
+  @override
+  String get onDemandStarted => 'Matched the allow list; the VPN was started';
+
+  @override
+  String get onDemandAlreadyRunning =>
+      'Matched the allow list; the VPN is running';
+
+  @override
+  String get onDemandStopped =>
+      'This network is not on the allow list; the VPN was disconnected';
+
+  @override
+  String get onDemandAlreadyStopped =>
+      'This network is not on the allow list; the VPN is not running';
+
+  @override
+  String get onDemandBusy => 'The VPN is switching state; try again later';
+
+  @override
+  String get onDemandNeedsConsent =>
+      'Matched the allow list; waiting for system VPN consent';
+
+  @override
+  String get speedTestSelectProvider => 'Select at least one resolver to test';
+
+  @override
+  String get speedTestEmptyDomain => 'Enter a domain to test';
+
+  @override
+  String get imagePickerUnavailable =>
+      'No image picker is available on this device';
+
+  @override
+  String get serverModeRequired => 'Switch to server mode first';
+
+  @override
+  String get serverStartFailed => 'The DNS service failed to start';
+
+  @override
+  String get serverStartTimeout => 'The DNS service timed out starting';
+
+  @override
+  String get recognitionInvalidConfig =>
+      'The cloud roster configuration is invalid';
+
+  @override
+  String get recognitionGithubInterrupted =>
+      'The connection to GitHub was interrupted; try again later';
+
+  @override
+  String get recognitionGithubTimeout =>
+      'Connecting to GitHub timed out; check the network and retry';
+
+  @override
+  String get recognitionNetworkUnavailable =>
+      'No network, so the roster cannot be updated';
+
+  @override
+  String get recognitionUpdateFailed => 'The roster update failed';
+
+  @override
+  String get subscriptionNotFound =>
+      'The subscription does not exist or the database is unavailable';
+
+  @override
+  String get subscriptionDatabaseUnavailable =>
+      'The subscription database is unavailable';
+
+  @override
+  String get subscriptionRuleDbUnavailable =>
+      'The rule database is unavailable, so downloaded rules cannot be stored';
+
+  @override
+  String get subscriptionUpdateFailed => 'Update failed';
+
+  @override
+  String get subscriptionLocalFileUnreadable => 'The local file cannot be read';
+
+  @override
+  String get subscriptionLocalRuleDbUnavailable =>
+      'The rule database is unavailable, so local rules cannot be stored';
+
+  @override
+  String get subscriptionNothingToUpdate => 'No subscriptions to update';
+
+  @override
+  String get subscriptionPickRuleFile => 'Pick a rule file';
+
+  @override
+  String get subscriptionPickTxtFile =>
+      'Pick a rule file with the .txt extension';
+
+  @override
+  String get subscriptionLegacyDatabaseMissing =>
+      'The subscription database is unavailable (the 1.4.3 database was not found)';
+
+  @override
+  String get subscriptionThisFile => 'This file';
+
+  @override
+  String get subscriptionThisLink => 'This subscription link';
+
+  @override
+  String get subscriptionLocalRuleFile => 'Local rule file';
+
+  @override
+  String get webdavEmptyCredentials =>
+      'The server address and user name cannot be empty';
+
+  @override
+  String get webdavDirectoryCreated =>
+      'The directory did not exist and was created';
+
+  @override
+  String get webdavUploaded => 'Uploaded to the cloud';
+
+  @override
+  String get webdavNoBackup => 'There is no backup file in the cloud yet';
+
+  @override
+  String get webdavDownloaded => 'The backup was retrieved from the cloud';
+
+  @override
+  String get updateCheckFirst => 'Check for updates first';
+
+  @override
+  String get updateDownloadFirst => 'Download the update package first';
+
+  @override
+  String get updateInstallerUnavailable =>
+      'The system installer cannot be opened; try again later';
+
+  @override
+  String get workModeNoDataPlane => 'This work mode has no data plane yet';
+
+  @override
+  String get workModeNoVpnConsent => 'VPN consent was not granted';
+
+  @override
+  String get workModeStartTimeout => 'The service timed out starting';
+
+  @override
+  String get workModeVpnStartFailed => 'The VPN failed to start';
+
+  @override
+  String get aiProviderZhipu => 'Zhipu GLM';
+
+  @override
+  String get aiProviderMoonshot => 'Kimi (Moonshot)';
+
+  @override
+  String get aiProviderDashscope => 'Aliyun Bailian (Qwen)';
+
+  @override
+  String get aiProviderVolcengine => 'Volcengine Ark (Doubao)';
+
+  @override
+  String get aiProviderQianfan => 'Baidu Qianfan (ERNIE)';
+
+  @override
+  String get aiProviderStepfun => 'StepFun';
+
+  @override
+  String get aiProviderSiliconflow => 'SiliconFlow';
+
+  @override
+  String get aiProviderOllamaLocal => 'Ollama (local)';
+
+  @override
+  String rulesReadFailed(Object detail) {
+    return 'Failed to read app rules: $detail';
+  }
+
+  @override
+  String autoUpdateChecked(Object count) {
+    return 'Checked $count subscriptions';
+  }
+
+  @override
+  String caChannelUnavailableDetail(Object detail) {
+    return 'The certificate channel is unavailable: $detail';
+  }
+
+  @override
+  String caReadFailedCode(Object code) {
+    return 'Failed to read the root certificate ($code)';
+  }
+
+  @override
+  String caReadFailed(Object detail) {
+    return 'Failed to read the root certificate: $detail';
+  }
+
+  @override
+  String agentAnalysisFailed(Object detail) {
+    return 'Analysis failed: $detail';
+  }
+
+  @override
+  String diagnosticsFailedCode(Object code) {
+    return 'The diagnostic failed ($code)';
+  }
+
+  @override
+  String diagnosticsFailed(Object detail) {
+    return 'The diagnostic failed: $detail';
+  }
+
+  @override
+  String subscriptionDeletedWithId(Object id) {
+    return 'Deleted subscription #$id';
+  }
+
+  @override
+  String providerLatencyValue(Object value) {
+    return '${value}ms';
+  }
+
+  @override
+  String providerRaceSummaryNames(Object count, Object names) {
+    return '$count selected: $names';
+  }
+
+  @override
+  String get providerNamesSeparator => ', ';
+
+  @override
+  String recognitionInvalidConfigKept(Object detail) {
+    return 'The cloud roster configuration is invalid ($detail); the local cache is kept';
+  }
+
+  @override
+  String recognitionFetchFailed(Object detail) {
+    return 'Fetching the cloud roster failed ($detail)';
+  }
+
+  @override
+  String recognitionUpdateFailedDetail(Object detail) {
+    return 'The roster update failed: $detail';
+  }
+
+  @override
+  String subscriptionAlreadyExists(Object kind, Object what) {
+    return '$what already exists as $kind';
+  }
+
+  @override
+  String subscriptionUpdatedCount(Object count) {
+    return '$count updated';
+  }
+
+  @override
+  String subscriptionUnchangedCount(Object count) {
+    return '$count unchanged';
+  }
+
+  @override
+  String subscriptionFailedCount(Object count) {
+    return '$count failed';
+  }
+
+  @override
+  String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what) {
+    return '$what already exists as $kind (\"$name\")';
+  }
 }

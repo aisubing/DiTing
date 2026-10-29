@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/cleanup/cleanup_models.dart';
 import 'package:diting/state/cleanup_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -40,7 +41,7 @@ class DataCleanupPage extends ConsumerWidget {
                 ),
             ],
           ),
-          for (final group in cleanupGroups.entries)
+          for (final group in cleanupGroups(context.l10n).entries)
             generateSection(
               title: group.key,
               items: [

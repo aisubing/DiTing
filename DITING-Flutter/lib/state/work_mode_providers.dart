@@ -1,6 +1,7 @@
 /// Work mode, power state, provider selection and server mode.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/mock_data.dart';
@@ -19,15 +20,29 @@ export 'package:diting/state/provider_catalog_providers.dart';
 /// The three work modes: `normal` (full-tunnel Go), `server` (DNS-only LAN), `express` (narrow
 /// Kotlin route).
 enum AppWorkMode {
-  normal('普通模式', '推荐', '全量域名解析、黑白名单、HTTPS 检查、网络管控', 'normal'),
-  server('服务器模式', '轻量', '纯 DNS 代理与解析加速、低功耗', 'dns'),
-  express('极速模式', '极速', '纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）', 'express');
+  normal('normal'),
+  server('dns'),
+  express('express');
 
-  const AppWorkMode(this.title, this.badge, this.summary, this.storageValue);
+  const AppWorkMode(this.storageValue);
 
-  final String title;
-  final String badge;
-  final String summary;
+  String title(AppL10n l10n) => switch (this) {
+    AppWorkMode.normal => l10n.workModeNormalTitle,
+    AppWorkMode.server => l10n.workModeServerTitle,
+    AppWorkMode.express => l10n.workModeExpressTitle,
+  };
+
+  String badge(AppL10n l10n) => switch (this) {
+    AppWorkMode.normal => l10n.workModeNormalBadge,
+    AppWorkMode.server => l10n.workModeServerBadge,
+    AppWorkMode.express => l10n.workModeExpressBadge,
+  };
+
+  String summary(AppL10n l10n) => switch (this) {
+    AppWorkMode.normal => l10n.workModeNormalSummary,
+    AppWorkMode.server => l10n.workModeServerSummary,
+    AppWorkMode.express => l10n.workModeExpressSummary,
+  };
 
   /// Persisted legacy `app_work_mode` value; server mode is still stored as `dns`.
   final String storageValue;
@@ -40,15 +55,19 @@ enum AppWorkMode {
 
 /// Power state machine; the error state is server-mode only.
 enum PowerState {
-  stopped('已停止'),
-  starting('启动中'),
-  running('运行中'),
-  stopping('停止中'),
-  error('启动失败');
+  stopped,
+  starting,
+  running,
+  stopping,
+  error;
 
-  const PowerState(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    PowerState.stopped => l10n.stateStopped,
+    PowerState.starting => l10n.stateStarting,
+    PowerState.running => l10n.stateRunning,
+    PowerState.stopping => l10n.stateStopping,
+    PowerState.error => l10n.powerStateError,
+  };
 
   bool get isBusy => this == starting || this == stopping;
 
@@ -203,7 +222,7 @@ class PowerNotifier extends Notifier<PowerState> {
   Future<void> _start() async {
     final mode = ref.read(workModeProvider);
     if (mode != AppWorkMode.normal && mode != AppWorkMode.express) {
-      _fail('当前工作模式尚未接入数据面');
+      _fail(currentL10n.workModeNoDataPlane);
       return;
     }
     state = PowerState.starting;
@@ -240,13 +259,13 @@ class PowerNotifier extends Notifier<PowerState> {
       }
       if (pending) {
         // Consent never came back, so asking for status would hide the failure.
-        _fail('没有获得 VPN 授权');
+        _fail(currentL10n.workModeNoVpnConsent);
         return;
       }
       syncStatus().then((_) {
         if (_disposed) return;
         if (state != PowerState.starting) return;
-        _fail('服务启动超时');
+        _fail(currentL10n.workModeStartTimeout);
       });
     });
   }
@@ -321,7 +340,7 @@ class PowerNotifier extends Notifier<PowerState> {
     );
     if (_disposed) return;
     if (!result.started) {
-      _fail(result.error ?? 'VPN 启动失败');
+      _fail(result.error ?? currentL10n.workModeVpnStartFailed);
       return;
     }
     if (express) {

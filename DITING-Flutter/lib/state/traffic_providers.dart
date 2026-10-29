@@ -2,6 +2,7 @@
 /// `TrafficIngest`; rows are per day.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/log_providers.dart';
@@ -18,14 +19,17 @@ final appTrafficRepositoryProvider = FutureProvider<AppTrafficRepository?>((
 
 /// Selectable windows with a real backend; `SESSION` and `REALTIME_SPEED` are excluded.
 enum TrafficWindow {
-  today('今日'),
-  week('本周'),
-  month('本月'),
-  all('全部');
+  today,
+  week,
+  month,
+  all;
 
-  const TrafficWindow(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    TrafficWindow.today => l10n.commonToday,
+    TrafficWindow.week => l10n.trafficWindowWeek,
+    TrafficWindow.month => l10n.trafficWindowMonth,
+    TrafficWindow.all => l10n.commonAll,
+  };
 }
 
 class TrafficWindowNotifier extends Notifier<TrafficWindow> {
@@ -113,13 +117,15 @@ Future<TrafficSnapshot> _loadSnapshot(Ref ref, TrafficWindow window) async {
 
 /// Sort modes computable from the daily table; `REALTIME_SPEED` has no data source.
 enum TrafficSort {
-  total('按总流量'),
-  download('按下载流量'),
-  upload('按上传流量');
+  total,
+  download,
+  upload;
 
-  const TrafficSort(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    TrafficSort.total => l10n.trafficSortTotal,
+    TrafficSort.download => l10n.trafficSortDownload,
+    TrafficSort.upload => l10n.trafficSortUpload,
+  };
 }
 
 class TrafficSortNotifier extends Notifier<TrafficSort> {

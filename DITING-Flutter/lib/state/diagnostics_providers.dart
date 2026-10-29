@@ -2,6 +2,7 @@
 /// `DiagnosticsRunner`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter/services.dart';
@@ -96,19 +97,19 @@ class GuardedDiagnosticsRunner implements DiagnosticsRunner {
     try {
       return await run();
     } on MissingPluginException {
-      return onError('诊断通道不可用（当前平台没有原生实现）');
+      return onError(currentL10n.diagnosticsChannelUnavailable);
     } on PlatformException catch (error) {
       return onError(_platformErrorText(error));
     } on UnsupportedError {
-      return onError('当前环境不支持该诊断能力');
+      return onError(currentL10n.diagnosticsUnsupported);
     }
   }
 
   static String _platformErrorText(PlatformException error) {
     final detail = error.message;
     return detail == null || detail.isEmpty
-        ? '诊断执行失败（${error.code}）'
-        : '诊断执行失败：$detail';
+        ? currentL10n.diagnosticsFailedCode(error.code)
+        : currentL10n.diagnosticsFailed(detail);
   }
 }
 
@@ -127,7 +128,7 @@ class UnavailableDiagnosticsRunner implements DiagnosticsRunner {
     received: 0,
     lossPercent: 100,
     success: false,
-    message: '当前环境不支持 Ping 探测',
+    message: currentL10n.diagnosticsPingUnsupported,
   );
 
   @override
@@ -136,7 +137,7 @@ class UnavailableDiagnosticsRunner implements DiagnosticsRunner {
         target: target,
         hops: const [],
         success: false,
-        message: '当前环境不支持路由追踪',
+        message: currentL10n.diagnosticsTraceUnsupported,
       );
 
   @override
@@ -150,7 +151,7 @@ class UnavailableDiagnosticsRunner implements DiagnosticsRunner {
     source: 'error',
     answers: const [],
     elapsedMs: 0,
-    error: '当前环境不支持 DNS 查询',
+    error: currentL10n.diagnosticsDnsUnsupported,
   );
 
   @override
@@ -255,25 +256,25 @@ int _firstIndexOfAny(String value, List<String> needles) {
 ({String host, String? error}) resolveProbeHost(String input) {
   final host = sanitizeProbeHost(input);
   if (host.isEmpty) {
-    return (host: host, error: '请输入探测目标');
+    return (host: host, error: currentL10n.diagnosticsEmptyTarget);
   }
   if (host.contains(' ')) {
-    return (host: host, error: '目标不能包含空格');
+    return (host: host, error: currentL10n.diagnosticsTargetHasSpace);
   }
   return (host: host, error: null);
 }
 
 String dnsSourceLabel(String source) => switch (source) {
-  'upstream' => '上游解析',
-  'cache' => '缓存命中',
-  'rewrite' => '覆写规则',
-  'blocked' => '被规则拦截',
-  _ => '查询失败',
+  'upstream' => currentL10n.diagnosticsAnswerUpstream,
+  'cache' => currentL10n.diagnosticsAnswerCache,
+  'rewrite' => currentL10n.diagnosticsAnswerRewrite,
+  'blocked' => currentL10n.diagnosticsAnswerBlocked,
+  _ => currentL10n.diagnosticsAnswerFailed,
 };
 
 /// An empty interface name means there is no active network.
 String networkInterfaceLabel(NetworkInfoSnapshot snapshot) =>
-    snapshot.interfaceName.isEmpty ? '无活动网络' : snapshot.interfaceName;
+    snapshot.interfaceName.isEmpty ? currentL10n.diagnosticsNoActiveNetwork : snapshot.interfaceName;
 
 /// Formats a latency value; null is rendered as a dash by the caller.
 String latencyText(double? value) =>

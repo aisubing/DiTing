@@ -2,6 +2,7 @@
 /// inspection.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:flutter/services.dart';
@@ -56,10 +57,10 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     try {
       return await ref.read(caCertificateServiceProvider).install();
     } on MissingPluginException {
-      return const CaInstallResult.none('证书通道不可用');
+      return CaInstallResult.none(currentL10n.caChannelUnavailable);
     } on PlatformException catch (error) {
       return CaInstallResult.none(
-        (error.message ?? '').trim().isEmpty ? '无法调起证书安装界面' : error.message!,
+        (error.message ?? '').trim().isEmpty ? currentL10n.caInstallUnavailable : error.message!,
       );
     }
   }
@@ -69,12 +70,12 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
     try {
       return await ref.read(caCertificateServiceProvider).saveToDownloads();
     } on MissingPluginException {
-      return const CaSaveResult(saved: false, error: '证书通道不可用');
+      return CaSaveResult(saved: false, error: currentL10n.caChannelUnavailable);
     } on PlatformException catch (error) {
       return CaSaveResult(
         saved: false,
         error: (error.message ?? '').trim().isEmpty
-            ? '无法写入下载目录'
+            ? currentL10n.caDownloadDirUnavailable
             : error.message,
       );
     }
@@ -97,14 +98,18 @@ class CaCertificateController extends AsyncNotifier<CaCertificateState> {
       return CaCertificateState(
         available: false,
         installed: false,
-        error: '证书通道不可用：${error.message ?? '未注册'}',
+        error: currentL10n.caChannelUnavailableDetail(
+          error.message ?? currentL10n.appListNotRegistered,
+        ),
       );
     } on PlatformException catch (error) {
       final message = (error.message ?? '').trim();
       return CaCertificateState(
         available: false,
         installed: false,
-        error: message.isEmpty ? '读取根证书失败（${error.code}）' : '读取根证书失败：$message',
+        error: message.isEmpty
+            ? currentL10n.caReadFailedCode(error.code)
+            : currentL10n.caReadFailed(message),
       );
     }
   }

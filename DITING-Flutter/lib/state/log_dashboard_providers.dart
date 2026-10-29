@@ -1,6 +1,7 @@
 /// Data layer for the drill-down pages; overview cards and race queries live in their own files.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/bootstrap_log_repository.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,13 +10,15 @@ import 'package:sqflite/sqflite.dart';
 /// Range for the race and bootstrap pages, matching legacy `RaceStatsRange` and
 /// `BootstrapStatsRange`.
 enum LogStatsRange {
-  today('今日'),
-  sevenDays('7 天'),
-  all('全部');
+  today,
+  sevenDays,
+  all;
 
-  const LogStatsRange(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    LogStatsRange.today => l10n.commonToday,
+    LogStatsRange.sevenDays => l10n.logWindowSevenDays,
+    LogStatsRange.all => l10n.commonAll,
+  };
 
   /// Window start; null means no lower bound.
   DateTime? startOf(DateTime now) {
@@ -31,13 +34,15 @@ enum LogStatsRange {
 /// Range for the subscription interception page, with the legacy
 /// `SubscriptionInterceptionStatsRange` labels.
 enum SubscriptionStatsRange {
-  today('今日'),
-  sevenDays('近 7 天'),
-  all('全部');
+  today,
+  sevenDays,
+  all;
 
-  const SubscriptionStatsRange(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    SubscriptionStatsRange.today => l10n.commonToday,
+    SubscriptionStatsRange.sevenDays => l10n.logWindowSevenDaysRecent,
+    SubscriptionStatsRange.all => l10n.commonAll,
+  };
 
   DateTime? startOf(DateTime now) {
     final dayStart = DateTime(now.year, now.month, now.day);
@@ -189,8 +194,8 @@ class SubscriptionInterceptionItem {
   final double rate;
 
   String get statusLabel {
-    if (deleted) return '已删除';
-    return enabled ? '已启用' : '已禁用';
+    if (deleted) return currentL10n.subscriptionDeleted;
+    return enabled ? currentL10n.commonEnabled : currentL10n.subscriptionDisabled;
   }
 }
 
@@ -302,7 +307,9 @@ final subscriptionInterceptionProvider =
                   final count = hits[id] ?? 0;
                   return SubscriptionInterceptionItem(
                     id: id,
-                    name: subscription?.name ?? '已删除订阅 #$id',
+                    name:
+                        subscription?.name ??
+                        currentL10n.subscriptionDeletedWithId(id),
                     enabled: subscription?.enabled ?? false,
                     deleted: subscription == null,
                     hits: count,

@@ -1,6 +1,7 @@
 /// Bottom bar style, tab transition and liquid glass: in memory only, so they reset on restart.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,12 +11,13 @@ LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
 
 /// Bottom bar look; [BottomBarDestination] decides which tabs exist, not how they are drawn.
 enum BottomBarStyle {
-  floating('浮条'),
-  docked('普通');
+  floating,
+  docked;
 
-  const BottomBarStyle(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    BottomBarStyle.floating => l10n.bottomBarStyleFloating,
+    BottomBarStyle.docked => l10n.bottomBarStyleDocked,
+  };
 
   bool get isFloating => this == floating;
 
@@ -42,14 +44,17 @@ final bottomBarStyleProvider =
 /// Tab switch animation; `none` and `scale` extend the upstream slide/fade so all four can be
 /// previewed.
 enum TabTransition {
-  none('无'),
-  fade('淡入'),
-  slide('滑动'),
-  scale('缩放');
+  none,
+  fade,
+  slide,
+  scale;
 
-  const TabTransition(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    TabTransition.none => l10n.tabTransitionNone,
+    TabTransition.fade => l10n.tabTransitionFade,
+    TabTransition.slide => l10n.tabTransitionSlide,
+    TabTransition.scale => l10n.tabTransitionScale,
+  };
 
   static TabTransition fromStorageValue(String? raw) =>
       values.firstWhere((v) => v.name == raw, orElse: () => slide);
@@ -73,13 +78,15 @@ final tabTransitionProvider =
 
 /// Liquid glass: off / standard / ultra (quality tiers live in `lib/ui/liquid_glass.dart`).
 enum LiquidGlassMode {
-  none('关闭'),
-  standard('标准'),
-  ultra('极致');
+  none,
+  standard,
+  ultra;
 
-  const LiquidGlassMode(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    LiquidGlassMode.none => l10n.commonOff,
+    LiquidGlassMode.standard => l10n.glassModeStandard,
+    LiquidGlassMode.ultra => l10n.glassModeUltra,
+  };
 
   bool get enabled => this != none;
 
@@ -123,11 +130,15 @@ final selectedFontFamilyProvider =
 
 /// Brightness the theme preview page compares: light / dark.
 enum PreviewBrightness {
-  light('浅色', Brightness.light),
-  dark('深色', Brightness.dark);
+  light(Brightness.light),
+  dark(Brightness.dark);
 
-  const PreviewBrightness(this.label, this.brightness);
+  const PreviewBrightness(this.brightness);
 
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    PreviewBrightness.light => l10n.previewBrightnessLight,
+    PreviewBrightness.dark => l10n.previewBrightnessDark,
+  };
+
   final Brightness brightness;
 }

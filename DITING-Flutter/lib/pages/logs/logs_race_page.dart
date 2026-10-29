@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/state/log_dashboard_providers.dart';
 import 'package:diting/state/log_race_providers.dart';
@@ -34,7 +35,7 @@ class LogsRacePage extends ConsumerWidget {
               items: [
                 LogStatsRangeSelector<LogStatsRange>(
                   values: LogStatsRange.values,
-                  labelOf: (range) => range.label,
+                  labelOf: (range) => range.label(context.l10n),
                   value: range,
                   onChanged: (value) =>
                       ref.read(raceStatsRangeProvider.notifier).select(value),

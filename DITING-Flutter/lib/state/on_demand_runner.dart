@@ -8,6 +8,7 @@
 /// evaluated SSID is persisted next to the rules.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/config_resource_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/config/on_demand_capabilities.dart';
@@ -18,41 +19,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// What one evaluation did, so the page can say why nothing happened.
 enum OnDemandOutcome {
   /// The on-demand switch is off; the tunnel is left to the power button.
-  disabled('按需连接已关闭，未做改动'),
+  disabled,
 
   /// Server mode owns its own service; the tunnel whitelist does not apply.
-  serverMode('服务器模式不使用隧道，未做改动'),
+  serverMode,
 
   /// The platform could not report the network, so the whitelist cannot be trusted.
-  unknownSsid('无法读取当前 Wi-Fi，未做改动'),
+  unknownSsid,
 
   /// The network is the one the whitelist was last applied to; a manual start or stop is kept.
-  sameNetwork('网络未变化，保持当前 VPN 状态'),
+  sameNetwork,
 
   /// Not on Wi-Fi and no whitelist entry covers cellular.
-  noWifi('当前不在 Wi-Fi 上，已断开 VPN'),
+  noWifi,
 
   /// Matched an entry, so the tunnel was (or already is) running.
-  started('已匹配白名单，VPN 已启动'),
+  started,
 
   /// Already running for a matching network; nothing to change.
-  alreadyRunning('已匹配白名单，VPN 正在运行'),
+  alreadyRunning,
 
   /// Did not match, so a running tunnel was stopped.
-  stopped('当前网络不在白名单，已断开 VPN'),
+  stopped,
 
   /// Did not match and nothing was running.
-  alreadyStopped('当前网络不在白名单，VPN 未启动'),
+  alreadyStopped,
 
   /// The tunnel is mid-transition; the next evaluation picks it up.
-  busy('VPN 正在切换状态，稍后再试'),
+  busy,
 
   /// The whitelist matched but the system dialog has not been accepted yet.
-  needsConsent('已匹配白名单，等待系统 VPN 授权');
+  needsConsent;
 
-  const OnDemandOutcome(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    OnDemandOutcome.disabled => l10n.onDemandDisabled,
+    OnDemandOutcome.serverMode => l10n.onDemandServerMode,
+    OnDemandOutcome.unknownSsid => l10n.onDemandUnknownSsid,
+    OnDemandOutcome.sameNetwork => l10n.onDemandSameNetwork,
+    OnDemandOutcome.noWifi => l10n.onDemandNoWifi,
+    OnDemandOutcome.started => l10n.onDemandStarted,
+    OnDemandOutcome.alreadyRunning => l10n.onDemandAlreadyRunning,
+    OnDemandOutcome.stopped => l10n.onDemandStopped,
+    OnDemandOutcome.alreadyStopped => l10n.onDemandAlreadyStopped,
+    OnDemandOutcome.busy => l10n.onDemandBusy,
+    OnDemandOutcome.needsConsent => l10n.onDemandNeedsConsent,
+  };
 }
 
 /// Re-evaluates the whitelist against the network the device is on now and moves the tunnel to

@@ -1106,4 +1106,652 @@ class AppL10nZh extends AppL10n {
   @override
   String get siteLatencyDetailFooterLong =>
       '每个站点发 3 个 ICMP 回显，取平均值；系统 ping 不可用时退回 TCP 握手，会标上 * 号，数值略高于真实往返。本应用自身流量不经过 VPN，测的是物理网络。';
+
+  @override
+  String get homeLayerPowerButton => '启动按钮';
+
+  @override
+  String get homeLayerPoem => '首页古诗';
+
+  @override
+  String get bottomBarHome => '首页';
+
+  @override
+  String get bottomBarFeatureHub => '功能中心';
+
+  @override
+  String get bottomBarLogDashboard => '日志仪表盘';
+
+  @override
+  String get bottomBarAppTraffic => '应用流量';
+
+  @override
+  String get bottomBarNetworkTools => '网络工具';
+
+  @override
+  String get bottomBarSettings => '设置';
+
+  @override
+  String get bottomBarStyleFloating => '浮条';
+
+  @override
+  String get bottomBarStyleDocked => '普通';
+
+  @override
+  String get tabTransitionNone => '无';
+
+  @override
+  String get tabTransitionFade => '淡入';
+
+  @override
+  String get tabTransitionSlide => '滑动';
+
+  @override
+  String get tabTransitionScale => '缩放';
+
+  @override
+  String get commonOff => '关闭';
+
+  @override
+  String get glassModeStandard => '标准';
+
+  @override
+  String get glassModeUltra => '极致';
+
+  @override
+  String get previewBrightnessLight => '浅色';
+
+  @override
+  String get previewBrightnessDark => '深色';
+
+  @override
+  String get resolutionModeSingle => '单服务商';
+
+  @override
+  String get resolutionModeSmart => '智能选择';
+
+  @override
+  String get resolutionModeParallel => '并行竞速';
+
+  @override
+  String get resolutionModePrimaryBackup => '主备切换';
+
+  @override
+  String get workModeNormalTitle => '普通模式';
+
+  @override
+  String get workModeNormalBadge => '推荐';
+
+  @override
+  String get workModeNormalSummary => '全量域名解析、黑白名单、HTTPS 检查、网络管控';
+
+  @override
+  String get workModeServerTitle => '服务器模式';
+
+  @override
+  String get workModeServerBadge => '轻量';
+
+  @override
+  String get workModeServerSummary => '纯 DNS 代理与解析加速、低功耗';
+
+  @override
+  String get workModeExpressTitle => '极速模式';
+
+  @override
+  String get workModeExpressBadge => '极速';
+
+  @override
+  String get workModeExpressSummary => '纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）';
+
+  @override
+  String get stateStopped => '已停止';
+
+  @override
+  String get stateStarting => '启动中';
+
+  @override
+  String get stateRunning => '运行中';
+
+  @override
+  String get stateStopping => '停止中';
+
+  @override
+  String get powerStateError => '启动失败';
+
+  @override
+  String get serverStatusError => '异常';
+
+  @override
+  String get logModeAllLabel => '记录全部';
+
+  @override
+  String get logModeAllDescription => '请求、命中、竞速与拦截都进日志';
+
+  @override
+  String get logModeBlockedLabel => '仅拦截与错误';
+
+  @override
+  String get logModeBlockedDescription => '只记录被拦截与出错的请求';
+
+  @override
+  String get logModeOffLabel => '关闭日志';
+
+  @override
+  String get logModeOffDescription => '不记录任何请求，节省空间';
+
+  @override
+  String get ipv6AutoLabel => '自动';
+
+  @override
+  String get ipv6AutoDescription => '按当前网络能力决定是否启用';
+
+  @override
+  String get ipv6DisableLabel => '关闭';
+
+  @override
+  String get ipv6DisableDescription => '隧道内不启用 IPv6';
+
+  @override
+  String get ipv6PreferLabel => '优先';
+
+  @override
+  String get ipv6PreferDescription => '尽量走 IPv6，失败再回落';
+
+  @override
+  String get commonToday => '今日';
+
+  @override
+  String get logWindowSevenDays => '7 天';
+
+  @override
+  String get logWindowSevenDaysRecent => '近 7 天';
+
+  @override
+  String get commonAll => '全部';
+
+  @override
+  String get trafficWindowWeek => '本周';
+
+  @override
+  String get trafficWindowMonth => '本月';
+
+  @override
+  String get trafficSortTotal => '按总流量';
+
+  @override
+  String get trafficSortDownload => '按下载流量';
+
+  @override
+  String get trafficSortUpload => '按上传流量';
+
+  @override
+  String get davStatusIdle => '未连接';
+
+  @override
+  String get davStatusConnecting => '连接中';
+
+  @override
+  String get davStatusConnected => '连接成功';
+
+  @override
+  String get davStatusFailed => '连接失败';
+
+  @override
+  String get updateStageIdle => '未检查';
+
+  @override
+  String get updateStageChecking => '检查中';
+
+  @override
+  String get updateStageUpToDate => '已是最新';
+
+  @override
+  String get updateStageAvailable => '发现新版本';
+
+  @override
+  String get updateStageDownloading => '下载中';
+
+  @override
+  String get updateStageDownloaded => '下载完成';
+
+  @override
+  String get ipQualityStageIdle => '未检测';
+
+  @override
+  String get ipQualityStageLoading => '检测中';
+
+  @override
+  String get ipQualityStageLoaded => '检测完成';
+
+  @override
+  String get ipQualityStageFailed => '检测失败';
+
+  @override
+  String get subscriptionDeleted => '已删除';
+
+  @override
+  String get subscriptionDisabled => '已禁用';
+
+  @override
+  String get subscriptionUngrouped => '未分组';
+
+  @override
+  String get providerNotTested => '未测速';
+
+  @override
+  String get elapsedJustNow => '刚刚';
+
+  @override
+  String elapsedSecondsAgo(Object count) {
+    return '$count 秒前';
+  }
+
+  @override
+  String elapsedMinutesAgo(Object count) {
+    return '$count 分钟前';
+  }
+
+  @override
+  String elapsedHoursAgo(Object count) {
+    return '$count 小时前';
+  }
+
+  @override
+  String elapsedDaysAgo(Object count) {
+    return '$count 天前';
+  }
+
+  @override
+  String providerRaceSummary(Object count, Object names) {
+    return '已选 $count 个：$names';
+  }
+
+  @override
+  String get rulesDbUnavailable => '当前环境无法读写规则库';
+
+  @override
+  String get agentApiKeyMissing => '尚未配置可用的 API Key，请先在「AI 厂商管理」里填写并选中该厂商。';
+
+  @override
+  String get agentNoExtraInfo => '（无附加信息）';
+
+  @override
+  String get agentNoLegacyDatabase => '未找到旧版数据库，无法读取 DNS 与 HTTPS 日志；请先启动一次服务。';
+
+  @override
+  String get agentExpressNoHttps => '极速模式只做窄路由 DNS 加速，不产生 HTTPS 检查记录';
+
+  @override
+  String get autoUpdateDisabled => '自动更新已关闭';
+
+  @override
+  String get autoUpdateNoSubscriptions => '没有可自动更新的订阅';
+
+  @override
+  String get autoUpdateNotDue => '未到更新时间';
+
+  @override
+  String get autoUpdateBusy => '正在手动更新，本轮跳过';
+
+  @override
+  String get cleanupGroupRuntime => '运行数据';
+
+  @override
+  String get cleanupGroupWeights => '权重数据';
+
+  @override
+  String get cleanupGroupRules => '规则与订阅';
+
+  @override
+  String get cleanupGroupStorage => '存储与安全';
+
+  @override
+  String get cleanupGroupGuides => '引导与重置';
+
+  @override
+  String get backupReadFileFailed => '无法读取所选文件';
+
+  @override
+  String get caChannelUnavailable => '证书通道不可用';
+
+  @override
+  String get caInstallUnavailable => '无法调起证书安装界面';
+
+  @override
+  String get caDownloadDirUnavailable => '无法写入下载目录';
+
+  @override
+  String get fontSystemDefault => '系统默认';
+
+  @override
+  String get diagnosticsChannelUnavailable => '诊断通道不可用（当前平台没有原生实现）';
+
+  @override
+  String get diagnosticsUnsupported => '当前环境不支持该诊断能力';
+
+  @override
+  String get diagnosticsPingUnsupported => '当前环境不支持 Ping 探测';
+
+  @override
+  String get diagnosticsTraceUnsupported => '当前环境不支持路由追踪';
+
+  @override
+  String get diagnosticsDnsUnsupported => '当前环境不支持 DNS 查询';
+
+  @override
+  String get diagnosticsEmptyTarget => '请输入探测目标';
+
+  @override
+  String get diagnosticsTargetHasSpace => '目标不能包含空格';
+
+  @override
+  String get diagnosticsAnswerUpstream => '上游解析';
+
+  @override
+  String get diagnosticsAnswerCache => '缓存命中';
+
+  @override
+  String get diagnosticsAnswerRewrite => '覆写规则';
+
+  @override
+  String get diagnosticsAnswerBlocked => '被规则拦截';
+
+  @override
+  String get diagnosticsAnswerFailed => '查询失败';
+
+  @override
+  String get diagnosticsNoActiveNetwork => '无活动网络';
+
+  @override
+  String get aiPresetMainland => '国内厂商';
+
+  @override
+  String get aiPresetOverseas => '海外厂商';
+
+  @override
+  String get aiPresetAggregator => '聚合与本地部署';
+
+  @override
+  String get aiProviderConfigured => '已配置厂商';
+
+  @override
+  String get logSubscriptionDeleted => '已删除订阅';
+
+  @override
+  String get logRaceFastest => '最快响应';
+
+  @override
+  String get logRaceSmart => '智能选择';
+
+  @override
+  String get logRaceSequential => '依次尝试';
+
+  @override
+  String get logRaceSingle => '单服务商';
+
+  @override
+  String get providerNoProviderSelected => '未选择服务商';
+
+  @override
+  String get onDemandDisabled => '按需连接已关闭，未做改动';
+
+  @override
+  String get onDemandServerMode => '服务器模式不使用隧道，未做改动';
+
+  @override
+  String get onDemandUnknownSsid => '无法读取当前 Wi-Fi，未做改动';
+
+  @override
+  String get onDemandSameNetwork => '网络未变化，保持当前 VPN 状态';
+
+  @override
+  String get onDemandNoWifi => '当前不在 Wi-Fi 上，已断开 VPN';
+
+  @override
+  String get onDemandStarted => '已匹配白名单，VPN 已启动';
+
+  @override
+  String get onDemandAlreadyRunning => '已匹配白名单，VPN 正在运行';
+
+  @override
+  String get onDemandStopped => '当前网络不在白名单，已断开 VPN';
+
+  @override
+  String get onDemandAlreadyStopped => '当前网络不在白名单，VPN 未启动';
+
+  @override
+  String get onDemandBusy => 'VPN 正在切换状态，稍后再试';
+
+  @override
+  String get onDemandNeedsConsent => '已匹配白名单，等待系统 VPN 授权';
+
+  @override
+  String get speedTestSelectProvider => '请先选择至少一个测速服务商';
+
+  @override
+  String get speedTestEmptyDomain => '请输入用于测速的域名';
+
+  @override
+  String get imagePickerUnavailable => '当前设备没有可用的图片选择器';
+
+  @override
+  String get serverModeRequired => '请先切换到服务器模式';
+
+  @override
+  String get serverStartFailed => 'DNS 服务启动失败';
+
+  @override
+  String get serverStartTimeout => 'DNS 服务启动超时';
+
+  @override
+  String get recognitionInvalidConfig => '云端名单配置无效';
+
+  @override
+  String get recognitionGithubInterrupted => '与 GitHub 的连接被中断，请稍后重试';
+
+  @override
+  String get recognitionGithubTimeout => '连接 GitHub 超时，请检查网络后重试';
+
+  @override
+  String get recognitionNetworkUnavailable => '网络不可用，无法更新名单';
+
+  @override
+  String get recognitionUpdateFailed => '名单更新失败';
+
+  @override
+  String get subscriptionNotFound => '订阅不存在或数据库不可用';
+
+  @override
+  String get subscriptionDatabaseUnavailable => '订阅数据库不可用';
+
+  @override
+  String get subscriptionRuleDbUnavailable => '规则库不可用，下载的规则无法入库';
+
+  @override
+  String get subscriptionUpdateFailed => '更新失败';
+
+  @override
+  String get subscriptionLocalFileUnreadable => '无法读取本地文件';
+
+  @override
+  String get subscriptionLocalRuleDbUnavailable => '规则库不可用，本地规则无法入库';
+
+  @override
+  String get subscriptionNothingToUpdate => '没有可更新的订阅';
+
+  @override
+  String get subscriptionPickRuleFile => '请选择一个规则文件';
+
+  @override
+  String get subscriptionPickTxtFile => '请选择扩展名为 .txt 的规则文件';
+
+  @override
+  String get subscriptionLegacyDatabaseMissing => '订阅数据库不可用（未找到 1.4.3 数据库）';
+
+  @override
+  String get subscriptionThisFile => '该文件';
+
+  @override
+  String get subscriptionThisLink => '该订阅链接';
+
+  @override
+  String get subscriptionLocalRuleFile => '本地规则文件';
+
+  @override
+  String get webdavEmptyCredentials => '服务器地址与用户名不能为空';
+
+  @override
+  String get webdavDirectoryCreated => '目录不存在，已自动创建';
+
+  @override
+  String get webdavUploaded => '已上传到云端';
+
+  @override
+  String get webdavNoBackup => '云端还没有备份文件';
+
+  @override
+  String get webdavDownloaded => '已从云端取回备份';
+
+  @override
+  String get updateCheckFirst => '请先检查更新';
+
+  @override
+  String get updateDownloadFirst => '请先下载更新包';
+
+  @override
+  String get updateInstallerUnavailable => '无法调起系统安装器，请稍后重试';
+
+  @override
+  String get workModeNoDataPlane => '当前工作模式尚未接入数据面';
+
+  @override
+  String get workModeNoVpnConsent => '没有获得 VPN 授权';
+
+  @override
+  String get workModeStartTimeout => '服务启动超时';
+
+  @override
+  String get workModeVpnStartFailed => 'VPN 启动失败';
+
+  @override
+  String get aiProviderZhipu => '智谱 GLM';
+
+  @override
+  String get aiProviderMoonshot => 'Kimi（月之暗面）';
+
+  @override
+  String get aiProviderDashscope => '阿里云百炼（通义千问）';
+
+  @override
+  String get aiProviderVolcengine => '火山方舟（豆包）';
+
+  @override
+  String get aiProviderQianfan => '百度千帆（ERNIE）';
+
+  @override
+  String get aiProviderStepfun => '阶跃星辰';
+
+  @override
+  String get aiProviderSiliconflow => '硅基流动';
+
+  @override
+  String get aiProviderOllamaLocal => 'Ollama（本机）';
+
+  @override
+  String rulesReadFailed(Object detail) {
+    return '读取应用规则失败：$detail';
+  }
+
+  @override
+  String autoUpdateChecked(Object count) {
+    return '已检查 $count 个订阅';
+  }
+
+  @override
+  String caChannelUnavailableDetail(Object detail) {
+    return '证书通道不可用：$detail';
+  }
+
+  @override
+  String caReadFailedCode(Object code) {
+    return '读取根证书失败（$code）';
+  }
+
+  @override
+  String caReadFailed(Object detail) {
+    return '读取根证书失败：$detail';
+  }
+
+  @override
+  String agentAnalysisFailed(Object detail) {
+    return '分析失败：$detail';
+  }
+
+  @override
+  String diagnosticsFailedCode(Object code) {
+    return '诊断执行失败（$code）';
+  }
+
+  @override
+  String diagnosticsFailed(Object detail) {
+    return '诊断执行失败：$detail';
+  }
+
+  @override
+  String subscriptionDeletedWithId(Object id) {
+    return '已删除订阅 #$id';
+  }
+
+  @override
+  String providerLatencyValue(Object value) {
+    return '${value}ms';
+  }
+
+  @override
+  String providerRaceSummaryNames(Object count, Object names) {
+    return '已选 $count 个：$names';
+  }
+
+  @override
+  String get providerNamesSeparator => '、';
+
+  @override
+  String recognitionInvalidConfigKept(Object detail) {
+    return '云端名单配置无效（$detail），已保留本地缓存';
+  }
+
+  @override
+  String recognitionFetchFailed(Object detail) {
+    return '云端名单拉取失败（$detail）';
+  }
+
+  @override
+  String recognitionUpdateFailedDetail(Object detail) {
+    return '名单更新失败：$detail';
+  }
+
+  @override
+  String subscriptionAlreadyExists(Object kind, Object what) {
+    return '$what已作为$kind存在';
+  }
+
+  @override
+  String subscriptionUpdatedCount(Object count) {
+    return '$count 个已更新';
+  }
+
+  @override
+  String subscriptionUnchangedCount(Object count) {
+    return '$count 个未变化';
+  }
+
+  @override
+  String subscriptionFailedCount(Object count) {
+    return '$count 个失败';
+  }
+
+  @override
+  String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what) {
+    return '$what已作为$kind存在（「$name」）';
+  }
 }

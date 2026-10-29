@@ -2,6 +2,7 @@
 /// refreshes on entry.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -155,22 +156,22 @@ class RecognitionController extends AsyncNotifier<RecognitionState> {
   static String _describe(Object error) {
     final text = error.toString();
     if (error is FormatException) {
-      return '云端名单配置无效（${error.message}），已保留本地缓存';
+      return currentL10n.recognitionInvalidConfigKept('${error.message}');
     }
     if (text.contains('HandshakeException')) {
-      return '与 GitHub 的连接被中断，请稍后重试';
+      return currentL10n.recognitionGithubInterrupted;
     }
     if (text.contains('TimeoutException')) {
-      return '连接 GitHub 超时，请检查网络后重试';
+      return currentL10n.recognitionGithubTimeout;
     }
     if (text.contains('SocketException') ||
         text.contains('Failed host lookup')) {
-      return '网络不可用，无法更新名单';
+      return currentL10n.recognitionNetworkUnavailable;
     }
     if (text.contains('HttpException')) {
-      return '云端名单拉取失败（$text）';
+      return currentL10n.recognitionFetchFailed(text);
     }
-    return '名单更新失败：$text';
+    return currentL10n.recognitionUpdateFailedDetail(text);
   }
 }
 

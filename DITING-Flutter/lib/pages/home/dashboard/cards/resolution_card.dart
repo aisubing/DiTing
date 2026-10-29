@@ -31,7 +31,7 @@ class ResolutionCard extends ConsumerWidget {
             title: context.l10n.resolutionModeTitle,
             trailing: [
               Text(
-                resolution.label,
+                resolution.label(context.l10n),
                 style: AppTextStyle.footnote
                     .of(context, emphasized: true)
                     .copyWith(color: colorScheme.primary),
@@ -47,7 +47,7 @@ class ResolutionCard extends ConsumerWidget {
                 SegmentedControl<ResolutionMode>(
                   segments: [
                     for (final option in ResolutionMode.values)
-                      (option, option.label),
+                      (option, option.label(context.l10n)),
                   ],
                   value: resolution,
                   onChanged: (value) =>

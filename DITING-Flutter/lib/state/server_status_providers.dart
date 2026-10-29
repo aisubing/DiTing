@@ -2,6 +2,7 @@
 /// contaminate each other.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/notifications/notification_status_text.dart';
@@ -29,15 +30,19 @@ final serverPortProvider = NotifierProvider<ServerPortNotifier, int>(
 
 /// Five-state server-mode status card.
 enum ServerStatus {
-  stopped('已停止'),
-  starting('启动中'),
-  running('运行中'),
-  stopping('停止中'),
-  error('异常');
+  stopped,
+  starting,
+  running,
+  stopping,
+  error;
 
-  const ServerStatus(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    ServerStatus.stopped => l10n.stateStopped,
+    ServerStatus.starting => l10n.stateStarting,
+    ServerStatus.running => l10n.stateRunning,
+    ServerStatus.stopping => l10n.stateStopping,
+    ServerStatus.error => l10n.serverStatusError,
+  };
 }
 
 class ServerStatusNotifier extends Notifier<ServerStatus> {
@@ -127,7 +132,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
 
   Future<void> _start() async {
     if (ref.read(workModeProvider) != AppWorkMode.server) {
-      _fail('请先切换到服务器模式');
+      _fail(currentL10n.serverModeRequired);
       return;
     }
     // Only one tunnel-like data plane at a time: stop the VPN before binding.
@@ -156,7 +161,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
           );
       if (_disposed) return;
       if (!result.started) {
-        _fail(result.error ?? 'DNS 服务启动失败');
+        _fail(result.error ?? currentL10n.serverStartFailed);
         return;
       }
       settings.setServerServiceActive(true);
@@ -215,7 +220,7 @@ class ServerStatusNotifier extends Notifier<ServerStatus> {
       }
       syncStatus().then((_) {
         if (_disposed || state != ServerStatus.starting) return;
-        _fail('DNS 服务启动超时');
+        _fail(currentL10n.serverStartTimeout);
       });
     });
   }

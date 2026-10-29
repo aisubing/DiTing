@@ -2,6 +2,7 @@
 /// `dnsLogRevisionProvider` only.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/race_log_repository.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
@@ -29,10 +30,10 @@ final raceStatsRangeProvider =
 /// Maps a stored strategy to its display name; old aliases (`race`, `prediction`) are read, so no
 /// row shows a raw value.
 String raceStrategyLabel(String strategy) => switch (strategy) {
-  'parallel_race' || 'race' || 'brute_force_parallel' => '最快响应',
-  'smart_prediction' || 'prediction' => '智能选择',
-  'primary_backup' => '依次尝试',
-  'single' => '单服务商',
+  'parallel_race' || 'race' || 'brute_force_parallel' => currentL10n.logRaceFastest,
+  'smart_prediction' || 'prediction' => currentL10n.logRaceSmart,
+  'primary_backup' => currentL10n.logRaceSequential,
+  'single' => currentL10n.logRaceSingle,
   _ => strategy,
 };
 

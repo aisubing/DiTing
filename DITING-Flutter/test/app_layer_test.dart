@@ -19,7 +19,13 @@ import 'support/fake_vpn_controller.dart';
 
 void main() {
   group('主题与外观', _appLayer);
-  group('枚举文案', () => _enumDisplay(lookupAppL10n(const Locale('zh'))));
+  // Every supported language must produce display text, not a source identifier.
+  for (final locale in AppL10n.supportedLocales) {
+    group(
+      '枚举文案 ${locale.languageCode}',
+      () => _enumDisplay(lookupAppL10n(locale)),
+    );
+  }
 }
 
 void _appLayer() {
@@ -349,28 +355,37 @@ void _enumDisplay(AppL10n l10n) {
         expectNoRawEnumLiteral(kind.summary, 'RuleKind.${kind.name}.summary');
       }
       for (final mode in AppWorkMode.values) {
-        expectNoRawEnumLiteral(mode.title, 'AppWorkMode.${mode.name}.title');
-        expectNoRawEnumLiteral(mode.badge, 'AppWorkMode.${mode.name}.badge');
         expectNoRawEnumLiteral(
-          mode.summary,
+          mode.title(l10n),
+          'AppWorkMode.${mode.name}.title',
+        );
+        expectNoRawEnumLiteral(
+          mode.badge(l10n),
+          'AppWorkMode.${mode.name}.badge',
+        );
+        expectNoRawEnumLiteral(
+          mode.summary(l10n),
           'AppWorkMode.${mode.name}.summary',
         );
       }
       for (final state in PowerState.values) {
-        expectNoRawEnumLiteral(state.label, 'PowerState.${state.name}.label');
+        expectNoRawEnumLiteral(
+          state.label(l10n),
+          'PowerState.${state.name}.label',
+        );
       }
       for (final resolution in ResolutionMode.values) {
         expectNoRawEnumLiteral(
-          resolution.label,
+          resolution.label(l10n),
           'ResolutionMode.${resolution.name}',
         );
       }
       for (final layer in HomeLayer.values) {
-        expectNoRawEnumLiteral(layer.label, 'HomeLayer.${layer.name}');
+        expectNoRawEnumLiteral(layer.label(l10n), 'HomeLayer.${layer.name}');
       }
       for (final destination in BottomBarDestination.values) {
         expectNoRawEnumLiteral(
-          destination.label,
+          destination.label(l10n),
           'BottomBarDestination.${destination.name}',
         );
       }
@@ -391,7 +406,7 @@ void _enumDisplay(AppL10n l10n) {
       }
       for (final serverStatus in ServerStatus.values) {
         expectNoRawEnumLiteral(
-          serverStatus.label,
+          serverStatus.label(l10n),
           'ServerStatus.${serverStatus.name}',
         );
       }

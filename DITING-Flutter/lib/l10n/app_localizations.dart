@@ -2086,6 +2086,1206 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'每个站点发 3 个 ICMP 回显，取平均值；系统 ping 不可用时退回 TCP 握手，会标上 * 号，数值略高于真实往返。本应用自身流量不经过 VPN，测的是物理网络。'**
   String get siteLatencyDetailFooterLong;
+
+  /// No description provided for @homeLayerPowerButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动按钮'**
+  String get homeLayerPowerButton;
+
+  /// No description provided for @homeLayerPoem.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页古诗'**
+  String get homeLayerPoem;
+
+  /// No description provided for @bottomBarHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页'**
+  String get bottomBarHome;
+
+  /// No description provided for @bottomBarFeatureHub.
+  ///
+  /// In zh, this message translates to:
+  /// **'功能中心'**
+  String get bottomBarFeatureHub;
+
+  /// No description provided for @bottomBarLogDashboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志仪表盘'**
+  String get bottomBarLogDashboard;
+
+  /// No description provided for @bottomBarAppTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用流量'**
+  String get bottomBarAppTraffic;
+
+  /// No description provided for @bottomBarNetworkTools.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络工具'**
+  String get bottomBarNetworkTools;
+
+  /// No description provided for @bottomBarSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get bottomBarSettings;
+
+  /// No description provided for @bottomBarStyleFloating.
+  ///
+  /// In zh, this message translates to:
+  /// **'浮条'**
+  String get bottomBarStyleFloating;
+
+  /// No description provided for @bottomBarStyleDocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'普通'**
+  String get bottomBarStyleDocked;
+
+  /// No description provided for @tabTransitionNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'无'**
+  String get tabTransitionNone;
+
+  /// No description provided for @tabTransitionFade.
+  ///
+  /// In zh, this message translates to:
+  /// **'淡入'**
+  String get tabTransitionFade;
+
+  /// No description provided for @tabTransitionSlide.
+  ///
+  /// In zh, this message translates to:
+  /// **'滑动'**
+  String get tabTransitionSlide;
+
+  /// No description provided for @tabTransitionScale.
+  ///
+  /// In zh, this message translates to:
+  /// **'缩放'**
+  String get tabTransitionScale;
+
+  /// No description provided for @commonOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get commonOff;
+
+  /// No description provided for @glassModeStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准'**
+  String get glassModeStandard;
+
+  /// No description provided for @glassModeUltra.
+  ///
+  /// In zh, this message translates to:
+  /// **'极致'**
+  String get glassModeUltra;
+
+  /// No description provided for @previewBrightnessLight.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色'**
+  String get previewBrightnessLight;
+
+  /// No description provided for @previewBrightnessDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色'**
+  String get previewBrightnessDark;
+
+  /// No description provided for @resolutionModeSingle.
+  ///
+  /// In zh, this message translates to:
+  /// **'单服务商'**
+  String get resolutionModeSingle;
+
+  /// No description provided for @resolutionModeSmart.
+  ///
+  /// In zh, this message translates to:
+  /// **'智能选择'**
+  String get resolutionModeSmart;
+
+  /// No description provided for @resolutionModeParallel.
+  ///
+  /// In zh, this message translates to:
+  /// **'并行竞速'**
+  String get resolutionModeParallel;
+
+  /// No description provided for @resolutionModePrimaryBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'主备切换'**
+  String get resolutionModePrimaryBackup;
+
+  /// No description provided for @workModeNormalTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'普通模式'**
+  String get workModeNormalTitle;
+
+  /// No description provided for @workModeNormalBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get workModeNormalBadge;
+
+  /// No description provided for @workModeNormalSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'全量域名解析、黑白名单、HTTPS 检查、网络管控'**
+  String get workModeNormalSummary;
+
+  /// No description provided for @workModeServerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器模式'**
+  String get workModeServerTitle;
+
+  /// No description provided for @workModeServerBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'轻量'**
+  String get workModeServerBadge;
+
+  /// No description provided for @workModeServerSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'纯 DNS 代理与解析加速、低功耗'**
+  String get workModeServerSummary;
+
+  /// No description provided for @workModeExpressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'极速模式'**
+  String get workModeExpressTitle;
+
+  /// No description provided for @workModeExpressBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'极速'**
+  String get workModeExpressBadge;
+
+  /// No description provided for @workModeExpressSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'纯 Kotlin、DNS 加速与规则过滤、Android 7+（64 位）'**
+  String get workModeExpressSummary;
+
+  /// No description provided for @stateStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'已停止'**
+  String get stateStopped;
+
+  /// No description provided for @stateStarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动中'**
+  String get stateStarting;
+
+  /// No description provided for @stateRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行中'**
+  String get stateRunning;
+
+  /// No description provided for @stateStopping.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止中'**
+  String get stateStopping;
+
+  /// No description provided for @powerStateError.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动失败'**
+  String get powerStateError;
+
+  /// No description provided for @serverStatusError.
+  ///
+  /// In zh, this message translates to:
+  /// **'异常'**
+  String get serverStatusError;
+
+  /// No description provided for @logModeAllLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录全部'**
+  String get logModeAllLabel;
+
+  /// No description provided for @logModeAllDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求、命中、竞速与拦截都进日志'**
+  String get logModeAllDescription;
+
+  /// No description provided for @logModeBlockedLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅拦截与错误'**
+  String get logModeBlockedLabel;
+
+  /// No description provided for @logModeBlockedDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'只记录被拦截与出错的请求'**
+  String get logModeBlockedDescription;
+
+  /// No description provided for @logModeOffLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭日志'**
+  String get logModeOffLabel;
+
+  /// No description provided for @logModeOffDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'不记录任何请求，节省空间'**
+  String get logModeOffDescription;
+
+  /// No description provided for @ipv6AutoLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get ipv6AutoLabel;
+
+  /// No description provided for @ipv6AutoDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'按当前网络能力决定是否启用'**
+  String get ipv6AutoDescription;
+
+  /// No description provided for @ipv6DisableLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get ipv6DisableLabel;
+
+  /// No description provided for @ipv6DisableDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'隧道内不启用 IPv6'**
+  String get ipv6DisableDescription;
+
+  /// No description provided for @ipv6PreferLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'优先'**
+  String get ipv6PreferLabel;
+
+  /// No description provided for @ipv6PreferDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'尽量走 IPv6，失败再回落'**
+  String get ipv6PreferDescription;
+
+  /// No description provided for @commonToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今日'**
+  String get commonToday;
+
+  /// No description provided for @logWindowSevenDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'7 天'**
+  String get logWindowSevenDays;
+
+  /// No description provided for @logWindowSevenDaysRecent.
+  ///
+  /// In zh, this message translates to:
+  /// **'近 7 天'**
+  String get logWindowSevenDaysRecent;
+
+  /// No description provided for @commonAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get commonAll;
+
+  /// No description provided for @trafficWindowWeek.
+  ///
+  /// In zh, this message translates to:
+  /// **'本周'**
+  String get trafficWindowWeek;
+
+  /// No description provided for @trafficWindowMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'本月'**
+  String get trafficWindowMonth;
+
+  /// No description provided for @trafficSortTotal.
+  ///
+  /// In zh, this message translates to:
+  /// **'按总流量'**
+  String get trafficSortTotal;
+
+  /// No description provided for @trafficSortDownload.
+  ///
+  /// In zh, this message translates to:
+  /// **'按下载流量'**
+  String get trafficSortDownload;
+
+  /// No description provided for @trafficSortUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'按上传流量'**
+  String get trafficSortUpload;
+
+  /// No description provided for @davStatusIdle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接'**
+  String get davStatusIdle;
+
+  /// No description provided for @davStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中'**
+  String get davStatusConnecting;
+
+  /// No description provided for @davStatusConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接成功'**
+  String get davStatusConnected;
+
+  /// No description provided for @davStatusFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接失败'**
+  String get davStatusFailed;
+
+  /// No description provided for @updateStageIdle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检查'**
+  String get updateStageIdle;
+
+  /// No description provided for @updateStageChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查中'**
+  String get updateStageChecking;
+
+  /// No description provided for @updateStageUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'已是最新'**
+  String get updateStageUpToDate;
+
+  /// No description provided for @updateStageAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现新版本'**
+  String get updateStageAvailable;
+
+  /// No description provided for @updateStageDownloading.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载中'**
+  String get updateStageDownloading;
+
+  /// No description provided for @updateStageDownloaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载完成'**
+  String get updateStageDownloaded;
+
+  /// No description provided for @ipQualityStageIdle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测'**
+  String get ipQualityStageIdle;
+
+  /// No description provided for @ipQualityStageLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测中'**
+  String get ipQualityStageLoading;
+
+  /// No description provided for @ipQualityStageLoaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测完成'**
+  String get ipQualityStageLoaded;
+
+  /// No description provided for @ipQualityStageFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测失败'**
+  String get ipQualityStageFailed;
+
+  /// No description provided for @subscriptionDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除'**
+  String get subscriptionDeleted;
+
+  /// No description provided for @subscriptionDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已禁用'**
+  String get subscriptionDisabled;
+
+  /// No description provided for @subscriptionUngrouped.
+  ///
+  /// In zh, this message translates to:
+  /// **'未分组'**
+  String get subscriptionUngrouped;
+
+  /// No description provided for @providerNotTested.
+  ///
+  /// In zh, this message translates to:
+  /// **'未测速'**
+  String get providerNotTested;
+
+  /// No description provided for @elapsedJustNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'刚刚'**
+  String get elapsedJustNow;
+
+  /// No description provided for @elapsedSecondsAgo.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 秒前'**
+  String elapsedSecondsAgo(Object count);
+
+  /// No description provided for @elapsedMinutesAgo.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 分钟前'**
+  String elapsedMinutesAgo(Object count);
+
+  /// No description provided for @elapsedHoursAgo.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 小时前'**
+  String elapsedHoursAgo(Object count);
+
+  /// No description provided for @elapsedDaysAgo.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 天前'**
+  String elapsedDaysAgo(Object count);
+
+  /// No description provided for @providerRaceSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 个：{names}'**
+  String providerRaceSummary(Object count, Object names);
+
+  /// No description provided for @rulesDbUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境无法读写规则库'**
+  String get rulesDbUnavailable;
+
+  /// No description provided for @agentApiKeyMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未配置可用的 API Key，请先在「AI 厂商管理」里填写并选中该厂商。'**
+  String get agentApiKeyMissing;
+
+  /// No description provided for @agentNoExtraInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'（无附加信息）'**
+  String get agentNoExtraInfo;
+
+  /// No description provided for @agentNoLegacyDatabase.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到旧版数据库，无法读取 DNS 与 HTTPS 日志；请先启动一次服务。'**
+  String get agentNoLegacyDatabase;
+
+  /// No description provided for @agentExpressNoHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'极速模式只做窄路由 DNS 加速，不产生 HTTPS 检查记录'**
+  String get agentExpressNoHttps;
+
+  /// No description provided for @autoUpdateDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动更新已关闭'**
+  String get autoUpdateDisabled;
+
+  /// No description provided for @autoUpdateNoSubscriptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可自动更新的订阅'**
+  String get autoUpdateNoSubscriptions;
+
+  /// No description provided for @autoUpdateNotDue.
+  ///
+  /// In zh, this message translates to:
+  /// **'未到更新时间'**
+  String get autoUpdateNotDue;
+
+  /// No description provided for @autoUpdateBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在手动更新，本轮跳过'**
+  String get autoUpdateBusy;
+
+  /// No description provided for @cleanupGroupRuntime.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行数据'**
+  String get cleanupGroupRuntime;
+
+  /// No description provided for @cleanupGroupWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'权重数据'**
+  String get cleanupGroupWeights;
+
+  /// No description provided for @cleanupGroupRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则与订阅'**
+  String get cleanupGroupRules;
+
+  /// No description provided for @cleanupGroupStorage.
+  ///
+  /// In zh, this message translates to:
+  /// **'存储与安全'**
+  String get cleanupGroupStorage;
+
+  /// No description provided for @cleanupGroupGuides.
+  ///
+  /// In zh, this message translates to:
+  /// **'引导与重置'**
+  String get cleanupGroupGuides;
+
+  /// No description provided for @backupReadFileFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取所选文件'**
+  String get backupReadFileFailed;
+
+  /// No description provided for @caChannelUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书通道不可用'**
+  String get caChannelUnavailable;
+
+  /// No description provided for @caInstallUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法调起证书安装界面'**
+  String get caInstallUnavailable;
+
+  /// No description provided for @caDownloadDirUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法写入下载目录'**
+  String get caDownloadDirUnavailable;
+
+  /// No description provided for @fontSystemDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统默认'**
+  String get fontSystemDefault;
+
+  /// No description provided for @diagnosticsChannelUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断通道不可用（当前平台没有原生实现）'**
+  String get diagnosticsChannelUnavailable;
+
+  /// No description provided for @diagnosticsUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持该诊断能力'**
+  String get diagnosticsUnsupported;
+
+  /// No description provided for @diagnosticsPingUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持 Ping 探测'**
+  String get diagnosticsPingUnsupported;
+
+  /// No description provided for @diagnosticsTraceUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持路由追踪'**
+  String get diagnosticsTraceUnsupported;
+
+  /// No description provided for @diagnosticsDnsUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持 DNS 查询'**
+  String get diagnosticsDnsUnsupported;
+
+  /// No description provided for @diagnosticsEmptyTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入探测目标'**
+  String get diagnosticsEmptyTarget;
+
+  /// No description provided for @diagnosticsTargetHasSpace.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标不能包含空格'**
+  String get diagnosticsTargetHasSpace;
+
+  /// No description provided for @diagnosticsAnswerUpstream.
+  ///
+  /// In zh, this message translates to:
+  /// **'上游解析'**
+  String get diagnosticsAnswerUpstream;
+
+  /// No description provided for @diagnosticsAnswerCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存命中'**
+  String get diagnosticsAnswerCache;
+
+  /// No description provided for @diagnosticsAnswerRewrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆写规则'**
+  String get diagnosticsAnswerRewrite;
+
+  /// No description provided for @diagnosticsAnswerBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'被规则拦截'**
+  String get diagnosticsAnswerBlocked;
+
+  /// No description provided for @diagnosticsAnswerFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询失败'**
+  String get diagnosticsAnswerFailed;
+
+  /// No description provided for @diagnosticsNoActiveNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'无活动网络'**
+  String get diagnosticsNoActiveNetwork;
+
+  /// No description provided for @aiPresetMainland.
+  ///
+  /// In zh, this message translates to:
+  /// **'国内厂商'**
+  String get aiPresetMainland;
+
+  /// No description provided for @aiPresetOverseas.
+  ///
+  /// In zh, this message translates to:
+  /// **'海外厂商'**
+  String get aiPresetOverseas;
+
+  /// No description provided for @aiPresetAggregator.
+  ///
+  /// In zh, this message translates to:
+  /// **'聚合与本地部署'**
+  String get aiPresetAggregator;
+
+  /// No description provided for @aiProviderConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'已配置厂商'**
+  String get aiProviderConfigured;
+
+  /// No description provided for @logSubscriptionDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除订阅'**
+  String get logSubscriptionDeleted;
+
+  /// No description provided for @logRaceFastest.
+  ///
+  /// In zh, this message translates to:
+  /// **'最快响应'**
+  String get logRaceFastest;
+
+  /// No description provided for @logRaceSmart.
+  ///
+  /// In zh, this message translates to:
+  /// **'智能选择'**
+  String get logRaceSmart;
+
+  /// No description provided for @logRaceSequential.
+  ///
+  /// In zh, this message translates to:
+  /// **'依次尝试'**
+  String get logRaceSequential;
+
+  /// No description provided for @logRaceSingle.
+  ///
+  /// In zh, this message translates to:
+  /// **'单服务商'**
+  String get logRaceSingle;
+
+  /// No description provided for @providerNoProviderSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择服务商'**
+  String get providerNoProviderSelected;
+
+  /// No description provided for @onDemandDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'按需连接已关闭，未做改动'**
+  String get onDemandDisabled;
+
+  /// No description provided for @onDemandServerMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器模式不使用隧道，未做改动'**
+  String get onDemandServerMode;
+
+  /// No description provided for @onDemandUnknownSsid.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取当前 Wi-Fi，未做改动'**
+  String get onDemandUnknownSsid;
+
+  /// No description provided for @onDemandSameNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络未变化，保持当前 VPN 状态'**
+  String get onDemandSameNetwork;
+
+  /// No description provided for @onDemandNoWifi.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前不在 Wi-Fi 上，已断开 VPN'**
+  String get onDemandNoWifi;
+
+  /// No description provided for @onDemandStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已匹配白名单，VPN 已启动'**
+  String get onDemandStarted;
+
+  /// No description provided for @onDemandAlreadyRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'已匹配白名单，VPN 正在运行'**
+  String get onDemandAlreadyRunning;
+
+  /// No description provided for @onDemandStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络不在白名单，已断开 VPN'**
+  String get onDemandStopped;
+
+  /// No description provided for @onDemandAlreadyStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络不在白名单，VPN 未启动'**
+  String get onDemandAlreadyStopped;
+
+  /// No description provided for @onDemandBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPN 正在切换状态，稍后再试'**
+  String get onDemandBusy;
+
+  /// No description provided for @onDemandNeedsConsent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已匹配白名单，等待系统 VPN 授权'**
+  String get onDemandNeedsConsent;
+
+  /// No description provided for @speedTestSelectProvider.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先选择至少一个测速服务商'**
+  String get speedTestSelectProvider;
+
+  /// No description provided for @speedTestEmptyDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入用于测速的域名'**
+  String get speedTestEmptyDomain;
+
+  /// No description provided for @imagePickerUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备没有可用的图片选择器'**
+  String get imagePickerUnavailable;
+
+  /// No description provided for @serverModeRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先切换到服务器模式'**
+  String get serverModeRequired;
+
+  /// No description provided for @serverStartFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务启动失败'**
+  String get serverStartFailed;
+
+  /// No description provided for @serverStartTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务启动超时'**
+  String get serverStartTimeout;
+
+  /// No description provided for @recognitionInvalidConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端名单配置无效'**
+  String get recognitionInvalidConfig;
+
+  /// No description provided for @recognitionGithubInterrupted.
+  ///
+  /// In zh, this message translates to:
+  /// **'与 GitHub 的连接被中断，请稍后重试'**
+  String get recognitionGithubInterrupted;
+
+  /// No description provided for @recognitionGithubTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接 GitHub 超时，请检查网络后重试'**
+  String get recognitionGithubTimeout;
+
+  /// No description provided for @recognitionNetworkUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络不可用，无法更新名单'**
+  String get recognitionNetworkUnavailable;
+
+  /// No description provided for @recognitionUpdateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单更新失败'**
+  String get recognitionUpdateFailed;
+
+  /// No description provided for @subscriptionNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅不存在或数据库不可用'**
+  String get subscriptionNotFound;
+
+  /// No description provided for @subscriptionDatabaseUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅数据库不可用'**
+  String get subscriptionDatabaseUnavailable;
+
+  /// No description provided for @subscriptionRuleDbUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则库不可用，下载的规则无法入库'**
+  String get subscriptionRuleDbUnavailable;
+
+  /// No description provided for @subscriptionUpdateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新失败'**
+  String get subscriptionUpdateFailed;
+
+  /// No description provided for @subscriptionLocalFileUnreadable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取本地文件'**
+  String get subscriptionLocalFileUnreadable;
+
+  /// No description provided for @subscriptionLocalRuleDbUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则库不可用，本地规则无法入库'**
+  String get subscriptionLocalRuleDbUnavailable;
+
+  /// No description provided for @subscriptionNothingToUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可更新的订阅'**
+  String get subscriptionNothingToUpdate;
+
+  /// No description provided for @subscriptionPickRuleFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择一个规则文件'**
+  String get subscriptionPickRuleFile;
+
+  /// No description provided for @subscriptionPickTxtFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择扩展名为 .txt 的规则文件'**
+  String get subscriptionPickTxtFile;
+
+  /// No description provided for @subscriptionLegacyDatabaseMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅数据库不可用（未找到 1.4.3 数据库）'**
+  String get subscriptionLegacyDatabaseMissing;
+
+  /// No description provided for @subscriptionThisFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'该文件'**
+  String get subscriptionThisFile;
+
+  /// No description provided for @subscriptionThisLink.
+  ///
+  /// In zh, this message translates to:
+  /// **'该订阅链接'**
+  String get subscriptionThisLink;
+
+  /// No description provided for @subscriptionLocalRuleFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地规则文件'**
+  String get subscriptionLocalRuleFile;
+
+  /// No description provided for @webdavEmptyCredentials.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器地址与用户名不能为空'**
+  String get webdavEmptyCredentials;
+
+  /// No description provided for @webdavDirectoryCreated.
+  ///
+  /// In zh, this message translates to:
+  /// **'目录不存在，已自动创建'**
+  String get webdavDirectoryCreated;
+
+  /// No description provided for @webdavUploaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上传到云端'**
+  String get webdavUploaded;
+
+  /// No description provided for @webdavNoBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端还没有备份文件'**
+  String get webdavNoBackup;
+
+  /// No description provided for @webdavDownloaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已从云端取回备份'**
+  String get webdavDownloaded;
+
+  /// No description provided for @updateCheckFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先检查更新'**
+  String get updateCheckFirst;
+
+  /// No description provided for @updateDownloadFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先下载更新包'**
+  String get updateDownloadFirst;
+
+  /// No description provided for @updateInstallerUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法调起系统安装器，请稍后重试'**
+  String get updateInstallerUnavailable;
+
+  /// No description provided for @workModeNoDataPlane.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前工作模式尚未接入数据面'**
+  String get workModeNoDataPlane;
+
+  /// No description provided for @workModeNoVpnConsent.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有获得 VPN 授权'**
+  String get workModeNoVpnConsent;
+
+  /// No description provided for @workModeStartTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务启动超时'**
+  String get workModeStartTimeout;
+
+  /// No description provided for @workModeVpnStartFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPN 启动失败'**
+  String get workModeVpnStartFailed;
+
+  /// No description provided for @aiProviderZhipu.
+  ///
+  /// In zh, this message translates to:
+  /// **'智谱 GLM'**
+  String get aiProviderZhipu;
+
+  /// No description provided for @aiProviderMoonshot.
+  ///
+  /// In zh, this message translates to:
+  /// **'Kimi（月之暗面）'**
+  String get aiProviderMoonshot;
+
+  /// No description provided for @aiProviderDashscope.
+  ///
+  /// In zh, this message translates to:
+  /// **'阿里云百炼（通义千问）'**
+  String get aiProviderDashscope;
+
+  /// No description provided for @aiProviderVolcengine.
+  ///
+  /// In zh, this message translates to:
+  /// **'火山方舟（豆包）'**
+  String get aiProviderVolcengine;
+
+  /// No description provided for @aiProviderQianfan.
+  ///
+  /// In zh, this message translates to:
+  /// **'百度千帆（ERNIE）'**
+  String get aiProviderQianfan;
+
+  /// No description provided for @aiProviderStepfun.
+  ///
+  /// In zh, this message translates to:
+  /// **'阶跃星辰'**
+  String get aiProviderStepfun;
+
+  /// No description provided for @aiProviderSiliconflow.
+  ///
+  /// In zh, this message translates to:
+  /// **'硅基流动'**
+  String get aiProviderSiliconflow;
+
+  /// No description provided for @aiProviderOllamaLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'Ollama（本机）'**
+  String get aiProviderOllamaLocal;
+
+  /// No description provided for @rulesReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取应用规则失败：{detail}'**
+  String rulesReadFailed(Object detail);
+
+  /// No description provided for @autoUpdateChecked.
+  ///
+  /// In zh, this message translates to:
+  /// **'已检查 {count} 个订阅'**
+  String autoUpdateChecked(Object count);
+
+  /// No description provided for @caChannelUnavailableDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'证书通道不可用：{detail}'**
+  String caChannelUnavailableDetail(Object detail);
+
+  /// No description provided for @caReadFailedCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取根证书失败（{code}）'**
+  String caReadFailedCode(Object code);
+
+  /// No description provided for @caReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取根证书失败：{detail}'**
+  String caReadFailed(Object detail);
+
+  /// No description provided for @agentAnalysisFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析失败：{detail}'**
+  String agentAnalysisFailed(Object detail);
+
+  /// No description provided for @diagnosticsFailedCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断执行失败（{code}）'**
+  String diagnosticsFailedCode(Object code);
+
+  /// No description provided for @diagnosticsFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断执行失败：{detail}'**
+  String diagnosticsFailed(Object detail);
+
+  /// No description provided for @subscriptionDeletedWithId.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除订阅 #{id}'**
+  String subscriptionDeletedWithId(Object id);
+
+  /// No description provided for @providerLatencyValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{value}ms'**
+  String providerLatencyValue(Object value);
+
+  /// No description provided for @providerRaceSummaryNames.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 个：{names}'**
+  String providerRaceSummaryNames(Object count, Object names);
+
+  /// No description provided for @providerNamesSeparator.
+  ///
+  /// In zh, this message translates to:
+  /// **'、'**
+  String get providerNamesSeparator;
+
+  /// No description provided for @recognitionInvalidConfigKept.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端名单配置无效（{detail}），已保留本地缓存'**
+  String recognitionInvalidConfigKept(Object detail);
+
+  /// No description provided for @recognitionFetchFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端名单拉取失败（{detail}）'**
+  String recognitionFetchFailed(Object detail);
+
+  /// No description provided for @recognitionUpdateFailedDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'名单更新失败：{detail}'**
+  String recognitionUpdateFailedDetail(Object detail);
+
+  /// No description provided for @subscriptionAlreadyExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'{what}已作为{kind}存在'**
+  String subscriptionAlreadyExists(Object kind, Object what);
+
+  /// No description provided for @subscriptionUpdatedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个已更新'**
+  String subscriptionUpdatedCount(Object count);
+
+  /// No description provided for @subscriptionUnchangedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个未变化'**
+  String subscriptionUnchangedCount(Object count);
+
+  /// No description provided for @subscriptionFailedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个失败'**
+  String subscriptionFailedCount(Object count);
+
+  /// No description provided for @subscriptionAlreadyExistsNamed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{what}已作为{kind}存在（「{name}」）'**
+  String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

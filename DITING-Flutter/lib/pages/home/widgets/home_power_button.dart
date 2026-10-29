@@ -43,7 +43,7 @@ class HomePowerButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      value: state.label,
+      value: state.label(context.l10n),
       child: Center(
         // The knob only occupies the middle of the 240 box; dropping the caption below
         // lets the box shrink to the halo diameter instead of leaving dead space.

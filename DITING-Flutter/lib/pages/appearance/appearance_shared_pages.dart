@@ -1,6 +1,7 @@
 /// Appearance sub pages: day/night, opacity, dock, sentences. Rest in `settings_parity_pages`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/pages/appearance/appearance_inputs.dart';
@@ -102,7 +103,7 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
             items: [
               for (final layer in _interactive)
                 SliderCardRow(
-                  label: layer.label,
+                  label: layer.label(context.l10n),
                   value: opacity[layer] ?? 1,
                   onChanged: (value) => notifier.set(layer, value),
                 ),
@@ -113,7 +114,7 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
             items: [
               for (final layer in _text)
                 SliderCardRow(
-                  label: layer.label,
+                  label: layer.label(context.l10n),
                   value: opacity[layer] ?? 1,
                   onChanged: (value) => notifier.set(layer, value),
                 ),
@@ -203,7 +204,7 @@ class ThemeBottomBarPage extends ConsumerWidget {
             items: [
               for (final destination in hidden)
                 ListItem.toggle(
-                  title: Text(destination.label),
+                  title: Text(destination.label(context.l10n)),
                   subtitle: Text(_destinationSubtitles[destination] ?? ''),
                   leading: GlyphIcon(destination.glyph),
                   value: false,
@@ -246,7 +247,7 @@ class _DockDestinationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListItem(
-      title: Text(destination.label),
+      title: Text(destination.label(context.l10n)),
       subtitle: Text(_destinationSubtitles[destination] ?? ''),
       leading: GlyphIcon(destination.glyph),
       padding: const EdgeInsets.only(left: 16, right: 4),

@@ -2,6 +2,7 @@
 /// delete 0.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/cleanup/data_cleanup_service.dart';
@@ -99,25 +100,28 @@ class CleanupRunner {
 final cleanupRunnerProvider = Provider<CleanupRunner>(CleanupRunner.new);
 
 /// Group titles, matching 1.4.3 `DataCleanupScreen`.
-const cleanupGroups = <String, List<CleanupAction>>{
-  '运行数据': [
+Map<String, List<CleanupAction>> cleanupGroups(AppL10n l10n) => {
+  l10n.cleanupGroupRuntime: [
     CleanupAction.logs,
     CleanupAction.traffic,
     CleanupAction.crash,
     CleanupAction.dnsCache,
   ],
-  '权重数据': [CleanupAction.providerWeights, CleanupAction.bootstrapWeights],
-  '规则与订阅': [
+  l10n.cleanupGroupWeights: [
+    CleanupAction.providerWeights,
+    CleanupAction.bootstrapWeights,
+  ],
+  l10n.cleanupGroupRules: [
     CleanupAction.domainRules,
     CleanupAction.addressRules,
     CleanupAction.subscriptions,
     CleanupAction.appRules,
   ],
-  '存储与安全': [
+  l10n.cleanupGroupStorage: [
     CleanupAction.outboundProxy,
     CleanupAction.caCertificate,
     CleanupAction.downloadCache,
     CleanupAction.customBackground,
   ],
-  '引导与重置': [CleanupAction.settingsGuides, CleanupAction.allData],
+  l10n.cleanupGroupGuides: [CleanupAction.settingsGuides, CleanupAction.allData],
 };

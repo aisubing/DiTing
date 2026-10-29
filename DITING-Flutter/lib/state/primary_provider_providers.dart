@@ -2,6 +2,7 @@
 /// cannot disagree.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,13 +25,13 @@ final primaryProviderProvider = Provider<MockProvider?>((ref) {
 
 /// Relative time from the real timestamp; without one, "not tested yet".
 String elapsedAgoLabel(DateTime? at) {
-  if (at == null) return '尚未测速';
+  if (at == null) return currentL10n.siteLatencyNotTested;
   final seconds = DateTime.now().difference(at).inSeconds;
-  if (seconds < 5) return '刚刚';
-  if (seconds < 60) return '$seconds 秒前';
+  if (seconds < 5) return currentL10n.elapsedJustNow;
+  if (seconds < 60) return currentL10n.elapsedSecondsAgo(seconds);
   final minutes = seconds ~/ 60;
-  if (minutes < 60) return '$minutes 分钟前';
+  if (minutes < 60) return currentL10n.elapsedMinutesAgo(minutes);
   final hours = minutes ~/ 60;
-  if (hours < 24) return '$hours 小时前';
-  return '${hours ~/ 24} 天前';
+  if (hours < 24) return currentL10n.elapsedHoursAgo(hours);
+  return currentL10n.elapsedDaysAgo(hours ~/ 24);
 }

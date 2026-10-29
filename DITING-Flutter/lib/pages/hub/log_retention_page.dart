@@ -2,6 +2,7 @@
 /// Crash logs live on the 故障排查 page in 数据与维护.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -31,8 +32,8 @@ class LogRetentionPage extends ConsumerWidget {
                     mode == option ? AppGlyphs.checkCircle : AppGlyphs.logs,
                     size: 20,
                   ),
-                  title: Text(option.label),
-                  subtitle: Text(option.description),
+                  title: Text(option.label(context.l10n)),
+                  subtitle: Text(option.description(context.l10n)),
                   trailing: mode == option ? const SelectionCheck() : null,
                   onTap: () =>
                       ref.read(logModeProvider.notifier).select(option),

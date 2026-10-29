@@ -72,7 +72,7 @@ class StatusDetailPage extends ConsumerWidget {
               const SizedBox(height: 6),
               DashboardDetailRows(
                 rows: [
-                  DashboardDetailRow(label: context.l10n.statusWorkMode, value: mode.title),
+                  DashboardDetailRow(label: context.l10n.statusWorkMode, value: mode.title(context.l10n)),
                   DashboardDetailRow(label: context.l10n.statusCoreState, value: core.label),
                   if (mode == AppWorkMode.server)
                     DashboardDetailRow(

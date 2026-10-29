@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -160,18 +161,18 @@ class _WorkModeCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            mode.title,
+                            mode.title(context.l10n),
                             style: AppTextStyle.headline.of(
                               context,
                               emphasized: true,
                             ),
                           ),
                         ),
-                        MetaChip(label: mode.badge),
+                        MetaChip(label: mode.badge(context.l10n)),
                       ],
                     ),
                     Text(
-                      mode.summary,
+                      mode.summary(context.l10n),
                       style: AppTextStyle.footnote
                           .of(context)
                           .copyWith(color: colorScheme.onSurfaceVariant),

@@ -2,6 +2,7 @@
 /// here.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/db/rule_dataset_providers.dart';
@@ -43,7 +44,7 @@ final appScopedRulesProvider = FutureProvider.family<AppScopedRules, String>((
 ) async {
   final repository = ref.watch(ruleRepositoryProvider);
   if (repository == null) {
-    return const AppScopedRules.unavailable('当前环境无法读写规则库');
+    return AppScopedRules.unavailable(currentL10n.rulesDbUnavailable);
   }
   try {
     final rules = await repository.loadForApp(packageName);
@@ -60,7 +61,7 @@ final appScopedRulesProvider = FutureProvider.family<AppScopedRules, String>((
       fullBlock: fullBlock,
     );
   } catch (error) {
-    return AppScopedRules.unavailable('读取应用规则失败：$error');
+    return AppScopedRules.unavailable(currentL10n.rulesReadFailed('$error'));
   }
 });
 

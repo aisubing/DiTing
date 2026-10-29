@@ -2,6 +2,7 @@
 /// totals.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/bootstrap_log_repository.dart';
 import 'package:diting/data/db/dns_cache_repository.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
@@ -444,7 +445,9 @@ Future<List<LogSubscriptionBlock>> _loadSubscriptionBlocks(
   final blocks = [
     for (final entry in hits.entries)
       LogSubscriptionBlock(
-        name: byId[entry.key]?.name ?? '已删除订阅 #${entry.key}',
+        name:
+            byId[entry.key]?.name ??
+            currentL10n.subscriptionDeletedWithId(entry.key),
         enabled: byId[entry.key]?.enabled ?? false,
         deleted: !byId.containsKey(entry.key),
         hits: entry.value,

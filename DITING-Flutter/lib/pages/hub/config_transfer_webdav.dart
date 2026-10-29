@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/backup/backup_importer.dart';
 import 'package:diting/data/backup/backup_models.dart';
 import 'package:diting/pages/forms/form_page.dart';
@@ -323,7 +324,7 @@ class _DavStatusCard extends StatelessWidget {
               spacing: 2,
               children: [
                 Text(
-                  status.label,
+                  status.label(context.l10n),
                   style: context.listTitleStyle.copyWith(color: color),
                 ),
                 Text(

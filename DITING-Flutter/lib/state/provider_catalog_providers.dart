@@ -2,6 +2,7 @@
 /// id lists persist.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
@@ -53,8 +54,9 @@ String providerEndpointFromCatalog(WidgetRef ref, String id) =>
     endpointOfProvider(id, ref.watch(dnsProviderCatalogProvider));
 
 /// Display text for a provider's last measured latency.
-String providerLatencyLabel(MockProvider provider) =>
-    provider.latencyMs < 0 ? '未测速' : '${provider.latencyMs}ms';
+String providerLatencyLabel(MockProvider provider) => provider.latencyMs < 0
+    ? currentL10n.providerNotTested
+    : currentL10n.providerLatencyValue(provider.latencyMs);
 
 /// Names joined for the race summary; ids missing from the catalog are skipped.
 String summaryOfProviders(Set<String> ids, List<MockProvider> catalog) {
@@ -63,12 +65,15 @@ String summaryOfProviders(Set<String> ids, List<MockProvider> catalog) {
       if (ids.contains(provider.id)) provider.name,
   ];
   if (names.isEmpty) {
-    return '未选择服务商';
+    return currentL10n.providerNoProviderSelected;
   }
   if (names.length == 1) {
     return names.first;
   }
-  return '已选 ${names.length} 个：${names.join('、')}';
+  return currentL10n.providerRaceSummaryNames(
+    names.length,
+    names.join(currentL10n.providerNamesSeparator),
+  );
 }
 
 class ProviderCatalogNotifier extends Notifier<List<MockProvider>> {

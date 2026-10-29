@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/permissions_bridge.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/permission_providers.dart';
@@ -166,7 +167,7 @@ class _ChooseModeStep extends StatelessWidget {
     return _StepScaffold(
       glyph: _glyphOf(mode),
       title: '你选择了${mode.title}',
-      description: mode.summary,
+      description: mode.summary(context.l10n),
       children: [
         _TipCard(
           glyph: AppGlyphs.info,

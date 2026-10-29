@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -70,7 +71,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       spacing: 2,
                       children: [
-                        Text(mode.label, style: context.listTitleStyle),
+                        Text(mode.label(context.l10n), style: context.listTitleStyle),
                         Text(
                           _descriptions[mode] ?? '',
                           style: context.listSubtitleStyle,
@@ -114,7 +115,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
               for (final option in ResolutionMode.values)
                 ListItem(
                   leading: GlyphIcon(_glyphOf(option), size: 20),
-                  title: Text(option.label),
+                  title: Text(option.label(context.l10n)),
                   subtitle: Text(_descriptions[option] ?? ''),
                   trailing: Text(
                     _summaryOf(option, singleProvider, raceIds.length),
@@ -166,7 +167,7 @@ class _ResolutionModePageState extends ConsumerState<ResolutionModePage> {
             for (final mode in ResolutionMode.values)
               ListItem(
                 leading: GlyphIcon(_glyphOf(mode), size: 20),
-                title: Text(mode.label),
+                title: Text(mode.label(context.l10n)),
                 subtitle: Text(_descriptions[mode] ?? ''),
                 trailing: mode == current ? const SelectionCheck() : null,
                 onTap: () {
@@ -284,7 +285,7 @@ class _ResolutionModeConfigPageState
         if (!_order.contains(provider.id)) provider,
     ];
     return CommonScaffold(
-      title: _mode.label,
+      title: _mode.label(context.l10n),
       body: PageBody(
         children: [
           Padding(

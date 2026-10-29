@@ -33,7 +33,7 @@ extension SubscriptionEditActions on SubscriptionActions {
     final repository = await _ref.read(subscriptionRepositoryProvider.future);
     final record = await repository?.byId(id);
     if (repository == null || record == null) {
-      return const EditSubscriptionFailure('订阅不存在或数据库不可用');
+      return EditSubscriptionFailure(currentL10n.subscriptionNotFound);
     }
     final isLocal = !record.isRemote;
     final trimmedUrl = isLocal ? record.url : url.trim();
@@ -46,8 +46,13 @@ extension SubscriptionEditActions on SubscriptionActions {
     final existing = await repository.byUrlAndKind(trimmedUrl, kind);
     if (existing != null && existing.id != id) {
       return EditSubscriptionFailure(
-        '${isLocal ? '该文件' : '该订阅链接'}已作为${kind.displayName}存在'
-        '（「${existing.name}」）',
+        currentL10n.subscriptionAlreadyExistsNamed(
+          isLocal
+              ? currentL10n.subscriptionThisFile
+              : currentL10n.subscriptionThisLink,
+          kind.displayName,
+          existing.name,
+        ),
       );
     }
     String? normalizedMirror;

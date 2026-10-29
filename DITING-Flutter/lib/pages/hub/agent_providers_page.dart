@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/hub/agent_provider_editor.dart';
 import 'package:diting/state/hub_settings_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -17,7 +18,7 @@ class AgentProvidersPage extends ConsumerWidget {
     final state = ref.watch(agentApiProvider);
     final notifier = ref.read(agentApiProvider.notifier);
     final groups = <String, List<AiProviderPreset>>{};
-    for (final preset in aiProviderPresets) {
+    for (final preset in aiProviderPresets(context.l10n)) {
       groups.putIfAbsent(preset.group, () => []).add(preset);
     }
     final added = state.providers.map((provider) => provider.presetId).toSet();

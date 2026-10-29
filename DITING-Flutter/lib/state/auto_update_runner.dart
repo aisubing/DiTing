@@ -2,28 +2,33 @@
 /// WorkManager.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/state/auto_update_providers.dart';
 import 'package:diting/state/subscription_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum AutoUpdateSkip {
-  disabled('自动更新已关闭'),
+  disabled,
 
   /// Legacy DB missing (fresh install).
-  noDatabase('订阅数据库不可用'),
+  noDatabase,
 
   /// No eligible subscriptions (remote, enabled, group allowed).
-  noSubscriptions('没有可自动更新的订阅'),
+  noSubscriptions,
 
-  notDue('未到更新时间'),
+  notDue,
 
   /// A manual update is running; yield (1.4.3 `BlockedByManualOperation`).
-  busy('正在手动更新，本轮跳过');
+  busy;
 
-  const AutoUpdateSkip(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    AutoUpdateSkip.disabled => l10n.autoUpdateDisabled,
+    AutoUpdateSkip.noDatabase => l10n.subscriptionDatabaseUnavailable,
+    AutoUpdateSkip.noSubscriptions => l10n.autoUpdateNoSubscriptions,
+    AutoUpdateSkip.notDue => l10n.autoUpdateNotDue,
+    AutoUpdateSkip.busy => l10n.autoUpdateBusy,
+  };
 }
 
 /// Result of one check; a null [skip] means a real run happened.
@@ -119,7 +124,7 @@ class AutoUpdateRunner {
     await _ref.read(subscriptionUpdateProvider.notifier).updateAll(entries);
     final message = _ref.read(subscriptionUpdateProvider).lastMessage;
     return AutoUpdateRun(
-      summary: message ?? '已检查 ${entries.length} 个订阅',
+      summary: message ?? currentL10n.autoUpdateChecked(entries.length),
       ranCount: entries.length,
       dueAt: nextDueAt(records, settings.intervalHours, now),
     );

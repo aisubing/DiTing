@@ -2,6 +2,7 @@
 /// `sub_<id>`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:async';
 
 import 'package:diting/data/db/legacy_database.dart';
@@ -113,7 +114,7 @@ class SubscriptionEntry {
   /// Group chip key; a null group is shown as ungrouped.
   String get groupKey => groupName ?? ungroupedLabel;
 
-  static const ungroupedLabel = '未分组';
+  static String get ungroupedLabel => currentL10n.subscriptionUngrouped;
 }
 
 /// All subscriptions and groups; group names resolve from here.
@@ -283,7 +284,7 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
   Future<SubscriptionFetchResult> _runOne(SubscriptionEntry entry) async {
     final repository = await ref.read(subscriptionRepositoryProvider.future);
     if (repository == null) {
-      return const SubscriptionFetchResult.failed('订阅数据库不可用');
+      return SubscriptionFetchResult.failed(currentL10n.subscriptionDatabaseUnavailable);
     }
     if (!entry.isRemote) {
       return _runLocal(entry, repository);
@@ -311,10 +312,10 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
           // A download that cannot be stored must report failure, not "updated".
           await repository.markUpdateFailed(
             entry.id,
-            error: '规则库不可用，下载的规则无法入库',
+            error: currentL10n.subscriptionRuleDbUnavailable,
             attemptedAt: now,
           );
-          return const SubscriptionFetchResult.failed('规则库不可用，下载的规则无法入库');
+          return SubscriptionFetchResult.failed(currentL10n.subscriptionRuleDbUnavailable);
         }
         await repository.markImported(
           entry.id,
@@ -326,7 +327,7 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
       case SubscriptionFetchOutcome.failed:
         await repository.markUpdateFailed(
           entry.id,
-          error: result.error ?? '更新失败',
+          error: result.error ?? currentL10n.subscriptionUpdateFailed,
           attemptedAt: now,
         );
     }
@@ -344,7 +345,7 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
         .read(subscriptionFileReaderProvider)
         .readPersistedText(entry.url);
     if (!read.isOk) {
-      final reason = read.error ?? '无法读取本地文件';
+      final reason = read.error ?? currentL10n.subscriptionLocalFileUnreadable;
       await repository.markUpdateFailed(
         entry.id,
         error: reason,
@@ -354,13 +355,13 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
     }
     final imported = await _importContent(entry, read.text!);
     if (imported == null) {
-      const reason = '规则库不可用，本地规则无法入库';
+      final reason = currentL10n.subscriptionLocalRuleDbUnavailable;
       await repository.markUpdateFailed(
         entry.id,
         error: reason,
         attemptedAt: now,
       );
-      return const SubscriptionFetchResult.failed(reason);
+      return SubscriptionFetchResult.failed(reason);
     }
     await repository.markImported(
       entry.id,
@@ -407,17 +408,17 @@ class SubscriptionUpdateNotifier extends Notifier<SubscriptionUpdateState> {
 
   static String _summarize(List<SubscriptionFetchResult> results) {
     if (results.isEmpty) {
-      return '没有可更新的订阅';
+      return currentL10n.subscriptionNothingToUpdate;
     }
     final updated = results.where((result) => result.isSuccess).length;
     final unchanged = results.where((result) => result.isNotModified).length;
     final failed = results.where((result) => result.isFailure).length;
     final parts = <String>[
-      if (updated > 0) '$updated 个已更新',
-      if (unchanged > 0) '$unchanged 个未变化',
-      if (failed > 0) '$failed 个失败',
+      if (updated > 0) currentL10n.subscriptionUpdatedCount(updated),
+      if (unchanged > 0) currentL10n.subscriptionUnchangedCount(unchanged),
+      if (failed > 0) currentL10n.subscriptionFailedCount(failed),
     ];
-    return parts.isEmpty ? '没有可更新的订阅' : parts.join('，');
+    return parts.isEmpty ? currentL10n.subscriptionNothingToUpdate : parts.join('，');
   }
 }
 
@@ -460,11 +461,11 @@ class SubscriptionActions {
     final isLocal = sourceType == SubscriptionSourceType.local;
     if (isLocal) {
       if (url.trim().isEmpty) {
-        return const AddSubscriptionFailure('请选择一个规则文件');
+        return AddSubscriptionFailure(currentL10n.subscriptionPickRuleFile);
       }
       final pickedName = url.trim().split('/').last;
       if (!pickedName.toLowerCase().endsWith('.txt')) {
-        return const AddSubscriptionFailure('请选择扩展名为 .txt 的规则文件');
+        return AddSubscriptionFailure(currentL10n.subscriptionPickTxtFile);
       }
     } else {
       final urlError = validateSubscriptionUrl(url);
@@ -476,13 +477,18 @@ class SubscriptionActions {
     final trimmedName = name.trim();
     final repository = await _ref.read(subscriptionRepositoryProvider.future);
     if (repository == null) {
-      return const AddSubscriptionFailure('订阅数据库不可用（未找到 1.4.3 数据库）');
+      return AddSubscriptionFailure(currentL10n.subscriptionLegacyDatabaseMissing);
     }
     final existing = await repository.byUrlAndKind(trimmedUrl, kind);
     if (existing != null) {
       return AddSubscriptionFailure(
-        '${isLocal ? '该文件' : '该订阅链接'}已作为${kind.displayName}存在'
-        '（「${existing.name}」）',
+        currentL10n.subscriptionAlreadyExistsNamed(
+          isLocal
+              ? currentL10n.subscriptionThisFile
+              : currentL10n.subscriptionThisLink,
+          kind.displayName,
+          existing.name,
+        ),
       );
     }
     String? normalizedMirror;
@@ -526,7 +532,7 @@ class SubscriptionActions {
     final trimmed = segment.toLowerCase().endsWith('.txt')
         ? segment.substring(0, segment.length - 4)
         : segment;
-    return trimmed.isEmpty ? '本地规则文件' : trimmed;
+    return trimmed.isEmpty ? currentL10n.subscriptionLocalRuleFile : trimmed;
   }
 
   /// Master switch; also flips its source rows, since a rule is active only when both it and a
