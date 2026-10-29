@@ -18,23 +18,26 @@ class _RangeOption {
 
 /// The five upstream TrafficTimeRange values. "This session" has no source here: the daily
 /// table stores one row per app per day, with no in-process running total.
-const _rangeOptions = <_RangeOption>[
+List<_RangeOption> _rangeOptions(AppL10n l10n) => <_RangeOption>[
   _RangeOption(
-    label: '本次会话',
-    unavailableReason: '「本次会话」需要内核按会话回报流量，本仓只有按天落库的历史记录',
+    label: l10n.trafficSessionRange,
+    unavailableReason: l10n.trafficSessionUnavailable,
   ),
-  _RangeOption(label: '今日', window: TrafficWindow.today),
-  _RangeOption(label: '本周', window: TrafficWindow.week),
-  _RangeOption(label: '本月', window: TrafficWindow.month),
-  _RangeOption(label: '全部历史', window: TrafficWindow.all),
+  _RangeOption(label: l10n.commonToday, window: TrafficWindow.today),
+  _RangeOption(label: l10n.trafficWindowWeek, window: TrafficWindow.week),
+  _RangeOption(label: l10n.trafficWindowMonth, window: TrafficWindow.month),
+  _RangeOption(label: l10n.trafficAllHistory, window: TrafficWindow.all),
 ];
 
 /// The four upstream TrafficSortMode values, matching AppTrafficStatsModels.kt.
-const _sortOptions = <_SortOption>[
-  _SortOption(label: '按总流量', sort: TrafficSort.total),
-  _SortOption(label: '按下载流量', sort: TrafficSort.download),
-  _SortOption(label: '按上传流量', sort: TrafficSort.upload),
-  _SortOption(label: '按实时网速', unavailableReason: '「按实时网速」需要每秒速率，本仓的按天表里没有速率列'),
+List<_SortOption> _sortOptions(AppL10n l10n) => <_SortOption>[
+  _SortOption(label: l10n.trafficSortTotal, sort: TrafficSort.total),
+  _SortOption(label: l10n.trafficSortDownload, sort: TrafficSort.download),
+  _SortOption(label: l10n.trafficSortUpload, sort: TrafficSort.upload),
+  _SortOption(
+    label: l10n.trafficLiveRate,
+    unavailableReason: l10n.trafficLiveRateUnavailable,
+  ),
 ];
 
 class _SortOption {
@@ -77,8 +80,8 @@ class _TrafficFilterBar extends StatelessWidget {
               controller: searchController,
               autocorrect: false,
               onChanged: onSearchChanged,
-              decoration: const InputDecoration(
-                hintText: '搜索应用或包名...',
+              decoration: InputDecoration(
+                hintText: context.l10n.trafficSearchPlaceholder,
                 prefixIcon: GlyphIcon(AppGlyphs.search),
               ),
             ),
@@ -90,7 +93,7 @@ class _TrafficFilterBar extends StatelessWidget {
           // 18dp text height, and it wraps to a second line on narrow screens.
           child: ChipRow(
             children: [
-              for (final option in _sortOptions)
+              for (final option in _sortOptions(context.l10n))
                 FilterPill(
                   label: option.label,
                   selected: option.sort == sort,
@@ -106,8 +109,8 @@ class _TrafficFilterBar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
             child: ListItem.toggle(
               leading: const GlyphIcon(AppGlyphs.appsList, size: 20),
-              title: const Text('隐藏系统应用'),
-              subtitle: const Text('按系统应用标记与厂商预装前缀识别，隐藏后不计入排行'),
+              title: Text(context.l10n.trafficHideSystemApps),
+              subtitle: Text(context.l10n.trafficHideSystemAppsSubtitle),
               value: hideSystemApps,
               onChanged: (value) => onHideSystemAppsChanged(value),
             ),
@@ -142,10 +145,12 @@ class _AttributionBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: 2,
                 children: [
-                  Text('为什么系统设置将全部流量算给谛听？', style: context.listTitleStyle),
                   Text(
-                    '因 Android VPN 机制，系统将代理出站归属于守护进程。'
-                    '谛听自身不偷跑流量，点按查看统计口径。',
+                    context.l10n.trafficWhyDaemonTitle,
+                    style: context.listTitleStyle,
+                  ),
+                  Text(
+                    context.l10n.trafficWhyDaemonBody,
                     style: context.listCaptionStyle,
                   ),
                 ],
@@ -192,14 +197,15 @@ class _LiveRateCard extends ConsumerWidget {
                   size: 18,
                   color: colorScheme.onSurfaceVariant,
                 ),
-                Text('实时速率', style: context.listTitleStyle),
+                Text(
+                  context.l10n.trafficLiveRateTitle,
+                  style: context.listTitleStyle,
+                ),
               ],
             ),
             if (missing)
               Text(
-                '本模式不统计实时速率：极速模式的窄路由不经过引擎的流量计数器，'
-                '本仓也没有它的累计表。上面的 $windowLabel 下行 / 上行与下方排行'
-                '都是真实数字。',
+                context.l10n.trafficNoLiveRate(windowLabel),
                 style: context.listCaptionStyle,
               )
             else ...[
@@ -211,9 +217,7 @@ class _LiveRateCard extends ConsumerWidget {
                 style: context.listTitleStyle,
               ),
               Text(
-                '来自引擎的每秒速率（本次会话），与常驻通知里的读数同源；'
-                '上面的 $windowLabel 下行 / 上行是 `app_traffic_daily` 的累计字节，'
-                '两者口径不同，数字不必相等。',
+                context.l10n.trafficLiveRateBody(windowLabel),
                 style: context.listCaptionStyle,
               ),
             ],

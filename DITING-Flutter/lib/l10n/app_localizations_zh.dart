@@ -3009,4 +3009,242 @@ class AppL10nZh extends AppL10n {
   String subsMirrorName(Object mirror) {
     return '镜像 $mirror';
   }
+
+  @override
+  String get trafficPackageName => '包名';
+
+  @override
+  String get trafficAppName => '应用名';
+
+  @override
+  String get trafficDown => '下行流量';
+
+  @override
+  String get trafficUp => '上行流量';
+
+  @override
+  String get trafficTotal => '合计';
+
+  @override
+  String get trafficShare => '占比';
+
+  @override
+  String get trafficStartDate => '统计起始日';
+
+  @override
+  String get trafficLastUpdate => '最后更新';
+
+  @override
+  String get trafficAttributionFooter =>
+      '流量按 UID 归因到应用（上游 TrafficAttributionDialog 的口径）；同一应用的多进程流量合并计算。';
+
+  @override
+  String get trafficAttributionTitle => '流量归因说明';
+
+  @override
+  String get trafficScopeTitle => '统计口径';
+
+  @override
+  String get trafficScopeBody =>
+      '流量按 UID 归因：每个应用的上下行字节数由引擎按 UID 累计后按天落库（表 app_traffic_daily，主键是「日期 + 包名」），不走包名匹配，因此共享 UID 的应用会合并成一项。';
+
+  @override
+  String get trafficWhyLowerTitle => '为什么数字比系统设置里少';
+
+  @override
+  String get trafficWhyLowerBody =>
+      '这里只统计经过本机隧道处理的流量，未进入隧道的直连流量不计入；系统设置里的统计包含全部网卡流量。';
+
+  @override
+  String get trafficWhyNoRateTitle => '为什么没有实时速率';
+
+  @override
+  String get trafficWhyNoRateBody =>
+      '实时速率需要内核每秒回报的速率序列；本仓的按天流量表只有「日期 + 包名 + 上下行累计字节」，没有速率列。因此「本次会话」窗口与「按实时速率」排序不可用，页面上也没有速率曲线——页面里出现的每个数字都是真实字节数。';
+
+  @override
+  String get trafficRetentionTitle => '记录保留多久';
+
+  @override
+  String get trafficRetentionBody => '按天保留，由原生侧的清理策略删除过期行；「全部历史」档位汇总表里现存的全部日期。';
+
+  @override
+  String get trafficSystemAppsTitle => '系统应用怎么识别';
+
+  @override
+  String get trafficSystemAppsBody =>
+      '流量表里没有系统应用标记，页面按旧版 SystemAppClassifier 的同一份前缀表识别（android、com.android.*、各厂商预装前缀等）。「隐藏系统应用」开关的状态落在 traffic_stats_hide_system_apps。';
+
+  @override
+  String get trafficUpstreamFooter =>
+      '上游对应 ui/traffic/TrafficAttributionDialog.kt 与 AppTrafficDetailDialog.kt；本页数字来自 app_traffic_daily。';
+
+  @override
+  String get trafficTitle => '流量统计';
+
+  @override
+  String get trafficClearHistory => '清除历史';
+
+  @override
+  String get trafficRefresh => '刷新';
+
+  @override
+  String get trafficAttribution => '归因说明';
+
+  @override
+  String get trafficLoadFailed => '无法读取流量记录';
+
+  @override
+  String get trafficLoading => '正在读取流量记录';
+
+  @override
+  String get trafficAppCount => '应用数';
+
+  @override
+  String get trafficAppCountUnit => '个';
+
+  @override
+  String get trafficNoData => '暂无流量数据';
+
+  @override
+  String get trafficNoMatchingApps => '没有匹配的应用';
+
+  @override
+  String get trafficRankingTitle => '应用流量排行';
+
+  @override
+  String trafficShareFooter(Object range, Object window) {
+    return '占比按$window总字节数（下行 + 上行）计算；$range。点按一行查看该应用的上下行明细。';
+  }
+
+  @override
+  String get trafficClearTitle => '清除全部流量记录？';
+
+  @override
+  String get trafficConfirmClear => '确认清除';
+
+  @override
+  String get trafficClearBody => '此操作将清空所有已持久化的应用历史流量统计，清除后无法恢复。';
+
+  @override
+  String get trafficRangeAllHistory => '范围为全部历史记录';
+
+  @override
+  String get trafficSessionRange => '本次会话';
+
+  @override
+  String get trafficSessionUnavailable => '「本次会话」需要内核按会话回报流量，本仓只有按天落库的历史记录';
+
+  @override
+  String get trafficLiveRate => '按实时速率';
+
+  @override
+  String get trafficHideSystemApps => '隐藏系统应用';
+
+  @override
+  String get trafficSearchHint => '搜索应用名或包名';
+
+  @override
+  String get trafficAllHistory => '全部历史';
+
+  @override
+  String get trafficLiveRateUnavailable => '「按实时网速」需要每秒速率，本仓的按天表里没有速率列';
+
+  @override
+  String get trafficHideSystemAppsSubtitle => '按系统应用标记与厂商预装前缀识别，隐藏后不计入排行';
+
+  @override
+  String trafficWindowLabelDate(Object date) {
+    return '统计日期 $date';
+  }
+
+  @override
+  String trafficWindowLabelRange(Object end, Object start) {
+    return '统计范围 $start 至 $end';
+  }
+
+  @override
+  String trafficShareWindow(Object range, Object window) {
+    return '占比按$window总字节数（下行 + 上行）计算；$range。点按一行查看该应用的上下行明细。';
+  }
+
+  @override
+  String trafficTotalApps(Object count, Object total) {
+    return '共 $count 个应用产生流量 · 合计 $total';
+  }
+
+  @override
+  String trafficSearchEmpty(Object search) {
+    return '没有应用名或包名包含「$search」。';
+  }
+
+  @override
+  String trafficHiddenCount(Object count) {
+    return '本次共有 $count 个应用被「隐藏系统应用」过滤掉，关闭该开关即可看到。';
+  }
+
+  @override
+  String get trafficNoRecordsBody =>
+      '流量按天由原生侧汇总落库；启动隧道并产生流量后，这里会出现各应用的下行 / 上行字节数。';
+
+  @override
+  String trafficNoRecordsForWindow(Object window) {
+    return '「$window」还没有流量记录。流量按天由原生侧汇总落库，换个时间窗口或启动隧道产生流量后再看。';
+  }
+
+  @override
+  String trafficOptionUnavailable(Object label, Object reason) {
+    return '「$label」不可用：$reason';
+  }
+
+  @override
+  String get trafficNoSourceReason => '本仓没有对应的数据来源';
+
+  @override
+  String trafficCleared(Object count) {
+    return '已清除 $count 条流量记录';
+  }
+
+  @override
+  String trafficClearFailed(Object detail) {
+    return '清除失败：$detail';
+  }
+
+  @override
+  String trafficShareBarTooltip(Object sort, Object value) {
+    return '占比条长度是这一行按「$sort」在当前窗口总量里的份额（当前 $value），与列表排序一致。';
+  }
+
+  @override
+  String get trafficWhyDaemonTitle => '为什么系统设置将全部流量算给谛听？';
+
+  @override
+  String get trafficWhyDaemonBody =>
+      '因 Android VPN 机制，系统将代理出站归属于守护进程。谛听自身不偷跑流量，点按查看统计口径。';
+
+  @override
+  String get trafficLiveRateTitle => '实时速率';
+
+  @override
+  String trafficNoLiveRate(Object window) {
+    return '本模式不统计实时速率：极速模式的窄路由不经过引擎的流量计数器，本仓也没有它的累计表。上面的 $window 下行 / 上行与下方排行都是真实数字。';
+  }
+
+  @override
+  String trafficLiveRateBody(Object window) {
+    return '来自引擎的每秒速率（本次会话），与常驻通知里的读数同源；上面的 $window 下行 / 上行是 `app_traffic_daily` 的累计字节，两者口径不同，数字不必相等。';
+  }
+
+  @override
+  String get trafficSearchPlaceholder => '搜索应用或包名...';
+
+  @override
+  String trafficWindowDown(Object window) {
+    return '$window下行';
+  }
+
+  @override
+  String trafficWindowUp(Object window) {
+    return '$window上行';
+  }
 }

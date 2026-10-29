@@ -139,34 +139,34 @@ class _AppTrafficDetailSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   KeyValueRow(
-                    label: '包名',
+                    label: context.l10n.trafficPackageName,
                     value: row.packageName,
                     monospace: true,
                   ),
                   if (row.appName.isNotEmpty)
-                    KeyValueRow(label: '应用名', value: row.appName),
+                    KeyValueRow(label: context.l10n.trafficAppName, value: row.appName),
                   KeyValueRow(
-                    label: '下行流量',
+                    label: context.l10n.trafficDown,
                     value: obsFormatBytes(row.rxBytes),
                     monospace: true,
                   ),
                   KeyValueRow(
-                    label: '上行流量',
+                    label: context.l10n.trafficUp,
                     value: obsFormatBytes(row.txBytes),
                     monospace: true,
                   ),
                   KeyValueRow(
-                    label: '合计',
+                    label: context.l10n.trafficTotal,
                     value: obsFormatBytes(row.totalBytes),
                     monospace: true,
                   ),
                   KeyValueRow(
-                    label: '占比',
+                    label: context.l10n.trafficShare,
                     value: '${(share * 100).toStringAsFixed(1)} %',
                     monospace: true,
                   ),
                   KeyValueRow(
-                    label: '统计起始日',
+                    label: context.l10n.trafficStartDate,
                     // For dateRange and allHistory, date is the earliest day in the group
                     // (upstream min(date)), not the latest update.
                     value: row.date.isEmpty ? '—' : row.date,
@@ -174,7 +174,7 @@ class _AppTrafficDetailSheet extends StatelessWidget {
                   ),
                   if (row.updatedAt > 0)
                     KeyValueRow(
-                      label: '最后更新',
+                      label: context.l10n.trafficLastUpdate,
                       value: _updatedAtLabel(row.updatedAt),
                       monospace: true,
                     ),
@@ -188,14 +188,15 @@ class _AppTrafficDetailSheet extends StatelessWidget {
           ),
           ListFooter(
             text:
-                '流量按 UID 归因到应用（上游 TrafficAttributionDialog 的口径）；'
-                '同一应用的多进程流量合并计算。',
+                context.l10n.trafficAttributionFooter,
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Text(
-              '占比条长度是这一行按「${sort.label}」在当前窗口总量里的份额 '
-              '（当前 ${obsFormatBytes(highlighted)}），与列表排序一致。',
+              context.l10n.trafficShareBarTooltip(
+                sort.label(context.l10n),
+                obsFormatBytes(highlighted),
+              ),
               style: AppTextStyle.footnote
                   .of(context)
                   .copyWith(color: colorScheme.onSurfaceVariant),
@@ -223,7 +224,7 @@ class _AttributionSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     return CommonScaffold(
-      title: '流量归因说明',
+      title: context.l10n.trafficAttributionTitle,
       body: ListView(
         padding: EdgeInsets.only(top: context.contentTopPadding, bottom: 24),
         children: [
@@ -235,50 +236,41 @@ class _AttributionSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 10,
                 children: [
-                  Text('统计口径', style: context.listTitleStyle),
+                  Text(context.l10n.trafficScopeTitle, style: context.listTitleStyle),
                   Text(
-                    '流量按 UID 归因：每个应用的上下行字节数由引擎按 UID 累计后'
-                    '按天落库（表 app_traffic_daily，主键是「日期 + 包名」），'
-                    '不走包名匹配，因此共享 UID 的应用会合并成一项。',
+                    context.l10n.trafficScopeBody,
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                   const Divider(height: 1),
-                  Text('为什么数字比系统设置里少', style: context.listTitleStyle),
+                  Text(context.l10n.trafficWhyLowerTitle, style: context.listTitleStyle),
                   Text(
-                    '这里只统计经过本机隧道处理的流量，未进入隧道的直连流量不计入；'
-                    '系统设置里的统计包含全部网卡流量。',
+                    context.l10n.trafficWhyLowerBody,
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                   const Divider(height: 1),
-                  Text('为什么没有实时速率', style: context.listTitleStyle),
+                  Text(context.l10n.trafficWhyNoRateTitle, style: context.listTitleStyle),
                   Text(
-                    '实时速率需要内核每秒回报的速率序列；本仓的按天流量表只有'
-                    '「日期 + 包名 + 上下行累计字节」，没有速率列。因此'
-                    '「本次会话」窗口与「按实时速率」排序不可用，页面上也没有'
-                    '速率曲线——页面里出现的每个数字都是真实字节数。',
+                    context.l10n.trafficWhyNoRateBody,
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                   const Divider(height: 1),
-                  Text('记录保留多久', style: context.listTitleStyle),
+                  Text(context.l10n.trafficRetentionTitle, style: context.listTitleStyle),
                   Text(
-                    '按天保留，由原生侧的清理策略删除过期行；'
-                    '「全部历史」档位汇总表里现存的全部日期。',
+                    context.l10n.trafficRetentionBody,
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
                   ),
                   const Divider(height: 1),
-                  Text('系统应用怎么识别', style: context.listTitleStyle),
+                  Text(context.l10n.trafficSystemAppsTitle, style: context.listTitleStyle),
                   Text(
-                    '流量表里没有系统应用标记，页面按旧版 SystemAppClassifier 的'
-                    '同一份前缀表识别（android、com.android.*、各厂商预装前缀等）。'
-                    '「隐藏系统应用」开关的状态落在 traffic_stats_hide_system_apps。',
+                    context.l10n.trafficSystemAppsBody,
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.onSurfaceVariant),
@@ -287,10 +279,9 @@ class _AttributionSheet extends StatelessWidget {
               ),
             ),
           ),
-          const ListFooter(
+          ListFooter(
             text:
-                '上游对应 ui/traffic/TrafficAttributionDialog.kt 与 '
-                'AppTrafficDetailDialog.kt；本页数字来自 app_traffic_daily。',
+                context.l10n.trafficUpstreamFooter,
           ),
         ],
       ),

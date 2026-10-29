@@ -55,21 +55,21 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
     final hideSystemApps = ref.watch(trafficHideSystemAppsProvider);
 
     return CommonScaffold(
-      title: '流量统计',
+      title: context.l10n.trafficTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.broom,
-          tooltip: '清除历史',
+          tooltip: context.l10n.trafficClearHistory,
           onPressed: () => _confirmClear(context),
         ),
         IconButtonData(
           glyph: AppGlyphs.refresh,
-          tooltip: '刷新',
+          tooltip: context.l10n.trafficRefresh,
           onPressed: () => ref.read(dnsLogRevisionProvider.notifier).bump(),
         ),
         IconButtonData(
           glyph: AppGlyphs.info,
-          tooltip: '归因说明',
+          tooltip: context.l10n.trafficAttribution,
           onPressed: () => showSheet<void>(
             context: context,
             builder: (_) => const _AttributionSheet(),
@@ -90,13 +90,13 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
   ) {
     if (!asyncSnapshot.hasValue && asyncSnapshot.hasError) {
       return ObsFailure(
-        label: '无法读取流量记录',
+        label: context.l10n.trafficLoadFailed,
         description: '${asyncSnapshot.error}',
         onRetry: () => ref.read(dnsLogRevisionProvider.notifier).bump(),
       );
     }
     if (!asyncSnapshot.hasValue) {
-      return const ObservabilityLoading(label: '正在读取流量记录');
+      return ObservabilityLoading(label: context.l10n.trafficLoading);
     }
 
     final snapshot = asyncSnapshot.requireValue;
@@ -119,18 +119,22 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
                 child: StatStrip(
                   stats: [
                     StatItem(
-                      label: '${window.label}下行',
+                      label: context.l10n.trafficWindowDown(
+                        window.label(context.l10n),
+                      ),
                       value: obsFormatBytes(snapshot.rxBytes),
                       color: context.colorScheme.primary,
                     ),
                     StatItem(
-                      label: '${window.label}上行',
+                      label: context.l10n.trafficWindowUp(
+                        window.label(context.l10n),
+                      ),
                       value: obsFormatBytes(snapshot.txBytes),
                     ),
                     StatItem(
-                      label: '应用数',
+                      label: context.l10n.trafficAppCount,
                       value: '${visible.length}',
-                      unit: '个',
+                      unit: context.l10n.trafficAppCountUnit,
                     ),
                   ],
                 ),
@@ -141,7 +145,7 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
                 // and wraps, pushing every card below it down.
                 child: ChipRow(
                   children: [
-                    for (final option in _rangeOptions)
+                    for (final option in _rangeOptions(context.l10n))
                       FilterPill(
                         label: option.label,
                         selected: option.window == window,
@@ -197,9 +201,10 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
                   child: NullStatus(
                     label: search.isEmpty && !hideSystemApps
-                        ? '暂无流量数据'
-                        : '没有匹配的应用',
+                        ? context.l10n.trafficNoData
+                        : context.l10n.trafficNoMatchingApps,
                     description: _emptyDescription(
+                      l10n: context.l10n,
                       search: search,
                       hideSystemApps: hideSystemApps,
                       hiddenCount: hiddenCount,
@@ -213,11 +218,12 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
         ),
         if (visible.isNotEmpty)
           ...appListSlivers(
-            title: '应用流量排行',
+            title: context.l10n.trafficRankingTitle,
             itemCount: visible.length,
-            footer:
-                '占比按${window.label}总字节数（下行 + 上行）计算；'
-                '${_windowLabel(snapshot)}。点按一行查看该应用的上下行明细。',
+            footer: context.l10n.trafficShareWindow(
+                  window.label(context.l10n),
+                  _windowLabel(snapshot, context.l10n),
+                ),
             itemBuilder: (context, index) {
               final row = visible[index];
               return AppTrafficRow(
@@ -239,8 +245,10 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Text(
-              '共 ${visible.length} 个应用产生流量 · 合计 '
-              '${obsFormatBytes(snapshot.totalBytes)}',
+              context.l10n.trafficTotalApps(
+                visible.length,
+                obsFormatBytes(snapshot.totalBytes),
+              ),
               style: context.listCaptionStyle,
             ),
           ),
@@ -251,29 +259,32 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
 
   /// Empty-state text, distinguishing no data from filtered-out and hidden-system.
   static String _emptyDescription({
+    required AppL10n l10n,
     required String search,
     required bool hideSystemApps,
     required int hiddenCount,
     required TrafficWindow window,
   }) {
-    if (search.isNotEmpty) return '没有应用名或包名包含「$search」。';
+    if (search.isNotEmpty) return l10n.trafficSearchEmpty(search);
     if (hideSystemApps && hiddenCount > 0) {
-      return '本次共有 $hiddenCount 个应用被「隐藏系统应用」过滤掉，'
-          '关闭该开关即可看到。';
+      return l10n.trafficHiddenCount(hiddenCount);
     }
     if (window == TrafficWindow.all) {
-      return '流量按天由原生侧汇总落库；启动隧道并产生流量后，这里会出现'
-          '各应用的下行 / 上行字节数。';
+      return l10n.trafficNoRecordsBody;
     }
-    return '「${window.label}」还没有流量记录。流量按天由原生侧汇总落库，'
-        '换个时间窗口或启动隧道产生流量后再看。';
+    return l10n.trafficNoRecordsForWindow(window.label(l10n));
   }
 
   /// Disabled option explanation. A hint bar rather than silence: a tap must answer.
   void _explainUnavailable(String label, String? reason) {
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('「$label」不可用：${reason ?? '本仓没有对应的数据来源'}'),
+        content: Text(
+          context.l10n.trafficOptionUnavailable(
+            label,
+            reason ?? context.l10n.trafficNoSourceReason,
+          ),
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -285,19 +296,19 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '清除全部流量记录？',
+        title: context.l10n.trafficClearTitle,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => popFloatingDialog(context, false),
-            child: const Text('取消'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () => popFloatingDialog(context, true),
-            child: const Text('确认清除'),
+            child: Text(context.l10n.trafficConfirmClear),
           ),
         ],
-        child: const Text('此操作将清空所有已持久化的应用历史流量统计，清除后无法恢复。'),
+        child: Text(context.l10n.trafficClearBody),
       ),
     );
     if (confirmed != true || !context.mounted) return;
@@ -308,7 +319,7 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
-          content: Text('已清除 $deleted 条流量记录'),
+          content: Text(context.l10n.trafficCleared(deleted)),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -316,19 +327,19 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
       if (!context.mounted) return;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
-          content: Text('清除失败：$error'),
+          content: Text(context.l10n.trafficClearFailed('$error')),
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
   }
 
-  static String _windowLabel(TrafficSnapshot snapshot) {
-    if (snapshot.startDate.isEmpty) return '范围为全部历史记录';
+  static String _windowLabel(TrafficSnapshot snapshot, AppL10n l10n) {
+    if (snapshot.startDate.isEmpty) return l10n.trafficRangeAllHistory;
     if (snapshot.startDate == snapshot.endDate) {
-      return '统计日期 ${snapshot.startDate}';
+      return l10n.trafficWindowLabelDate(snapshot.startDate);
     }
-    return '统计范围 ${snapshot.startDate} 至 ${snapshot.endDate}';
+    return l10n.trafficWindowLabelRange(snapshot.startDate, snapshot.endDate);
   }
 }
 

@@ -5620,6 +5620,402 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'镜像 {mirror}'**
   String subsMirrorName(Object mirror);
+
+  /// No description provided for @trafficPackageName.
+  ///
+  /// In zh, this message translates to:
+  /// **'包名'**
+  String get trafficPackageName;
+
+  /// No description provided for @trafficAppName.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用名'**
+  String get trafficAppName;
+
+  /// No description provided for @trafficDown.
+  ///
+  /// In zh, this message translates to:
+  /// **'下行流量'**
+  String get trafficDown;
+
+  /// No description provided for @trafficUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'上行流量'**
+  String get trafficUp;
+
+  /// No description provided for @trafficTotal.
+  ///
+  /// In zh, this message translates to:
+  /// **'合计'**
+  String get trafficTotal;
+
+  /// No description provided for @trafficShare.
+  ///
+  /// In zh, this message translates to:
+  /// **'占比'**
+  String get trafficShare;
+
+  /// No description provided for @trafficStartDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计起始日'**
+  String get trafficStartDate;
+
+  /// No description provided for @trafficLastUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'最后更新'**
+  String get trafficLastUpdate;
+
+  /// No description provided for @trafficAttributionFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量按 UID 归因到应用（上游 TrafficAttributionDialog 的口径）；同一应用的多进程流量合并计算。'**
+  String get trafficAttributionFooter;
+
+  /// No description provided for @trafficAttributionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量归因说明'**
+  String get trafficAttributionTitle;
+
+  /// No description provided for @trafficScopeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计口径'**
+  String get trafficScopeTitle;
+
+  /// No description provided for @trafficScopeBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量按 UID 归因：每个应用的上下行字节数由引擎按 UID 累计后按天落库（表 app_traffic_daily，主键是「日期 + 包名」），不走包名匹配，因此共享 UID 的应用会合并成一项。'**
+  String get trafficScopeBody;
+
+  /// No description provided for @trafficWhyLowerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'为什么数字比系统设置里少'**
+  String get trafficWhyLowerTitle;
+
+  /// No description provided for @trafficWhyLowerBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里只统计经过本机隧道处理的流量，未进入隧道的直连流量不计入；系统设置里的统计包含全部网卡流量。'**
+  String get trafficWhyLowerBody;
+
+  /// No description provided for @trafficWhyNoRateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'为什么没有实时速率'**
+  String get trafficWhyNoRateTitle;
+
+  /// No description provided for @trafficWhyNoRateBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时速率需要内核每秒回报的速率序列；本仓的按天流量表只有「日期 + 包名 + 上下行累计字节」，没有速率列。因此「本次会话」窗口与「按实时速率」排序不可用，页面上也没有速率曲线——页面里出现的每个数字都是真实字节数。'**
+  String get trafficWhyNoRateBody;
+
+  /// No description provided for @trafficRetentionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录保留多久'**
+  String get trafficRetentionTitle;
+
+  /// No description provided for @trafficRetentionBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'按天保留，由原生侧的清理策略删除过期行；「全部历史」档位汇总表里现存的全部日期。'**
+  String get trafficRetentionBody;
+
+  /// No description provided for @trafficSystemAppsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统应用怎么识别'**
+  String get trafficSystemAppsTitle;
+
+  /// No description provided for @trafficSystemAppsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量表里没有系统应用标记，页面按旧版 SystemAppClassifier 的同一份前缀表识别（android、com.android.*、各厂商预装前缀等）。「隐藏系统应用」开关的状态落在 traffic_stats_hide_system_apps。'**
+  String get trafficSystemAppsBody;
+
+  /// No description provided for @trafficUpstreamFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'上游对应 ui/traffic/TrafficAttributionDialog.kt 与 AppTrafficDetailDialog.kt；本页数字来自 app_traffic_daily。'**
+  String get trafficUpstreamFooter;
+
+  /// No description provided for @trafficTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量统计'**
+  String get trafficTitle;
+
+  /// No description provided for @trafficClearHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除历史'**
+  String get trafficClearHistory;
+
+  /// No description provided for @trafficRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get trafficRefresh;
+
+  /// No description provided for @trafficAttribution.
+  ///
+  /// In zh, this message translates to:
+  /// **'归因说明'**
+  String get trafficAttribution;
+
+  /// No description provided for @trafficLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取流量记录'**
+  String get trafficLoadFailed;
+
+  /// No description provided for @trafficLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取流量记录'**
+  String get trafficLoading;
+
+  /// No description provided for @trafficAppCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用数'**
+  String get trafficAppCount;
+
+  /// No description provided for @trafficAppCountUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'个'**
+  String get trafficAppCountUnit;
+
+  /// No description provided for @trafficNoData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无流量数据'**
+  String get trafficNoData;
+
+  /// No description provided for @trafficNoMatchingApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的应用'**
+  String get trafficNoMatchingApps;
+
+  /// No description provided for @trafficRankingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用流量排行'**
+  String get trafficRankingTitle;
+
+  /// No description provided for @trafficShareFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'占比按{window}总字节数（下行 + 上行）计算；{range}。点按一行查看该应用的上下行明细。'**
+  String trafficShareFooter(Object range, Object window);
+
+  /// No description provided for @trafficClearTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除全部流量记录？'**
+  String get trafficClearTitle;
+
+  /// No description provided for @trafficConfirmClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认清除'**
+  String get trafficConfirmClear;
+
+  /// No description provided for @trafficClearBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'此操作将清空所有已持久化的应用历史流量统计，清除后无法恢复。'**
+  String get trafficClearBody;
+
+  /// No description provided for @trafficRangeAllHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'范围为全部历史记录'**
+  String get trafficRangeAllHistory;
+
+  /// No description provided for @trafficSessionRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次会话'**
+  String get trafficSessionRange;
+
+  /// No description provided for @trafficSessionUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'「本次会话」需要内核按会话回报流量，本仓只有按天落库的历史记录'**
+  String get trafficSessionUnavailable;
+
+  /// No description provided for @trafficLiveRate.
+  ///
+  /// In zh, this message translates to:
+  /// **'按实时速率'**
+  String get trafficLiveRate;
+
+  /// No description provided for @trafficHideSystemApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐藏系统应用'**
+  String get trafficHideSystemApps;
+
+  /// No description provided for @trafficSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索应用名或包名'**
+  String get trafficSearchHint;
+
+  /// No description provided for @trafficAllHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部历史'**
+  String get trafficAllHistory;
+
+  /// No description provided for @trafficLiveRateUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'「按实时网速」需要每秒速率，本仓的按天表里没有速率列'**
+  String get trafficLiveRateUnavailable;
+
+  /// No description provided for @trafficHideSystemAppsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'按系统应用标记与厂商预装前缀识别，隐藏后不计入排行'**
+  String get trafficHideSystemAppsSubtitle;
+
+  /// No description provided for @trafficWindowLabelDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计日期 {date}'**
+  String trafficWindowLabelDate(Object date);
+
+  /// No description provided for @trafficWindowLabelRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计范围 {start} 至 {end}'**
+  String trafficWindowLabelRange(Object end, Object start);
+
+  /// No description provided for @trafficShareWindow.
+  ///
+  /// In zh, this message translates to:
+  /// **'占比按{window}总字节数（下行 + 上行）计算；{range}。点按一行查看该应用的上下行明细。'**
+  String trafficShareWindow(Object range, Object window);
+
+  /// No description provided for @trafficTotalApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 个应用产生流量 · 合计 {total}'**
+  String trafficTotalApps(Object count, Object total);
+
+  /// No description provided for @trafficSearchEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有应用名或包名包含「{search}」。'**
+  String trafficSearchEmpty(Object search);
+
+  /// No description provided for @trafficHiddenCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次共有 {count} 个应用被「隐藏系统应用」过滤掉，关闭该开关即可看到。'**
+  String trafficHiddenCount(Object count);
+
+  /// No description provided for @trafficNoRecordsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'流量按天由原生侧汇总落库；启动隧道并产生流量后，这里会出现各应用的下行 / 上行字节数。'**
+  String get trafficNoRecordsBody;
+
+  /// No description provided for @trafficNoRecordsForWindow.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{window}」还没有流量记录。流量按天由原生侧汇总落库，换个时间窗口或启动隧道产生流量后再看。'**
+  String trafficNoRecordsForWindow(Object window);
+
+  /// No description provided for @trafficOptionUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{label}」不可用：{reason}'**
+  String trafficOptionUnavailable(Object label, Object reason);
+
+  /// No description provided for @trafficNoSourceReason.
+  ///
+  /// In zh, this message translates to:
+  /// **'本仓没有对应的数据来源'**
+  String get trafficNoSourceReason;
+
+  /// No description provided for @trafficCleared.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清除 {count} 条流量记录'**
+  String trafficCleared(Object count);
+
+  /// No description provided for @trafficClearFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除失败：{detail}'**
+  String trafficClearFailed(Object detail);
+
+  /// No description provided for @trafficShareBarTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'占比条长度是这一行按「{sort}」在当前窗口总量里的份额（当前 {value}），与列表排序一致。'**
+  String trafficShareBarTooltip(Object sort, Object value);
+
+  /// No description provided for @trafficWhyDaemonTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'为什么系统设置将全部流量算给谛听？'**
+  String get trafficWhyDaemonTitle;
+
+  /// No description provided for @trafficWhyDaemonBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'因 Android VPN 机制，系统将代理出站归属于守护进程。谛听自身不偷跑流量，点按查看统计口径。'**
+  String get trafficWhyDaemonBody;
+
+  /// No description provided for @trafficLiveRateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时速率'**
+  String get trafficLiveRateTitle;
+
+  /// No description provided for @trafficNoLiveRate.
+  ///
+  /// In zh, this message translates to:
+  /// **'本模式不统计实时速率：极速模式的窄路由不经过引擎的流量计数器，本仓也没有它的累计表。上面的 {window} 下行 / 上行与下方排行都是真实数字。'**
+  String trafficNoLiveRate(Object window);
+
+  /// No description provided for @trafficLiveRateBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'来自引擎的每秒速率（本次会话），与常驻通知里的读数同源；上面的 {window} 下行 / 上行是 `app_traffic_daily` 的累计字节，两者口径不同，数字不必相等。'**
+  String trafficLiveRateBody(Object window);
+
+  /// No description provided for @trafficSearchPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索应用或包名...'**
+  String get trafficSearchPlaceholder;
+
+  /// No description provided for @trafficWindowDown.
+  ///
+  /// In zh, this message translates to:
+  /// **'{window}下行'**
+  String trafficWindowDown(Object window);
+
+  /// No description provided for @trafficWindowUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'{window}上行'**
+  String trafficWindowUp(Object window);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

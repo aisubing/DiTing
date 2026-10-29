@@ -3167,4 +3167,249 @@ class AppL10nEn extends AppL10n {
   String subsMirrorName(Object mirror) {
     return 'Mirror $mirror';
   }
+
+  @override
+  String get trafficPackageName => 'Package';
+
+  @override
+  String get trafficAppName => 'App name';
+
+  @override
+  String get trafficDown => 'Download';
+
+  @override
+  String get trafficUp => 'Upload';
+
+  @override
+  String get trafficTotal => 'Total';
+
+  @override
+  String get trafficShare => 'Share';
+
+  @override
+  String get trafficStartDate => 'First day';
+
+  @override
+  String get trafficLastUpdate => 'Last updated';
+
+  @override
+  String get trafficAttributionFooter =>
+      'Traffic is attributed to apps by UID (the upstream TrafficAttributionDialog rule); processes of one app are merged.';
+
+  @override
+  String get trafficAttributionTitle => 'How traffic is attributed';
+
+  @override
+  String get trafficScopeTitle => 'What is counted';
+
+  @override
+  String get trafficScopeBody =>
+      'Traffic is attributed by UID: the engine accumulates each app\'s bytes by UID and stores them per day (table app_traffic_daily, keyed by date + package). No package matching is involved, so apps sharing a UID are merged.';
+
+  @override
+  String get trafficWhyLowerTitle =>
+      'Why the numbers are lower than in system settings';
+
+  @override
+  String get trafficWhyLowerBody =>
+      'Only traffic that goes through the local tunnel is counted; direct traffic outside the tunnel is not. System settings cover all interfaces.';
+
+  @override
+  String get trafficWhyNoRateTitle => 'Why there is no live rate';
+
+  @override
+  String get trafficWhyNoRateBody =>
+      'A live rate needs a per-second series from the core; the daily table only holds date, package and cumulative bytes, with no rate column. That is why the session window and the live-rate sort are unavailable and there is no rate chart: every number shown is a real byte count.';
+
+  @override
+  String get trafficRetentionTitle => 'How long records are kept';
+
+  @override
+  String get trafficRetentionBody =>
+      'Rows are kept per day and expired ones are removed by the native cleanup policy; the all-history window sums every date still in the table.';
+
+  @override
+  String get trafficSystemAppsTitle => 'How system apps are recognised';
+
+  @override
+  String get trafficSystemAppsBody =>
+      'The traffic table has no system-app flag, so the page uses the same prefix list as the legacy SystemAppClassifier (android, com.android.*, vendor preinstalls and so on). The hide-system-apps switch is stored in traffic_stats_hide_system_apps.';
+
+  @override
+  String get trafficUpstreamFooter =>
+      'Upstream equivalents are ui/traffic/TrafficAttributionDialog.kt and AppTrafficDetailDialog.kt; the numbers here come from app_traffic_daily.';
+
+  @override
+  String get trafficTitle => 'Traffic';
+
+  @override
+  String get trafficClearHistory => 'Clear history';
+
+  @override
+  String get trafficRefresh => 'Refresh';
+
+  @override
+  String get trafficAttribution => 'Attribution';
+
+  @override
+  String get trafficLoadFailed => 'Traffic records cannot be read';
+
+  @override
+  String get trafficLoading => 'Reading traffic records';
+
+  @override
+  String get trafficAppCount => 'Apps';
+
+  @override
+  String get trafficAppCountUnit => '';
+
+  @override
+  String get trafficNoData => 'No traffic data yet';
+
+  @override
+  String get trafficNoMatchingApps => 'No matching apps';
+
+  @override
+  String get trafficRankingTitle => 'App traffic ranking';
+
+  @override
+  String trafficShareFooter(Object range, Object window) {
+    return 'Shares use the total bytes (download + upload) for $window; $range. Tap a row to see that app\'s breakdown.';
+  }
+
+  @override
+  String get trafficClearTitle => 'Clear all traffic records?';
+
+  @override
+  String get trafficConfirmClear => 'Clear';
+
+  @override
+  String get trafficClearBody =>
+      'This clears every stored per-app traffic record and cannot be undone.';
+
+  @override
+  String get trafficRangeAllHistory => 'covering all history';
+
+  @override
+  String get trafficSessionRange => 'This session';
+
+  @override
+  String get trafficSessionUnavailable =>
+      'The session window needs per-session traffic from the core; only daily records exist here';
+
+  @override
+  String get trafficLiveRate => 'By live rate';
+
+  @override
+  String get trafficHideSystemApps => 'Hide system apps';
+
+  @override
+  String get trafficSearchHint => 'Search by app name or package';
+
+  @override
+  String get trafficAllHistory => 'All history';
+
+  @override
+  String get trafficLiveRateUnavailable =>
+      'The live-rate sort needs per-second rates; the daily table has no rate column';
+
+  @override
+  String get trafficHideSystemAppsSubtitle =>
+      'Recognised by system flag and vendor preinstall prefixes; hidden apps are left out of the ranking';
+
+  @override
+  String trafficWindowLabelDate(Object date) {
+    return 'Statistics for $date';
+  }
+
+  @override
+  String trafficWindowLabelRange(Object end, Object start) {
+    return 'Statistics from $start to $end';
+  }
+
+  @override
+  String trafficShareWindow(Object range, Object window) {
+    return 'Shares use the total bytes (download + upload) for $window; $range. Tap a row to see that app\'s breakdown.';
+  }
+
+  @override
+  String trafficTotalApps(Object count, Object total) {
+    return '$count apps generated traffic · $total total';
+  }
+
+  @override
+  String trafficSearchEmpty(Object search) {
+    return 'No app name or package contains \"$search\".';
+  }
+
+  @override
+  String trafficHiddenCount(Object count) {
+    return '$count apps are hidden by \"Hide system apps\"; turn it off to see them.';
+  }
+
+  @override
+  String get trafficNoRecordsBody =>
+      'Traffic is summed per day by the native side; once the tunnel runs and carries traffic, each app\'s download and upload bytes appear here.';
+
+  @override
+  String trafficNoRecordsForWindow(Object window) {
+    return 'No traffic records for \"$window\" yet. Records are summed per day, so try another window or run the tunnel first.';
+  }
+
+  @override
+  String trafficOptionUnavailable(Object label, Object reason) {
+    return '\"$label\" is unavailable: $reason';
+  }
+
+  @override
+  String get trafficNoSourceReason => 'no matching data source here';
+
+  @override
+  String trafficCleared(Object count) {
+    return 'Cleared $count traffic records';
+  }
+
+  @override
+  String trafficClearFailed(Object detail) {
+    return 'Clearing failed: $detail';
+  }
+
+  @override
+  String trafficShareBarTooltip(Object sort, Object value) {
+    return 'The bar length is this row\'s share of the window total under \"$sort\" (currently $value), matching the list order.';
+  }
+
+  @override
+  String get trafficWhyDaemonTitle =>
+      'Why do system settings attribute all traffic to DITING?';
+
+  @override
+  String get trafficWhyDaemonBody =>
+      'Android\'s VPN model attributes proxied outbound traffic to the daemon. DITING does not use traffic behind your back; tap to see what is counted.';
+
+  @override
+  String get trafficLiveRateTitle => 'Live rate';
+
+  @override
+  String trafficNoLiveRate(Object window) {
+    return 'This mode does not measure a live rate: express mode\'s narrow route bypasses the engine\'s traffic counters and there is no cumulative table for it. The $window download/upload figures and the ranking below are still real numbers.';
+  }
+
+  @override
+  String trafficLiveRateBody(Object window) {
+    return 'Per-second rates from the engine (this session), the same source as the persistent notification. The $window download/upload figures are cumulative bytes from `app_traffic_daily`; the two use different scopes and need not match.';
+  }
+
+  @override
+  String get trafficSearchPlaceholder => 'Search app or package...';
+
+  @override
+  String trafficWindowDown(Object window) {
+    return '$window download';
+  }
+
+  @override
+  String trafficWindowUp(Object window) {
+    return '$window upload';
+  }
 }
