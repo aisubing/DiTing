@@ -2,6 +2,7 @@
 /// keep one look and one set of domain actions.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/rules/rule_domain_utils.dart';
@@ -109,7 +110,7 @@ class DomainActionRow extends ConsumerWidget {
   Future<void> _copy(BuildContext context, String host) async {
     await Clipboard.setData(ClipboardData(text: host));
     if (!context.mounted) return;
-    showObsTip(context, '已复制 $host');
+    showObsTip(context, context.l10n.obsCopiedHost(host));
   }
 
   Future<void> _addRule(
@@ -122,7 +123,15 @@ class DomainActionRow extends ConsumerWidget {
     if (!context.mounted) return;
     showObsTip(
       context,
-      added ? '已将 $domain 加入${kind.title}' : '$domain 已在${kind.title}中',
+      added
+          ? context.l10n.obsAddedToKind(
+              domain,
+              kind.title(context.l10n),
+            )
+          : context.l10n.obsAlreadyInKind(
+              domain,
+              kind.title(context.l10n),
+            ),
     );
   }
 
@@ -150,7 +159,7 @@ class DomainActionRow extends ConsumerWidget {
               Expanded(
                 child: _QuickAction(
                   glyph: AppGlyphs.copy,
-                  label: host != null && domain == null ? '复制地址' : '复制域名',
+                  label: host != null && domain == null ? context.l10n.obsCopyAddress : context.l10n.obsCopyDomain,
                   color: colorScheme.primary,
                   onPressed: host == null ? null : () => _copy(context, host),
                 ),
@@ -158,7 +167,7 @@ class DomainActionRow extends ConsumerWidget {
               Expanded(
                 child: _QuickAction(
                   glyph: AppGlyphs.block,
-                  label: inBlock ? '已在黑名单' : '加入黑名单',
+                  label: inBlock ? context.l10n.obsInBlocklist : context.l10n.obsAddToBlocklist,
                   color: colorScheme.error,
                   onPressed: domain == null || inBlock
                       ? null
@@ -168,7 +177,7 @@ class DomainActionRow extends ConsumerWidget {
               Expanded(
                 child: _QuickAction(
                   glyph: AppGlyphs.checkCircle,
-                  label: inAllow ? '已在白名单' : '加入白名单',
+                  label: inAllow ? context.l10n.obsInAllowlist : context.l10n.obsAddToAllowlist,
                   color: colorScheme.success,
                   onPressed: domain == null || inAllow
                       ? null
@@ -179,7 +188,7 @@ class DomainActionRow extends ConsumerWidget {
           ),
         ),
         if (host != null && domain == null)
-          const ListFooter(text: '该记录只有 IP 地址，域名规则无法匹配，因此不能加入黑白名单。'),
+          ListFooter(text: context.l10n.obsIpOnlyFooter),
       ],
     );
   }
@@ -259,11 +268,11 @@ class AgentAnalysisEntryCard extends StatelessWidget {
   const AgentAnalysisEntryCard({
     super.key,
     required this.domain,
-    this.title = '分析这条请求',
+    this.title,
   });
 
   final String domain;
-  final String title;
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -287,8 +296,11 @@ class AgentAnalysisEntryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 2,
               children: [
-                Text(title, style: context.listTitleStyle),
-                Text('用配置的模型研判归属、风险与处置建议', style: context.listCaptionStyle),
+                Text(
+                  title ?? context.l10n.obsAnalyzeRequest,
+                  style: context.listTitleStyle,
+                ),
+                Text(context.l10n.obsAnalyzeRequestBody, style: context.listCaptionStyle),
               ],
             ),
           ),

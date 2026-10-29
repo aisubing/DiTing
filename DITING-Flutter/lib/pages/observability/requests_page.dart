@@ -72,11 +72,11 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
     ].join(' · ');
 
     return CommonScaffold(
-      title: '请求',
+      title: context.l10n.obsRequestsTitle,
       searchState: AppBarSearchState(onSearch: _onSearch),
       menuItems: [
         CommonPopupMenuItem(
-          label: '来源',
+          label: context.l10n.obsSource,
           glyph: AppGlyphs.filter,
           subItems: [
             for (final source in RequestSource.values)
@@ -90,7 +90,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
           ],
         ),
         CommonPopupMenuItem(
-          label: '状态',
+          label: context.l10n.obsStatus,
           glyph: AppGlyphs.status,
           subItems: [
             for (final status in RequestStatus.values)
@@ -104,14 +104,14 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
           ],
         ),
         CommonPopupMenuItem(
-          label: '刷新',
+          label: context.l10n.obsRefresh,
           glyph: AppGlyphs.refresh,
           onPressed: _refresh,
         ),
         if (query.source != RequestSource.all ||
             query.status != RequestStatus.all)
           CommonPopupMenuItem(
-            label: '清除筛选',
+            label: context.l10n.obsClearFilter,
             glyph: AppGlyphs.reset,
             onPressed: _resetFilters,
           ),
@@ -126,12 +126,12 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
     if (asyncFeed.hasValue) return _body(asyncFeed.requireValue, filterLabel);
     if (asyncFeed.hasError) {
       return ObsFailure(
-        label: '无法读取请求记录',
+        label: context.l10n.obsLoadFailed,
         description: '${asyncFeed.error}',
         onRetry: _refresh,
       );
     }
-    return const ObservabilityLoading(label: '正在读取请求记录');
+    return ObservabilityLoading(label: context.l10n.obsLoading);
   }
 
   Widget _body(RequestFeed feed, String filterLabel) {
@@ -144,14 +144,14 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
       isEmpty: items.isEmpty,
       isSearching: ref.read(requestFeedQueryProvider).query.isNotEmpty,
       nullStatus: obsEmpty(
-        label: filterLabel.isEmpty ? '还没有请求记录' : '没有符合条件的请求',
+        label: filterLabel.isEmpty ? context.l10n.obsNoRecords : context.l10n.obsNoMatchingRequests,
         description: filterLabel.isEmpty
-            ? '应用发出请求后会在这里留下记录；HTTPS 记录需要开启流量检查。'
-            : '当前筛选：$filterLabel。',
+            ? context.l10n.obsNoRecordsBody
+            : context.l10n.obsCurrentFilter(filterLabel),
         illustration: NullStatusIllustration.requests,
         action: FilledButton(
           onPressed: _resetFilters,
-          child: const Text('重置筛选条件'),
+          child: Text(context.l10n.obsResetFilter),
         ),
       ),
       child: NotificationListener<ScrollNotification>(
@@ -168,14 +168,19 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
           // Header + one row per request + footer.
           itemCount: items.length + 2,
           itemBuilder: (context, index) {
-            if (index == 0) return const ListHeader(title: '请求记录');
+            if (index == 0) return ListHeader(title: context.l10n.obsRecordsHeader);
             if (index == items.length + 1) {
               return _FeedFooter(
-                label:
-                    '共 ${items.length} 条，其中 $failed 条处理失败'
-                    '${filterLabel.isEmpty ? '' : '（筛选：$filterLabel）'}'
-                    '${feed.hasMore ? '；继续下滑加载更多' : '；已加载全部'}。'
-                    '点按一行查看规则命中与处理结果。',
+                label: context.l10n.obsFooterCount(
+                  items.length,
+                  failed,
+                  filterLabel.isEmpty
+                      ? ''
+                      : context.l10n.obsFooterFilter(filterLabel),
+                  feed.hasMore
+                      ? context.l10n.obsFooterMore
+                      : context.l10n.obsFooterAll,
+                ),
                 loading: _isLoadingMore(feed),
               );
             }

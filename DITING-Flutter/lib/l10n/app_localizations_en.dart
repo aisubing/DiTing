@@ -3412,4 +3412,218 @@ class AppL10nEn extends AppL10n {
   String trafficWindowUp(Object window) {
     return '$window upload';
   }
+
+  @override
+  String get obsRequestsTitle => 'Requests';
+
+  @override
+  String get obsSource => 'Source';
+
+  @override
+  String get obsStatus => 'Status';
+
+  @override
+  String get obsRefresh => 'Refresh';
+
+  @override
+  String get obsClearFilter => 'Clear filters';
+
+  @override
+  String get obsLoadFailed => 'Request records cannot be read';
+
+  @override
+  String get obsLoading => 'Reading request records';
+
+  @override
+  String get obsNoRecords => 'No request records yet';
+
+  @override
+  String get obsNoMatchingRequests => 'No requests match the filter';
+
+  @override
+  String get obsNoRecordsBody =>
+      'Requests made by apps are recorded here; HTTPS records need traffic inspection enabled.';
+
+  @override
+  String get obsResetFilter => 'Reset filters';
+
+  @override
+  String get obsRecordsHeader => 'Request records';
+
+  @override
+  String get obsRetry => 'Retry';
+
+  @override
+  String get obsBypassedDns => 'Direct, bypassing the DNS resolution flow';
+
+  @override
+  String get obsBlockedDns =>
+      'Blocked by a filter rule before any query was sent';
+
+  @override
+  String get obsRewrittenDns =>
+      'Matched a rewrite rule and returned the rewritten answer';
+
+  @override
+  String get obsErrorDns => 'The lookup failed and produced no answer';
+
+  @override
+  String get obsPassedDns => 'Resolved by the rules and answered normally';
+
+  @override
+  String get obsPassedHttps => 'Forwarded successfully';
+
+  @override
+  String get obsRewrittenHttps =>
+      'Matched a rewrite rule and forwarded the rewritten request';
+
+  @override
+  String get obsBlockedHttps => 'Blocked by a filter rule before connecting';
+
+  @override
+  String get obsBypassedHttps => 'Forwarded without decryption (bypass)';
+
+  @override
+  String get obsErrorHttps => 'Handling failed';
+
+  @override
+  String get obsNoRuleHttps => 'No rule matched (or none was recorded)';
+
+  @override
+  String get obsNone => 'None';
+
+  @override
+  String get obsRequestDetailTitle => 'Request details';
+
+  @override
+  String get obsCachedChip => 'Cache';
+
+  @override
+  String get obsBasicInfo => 'Basics';
+
+  @override
+  String get obsTime => 'Time';
+
+  @override
+  String get obsProtocol => 'Protocol';
+
+  @override
+  String get obsAppPackage => 'Package';
+
+  @override
+  String get obsResolved => 'Resolved';
+
+  @override
+  String get obsElapsed => 'Elapsed';
+
+  @override
+  String get obsBlockingSubscription => 'Blocking subscription';
+
+  @override
+  String get obsRuleMatch => 'Rule match';
+
+  @override
+  String get obsRule => 'Rule';
+
+  @override
+  String get obsHandling => 'Handling';
+
+  @override
+  String get obsError => 'Error';
+
+  @override
+  String get obsAiAnalysis => 'AI analysis';
+
+  @override
+  String get obsRawRecord => 'Raw record';
+
+  @override
+  String get obsRawRecordFooter =>
+      'The verbatim message field written by the engine.';
+
+  @override
+  String get obsFailedHint =>
+      'For failed requests, check the matching active connections on the Connections page.';
+
+  @override
+  String get obsRulesHint =>
+      'Rules added here can be reviewed and undone on the Rules page.';
+
+  @override
+  String get obsCacheHit => 'Cache hit';
+
+  @override
+  String obsCopied(Object text) {
+    return 'Copied $text';
+  }
+
+  @override
+  String get obsCopyAddress => 'Copy address';
+
+  @override
+  String get obsCopyDomain => 'Copy domain';
+
+  @override
+  String get obsInBlocklist => 'Already blocked';
+
+  @override
+  String get obsAddToBlocklist => 'Block it';
+
+  @override
+  String get obsInAllowlist => 'Already allowed';
+
+  @override
+  String get obsAddToAllowlist => 'Allow it';
+
+  @override
+  String get obsIpOnlyFooter =>
+      'This record only has an IP address, which domain rules cannot match, so it cannot be added to the lists.';
+
+  @override
+  String get obsAnalyzeRequest => 'Analyse this request';
+
+  @override
+  String get obsAnalyzeRequestBody =>
+      'Use the configured model to judge ownership, risk and next steps';
+
+  @override
+  String obsCopiedHost(Object host) {
+    return 'Copied $host';
+  }
+
+  @override
+  String obsAddedToKind(Object domain, Object kind) {
+    return 'Added $domain to $kind';
+  }
+
+  @override
+  String obsAlreadyInKind(Object domain, Object kind) {
+    return '$domain is already in $kind';
+  }
+
+  @override
+  String obsCurrentFilter(Object filter) {
+    return 'Filtered by: $filter.';
+  }
+
+  @override
+  String obsFooterCount(
+    Object count,
+    Object failed,
+    Object filter,
+    Object more,
+  ) {
+    return '$count records, $failed failed$filter$more. Tap a row to see the rule match and outcome.';
+  }
+
+  @override
+  String obsFooterFilter(Object filter) {
+    return ' (filtered by: $filter)';
+  }
+
+  @override
+  String get obsFooterMore => '; scroll for more';
+
+  @override
+  String get obsFooterAll => '; all loaded';
 }

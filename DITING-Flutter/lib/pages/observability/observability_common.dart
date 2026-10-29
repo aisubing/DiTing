@@ -1,6 +1,7 @@
 /// Shared by the four observability pages so byte, rate and duration units cannot diverge.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -26,23 +27,27 @@ String obsFormatSpeed(int bytesPerSecond) {
 }
 
 /// Duration text: `42 s`, `12 min 4 s`, `1 h 8 min`.
-String obsFormatDuration(int seconds) {
+String obsFormatDuration(int seconds, AppL10n l10n) {
   if (seconds < 60) {
-    return '$seconds 秒';
+    return l10n.durationSeconds(seconds);
   }
   if (seconds < 3600) {
     final minutes = seconds ~/ 60;
     final rest = seconds % 60;
-    return rest == 0 ? '$minutes 分' : '$minutes 分 $rest 秒';
+    return rest == 0
+        ? l10n.durationMinutes(minutes)
+        : '${l10n.durationMinutes(minutes)} ${l10n.durationSeconds(rest)}';
   }
   final hours = seconds ~/ 3600;
   final minutes = (seconds % 3600) ~/ 60;
-  return minutes == 0 ? '$hours 小时' : '$hours 小时 $minutes 分';
+  return minutes == 0
+      ? l10n.durationHours(hours)
+      : '${l10n.durationHours(hours)} ${l10n.durationMinutes(minutes)}';
 }
 
 /// Latency text, from `0 ms` (cache hit) to `2000 ms` (timeout).
-String obsFormatLatency(int milliseconds) =>
-    milliseconds == 0 ? '缓存命中' : '$milliseconds ms';
+String obsFormatLatency(int milliseconds, AppL10n l10n) =>
+    milliseconds == 0 ? l10n.obsCacheHit : '$milliseconds ms';
 
 /// Confirmation dialog returning whether the user confirmed; the action label comes from
 /// the caller, cancel always uses UiLocalizations.
@@ -275,7 +280,10 @@ class ObsFailure extends StatelessWidget {
                   .of(context)
                   .copyWith(color: colorScheme.onSurfaceVariant),
             ),
-            FilledButton(onPressed: onRetry, child: const Text('重试')),
+            FilledButton(
+              onPressed: onRetry,
+              child: Text(context.l10n.obsRetry),
+            ),
           ],
         ),
       ),

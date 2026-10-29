@@ -3247,4 +3247,209 @@ class AppL10nZh extends AppL10n {
   String trafficWindowUp(Object window) {
     return '$window上行';
   }
+
+  @override
+  String get obsRequestsTitle => '请求';
+
+  @override
+  String get obsSource => '来源';
+
+  @override
+  String get obsStatus => '状态';
+
+  @override
+  String get obsRefresh => '刷新';
+
+  @override
+  String get obsClearFilter => '清除筛选';
+
+  @override
+  String get obsLoadFailed => '无法读取请求记录';
+
+  @override
+  String get obsLoading => '正在读取请求记录';
+
+  @override
+  String get obsNoRecords => '还没有请求记录';
+
+  @override
+  String get obsNoMatchingRequests => '没有符合条件的请求';
+
+  @override
+  String get obsNoRecordsBody => '应用发出请求后会在这里留下记录；HTTPS 记录需要开启流量检查。';
+
+  @override
+  String get obsResetFilter => '重置筛选条件';
+
+  @override
+  String get obsRecordsHeader => '请求记录';
+
+  @override
+  String get obsRetry => '重试';
+
+  @override
+  String get obsBypassedDns => '直连，未经过 DNS 解析流程';
+
+  @override
+  String get obsBlockedDns => '被过滤规则拦截，未发出查询';
+
+  @override
+  String get obsRewrittenDns => '命中了覆写规则，返回改写后的结果';
+
+  @override
+  String get obsErrorDns => '解析过程出错，未取得应答';
+
+  @override
+  String get obsPassedDns => '按规则解析并正常返回';
+
+  @override
+  String get obsPassedHttps => '按规则转发成功';
+
+  @override
+  String get obsRewrittenHttps => '命中了覆写规则，返回改写后的请求';
+
+  @override
+  String get obsBlockedHttps => '被过滤规则拦截，未建立连接';
+
+  @override
+  String get obsBypassedHttps => '未解密直接转发（旁路）';
+
+  @override
+  String get obsErrorHttps => '处理过程出错';
+
+  @override
+  String get obsNoRuleHttps => '未命中规则（或未记录规则）';
+
+  @override
+  String get obsNone => '无';
+
+  @override
+  String get obsRequestDetailTitle => '请求详情';
+
+  @override
+  String get obsCachedChip => '缓存';
+
+  @override
+  String get obsBasicInfo => '基础信息';
+
+  @override
+  String get obsTime => '时间';
+
+  @override
+  String get obsProtocol => '协议';
+
+  @override
+  String get obsAppPackage => '应用包名';
+
+  @override
+  String get obsResolved => '解析结果';
+
+  @override
+  String get obsElapsed => '耗时';
+
+  @override
+  String get obsBlockingSubscription => '拦截订阅';
+
+  @override
+  String get obsRuleMatch => '规则命中';
+
+  @override
+  String get obsRule => '规则';
+
+  @override
+  String get obsHandling => '处理方式';
+
+  @override
+  String get obsError => '错误';
+
+  @override
+  String get obsAiAnalysis => 'AI 分析';
+
+  @override
+  String get obsRawRecord => '原始记录';
+
+  @override
+  String get obsRawRecordFooter => '引擎写入 message 字段的原文，未经改写。';
+
+  @override
+  String get obsFailedHint => '处理失败的请求可在「连接」页配合查看对应的活动连接。';
+
+  @override
+  String get obsRulesHint => '加入的黑白名单可在「规则」页查看和撤销。';
+
+  @override
+  String get obsCacheHit => '缓存命中';
+
+  @override
+  String obsCopied(Object text) {
+    return '已复制 $text';
+  }
+
+  @override
+  String get obsCopyAddress => '复制地址';
+
+  @override
+  String get obsCopyDomain => '复制域名';
+
+  @override
+  String get obsInBlocklist => '已在黑名单';
+
+  @override
+  String get obsAddToBlocklist => '加入黑名单';
+
+  @override
+  String get obsInAllowlist => '已在白名单';
+
+  @override
+  String get obsAddToAllowlist => '加入白名单';
+
+  @override
+  String get obsIpOnlyFooter => '该记录只有 IP 地址，域名规则无法匹配，因此不能加入黑白名单。';
+
+  @override
+  String get obsAnalyzeRequest => '分析这条请求';
+
+  @override
+  String get obsAnalyzeRequestBody => '用配置的模型研判归属、风险与处置建议';
+
+  @override
+  String obsCopiedHost(Object host) {
+    return '已复制 $host';
+  }
+
+  @override
+  String obsAddedToKind(Object domain, Object kind) {
+    return '已将 $domain 加入$kind';
+  }
+
+  @override
+  String obsAlreadyInKind(Object domain, Object kind) {
+    return '$domain 已在$kind中';
+  }
+
+  @override
+  String obsCurrentFilter(Object filter) {
+    return '当前筛选：$filter。';
+  }
+
+  @override
+  String obsFooterCount(
+    Object count,
+    Object failed,
+    Object filter,
+    Object more,
+  ) {
+    return '共 $count 条，其中 $failed 条处理失败$filter$more。点按一行查看规则命中与处理结果。';
+  }
+
+  @override
+  String obsFooterFilter(Object filter) {
+    return '（筛选：$filter）';
+  }
+
+  @override
+  String get obsFooterMore => '；继续下滑加载更多';
+
+  @override
+  String get obsFooterAll => '；已加载全部';
 }

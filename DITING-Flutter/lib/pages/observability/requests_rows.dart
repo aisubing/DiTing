@@ -92,7 +92,7 @@ class RequestRow extends StatelessWidget {
             ),
             if (request.elapsedMs case final elapsed?)
               Text(
-                obsFormatLatency(elapsed),
+                obsFormatLatency(elapsed, context.l10n),
                 style: AppTextStyle.footnote
                     .of(context)
                     .copyWith(

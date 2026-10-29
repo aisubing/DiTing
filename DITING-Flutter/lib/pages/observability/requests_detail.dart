@@ -2,29 +2,29 @@ part of 'requests_page.dart';
 
 /// Handling text, translating outcome and message into plain words. Wording follows the
 /// upstream matchedRule switch; no invented categories.
-String _handlingOf(ObservedRequest request) {
+String _handlingOf(ObservedRequest request, AppL10n l10n) {
   if (request.source == RequestSource.dns) {
-    if (request.status == RequestStatus.bypassed) return '直连，未经过 DNS 解析流程';
-    if (request.status == RequestStatus.blocked) return '被过滤规则拦截，未发出查询';
-    if (request.status == RequestStatus.rewritten) return '命中了覆写规则，返回改写后的结果';
-    if (request.status == RequestStatus.error) return '解析过程出错，未取得应答';
-    return '按规则解析并正常返回';
+    if (request.status == RequestStatus.bypassed) return l10n.obsBypassedDns;
+    if (request.status == RequestStatus.blocked) return l10n.obsBlockedDns;
+    if (request.status == RequestStatus.rewritten) return l10n.obsRewrittenDns;
+    if (request.status == RequestStatus.error) return l10n.obsErrorDns;
+    return l10n.obsPassedDns;
   }
   return switch (request.status) {
-    RequestStatus.passed => '按规则转发成功',
-    RequestStatus.rewritten => '命中了覆写规则，返回改写后的请求',
-    RequestStatus.blocked => '被过滤规则拦截，未建立连接',
-    RequestStatus.bypassed => '未解密直接转发（旁路）',
-    RequestStatus.error => '处理过程出错',
+    RequestStatus.passed => l10n.obsPassedHttps,
+    RequestStatus.rewritten => l10n.obsRewrittenHttps,
+    RequestStatus.blocked => l10n.obsBlockedHttps,
+    RequestStatus.bypassed => l10n.obsBypassedHttps,
+    RequestStatus.error => l10n.obsErrorHttps,
     RequestStatus.all => '—',
   };
 }
 
 /// Matched rule text. An empty value gets an explanation rather than "none".
-String _ruleOf(ObservedRequest request) {
+String _ruleOf(ObservedRequest request, AppL10n l10n) {
   final rule = request.matchedRule?.trim();
   if (rule != null && rule.isNotEmpty) return rule;
-  return request.source == RequestSource.https ? '未命中规则（或未记录规则）' : '无';
+  return request.source == RequestSource.https ? l10n.obsNoRuleHttps : l10n.obsNone;
 }
 
 /// Bare host of a record: drops the `TCP `/`UDP ` prefix of connection rows, the port and any
@@ -63,7 +63,7 @@ class RequestDetailSheet extends StatelessWidget {
     final (statusColor, statusGlyph) = _statusStyle(context, request.status);
 
     return CommonScaffold(
-      title: '请求详情',
+      title: context.l10n.obsRequestDetailTitle,
       body: PageBody(
         children: [
           DetailHeroCard(
@@ -78,71 +78,74 @@ class RequestDetailSheet extends StatelessWidget {
                 foregroundColor: statusColor,
               ),
               DetailMetaChip(label: request.source.label),
-              if (request.cached) const DetailMetaChip(label: '缓存'),
+              if (request.cached) DetailMetaChip(label: context.l10n.obsCachedChip),
               DetailMetaChip(label: _stampOf(request.timestamp)),
             ],
           ),
           DomainActionRow(host: host),
           SectionBlock(
-            title: '基础信息',
+            title: context.l10n.obsBasicInfo,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: DetailInfoCard(
               children: [
                 KeyValueRow(
-                  label: '时间',
+                  label: context.l10n.obsTime,
                   value: _stampOf(request.timestamp),
                   monospace: true,
                 ),
-                KeyValueRow(label: '来源', value: request.source.label),
+                KeyValueRow(label: context.l10n.obsSource, value: request.source.label),
                 if (request.protocol case final protocol?
                     when protocol.isNotEmpty)
-                  KeyValueRow(label: '协议', value: protocol, monospace: true),
+                  KeyValueRow(label: context.l10n.obsProtocol, value: protocol, monospace: true),
                 if (request.packageName case final packageName?
                     when packageName.isNotEmpty)
                   KeyValueRow(
-                    label: '应用包名',
+                    label: context.l10n.obsAppPackage,
                     value: packageName,
                     monospace: true,
                   ),
                 if (parsed.resolved case final resolved?)
-                  KeyValueRow(label: '解析结果', value: resolved, monospace: true),
+                  KeyValueRow(label: context.l10n.obsResolved, value: resolved, monospace: true),
                 if (request.elapsedMs case final elapsed?)
                   KeyValueRow(
-                    label: '耗时',
-                    value: obsFormatLatency(elapsed),
+                    label: context.l10n.obsElapsed,
+                    value: obsFormatLatency(elapsed, context.l10n),
                     monospace: true,
                   ),
                 if (request.blockSubscriptionId case final id?)
-                  KeyValueRow(label: '拦截订阅', value: 'sub_$id', monospace: true),
+                  KeyValueRow(label: context.l10n.obsBlockingSubscription, value: 'sub_$id', monospace: true),
               ],
             ),
           ),
           SectionBlock(
-            title: '规则命中',
+            title: context.l10n.obsRuleMatch,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: DetailInfoCard(
               children: [
                 KeyValueRow(
-                  label: '规则',
-                  value: _ruleOf(request),
+                  label: context.l10n.obsRule,
+                  value: _ruleOf(request, context.l10n),
                   monospace: true,
                 ),
-                KeyValueRow(label: '处理方式', value: _handlingOf(request)),
+                KeyValueRow(
+                  label: context.l10n.obsHandling,
+                  value: _handlingOf(request, context.l10n),
+                ),
                 if (parsed.error case final error?)
-                  KeyValueRow(label: '错误', value: error, monospace: true),
+                  KeyValueRow(label: context.l10n.obsError, value: error, monospace: true),
               ],
             ),
           ),
           if (host != null)
             SectionBlock(
-              title: 'AI 分析',
+              title: context.l10n.obsAiAnalysis,
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: AgentAnalysisEntryCard(domain: host),
             ),
           if (request.message case final message? when message.isNotEmpty)
             SectionBlock(
-              title: '原始记录',
-              footer: '引擎写入 message 字段的原文，未经改写。',
+              title: context.l10n.obsRawRecord,
+              footer: context.l10n.obsRawRecordFooter,
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: CommonCard(
                 padding: const EdgeInsets.all(14),
@@ -161,8 +164,8 @@ class RequestDetailSheet extends StatelessWidget {
             ),
           ListFooter(
             text: request.status == RequestStatus.error
-                ? '处理失败的请求可在「连接」页配合查看对应的活动连接。'
-                : '加入的黑白名单可在「规则」页查看和撤销。',
+                ? context.l10n.obsFailedHint
+                : context.l10n.obsRulesHint,
           ),
           const SizedBox(height: 16),
         ],

@@ -6016,6 +6016,383 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'{window}上行'**
   String trafficWindowUp(Object window);
+
+  /// No description provided for @obsRequestsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求'**
+  String get obsRequestsTitle;
+
+  /// No description provided for @obsSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'来源'**
+  String get obsSource;
+
+  /// No description provided for @obsStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态'**
+  String get obsStatus;
+
+  /// No description provided for @obsRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get obsRefresh;
+
+  /// No description provided for @obsClearFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除筛选'**
+  String get obsClearFilter;
+
+  /// No description provided for @obsLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取请求记录'**
+  String get obsLoadFailed;
+
+  /// No description provided for @obsLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取请求记录'**
+  String get obsLoading;
+
+  /// No description provided for @obsNoRecords.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有请求记录'**
+  String get obsNoRecords;
+
+  /// No description provided for @obsNoMatchingRequests.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有符合条件的请求'**
+  String get obsNoMatchingRequests;
+
+  /// No description provided for @obsNoRecordsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用发出请求后会在这里留下记录；HTTPS 记录需要开启流量检查。'**
+  String get obsNoRecordsBody;
+
+  /// No description provided for @obsResetFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置筛选条件'**
+  String get obsResetFilter;
+
+  /// No description provided for @obsRecordsHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求记录'**
+  String get obsRecordsHeader;
+
+  /// No description provided for @obsRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get obsRetry;
+
+  /// No description provided for @obsBypassedDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'直连，未经过 DNS 解析流程'**
+  String get obsBypassedDns;
+
+  /// No description provided for @obsBlockedDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'被过滤规则拦截，未发出查询'**
+  String get obsBlockedDns;
+
+  /// No description provided for @obsRewrittenDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中了覆写规则，返回改写后的结果'**
+  String get obsRewrittenDns;
+
+  /// No description provided for @obsErrorDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析过程出错，未取得应答'**
+  String get obsErrorDns;
+
+  /// No description provided for @obsPassedDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'按规则解析并正常返回'**
+  String get obsPassedDns;
+
+  /// No description provided for @obsPassedHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'按规则转发成功'**
+  String get obsPassedHttps;
+
+  /// No description provided for @obsRewrittenHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中了覆写规则，返回改写后的请求'**
+  String get obsRewrittenHttps;
+
+  /// No description provided for @obsBlockedHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'被过滤规则拦截，未建立连接'**
+  String get obsBlockedHttps;
+
+  /// No description provided for @obsBypassedHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'未解密直接转发（旁路）'**
+  String get obsBypassedHttps;
+
+  /// No description provided for @obsErrorHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理过程出错'**
+  String get obsErrorHttps;
+
+  /// No description provided for @obsNoRuleHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'未命中规则（或未记录规则）'**
+  String get obsNoRuleHttps;
+
+  /// No description provided for @obsNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'无'**
+  String get obsNone;
+
+  /// No description provided for @obsRequestDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求详情'**
+  String get obsRequestDetailTitle;
+
+  /// No description provided for @obsCachedChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存'**
+  String get obsCachedChip;
+
+  /// No description provided for @obsBasicInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'基础信息'**
+  String get obsBasicInfo;
+
+  /// No description provided for @obsTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get obsTime;
+
+  /// No description provided for @obsProtocol.
+  ///
+  /// In zh, this message translates to:
+  /// **'协议'**
+  String get obsProtocol;
+
+  /// No description provided for @obsAppPackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用包名'**
+  String get obsAppPackage;
+
+  /// No description provided for @obsResolved.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析结果'**
+  String get obsResolved;
+
+  /// No description provided for @obsElapsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'耗时'**
+  String get obsElapsed;
+
+  /// No description provided for @obsBlockingSubscription.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截订阅'**
+  String get obsBlockingSubscription;
+
+  /// No description provided for @obsRuleMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则命中'**
+  String get obsRuleMatch;
+
+  /// No description provided for @obsRule.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则'**
+  String get obsRule;
+
+  /// No description provided for @obsHandling.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理方式'**
+  String get obsHandling;
+
+  /// No description provided for @obsError.
+  ///
+  /// In zh, this message translates to:
+  /// **'错误'**
+  String get obsError;
+
+  /// No description provided for @obsAiAnalysis.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析'**
+  String get obsAiAnalysis;
+
+  /// No description provided for @obsRawRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'原始记录'**
+  String get obsRawRecord;
+
+  /// No description provided for @obsRawRecordFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎写入 message 字段的原文，未经改写。'**
+  String get obsRawRecordFooter;
+
+  /// No description provided for @obsFailedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理失败的请求可在「连接」页配合查看对应的活动连接。'**
+  String get obsFailedHint;
+
+  /// No description provided for @obsRulesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入的黑白名单可在「规则」页查看和撤销。'**
+  String get obsRulesHint;
+
+  /// No description provided for @obsCacheHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存命中'**
+  String get obsCacheHit;
+
+  /// No description provided for @obsCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制 {text}'**
+  String obsCopied(Object text);
+
+  /// No description provided for @obsCopyAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制地址'**
+  String get obsCopyAddress;
+
+  /// No description provided for @obsCopyDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制域名'**
+  String get obsCopyDomain;
+
+  /// No description provided for @obsInBlocklist.
+  ///
+  /// In zh, this message translates to:
+  /// **'已在黑名单'**
+  String get obsInBlocklist;
+
+  /// No description provided for @obsAddToBlocklist.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入黑名单'**
+  String get obsAddToBlocklist;
+
+  /// No description provided for @obsInAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'已在白名单'**
+  String get obsInAllowlist;
+
+  /// No description provided for @obsAddToAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入白名单'**
+  String get obsAddToAllowlist;
+
+  /// No description provided for @obsIpOnlyFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'该记录只有 IP 地址，域名规则无法匹配，因此不能加入黑白名单。'**
+  String get obsIpOnlyFooter;
+
+  /// No description provided for @obsAnalyzeRequest.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析这条请求'**
+  String get obsAnalyzeRequest;
+
+  /// No description provided for @obsAnalyzeRequestBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'用配置的模型研判归属、风险与处置建议'**
+  String get obsAnalyzeRequestBody;
+
+  /// No description provided for @obsCopiedHost.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制 {host}'**
+  String obsCopiedHost(Object host);
+
+  /// No description provided for @obsAddedToKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'已将 {domain} 加入{kind}'**
+  String obsAddedToKind(Object domain, Object kind);
+
+  /// No description provided for @obsAlreadyInKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'{domain} 已在{kind}中'**
+  String obsAlreadyInKind(Object domain, Object kind);
+
+  /// No description provided for @obsCurrentFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前筛选：{filter}。'**
+  String obsCurrentFilter(Object filter);
+
+  /// No description provided for @obsFooterCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 条，其中 {failed} 条处理失败{filter}{more}。点按一行查看规则命中与处理结果。'**
+  String obsFooterCount(
+    Object count,
+    Object failed,
+    Object filter,
+    Object more,
+  );
+
+  /// No description provided for @obsFooterFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'（筛选：{filter}）'**
+  String obsFooterFilter(Object filter);
+
+  /// No description provided for @obsFooterMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'；继续下滑加载更多'**
+  String get obsFooterMore;
+
+  /// No description provided for @obsFooterAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'；已加载全部'**
+  String get obsFooterAll;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
