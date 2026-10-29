@@ -1,5 +1,6 @@
 // Theme assembly, the appearance providers and the enum labels that reach the screen.
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/app/theme/manager.dart';
@@ -18,7 +19,7 @@ import 'support/fake_vpn_controller.dart';
 
 void main() {
   group('主题与外观', _appLayer);
-  group('枚举文案', _enumDisplay);
+  group('枚举文案', () => _enumDisplay(lookupAppL10n(const Locale('zh'))));
 }
 
 void _appLayer() {
@@ -307,7 +308,7 @@ void _appLayer() {
 }
 
 /// Guards enums reach the screen through `.label`; a bare enum renders `ProviderProtocol.doh`
-void _enumDisplay() {
+void _enumDisplay(AppL10n l10n) {
   /// A source identifier like "EnumType.value" must never appear in user text.
   void expectNoRawEnumLiteral(String text, String what) {
     expect(
@@ -374,11 +375,14 @@ void _enumDisplay() {
         );
       }
       for (final palette in AppPalette.values) {
-        expectNoRawEnumLiteral(palette.label, 'AppPalette.${palette.name}');
+        expectNoRawEnumLiteral(
+          palette.label(l10n),
+          'AppPalette.${palette.name}',
+        );
       }
       for (final themeMode in AppThemeMode.values) {
         expectNoRawEnumLiteral(
-          themeMode.label,
+          themeMode.label(l10n),
           'AppThemeMode.${themeMode.name}',
         );
       }

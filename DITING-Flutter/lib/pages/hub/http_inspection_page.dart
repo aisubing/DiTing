@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/ca_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -461,6 +462,7 @@ class _HttpInspectionAppsPageState
         ),
       ],
       menuItems: appListMenuItems(
+        l10n: context.l10n,
         filter: filter,
         sort: sort,
         onFilterChanged: (value) {

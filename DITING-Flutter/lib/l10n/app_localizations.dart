@@ -205,12 +205,6 @@ abstract class AppL10n {
   /// **'选择应用界面语言。「跟随系统」会跟随设备语言，非中文或英文的系统显示中文。'**
   String get languageInterfaceFooter;
 
-  /// No description provided for @languageFollowSystem.
-  ///
-  /// In zh, this message translates to:
-  /// **'跟随系统'**
-  String get languageFollowSystem;
-
   /// No description provided for @languageChinese.
   ///
   /// In zh, this message translates to:
@@ -222,6 +216,264 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'English'**
   String get languageEnglish;
+
+  /// No description provided for @commonFollowSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get commonFollowSystem;
+
+  /// No description provided for @commonSelectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全选'**
+  String get commonSelectAll;
+
+  /// No description provided for @commonClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除'**
+  String get commonClear;
+
+  /// No description provided for @commonInvertSelection.
+  ///
+  /// In zh, this message translates to:
+  /// **'反选'**
+  String get commonInvertSelection;
+
+  /// No description provided for @commonFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'过滤'**
+  String get commonFilter;
+
+  /// No description provided for @commonSort.
+  ///
+  /// In zh, this message translates to:
+  /// **'排序'**
+  String get commonSort;
+
+  /// No description provided for @commonSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get commonSave;
+
+  /// No description provided for @commonDiscard.
+  ///
+  /// In zh, this message translates to:
+  /// **'不保存'**
+  String get commonDiscard;
+
+  /// No description provided for @commonSaveChangesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存更改？'**
+  String get commonSaveChangesTitle;
+
+  /// No description provided for @commonSaveChangesMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'你的选择还没保存。保存后离开，还是放弃这些修改？'**
+  String get commonSaveChangesMessage;
+
+  /// No description provided for @commonSaveChangesMessageFor.
+  ///
+  /// In zh, this message translates to:
+  /// **'「{name}」的选择还没保存。保存后离开，还是放弃这些修改？'**
+  String commonSaveChangesMessageFor(Object name);
+
+  /// No description provided for @commonGrantPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'去授权'**
+  String get commonGrantPermission;
+
+  /// No description provided for @palettePurple.
+  ///
+  /// In zh, this message translates to:
+  /// **'鸢尾紫'**
+  String get palettePurple;
+
+  /// No description provided for @paletteBlue.
+  ///
+  /// In zh, this message translates to:
+  /// **'睡莲蓝'**
+  String get paletteBlue;
+
+  /// No description provided for @paletteCyan.
+  ///
+  /// In zh, this message translates to:
+  /// **'池水青'**
+  String get paletteCyan;
+
+  /// No description provided for @paletteGreen.
+  ///
+  /// In zh, this message translates to:
+  /// **'柳叶绿'**
+  String get paletteGreen;
+
+  /// No description provided for @paletteOrange.
+  ///
+  /// In zh, this message translates to:
+  /// **'暮光赭'**
+  String get paletteOrange;
+
+  /// No description provided for @paletteRed.
+  ///
+  /// In zh, this message translates to:
+  /// **'罂粟红'**
+  String get paletteRed;
+
+  /// No description provided for @palettePink.
+  ///
+  /// In zh, this message translates to:
+  /// **'暮霞粉'**
+  String get palettePink;
+
+  /// No description provided for @paletteGold.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦穗金'**
+  String get paletteGold;
+
+  /// No description provided for @themeModeLight.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色模式'**
+  String get themeModeLight;
+
+  /// No description provided for @themeModeDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色模式'**
+  String get themeModeDark;
+
+  /// No description provided for @appListUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'读不到应用列表'**
+  String get appListUnavailable;
+
+  /// No description provided for @appListFilterAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部应用'**
+  String get appListFilterAll;
+
+  /// No description provided for @appListFilterSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统应用'**
+  String get appListFilterSystem;
+
+  /// No description provided for @appListFilterUser.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户应用'**
+  String get appListFilterUser;
+
+  /// No description provided for @appListFilterSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已勾选应用'**
+  String get appListFilterSelected;
+
+  /// No description provided for @appListSortLabelAsc.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用名称 A-Z'**
+  String get appListSortLabelAsc;
+
+  /// No description provided for @appListSortLabelDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用名称 Z-A'**
+  String get appListSortLabelDesc;
+
+  /// No description provided for @appListSortPackageAsc.
+  ///
+  /// In zh, this message translates to:
+  /// **'包名 A-Z'**
+  String get appListSortPackageAsc;
+
+  /// No description provided for @appListSortPackageDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'包名 Z-A'**
+  String get appListSortPackageDesc;
+
+  /// No description provided for @appListNotRegistered.
+  ///
+  /// In zh, this message translates to:
+  /// **'未注册'**
+  String get appListNotRegistered;
+
+  /// No description provided for @appListChannelUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用列表通道不可用：{detail}'**
+  String appListChannelUnavailable(Object detail);
+
+  /// No description provided for @appListReadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取应用列表失败：{detail}'**
+  String appListReadFailed(Object detail);
+
+  /// No description provided for @appListReadFailedCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取应用列表失败（{code}）'**
+  String appListReadFailedCode(Object code);
+
+  /// No description provided for @dbWriteUnhealthy.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志写入异常：已丢弃 {dropped} 条、打开失败 {failures} 次，可在「故障排查」查看详情'**
+  String dbWriteUnhealthy(Object dropped, Object failures);
+
+  /// No description provided for @agreementDeclinedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拒绝使用须知'**
+  String get agreementDeclinedTitle;
+
+  /// No description provided for @agreementDeclinedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'未同意使用须知与免责声明，无法继续使用谛听。你可以直接退出应用，或重新查看条款后再决定。'**
+  String get agreementDeclinedMessage;
+
+  /// No description provided for @agreementReviewAgain.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新查看'**
+  String get agreementReviewAgain;
+
+  /// No description provided for @agreementTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用须知与免责声明'**
+  String get agreementTitle;
+
+  /// No description provided for @agreementDecline.
+  ///
+  /// In zh, this message translates to:
+  /// **'不同意并退出'**
+  String get agreementDecline;
+
+  /// No description provided for @agreementAccept.
+  ///
+  /// In zh, this message translates to:
+  /// **'同意并继续'**
+  String get agreementAccept;
+
+  /// No description provided for @agreementMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'软件说明\n谛听是一款专注于本地 DNS 解析优化与网络规则过滤的开源工具。提供三种工作模式：普通模式（全隧道深度管控）、极速模式（纯 Kotlin 原生轻量窄路由）与独立服务器模式（局域网免 VPN 服务）。本软件完全在设备本地闭环运行，无任何远程数据上传与隐私追踪。\n\n运行机制与注意事项\n普通模式与极速模式依赖 Android 本地 VPN 接口接管 DNS 解析，不连接任何远程 VPN 服务器；独立服务器模式无需 VPN 权限，直接监听本地 1053 端口供局域网设备接入。规则与日志完整保存在本机，启用高级扩展功能前请了解其具体影响。\n\n免责条款\n本软件按现状提供。使用者须遵守相关法律法规，自行确认规则与上游解析来源的合法性及安全性。严禁将本软件用于任何违法用途；使用者因自行配置或使用本软件所产生的后果由使用者自行承担。'**
+  String get agreementMessage;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

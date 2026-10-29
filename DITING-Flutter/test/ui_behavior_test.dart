@@ -1,6 +1,7 @@
 // Layout and dialog regressions over every route at three sizes, the first-run
 // agreement, and the dialog field lifecycle.
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/app.dart';
 import 'package:diting/app/initial_agreement.dart';
 import 'package:diting/pages/system/unknown_route_page.dart';
@@ -145,7 +146,7 @@ void _initialAgreement() {
   });
 
   test('条款正文含旧版三段结构与关键句', () {
-    const message = InitialAgreementDialog.message;
+    final message = lookupAppL10n(const Locale('zh')).agreementMessage;
     // Three headings, separated by `\n\n` in 1.4.3; a missing one means the body changed.
     expect(message, contains('软件说明'));
     expect(message, contains('运行机制与注意事项'));

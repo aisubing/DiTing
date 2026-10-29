@@ -1,6 +1,6 @@
 library;
 
-import 'package:diting/app/initial_agreement.dart';
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_system.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/notice.dart';
@@ -91,7 +91,7 @@ class InitialAgreementCard extends StatelessWidget {
               ],
             ),
             Text(
-              InitialAgreementDialog.message,
+              context.l10n.agreementMessage,
               style: AppTextStyle.footnote
                   .of(context)
                   .copyWith(color: colorScheme.onSurfaceVariant, height: 1.7),

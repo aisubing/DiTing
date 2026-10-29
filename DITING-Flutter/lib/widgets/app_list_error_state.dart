@@ -3,6 +3,7 @@
 /// the inventory afterwards, because a bare retry would fail for the same reason.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/permissions_bridge.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/permission_providers.dart';
@@ -84,14 +85,14 @@ class _AppListErrorStateState extends ConsumerState<AppListErrorState>
     return EmptyStateBox(
       minHeight: widget.minHeight,
       child: NullStatus(
-        label: '读不到应用列表',
+        label: context.l10n.appListUnavailable,
         description: widget.error,
         illustration: NullStatusIllustration.apps,
         action: TextButton(
           onPressed: _requesting ? null : _requestPermission,
           child: _requesting
               ? const CommonCircleLoading(size: 16)
-              : const Text('去授权'),
+              : Text(context.l10n.commonGrantPermission),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/pages/appearance/preview_choice.dart';
 import 'package:diting/pages/appearance/theme_page.dart';
@@ -35,7 +36,7 @@ class ThemeColorPage extends ConsumerWidget {
               for (final option in AppPalette.values)
                 PreviewChoice(
                   value: option,
-                  label: option.label,
+                  label: option.label(context.l10n),
                   description: option == AppPalette.gold
                       ? '落盘值沿用旧版的 indigo'
                       : null,

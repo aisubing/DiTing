@@ -2,6 +2,7 @@
 /// never a throw.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -50,7 +51,11 @@ final installedAppsProvider = FutureProvider<InstalledAppsSnapshot>((
       apps: [...apps]..sort(AppListSort.labelAsc.compare),
     );
   } on MissingPluginException catch (error) {
-    return InstalledAppsSnapshot.empty('应用列表通道不可用：${error.message ?? '未注册'}');
+    return InstalledAppsSnapshot.empty(
+      currentL10n.appListChannelUnavailable(
+        error.message ?? currentL10n.appListNotRegistered,
+      ),
+    );
   } on PlatformException catch (error) {
     return InstalledAppsSnapshot.empty(_describe(error));
   }
@@ -99,20 +104,28 @@ Future<Map<String, int>> resolveInstalledUids(
 
 String _describe(PlatformException error) {
   final message = (error.message ?? '').trim();
-  return message.isEmpty ? '读取应用列表失败（${error.code}）' : '读取应用列表失败：$message';
+  return message.isEmpty
+      ? currentL10n.appListReadFailedCode(error.code)
+      : currentL10n.appListReadFailed(message);
 }
 
 /// 1.4.3 `AppListFilter` in declaration order; an unknown `storageValue` falls back to [user].
 enum AppListFilter {
-  all('ALL', '全部应用'),
-  system('SYSTEM', '系统应用'),
-  user('USER', '用户应用'),
-  selected('SELECTED', '已勾选应用');
+  all('ALL'),
+  system('SYSTEM'),
+  user('USER'),
+  selected('SELECTED');
 
-  const AppListFilter(this.storageValue, this.label);
+  const AppListFilter(this.storageValue);
 
   final String storageValue;
-  final String label;
+
+  String label(AppL10n l10n) => switch (this) {
+    AppListFilter.all => l10n.appListFilterAll,
+    AppListFilter.system => l10n.appListFilterSystem,
+    AppListFilter.user => l10n.appListFilterUser,
+    AppListFilter.selected => l10n.appListFilterSelected,
+  };
 
   static AppListFilter fromStorageValue(String? value) => values.firstWhere(
     (item) => item.storageValue == value,
@@ -129,15 +142,21 @@ enum AppListFilter {
 
 /// 1.4.3 `AppListSort` with the same storage values; labels compare lowercased, then by package.
 enum AppListSort {
-  labelAsc('LABEL_ASC', '应用名称 A-Z'),
-  labelDesc('LABEL_DESC', '应用名称 Z-A'),
-  packageAsc('PACKAGE_ASC', '包名 A-Z'),
-  packageDesc('PACKAGE_DESC', '包名 Z-A');
+  labelAsc('LABEL_ASC'),
+  labelDesc('LABEL_DESC'),
+  packageAsc('PACKAGE_ASC'),
+  packageDesc('PACKAGE_DESC');
 
-  const AppListSort(this.storageValue, this.label);
+  const AppListSort(this.storageValue);
 
   final String storageValue;
-  final String label;
+
+  String label(AppL10n l10n) => switch (this) {
+    AppListSort.labelAsc => l10n.appListSortLabelAsc,
+    AppListSort.labelDesc => l10n.appListSortLabelDesc,
+    AppListSort.packageAsc => l10n.appListSortPackageAsc,
+    AppListSort.packageDesc => l10n.appListSortPackageDesc,
+  };
 
   static AppListSort fromStorageValue(String? value) => values.firstWhere(
     (item) => item.storageValue == value,

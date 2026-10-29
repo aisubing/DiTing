@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/state/installed_apps_providers.dart';
@@ -453,6 +454,7 @@ class _OutboundProxyAppsPageState extends ConsumerState<OutboundProxyAppsPage> {
     return CommonScaffold(
       title: '选择代理应用',
       menuItems: appListMenuItems(
+        l10n: context.l10n,
         filter: _filter,
         sort: _sort,
         onFilterChanged: (value) => setState(() => _filter = value),

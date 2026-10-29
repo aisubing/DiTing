@@ -125,8 +125,10 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     _messengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(
-          '日志写入异常：已丢弃 ${health.droppedRows} 条、打开失败 ${health.openFailures} 次，'
-          '可在「故障排查」查看详情',
+          currentL10n.dbWriteUnhealthy(
+            health.droppedRows,
+            health.openFailures,
+          ),
         ),
         behavior: SnackBarBehavior.floating,
       ),
@@ -223,6 +225,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       // locale, Chinese.
       locale: ref.watch(appLocaleProvider),
       builder: (context, child) {
+        // Keeps the context-free [currentL10n] in step for providers and models that format a
+        // message outside a widget.
+        setCurrentL10n(AppL10n.of(context));
         // `child` is the Navigator; all scopes sit above it. `LiquidGlassScope` and
         // `LiquidGlassHost` are a pair, else panes fall back to tint + border. The agreement
         // gate lives here so it also covers overlay routes.

@@ -1,6 +1,7 @@
 /// Appearance settings menu, mirroring the legacy `APPEARANCE_SETTINGS`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/manager.dart';
 import 'package:diting/pages/appearance/mini_screen.dart';
@@ -87,7 +88,7 @@ class ThemePage extends ConsumerWidget {
               NavEntryRow(
                 glyph: AppGlyphs.palette,
                 title: '主题色配置',
-                subtitle: ref.watch(paletteProvider).label,
+                subtitle: ref.watch(paletteProvider).label(context.l10n),
                 onPressed: () => context.push(SystemPaths.colorStyle),
               ),
               NavEntryRow(

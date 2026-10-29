@@ -2,6 +2,7 @@ import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 // `Override` is only exported from `misc.dart`, not `flutter_riverpod.dart`.
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -10,6 +11,12 @@ import 'package:flutter_test/flutter_test.dart';
 void installGlobalTestHooks({bool skipInitialAgreement = true}) {
   setUp(() {
     debugDisableDashboardLiveUpdates = true;
+    // The app follows the device language by default and the test platform reports en_US; pin
+    // Chinese so every Chinese expectation in the suites keeps matching the shipped strings.
+    final dispatcher = TestWidgetsFlutterBinding.ensureInitialized()
+        .platformDispatcher;
+    dispatcher.localesTestValue = const [Locale('zh', 'CN')];
+    addTearDown(dispatcher.clearLocalesTestValue);
   });
   tearDown(() {
     debugDisableDashboardLiveUpdates = false;

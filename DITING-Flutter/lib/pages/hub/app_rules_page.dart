@@ -1,6 +1,7 @@
 // ignore_for_file: sort_child_properties_last
 import 'dart:async';
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
@@ -183,7 +184,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           subItems: [
             for (final option in AppListFilter.values)
               CommonPopupMenuItem(
-                label: option.label,
+                label: option.label(context.l10n),
                 checked: option == filter,
                 onPressed: () {
                   settings.setAppAllowlistFilterRaw(option.storageValue);
@@ -198,7 +199,7 @@ class _AppRulesPageState extends ConsumerState<AppRulesPage> {
           subItems: [
             for (final option in AppListSort.values)
               CommonPopupMenuItem(
-                label: option.label,
+                label: option.label(context.l10n),
                 checked: option == sort,
                 onPressed: () {
                   settings.setAppAllowlistSortRaw(option.storageValue);

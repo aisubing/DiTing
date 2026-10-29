@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/section_slivers.dart';
@@ -41,6 +42,7 @@ List<Widget> appListSlivers({
 /// sort submenus. Callers pass the actions they support; a null callback drops that entry, which is
 /// how the legacy `showSelectionActions` flag behaves.
 List<CommonPopupMenuItem> appListMenuItems({
+  required AppL10n l10n,
   required AppListFilter filter,
   required AppListSort sort,
   required ValueChanged<AppListFilter> onFilterChanged,
@@ -52,41 +54,41 @@ List<CommonPopupMenuItem> appListMenuItems({
   return [
     if (onSelectAll != null)
       CommonPopupMenuItem(
-        label: '全选',
+        label: l10n.commonSelectAll,
         glyph: AppGlyphs.checkDouble,
         onPressed: onSelectAll,
       ),
     if (onClear != null)
       CommonPopupMenuItem(
-        label: '清除',
+        label: l10n.commonClear,
         glyph: AppGlyphs.clearAll,
         onPressed: onClear,
       ),
     if (onInvert != null)
       CommonPopupMenuItem(
-        label: '反选',
+        label: l10n.commonInvertSelection,
         glyph: AppGlyphs.sync,
         onPressed: onInvert,
       ),
     CommonPopupMenuItem(
-      label: '过滤',
+      label: l10n.commonFilter,
       glyph: AppGlyphs.filter,
       subItems: [
         for (final option in AppListFilter.values)
           CommonPopupMenuItem(
-            label: option.label,
+            label: option.label(l10n),
             checked: option == filter,
             onPressed: () => onFilterChanged(option),
           ),
       ],
     ),
     CommonPopupMenuItem(
-      label: '排序',
+      label: l10n.commonSort,
       glyph: AppGlyphs.sort,
       subItems: [
         for (final option in AppListSort.values)
           CommonPopupMenuItem(
-            label: option.label,
+            label: option.label(l10n),
             checked: option == sort,
             onPressed: () => onSortChanged(option),
           ),

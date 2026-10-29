@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/installed_apps_providers.dart';
@@ -283,6 +284,7 @@ class _AppSelectionScaffoldState extends ConsumerState<_AppSelectionScaffold> {
       child: CommonScaffold(
         title: widget.title,
         menuItems: appListMenuItems(
+          l10n: context.l10n,
           filter: widget.filter,
           sort: widget.sort,
           onFilterChanged: widget.onFilterChanged,

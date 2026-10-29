@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -16,29 +17,29 @@ enum UnsavedChangesChoice {
 
 /// Asks whether to save the pending selection before going back. Both the title-bar arrow and the
 /// system back gesture go through here, so a half-finished pick cannot be lost by accident.
+/// [title] and [message] default to the generic wording of the ARB resources.
 Future<UnsavedChangesChoice> showUnsavedChangesDialog(
   BuildContext context, {
-  String title = '保存更改？',
-  String message = '你的选择还没保存。保存后离开，还是放弃这些修改？',
+  String? title,
+  String? message,
 }) async {
   final choice = await showFloatingDialog<UnsavedChangesChoice>(
     context: context,
     child: CommonDialog(
-      title: title,
+      title: title ?? context.l10n.commonSaveChangesTitle,
       // Two answers only: staying is what dismissing the pane does, so it needs no button.
       actions: [
         TextButton(
           onPressed: () =>
               popFloatingDialog(context, UnsavedChangesChoice.discard),
-          child: const Text('不保存'),
+          child: Text(context.l10n.commonDiscard),
         ),
         TextButton(
-          onPressed: () =>
-              popFloatingDialog(context, UnsavedChangesChoice.save),
-          child: const Text('保存'),
+          onPressed: () => popFloatingDialog(context, UnsavedChangesChoice.save),
+          child: Text(context.l10n.commonSave),
         ),
       ],
-      child: Text(message),
+      child: Text(message ?? context.l10n.commonSaveChangesMessage),
     ),
   );
   // A barrier tap returns null: treat it as "keep editing" rather than losing the draft.

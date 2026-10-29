@@ -181,7 +181,7 @@ enum AppLanguageMode {
   };
 
   String label(AppL10n l10n) => switch (this) {
-    AppLanguageMode.system => l10n.languageFollowSystem,
+    AppLanguageMode.system => l10n.commonFollowSystem,
     AppLanguageMode.chinese => l10n.languageChinese,
     AppLanguageMode.english => l10n.languageEnglish,
   };
