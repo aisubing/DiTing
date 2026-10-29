@@ -7952,6 +7952,438 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'IP 不一致'**
   String get ipStatusMismatch;
+
+  /// No description provided for @modeSelectTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择工作模式'**
+  String get modeSelectTitle;
+
+  /// No description provided for @modeContinue.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续'**
+  String get modeContinue;
+
+  /// No description provided for @modeSwitchNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'随时可以在设置里重新选择；切换模式会先停止当前模式的服务，两个模式不会同时运行。'**
+  String get modeSwitchNote;
+
+  /// No description provided for @modeSharedNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'三种模式共用一套规则与缓存，区别在接管方式：普通模式走全隧道，服务器模式只做局域网 DNS，极速模式是纯 Kotlin 窄路由。'**
+  String get modeSharedNote;
+
+  /// No description provided for @modeNormalFeature1.
+  ///
+  /// In zh, this message translates to:
+  /// **'全隧道接管'**
+  String get modeNormalFeature1;
+
+  /// No description provided for @modeNormalFeature1Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'Go 栈接管全部流量，可按应用分流'**
+  String get modeNormalFeature1Body;
+
+  /// No description provided for @modeNormalFeature2.
+  ///
+  /// In zh, this message translates to:
+  /// **'全功能规则'**
+  String get modeNormalFeature2;
+
+  /// No description provided for @modeNormalFeature2Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑白名单、覆写、HTTPS 检查全部可用'**
+  String get modeNormalFeature2Body;
+
+  /// No description provided for @modeNormalFeature3.
+  ///
+  /// In zh, this message translates to:
+  /// **'可选 HTTPS 检查'**
+  String get modeNormalFeature3;
+
+  /// No description provided for @modeNormalFeature3Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要安装并信任本地 CA 证书'**
+  String get modeNormalFeature3Body;
+
+  /// No description provided for @modeNormalFeature4.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用流量统计'**
+  String get modeNormalFeature4;
+
+  /// No description provided for @modeNormalFeature4Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'按应用记录上下行与查询数'**
+  String get modeNormalFeature4Body;
+
+  /// No description provided for @modeServerFeature1.
+  ///
+  /// In zh, this message translates to:
+  /// **'局域网 DNS 服务'**
+  String get modeServerFeature1;
+
+  /// No description provided for @modeServerFeature1Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'监听 0.0.0.0，供同一网段设备使用'**
+  String get modeServerFeature1Body;
+
+  /// No description provided for @modeServerFeature2.
+  ///
+  /// In zh, this message translates to:
+  /// **'不占 VPN 槽位'**
+  String get modeServerFeature2;
+
+  /// No description provided for @modeServerFeature2Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机不建立隧道，可与其它 VPN 共存'**
+  String get modeServerFeature2Body;
+
+  /// No description provided for @modeServerFeature3.
+  ///
+  /// In zh, this message translates to:
+  /// **'共享规则与缓存'**
+  String get modeServerFeature3;
+
+  /// No description provided for @modeServerFeature3Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'与普通模式共用同一套规则库'**
+  String get modeServerFeature3Body;
+
+  /// No description provided for @modeServerFeature4.
+  ///
+  /// In zh, this message translates to:
+  /// **'低功耗'**
+  String get modeServerFeature4;
+
+  /// No description provided for @modeServerFeature4Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'只处理 DNS 查询，无流量转发'**
+  String get modeServerFeature4Body;
+
+  /// No description provided for @modeExpressFeature1.
+  ///
+  /// In zh, this message translates to:
+  /// **'纯 Kotlin 实现'**
+  String get modeExpressFeature1;
+
+  /// No description provided for @modeExpressFeature1Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'窄路由，启动与切换都更快'**
+  String get modeExpressFeature1Body;
+
+  /// No description provided for @modeExpressFeature2.
+  ///
+  /// In zh, this message translates to:
+  /// **'四种上游调度'**
+  String get modeExpressFeature2;
+
+  /// No description provided for @modeExpressFeature2Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'单服务商 / 智能 / 竞速 / 主备'**
+  String get modeExpressFeature2Body;
+
+  /// No description provided for @modeExpressFeature3.
+  ///
+  /// In zh, this message translates to:
+  /// **'64 分片 LRU 缓存'**
+  String get modeExpressFeature3;
+
+  /// No description provided for @modeExpressFeature3Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中率高、内存占用可控'**
+  String get modeExpressFeature3Body;
+
+  /// No description provided for @modeExpressFeature4.
+  ///
+  /// In zh, this message translates to:
+  /// **'兼容更旧系统'**
+  String get modeExpressFeature4;
+
+  /// No description provided for @modeExpressFeature4Body.
+  ///
+  /// In zh, this message translates to:
+  /// **'Android 7+（需 64 位）'**
+  String get modeExpressFeature4Body;
+
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'引导'**
+  String get onboardingTitle;
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过引导'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingPrev.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一步'**
+  String get onboardingPrev;
+
+  /// No description provided for @onboardingStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始使用'**
+  String get onboardingStart;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一步'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingChosen.
+  ///
+  /// In zh, this message translates to:
+  /// **'你选择了{mode}'**
+  String onboardingChosen(Object mode);
+
+  /// No description provided for @onboardingChangeable.
+  ///
+  /// In zh, this message translates to:
+  /// **'之后还能改'**
+  String get onboardingChangeable;
+
+  /// No description provided for @onboardingChangeableBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置 → 重新选择工作模式，随时可以切换。切换会先停止当前模式的服务。'**
+  String get onboardingChangeableBody;
+
+  /// No description provided for @onboardingSharedRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则与缓存共用'**
+  String get onboardingSharedRules;
+
+  /// No description provided for @onboardingSharedRulesBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'三种模式共享同一套黑白名单与 DNS 缓存，不必为每个模式重配一遍。'**
+  String get onboardingSharedRulesBody;
+
+  /// No description provided for @onboardingExclusive.
+  ///
+  /// In zh, this message translates to:
+  /// **'模式互斥'**
+  String get onboardingExclusive;
+
+  /// No description provided for @onboardingExclusiveBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'同一时刻只有一个模式在运行；离开时会先停掉上一个模式。'**
+  String get onboardingExclusiveBody;
+
+  /// No description provided for @permVpn.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPN 连接'**
+  String get permVpn;
+
+  /// No description provided for @permNotification.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知'**
+  String get permNotification;
+
+  /// No description provided for @permAppList.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用列表'**
+  String get permAppList;
+
+  /// No description provided for @permBattery.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略电池优化'**
+  String get permBattery;
+
+  /// No description provided for @permRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'必需'**
+  String get permRequired;
+
+  /// No description provided for @permOptional.
+  ///
+  /// In zh, this message translates to:
+  /// **'可选'**
+  String get permOptional;
+
+  /// No description provided for @permVpnNormalBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立本地隧道接管流量；拒绝则无法启动'**
+  String get permVpnNormalBody;
+
+  /// No description provided for @permNotificationBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'前台服务常驻通知；拒绝则服务可能被系统回收'**
+  String get permNotificationBody;
+
+  /// No description provided for @permAppListBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'按应用分流与统计；拒绝则只能按域名规则'**
+  String get permAppListBody;
+
+  /// No description provided for @permBatteryBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'避免后台被杀；拒绝则长时间待机可能断开'**
+  String get permBatteryBody;
+
+  /// No description provided for @permBatteryServerBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'避免后台被杀；拒绝则局域网内会间歇不可用'**
+  String get permBatteryServerBody;
+
+  /// No description provided for @permVpnExpressBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'建立窄路由隧道；拒绝则无法启动'**
+  String get permVpnExpressBody;
+
+  /// No description provided for @permNeeded.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要这些权限'**
+  String get permNeeded;
+
+  /// No description provided for @permAllLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部权限只在本机使用，不会上传任何数据。'**
+  String get permAllLocal;
+
+  /// No description provided for @permGrantedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已授予 {granted} / {total} 项；全部权限只在本机使用，不会上传任何数据。'**
+  String permGrantedCount(Object granted, Object total);
+
+  /// No description provided for @onboardingTipNormal1.
+  ///
+  /// In zh, this message translates to:
+  /// **'点首页的大圆钮启动服务，第一次会弹出系统 VPN 授权。'**
+  String get onboardingTipNormal1;
+
+  /// No description provided for @onboardingTipNormal2.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑名单 / 白名单在「功能中心 → 规则与订阅」里维护。'**
+  String get onboardingTipNormal2;
+
+  /// No description provided for @onboardingTipNormal3.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页句子和透明度都能在设置里改。'**
+  String get onboardingTipNormal3;
+
+  /// No description provided for @onboardingTipServer1.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动后把同网段设备的 DNS 指向「局域网接入」里显示的地址。'**
+  String get onboardingTipServer1;
+
+  /// No description provided for @onboardingTipServer2.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口可在「服务器模式」页改，默认 5353。'**
+  String get onboardingTipServer2;
+
+  /// No description provided for @onboardingTipServer3.
+  ///
+  /// In zh, this message translates to:
+  /// **'本模式不建立 VPN，可与其它 VPN 同时运行。'**
+  String get onboardingTipServer3;
+
+  /// No description provided for @onboardingTipExpress1.
+  ///
+  /// In zh, this message translates to:
+  /// **'极速模式启动更快，但功能是普通模式的子集。'**
+  String get onboardingTipExpress1;
+
+  /// No description provided for @onboardingTipExpress2.
+  ///
+  /// In zh, this message translates to:
+  /// **'多路竞速至少要选 2 家服务商。'**
+  String get onboardingTipExpress2;
+
+  /// No description provided for @onboardingTipExpress3.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要 HTTPS 检查或应用管控时请切回普通模式。'**
+  String get onboardingTipExpress3;
+
+  /// No description provided for @onboardingReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'可以开始了'**
+  String get onboardingReady;
+
+  /// No description provided for @onboardingReadyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'下面是三条最常用的上手要点。'**
+  String get onboardingReadyBody;
+
+  /// No description provided for @onboardingTipIndex.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {index} 条'**
+  String onboardingTipIndex(Object index);
+
+  /// No description provided for @permStillDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 仍未授予，请在系统设置里允许后返回本页'**
+  String permStillDenied(Object name);
+
+  /// No description provided for @permGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已授予'**
+  String get permGranted;
+
+  /// No description provided for @permDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授予'**
+  String get permDenied;
+
+  /// No description provided for @permUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态未知'**
+  String get permUnknown;
+
+  /// No description provided for @permGrant.
+  ///
+  /// In zh, this message translates to:
+  /// **'去授予'**
+  String get permGrant;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

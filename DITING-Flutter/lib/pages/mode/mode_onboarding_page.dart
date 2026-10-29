@@ -56,11 +56,11 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
     final mode = ref.watch(workModeProvider);
     final last = _index == _steps - 1;
     return CommonScaffold(
-      title: '引导',
+      title: context.l10n.onboardingTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.close,
-          tooltip: '跳过引导',
+          tooltip: context.l10n.onboardingSkip,
           onPressed: () {
             ref.read(onboardingProvider.notifier).complete();
             context.go(Routes.home);
@@ -96,7 +96,7 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
                       child: TonalButton(
                         size: TonalButtonSize.bar,
                         glyph: AppGlyphs.chevronBack,
-                        label: '上一步',
+                        label: context.l10n.onboardingPrev,
                         onPressed: () => _goTo(_index - 1),
                       ),
                     ),
@@ -105,7 +105,7 @@ class _ModeOnboardingPageState extends ConsumerState<ModeOnboardingPage> {
                     child: TonalButton(
                       size: TonalButtonSize.bar,
                       glyph: last ? AppGlyphs.check : AppGlyphs.chevronForward,
-                      label: last ? '开始使用' : '下一步',
+                      label: last ? context.l10n.onboardingStart : context.l10n.onboardingNext,
                       onPressed: last ? _finish : () => _goTo(_index + 1),
                     ),
                   ),
@@ -166,23 +166,23 @@ class _ChooseModeStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StepScaffold(
       glyph: _glyphOf(mode),
-      title: '你选择了${mode.title}',
+      title: context.l10n.onboardingChosen(mode.title(context.l10n)),
       description: mode.summary(context.l10n),
       children: [
         _TipCard(
           glyph: AppGlyphs.info,
-          title: '之后还能改',
-          detail: '设置 → 重新选择工作模式，随时可以切换。切换会先停止当前模式的服务。',
+          title: context.l10n.onboardingChangeable,
+          detail: context.l10n.onboardingChangeableBody,
         ),
         _TipCard(
           glyph: AppGlyphs.layers,
-          title: '规则与缓存共用',
-          detail: '三种模式共享同一套黑白名单与 DNS 缓存，不必为每个模式重配一遍。',
+          title: context.l10n.onboardingSharedRules,
+          detail: context.l10n.onboardingSharedRulesBody,
         ),
         _TipCard(
           glyph: AppGlyphs.swap,
-          title: '模式互斥',
-          detail: '同一时刻只有一个模式在运行；离开时会先停掉上一个模式。',
+          title: context.l10n.onboardingExclusive,
+          detail: context.l10n.onboardingExclusiveBody,
         ),
       ],
     );
@@ -206,67 +206,67 @@ class _PermissionStep extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(workModeProvider);
     final permissions = switch (mode) {
-      AppWorkMode.normal => const [
+      AppWorkMode.normal => [
         (
           AppPermission.vpn,
           AppGlyphs.vpn,
-          'VPN 连接',
-          '必需',
-          '建立本地隧道接管流量；拒绝则无法启动',
+          context.l10n.permVpn,
+          context.l10n.permRequired,
+          context.l10n.permVpnNormalBody,
         ),
         (
           AppPermission.notification,
           AppGlyphs.info,
-          '通知',
-          '必需',
-          '前台服务常驻通知；拒绝则服务可能被系统回收',
+          context.l10n.permNotification,
+          context.l10n.permRequired,
+          context.l10n.permNotificationBody,
         ),
         (
           AppPermission.appList,
           AppGlyphs.appsList,
-          '应用列表',
-          '可选',
-          '按应用分流与统计；拒绝则只能按域名规则',
+          context.l10n.permAppList,
+          context.l10n.permOptional,
+          context.l10n.permAppListBody,
         ),
         (
           AppPermission.batteryOptimization,
           AppGlyphs.bolt,
-          '忽略电池优化',
-          '可选',
-          '避免后台被杀；拒绝则长时间待机可能断开',
+          context.l10n.permBattery,
+          context.l10n.permOptional,
+          context.l10n.permBatteryBody,
         ),
       ],
-      AppWorkMode.server => const [
+      AppWorkMode.server => [
         (
           AppPermission.notification,
           AppGlyphs.info,
-          '通知',
-          '必需',
-          '前台服务常驻通知；拒绝则服务可能被系统回收',
+          context.l10n.permNotification,
+          context.l10n.permRequired,
+          context.l10n.permNotificationBody,
         ),
         (
           AppPermission.batteryOptimization,
           AppGlyphs.bolt,
-          '忽略电池优化',
-          '可选',
-          '避免后台被杀；拒绝则局域网内会间歇不可用',
+          context.l10n.permBattery,
+          context.l10n.permOptional,
+          context.l10n.permBatteryServerBody,
         ),
       ],
-      AppWorkMode.express => const [
-        (AppPermission.vpn, AppGlyphs.vpn, 'VPN 连接', '必需', '建立窄路由隧道；拒绝则无法启动'),
+      AppWorkMode.express => [
+        (AppPermission.vpn, AppGlyphs.vpn, context.l10n.permVpn, context.l10n.permRequired, context.l10n.permVpnExpressBody),
         (
           AppPermission.notification,
           AppGlyphs.info,
-          '通知',
-          '必需',
-          '前台服务常驻通知；拒绝则服务可能被系统回收',
+          context.l10n.permNotification,
+          context.l10n.permRequired,
+          context.l10n.permNotificationBody,
         ),
         (
           AppPermission.batteryOptimization,
           AppGlyphs.bolt,
-          '忽略电池优化',
-          '可选',
-          '避免后台被杀；拒绝则长时间待机可能断开',
+          context.l10n.permBattery,
+          context.l10n.permOptional,
+          context.l10n.permBatteryBody,
         ),
       ],
     };
@@ -276,11 +276,13 @@ class _PermissionStep extends ConsumerWidget {
         .length;
     return _StepScaffold(
       glyph: AppGlyphs.lock,
-      title: '需要这些权限',
+      title: context.l10n.permNeeded,
       description: snapshot == null
-          ? '全部权限只在本机使用，不会上传任何数据。'
-          : '已授予 $grantedCount / ${permissions.length} 项；'
-                '全部权限只在本机使用，不会上传任何数据。',
+          ? context.l10n.permAllLocal
+          : context.l10n.permGrantedCount(
+              '$grantedCount',
+              '${permissions.length}',
+            ),
       children: [
         for (final (permission, glyph, name, level, detail) in permissions)
           _PermissionRow(
@@ -296,38 +298,38 @@ class _PermissionStep extends ConsumerWidget {
 }
 
 class _FinishStep extends StatelessWidget {
-  const _FinishStep({required this.mode});
+  _FinishStep({required this.mode});
 
   final AppWorkMode mode;
 
   @override
   Widget build(BuildContext context) {
     final tips = switch (mode) {
-      AppWorkMode.normal => const [
-        '点首页的大圆钮启动服务，第一次会弹出系统 VPN 授权。',
-        '黑名单 / 白名单在「功能中心 → 规则与订阅」里维护。',
-        '首页句子和透明度都能在设置里改。',
+      AppWorkMode.normal => [
+        context.l10n.onboardingTipNormal1,
+        context.l10n.onboardingTipNormal2,
+        context.l10n.onboardingTipNormal3,
       ],
-      AppWorkMode.server => const [
-        '启动后把同网段设备的 DNS 指向「局域网接入」里显示的地址。',
-        '端口可在「服务器模式」页改，默认 5353。',
-        '本模式不建立 VPN，可与其它 VPN 同时运行。',
+      AppWorkMode.server => [
+        context.l10n.onboardingTipServer1,
+        context.l10n.onboardingTipServer2,
+        context.l10n.onboardingTipServer3,
       ],
-      AppWorkMode.express => const [
-        '极速模式启动更快，但功能是普通模式的子集。',
-        '多路竞速至少要选 2 家服务商。',
-        '需要 HTTPS 检查或应用管控时请切回普通模式。',
+      AppWorkMode.express => [
+        context.l10n.onboardingTipExpress1,
+        context.l10n.onboardingTipExpress2,
+        context.l10n.onboardingTipExpress3,
       ],
     };
     return _StepScaffold(
       glyph: AppGlyphs.checkCircle,
-      title: '可以开始了',
-      description: '下面是三条最常用的上手要点。',
+      title: context.l10n.onboardingReady,
+      description: context.l10n.onboardingReadyBody,
       children: [
         for (final (index, tip) in tips.indexed)
           _TipCard(
             glyph: AppGlyphs.check,
-            title: '第 ${index + 1} 条',
+            title: context.l10n.onboardingTipIndex('${index + 1}'),
             detail: tip,
           ),
       ],
@@ -482,7 +484,7 @@ class _PermissionRow extends ConsumerWidget {
     }
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text('$name 仍未授予，请在系统设置里允许后返回本页'),
+        content: Text(context.l10n.permStillDenied(name)),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(milliseconds: 2600),
       ),
@@ -492,13 +494,13 @@ class _PermissionRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = context.colorScheme;
-    final required = level == '必需';
+    final required = level == context.l10n.permRequired;
     final state = ref.watch(permissionStatesProvider).value?.of(permission);
     final granted = state == true;
     final statusLabel = switch (state) {
-      true => '已授予',
-      false => '未授予',
-      null => '状态未知',
+      true => context.l10n.permGranted,
+      false => context.l10n.permDenied,
+      null => context.l10n.permUnknown,
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -575,7 +577,7 @@ class _PermissionRow extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 2),
                   child: TonalButton(
                     size: TonalButtonSize.bar,
-                    label: '去授予',
+                    label: context.l10n.permGrant,
                     onPressed: () => _request(context, ref),
                   ),
                 ),

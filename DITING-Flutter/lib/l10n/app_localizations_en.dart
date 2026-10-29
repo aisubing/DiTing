@@ -4542,4 +4542,260 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get ipStatusMismatch => 'IP mismatch';
+
+  @override
+  String get modeSelectTitle => 'Choose a work mode';
+
+  @override
+  String get modeContinue => 'Continue';
+
+  @override
+  String get modeSwitchNote =>
+      'You can choose again in settings at any time; switching stops the current mode\'s service first, so two modes never run together.';
+
+  @override
+  String get modeSharedNote =>
+      'All three modes share one set of rules and cache; they differ in how they take over traffic: normal mode uses a full tunnel, server mode only serves LAN DNS, and express mode is a pure-Kotlin narrow route.';
+
+  @override
+  String get modeNormalFeature1 => 'Full tunnel';
+
+  @override
+  String get modeNormalFeature1Body =>
+      'The Go stack handles all traffic, with per-app routing';
+
+  @override
+  String get modeNormalFeature2 => 'All rule features';
+
+  @override
+  String get modeNormalFeature2Body =>
+      'Blocklists, allowlists, rewrites and HTTPS inspection are all available';
+
+  @override
+  String get modeNormalFeature3 => 'Optional HTTPS inspection';
+
+  @override
+  String get modeNormalFeature3Body =>
+      'Requires installing and trusting the local CA certificate';
+
+  @override
+  String get modeNormalFeature4 => 'Per-app traffic stats';
+
+  @override
+  String get modeNormalFeature4Body =>
+      'Records upload, download and query counts per app';
+
+  @override
+  String get modeServerFeature1 => 'LAN DNS service';
+
+  @override
+  String get modeServerFeature1Body =>
+      'Listens on 0.0.0.0 for devices on the same subnet';
+
+  @override
+  String get modeServerFeature2 => 'No VPN slot needed';
+
+  @override
+  String get modeServerFeature2Body =>
+      'No tunnel is created locally, so other VPNs can run at the same time';
+
+  @override
+  String get modeServerFeature3 => 'Shared rules and cache';
+
+  @override
+  String get modeServerFeature3Body =>
+      'Uses the same rule library as normal mode';
+
+  @override
+  String get modeServerFeature4 => 'Low power';
+
+  @override
+  String get modeServerFeature4Body =>
+      'Handles DNS queries only, without forwarding traffic';
+
+  @override
+  String get modeExpressFeature1 => 'Pure Kotlin';
+
+  @override
+  String get modeExpressFeature1Body =>
+      'A narrow route, so starting and switching are faster';
+
+  @override
+  String get modeExpressFeature2 => 'Four upstream strategies';
+
+  @override
+  String get modeExpressFeature2Body =>
+      'Single provider / smart / race / primary-backup';
+
+  @override
+  String get modeExpressFeature3 => '64-shard LRU cache';
+
+  @override
+  String get modeExpressFeature3Body =>
+      'A high hit rate with predictable memory use';
+
+  @override
+  String get modeExpressFeature4 => 'Works on older systems';
+
+  @override
+  String get modeExpressFeature4Body => 'Android 7+ (64-bit required)';
+
+  @override
+  String get onboardingTitle => 'Setup';
+
+  @override
+  String get onboardingSkip => 'Skip setup';
+
+  @override
+  String get onboardingPrev => 'Back';
+
+  @override
+  String get onboardingStart => 'Get started';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String onboardingChosen(Object mode) {
+    return 'You chose $mode';
+  }
+
+  @override
+  String get onboardingChangeable => 'You can change it later';
+
+  @override
+  String get onboardingChangeableBody =>
+      'Settings → choose the work mode again at any time. Switching stops the current mode\'s service first.';
+
+  @override
+  String get onboardingSharedRules => 'Rules and cache are shared';
+
+  @override
+  String get onboardingSharedRulesBody =>
+      'All three modes share one set of lists and DNS cache, so nothing needs to be configured twice.';
+
+  @override
+  String get onboardingExclusive => 'Modes are exclusive';
+
+  @override
+  String get onboardingExclusiveBody =>
+      'Only one mode runs at a time; leaving stops the previous one first.';
+
+  @override
+  String get permVpn => 'VPN connection';
+
+  @override
+  String get permNotification => 'Notifications';
+
+  @override
+  String get permAppList => 'App list';
+
+  @override
+  String get permBattery => 'Ignore battery optimisation';
+
+  @override
+  String get permRequired => 'Required';
+
+  @override
+  String get permOptional => 'Optional';
+
+  @override
+  String get permVpnNormalBody =>
+      'Creates the local tunnel that handles traffic; denying it prevents startup';
+
+  @override
+  String get permNotificationBody =>
+      'The foreground service needs a persistent notification; denying it lets the system reclaim the service';
+
+  @override
+  String get permAppListBody =>
+      'Per-app routing and stats; denying it leaves only domain rules';
+
+  @override
+  String get permBatteryBody =>
+      'Prevents the app from being killed; denying it may drop the tunnel after long standby';
+
+  @override
+  String get permBatteryServerBody =>
+      'Prevents the app from being killed; denying it makes the LAN service intermittent';
+
+  @override
+  String get permVpnExpressBody =>
+      'Creates the narrow-route tunnel; denying it prevents startup';
+
+  @override
+  String get permNeeded => 'These permissions are needed';
+
+  @override
+  String get permAllLocal =>
+      'All permissions are used on this device only; no data is uploaded.';
+
+  @override
+  String permGrantedCount(Object granted, Object total) {
+    return '$granted of $total granted; all permissions are used on this device only and no data is uploaded.';
+  }
+
+  @override
+  String get onboardingTipNormal1 =>
+      'Tap the big button on the home page to start the service; the system VPN prompt appears the first time.';
+
+  @override
+  String get onboardingTipNormal2 =>
+      'Maintain the blocklists and allowlists under Feature hub → Rules and subscriptions.';
+
+  @override
+  String get onboardingTipNormal3 =>
+      'The home page sentence and opacity can both be changed in settings.';
+
+  @override
+  String get onboardingTipServer1 =>
+      'After starting, point devices on the same subnet to the address shown under LAN access.';
+
+  @override
+  String get onboardingTipServer2 =>
+      'The port can be changed on the Server mode page; the default is 5353.';
+
+  @override
+  String get onboardingTipServer3 =>
+      'This mode creates no VPN, so it can run alongside other VPNs.';
+
+  @override
+  String get onboardingTipExpress1 =>
+      'Express mode starts faster but is a subset of normal mode.';
+
+  @override
+  String get onboardingTipExpress2 => 'Racing needs at least two providers.';
+
+  @override
+  String get onboardingTipExpress3 =>
+      'Switch back to normal mode when you need HTTPS inspection or app control.';
+
+  @override
+  String get onboardingReady => 'You are ready';
+
+  @override
+  String get onboardingReadyBody =>
+      'Here are the three most useful tips to start with.';
+
+  @override
+  String onboardingTipIndex(Object index) {
+    return 'Tip $index';
+  }
+
+  @override
+  String permStillDenied(Object name) {
+    return '$name is still denied; allow it in system settings and return to this page';
+  }
+
+  @override
+  String get permGranted => 'Granted';
+
+  @override
+  String get permDenied => 'Denied';
+
+  @override
+  String get permUnknown => 'Unknown';
+
+  @override
+  String get permGrant => 'Grant';
 }

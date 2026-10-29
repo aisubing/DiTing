@@ -57,7 +57,7 @@ class _ModeSelectPageState extends ConsumerState<ModeSelectPage> {
     final current = ref.watch(workModeProvider);
     final expanded = _expanded ?? current;
     return CommonScaffold(
-      title: '选择工作模式',
+      title: context.l10n.modeSelectTitle,
       body: PageBody(
         children: [
           const _ModeSelectIntro(),
@@ -83,14 +83,13 @@ class _ModeSelectPageState extends ConsumerState<ModeSelectPage> {
             child: TonalButton(
               size: TonalButtonSize.bar,
               glyph: AppGlyphs.chevronForward,
-              label: '继续',
+              label: context.l10n.modeContinue,
               onPressed: () => _confirm(expanded),
             ),
           ),
-          const ListFooter(
+          ListFooter(
             text:
-                '随时可以在设置里重新选择；切换模式会先停止当前模式的服务，'
-                '两个模式不会同时运行。',
+                context.l10n.modeSwitchNote,
           ),
         ],
       ),
@@ -105,8 +104,7 @@ class _ModeSelectIntro extends StatelessWidget {
   Widget build(BuildContext context) {
     return PageIntroText(
       text:
-          '三种模式共用一套规则与缓存，区别在接管方式：普通模式走全隧道，'
-          '服务器模式只做局域网 DNS，极速模式是纯 Kotlin 窄路由。',
+          context.l10n.modeSharedNote,
     );
   }
 }
@@ -209,31 +207,33 @@ class _ModeFeatureList extends StatelessWidget {
 
   final AppWorkMode mode;
 
-  static const _features = <AppWorkMode, List<(Glyph, String, String)>>{
+  static Map<AppWorkMode, List<(Glyph, String, String)>> _features(
+    AppL10n l10n,
+  ) => <AppWorkMode, List<(Glyph, String, String)>>{
     AppWorkMode.normal: [
-      (AppGlyphs.vpn, '全隧道接管', 'Go 栈接管全部流量，可按应用分流'),
-      (AppGlyphs.rules, '全功能规则', '黑白名单、覆写、HTTPS 检查全部可用'),
-      (AppGlyphs.verified, '可选 HTTPS 检查', '需要安装并信任本地 CA 证书'),
-      (AppGlyphs.dataUsage, '应用流量统计', '按应用记录上下行与查询数'),
+      (AppGlyphs.vpn, l10n.modeNormalFeature1, l10n.modeNormalFeature1Body),
+      (AppGlyphs.rules, l10n.modeNormalFeature2, l10n.modeNormalFeature2Body),
+      (AppGlyphs.verified, l10n.modeNormalFeature3, l10n.modeNormalFeature3Body),
+      (AppGlyphs.dataUsage, l10n.modeNormalFeature4, l10n.modeNormalFeature4Body),
     ],
     AppWorkMode.server: [
-      (AppGlyphs.dns, '局域网 DNS 服务', '监听 0.0.0.0，供同一网段设备使用'),
-      (AppGlyphs.lock, '不占 VPN 槽位', '本机不建立隧道，可与其它 VPN 共存'),
-      (AppGlyphs.layers, '共享规则与缓存', '与普通模式共用同一套规则库'),
-      (AppGlyphs.memory, '低功耗', '只处理 DNS 查询，无流量转发'),
+      (AppGlyphs.dns, l10n.modeServerFeature1, l10n.modeServerFeature1Body),
+      (AppGlyphs.lock, l10n.modeServerFeature2, l10n.modeServerFeature2Body),
+      (AppGlyphs.layers, l10n.modeServerFeature3, l10n.modeServerFeature3Body),
+      (AppGlyphs.memory, l10n.modeServerFeature4, l10n.modeServerFeature4Body),
     ],
     AppWorkMode.express: [
-      (AppGlyphs.bolt, '纯 Kotlin 实现', '窄路由，启动与切换都更快'),
-      (AppGlyphs.split, '四种上游调度', '单服务商 / 智能 / 竞速 / 主备'),
-      (AppGlyphs.memory, '64 分片 LRU 缓存', '命中率高、内存占用可控'),
-      (AppGlyphs.devices, '兼容更旧系统', 'Android 7+（需 64 位）'),
+      (AppGlyphs.bolt, l10n.modeExpressFeature1, l10n.modeExpressFeature1Body),
+      (AppGlyphs.split, l10n.modeExpressFeature2, l10n.modeExpressFeature2Body),
+      (AppGlyphs.memory, l10n.modeExpressFeature3, l10n.modeExpressFeature3Body),
+      (AppGlyphs.devices, l10n.modeExpressFeature4, l10n.modeExpressFeature4Body),
     ],
   };
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final features = _features[mode] ?? const [];
+    final features = _features(context.l10n)[mode] ?? const [];
     return Padding(
       padding: const EdgeInsets.only(top: 14),
       child: Column(

@@ -4321,4 +4321,229 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get ipStatusMismatch => 'IP 不一致';
+
+  @override
+  String get modeSelectTitle => '选择工作模式';
+
+  @override
+  String get modeContinue => '继续';
+
+  @override
+  String get modeSwitchNote => '随时可以在设置里重新选择；切换模式会先停止当前模式的服务，两个模式不会同时运行。';
+
+  @override
+  String get modeSharedNote =>
+      '三种模式共用一套规则与缓存，区别在接管方式：普通模式走全隧道，服务器模式只做局域网 DNS，极速模式是纯 Kotlin 窄路由。';
+
+  @override
+  String get modeNormalFeature1 => '全隧道接管';
+
+  @override
+  String get modeNormalFeature1Body => 'Go 栈接管全部流量，可按应用分流';
+
+  @override
+  String get modeNormalFeature2 => '全功能规则';
+
+  @override
+  String get modeNormalFeature2Body => '黑白名单、覆写、HTTPS 检查全部可用';
+
+  @override
+  String get modeNormalFeature3 => '可选 HTTPS 检查';
+
+  @override
+  String get modeNormalFeature3Body => '需要安装并信任本地 CA 证书';
+
+  @override
+  String get modeNormalFeature4 => '应用流量统计';
+
+  @override
+  String get modeNormalFeature4Body => '按应用记录上下行与查询数';
+
+  @override
+  String get modeServerFeature1 => '局域网 DNS 服务';
+
+  @override
+  String get modeServerFeature1Body => '监听 0.0.0.0，供同一网段设备使用';
+
+  @override
+  String get modeServerFeature2 => '不占 VPN 槽位';
+
+  @override
+  String get modeServerFeature2Body => '本机不建立隧道，可与其它 VPN 共存';
+
+  @override
+  String get modeServerFeature3 => '共享规则与缓存';
+
+  @override
+  String get modeServerFeature3Body => '与普通模式共用同一套规则库';
+
+  @override
+  String get modeServerFeature4 => '低功耗';
+
+  @override
+  String get modeServerFeature4Body => '只处理 DNS 查询，无流量转发';
+
+  @override
+  String get modeExpressFeature1 => '纯 Kotlin 实现';
+
+  @override
+  String get modeExpressFeature1Body => '窄路由，启动与切换都更快';
+
+  @override
+  String get modeExpressFeature2 => '四种上游调度';
+
+  @override
+  String get modeExpressFeature2Body => '单服务商 / 智能 / 竞速 / 主备';
+
+  @override
+  String get modeExpressFeature3 => '64 分片 LRU 缓存';
+
+  @override
+  String get modeExpressFeature3Body => '命中率高、内存占用可控';
+
+  @override
+  String get modeExpressFeature4 => '兼容更旧系统';
+
+  @override
+  String get modeExpressFeature4Body => 'Android 7+（需 64 位）';
+
+  @override
+  String get onboardingTitle => '引导';
+
+  @override
+  String get onboardingSkip => '跳过引导';
+
+  @override
+  String get onboardingPrev => '上一步';
+
+  @override
+  String get onboardingStart => '开始使用';
+
+  @override
+  String get onboardingNext => '下一步';
+
+  @override
+  String onboardingChosen(Object mode) {
+    return '你选择了$mode';
+  }
+
+  @override
+  String get onboardingChangeable => '之后还能改';
+
+  @override
+  String get onboardingChangeableBody => '设置 → 重新选择工作模式，随时可以切换。切换会先停止当前模式的服务。';
+
+  @override
+  String get onboardingSharedRules => '规则与缓存共用';
+
+  @override
+  String get onboardingSharedRulesBody => '三种模式共享同一套黑白名单与 DNS 缓存，不必为每个模式重配一遍。';
+
+  @override
+  String get onboardingExclusive => '模式互斥';
+
+  @override
+  String get onboardingExclusiveBody => '同一时刻只有一个模式在运行；离开时会先停掉上一个模式。';
+
+  @override
+  String get permVpn => 'VPN 连接';
+
+  @override
+  String get permNotification => '通知';
+
+  @override
+  String get permAppList => '应用列表';
+
+  @override
+  String get permBattery => '忽略电池优化';
+
+  @override
+  String get permRequired => '必需';
+
+  @override
+  String get permOptional => '可选';
+
+  @override
+  String get permVpnNormalBody => '建立本地隧道接管流量；拒绝则无法启动';
+
+  @override
+  String get permNotificationBody => '前台服务常驻通知；拒绝则服务可能被系统回收';
+
+  @override
+  String get permAppListBody => '按应用分流与统计；拒绝则只能按域名规则';
+
+  @override
+  String get permBatteryBody => '避免后台被杀；拒绝则长时间待机可能断开';
+
+  @override
+  String get permBatteryServerBody => '避免后台被杀；拒绝则局域网内会间歇不可用';
+
+  @override
+  String get permVpnExpressBody => '建立窄路由隧道；拒绝则无法启动';
+
+  @override
+  String get permNeeded => '需要这些权限';
+
+  @override
+  String get permAllLocal => '全部权限只在本机使用，不会上传任何数据。';
+
+  @override
+  String permGrantedCount(Object granted, Object total) {
+    return '已授予 $granted / $total 项；全部权限只在本机使用，不会上传任何数据。';
+  }
+
+  @override
+  String get onboardingTipNormal1 => '点首页的大圆钮启动服务，第一次会弹出系统 VPN 授权。';
+
+  @override
+  String get onboardingTipNormal2 => '黑名单 / 白名单在「功能中心 → 规则与订阅」里维护。';
+
+  @override
+  String get onboardingTipNormal3 => '首页句子和透明度都能在设置里改。';
+
+  @override
+  String get onboardingTipServer1 => '启动后把同网段设备的 DNS 指向「局域网接入」里显示的地址。';
+
+  @override
+  String get onboardingTipServer2 => '端口可在「服务器模式」页改，默认 5353。';
+
+  @override
+  String get onboardingTipServer3 => '本模式不建立 VPN，可与其它 VPN 同时运行。';
+
+  @override
+  String get onboardingTipExpress1 => '极速模式启动更快，但功能是普通模式的子集。';
+
+  @override
+  String get onboardingTipExpress2 => '多路竞速至少要选 2 家服务商。';
+
+  @override
+  String get onboardingTipExpress3 => '需要 HTTPS 检查或应用管控时请切回普通模式。';
+
+  @override
+  String get onboardingReady => '可以开始了';
+
+  @override
+  String get onboardingReadyBody => '下面是三条最常用的上手要点。';
+
+  @override
+  String onboardingTipIndex(Object index) {
+    return '第 $index 条';
+  }
+
+  @override
+  String permStillDenied(Object name) {
+    return '$name 仍未授予，请在系统设置里允许后返回本页';
+  }
+
+  @override
+  String get permGranted => '已授予';
+
+  @override
+  String get permDenied => '未授予';
+
+  @override
+  String get permUnknown => '状态未知';
+
+  @override
+  String get permGrant => '去授予';
 }
