@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/block_response_settings.dart';
 import 'package:diting/router.dart';
@@ -93,8 +94,8 @@ class RuleControlPage extends ConsumerWidget {
                 title: const Text('拦截响应'),
                 subtitle: Text(
                   settings.dynamicBlockEnabled
-                      ? '动态策略：先 NODATA，高频请求后 ${blockMode.label}'
-                      : blockMode.label,
+                      ? '动态策略：先 NODATA，高频请求后 ${blockMode.label(context.l10n)}'
+                      : blockMode.label(context.l10n),
                 ),
                 onTap: () => context.push('/hub/rules/block-response'),
               ),
@@ -166,8 +167,8 @@ class BlockResponsePage extends ConsumerWidget {
                     option == mode ? AppGlyphs.checkCircle : AppGlyphs.block,
                     size: 20,
                   ),
-                  title: Text(option.label),
-                  subtitle: Text(option.description),
+                  title: Text(option.label(context.l10n)),
+                  subtitle: Text(option.description(context.l10n)),
                   trailing: option == mode ? const SelectionCheck() : null,
                   onTap: () {
                     settings.setBlockResponseModeRaw(option.storageValue);

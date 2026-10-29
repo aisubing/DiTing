@@ -3,6 +3,8 @@
 
 import 'dart:convert';
 
+import 'package:diting/app/l10n/l10n.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/server/dns_server_bridge.dart';
@@ -341,7 +343,7 @@ void _serverUpstreams() {
   });
 
   test('内置项不可编辑也不可删除', () {
-    final preset = serverPresetUpstreams.first;
+    final preset = serverPresetUpstreams(lookupAppL10n(const Locale('zh'))).first;
     expect(actions().update(preset), isFalse);
     expect(actions().remove(preset.id), isFalse);
     expect(custom(), isEmpty);
@@ -363,7 +365,7 @@ void _serverUpstreams() {
     expect(actions().remove(saved.id), isTrue);
     expect(
       container.read(legacySettingsProvider).serverSelectedUpstreamId,
-      serverPresetUpstreams.first.id,
+      serverPresetUpstreams(lookupAppL10n(const Locale('zh'))).first.id,
     );
     expect(custom(), isEmpty);
   });

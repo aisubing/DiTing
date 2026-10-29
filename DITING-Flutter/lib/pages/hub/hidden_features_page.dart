@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/state/feature_hub_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -17,7 +18,10 @@ class HiddenFeaturesPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final express = ref.watch(workModeProvider) == AppWorkMode.express;
     final hidden = ref.watch(hiddenFeatureKeysProvider);
-    final groups = hiddenFeaturesByCategory(express: express);
+    final groups = hiddenFeaturesByCategory(
+      express: express,
+      l10n: context.l10n,
+    );
     return CommonScaffold(
       title: '隐藏功能',
       iconActions: [

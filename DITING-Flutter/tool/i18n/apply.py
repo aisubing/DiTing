@@ -35,7 +35,7 @@ def add_import(source):
     return IMPORT + '\n' + source
 
 
-def main(batch_path, files, scope='context'):
+def main(batch_path, files, scope='context', imports=True):
     batch = json.loads(Path(batch_path).read_text(encoding='utf-8'))
     glossary = {}
     for key, value in batch.items():
@@ -55,14 +55,21 @@ def main(batch_path, files, scope='context'):
                 hits += source.count(literal)
                 source = source.replace(literal, f'{receiver}.{key}')
         if source != before:
-            path.write_text(add_import(source), encoding='utf-8')
+            path.write_text(add_import(source) if imports else source, encoding='utf-8')
         print(f'{name}: {hits} replaced')
 
 
 if __name__ == '__main__':
     args = sys.argv[1:]
     scope = 'context'
-    if args and args[0].startswith('--l10n='):
-        scope = args[0].split('=', 1)[1]
+    imports = True
+    while args and args[0].startswith('--'):
+        flag = args[0]
+        if flag.startswith('--l10n='):
+            scope = flag.split('=', 1)[1]
+        elif flag == '--no-import':
+            imports = False
+        else:
+            sys.exit(f'unknown flag {flag}')
         args = args[1:]
-    main(args[0], args[1:], scope)
+    main(args[0], args[1:], scope, imports)

@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/server/dns_server_config.dart';
 import 'package:diting/data/vpn/dns_config_builder.dart';
@@ -109,7 +110,9 @@ class ServerUpstreamActions {
     ]);
     final settings = _ref.read(legacySettingsProvider);
     if (settings.serverSelectedUpstreamId == id) {
-      settings.setServerSelectedUpstreamId(serverPresetUpstreams.first.id);
+      settings.setServerSelectedUpstreamId(
+        serverPresetUpstreams(currentL10n).first.id,
+      );
       _ref.read(legacySettingsRevisionProvider.notifier).bump();
     }
     return true;

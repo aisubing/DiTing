@@ -286,7 +286,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                   subtitle: Text(isLocal ? '从存储中选择一个 .txt 文件' : '从网络地址下载规则正文'),
                   options: SubscriptionSourceType.values,
                   value: _sourceType,
-                  textBuilder: (type) => type.label,
+                  textBuilder: (type) => type.label(context.l10n),
                   onChanged: (type) => setState(() {
                     _sourceType = type;
                     _formError = null;
@@ -373,7 +373,7 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
                 ),
                 options: SubscriptionKind.values,
                 value: _kind,
-                textBuilder: (kind) => kind.displayName,
+                textBuilder: (kind) => kind.displayName(context.l10n),
                 onChanged: (kind) => setState(() => _kind = kind),
               ),
               _SheetField(

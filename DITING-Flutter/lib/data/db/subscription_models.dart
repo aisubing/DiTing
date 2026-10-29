@@ -2,14 +2,19 @@
 /// any case or spelling change makes legacy rows unreadable.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 enum SubscriptionSourceType {
-  remote('remote', '网络订阅'),
-  local('local', '本地文件');
+  remote('remote'),
+  local('local');
 
-  const SubscriptionSourceType(this.storageValue, this.label);
+  const SubscriptionSourceType(this.storageValue);
 
   final String storageValue;
-  final String label;
+
+  String label(AppL10n l10n) => switch (this) {
+    SubscriptionSourceType.remote => l10n.subscriptionSourceRemote,
+    SubscriptionSourceType.local => l10n.subscriptionSourceLocal,
+  };
 
   static SubscriptionSourceType fromStorage(String? value) =>
       value == local.storageValue ? local : remote;
@@ -17,14 +22,17 @@ enum SubscriptionSourceType {
 
 /// A subscription carries exactly one rule type; [normalize] falls back to [domain].
 enum SubscriptionKind {
-  domain('domain', '黑白名单规则'),
-  hosts('hosts', 'hosts 规则');
+  domain('domain'),
+  hosts('hosts');
 
-  const SubscriptionKind(this.storageValue, this.displayName);
+  const SubscriptionKind(this.storageValue);
 
   final String storageValue;
 
-  final String displayName;
+  String displayName(AppL10n l10n) => switch (this) {
+    SubscriptionKind.domain => l10n.subscriptionKindDomain,
+    SubscriptionKind.hosts => l10n.subscriptionKindHosts,
+  };
 
   static SubscriptionKind normalize(String? value) =>
       value?.trim().toLowerCase() == hosts.storageValue ? hosts : domain;

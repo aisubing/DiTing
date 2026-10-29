@@ -36,7 +36,7 @@ final latencyTestCatalogProvider = Provider<List<DnsLatencyProviderSpec>>((
 ) {
   final settings = ref.watch(legacySettingsProvider);
   final entries = [
-    ...defaultDnsProviders,
+    ...defaultDnsProviders(currentL10n),
     ...parseUserProviders(settings.userProvidersJson),
   ];
   return [for (final entry in entries) latencySpecOf(entry)];

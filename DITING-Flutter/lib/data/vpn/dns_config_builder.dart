@@ -2,6 +2,7 @@
 /// providers, resolution falls back to the selected one.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/mock_data.dart';
@@ -94,17 +95,17 @@ class BootstrapEntry {
   Map<String, Object?> toJson() => {'id': id, 'name': name, 'ip': ip};
 }
 
-const defaultDnsProviders = <DnsProviderEntry>[
+List<DnsProviderEntry> defaultDnsProviders(AppL10n l10n) => <DnsProviderEntry>[
   DnsProviderEntry(
     id: 'preset_alidns_dns',
-    name: '阿里云',
+    name: l10n.upstreamPresetAliyun,
     protocol: DnsProtocol.dns,
     host: '223.5.5.5',
     port: 53,
   ),
   DnsProviderEntry(
     id: 'preset_dnspod_dns',
-    name: '腾讯云 DNSPod',
+    name: l10n.upstreamPresetTencent,
     protocol: DnsProtocol.dns,
     host: '119.29.29.29',
     port: 53,
@@ -139,13 +140,13 @@ const defaultDnsProviders = <DnsProviderEntry>[
   ),
   DnsProviderEntry(
     id: 'preset_alidns_doh',
-    name: '阿里云',
+    name: l10n.upstreamPresetAliyun,
     protocol: DnsProtocol.doh,
     url: 'https://dns.alidns.com/dns-query',
   ),
   DnsProviderEntry(
     id: 'preset_dnspod_doh',
-    name: '腾讯云 DNSPod',
+    name: l10n.upstreamPresetTencent,
     protocol: DnsProtocol.doh,
     url: 'https://doh.pub/dns-query',
   ),
@@ -175,13 +176,13 @@ const defaultDnsProviders = <DnsProviderEntry>[
   ),
   DnsProviderEntry(
     id: 'preset_alidns_dot',
-    name: '阿里云',
+    name: l10n.upstreamPresetAliyun,
     protocol: DnsProtocol.dot,
     host: 'dns.alidns.com',
   ),
   DnsProviderEntry(
     id: 'preset_dnspod_dot',
-    name: '腾讯云 DNSPod',
+    name: l10n.upstreamPresetTencent,
     protocol: DnsProtocol.dot,
     host: 'dot.pub',
   ),
@@ -211,10 +212,14 @@ const defaultDnsProviders = <DnsProviderEntry>[
   ),
 ];
 
-const defaultBootstrapEntries = <BootstrapEntry>[
-  BootstrapEntry('preset_alidns', '阿里云', '223.5.5.5'),
-  BootstrapEntry('preset_dnspod', '腾讯云', '119.29.29.29'),
-  BootstrapEntry('preset_volcengine', '字节跳动', '180.184.1.1'),
+List<BootstrapEntry> defaultBootstrapEntries(AppL10n l10n) => <BootstrapEntry>[
+  BootstrapEntry('preset_alidns', l10n.upstreamPresetAliyun, '223.5.5.5'),
+  BootstrapEntry('preset_dnspod', l10n.upstreamPresetTencent, '119.29.29.29'),
+  BootstrapEntry(
+    'preset_volcengine',
+    l10n.upstreamPresetByteDance,
+    '180.184.1.1',
+  ),
   BootstrapEntry('preset_cnnic', 'CNNIC DNS', '1.2.4.8'),
   BootstrapEntry('preset_114dns', '114DNS', '114.114.114.114'),
   BootstrapEntry('preset_cloudflare', 'Cloudflare', '1.1.1.1'),
@@ -284,7 +289,7 @@ class DnsConfig {
 
 DnsConfig buildDnsConfig(LegacySettings settings) {
   final all = [
-    ...defaultDnsProviders,
+    ...defaultDnsProviders(currentL10n),
     ...parseUserProviders(settings.userProvidersJson),
   ];
   final byId = {for (final provider in all) provider.id: provider};
@@ -334,7 +339,7 @@ DnsProviderEntry _selected(
 ) =>
     byId[selectedId] ??
     byId[_defaultSelectedProviderId] ??
-    defaultDnsProviders.first;
+    defaultDnsProviders(currentL10n).first;
 
 List<DnsProviderEntry> parseUserProviders(String? raw) {
   if (raw == null || raw.isEmpty) return const [];
@@ -381,7 +386,7 @@ List<BootstrapEntry> _bootstrapEntries(LegacySettings settings) {
   if (!settings.bootstrapEnabled) return const [];
   final selected = settings.bootstrapPresetIds.toSet();
   final entries = [
-    for (final entry in defaultBootstrapEntries)
+    for (final entry in defaultBootstrapEntries(currentL10n))
       if (selected.contains(entry.id)) entry,
   ];
   final raw = settings.bootstrapCustomJson;

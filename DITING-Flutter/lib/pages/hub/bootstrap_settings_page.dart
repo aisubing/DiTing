@@ -1,4 +1,5 @@
 // ignore_for_file: sort_child_properties_last
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/db/bootstrap_log_repository.dart';
@@ -61,7 +62,7 @@ class BootstrapSettingsPage extends ConsumerWidget {
           generateSection(
             title: '内置 Bootstrap IP',
             items: [
-              for (final entry in defaultBootstrapEntries)
+              for (final entry in defaultBootstrapEntries(context.l10n))
                 _BootstrapRow(
                   entry: entry,
                   selected: selected.contains(entry.id),

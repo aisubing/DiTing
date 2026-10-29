@@ -2,6 +2,7 @@
 /// these rules are easy to "simplify" away.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
 import 'package:diting/data/dns_type_name.dart';
@@ -29,8 +30,8 @@ bool isConnectionLog({
 /// move into `DnsLogRepository.dailyStats`.
 String dnsResultLabelOf(String result, {required bool isConnection}) =>
     switch (result) {
-      'PASSED' => isConnection ? '旁路' : '通过',
-      'REWRITTEN' => '覆写',
+      'PASSED' => isConnection ? currentL10n.commonBypass : '通过',
+      'REWRITTEN' => currentL10n.commonRewrite,
       'BLOCKED' => '过滤',
       'ERROR' => '失败',
       _ => result,
@@ -68,7 +69,7 @@ String dnsRowMetaOf({
         : '$protocol 直连 · $packageName';
   }
   final parts = <String>[dnsTypeName(queryType)];
-  if (cached) parts.add('命中缓存');
+  if (cached) parts.add(currentL10n.logRowCacheHit);
   if (message != null && message.isNotEmpty) parts.add(message);
   return parts.join(' · ');
 }
@@ -117,12 +118,12 @@ LogRecentRequest logRecentRequestOfHttp(HttpRequestRecord row) {
   ].join(' · ');
   return LogRecentRequest(
     time: dashboardClockOf(row.timestamp),
-    name: (row.authority ?? '').isEmpty ? '未取得 authority' : row.authority!,
+    name: (row.authority ?? '').isEmpty ? currentL10n.logRowNoAuthority : row.authority!,
     source: 'HTTPS',
     meta: meta,
     resultLabel: switch (status) {
       LogRowStatus.filtered => '过滤',
-      LogRowStatus.bypassed => '旁路',
+      LogRowStatus.bypassed => currentL10n.commonBypass,
       LogRowStatus.failed => '失败',
       _ => '通过',
     },

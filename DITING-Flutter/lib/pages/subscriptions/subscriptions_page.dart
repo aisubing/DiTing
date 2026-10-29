@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/mirror_template_repository.dart';
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/subscriptions/subscription_url.dart';

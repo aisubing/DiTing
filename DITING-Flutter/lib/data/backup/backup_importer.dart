@@ -2,6 +2,7 @@
 /// legacy flat root read by [LegacyBackupReader].
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/backup/backup_models.dart';

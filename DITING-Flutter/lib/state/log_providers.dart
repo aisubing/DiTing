@@ -1,6 +1,7 @@
 /// Log data for the dashboard, read from the database of the active mode.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/dns_cache_repository.dart';
 import 'package:diting/data/db/dns_log_repository.dart';
 import 'package:diting/data/db/legacy_database.dart';
@@ -71,7 +72,7 @@ final raceRankingProvider = FutureProvider<RaceRankingBoard>((ref) async {
   final settings = ref.watch(legacySettingsProvider);
   final names = {
     for (final provider in [
-      ...defaultDnsProviders,
+      ...defaultDnsProviders(currentL10n),
       ...parseUserProviders(settings.userProvidersJson),
     ])
       provider.id: provider.name,

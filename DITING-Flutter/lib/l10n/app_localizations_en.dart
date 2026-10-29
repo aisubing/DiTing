@@ -1832,4 +1832,415 @@ class AppL10nEn extends AppL10n {
   String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what) {
     return '$what already exists as $kind (\"$name\")';
   }
+
+  @override
+  String get commonBypass => 'Bypass';
+
+  @override
+  String get commonRewrite => 'Rewrite';
+
+  @override
+  String get cleanupLogs => 'Delete request logs';
+
+  @override
+  String get cleanupTraffic => 'Delete traffic statistics';
+
+  @override
+  String get cleanupCrash => 'Delete crash logs';
+
+  @override
+  String get cleanupDnsCache => 'Delete DNS cache';
+
+  @override
+  String get cleanupProviderWeights => 'Restore default DNS weights';
+
+  @override
+  String get cleanupBootstrapWeights => 'Restore Bootstrap weights';
+
+  @override
+  String get cleanupDomainRules => 'Delete all domain rules';
+
+  @override
+  String get cleanupAddressRules => 'Delete all address rules';
+
+  @override
+  String get cleanupSubscriptions => 'Delete all rule subscriptions';
+
+  @override
+  String get cleanupAppRules => 'Reset the app control list';
+
+  @override
+  String get cleanupOutboundProxy => 'Reset the outbound proxy settings';
+
+  @override
+  String get cleanupCaCertificate => 'Reset the HTTPS inspection certificate';
+
+  @override
+  String get cleanupDownloadCache => 'Clear download and temporary caches';
+
+  @override
+  String get cleanupCustomBackground => 'Clear the custom background cache';
+
+  @override
+  String get cleanupSettingsGuides => 'Reset every onboarding guide';
+
+  @override
+  String get cleanupAllData => 'Clear all local data';
+
+  @override
+  String cleanupDoneItems(Object action, Object count, Object detail) {
+    return '$action: $count items$detail';
+  }
+
+  @override
+  String cleanupDoneEmpty(Object action) {
+    return '$action: nothing to clean up';
+  }
+
+  @override
+  String get blockResponseNxdomain => 'Return NXDOMAIN';
+
+  @override
+  String get blockResponseNxdomainDescription =>
+      'Answers that the domain does not exist, with a 5-minute negative cache to reduce repeated queries';
+
+  @override
+  String get blockResponseNodata => 'Return NODATA';
+
+  @override
+  String get blockResponseNodataDescription =>
+      'Answers that the domain exists but has no such record, with a 5-minute negative cache';
+
+  @override
+  String get blockResponseRefused => 'Return REFUSED';
+
+  @override
+  String get blockResponseRefusedDescription =>
+      'Answers that the server refused the query, with no cached record';
+
+  @override
+  String get blockResponseZeroAddress => 'Return 0.0.0.0 / ::';
+
+  @override
+  String get blockResponseZeroAddressDescription =>
+      'A answers 0.0.0.0, AAAA answers ::, other types get an empty answer';
+
+  @override
+  String get subscriptionSourceRemote => 'Remote subscription';
+
+  @override
+  String get subscriptionSourceLocal => 'Local file';
+
+  @override
+  String get subscriptionKindDomain => 'Domain list rules';
+
+  @override
+  String get subscriptionKindHosts => 'Hosts rules';
+
+  @override
+  String logRowDirect(Object protocol) {
+    return '$protocol direct';
+  }
+
+  @override
+  String logRowDirectWithPackage(Object package, Object protocol) {
+    return '$protocol direct · $package';
+  }
+
+  @override
+  String get logRowCacheHit => 'cache hit';
+
+  @override
+  String get logRowNoAuthority => 'no authority';
+
+  @override
+  String get cachePresetConservativeName => 'Conservative';
+
+  @override
+  String get cachePresetConservativeSummary => 'Follow the server\'s TTL';
+
+  @override
+  String get cachePresetConservativeDescription =>
+      'Uses the TTL the DNS server returns and never extends it. Best for people who switch networks often or need real-time answers.';
+
+  @override
+  String get cachePresetStandardName => 'Standard';
+
+  @override
+  String get cachePresetStandardSummary =>
+      'At most 1 hour, short records at least 1 minute';
+
+  @override
+  String get cachePresetStandardDescription =>
+      'Cuts repeated queries without letting records lag behind. When resolution fails, records up to 5 minutes old may be reused as a stopgap.';
+
+  @override
+  String get cachePresetAggressiveName => 'High hit rate';
+
+  @override
+  String get cachePresetAggressiveSummary =>
+      'At most 6 hours, short records at least 2 minutes';
+
+  @override
+  String get cachePresetAggressiveDescription =>
+      'Favours fewer network requests and better usability on weak networks. Domain changes may take longer to show up.';
+
+  @override
+  String get cacheDisabledSummary => 'Off · every lookup goes upstream';
+
+  @override
+  String get upstreamNameRequired => 'Enter a name';
+
+  @override
+  String get upstreamAddressRequired => 'Enter an address';
+
+  @override
+  String get upstreamDohNeedsHttps => 'A DoH address must start with https://';
+
+  @override
+  String get upstreamDohInvalidUrl => 'The DoH address is not a valid URL';
+
+  @override
+  String get upstreamPortRange => 'The port must be between 1 and 65535';
+
+  @override
+  String get upstreamIpv6Invalid => 'The IPv6 address is not valid';
+
+  @override
+  String get upstreamPresetAliyun => 'Aliyun';
+
+  @override
+  String get upstreamPresetTencent => 'Tencent Cloud DNSPod';
+
+  @override
+  String get upstreamPresetByteDance => 'ByteDance';
+
+  @override
+  String cleanupFailed(Object detail) {
+    return 'Cleanup failed: $detail';
+  }
+
+  @override
+  String get cleanupProxyRestored => 'Direct connection restored';
+
+  @override
+  String get cleanupCaNeedsReimport =>
+      'The certificate must be regenerated and installed again';
+
+  @override
+  String get hubCategoryDns => 'DNS services';
+
+  @override
+  String get hubProviderManagement => 'Resolver management';
+
+  @override
+  String get hubProviderManagementDescription =>
+      'Configure and manage DoH, DoT and classic DNS resolvers';
+
+  @override
+  String get hubBootstrap => 'Bootstrap DNS';
+
+  @override
+  String get hubBootstrapDescription =>
+      'Configure the bootstrap DNS nodes used to resolve encrypted upstream hostnames';
+
+  @override
+  String get hubResolution => 'Resolution mode';
+
+  @override
+  String get hubResolutionDescription =>
+      'Pick single, smart, fastest-response or try-in-order resolution';
+
+  @override
+  String get hubCache => 'Cache settings';
+
+  @override
+  String get hubCacheDescription =>
+      'Configure the DNS cache switch, policy and TTL bounds';
+
+  @override
+  String get hubCategoryRules => 'Policy and rules';
+
+  @override
+  String get hubRuleControl => 'Rule control';
+
+  @override
+  String get hubRuleControlDescription =>
+      'Manage the blocking switches and online rule subscriptions in one place';
+
+  @override
+  String get hubBlocklist => 'Block list';
+
+  @override
+  String get hubBlocklistDescription =>
+      'Your own blocked domains; matches get the block response';
+
+  @override
+  String get hubAllowlist => 'Allow list';
+
+  @override
+  String get hubAllowlistDescription =>
+      'Your own allowed domains, exempt from every rule';
+
+  @override
+  String get hubRewrite => 'Rewrite list';
+
+  @override
+  String get hubRewriteDescription =>
+      'Point custom domains at a specific IPv4/IPv6 address or CNAME';
+
+  @override
+  String get hubCategoryNetwork => 'Network control';
+
+  @override
+  String get hubAppTraffic => 'App traffic';
+
+  @override
+  String get hubAppTrafficDescription =>
+      'Connection counts and up/down traffic per app';
+
+  @override
+  String get hubAppRules => 'Per-app rules';
+
+  @override
+  String get hubAppRulesDescription =>
+      'Give one app its own domain allow list and network rules';
+
+  @override
+  String get hubBlockedApps => 'Blocked apps';
+
+  @override
+  String get hubBlockedAppsDescription =>
+      'Block all outbound traffic of the chosen apps at the local tunnel';
+
+  @override
+  String get hubExcludedApps => 'Excluded apps';
+
+  @override
+  String get hubExcludedAppsDescription =>
+      'Let the chosen apps bypass DITING and use the network directly';
+
+  @override
+  String get hubCategoryAdvanced => 'Advanced and diagnostics';
+
+  @override
+  String get hubHttpsInspection => 'HTTPS inspection';
+
+  @override
+  String get hubHttpsInspectionDescription =>
+      'Decrypt and inspect HTTP(S) traffic of selected apps, with domain and URL filtering';
+
+  @override
+  String get hubOutboundProxy => 'Outbound proxy';
+
+  @override
+  String get hubOutboundProxyDescription =>
+      'Forward filtered traffic to a local SOCKS5 or HTTP proxy';
+
+  @override
+  String get hubDiagnostics => 'Network diagnostics';
+
+  @override
+  String get hubDiagnosticsDescription =>
+      'DNS queries, ping latency tests and connectivity diagnostics';
+
+  @override
+  String get hubAiAnalysis => 'AI analysis';
+
+  @override
+  String get hubAiAnalysisDescription =>
+      'Configure an LLM endpoint and key for log review and traffic analysis';
+
+  @override
+  String get hubCategoryInterface => 'Interface and settings';
+
+  @override
+  String get hubAppearance => 'Appearance';
+
+  @override
+  String get hubAppearanceDescription =>
+      'Customise the day/night mode, palette, component opacity and wallpaper';
+
+  @override
+  String get hubProviderVisibility => 'Resolver visibility';
+
+  @override
+  String get hubProviderVisibilityDescription =>
+      'Choose which resolvers appear in the home resolver list';
+
+  @override
+  String get hubHiddenFeatures => 'Hidden features';
+
+  @override
+  String get hubHiddenFeaturesDescription =>
+      'Choose which cards the feature hub shows; nothing changes at runtime';
+
+  @override
+  String get hubOtherSettings => 'Other settings';
+
+  @override
+  String get hubOtherSettingsDescription =>
+      'Global options such as language, foreground/background behaviour and notifications';
+
+  @override
+  String get hubCategoryData => 'Data and maintenance';
+
+  @override
+  String get hubLogs => 'Logs';
+
+  @override
+  String get hubLogsDescription =>
+      'Live resolution statistics, request details and log export';
+
+  @override
+  String get hubBackup => 'Backup and migration';
+
+  @override
+  String get hubBackupDescription =>
+      'Export and import resolvers, rule subscriptions and personal settings';
+
+  @override
+  String get hubDataCleanup => 'Data cleanup';
+
+  @override
+  String get hubDataCleanupDescription =>
+      'Delete caches, logs or domain and address filter rules';
+
+  @override
+  String get hubTroubleshooting => 'Troubleshooting';
+
+  @override
+  String get hubTroubleshootingDescription =>
+      'Export crash logs and capture runtime logs to send to the developer';
+
+  @override
+  String get hubCategoryAbout => 'About DITING';
+
+  @override
+  String get hubAbout => 'About';
+
+  @override
+  String get hubAboutDescription =>
+      'Version information, update checks, source links and contributor lists';
+
+  @override
+  String get hubSponsor => 'Sponsor';
+
+  @override
+  String get hubSponsorDescription =>
+      'Support the ongoing maintenance and development of DITING';
+
+  @override
+  String get hubSponsors => 'Sponsors';
+
+  @override
+  String get hubSponsorsDescription =>
+      'Thanks to everyone who supports the project';
+
+  @override
+  String get hubContributors => 'Contributors';
+
+  @override
+  String get hubContributorsDescription =>
+      'Thanks to everyone who contributed code and ideas';
 }

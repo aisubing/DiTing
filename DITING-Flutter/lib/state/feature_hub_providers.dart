@@ -2,6 +2,7 @@
 /// `lib/data/mock_feature_hub.dart`.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/state/work_mode_providers.dart';
@@ -95,7 +96,11 @@ final visibleFeatureCategoriesProvider = Provider<List<MockFeatureCategory>>((
 ) {
   final express = ref.watch(workModeProvider) == AppWorkMode.express;
   final hidden = ref.watch(hiddenFeatureKeysProvider);
-  return visibleFeatureCategories(express: express, hiddenKeys: hidden);
+  return visibleFeatureCategories(
+    express: express,
+    hiddenKeys: hidden,
+    l10n: currentL10n,
+  );
 });
 
 /// Whether the log card's long-press hint was acknowledged. Session-only, 1.4.3 has no storage key.

@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Presets only, for hosts without a prefs snapshot (tests, gallery).
 List<MockProvider> defaultProviderCatalog() => [
-  for (final provider in defaultDnsProviders)
+  for (final provider in defaultDnsProviders(currentL10n))
     provider.toMock(latencyMs: -1, isPreset: true),
 ];
 
@@ -26,7 +26,7 @@ ProviderProtocol _protocolOf(DnsProtocol protocol) => switch (protocol) {
 List<MockProvider> buildProviderCatalog(LegacySettings settings) {
   final latencies = settings.providerLatenciesMs;
   return [
-    for (final provider in defaultDnsProviders)
+    for (final provider in defaultDnsProviders(currentL10n))
       provider.toMock(latencyMs: latencies[provider.id] ?? -1, isPreset: true),
     for (final record in readUserProviders(settings))
       MockProvider(
@@ -286,15 +286,20 @@ final raceProvidersProvider =
 
 /// Presets whose protocol follows the built-in protocol switch (legacy
 /// `SWITCHABLE_PRESET_PROVIDER_NAMES`); every other provider keeps its own protocol.
-const _switchablePresetNames = {'阿里云', '腾讯云 DNSPod'};
+Set<String> _switchablePresetNames(AppL10n l10n) => {
+  l10n.upstreamPresetAliyun,
+  l10n.upstreamPresetTencent,
+};
 
 /// The same preset in [protocol], or [id] unchanged for custom and non-switchable providers.
 String presetIdForProtocol(String id, DnsProtocol protocol) {
-  final preset = defaultDnsProviders.where((p) => p.id == id).firstOrNull;
-  if (preset == null || !_switchablePresetNames.contains(preset.name)) {
+  final presets = defaultDnsProviders(currentL10n);
+  final preset = presets.where((p) => p.id == id).firstOrNull;
+  if (preset == null ||
+      !_switchablePresetNames(currentL10n).contains(preset.name)) {
     return id;
   }
-  return defaultDnsProviders
+  return presets
           .where((p) => p.name == preset.name && p.protocol == protocol)
           .firstOrNull
           ?.id ??

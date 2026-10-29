@@ -248,7 +248,7 @@ Future<_RaceSlice> _loadRace(Ref ref, Database db, DateTime since) async {
   final settings = ref.watch(legacySettingsProvider);
   final names = {
     for (final provider in [
-      ...defaultDnsProviders,
+      ...defaultDnsProviders(currentL10n),
       ...parseUserProviders(settings.userProvidersJson),
     ])
       provider.id: provider.name,

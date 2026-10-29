@@ -1754,4 +1754,382 @@ class AppL10nZh extends AppL10n {
   String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what) {
     return '$what已作为$kind存在（「$name」）';
   }
+
+  @override
+  String get commonBypass => '旁路';
+
+  @override
+  String get commonRewrite => '覆写';
+
+  @override
+  String get cleanupLogs => '删除请求日志';
+
+  @override
+  String get cleanupTraffic => '删除流量统计';
+
+  @override
+  String get cleanupCrash => '删除崩溃日志';
+
+  @override
+  String get cleanupDnsCache => '删除 DNS 缓存';
+
+  @override
+  String get cleanupProviderWeights => '恢复 DNS 默认权重';
+
+  @override
+  String get cleanupBootstrapWeights => '恢复 Bootstrap 权重';
+
+  @override
+  String get cleanupDomainRules => '删除全部域名规则';
+
+  @override
+  String get cleanupAddressRules => '删除全部地址规则';
+
+  @override
+  String get cleanupSubscriptions => '删除全部规则订阅';
+
+  @override
+  String get cleanupAppRules => '重置应用控制名单';
+
+  @override
+  String get cleanupOutboundProxy => '重置出站代理配置';
+
+  @override
+  String get cleanupCaCertificate => '重置 HTTPS 抓包证书';
+
+  @override
+  String get cleanupDownloadCache => '清理下载与临时缓存';
+
+  @override
+  String get cleanupCustomBackground => '清除自定义背景缓存';
+
+  @override
+  String get cleanupSettingsGuides => '重置所有新手引导';
+
+  @override
+  String get cleanupAllData => '清理全部本地数据';
+
+  @override
+  String cleanupDoneItems(Object action, Object count, Object detail) {
+    return '已$action：$count 项$detail';
+  }
+
+  @override
+  String cleanupDoneEmpty(Object action) {
+    return '已$action：没有可清理的数据';
+  }
+
+  @override
+  String get blockResponseNxdomain => '返回 NXDOMAIN';
+
+  @override
+  String get blockResponseNxdomainDescription => '返回域名不存在，并提供 5 分钟负缓存以减少重复查询';
+
+  @override
+  String get blockResponseNodata => '返回 NODATA';
+
+  @override
+  String get blockResponseNodataDescription => '返回域名存在但没有该记录，并提供 5 分钟负缓存';
+
+  @override
+  String get blockResponseRefused => '返回 REFUSED';
+
+  @override
+  String get blockResponseRefusedDescription => '返回服务器拒绝该查询，不提供缓存记录';
+
+  @override
+  String get blockResponseZeroAddress => '返回 0.0.0.0 / ::';
+
+  @override
+  String get blockResponseZeroAddressDescription =>
+      'A 返回 0.0.0.0，AAAA 返回 ::，其他类型返回空结果';
+
+  @override
+  String get subscriptionSourceRemote => '网络订阅';
+
+  @override
+  String get subscriptionSourceLocal => '本地文件';
+
+  @override
+  String get subscriptionKindDomain => '黑白名单规则';
+
+  @override
+  String get subscriptionKindHosts => 'hosts 规则';
+
+  @override
+  String logRowDirect(Object protocol) {
+    return '$protocol 直连';
+  }
+
+  @override
+  String logRowDirectWithPackage(Object package, Object protocol) {
+    return '$protocol 直连 · $package';
+  }
+
+  @override
+  String get logRowCacheHit => '命中缓存';
+
+  @override
+  String get logRowNoAuthority => '未取得 authority';
+
+  @override
+  String get cachePresetConservativeName => '保守';
+
+  @override
+  String get cachePresetConservativeSummary => '遵从服务器有效期 (TTL)';
+
+  @override
+  String get cachePresetConservativeDescription =>
+      '遵从 DNS 服务器返回的有效期，不主动延长缓存时间，适合经常切换网络或对实时性敏感的场景。';
+
+  @override
+  String get cachePresetStandardName => '标准';
+
+  @override
+  String get cachePresetStandardSummary => '最长 1 小时，短记录至少 1 分钟';
+
+  @override
+  String get cachePresetStandardDescription =>
+      '减少重复查询，同时避免记录过期滞后。解析失败时可短暂使用 5 分钟内的旧记录应急。';
+
+  @override
+  String get cachePresetAggressiveName => '高命中';
+
+  @override
+  String get cachePresetAggressiveSummary => '最长 6 小时，短记录至少 2 分钟';
+
+  @override
+  String get cachePresetAggressiveDescription =>
+      '更偏向降低网络请求次数和提升弱网可用性。域名变更时更新可能会稍慢一些。';
+
+  @override
+  String get cacheDisabledSummary => '已关闭 · 每次解析都会请求上游';
+
+  @override
+  String get upstreamNameRequired => '请填写名称';
+
+  @override
+  String get upstreamAddressRequired => '请填写地址';
+
+  @override
+  String get upstreamDohNeedsHttps => 'DoH 地址必须以 https:// 开头';
+
+  @override
+  String get upstreamDohInvalidUrl => 'DoH 地址不是合法的 URL';
+
+  @override
+  String get upstreamPortRange => '端口需在 1–65535 之间';
+
+  @override
+  String get upstreamIpv6Invalid => 'IPv6 地址格式不正确';
+
+  @override
+  String get upstreamPresetAliyun => '阿里云';
+
+  @override
+  String get upstreamPresetTencent => '腾讯云 DNSPod';
+
+  @override
+  String get upstreamPresetByteDance => '字节跳动';
+
+  @override
+  String cleanupFailed(Object detail) {
+    return '清理失败：$detail';
+  }
+
+  @override
+  String get cleanupProxyRestored => '已恢复直连';
+
+  @override
+  String get cleanupCaNeedsReimport => '需重新生成并导入系统证书';
+
+  @override
+  String get hubCategoryDns => 'DNS 服务';
+
+  @override
+  String get hubProviderManagement => '服务商管理';
+
+  @override
+  String get hubProviderManagementDescription => '配置与管理 DoH、DoT 与传统 DNS 解析服务商';
+
+  @override
+  String get hubBootstrap => '引导解析设置';
+
+  @override
+  String get hubBootstrapDescription => '配置用于首次解析加密上游域名的引导 DNS 节点';
+
+  @override
+  String get hubResolution => '解析模式';
+
+  @override
+  String get hubResolutionDescription => '选择单一服务、智能选择、最快响应或依次尝试策略';
+
+  @override
+  String get hubCache => '缓存设置';
+
+  @override
+  String get hubCacheDescription => '配置 DNS 缓存开关、缓存策略与最大最小生存时间 (TTL)';
+
+  @override
+  String get hubCategoryRules => '策略与规则';
+
+  @override
+  String get hubRuleControl => '规则控制';
+
+  @override
+  String get hubRuleControlDescription => '统一管理拦截策略开关与在线网络规则订阅';
+
+  @override
+  String get hubBlocklist => '黑名单';
+
+  @override
+  String get hubBlocklistDescription => '自定义屏蔽域名列表，匹配时返回拦截响应';
+
+  @override
+  String get hubAllowlist => '白名单';
+
+  @override
+  String get hubAllowlistDescription => '自定义放行域名列表，豁免所有规则直接放行';
+
+  @override
+  String get hubRewrite => '覆写名单';
+
+  @override
+  String get hubRewriteDescription => '自定义域名覆写指向特定 IPv4/IPv6 或 CNAME';
+
+  @override
+  String get hubCategoryNetwork => '网络控制';
+
+  @override
+  String get hubAppTraffic => '应用流量统计';
+
+  @override
+  String get hubAppTrafficDescription => '统计各应用的网络连接数、上传与下载流量明细';
+
+  @override
+  String get hubAppRules => '应用独立规则';
+
+  @override
+  String get hubAppRulesDescription => '为特定应用单独指定专属域名放行与网络规则';
+
+  @override
+  String get hubBlockedApps => '禁止联网应用';
+
+  @override
+  String get hubBlockedAppsDescription => '在本地隧道层拦截指定应用的全部网络外联';
+
+  @override
+  String get hubExcludedApps => '排除应用';
+
+  @override
+  String get hubExcludedAppsDescription => '允许指定应用绕过本软件直连网络';
+
+  @override
+  String get hubCategoryAdvanced => '高级与诊断';
+
+  @override
+  String get hubHttpsInspection => 'HTTPS 流量检查';
+
+  @override
+  String get hubHttpsInspectionDescription =>
+      '解密并检查特定应用的 HTTP(S) 流量，支持域名与 URL 过滤';
+
+  @override
+  String get hubOutboundProxy => '出站代理';
+
+  @override
+  String get hubOutboundProxyDescription => '将过滤后的流量转发到本地 SOCKS5 或 HTTP 代理';
+
+  @override
+  String get hubDiagnostics => '网络诊断';
+
+  @override
+  String get hubDiagnosticsDescription => '提供 DNS 查询、Ping 延迟测试与网络连通性诊断工具';
+
+  @override
+  String get hubAiAnalysis => 'AI 分析';
+
+  @override
+  String get hubAiAnalysisDescription => '配置大语言模型接口与密钥，用于日志研判与网络流量分析';
+
+  @override
+  String get hubCategoryInterface => '界面与设置';
+
+  @override
+  String get hubAppearance => '外观调整';
+
+  @override
+  String get hubAppearanceDescription => '自定义日夜模式、主题色彩、组件透明度与软件壁纸背景';
+
+  @override
+  String get hubProviderVisibility => '服务显示';
+
+  @override
+  String get hubProviderVisibilityDescription => '自定义在首页解析服务下拉列表中显示的服务商';
+
+  @override
+  String get hubHiddenFeatures => '隐藏功能';
+
+  @override
+  String get hubHiddenFeaturesDescription => '自定义在功能中心显示的功能卡片，不改后台运行';
+
+  @override
+  String get hubOtherSettings => '其他设置';
+
+  @override
+  String get hubOtherSettingsDescription => '语言切换、前后台行为、通知设置等全局配置';
+
+  @override
+  String get hubCategoryData => '数据与维护';
+
+  @override
+  String get hubLogs => '日志';
+
+  @override
+  String get hubLogsDescription => '实时解析统计、请求明细查询与日志导出';
+
+  @override
+  String get hubBackup => '备份与迁移';
+
+  @override
+  String get hubBackupDescription => '导出与导入服务商、规则订阅及个性化设置';
+
+  @override
+  String get hubDataCleanup => '数据清理';
+
+  @override
+  String get hubDataCleanupDescription => '删除缓存、日志或域名与地址过滤规则';
+
+  @override
+  String get hubTroubleshooting => '故障排查';
+
+  @override
+  String get hubTroubleshootingDescription => '导出崩溃日志，手动抓取并导出运行日志发给开发者';
+
+  @override
+  String get hubCategoryAbout => '关于谛听';
+
+  @override
+  String get hubAbout => '关于';
+
+  @override
+  String get hubAboutDescription => '查看版本信息、检查更新、开源地址与贡献者名单';
+
+  @override
+  String get hubSponsor => '赞助';
+
+  @override
+  String get hubSponsorDescription => '支持谛听项目持续维护与开发';
+
+  @override
+  String get hubSponsors => '赞助者名单';
+
+  @override
+  String get hubSponsorsDescription => '鸣谢支持谛听项目的赞助者';
+
+  @override
+  String get hubContributors => '共建者名单';
+
+  @override
+  String get hubContributorsDescription => '感谢为谛听贡献代码与建议的共建者';
 }

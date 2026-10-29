@@ -237,7 +237,7 @@ extension _BackupImportPrefs on BackupImporter {
       index['$name\u0000${protocol.toUpperCase()}'] = id;
     }
 
-    for (final provider in defaultDnsProviders) {
+    for (final provider in defaultDnsProviders(currentL10n)) {
       add(provider.id, provider.name, provider.protocol.storageValue);
     }
     for (final record in readUserProviders(settings)) {

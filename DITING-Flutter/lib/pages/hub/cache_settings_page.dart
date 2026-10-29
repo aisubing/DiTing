@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/data/vpn/cache_presets.dart';
 import 'package:diting/ui/ui.dart';
@@ -51,7 +52,7 @@ class CacheSettingsPage extends ConsumerWidget {
                           : AppGlyphs.clock,
                       size: 20,
                     ),
-                    title: Text(option.label),
+                    title: Text(option.label(context.l10n)),
                     subtitle: Text('${option.summary}。${option.description}'),
                     trailing: preset == option ? const SelectionCheck() : null,
                     onTap: () {

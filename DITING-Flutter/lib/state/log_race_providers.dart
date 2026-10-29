@@ -150,7 +150,7 @@ final raceStatsProvider = FutureProvider<RaceStatsSnapshot>((ref) async {
   final settings = ref.watch(legacySettingsProvider);
   final names = {
     for (final provider in [
-      ...defaultDnsProviders,
+      ...defaultDnsProviders(currentL10n),
       ...parseUserProviders(settings.userProvidersJson),
     ])
       provider.id: provider.name,

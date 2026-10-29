@@ -2,23 +2,32 @@
 /// with hard clamps; `buildDnsConfig` publishes both.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 
 enum BlockResponseMode {
-  nxdomain('nxdomain', '返回 NXDOMAIN', '返回域名不存在，并提供 5 分钟负缓存以减少重复查询'),
-  nodata('nodata', '返回 NODATA', '返回域名存在但没有该记录，并提供 5 分钟负缓存'),
-  refused('refused', '返回 REFUSED', '返回服务器拒绝该查询，不提供缓存记录'),
-  zeroAddress(
-    'zero_address',
-    '返回 0.0.0.0 / ::',
-    'A 返回 0.0.0.0，AAAA 返回 ::，其他类型返回空结果',
-  );
+  nxdomain('nxdomain'),
+  nodata('nodata'),
+  refused('refused'),
+  zeroAddress('zero_address');
 
-  const BlockResponseMode(this.storageValue, this.label, this.description);
+  const BlockResponseMode(this.storageValue);
 
   final String storageValue;
-  final String label;
-  final String description;
+
+  String label(AppL10n l10n) => switch (this) {
+    BlockResponseMode.nxdomain => l10n.blockResponseNxdomain,
+    BlockResponseMode.nodata => l10n.blockResponseNodata,
+    BlockResponseMode.refused => l10n.blockResponseRefused,
+    BlockResponseMode.zeroAddress => l10n.blockResponseZeroAddress,
+  };
+
+  String description(AppL10n l10n) => switch (this) {
+    BlockResponseMode.nxdomain => l10n.blockResponseNxdomainDescription,
+    BlockResponseMode.nodata => l10n.blockResponseNodataDescription,
+    BlockResponseMode.refused => l10n.blockResponseRefusedDescription,
+    BlockResponseMode.zeroAddress => l10n.blockResponseZeroAddressDescription,
+  };
 
   static BlockResponseMode fromStorage(String? value) {
     for (final mode in values) {

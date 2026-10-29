@@ -1,6 +1,7 @@
 // Whole-app smoke test of `DitingApp`: scopes above `Navigator`, tab state, route
 // building and the Android page transition.
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/app.dart';
 import 'package:diting/app/theme/manager.dart';
 import 'package:diting/data/mock_data.dart';
@@ -82,7 +83,7 @@ void _appShell() {
     expect(
       find.descendant(
         of: find.byType(FeatureHubPage),
-        matching: find.text(mockFeatureCategories.first.title),
+        matching: find.text(_featureCategories.first.title),
       ),
       findsWidgets,
     );
@@ -317,7 +318,7 @@ void _routeCatalog() {
     testWidgets('每张卡片的 route 都能构建', (tester) async {
       // Deduplicate: several entries can point at the same page.
       final routes = <String>{
-        for (final category in mockFeatureCategories)
+        for (final category in _featureCategories)
           for (final card in category.cards) card.route,
       };
       expect(routes, isNotEmpty);
@@ -408,21 +409,25 @@ void _routeTransition() {
 }
 
 /// Guards feature-hub visibility: hidden cards drop their category, fixed cards stay
+final _zh = lookupAppL10n(const Locale('zh'));
+final _featureCategories = mockFeatureCategories(_zh);
+
 void _featureHub() {
   test('隐藏卡片后分类为空时整类消失，固定卡始终保留', () {
     final hidden = {
-      for (final card in mockFeatureCategories.first.cards)
+      for (final card in _featureCategories.first.cards)
         if (card.featureKey != null) card.featureKey!,
     };
     final categories = visibleFeatureCategories(
       express: false,
       hiddenKeys: hidden,
+      l10n: _zh,
     );
     expect(categories.any((category) => category.title == 'DNS 服务'), isFalse);
-    expect(categories.length, mockFeatureCategories.length - 1);
+    expect(categories.length, _featureCategories.length - 1);
 
     final allHidden = {
-      for (final card in mockFeatureCategories.expand(
+      for (final card in _featureCategories.expand(
         (category) => category.cards,
       ))
         if (card.featureKey != null) card.featureKey!,
@@ -430,6 +435,7 @@ void _featureHub() {
     final onlyFixed = visibleFeatureCategories(
       express: false,
       hiddenKeys: allHidden,
+      l10n: _zh,
     );
     expect(onlyFixed.length, 1);
     expect(onlyFixed.single.cards.single.title, '隐藏功能');

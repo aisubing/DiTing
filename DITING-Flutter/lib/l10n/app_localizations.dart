@@ -3286,6 +3286,732 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'{what}已作为{kind}存在（「{name}」）'**
   String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what);
+
+  /// No description provided for @commonBypass.
+  ///
+  /// In zh, this message translates to:
+  /// **'旁路'**
+  String get commonBypass;
+
+  /// No description provided for @commonRewrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆写'**
+  String get commonRewrite;
+
+  /// No description provided for @cleanupLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除请求日志'**
+  String get cleanupLogs;
+
+  /// No description provided for @cleanupTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除流量统计'**
+  String get cleanupTraffic;
+
+  /// No description provided for @cleanupCrash.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除崩溃日志'**
+  String get cleanupCrash;
+
+  /// No description provided for @cleanupDnsCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 DNS 缓存'**
+  String get cleanupDnsCache;
+
+  /// No description provided for @cleanupProviderWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复 DNS 默认权重'**
+  String get cleanupProviderWeights;
+
+  /// No description provided for @cleanupBootstrapWeights.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复 Bootstrap 权重'**
+  String get cleanupBootstrapWeights;
+
+  /// No description provided for @cleanupDomainRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除全部域名规则'**
+  String get cleanupDomainRules;
+
+  /// No description provided for @cleanupAddressRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除全部地址规则'**
+  String get cleanupAddressRules;
+
+  /// No description provided for @cleanupSubscriptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除全部规则订阅'**
+  String get cleanupSubscriptions;
+
+  /// No description provided for @cleanupAppRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置应用控制名单'**
+  String get cleanupAppRules;
+
+  /// No description provided for @cleanupOutboundProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置出站代理配置'**
+  String get cleanupOutboundProxy;
+
+  /// No description provided for @cleanupCaCertificate.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置 HTTPS 抓包证书'**
+  String get cleanupCaCertificate;
+
+  /// No description provided for @cleanupDownloadCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理下载与临时缓存'**
+  String get cleanupDownloadCache;
+
+  /// No description provided for @cleanupCustomBackground.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除自定义背景缓存'**
+  String get cleanupCustomBackground;
+
+  /// No description provided for @cleanupSettingsGuides.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置所有新手引导'**
+  String get cleanupSettingsGuides;
+
+  /// No description provided for @cleanupAllData.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理全部本地数据'**
+  String get cleanupAllData;
+
+  /// No description provided for @cleanupDoneItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'已{action}：{count} 项{detail}'**
+  String cleanupDoneItems(Object action, Object count, Object detail);
+
+  /// No description provided for @cleanupDoneEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'已{action}：没有可清理的数据'**
+  String cleanupDoneEmpty(Object action);
+
+  /// No description provided for @blockResponseNxdomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回 NXDOMAIN'**
+  String get blockResponseNxdomain;
+
+  /// No description provided for @blockResponseNxdomainDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回域名不存在，并提供 5 分钟负缓存以减少重复查询'**
+  String get blockResponseNxdomainDescription;
+
+  /// No description provided for @blockResponseNodata.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回 NODATA'**
+  String get blockResponseNodata;
+
+  /// No description provided for @blockResponseNodataDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回域名存在但没有该记录，并提供 5 分钟负缓存'**
+  String get blockResponseNodataDescription;
+
+  /// No description provided for @blockResponseRefused.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回 REFUSED'**
+  String get blockResponseRefused;
+
+  /// No description provided for @blockResponseRefusedDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回服务器拒绝该查询，不提供缓存记录'**
+  String get blockResponseRefusedDescription;
+
+  /// No description provided for @blockResponseZeroAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回 0.0.0.0 / ::'**
+  String get blockResponseZeroAddress;
+
+  /// No description provided for @blockResponseZeroAddressDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'A 返回 0.0.0.0，AAAA 返回 ::，其他类型返回空结果'**
+  String get blockResponseZeroAddressDescription;
+
+  /// No description provided for @subscriptionSourceRemote.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络订阅'**
+  String get subscriptionSourceRemote;
+
+  /// No description provided for @subscriptionSourceLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地文件'**
+  String get subscriptionSourceLocal;
+
+  /// No description provided for @subscriptionKindDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑白名单规则'**
+  String get subscriptionKindDomain;
+
+  /// No description provided for @subscriptionKindHosts.
+  ///
+  /// In zh, this message translates to:
+  /// **'hosts 规则'**
+  String get subscriptionKindHosts;
+
+  /// No description provided for @logRowDirect.
+  ///
+  /// In zh, this message translates to:
+  /// **'{protocol} 直连'**
+  String logRowDirect(Object protocol);
+
+  /// No description provided for @logRowDirectWithPackage.
+  ///
+  /// In zh, this message translates to:
+  /// **'{protocol} 直连 · {package}'**
+  String logRowDirectWithPackage(Object package, Object protocol);
+
+  /// No description provided for @logRowCacheHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中缓存'**
+  String get logRowCacheHit;
+
+  /// No description provided for @logRowNoAuthority.
+  ///
+  /// In zh, this message translates to:
+  /// **'未取得 authority'**
+  String get logRowNoAuthority;
+
+  /// No description provided for @cachePresetConservativeName.
+  ///
+  /// In zh, this message translates to:
+  /// **'保守'**
+  String get cachePresetConservativeName;
+
+  /// No description provided for @cachePresetConservativeSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'遵从服务器有效期 (TTL)'**
+  String get cachePresetConservativeSummary;
+
+  /// No description provided for @cachePresetConservativeDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'遵从 DNS 服务器返回的有效期，不主动延长缓存时间，适合经常切换网络或对实时性敏感的场景。'**
+  String get cachePresetConservativeDescription;
+
+  /// No description provided for @cachePresetStandardName.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准'**
+  String get cachePresetStandardName;
+
+  /// No description provided for @cachePresetStandardSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'最长 1 小时，短记录至少 1 分钟'**
+  String get cachePresetStandardSummary;
+
+  /// No description provided for @cachePresetStandardDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'减少重复查询，同时避免记录过期滞后。解析失败时可短暂使用 5 分钟内的旧记录应急。'**
+  String get cachePresetStandardDescription;
+
+  /// No description provided for @cachePresetAggressiveName.
+  ///
+  /// In zh, this message translates to:
+  /// **'高命中'**
+  String get cachePresetAggressiveName;
+
+  /// No description provided for @cachePresetAggressiveSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'最长 6 小时，短记录至少 2 分钟'**
+  String get cachePresetAggressiveSummary;
+
+  /// No description provided for @cachePresetAggressiveDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'更偏向降低网络请求次数和提升弱网可用性。域名变更时更新可能会稍慢一些。'**
+  String get cachePresetAggressiveDescription;
+
+  /// No description provided for @cacheDisabledSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭 · 每次解析都会请求上游'**
+  String get cacheDisabledSummary;
+
+  /// No description provided for @upstreamNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写名称'**
+  String get upstreamNameRequired;
+
+  /// No description provided for @upstreamAddressRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写地址'**
+  String get upstreamAddressRequired;
+
+  /// No description provided for @upstreamDohNeedsHttps.
+  ///
+  /// In zh, this message translates to:
+  /// **'DoH 地址必须以 https:// 开头'**
+  String get upstreamDohNeedsHttps;
+
+  /// No description provided for @upstreamDohInvalidUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'DoH 地址不是合法的 URL'**
+  String get upstreamDohInvalidUrl;
+
+  /// No description provided for @upstreamPortRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口需在 1–65535 之间'**
+  String get upstreamPortRange;
+
+  /// No description provided for @upstreamIpv6Invalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'IPv6 地址格式不正确'**
+  String get upstreamIpv6Invalid;
+
+  /// No description provided for @upstreamPresetAliyun.
+  ///
+  /// In zh, this message translates to:
+  /// **'阿里云'**
+  String get upstreamPresetAliyun;
+
+  /// No description provided for @upstreamPresetTencent.
+  ///
+  /// In zh, this message translates to:
+  /// **'腾讯云 DNSPod'**
+  String get upstreamPresetTencent;
+
+  /// No description provided for @upstreamPresetByteDance.
+  ///
+  /// In zh, this message translates to:
+  /// **'字节跳动'**
+  String get upstreamPresetByteDance;
+
+  /// No description provided for @cleanupFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理失败：{detail}'**
+  String cleanupFailed(Object detail);
+
+  /// No description provided for @cleanupProxyRestored.
+  ///
+  /// In zh, this message translates to:
+  /// **'已恢复直连'**
+  String get cleanupProxyRestored;
+
+  /// No description provided for @cleanupCaNeedsReimport.
+  ///
+  /// In zh, this message translates to:
+  /// **'需重新生成并导入系统证书'**
+  String get cleanupCaNeedsReimport;
+
+  /// No description provided for @hubCategoryDns.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务'**
+  String get hubCategoryDns;
+
+  /// No description provided for @hubProviderManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务商管理'**
+  String get hubProviderManagement;
+
+  /// No description provided for @hubProviderManagementDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置与管理 DoH、DoT 与传统 DNS 解析服务商'**
+  String get hubProviderManagementDescription;
+
+  /// No description provided for @hubBootstrap.
+  ///
+  /// In zh, this message translates to:
+  /// **'引导解析设置'**
+  String get hubBootstrap;
+
+  /// No description provided for @hubBootstrapDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置用于首次解析加密上游域名的引导 DNS 节点'**
+  String get hubBootstrapDescription;
+
+  /// No description provided for @hubResolution.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析模式'**
+  String get hubResolution;
+
+  /// No description provided for @hubResolutionDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择单一服务、智能选择、最快响应或依次尝试策略'**
+  String get hubResolutionDescription;
+
+  /// No description provided for @hubCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存设置'**
+  String get hubCache;
+
+  /// No description provided for @hubCacheDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置 DNS 缓存开关、缓存策略与最大最小生存时间 (TTL)'**
+  String get hubCacheDescription;
+
+  /// No description provided for @hubCategoryRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'策略与规则'**
+  String get hubCategoryRules;
+
+  /// No description provided for @hubRuleControl.
+  ///
+  /// In zh, this message translates to:
+  /// **'规则控制'**
+  String get hubRuleControl;
+
+  /// No description provided for @hubRuleControlDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'统一管理拦截策略开关与在线网络规则订阅'**
+  String get hubRuleControlDescription;
+
+  /// No description provided for @hubBlocklist.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑名单'**
+  String get hubBlocklist;
+
+  /// No description provided for @hubBlocklistDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义屏蔽域名列表，匹配时返回拦截响应'**
+  String get hubBlocklistDescription;
+
+  /// No description provided for @hubAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'白名单'**
+  String get hubAllowlist;
+
+  /// No description provided for @hubAllowlistDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义放行域名列表，豁免所有规则直接放行'**
+  String get hubAllowlistDescription;
+
+  /// No description provided for @hubRewrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆写名单'**
+  String get hubRewrite;
+
+  /// No description provided for @hubRewriteDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义域名覆写指向特定 IPv4/IPv6 或 CNAME'**
+  String get hubRewriteDescription;
+
+  /// No description provided for @hubCategoryNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络控制'**
+  String get hubCategoryNetwork;
+
+  /// No description provided for @hubAppTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用流量统计'**
+  String get hubAppTraffic;
+
+  /// No description provided for @hubAppTrafficDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计各应用的网络连接数、上传与下载流量明细'**
+  String get hubAppTrafficDescription;
+
+  /// No description provided for @hubAppRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用独立规则'**
+  String get hubAppRules;
+
+  /// No description provided for @hubAppRulesDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'为特定应用单独指定专属域名放行与网络规则'**
+  String get hubAppRulesDescription;
+
+  /// No description provided for @hubBlockedApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'禁止联网应用'**
+  String get hubBlockedApps;
+
+  /// No description provided for @hubBlockedAppsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'在本地隧道层拦截指定应用的全部网络外联'**
+  String get hubBlockedAppsDescription;
+
+  /// No description provided for @hubExcludedApps.
+  ///
+  /// In zh, this message translates to:
+  /// **'排除应用'**
+  String get hubExcludedApps;
+
+  /// No description provided for @hubExcludedAppsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许指定应用绕过本软件直连网络'**
+  String get hubExcludedAppsDescription;
+
+  /// No description provided for @hubCategoryAdvanced.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级与诊断'**
+  String get hubCategoryAdvanced;
+
+  /// No description provided for @hubHttpsInspection.
+  ///
+  /// In zh, this message translates to:
+  /// **'HTTPS 流量检查'**
+  String get hubHttpsInspection;
+
+  /// No description provided for @hubHttpsInspectionDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'解密并检查特定应用的 HTTP(S) 流量，支持域名与 URL 过滤'**
+  String get hubHttpsInspectionDescription;
+
+  /// No description provided for @hubOutboundProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'出站代理'**
+  String get hubOutboundProxy;
+
+  /// No description provided for @hubOutboundProxyDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'将过滤后的流量转发到本地 SOCKS5 或 HTTP 代理'**
+  String get hubOutboundProxyDescription;
+
+  /// No description provided for @hubDiagnostics.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络诊断'**
+  String get hubDiagnostics;
+
+  /// No description provided for @hubDiagnosticsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'提供 DNS 查询、Ping 延迟测试与网络连通性诊断工具'**
+  String get hubDiagnosticsDescription;
+
+  /// No description provided for @hubAiAnalysis.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 分析'**
+  String get hubAiAnalysis;
+
+  /// No description provided for @hubAiAnalysisDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置大语言模型接口与密钥，用于日志研判与网络流量分析'**
+  String get hubAiAnalysisDescription;
+
+  /// No description provided for @hubCategoryInterface.
+  ///
+  /// In zh, this message translates to:
+  /// **'界面与设置'**
+  String get hubCategoryInterface;
+
+  /// No description provided for @hubAppearance.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观调整'**
+  String get hubAppearance;
+
+  /// No description provided for @hubAppearanceDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义日夜模式、主题色彩、组件透明度与软件壁纸背景'**
+  String get hubAppearanceDescription;
+
+  /// No description provided for @hubProviderVisibility.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务显示'**
+  String get hubProviderVisibility;
+
+  /// No description provided for @hubProviderVisibilityDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义在首页解析服务下拉列表中显示的服务商'**
+  String get hubProviderVisibilityDescription;
+
+  /// No description provided for @hubHiddenFeatures.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐藏功能'**
+  String get hubHiddenFeatures;
+
+  /// No description provided for @hubHiddenFeaturesDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义在功能中心显示的功能卡片，不改后台运行'**
+  String get hubHiddenFeaturesDescription;
+
+  /// No description provided for @hubOtherSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他设置'**
+  String get hubOtherSettings;
+
+  /// No description provided for @hubOtherSettingsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言切换、前后台行为、通知设置等全局配置'**
+  String get hubOtherSettingsDescription;
+
+  /// No description provided for @hubCategoryData.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据与维护'**
+  String get hubCategoryData;
+
+  /// No description provided for @hubLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志'**
+  String get hubLogs;
+
+  /// No description provided for @hubLogsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时解析统计、请求明细查询与日志导出'**
+  String get hubLogsDescription;
+
+  /// No description provided for @hubBackup.
+  ///
+  /// In zh, this message translates to:
+  /// **'备份与迁移'**
+  String get hubBackup;
+
+  /// No description provided for @hubBackupDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出与导入服务商、规则订阅及个性化设置'**
+  String get hubBackupDescription;
+
+  /// No description provided for @hubDataCleanup.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据清理'**
+  String get hubDataCleanup;
+
+  /// No description provided for @hubDataCleanupDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除缓存、日志或域名与地址过滤规则'**
+  String get hubDataCleanupDescription;
+
+  /// No description provided for @hubTroubleshooting.
+  ///
+  /// In zh, this message translates to:
+  /// **'故障排查'**
+  String get hubTroubleshooting;
+
+  /// No description provided for @hubTroubleshootingDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出崩溃日志，手动抓取并导出运行日志发给开发者'**
+  String get hubTroubleshootingDescription;
+
+  /// No description provided for @hubCategoryAbout.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于谛听'**
+  String get hubCategoryAbout;
+
+  /// No description provided for @hubAbout.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于'**
+  String get hubAbout;
+
+  /// No description provided for @hubAboutDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看版本信息、检查更新、开源地址与贡献者名单'**
+  String get hubAboutDescription;
+
+  /// No description provided for @hubSponsor.
+  ///
+  /// In zh, this message translates to:
+  /// **'赞助'**
+  String get hubSponsor;
+
+  /// No description provided for @hubSponsorDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持谛听项目持续维护与开发'**
+  String get hubSponsorDescription;
+
+  /// No description provided for @hubSponsors.
+  ///
+  /// In zh, this message translates to:
+  /// **'赞助者名单'**
+  String get hubSponsors;
+
+  /// No description provided for @hubSponsorsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'鸣谢支持谛听项目的赞助者'**
+  String get hubSponsorsDescription;
+
+  /// No description provided for @hubContributors.
+  ///
+  /// In zh, this message translates to:
+  /// **'共建者名单'**
+  String get hubContributors;
+
+  /// No description provided for @hubContributorsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'感谢为谛听贡献代码与建议的共建者'**
+  String get hubContributorsDescription;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

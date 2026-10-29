@@ -35,34 +35,35 @@ class MockFeatureCategory {
 }
 
 /// Routes are literals here; `test/route_catalog_test.dart` keeps them in sync.
-const mockFeatureCategories = <MockFeatureCategory>[
+List<MockFeatureCategory> mockFeatureCategories(AppL10n l10n) =>
+    <MockFeatureCategory>[
   MockFeatureCategory(
-    title: 'DNS 服务',
+    title: l10n.hubCategoryDns,
     cards: [
       MockFeatureCard(
-        title: '服务商管理',
-        description: '配置与管理 DoH、DoT 与传统 DNS 解析服务商',
+        title: l10n.hubProviderManagement,
+        description: l10n.hubProviderManagementDescription,
         glyphName: 'dns',
         route: '/hub/providers',
         featureKey: 'provider_management',
       ),
       MockFeatureCard(
-        title: '引导解析设置',
-        description: '配置用于首次解析加密上游域名的引导 DNS 节点',
+        title: l10n.hubBootstrap,
+        description: l10n.hubBootstrapDescription,
         glyphName: 'language',
         route: '/hub/bootstrap',
         featureKey: 'bootstrap_settings',
       ),
       MockFeatureCard(
-        title: '解析模式',
-        description: '选择单一服务、智能选择、最快响应或依次尝试策略',
+        title: l10n.hubResolution,
+        description: l10n.hubResolutionDescription,
         glyphName: 'shuffle',
         route: '/hub/resolution',
         featureKey: 'resolution_mode',
       ),
       MockFeatureCard(
-        title: '缓存设置',
-        description: '配置 DNS 缓存开关、缓存策略与最大最小生存时间 (TTL)',
+        title: l10n.hubCache,
+        description: l10n.hubCacheDescription,
         glyphName: 'memory',
         route: '/hub/cache',
         featureKey: 'cache_settings',
@@ -70,32 +71,32 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
-    title: '策略与规则',
+    title: l10n.hubCategoryRules,
     cards: [
       MockFeatureCard(
-        title: '规则控制',
-        description: '统一管理拦截策略开关与在线网络规则订阅',
+        title: l10n.hubRuleControl,
+        description: l10n.hubRuleControlDescription,
         glyphName: 'rules',
         route: '/hub/rules',
         featureKey: 'rule_control',
       ),
       MockFeatureCard(
-        title: '黑名单',
-        description: '自定义屏蔽域名列表，匹配时返回拦截响应',
+        title: l10n.hubBlocklist,
+        description: l10n.hubBlocklistDescription,
         glyphName: 'block',
         route: '/rules/block',
         featureKey: 'blacklist',
       ),
       MockFeatureCard(
-        title: '白名单',
-        description: '自定义放行域名列表，豁免所有规则直接放行',
+        title: l10n.hubAllowlist,
+        description: l10n.hubAllowlistDescription,
         glyphName: 'verified',
         route: '/rules/allow',
         featureKey: 'whitelist',
       ),
       MockFeatureCard(
-        title: '覆写名单',
-        description: '自定义域名覆写指向特定 IPv4/IPv6 或 CNAME',
+        title: l10n.hubRewrite,
+        description: l10n.hubRewriteDescription,
         glyphName: 'swap',
         route: '/rules/rewrite',
         featureKey: 'rewrite_list',
@@ -104,35 +105,35 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
-    title: '网络控制',
+    title: l10n.hubCategoryNetwork,
     cards: [
       MockFeatureCard(
-        title: '应用流量统计',
-        description: '统计各应用的网络连接数、上传与下载流量明细',
+        title: l10n.hubAppTraffic,
+        description: l10n.hubAppTrafficDescription,
         glyphName: 'dataUsage',
         route: '/traffic',
         featureKey: 'traffic_stats',
         expressVisible: false,
       ),
       MockFeatureCard(
-        title: '应用独立规则',
-        description: '为特定应用单独指定专属域名放行与网络规则',
+        title: l10n.hubAppRules,
+        description: l10n.hubAppRulesDescription,
         glyphName: 'appsList',
         route: '/hub/app-rules',
         featureKey: 'app_rules',
         expressVisible: false,
       ),
       MockFeatureCard(
-        title: '禁止联网应用',
-        description: '在本地隧道层拦截指定应用的全部网络外联',
+        title: l10n.hubBlockedApps,
+        description: l10n.hubBlockedAppsDescription,
         glyphName: 'wifiOff',
         route: '/hub/blocked-apps',
         featureKey: 'blocked_apps',
         expressVisible: false,
       ),
       MockFeatureCard(
-        title: '排除应用',
-        description: '允许指定应用绕过本软件直连网络',
+        title: l10n.hubExcludedApps,
+        description: l10n.hubExcludedAppsDescription,
         glyphName: 'appsList',
         route: '/hub/excluded-apps',
         featureKey: 'excluded_apps',
@@ -141,35 +142,35 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
-    title: '高级与诊断',
+    title: l10n.hubCategoryAdvanced,
     cards: [
       MockFeatureCard(
-        title: 'HTTPS 流量检查',
-        description: '解密并检查特定应用的 HTTP(S) 流量，支持域名与 URL 过滤',
+        title: l10n.hubHttpsInspection,
+        description: l10n.hubHttpsInspectionDescription,
         glyphName: 'target',
         route: '/hub/https-inspection',
         featureKey: 'https_inspection',
         expressVisible: false,
       ),
       MockFeatureCard(
-        title: '出站代理',
-        description: '将过滤后的流量转发到本地 SOCKS5 或 HTTP 代理',
+        title: l10n.hubOutboundProxy,
+        description: l10n.hubOutboundProxyDescription,
         glyphName: 'link',
         route: '/hub/outbound-proxy',
         featureKey: 'outbound_proxy',
         expressVisible: false,
       ),
       MockFeatureCard(
-        title: '网络诊断',
-        description: '提供 DNS 查询、Ping 延迟测试与网络连通性诊断工具',
+        title: l10n.hubDiagnostics,
+        description: l10n.hubDiagnosticsDescription,
         glyphName: 'speed',
         route: '/tools',
         featureKey: 'network_tools',
         expressVisible: false,
       ),
       MockFeatureCard(
-        title: 'AI 分析',
-        description: '配置大语言模型接口与密钥，用于日志研判与网络流量分析',
+        title: l10n.hubAiAnalysis,
+        description: l10n.hubAiAnalysisDescription,
         glyphName: 'sparkle',
         route: '/hub/agent',
         featureKey: 'agent_api',
@@ -178,31 +179,31 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
-    title: '界面与设置',
+    title: l10n.hubCategoryInterface,
     cards: [
       MockFeatureCard(
-        title: '外观调整',
-        description: '自定义日夜模式、主题色彩、组件透明度与软件壁纸背景',
+        title: l10n.hubAppearance,
+        description: l10n.hubAppearanceDescription,
         glyphName: 'palette',
         route: '/theme',
         featureKey: 'appearance',
       ),
       MockFeatureCard(
-        title: '服务显示',
-        description: '自定义在首页解析服务下拉列表中显示的服务商',
+        title: l10n.hubProviderVisibility,
+        description: l10n.hubProviderVisibilityDescription,
         glyphName: 'eye',
         route: '/hub/provider-visibility',
         featureKey: 'service_display',
       ),
       MockFeatureCard(
-        title: '隐藏功能',
-        description: '自定义在功能中心显示的功能卡片，不改后台运行',
+        title: l10n.hubHiddenFeatures,
+        description: l10n.hubHiddenFeaturesDescription,
         glyphName: 'eyeOff',
         route: '/hub/hidden-features',
       ),
       MockFeatureCard(
-        title: '其他设置',
-        description: '语言切换、前后台行为、通知设置等全局配置',
+        title: l10n.hubOtherSettings,
+        description: l10n.hubOtherSettingsDescription,
         glyphName: 'settings',
         route: '/settings',
         featureKey: 'other_settings',
@@ -210,33 +211,33 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
-    title: '数据与维护',
+    title: l10n.hubCategoryData,
     cards: [
       MockFeatureCard(
-        title: '日志',
-        description: '实时解析统计、请求明细查询与日志导出',
+        title: l10n.hubLogs,
+        description: l10n.hubLogsDescription,
         glyphName: 'logs',
         route: '/logs',
         featureKey: 'logs',
         longPressRoute: '/hub/log-retention',
       ),
       MockFeatureCard(
-        title: '备份与迁移',
-        description: '导出与导入服务商、规则订阅及个性化设置',
+        title: l10n.hubBackup,
+        description: l10n.hubBackupDescription,
         glyphName: 'export',
         route: '/hub/config-transfer',
         featureKey: 'data_management',
       ),
       MockFeatureCard(
-        title: '数据清理',
-        description: '删除缓存、日志或域名与地址过滤规则',
+        title: l10n.hubDataCleanup,
+        description: l10n.hubDataCleanupDescription,
         glyphName: 'broom',
         route: '/hub/data-cleanup',
         featureKey: 'data_cleanup',
       ),
       MockFeatureCard(
-        title: '故障排查',
-        description: '导出崩溃日志，手动抓取并导出运行日志发给开发者',
+        title: l10n.hubTroubleshooting,
+        description: l10n.hubTroubleshootingDescription,
         glyphName: 'wrench',
         route: '/hub/troubleshooting',
         featureKey: 'troubleshooting',
@@ -244,32 +245,32 @@ const mockFeatureCategories = <MockFeatureCategory>[
     ],
   ),
   MockFeatureCategory(
-    title: '关于谛听',
+    title: l10n.hubCategoryAbout,
     cards: [
       MockFeatureCard(
-        title: '关于',
-        description: '查看版本信息、检查更新、开源地址与贡献者名单',
+        title: l10n.hubAbout,
+        description: l10n.hubAboutDescription,
         glyphName: 'info',
         route: '/about',
         featureKey: 'app_info',
       ),
       MockFeatureCard(
-        title: '赞助',
-        description: '支持谛听项目持续维护与开发',
+        title: l10n.hubSponsor,
+        description: l10n.hubSponsorDescription,
         glyphName: 'star',
         route: '/sponsor',
         featureKey: 'sponsor',
       ),
       MockFeatureCard(
-        title: '赞助者名单',
-        description: '鸣谢支持谛听项目的赞助者',
+        title: l10n.hubSponsors,
+        description: l10n.hubSponsorsDescription,
         glyphName: 'verified',
         route: '/hub/sponsor-list',
         featureKey: 'sponsor_list',
       ),
       MockFeatureCard(
-        title: '共建者名单',
-        description: '感谢为谛听贡献代码与建议的共建者',
+        title: l10n.hubContributors,
+        description: l10n.hubContributorsDescription,
         glyphName: 'account',
         route: '/hub/co-builders',
         featureKey: 'contributors',
@@ -298,8 +299,8 @@ class MockHiddenFeature {
   final String route;
 }
 
-final List<MockHiddenFeature> mockHiddenFeatures = [
-  for (final category in mockFeatureCategories)
+List<MockHiddenFeature> mockHiddenFeatures(AppL10n l10n) => [
+  for (final category in mockFeatureCategories(l10n))
     for (final card in category.cards)
       if (card.featureKey case final key?)
         MockHiddenFeature(
@@ -315,9 +316,10 @@ final List<MockHiddenFeature> mockHiddenFeatures = [
 
 Map<String, List<MockHiddenFeature>> hiddenFeaturesByCategory({
   required bool express,
+  required AppL10n l10n,
 }) {
   final result = <String, List<MockHiddenFeature>>{};
-  for (final feature in mockHiddenFeatures) {
+  for (final feature in mockHiddenFeatures(l10n)) {
     if (express && !feature.expressVisible) {
       continue;
     }
@@ -329,9 +331,10 @@ Map<String, List<MockHiddenFeature>> hiddenFeaturesByCategory({
 List<MockFeatureCategory> visibleFeatureCategories({
   required bool express,
   required Set<String> hiddenKeys,
+  required AppL10n l10n,
 }) {
   final result = <MockFeatureCategory>[];
-  for (final category in mockFeatureCategories) {
+  for (final category in mockFeatureCategories(l10n)) {
     final cards = [
       for (final card in category.cards)
         if ((!express || card.expressVisible) &&

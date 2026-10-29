@@ -2,13 +2,11 @@
 /// directly, so the UI must write exactly these values.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/prefs/legacy_settings.dart';
 
 enum DnsCachePreset {
   conservative(
-    '保守',
-    '遵从服务器有效期 (TTL)',
-    '遵从 DNS 服务器返回的有效期，不主动延长缓存时间，适合经常切换网络或对实时性敏感的场景。',
     storageValue: 'conservative',
     mode: 'follow_dns_ttl',
     maxTtlSeconds: 3600,
@@ -19,9 +17,6 @@ enum DnsCachePreset {
     staleFallbackSeconds: 300,
   ),
   balanced(
-    '标准',
-    '最长 1 小时，短记录至少 1 分钟',
-    '减少重复查询，同时避免记录过期滞后。解析失败时可短暂使用 5 分钟内的旧记录应急。',
     storageValue: 'balanced',
     mode: 'limit_max_ttl',
     maxTtlSeconds: 3600,
@@ -32,9 +27,6 @@ enum DnsCachePreset {
     staleFallbackSeconds: 300,
   ),
   highHitRate(
-    '高命中',
-    '最长 6 小时，短记录至少 2 分钟',
-    '更偏向降低网络请求次数和提升弱网可用性。域名变更时更新可能会稍慢一些。',
     storageValue: 'high_hit_rate',
     mode: 'limit_max_ttl',
     maxTtlSeconds: 21600,
@@ -45,10 +37,7 @@ enum DnsCachePreset {
     staleFallbackSeconds: 900,
   );
 
-  const DnsCachePreset(
-    this.label,
-    this.summary,
-    this.description, {
+  const DnsCachePreset({
     required this.storageValue,
     required this.mode,
     required this.maxTtlSeconds,
@@ -59,9 +48,23 @@ enum DnsCachePreset {
     required this.staleFallbackSeconds,
   });
 
-  final String label;
-  final String summary;
-  final String description;
+  String label(AppL10n l10n) => switch (this) {
+    DnsCachePreset.conservative => l10n.cachePresetConservativeName,
+    DnsCachePreset.balanced => l10n.cachePresetStandardName,
+    DnsCachePreset.highHitRate => l10n.cachePresetAggressiveName,
+  };
+
+  String summary(AppL10n l10n) => switch (this) {
+    DnsCachePreset.conservative => l10n.cachePresetConservativeSummary,
+    DnsCachePreset.balanced => l10n.cachePresetStandardSummary,
+    DnsCachePreset.highHitRate => l10n.cachePresetAggressiveSummary,
+  };
+
+  String description(AppL10n l10n) => switch (this) {
+    DnsCachePreset.conservative => l10n.cachePresetConservativeDescription,
+    DnsCachePreset.balanced => l10n.cachePresetStandardDescription,
+    DnsCachePreset.highHitRate => l10n.cachePresetAggressiveDescription,
+  };
 
   final String storageValue;
   final String mode;
@@ -118,7 +121,7 @@ enum DnsCachePreset {
 }
 
 String cacheSummaryOf(LegacySettings settings) {
-  if (!settings.cacheEnabled) return '已关闭 · 每次解析都会请求上游';
+  if (!settings.cacheEnabled) return currentL10n.cacheDisabledSummary;
   final preset = DnsCachePreset.current(settings);
-  return '${preset.label} · ${preset.summary}';
+  return '${preset.label(currentL10n)} · ${preset.summary(currentL10n)}';
 }

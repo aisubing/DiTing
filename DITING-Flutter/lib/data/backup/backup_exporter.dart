@@ -2,6 +2,7 @@
 /// CA private key are never exported.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/backup/backup_models.dart';
@@ -200,7 +201,7 @@ class BackupExporter {
     LegacySettings settings,
   ) {
     final catalog = <String, ({String name, String protocol})>{};
-    for (final provider in defaultDnsProviders) {
+    for (final provider in defaultDnsProviders(currentL10n)) {
       catalog[provider.id] = (
         name: provider.name,
         protocol: provider.protocol.storageValue,

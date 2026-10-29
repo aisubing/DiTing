@@ -53,7 +53,7 @@ class DataCleanupPage extends ConsumerWidget {
                       color: context.colorScheme.error,
                     ),
                     title: Text(
-                      action.title,
+                      action.title(context.l10n),
                       style: TextStyle(color: context.colorScheme.error),
                     ),
                     subtitle: Text(_descriptionOf(action)),
@@ -79,7 +79,7 @@ class DataCleanupPage extends ConsumerWidget {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: action.title,
+        title: action.title(context.l10n),
         destructive: true,
         child: Text(_confirmTextOf(action)),
         actions: [

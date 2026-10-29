@@ -2,6 +2,7 @@
 /// `diting_dns_mode_prefs`; the Go engine rejects unknown fields.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/prefs/legacy_settings.dart';
@@ -31,17 +32,17 @@ class ServerUpstream {
       : '$address:$port';
 }
 
-const serverPresetUpstreams = <ServerUpstream>[
+List<ServerUpstream> serverPresetUpstreams(AppL10n l10n) => <ServerUpstream>[
   ServerUpstream(
     id: 'preset_alidns_dns',
-    name: '阿里云',
+    name: l10n.upstreamPresetAliyun,
     protocol: DnsProtocol.dns,
     address: '223.5.5.5',
     port: 53,
   ),
   ServerUpstream(
     id: 'preset_dnspod_dns',
-    name: '腾讯云 DNSPod',
+    name: l10n.upstreamPresetTencent,
     protocol: DnsProtocol.dns,
     address: '119.29.29.29',
     port: 53,
@@ -76,14 +77,14 @@ const serverPresetUpstreams = <ServerUpstream>[
   ),
   ServerUpstream(
     id: 'preset_alidns_doh',
-    name: '阿里云',
+    name: l10n.upstreamPresetAliyun,
     protocol: DnsProtocol.doh,
     address: 'https://dns.alidns.com/dns-query',
     port: 443,
   ),
   ServerUpstream(
     id: 'preset_dnspod_doh',
-    name: '腾讯云 DNSPod',
+    name: l10n.upstreamPresetTencent,
     protocol: DnsProtocol.doh,
     address: 'https://doh.pub/dns-query',
     port: 443,
@@ -118,14 +119,14 @@ const serverPresetUpstreams = <ServerUpstream>[
   ),
   ServerUpstream(
     id: 'preset_alidns_dot',
-    name: '阿里云',
+    name: l10n.upstreamPresetAliyun,
     protocol: DnsProtocol.dot,
     address: 'dns.alidns.com',
     port: 853,
   ),
   ServerUpstream(
     id: 'preset_dnspod_dot',
-    name: '腾讯云 DNSPod',
+    name: l10n.upstreamPresetTencent,
     protocol: DnsProtocol.dot,
     address: 'dot.pub',
     port: 853,
@@ -203,7 +204,7 @@ ServerDnsConfig buildServerDnsConfig(LegacySettings settings) {
   final upstream =
       byId[settings.serverSelectedUpstreamId] ??
       byId['preset_alidns_dns'] ??
-      serverPresetUpstreams.first;
+      serverPresetUpstreams(currentL10n).first;
   return ServerDnsConfig(
     port: settings.serverPort,
     upstream: upstream,
@@ -225,7 +226,7 @@ ServerDnsConfig buildServerDnsConfig(LegacySettings settings) {
 }
 
 List<ServerUpstream> serverUpstreams(LegacySettings settings) => [
-  ...serverPresetUpstreams,
+  ...serverPresetUpstreams(currentL10n),
   ...parseServerCustomUpstreams(settings.serverCustomUpstreamsJson),
 ];
 
@@ -307,30 +308,30 @@ UpstreamValidation validateServerUpstream({
   required int port,
 }) {
   if (name.trim().isEmpty) {
-    return const UpstreamInvalid('请填写名称');
+    return UpstreamInvalid(currentL10n.upstreamNameRequired);
   }
   final trimmed = address.trim();
   if (trimmed.isEmpty) {
-    return const UpstreamInvalid('请填写地址');
+    return UpstreamInvalid(currentL10n.upstreamAddressRequired);
   }
   if (protocol == DnsProtocol.doh) {
     if (!trimmed.toLowerCase().startsWith('https://')) {
-      return const UpstreamInvalid('DoH 地址必须以 https:// 开头');
+      return UpstreamInvalid(currentL10n.upstreamDohNeedsHttps);
     }
     final uri = Uri.tryParse(trimmed);
     if (uri == null || uri.host.isEmpty) {
-      return const UpstreamInvalid('DoH 地址不是合法的 URL');
+      return UpstreamInvalid(currentL10n.upstreamDohInvalidUrl);
     }
     return const UpstreamOk();
   }
   if (port < 1 || port > 65535) {
-    return const UpstreamInvalid('端口需在 1–65535 之间');
+    return UpstreamInvalid(currentL10n.upstreamPortRange);
   }
   // A bare IPv6 address must parse as host-only, otherwise the engine fails when it joins
   // host:port.
   final bare = _stripBrackets(trimmed);
   if (bare.contains(':') && Uri.tryParse('http://[$bare]') == null) {
-    return const UpstreamInvalid('IPv6 地址格式不正确');
+    return UpstreamInvalid(currentL10n.upstreamIpv6Invalid);
   }
   return const UpstreamOk();
 }
