@@ -425,6 +425,20 @@ class SettingsBackgroundPage extends ConsumerWidget {
             title: context.l10n.foregroundStability,
             footer: context.l10n.foregroundBatteryFooter,
             items: [
+              ListItem.toggle(
+                title: Text(context.l10n.settingsAutoStartTitle),
+                subtitle: Text(context.l10n.settingsAutoStartSubtitle),
+                leading: const GlyphIcon(AppGlyphs.sync),
+                value: ref.watch(autoStartOnLaunchProvider),
+                onChanged: ref.read(autoStartOnLaunchProvider.notifier).toggle,
+              ),
+              ListItem.toggle(
+                title: Text(context.l10n.settingsVpnWatchdogTitle),
+                subtitle: Text(context.l10n.settingsVpnWatchdogSubtitle),
+                leading: const GlyphIcon(AppGlyphs.vpn),
+                value: ref.watch(vpnWatchdogProvider),
+                onChanged: ref.read(vpnWatchdogProvider.notifier).toggle,
+              ),
               NavEntryRow(
                 glyph: AppGlyphs.bolt,
                 title: context.l10n.foregroundIgnoreBattery,
