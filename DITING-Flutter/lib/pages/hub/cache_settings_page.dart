@@ -17,6 +17,7 @@ class CacheSettingsPage extends ConsumerWidget {
     final settings = ref.watch(legacySettingsProvider);
     final enabled = settings.cacheEnabled;
     final preset = DnsCachePreset.current(settings);
+    final l10n = context.l10n;
     return CommonScaffold(
       title: context.l10n.cacheSettingsTitle,
       body: PageBody(
@@ -29,7 +30,7 @@ class CacheSettingsPage extends ConsumerWidget {
                 title: Text(context.l10n.cacheLocalDns),
                 subtitle: Text(
                   enabled
-                      ? '${preset.label}：${preset.summary}'
+                      ? '${preset.label(l10n)}：${preset.summary(l10n)}'
                       : context.l10n.cacheOffNote,
                 ),
                 value: enabled,
@@ -53,7 +54,9 @@ class CacheSettingsPage extends ConsumerWidget {
                       size: 20,
                     ),
                     title: Text(option.label(context.l10n)),
-                    subtitle: Text('${option.summary}。${option.description}'),
+                    subtitle: Text(
+                      '${option.summary(l10n)}。${option.description(l10n)}',
+                    ),
                     trailing: preset == option ? const SelectionCheck() : null,
                     onTap: () {
                       option.applyTo(settings, enabled: enabled);
