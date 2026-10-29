@@ -23,7 +23,10 @@
 2. `const` 的本地化列表改成函数：`List<X> items(AppL10n l10n)`。
 3. `part of` 文件不能写 import，import 放在父库文件上。
 4. 没有 `BuildContext` 的纯函数追加一个 `AppL10n l10n` 位置参数（或使用 `currentL10n`）。
-5. 引擎 / 数据层的协议字符串（如 IP 质量的 `'住宅'`、`'命中'` 解析映射）保持中文，
+5. 会缓存结果的 `Provider` 不要读 `currentL10n`：它只在依赖变化时重算，切换语言不会触发，
+   会把上一个语言的文案一直留着。把 `AppL10n` 当 `Provider.family` 的参数传进去
+   （见 `visibleFeatureCategoriesProvider`），由页面传 `context.l10n`。
+6. 引擎 / 数据层的协议字符串（如 IP 质量的 `'住宅'`、`'命中'` 解析映射）保持中文，
    只转换展示文案；`lib/data/agent` 的 AI 提示词模板按设计保留中文。
 
 ## 工具（`tool/i18n/`）

@@ -90,18 +90,21 @@ final hiddenFeatureKeysProvider =
       HiddenFeatureKeysNotifier.new,
     );
 
-/// Visible hub categories for the current mode; both pages read it so the filtering cannot drift.
-final visibleFeatureCategoriesProvider = Provider<List<MockFeatureCategory>>((
-  ref,
-) {
-  final express = ref.watch(workModeProvider) == AppWorkMode.express;
-  final hidden = ref.watch(hiddenFeatureKeysProvider);
-  return visibleFeatureCategories(
-    express: express,
-    hiddenKeys: hidden,
-    l10n: currentL10n,
-  );
-});
+/// Visible hub categories for the current mode, localized with the caller's `context.l10n`.
+///
+/// The resources are a family argument instead of `currentL10n` on purpose: the provider only
+/// recomputes when a dependency changes, and a language switch touches none of them, so reading
+/// the global would keep the previous language's cards until the app restarts.
+final visibleFeatureCategoriesProvider =
+    Provider.family<List<MockFeatureCategory>, AppL10n>((ref, l10n) {
+      final express = ref.watch(workModeProvider) == AppWorkMode.express;
+      final hidden = ref.watch(hiddenFeatureKeysProvider);
+      return visibleFeatureCategories(
+        express: express,
+        hiddenKeys: hidden,
+        l10n: l10n,
+      );
+    });
 
 /// Whether the log card's long-press hint was acknowledged. Session-only, 1.4.3 has no storage key.
 class LogLongPressHintNotifier extends Notifier<bool> {

@@ -19,7 +19,10 @@ class FeatureHubPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Card visibility follows the persisted hidden set (`dns_vpn_prefs` /
     // `hidden_features_set`); filtering lives in the provider so toggling updates immediately.
-    final categories = ref.watch(visibleFeatureCategoriesProvider);
+    // The localized resources come from this context, so a language switch relabels the cards.
+    final categories = ref.watch(
+      visibleFeatureCategoriesProvider(context.l10n),
+    );
     return CommonScaffold(
       title: context.l10n.bottomBarFeatureHub,
       body: CustomScrollView(

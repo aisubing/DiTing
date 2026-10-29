@@ -20,6 +20,63 @@ void main() {
   group('全路由布局', _layoutRegression);
   group('首启须知', _initialAgreement);
   group('弹窗输入框生命周期', _dialogField);
+  group('分段控件标签', _segmentedLabels);
+}
+
+/// Long English labels used to be ellipsized to "Single re…" in the resolution card.
+void _segmentedLabels() {
+  Future<void> pumpControl(
+    WidgetTester tester,
+    List<(int, String)> segments,
+  ) async {
+    await tester.pumpWidget(
+      AppHost(
+        child: Center(
+          child: SizedBox(
+            width: 338,
+            child: SegmentedControl<int>(
+              segments: segments,
+              value: 0,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('长标签换行而不是省略', (tester) async {
+    await pumpControl(tester, const [
+      (0, 'Single resolver'),
+      (1, 'Smart select'),
+      (2, 'Parallel'),
+      (3, 'Primary backup'),
+    ]);
+    expect(tester.takeException(), isNull);
+    final label = tester.widget<Text>(find.text('Single resolver'));
+    expect(label.maxLines, 2, reason: '英文长标签应换行显示完整文案');
+    expect(
+      tester.getSize(find.byType(SegmentedControl<int>)).height,
+      greaterThan(44),
+      reason: '两行文案需要更高的控件，否则会被裁切',
+    );
+  });
+
+  testWidgets('短标签保持单行高度', (tester) async {
+    await pumpControl(tester, const [
+      (0, '单服务商'),
+      (1, '智能选择'),
+      (2, '并行'),
+      (3, '主备'),
+    ]);
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getSize(find.byType(SegmentedControl<int>)).height,
+      44,
+    );
+    expect(tester.widget<Text>(find.text('单服务商')).maxLines, 1);
+  });
 }
 
 /// Layout regression over every route at three widths; overflow surfaces via `takeException()`

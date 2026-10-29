@@ -17,6 +17,7 @@ import 'package:diting/pages/tools/tools_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/router.dart';
 import 'package:diting/state/appearance_providers.dart';
+import 'package:diting/state/settings_providers.dart';
 import 'package:diting/state/work_mode_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -90,6 +91,24 @@ void _appShell() {
     await tester.tap(find.text('首页'));
     await tester.pumpAndSettle();
     expect(find.text('谛听 · 普通'), findsOneWidget);
+  });
+
+  testWidgets('切换界面语言后功能中心文案立即跟随', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('功能中心'));
+    await tester.pumpAndSettle();
+    expect(find.text('DNS 服务'), findsWidgets);
+
+    // Regression: the categories were cached in a provider that only watched the work mode and
+    // the hidden set, so the hub kept the previous language until the app restarted.
+    ProviderScope.containerOf(
+      tester.element(find.byType(FeatureHubPage)),
+    ).read(languageModeProvider.notifier).select(AppLanguageMode.english);
+    await tester.pumpAndSettle();
+
+    expect(find.text('DNS services'), findsWidgets);
+    expect(find.text('Resolver management'), findsWidgets);
+    expect(find.text('DNS 服务'), findsNothing);
   });
 
   testWidgets('浮层（面板）在 scopes 之上可弹出', (tester) async {
