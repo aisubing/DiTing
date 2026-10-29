@@ -11,6 +11,7 @@ class _SubscriptionCard extends StatelessWidget {
     required this.onUpdate,
     required this.onDelete,
     required this.onEdit,
+    required this.onConfigure,
   });
 
   final SubscriptionEntry entry;
@@ -24,6 +25,9 @@ class _SubscriptionCard extends StatelessWidget {
   final VoidCallback onUpdate;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
+
+  /// Opens the full edit sheet (address, kind, group, mirror).
+  final VoidCallback onConfigure;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +80,12 @@ class _SubscriptionCard extends StatelessWidget {
                           label: entry.isRemote ? '立即更新' : '重新导入文件',
                           glyph: AppGlyphs.refresh,
                           onPressed: busy ? null : onUpdate,
+                        ),
+                        CommonPopupMenuItem(
+                          label: '编辑订阅',
+                          glyph: AppGlyphs.sliders,
+                          // Saving may re-download, which must not overlap a running update.
+                          onPressed: busy ? null : onConfigure,
                         ),
                         CommonPopupMenuItem(
                           label: '重命名',

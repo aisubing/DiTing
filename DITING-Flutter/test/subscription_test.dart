@@ -263,6 +263,29 @@ void _subscriptionRepository() {
       expect(record.ruleSetHash, isNull);
     });
 
+    test('updateConfig 改写可编辑列，换源时清空校验符', () async {
+      final id = await insertSub(etag: '"e"', lastModified: 'lm');
+      await repository.updateConfig(
+        id,
+        name: '新名',
+        url: 'https://example.com/hosts.txt',
+        kind: SubscriptionKind.hosts,
+        groupId: null,
+        mirrorTemplate: 'https://m/{url}',
+        mirrorFallback: false,
+        resetValidators: true,
+      );
+
+      final record = (await repository.byId(id))!;
+      expect(record.name, '新名');
+      expect(record.url, 'https://example.com/hosts.txt');
+      expect(record.kind, SubscriptionKind.hosts);
+      expect(record.mirrorTemplate, 'https://m/{url}');
+      expect(record.mirrorFallback, isFalse);
+      expect(record.httpEtag, isNull);
+      expect(record.httpLastModified, isNull);
+    });
+
     test('每次写都触发 onChanged（revision 自增）', () async {
       final id = await insertSub();
       final afterInsert = writeCount;

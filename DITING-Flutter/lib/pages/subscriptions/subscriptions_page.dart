@@ -256,7 +256,8 @@ class SubscriptionsPage extends ConsumerWidget {
               sliver: SliverList.separated(
                 itemCount: selectedEntries.length,
                 addAutomaticKeepAlives: false,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final entry = selectedEntries[index];
                   return _SubscriptionCard(
@@ -271,6 +272,10 @@ class SubscriptionsPage extends ConsumerWidget {
                         .updateOne(entry.id),
                     onDelete: () => _delete(context, ref, entry),
                     onEdit: () => _rename(context, ref, entry),
+                    onConfigure: () => showSheet<void>(
+                      context: context,
+                      builder: (_) => _AddSubscriptionSheet(initial: entry),
+                    ),
                   );
                 },
               ),

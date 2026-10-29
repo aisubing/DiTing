@@ -168,6 +168,35 @@ class SubscriptionRepository {
     _changed();
   }
 
+  /// Rewrites the user-editable columns. A changed address or kind invalidates the cached
+  /// validators, otherwise the next update could get a 304 for content it never imported.
+  Future<void> updateConfig(
+    int id, {
+    required String name,
+    required String url,
+    required SubscriptionKind kind,
+    required int? groupId,
+    required String? mirrorTemplate,
+    required bool mirrorFallback,
+    required bool resetValidators,
+  }) async {
+    await _db.update(
+      'subscription',
+      {
+        'name': name,
+        'url': url,
+        'kind': kind.storageValue,
+        'groupId': groupId,
+        'mirrorTemplate': mirrorTemplate,
+        'mirrorFallback': mirrorFallback ? 1 : 0,
+        if (resetValidators) ...{'httpEtag': null, 'httpLastModified': null},
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _changed();
+  }
+
   Future<void> clearGroup(int groupId) async {
     await _db.update(
       'subscription',

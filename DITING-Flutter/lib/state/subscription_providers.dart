@@ -18,6 +18,7 @@ import 'package:diting/state/config_providers_resources.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
+part 'subscription_edit_actions.dart';
 part 'subscription_mirror_providers.dart';
 
 /// Subscriptions live in the active data set's rule database, which is why a mode switch reloads

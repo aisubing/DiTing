@@ -1,10 +1,13 @@
 part of 'subscriptions_page.dart';
 
-/// Add-subscription sheet. Grouped cards rather than a label column: the two fields need the full
+/// Add/edit-subscription sheet. Grouped cards rather than a label column: the two fields need the full
 /// width, and the mirror templates the legacy app offered were missing here. Saving inserts with
-/// `importState = importing`, then a real download settles it.
+/// `importState = importing`, then a real download settles it. With [initial] the sheet edits that
+/// row instead; the source type and a local row's file stay fixed.
 class _AddSubscriptionSheet extends ConsumerStatefulWidget {
-  const _AddSubscriptionSheet();
+  const _AddSubscriptionSheet({this.initial});
+
+  final SubscriptionEntry? initial;
 
   @override
   ConsumerState<_AddSubscriptionSheet> createState() =>
@@ -37,6 +40,22 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
   @override
   void initState() {
     super.initState();
+    if (widget.initial case final entry?) {
+      final record = entry.record;
+      _name.text = record.name;
+      _kind = record.kind;
+      _groupId = record.groupId;
+      _sourceType = record.sourceType;
+      _mirrorFallback = record.mirrorFallback;
+      if (record.isRemote) {
+        _url.text = record.url;
+        _mirrorTemplate = record.mirrorTemplate;
+        _useMirror = record.mirrorTemplate != null;
+      } else {
+        _localUri = record.url;
+        _localName = _SubscriptionCard._fileNameOf(record.url);
+      }
+    }
     // The mirror preview follows the address while it is typed.
     _url.addListener(_rebuild);
   }
@@ -131,6 +150,10 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
       _submitting = true;
       _formError = null;
     });
+    if (widget.initial case final entry?) {
+      await _submitEdit(entry, isLocal);
+      return;
+    }
     final result = await ref
         .read(subscriptionActionsProvider)
         .add(
@@ -164,6 +187,41 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
     }
   }
 
+  Future<void> _submitEdit(SubscriptionEntry entry, bool isLocal) async {
+    final result = await ref
+        .read(subscriptionActionsProvider)
+        .edit(
+          entry.id,
+          name: _name.text,
+          url: _url.text,
+          kind: _kind,
+          groupId: _groupId,
+          mirrorTemplate: isLocal || !_useMirror ? null : _mirrorTemplate,
+          mirrorFallback: _mirrorFallback,
+        );
+    if (!mounted) {
+      return;
+    }
+    switch (result) {
+      case EditSubscriptionFailure(:final message):
+        setState(() => _submitting = false);
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(milliseconds: 2600),
+          ),
+        );
+      case EditSubscriptionOk(:final needsReimport):
+        final updater = ref.read(subscriptionUpdateProvider.notifier);
+        Navigator.of(context).pop();
+        // The stored rules came from the old address or kind, so replace them now.
+        if (needsReimport) {
+          await updater.updateOne(entry.id);
+        }
+    }
+  }
+
   /// The saved template [record] points at, if it is still in the list.
   MirrorTemplateRecord? _selectedTemplate(
     List<MirrorTemplateRecord> templates,
@@ -192,10 +250,11 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
         ? _groupId
         : null;
     final isLocal = _sourceType == SubscriptionSourceType.local;
+    final isEdit = widget.initial != null;
     final template = _selectedTemplate(templates);
 
     return CommonScaffold(
-      title: '添加订阅',
+      title: isEdit ? '编辑订阅' : '添加订阅',
       isLoading: _submitting,
       confirmationAction: IconButtonData(
         glyph: AppGlyphs.check,
@@ -211,40 +270,52 @@ class _AddSubscriptionSheetState extends ConsumerState<_AddSubscriptionSheet> {
         children: [
           _SheetCard(
             title: '订阅信息',
-            footer: isLocal
+            footer: isEdit
+                ? '修改链接或收录类型后会立即重新下载，并替换该订阅原有的规则；'
+                      '订阅方式与本地文件不可更改。'
+                : isLocal
                 ? '本地文件通过系统文件选择器读取，应用只保留读取权限；'
                       '同名的黑白名单与 hosts 订阅互不影响。'
                 : '同一条链接可以为黑白名单和 hosts 各建一条订阅（唯一性按「链接 + 类型」判定），'
                       '保存后会立即下载一次正文并写入规则库。',
             children: [
-              ListItem<SubscriptionSourceType>.options(
-                padding: EdgeInsets.zero,
-                title: const Text('订阅方式'),
-                subtitle: Text(isLocal ? '从存储中选择一个 .txt 文件' : '从网络地址下载规则正文'),
-                options: SubscriptionSourceType.values,
-                value: _sourceType,
-                textBuilder: (type) => type.label,
-                onChanged: (type) => setState(() {
-                  _sourceType = type;
-                  _formError = null;
-                  _localWarning = null;
-                }),
-              ),
-              if (isLocal) ...[
-                ListItem(
+              if (!isEdit)
+                ListItem<SubscriptionSourceType>.options(
                   padding: EdgeInsets.zero,
-                  leading: const GlyphIcon(AppGlyphs.importFile, size: 20),
-                  title: Text(_localName ?? '选择规则文件'),
-                  subtitle: Text(
-                    _localName == null ? '仅支持 .txt，点击从存储中选择' : '点击可重新选择文件',
-                  ),
-                  trailing: TonalButton(
-                    size: TonalButtonSize.compact,
-                    label: _localName == null ? '选择' : '更换',
-                    onPressed: _picking ? null : _pickFile,
-                  ),
-                  onTap: _picking ? null : _pickFile,
+                  title: const Text('订阅方式'),
+                  subtitle: Text(isLocal ? '从存储中选择一个 .txt 文件' : '从网络地址下载规则正文'),
+                  options: SubscriptionSourceType.values,
+                  value: _sourceType,
+                  textBuilder: (type) => type.label,
+                  onChanged: (type) => setState(() {
+                    _sourceType = type;
+                    _formError = null;
+                    _localWarning = null;
+                  }),
                 ),
+              if (isLocal) ...[
+                if (isEdit)
+                  ListItem(
+                    padding: EdgeInsets.zero,
+                    leading: const GlyphIcon(AppGlyphs.importFile, size: 20),
+                    title: Text(_localName ?? '本地规则文件'),
+                    subtitle: const Text('本地文件订阅'),
+                  )
+                else
+                  ListItem(
+                    padding: EdgeInsets.zero,
+                    leading: const GlyphIcon(AppGlyphs.importFile, size: 20),
+                    title: Text(_localName ?? '选择规则文件'),
+                    subtitle: Text(
+                      _localName == null ? '仅支持 .txt，点击从存储中选择' : '点击可重新选择文件',
+                    ),
+                    trailing: TonalButton(
+                      size: TonalButtonSize.compact,
+                      label: _localName == null ? '选择' : '更换',
+                      onPressed: _picking ? null : _pickFile,
+                    ),
+                    onTap: _picking ? null : _pickFile,
+                  ),
                 _SheetField(label: '名称（可选）', child: _nameField('留空则取文件名')),
               ] else ...[
                 _SheetField(
