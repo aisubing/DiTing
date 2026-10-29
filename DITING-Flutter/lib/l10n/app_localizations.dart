@@ -6393,6 +6393,605 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'；已加载全部'**
   String get obsFooterAll;
+
+  /// No description provided for @logsSubStatsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'订阅拦截率'**
+  String get logsSubStatsTitle;
+
+  /// No description provided for @logsRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get logsRefresh;
+
+  /// No description provided for @logsTimeRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间范围'**
+  String get logsTimeRange;
+
+  /// No description provided for @logsSubStatsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'拦截率为所选时间范围内，该订阅拦截请求数占全部已记录请求（DNS + HTTPS）的比例。'**
+  String get logsSubStatsFooter;
+
+  /// No description provided for @logsOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'概览'**
+  String get logsOverview;
+
+  /// No description provided for @logsSubStatsLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取拦截统计'**
+  String get logsSubStatsLoadFailed;
+
+  /// No description provided for @logsLoadingStats.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加载统计数据'**
+  String get logsLoadingStats;
+
+  /// No description provided for @logsBlockingSubs.
+  ///
+  /// In zh, this message translates to:
+  /// **'屏蔽订阅'**
+  String get logsBlockingSubs;
+
+  /// No description provided for @logsMissingSubColumn.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前数据库缺少订阅标记列'**
+  String get logsMissingSubColumn;
+
+  /// No description provided for @logsMissingSubColumnBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'这张库是在加入「订阅拦截统计」之前创建的，日志行里没有记录 blockSubscriptionId。重新产生请求日志后即可统计，历史数据无法补算。'**
+  String get logsMissingSubColumnBody;
+
+  /// No description provided for @logsAllRecordedRequests.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部已记录请求'**
+  String get logsAllRecordedRequests;
+
+  /// No description provided for @logsAllRecordedFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 与 HTTPS 日志合计，含通过、屏蔽和失败。'**
+  String get logsAllRecordedFooter;
+
+  /// No description provided for @logsNoBlockingSubs.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无屏蔽订阅'**
+  String get logsNoBlockingSubs;
+
+  /// No description provided for @logsNoBlockingSubsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入屏蔽订阅并产生 DNS 或 HTTPS 请求后，此处将显示其拦截率。'**
+  String get logsNoBlockingSubsBody;
+
+  /// No description provided for @logsBlockingSubsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'按拦截次数排序；「已删除」表示订阅已移除，但历史命中仍保留。'**
+  String get logsBlockingSubsFooter;
+
+  /// No description provided for @logsExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'已过期'**
+  String get logsExpired;
+
+  /// No description provided for @logsRaceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'竞速统计'**
+  String get logsRaceTitle;
+
+  /// No description provided for @logsRaceFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'只统计真实发出过 DoH 请求的竞速解析；本机缓存命中的查询不进这张表。'**
+  String get logsRaceFooter;
+
+  /// No description provided for @logsRaceLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取竞速记录'**
+  String get logsRaceLoadFailed;
+
+  /// No description provided for @logsLoadingRace.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取竞速记录'**
+  String get logsLoadingRace;
+
+  /// No description provided for @logsRaceSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{range}内共 {count} 次竞速解析。'**
+  String logsRaceSummary(Object count, Object range);
+
+  /// No description provided for @logsRaceEmptyRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选时间范围内还没有竞速记录。'**
+  String get logsRaceEmptyRange;
+
+  /// No description provided for @logsRaceRequests.
+  ///
+  /// In zh, this message translates to:
+  /// **'竞速请求'**
+  String get logsRaceRequests;
+
+  /// No description provided for @logsSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'成功'**
+  String get logsSuccess;
+
+  /// No description provided for @logsAverageElapsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'平均耗时'**
+  String get logsAverageElapsed;
+
+  /// No description provided for @logsStrategyOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'策略概览'**
+  String get logsStrategyOverview;
+
+  /// No description provided for @logsStrategyFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存命中的请求不触发竞速，因此不进这张表；首选命中率 = 首选服务商即胜出且成功的比例。'**
+  String get logsStrategyFooter;
+
+  /// No description provided for @logsWinnerProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'胜出服务商'**
+  String get logsWinnerProviders;
+
+  /// No description provided for @logsNoWinners.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有胜出记录'**
+  String get logsNoWinners;
+
+  /// No description provided for @logsNoWinnersBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'竞速解析成功后，胜出的服务商会在这里按次数排序。'**
+  String get logsNoWinnersBody;
+
+  /// No description provided for @logsWinnerFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'按胜出次数排序；平均耗时是该服务商胜出时的耗时均值。'**
+  String get logsWinnerFooter;
+
+  /// No description provided for @logsAverageWinLatency.
+  ///
+  /// In zh, this message translates to:
+  /// **'平均胜出耗时 {latency}'**
+  String logsAverageWinLatency(Object latency);
+
+  /// No description provided for @logsSmartPrimary.
+  ///
+  /// In zh, this message translates to:
+  /// **'智能选择首选'**
+  String get logsSmartPrimary;
+
+  /// No description provided for @logsSmartPrimaryFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'只有智能选择策略下才有意义；首选命中率统计「首选服务商就是胜出者」的比例，兜底救回的查询不计入。'**
+  String get logsSmartPrimaryFooter;
+
+  /// No description provided for @logsPrimaryHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'首选命中 {percent} · 平均首选耗时 {latency}'**
+  String logsPrimaryHit(Object latency, Object percent);
+
+  /// No description provided for @logsDashboardTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志仪表盘'**
+  String get logsDashboardTitle;
+
+  /// No description provided for @logsModeTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志模式'**
+  String get logsModeTooltip;
+
+  /// No description provided for @logsRequestsDashboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求日志仪表盘'**
+  String get logsRequestsDashboard;
+
+  /// No description provided for @logsRequestsDashboardBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部 DNS、HTTPS、缓存、竞速与规则拦截的实时概览'**
+  String get logsRequestsDashboardBody;
+
+  /// No description provided for @logsFocusedDashboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'重点请求仪表盘'**
+  String get logsFocusedDashboard;
+
+  /// No description provided for @logsFocusedDashboardBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 与 HTTPS 拦截、错误、旁路记录及解析状态概览'**
+  String get logsFocusedDashboardBody;
+
+  /// No description provided for @logsServiceOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务状态与解析概览'**
+  String get logsServiceOverview;
+
+  /// No description provided for @logsPrivacyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前处于隐私模式，不记录请求明细。DNS 缓存、并发竞速与网络流量监控仍正常运行。'**
+  String get logsPrivacyBody;
+
+  /// No description provided for @logsCacheTableTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 缓存表'**
+  String get logsCacheTableTitle;
+
+  /// No description provided for @logsCacheLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取缓存表：{detail}'**
+  String logsCacheLoadFailed(Object detail);
+
+  /// No description provided for @logsLoadingCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取缓存表'**
+  String get logsLoadingCache;
+
+  /// No description provided for @logsCacheEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存表还没有条目'**
+  String get logsCacheEmpty;
+
+  /// No description provided for @logsCacheNoMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的缓存'**
+  String get logsCacheNoMatch;
+
+  /// No description provided for @logsCacheEmptyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎解析成功后会把应答写进 dns_cache；全新安装或隧道刚启动时这张表可能还是空的。'**
+  String get logsCacheEmptyBody;
+
+  /// No description provided for @logsCurrentSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前搜索：{query}'**
+  String logsCurrentSearch(Object query);
+
+  /// No description provided for @logsLiveCache.
+  ///
+  /// In zh, this message translates to:
+  /// **'有效缓存'**
+  String get logsLiveCache;
+
+  /// No description provided for @logsNeverHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未命中'**
+  String get logsNeverHit;
+
+  /// No description provided for @logsCacheFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。'**
+  String logsCacheFooter(Object count);
+
+  /// No description provided for @logsBootstrapTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'Bootstrap 统计'**
+  String get logsBootstrapTitle;
+
+  /// No description provided for @logsBootstrapFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'成功率为成功次数 ÷ 尝试次数；平均耗时按各节点的尝试次数加权。'**
+  String get logsBootstrapFooter;
+
+  /// No description provided for @logsBootstrapLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取 Bootstrap 记录'**
+  String get logsBootstrapLoadFailed;
+
+  /// No description provided for @logsLoadingBootstrap.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取 Bootstrap 记录'**
+  String get logsLoadingBootstrap;
+
+  /// No description provided for @logsBootstrapSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{range}内共 {count} 次 Bootstrap 探测。'**
+  String logsBootstrapSummary(Object count, Object range);
+
+  /// No description provided for @logsBootstrapEmptyRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选时间范围内还没有 Bootstrap 探测记录。'**
+  String get logsBootstrapEmptyRange;
+
+  /// No description provided for @logsAttempts.
+  ///
+  /// In zh, this message translates to:
+  /// **'尝试次数'**
+  String get logsAttempts;
+
+  /// No description provided for @logsSuccessRate.
+  ///
+  /// In zh, this message translates to:
+  /// **'成功率'**
+  String get logsSuccessRate;
+
+  /// No description provided for @logsNodes.
+  ///
+  /// In zh, this message translates to:
+  /// **'节点'**
+  String get logsNodes;
+
+  /// No description provided for @logsNoProbes.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有探测记录'**
+  String get logsNoProbes;
+
+  /// No description provided for @logsNoProbesBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启「启用 Bootstrap IP」并产生解析后，各节点的尝试与成功率会出现在这里。'**
+  String get logsNoProbesBody;
+
+  /// No description provided for @logsNodesFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'按尝试次数排序；显示最近窗口内的聚合值。'**
+  String get logsNodesFooter;
+
+  /// No description provided for @logsCacheDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存详情'**
+  String get logsCacheDetailTitle;
+
+  /// No description provided for @logsCacheExpiringBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存即将过期，过期后下一次查询会重新向上游解析'**
+  String get logsCacheExpiringBody;
+
+  /// No description provided for @logsCacheValidBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存有效，命中时直接返回应答，不再请求上游'**
+  String get logsCacheValidBody;
+
+  /// No description provided for @logsExpiring.
+  ///
+  /// In zh, this message translates to:
+  /// **'即将过期'**
+  String get logsExpiring;
+
+  /// No description provided for @logsValid.
+  ///
+  /// In zh, this message translates to:
+  /// **'有效'**
+  String get logsValid;
+
+  /// No description provided for @logsHitTimes.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中 {count} 次'**
+  String logsHitTimes(Object count);
+
+  /// No description provided for @logsCacheInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存信息'**
+  String get logsCacheInfo;
+
+  /// No description provided for @logsRecordType.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录类型'**
+  String get logsRecordType;
+
+  /// No description provided for @logsRemainingTtl.
+  ///
+  /// In zh, this message translates to:
+  /// **'剩余 TTL'**
+  String get logsRemainingTtl;
+
+  /// No description provided for @logsOriginalTtl.
+  ///
+  /// In zh, this message translates to:
+  /// **'原始 TTL'**
+  String get logsOriginalTtl;
+
+  /// No description provided for @logsExpiry.
+  ///
+  /// In zh, this message translates to:
+  /// **'过期时间'**
+  String get logsExpiry;
+
+  /// No description provided for @logsHitCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中次数'**
+  String get logsHitCount;
+
+  /// No description provided for @logsLastHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'最后命中'**
+  String get logsLastHit;
+
+  /// No description provided for @logsResponseSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'应答大小'**
+  String get logsResponseSize;
+
+  /// No description provided for @logsAnalyzeDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析这个域名'**
+  String get logsAnalyzeDomain;
+
+  /// No description provided for @logsCacheDetailFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存表每 10 秒从引擎内存同步一次，这里是打开时的快照。加入的黑白名单可在「规则」页查看和撤销。'**
+  String get logsCacheDetailFooter;
+
+  /// No description provided for @logsAiInsight.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 研判'**
+  String get logsAiInsight;
+
+  /// No description provided for @logsNotAnalysed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未分析'**
+  String get logsNotAnalysed;
+
+  /// No description provided for @logsHasReport.
+  ///
+  /// In zh, this message translates to:
+  /// **'已有结论'**
+  String get logsHasReport;
+
+  /// No description provided for @logsAiInsightBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'把最近的 DNS 与 HTTPS 记录交给配置的模型，汇总异常请求、防护效果与优化建议。'**
+  String get logsAiInsightBody;
+
+  /// No description provided for @logsAnalyseTraffic.
+  ///
+  /// In zh, this message translates to:
+  /// **'用 AI 研判最近流量'**
+  String get logsAnalyseTraffic;
+
+  /// No description provided for @logsViewFullReport.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看完整报告'**
+  String get logsViewFullReport;
+
+  /// No description provided for @logsModelName.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型 {model}'**
+  String logsModelName(Object model);
+
+  /// No description provided for @logsSuccessWith.
+  ///
+  /// In zh, this message translates to:
+  /// **'成功 {percent}'**
+  String logsSuccessWith(Object percent);
+
+  /// No description provided for @logsAverageWith.
+  ///
+  /// In zh, this message translates to:
+  /// **'平均 {latency}'**
+  String logsAverageWith(Object latency);
+
+  /// No description provided for @logsPrimaryHitOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'首选命中 {percent}'**
+  String logsPrimaryHitOnly(Object percent);
+
+  /// No description provided for @logsFallbackUses.
+  ///
+  /// In zh, this message translates to:
+  /// **'兜底 {count} 次'**
+  String logsFallbackUses(Object count);
+
+  /// No description provided for @logsBootstrapRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'{ip} · 成功 {percent} · 平均 {latency}{failures}'**
+  String logsBootstrapRow(
+    Object failures,
+    Object ip,
+    Object latency,
+    Object percent,
+  );
+
+  /// No description provided for @logsBootstrapFailures.
+  ///
+  /// In zh, this message translates to:
+  /// **' · 失败 {count} 次'**
+  String logsBootstrapFailures(Object count);
+
+  /// No description provided for @logsEntryCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条'**
+  String logsEntryCount(Object count);
+
+  /// No description provided for @logsCacheRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'{ttl} · 命中 {count} 次 · {size} B'**
+  String logsCacheRow(Object count, Object size, Object ttl);
+
+  /// No description provided for @logsLastHitAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'最后命中 {time}'**
+  String logsLastHitAt(Object time);
+
+  /// No description provided for @logsCacheFooterCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。'**
+  String logsCacheFooterCount(Object count);
+
+  /// No description provided for @logsSubStatsRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'{status} | 拦截 {count} 次 | {percent}'**
+  String logsSubStatsRow(Object count, Object percent, Object status);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -18,10 +18,10 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
     final asyncStats = ref.watch(subscriptionInterceptionProvider);
     final range = ref.watch(subscriptionStatsRangeProvider);
     return CommonScaffold(
-      title: '订阅拦截率',
+      title: context.l10n.logsSubStatsTitle,
       actions: [
         IconButton(
-          tooltip: '刷新',
+          tooltip: context.l10n.logsRefresh,
           onPressed: () => ref.read(dnsLogRevisionProvider.notifier).bump(),
           icon: const GlyphIcon(AppGlyphs.refresh),
         ),
@@ -32,7 +32,7 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
             child: Column(
               children: [
                 generateSection(
-                  title: '时间范围',
+                  title: context.l10n.logsTimeRange,
                   items: [
                     LogStatsRangeSelector<SubscriptionStatsRange>(
                       values: SubscriptionStatsRange.values,
@@ -44,10 +44,9 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const ListFooter(
+                ListFooter(
                   text:
-                      '拦截率为所选时间范围内，该订阅拦截请求数占全部已记录请求'
-                      '（DNS + HTTPS）的比例。',
+                      context.l10n.logsSubStatsFooter,
                 ),
               ],
             ),
@@ -68,20 +67,20 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
     if (!asyncStats.hasValue) {
       if (asyncStats.hasError) {
         return lazySectionSlivers(
-          title: '概览',
+          title: context.l10n.logsOverview,
           itemCount: 1,
           itemBuilder: (context, _) => ListItem(
             leading: const GlyphIcon(AppGlyphs.error),
-            title: const Text('无法读取拦截统计'),
+            title: Text(context.l10n.logsSubStatsLoadFailed),
             subtitle: Text('${asyncStats.error}'),
           ),
         );
       }
-      return const [
+      return [
         SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
-            child: LogsPageLoading(label: '正在加载统计数据'),
+            child: LogsPageLoading(label: context.l10n.logsLoadingStats),
           ),
         ),
       ];
@@ -91,14 +90,13 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
 
     if (snapshot.missingColumn) {
       return lazySectionSlivers(
-        title: '屏蔽订阅',
+        title: context.l10n.logsBlockingSubs,
         itemCount: 1,
         itemBuilder: (context, _) => ListItem(
           leading: GlyphIcon(AppGlyphs.warning, color: colorScheme.warning),
-          title: const Text('当前数据库缺少订阅标记列'),
-          subtitle: const Text(
-            '这张库是在加入「订阅拦截统计」之前创建的，日志行里没有记录'
-            'blockSubscriptionId。重新产生请求日志后即可统计，历史数据无法补算。',
+          title: Text(context.l10n.logsMissingSubColumn),
+          subtitle: Text(
+            context.l10n.logsMissingSubColumnBody,
           ),
         ),
       );
@@ -107,38 +105,38 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
     return [
       SliverToBoxAdapter(
         child: generateSection(
-          title: '概览',
+          title: context.l10n.logsOverview,
           items: [
             StatStrip(
               stats: [
                 StatItem(
-                  label: '全部已记录请求',
+                  label: context.l10n.logsAllRecordedRequests,
                   value: countOf(snapshot.totalRequests),
                 ),
               ],
             ),
           ],
-          footer: 'DNS 与 HTTPS 日志合计，含通过、屏蔽和失败。',
+          footer: context.l10n.logsAllRecordedFooter,
         ),
       ),
       if (snapshot.items.isEmpty)
         SliverToBoxAdapter(
           child: generateSection(
-            title: '屏蔽订阅',
+            title: context.l10n.logsBlockingSubs,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.rules),
-                title: const Text('暂无屏蔽订阅'),
-                subtitle: const Text('导入屏蔽订阅并产生 DNS 或 HTTPS 请求后，此处将显示其拦截率。'),
+                title: Text(context.l10n.logsNoBlockingSubs),
+                subtitle: Text(context.l10n.logsNoBlockingSubsBody),
               ),
             ],
           ),
         )
       else
         ...lazySectionSlivers(
-          title: '屏蔽订阅',
+          title: context.l10n.logsBlockingSubs,
           itemCount: snapshot.items.length,
-          footer: '按拦截次数排序；「已删除」表示订阅已移除，但历史命中仍保留。',
+          footer: context.l10n.logsBlockingSubsFooter,
           itemBuilder: (context, index) {
             final item = snapshot.items[index];
             return ListItem(
@@ -150,8 +148,11 @@ class LogsSubscriptionStatsPage extends ConsumerWidget {
               ),
               title: Text(item.name),
               subtitle: Text(
-                '${item.statusLabel} | 拦截 ${countOf(item.hits)} 次 | '
-                '${percentOf(item.rate)}',
+                context.l10n.logsSubStatsRow(
+                  item.statusLabel,
+                  countOf(item.hits),
+                  percentOf(item.rate),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

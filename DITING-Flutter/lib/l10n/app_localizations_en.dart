@@ -3626,4 +3626,369 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get obsFooterAll => '; all loaded';
+
+  @override
+  String get logsSubStatsTitle => 'Subscription block rate';
+
+  @override
+  String get logsRefresh => 'Refresh';
+
+  @override
+  String get logsTimeRange => 'Time range';
+
+  @override
+  String get logsSubStatsFooter =>
+      'The block rate is this subscription\'s blocked requests as a share of all recorded requests (DNS + HTTPS) in the selected range.';
+
+  @override
+  String get logsOverview => 'Overview';
+
+  @override
+  String get logsSubStatsLoadFailed => 'Block statistics cannot be read';
+
+  @override
+  String get logsLoadingStats => 'Loading statistics';
+
+  @override
+  String get logsBlockingSubs => 'Blocking subscriptions';
+
+  @override
+  String get logsMissingSubColumn =>
+      'The database has no subscription tag column';
+
+  @override
+  String get logsMissingSubColumnBody =>
+      'This database predates subscription block statistics, so log rows have no blockSubscriptionId. New requests can be counted; history cannot be backfilled.';
+
+  @override
+  String get logsAllRecordedRequests => 'All recorded requests';
+
+  @override
+  String get logsAllRecordedFooter =>
+      'DNS and HTTPS logs combined, including passed, blocked and failed.';
+
+  @override
+  String get logsNoBlockingSubs => 'No blocking subscriptions';
+
+  @override
+  String get logsNoBlockingSubsBody =>
+      'Once a blocking subscription is imported and DNS or HTTPS requests arrive, its block rate appears here.';
+
+  @override
+  String get logsBlockingSubsFooter =>
+      'Sorted by block count; \"Deleted\" means the subscription is gone but its history is kept.';
+
+  @override
+  String get logsExpired => 'Expired';
+
+  @override
+  String get logsRaceTitle => 'Race statistics';
+
+  @override
+  String get logsRaceFooter =>
+      'Only races that actually sent DoH requests are counted; cache hits never appear here.';
+
+  @override
+  String get logsRaceLoadFailed => 'Race records cannot be read';
+
+  @override
+  String get logsLoadingRace => 'Reading race records';
+
+  @override
+  String logsRaceSummary(Object count, Object range) {
+    return '$count races in $range.';
+  }
+
+  @override
+  String get logsRaceEmptyRange => 'No races in the selected range yet.';
+
+  @override
+  String get logsRaceRequests => 'Races';
+
+  @override
+  String get logsSuccess => 'Succeeded';
+
+  @override
+  String get logsAverageElapsed => 'Average time';
+
+  @override
+  String get logsStrategyOverview => 'Strategy overview';
+
+  @override
+  String get logsStrategyFooter =>
+      'Cache hits do not trigger a race and never appear here; the primary hit rate is the share where the primary resolver won and succeeded.';
+
+  @override
+  String get logsWinnerProviders => 'Winning resolvers';
+
+  @override
+  String get logsNoWinners => 'No winners yet';
+
+  @override
+  String get logsNoWinnersBody =>
+      'After a successful race the winning resolvers are ranked here by count.';
+
+  @override
+  String get logsWinnerFooter =>
+      'Sorted by wins; the average time is the mean when that resolver won.';
+
+  @override
+  String logsAverageWinLatency(Object latency) {
+    return 'Won in $latency on average';
+  }
+
+  @override
+  String get logsSmartPrimary => 'Smart primary';
+
+  @override
+  String get logsSmartPrimaryFooter =>
+      'Only meaningful for the smart strategy: the primary hit rate counts queries where the primary resolver won; queries rescued by a fallback are excluded.';
+
+  @override
+  String logsPrimaryHit(Object latency, Object percent) {
+    return 'Primary hit $percent · average $latency';
+  }
+
+  @override
+  String get logsDashboardTitle => 'Log dashboard';
+
+  @override
+  String get logsModeTooltip => 'Log mode';
+
+  @override
+  String get logsRequestsDashboard => 'Request log dashboard';
+
+  @override
+  String get logsRequestsDashboardBody =>
+      'A live overview of DNS, HTTPS, cache, races and rule blocks';
+
+  @override
+  String get logsFocusedDashboard => 'Key request dashboard';
+
+  @override
+  String get logsFocusedDashboardBody =>
+      'An overview of blocked, failed and bypassed DNS and HTTPS records plus resolution state';
+
+  @override
+  String get logsServiceOverview => 'Service and resolution overview';
+
+  @override
+  String get logsPrivacyBody =>
+      'Privacy mode is on, so no request details are recorded. DNS cache, racing and traffic monitoring keep running.';
+
+  @override
+  String get logsCacheTableTitle => 'DNS cache table';
+
+  @override
+  String logsCacheLoadFailed(Object detail) {
+    return 'The cache table cannot be read: $detail';
+  }
+
+  @override
+  String get logsLoadingCache => 'Reading the cache table';
+
+  @override
+  String get logsCacheEmpty => 'The cache table is empty';
+
+  @override
+  String get logsCacheNoMatch => 'No matching cache entries';
+
+  @override
+  String get logsCacheEmptyBody =>
+      'Successful lookups are written to dns_cache; on a fresh install or right after the tunnel starts the table may still be empty.';
+
+  @override
+  String logsCurrentSearch(Object query) {
+    return 'Searching: $query';
+  }
+
+  @override
+  String get logsLiveCache => 'Live cache entries';
+
+  @override
+  String get logsNeverHit => 'Never hit';
+
+  @override
+  String logsCacheFooter(Object count) {
+    return '$count entries sorted by hits and expiry. Entries with less than 30 seconds of TTL are orange. Tap a row for details, to copy the domain, add it to the lists or analyse it with AI.';
+  }
+
+  @override
+  String get logsBootstrapTitle => 'Bootstrap statistics';
+
+  @override
+  String get logsBootstrapFooter =>
+      'The success rate is successes ÷ attempts; the average time is weighted by each node\'s attempts.';
+
+  @override
+  String get logsBootstrapLoadFailed => 'Bootstrap records cannot be read';
+
+  @override
+  String get logsLoadingBootstrap => 'Reading Bootstrap records';
+
+  @override
+  String logsBootstrapSummary(Object count, Object range) {
+    return '$count Bootstrap probes in $range.';
+  }
+
+  @override
+  String get logsBootstrapEmptyRange =>
+      'No Bootstrap probes in the selected range yet.';
+
+  @override
+  String get logsAttempts => 'Attempts';
+
+  @override
+  String get logsSuccessRate => 'Success rate';
+
+  @override
+  String get logsNodes => 'Nodes';
+
+  @override
+  String get logsNoProbes => 'No probes yet';
+
+  @override
+  String get logsNoProbesBody =>
+      'Enable \"Bootstrap IP\" and generate lookups; each node\'s attempts and success rate appear here.';
+
+  @override
+  String get logsNodesFooter =>
+      'Sorted by attempts; values are aggregated over the window.';
+
+  @override
+  String get logsCacheDetailTitle => 'Cache details';
+
+  @override
+  String get logsCacheExpiringBody =>
+      'This entry is about to expire; the next lookup will go upstream again';
+
+  @override
+  String get logsCacheValidBody =>
+      'The entry is valid; hits are answered without going upstream';
+
+  @override
+  String get logsExpiring => 'Expiring';
+
+  @override
+  String get logsValid => 'Valid';
+
+  @override
+  String logsHitTimes(Object count) {
+    return '$count hits';
+  }
+
+  @override
+  String get logsCacheInfo => 'Cache entry';
+
+  @override
+  String get logsRecordType => 'Record type';
+
+  @override
+  String get logsRemainingTtl => 'Remaining TTL';
+
+  @override
+  String get logsOriginalTtl => 'Original TTL';
+
+  @override
+  String get logsExpiry => 'Expires at';
+
+  @override
+  String get logsHitCount => 'Hits';
+
+  @override
+  String get logsLastHit => 'Last hit';
+
+  @override
+  String get logsResponseSize => 'Response size';
+
+  @override
+  String get logsAnalyzeDomain => 'Analyse this domain';
+
+  @override
+  String get logsCacheDetailFooter =>
+      'The cache table syncs from engine memory every 10 seconds; this is a snapshot from when the page opened. Rules added here can be reviewed and undone on the Rules page.';
+
+  @override
+  String get logsAiInsight => 'AI insight';
+
+  @override
+  String get logsNotAnalysed => 'Not analysed';
+
+  @override
+  String get logsHasReport => 'Report ready';
+
+  @override
+  String get logsAiInsightBody =>
+      'Send recent DNS and HTTPS records to the configured model for a summary of anomalies, protection and improvements.';
+
+  @override
+  String get logsAnalyseTraffic => 'Analyse recent traffic with AI';
+
+  @override
+  String get logsViewFullReport => 'View the full report';
+
+  @override
+  String logsModelName(Object model) {
+    return 'Model $model';
+  }
+
+  @override
+  String logsSuccessWith(Object percent) {
+    return '$percent succeeded';
+  }
+
+  @override
+  String logsAverageWith(Object latency) {
+    return 'Average $latency';
+  }
+
+  @override
+  String logsPrimaryHitOnly(Object percent) {
+    return 'Primary hit $percent';
+  }
+
+  @override
+  String logsFallbackUses(Object count) {
+    return '$count fallbacks';
+  }
+
+  @override
+  String logsBootstrapRow(
+    Object failures,
+    Object ip,
+    Object latency,
+    Object percent,
+  ) {
+    return '$ip · $percent succeeded · average $latency$failures';
+  }
+
+  @override
+  String logsBootstrapFailures(Object count) {
+    return ' · $count failed';
+  }
+
+  @override
+  String logsEntryCount(Object count) {
+    return '$count entries';
+  }
+
+  @override
+  String logsCacheRow(Object count, Object size, Object ttl) {
+    return '$ttl · $count hits · $size B';
+  }
+
+  @override
+  String logsLastHitAt(Object time) {
+    return 'Last hit $time';
+  }
+
+  @override
+  String logsCacheFooterCount(Object count) {
+    return '$count entries sorted by hits and expiry. Entries with less than 30 seconds of TTL are orange. Tap a row for details, to copy the domain, add it to the lists or analyse it with AI.';
+  }
+
+  @override
+  String logsSubStatsRow(Object count, Object percent, Object status) {
+    return '$status | $count blocks | $percent';
+  }
 }

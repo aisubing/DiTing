@@ -1,6 +1,7 @@
 /// Detail sheet for one `dns_cache` row, laid out like the request detail sheet.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/dns_cache_repository.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/pages/observability/domain_detail_parts.dart';
@@ -28,7 +29,7 @@ class DnsCacheDetailSheet extends StatelessWidget {
     final domain = entry.domain.replaceFirst(RegExp(r'\.+$'), '');
 
     return CommonScaffold(
-      title: '缓存详情',
+      title: context.l10n.logsCacheDetailTitle,
       body: PageBody(
         children: [
           DetailHeroCard(
@@ -36,54 +37,56 @@ class DnsCacheDetailSheet extends StatelessWidget {
             color: color,
             title: domain.isEmpty ? '—' : domain,
             subtitle: expiring
-                ? '缓存即将过期，过期后下一次查询会重新向上游解析'
-                : '缓存有效，命中时直接返回应答，不再请求上游',
+                ? context.l10n.logsCacheExpiringBody
+                : context.l10n.logsCacheValidBody,
             chips: [
               TonalChip(
-                label: expiring ? '即将过期' : '有效',
+                label: expiring ? context.l10n.logsExpiring : context.l10n.logsValid,
                 color: color.withValues(alpha: 0.14),
                 foregroundColor: color,
               ),
               DetailMetaChip(label: dnsTypeName(entry.queryType)),
-              DetailMetaChip(label: '命中 ${entry.hitCount} 次'),
+              DetailMetaChip(
+                label: context.l10n.logsHitTimes(entry.hitCount),
+              ),
             ],
           ),
           DomainActionRow(host: domain.isEmpty ? null : domain),
           SectionBlock(
-            title: '缓存信息',
+            title: context.l10n.logsCacheInfo,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: DetailInfoCard(
               children: [
                 KeyValueRow(
-                  label: '记录类型',
+                  label: context.l10n.logsRecordType,
                   value: dnsTypeName(entry.queryType),
                   monospace: true,
                 ),
-                KeyValueRow(label: '剩余 TTL', value: remainingLabel(remaining)),
+                KeyValueRow(label: context.l10n.logsRemainingTtl, value: remainingLabel(remaining, context.l10n)),
                 KeyValueRow(
-                  label: '原始 TTL',
-                  value: remainingLabel(entry.originalTtlSeconds),
+                  label: context.l10n.logsOriginalTtl,
+                  value: remainingLabel(entry.originalTtlSeconds, context.l10n),
                 ),
                 KeyValueRow(
-                  label: '过期时间',
+                  label: context.l10n.logsExpiry,
                   value: shortDateTimeOf(entry.expiresAt),
                   monospace: true,
                 ),
                 KeyValueRow(
-                  label: '命中次数',
+                  label: context.l10n.logsHitCount,
                   value: countOf(entry.hitCount),
                   monospace: true,
                 ),
                 KeyValueRow(
-                  label: '最后命中',
+                  label: context.l10n.logsLastHit,
                   value: switch (lastHitAt) {
-                    null => '尚未命中',
+                    null => context.l10n.logsNeverHit,
                     final at => shortDateTimeOf(at),
                   },
                   monospace: lastHitAt != null,
                 ),
                 KeyValueRow(
-                  label: '应答大小',
+                  label: context.l10n.logsResponseSize,
                   value: '${entry.responseSize} B',
                   monospace: true,
                 ),
@@ -92,14 +95,13 @@ class DnsCacheDetailSheet extends StatelessWidget {
           ),
           if (domain.isNotEmpty)
             SectionBlock(
-              title: 'AI 分析',
+              title: context.l10n.obsAiAnalysis,
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: AgentAnalysisEntryCard(domain: domain, title: '分析这个域名'),
+              child: AgentAnalysisEntryCard(domain: domain, title: context.l10n.logsAnalyzeDomain),
             ),
-          const ListFooter(
+          ListFooter(
             text:
-                '缓存表每 10 秒从引擎内存同步一次，这里是打开时的快照。'
-                '加入的黑白名单可在「规则」页查看和撤销。',
+                context.l10n.logsCacheDetailFooter,
           ),
           const SizedBox(height: 16),
         ],

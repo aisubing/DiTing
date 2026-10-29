@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/agent/agent_analysis_target.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_density.dart';
@@ -24,17 +25,17 @@ class AiInsightCard extends ConsumerWidget {
     final headline = report == null ? null : _headlineOf(report);
 
     return DashboardCard(
-      semanticLabel: 'AI 研判',
+      semanticLabel: context.l10n.logsAiInsight,
       onTap: () => _open(context, state.sessionId, report != null),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardCardHeader(
             glyph: AppGlyphs.sparkle,
-            title: 'AI 研判',
+            title: context.l10n.logsAiInsight,
             trailing: [
               DashboardChip(
-                label: report == null ? '未分析' : '已有结论',
+                label: report == null ? context.l10n.logsNotAnalysed : context.l10n.logsHasReport,
                 tone: report == null
                     ? DashboardChipTone.idle
                     : DashboardChipTone.ok,
@@ -44,8 +45,7 @@ class AiInsightCard extends ConsumerWidget {
           SizedBox(height: 10 * scale),
           if (headline == null)
             Text(
-              '把最近的 DNS 与 HTTPS 记录交给配置的模型，'
-              '汇总异常请求、防护效果与优化建议。',
+              context.l10n.logsAiInsightBody,
               style: AppTextStyle.subheadline
                   .of(context)
                   .copyWith(color: colorScheme.onSurfaceVariant, height: 1.4),
@@ -61,7 +61,7 @@ class AiInsightCard extends ConsumerWidget {
             Text(
               [
                 if (state.model case final model? when model.isNotEmpty)
-                  '模型 $model',
+                  context.l10n.logsModelName(model),
                 if (state.startedAt case final at?)
                   '${at.hour.toString().padLeft(2, '0')}:'
                       '${at.minute.toString().padLeft(2, '0')}',
@@ -77,7 +77,7 @@ class AiInsightCard extends ConsumerWidget {
               glyph: report == null
                   ? AppGlyphs.sparkle
                   : AppGlyphs.chevronForward,
-              label: report == null ? '用 AI 研判最近流量' : '查看完整报告',
+              label: report == null ? context.l10n.logsAnalyseTraffic : context.l10n.logsViewFullReport,
               onPressed: () => _open(context, state.sessionId, report != null),
             ),
           ),

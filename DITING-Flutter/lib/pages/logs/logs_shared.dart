@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/chip_row.dart';
 import 'package:material_ui/material_ui.dart';
@@ -9,17 +10,17 @@ import 'package:material_ui/material_ui.dart';
 export 'package:diting/data/dns_type_name.dart' show dnsTypeName;
 
 /// Seconds to `57 min` / `3 h`. Truncates, does not round up.
-String remainingLabel(int seconds) {
-  if (seconds <= 0) return '已过期';
-  if (seconds >= 3600) return '${seconds ~/ 3600} 小时';
-  if (seconds >= 60) return '${seconds ~/ 60} 分钟';
-  return '$seconds 秒';
+String remainingLabel(int seconds, AppL10n l10n) {
+  if (seconds <= 0) return l10n.logsExpired;
+  if (seconds >= 3600) return l10n.durationHours(seconds ~/ 3600);
+  if (seconds >= 60) return l10n.durationMinutes(seconds ~/ 60);
+  return l10n.durationSeconds(seconds);
 }
 
 /// Millisecond timestamp to `MM-dd HH:mm:ss`. Hand-formatted rather than pulling in intl
 /// for the single place that needs it.
 String shortDateTimeOf(int milliseconds) {
-  if (milliseconds <= 0) return '无';
+  if (milliseconds <= 0) return currentL10n.obsNone;
   final time = DateTime.fromMillisecondsSinceEpoch(milliseconds);
   String two(int value) => value.toString().padLeft(2, '0');
   return '${two(time.month)}-${two(time.day)} '
@@ -28,7 +29,7 @@ String shortDateTimeOf(int milliseconds) {
 
 /// Millisecond timestamp to `HH:mm:ss`.
 String clockOf(int milliseconds) {
-  if (milliseconds <= 0) return '无';
+  if (milliseconds <= 0) return currentL10n.obsNone;
   final time = DateTime.fromMillisecondsSinceEpoch(milliseconds);
   String two(int value) => value.toString().padLeft(2, '0');
   return '${two(time.hour)}:${two(time.minute)}:${two(time.second)}';

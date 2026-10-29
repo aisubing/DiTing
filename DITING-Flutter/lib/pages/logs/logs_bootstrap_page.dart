@@ -38,10 +38,10 @@ class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
     final asyncStats = ref.watch(bootstrapStatsProvider);
     final range = ref.watch(bootstrapStatsRangeProvider);
     return CommonScaffold(
-      title: 'Bootstrap 统计',
+      title: context.l10n.logsBootstrapTitle,
       actions: [
         IconButton(
-          tooltip: '刷新',
+          tooltip: context.l10n.logsRefresh,
           onPressed: () => ref.read(dnsLogRevisionProvider.notifier).bump(),
           icon: const GlyphIcon(AppGlyphs.refresh),
         ),
@@ -49,7 +49,7 @@ class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
       body: PageBody(
         children: [
           generateSection(
-            title: '时间范围',
+            title: context.l10n.logsTimeRange,
             items: [
               LogStatsRangeSelector<LogStatsRange>(
                 values: LogStatsRange.values,
@@ -62,7 +62,7 @@ class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
             ],
           ),
           _buildStats(context, asyncStats, range),
-          const ListFooter(text: '成功率为成功次数 ÷ 尝试次数；平均耗时按各节点的尝试次数加权。'),
+          ListFooter(text: context.l10n.logsBootstrapFooter),
         ],
       ),
     );
@@ -76,19 +76,19 @@ class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
     if (!asyncStats.hasValue) {
       if (asyncStats.hasError) {
         return generateSection(
-          title: '概览',
+          title: context.l10n.logsOverview,
           items: [
             ListItem(
               leading: const GlyphIcon(AppGlyphs.error),
-              title: const Text('无法读取 Bootstrap 记录'),
+              title: Text(context.l10n.logsBootstrapLoadFailed),
               subtitle: Text('${asyncStats.error}'),
             ),
           ],
         );
       }
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
-        child: LogsPageLoading(label: '正在读取 Bootstrap 记录'),
+        child: LogsPageLoading(label: context.l10n.logsLoadingBootstrap),
       );
     }
     final snapshot = asyncStats.requireValue;
@@ -99,25 +99,28 @@ class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         generateSection(
-          title: '概览',
+          title: context.l10n.logsOverview,
           footer: hasData
-              ? '${range.label}内共 ${countOf(snapshot.attempts)} 次 Bootstrap 探测。'
-              : '所选时间范围内还没有 Bootstrap 探测记录。',
+              ? context.l10n.logsBootstrapSummary(
+                  range.label(context.l10n),
+                  countOf(snapshot.attempts),
+                )
+              : context.l10n.logsBootstrapEmptyRange,
           items: [
             StatStrip(
               stats: [
-                StatItem(label: '尝试次数', value: countOf(snapshot.attempts)),
+                StatItem(label: context.l10n.logsAttempts, value: countOf(snapshot.attempts)),
                 StatItem(
-                  label: '成功',
+                  label: context.l10n.logsSuccess,
                   value: hasData ? countOf(snapshot.successes) : '—',
                   color: colorScheme.success,
                 ),
                 StatItem(
-                  label: '成功率',
+                  label: context.l10n.logsSuccessRate,
                   value: hasData ? percentOf(snapshot.successRate) : '—',
                 ),
                 StatItem(
-                  label: '平均耗时',
+                  label: context.l10n.logsAverageElapsed,
                   value: hasData ? millisOf(snapshot.averageElapsedMs) : '—',
                 ),
               ],
@@ -126,35 +129,43 @@ class _LogsBootstrapPageState extends ConsumerState<LogsBootstrapPage> {
         ),
         if (snapshot.ips.isEmpty)
           generateSection(
-            title: '节点',
+            title: context.l10n.logsNodes,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.dns),
-                title: const Text('还没有探测记录'),
-                subtitle: const Text(
-                  '开启「启用 Bootstrap IP」并产生解析后，各节点的尝试与成功率会出现在这里。',
+                title: Text(context.l10n.logsNoProbes),
+                subtitle: Text(
+                  context.l10n.logsNoProbesBody,
                 ),
               ),
             ],
           )
         else
           generateSection(
-            title: '节点',
-            footer: '按尝试次数排序；显示最近窗口内的聚合值。',
+            title: context.l10n.logsNodes,
+            footer: context.l10n.logsNodesFooter,
             items: [
               for (final ip in snapshot.ips)
                 ListItem(
                   leading: const GlyphIcon(AppGlyphs.dns),
                   title: Text(ip.name.isEmpty ? ip.id : ip.name),
                   subtitle: Text(
-                    '${ip.ip} · 成功 '
-                    '${percentOf(ip.attempts == 0 ? 0 : ip.successes / ip.attempts)}'
-                    ' · 平均 ${millisOf(ip.averageElapsedMs ?? 0)}'
-                    '${ip.failures > 0 ? ' · 失败 ${countOf(ip.failures)} 次' : ''}',
+                    context.l10n.logsBootstrapRow(
+                      ip.ip,
+                      percentOf(
+                        ip.attempts == 0 ? 0 : ip.successes / ip.attempts,
+                      ),
+                      millisOf(ip.averageElapsedMs ?? 0),
+                      ip.failures > 0
+                          ? context.l10n.logsBootstrapFailures(
+                              countOf(ip.failures),
+                            )
+                          : '',
+                    ),
                     maxLines: 2,
                   ),
                   trailing: Text(
-                    '${countOf(ip.attempts)} 次',
+                    context.l10n.logTimes(countOf(ip.attempts)),
                     style: AppTextStyle.subheadline
                         .of(context)
                         .copyWith(color: colorScheme.primary),

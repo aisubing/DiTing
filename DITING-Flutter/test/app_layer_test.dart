@@ -351,8 +351,11 @@ void _enumDisplay(AppL10n l10n) {
         );
       }
       for (final kind in RuleKind.values) {
-        expectNoRawEnumLiteral(kind.title, 'RuleKind.${kind.name}.title');
-        expectNoRawEnumLiteral(kind.summary, 'RuleKind.${kind.name}.summary');
+        expectNoRawEnumLiteral(kind.title(l10n), 'RuleKind.${kind.name}.title');
+        expectNoRawEnumLiteral(
+          kind.summary(l10n),
+          'RuleKind.${kind.name}.summary',
+        );
       }
       for (final mode in AppWorkMode.values) {
         expectNoRawEnumLiteral(
@@ -402,7 +405,10 @@ void _enumDisplay(AppL10n l10n) {
         );
       }
       for (final source in RuleSource.values) {
-        expectNoRawEnumLiteral(source.label, 'RuleSource.${source.name}');
+        expectNoRawEnumLiteral(
+          source.label(l10n),
+          'RuleSource.${source.name}',
+        );
       }
       for (final serverStatus in ServerStatus.values) {
         expectNoRawEnumLiteral(

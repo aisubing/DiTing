@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/dns_cache_repository.dart';
 import 'package:diting/pages/logs/logs_cache_detail.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
@@ -47,7 +48,7 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
   Widget build(BuildContext context) {
     final asyncEntries = ref.watch(dnsCacheProvider);
     return CommonScaffold(
-      title: 'DNS 缓存表',
+      title: context.l10n.logsCacheTableTitle,
       searchState: AppBarSearchState(
         onSearch: (value) {
           final next = value.trim().toLowerCase();
@@ -57,7 +58,7 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
       ),
       actions: [
         IconButton(
-          tooltip: '刷新',
+          tooltip: context.l10n.logsRefresh,
           onPressed: () => ref.read(dnsLogRevisionProvider.notifier).bump(),
           icon: const GlyphIcon(AppGlyphs.refresh),
         ),
@@ -75,14 +76,14 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Text(
-              '无法读取缓存表：${asyncEntries.error}',
+              context.l10n.logsCacheLoadFailed('${asyncEntries.error}'),
               textAlign: TextAlign.center,
               style: context.listSubtitleStyle,
             ),
           ),
         );
       }
-      return const LogsPageLoading(label: '正在读取缓存表');
+      return LogsPageLoading(label: context.l10n.logsLoadingCache);
     }
     final entries = _visible(asyncEntries.requireValue);
     // Last-hit time is a separate column because DnsCacheRecord has no lastHitAt.
@@ -92,11 +93,10 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
         slivers: [
           SliverToBoxAdapter(
             child: logsEmpty(
-              label: _query.isEmpty ? '缓存表还没有条目' : '没有匹配的缓存',
+              label: _query.isEmpty ? context.l10n.logsCacheEmpty : context.l10n.logsCacheNoMatch,
               description: _query.isEmpty
-                  ? '引擎解析成功后会把应答写进 dns_cache；'
-                        '全新安装或隧道刚启动时这张表可能还是空的。'
-                  : '当前搜索：$_query',
+                  ? context.l10n.logsCacheEmptyBody
+                  : context.l10n.logsCurrentSearch(_query),
               illustration: NullStatusIllustration.dns,
             ),
           ),
@@ -107,9 +107,9 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
       slivers: [
         SliverToBoxAdapter(
           child: ListHeader(
-            title: '有效缓存',
+            title: context.l10n.logsLiveCache,
             trailing: Text(
-              '${entries.length} 条',
+              context.l10n.logsEntryCount(entries.length),
               style: context.listCaptionStyle,
             ),
           ),
@@ -151,16 +151,21 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
                 spacing: 2,
                 children: [
                   Text(
-                    '原始 TTL ${remainingLabel(entry.originalTtlSeconds)} · '
-                    '命中 ${entry.hitCount} 次 · ${entry.responseSize} B',
+                    context.l10n.logsCacheRow(
+                      '${context.l10n.logsOriginalTtl} ${remainingLabel(entry.originalTtlSeconds, context.l10n)}',
+                      entry.hitCount,
+                      entry.responseSize,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    '最后命中 ${switch (lastHit) {
-                      null => '尚未命中',
-                      final at => shortDateTimeOf(at),
-                    }}',
+                    context.l10n.logsLastHitAt(
+                      switch (lastHit) {
+                        null => context.l10n.logsNeverHit,
+                        final at => shortDateTimeOf(at),
+                      },
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -171,7 +176,7 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
                 spacing: 4,
                 children: [
                   Text(
-                    '剩 ${remainingLabel(entry.remainingTtlSeconds)}',
+                    '${context.l10n.logsRemainingTtl} ${remainingLabel(entry.remainingTtlSeconds, context.l10n)}',
                     style: AppTextStyle.caption1
                         .of(context)
                         .copyWith(
@@ -191,8 +196,7 @@ class _LogsCachePageState extends ConsumerState<LogsCachePage> {
             );
           },
           footer:
-              '共 ${entries.length} 条，按命中次数与过期时间排序。'
-              '剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。',
+              context.l10n.logsCacheFooterCount(entries.length),
         ),
       ],
     );

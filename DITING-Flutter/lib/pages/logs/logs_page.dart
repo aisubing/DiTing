@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/pages/home/dashboard/cards/log_list_cards.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
@@ -62,15 +63,15 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     // Cards read the density scope, mounted at the same level as the home page.
     return DashboardDensityScopeHost(
       child: CommonScaffold(
-        title: '日志仪表盘',
+        title: context.l10n.logsDashboardTitle,
         actions: [
           IconButton(
-            tooltip: '日志模式',
+            tooltip: context.l10n.logsModeTooltip,
             onPressed: () => context.push(HubPaths.logRetention),
             icon: const GlyphIcon(AppGlyphs.sliders),
           ),
           IconButton(
-            tooltip: '刷新',
+            tooltip: context.l10n.logsRefresh,
             // Shares one revision with the drill-down pages: one refresh re-queries every
             // log table, so the dashboard and the cache page never disagree.
             onPressed: () => ref.read(dnsLogRevisionProvider.notifier).bump(),
@@ -99,27 +100,26 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     switch (mode) {
       case LegacyLogMode.all:
         return (
-          hero: const LogsDashboardHero(
-            title: '请求日志仪表盘',
-            description: '全部 DNS、HTTPS、缓存、竞速与规则拦截的实时概览',
+          hero: LogsDashboardHero(
+            title: context.l10n.logsRequestsDashboard,
+            description: context.l10n.logsRequestsDashboardBody,
           ),
           cards: _allMode(context),
         );
       case LegacyLogMode.blockedAndErrors:
         return (
-          hero: const LogsDashboardHero(
-            title: '重点请求仪表盘',
-            description: 'DNS 与 HTTPS 拦截、错误、旁路记录及解析状态概览',
+          hero: LogsDashboardHero(
+            title: context.l10n.logsFocusedDashboard,
+            description: context.l10n.logsFocusedDashboardBody,
           ),
           cards: _filteredMode(context),
         );
       case LegacyLogMode.off:
         return (
-          hero: const LogsDashboardHero(
-            title: '服务状态与解析概览',
+          hero: LogsDashboardHero(
+            title: context.l10n.logsServiceOverview,
             description:
-                '当前处于隐私模式，不记录请求明细。'
-                'DNS 缓存、并发竞速与网络流量监控仍正常运行。',
+                context.l10n.logsPrivacyBody,
           ),
           cards: _offMode(context),
         );
@@ -134,7 +134,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       // navigator hides it and gives the title bar a back arrow.
       onDetail: () => pushStandalone(context, Routes.traffic),
     ),
-    const RequestOverviewCard(title: '请求概览'),
+    const RequestOverviewCard(),
     const AiInsightCard(),
     const LogTrafficStructureCard(mode: TrafficStructureMode.all),
     RecentRequestsLogCard(

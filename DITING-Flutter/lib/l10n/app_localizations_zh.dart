@@ -3452,4 +3452,353 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get obsFooterAll => '；已加载全部';
+
+  @override
+  String get logsSubStatsTitle => '订阅拦截率';
+
+  @override
+  String get logsRefresh => '刷新';
+
+  @override
+  String get logsTimeRange => '时间范围';
+
+  @override
+  String get logsSubStatsFooter =>
+      '拦截率为所选时间范围内，该订阅拦截请求数占全部已记录请求（DNS + HTTPS）的比例。';
+
+  @override
+  String get logsOverview => '概览';
+
+  @override
+  String get logsSubStatsLoadFailed => '无法读取拦截统计';
+
+  @override
+  String get logsLoadingStats => '正在加载统计数据';
+
+  @override
+  String get logsBlockingSubs => '屏蔽订阅';
+
+  @override
+  String get logsMissingSubColumn => '当前数据库缺少订阅标记列';
+
+  @override
+  String get logsMissingSubColumnBody =>
+      '这张库是在加入「订阅拦截统计」之前创建的，日志行里没有记录 blockSubscriptionId。重新产生请求日志后即可统计，历史数据无法补算。';
+
+  @override
+  String get logsAllRecordedRequests => '全部已记录请求';
+
+  @override
+  String get logsAllRecordedFooter => 'DNS 与 HTTPS 日志合计，含通过、屏蔽和失败。';
+
+  @override
+  String get logsNoBlockingSubs => '暂无屏蔽订阅';
+
+  @override
+  String get logsNoBlockingSubsBody => '导入屏蔽订阅并产生 DNS 或 HTTPS 请求后，此处将显示其拦截率。';
+
+  @override
+  String get logsBlockingSubsFooter => '按拦截次数排序；「已删除」表示订阅已移除，但历史命中仍保留。';
+
+  @override
+  String get logsExpired => '已过期';
+
+  @override
+  String get logsRaceTitle => '竞速统计';
+
+  @override
+  String get logsRaceFooter => '只统计真实发出过 DoH 请求的竞速解析；本机缓存命中的查询不进这张表。';
+
+  @override
+  String get logsRaceLoadFailed => '无法读取竞速记录';
+
+  @override
+  String get logsLoadingRace => '正在读取竞速记录';
+
+  @override
+  String logsRaceSummary(Object count, Object range) {
+    return '$range内共 $count 次竞速解析。';
+  }
+
+  @override
+  String get logsRaceEmptyRange => '所选时间范围内还没有竞速记录。';
+
+  @override
+  String get logsRaceRequests => '竞速请求';
+
+  @override
+  String get logsSuccess => '成功';
+
+  @override
+  String get logsAverageElapsed => '平均耗时';
+
+  @override
+  String get logsStrategyOverview => '策略概览';
+
+  @override
+  String get logsStrategyFooter =>
+      '缓存命中的请求不触发竞速，因此不进这张表；首选命中率 = 首选服务商即胜出且成功的比例。';
+
+  @override
+  String get logsWinnerProviders => '胜出服务商';
+
+  @override
+  String get logsNoWinners => '还没有胜出记录';
+
+  @override
+  String get logsNoWinnersBody => '竞速解析成功后，胜出的服务商会在这里按次数排序。';
+
+  @override
+  String get logsWinnerFooter => '按胜出次数排序；平均耗时是该服务商胜出时的耗时均值。';
+
+  @override
+  String logsAverageWinLatency(Object latency) {
+    return '平均胜出耗时 $latency';
+  }
+
+  @override
+  String get logsSmartPrimary => '智能选择首选';
+
+  @override
+  String get logsSmartPrimaryFooter =>
+      '只有智能选择策略下才有意义；首选命中率统计「首选服务商就是胜出者」的比例，兜底救回的查询不计入。';
+
+  @override
+  String logsPrimaryHit(Object latency, Object percent) {
+    return '首选命中 $percent · 平均首选耗时 $latency';
+  }
+
+  @override
+  String get logsDashboardTitle => '日志仪表盘';
+
+  @override
+  String get logsModeTooltip => '日志模式';
+
+  @override
+  String get logsRequestsDashboard => '请求日志仪表盘';
+
+  @override
+  String get logsRequestsDashboardBody => '全部 DNS、HTTPS、缓存、竞速与规则拦截的实时概览';
+
+  @override
+  String get logsFocusedDashboard => '重点请求仪表盘';
+
+  @override
+  String get logsFocusedDashboardBody => 'DNS 与 HTTPS 拦截、错误、旁路记录及解析状态概览';
+
+  @override
+  String get logsServiceOverview => '服务状态与解析概览';
+
+  @override
+  String get logsPrivacyBody => '当前处于隐私模式，不记录请求明细。DNS 缓存、并发竞速与网络流量监控仍正常运行。';
+
+  @override
+  String get logsCacheTableTitle => 'DNS 缓存表';
+
+  @override
+  String logsCacheLoadFailed(Object detail) {
+    return '无法读取缓存表：$detail';
+  }
+
+  @override
+  String get logsLoadingCache => '正在读取缓存表';
+
+  @override
+  String get logsCacheEmpty => '缓存表还没有条目';
+
+  @override
+  String get logsCacheNoMatch => '没有匹配的缓存';
+
+  @override
+  String get logsCacheEmptyBody =>
+      '引擎解析成功后会把应答写进 dns_cache；全新安装或隧道刚启动时这张表可能还是空的。';
+
+  @override
+  String logsCurrentSearch(Object query) {
+    return '当前搜索：$query';
+  }
+
+  @override
+  String get logsLiveCache => '有效缓存';
+
+  @override
+  String get logsNeverHit => '尚未命中';
+
+  @override
+  String logsCacheFooter(Object count) {
+    return '共 $count 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。';
+  }
+
+  @override
+  String get logsBootstrapTitle => 'Bootstrap 统计';
+
+  @override
+  String get logsBootstrapFooter => '成功率为成功次数 ÷ 尝试次数；平均耗时按各节点的尝试次数加权。';
+
+  @override
+  String get logsBootstrapLoadFailed => '无法读取 Bootstrap 记录';
+
+  @override
+  String get logsLoadingBootstrap => '正在读取 Bootstrap 记录';
+
+  @override
+  String logsBootstrapSummary(Object count, Object range) {
+    return '$range内共 $count 次 Bootstrap 探测。';
+  }
+
+  @override
+  String get logsBootstrapEmptyRange => '所选时间范围内还没有 Bootstrap 探测记录。';
+
+  @override
+  String get logsAttempts => '尝试次数';
+
+  @override
+  String get logsSuccessRate => '成功率';
+
+  @override
+  String get logsNodes => '节点';
+
+  @override
+  String get logsNoProbes => '还没有探测记录';
+
+  @override
+  String get logsNoProbesBody => '开启「启用 Bootstrap IP」并产生解析后，各节点的尝试与成功率会出现在这里。';
+
+  @override
+  String get logsNodesFooter => '按尝试次数排序；显示最近窗口内的聚合值。';
+
+  @override
+  String get logsCacheDetailTitle => '缓存详情';
+
+  @override
+  String get logsCacheExpiringBody => '缓存即将过期，过期后下一次查询会重新向上游解析';
+
+  @override
+  String get logsCacheValidBody => '缓存有效，命中时直接返回应答，不再请求上游';
+
+  @override
+  String get logsExpiring => '即将过期';
+
+  @override
+  String get logsValid => '有效';
+
+  @override
+  String logsHitTimes(Object count) {
+    return '命中 $count 次';
+  }
+
+  @override
+  String get logsCacheInfo => '缓存信息';
+
+  @override
+  String get logsRecordType => '记录类型';
+
+  @override
+  String get logsRemainingTtl => '剩余 TTL';
+
+  @override
+  String get logsOriginalTtl => '原始 TTL';
+
+  @override
+  String get logsExpiry => '过期时间';
+
+  @override
+  String get logsHitCount => '命中次数';
+
+  @override
+  String get logsLastHit => '最后命中';
+
+  @override
+  String get logsResponseSize => '应答大小';
+
+  @override
+  String get logsAnalyzeDomain => '分析这个域名';
+
+  @override
+  String get logsCacheDetailFooter =>
+      '缓存表每 10 秒从引擎内存同步一次，这里是打开时的快照。加入的黑白名单可在「规则」页查看和撤销。';
+
+  @override
+  String get logsAiInsight => 'AI 研判';
+
+  @override
+  String get logsNotAnalysed => '未分析';
+
+  @override
+  String get logsHasReport => '已有结论';
+
+  @override
+  String get logsAiInsightBody =>
+      '把最近的 DNS 与 HTTPS 记录交给配置的模型，汇总异常请求、防护效果与优化建议。';
+
+  @override
+  String get logsAnalyseTraffic => '用 AI 研判最近流量';
+
+  @override
+  String get logsViewFullReport => '查看完整报告';
+
+  @override
+  String logsModelName(Object model) {
+    return '模型 $model';
+  }
+
+  @override
+  String logsSuccessWith(Object percent) {
+    return '成功 $percent';
+  }
+
+  @override
+  String logsAverageWith(Object latency) {
+    return '平均 $latency';
+  }
+
+  @override
+  String logsPrimaryHitOnly(Object percent) {
+    return '首选命中 $percent';
+  }
+
+  @override
+  String logsFallbackUses(Object count) {
+    return '兜底 $count 次';
+  }
+
+  @override
+  String logsBootstrapRow(
+    Object failures,
+    Object ip,
+    Object latency,
+    Object percent,
+  ) {
+    return '$ip · 成功 $percent · 平均 $latency$failures';
+  }
+
+  @override
+  String logsBootstrapFailures(Object count) {
+    return ' · 失败 $count 次';
+  }
+
+  @override
+  String logsEntryCount(Object count) {
+    return '$count 条';
+  }
+
+  @override
+  String logsCacheRow(Object count, Object size, Object ttl) {
+    return '$ttl · 命中 $count 次 · $size B';
+  }
+
+  @override
+  String logsLastHitAt(Object time) {
+    return '最后命中 $time';
+  }
+
+  @override
+  String logsCacheFooterCount(Object count) {
+    return '共 $count 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。';
+  }
+
+  @override
+  String logsSubStatsRow(Object count, Object percent, Object status) {
+    return '$status | 拦截 $count 次 | $percent';
+  }
 }
