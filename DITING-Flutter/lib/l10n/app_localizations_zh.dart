@@ -4546,4 +4546,265 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get permGrant => '去授予';
+
+  @override
+  String get toolSpeedTest => '测速';
+
+  @override
+  String get toolPing => 'Ping 测试';
+
+  @override
+  String get toolDnsLookup => 'DNS 解析';
+
+  @override
+  String get toolTraceroute => '路由追踪';
+
+  @override
+  String get toolDiagnostics => '网络诊断';
+
+  @override
+  String get toolRefreshInfo => '刷新网络信息';
+
+  @override
+  String get toolActiveInterface => '活动接口';
+
+  @override
+  String get toolLocalAddress => '本机地址';
+
+  @override
+  String get toolDnsServers => 'DNS 服务器';
+
+  @override
+  String get toolCountUnit => '个';
+
+  @override
+  String toolPrivateDnsProbe(Object dns) {
+    return '探测走物理网络（本应用流量不经过隧道）；系统私人 DNS：$dns';
+  }
+
+  @override
+  String get toolPhysicalProbe => '探测走物理网络：本应用自身流量被排除在隧道外，下面四个工具测的都是物理链路的真实时延。';
+
+  @override
+  String get toolInputHostOrIp => '输入 IP 或域名';
+
+  @override
+  String get toolPingCount4 => '4 次';
+
+  @override
+  String get toolPingCount10 => '10 次';
+
+  @override
+  String get toolPingOptions => '探测选项';
+
+  @override
+  String get toolViaTunnel => '通过 Go 隧道解析';
+
+  @override
+  String get toolViaTunnelPingBody => '域名经运行中的 Go 隧道解析（应用覆写与过滤规则），探测仍走物理网络';
+
+  @override
+  String get toolStartPing => '开始 Ping';
+
+  @override
+  String get toolPinging => '正在探测…';
+
+  @override
+  String get toolTcpFallback =>
+      '系统 ICMP 受限，已用 TCP 回退测量。此时的时延是连接建立耗时，不能与 ICMP 往返时延直接比较。';
+
+  @override
+  String get toolPingFailed => '探测失败：未收到任何回复';
+
+  @override
+  String get toolTarget => '目标';
+
+  @override
+  String get toolResolvedAddress => '解析地址';
+
+  @override
+  String get toolAddressFamily => '地址族';
+
+  @override
+  String get toolSentReceived => '发送 / 接收';
+
+  @override
+  String get toolPacketLoss => '丢包率';
+
+  @override
+  String get toolMinAvgMax => '最小 / 平均 / 最大';
+
+  @override
+  String get toolJitter => '抖动';
+
+  @override
+  String get toolJitterFooter => '抖动按各包时延与均值的平均绝对偏差计算。';
+
+  @override
+  String toolPacketN(Object n) {
+    return '第 $n 个包';
+  }
+
+  @override
+  String get toolTimeout => '超时';
+
+  @override
+  String toolPingSummary(Object failed, Object sent) {
+    return '本次共发送 $sent 个探测包，失败 $failed 个。';
+  }
+
+  @override
+  String get toolPingFooter =>
+      'Ping 由原生侧执行：优先调用系统 ping 二进制，不可用时回退到地址可达性与 TCP 端口握手计时，并会明确标注。';
+
+  @override
+  String get toolDnsSystem => '跟随系统';
+
+  @override
+  String get toolDnsCustom => '自定义';
+
+  @override
+  String get toolCustomDnsError => '请输入自定义 DNS 服务器 IP';
+
+  @override
+  String get toolInputDomain => '输入要解析的域名';
+
+  @override
+  String get toolCustomDnsHint => '自定义 DNS 服务器 IP（如 1.1.1.1）';
+
+  @override
+  String get toolQueryOptions => '查询选项';
+
+  @override
+  String get toolViaTunnelDnsBody => '开启后由隧道引擎解析，会套用拦截规则与缓存；关闭时直接问系统解析器';
+
+  @override
+  String get toolStartQuery => '开始查询';
+
+  @override
+  String get toolQuerying => '查询中…';
+
+  @override
+  String get toolQueryDomain => '查询域名';
+
+  @override
+  String get toolRecordType => '记录类型';
+
+  @override
+  String get toolAnswerSource => '答案来源';
+
+  @override
+  String get toolElapsed => '耗时';
+
+  @override
+  String get toolAnswerCount => '答案条数';
+
+  @override
+  String get toolDnsBlockedBody => '该域名被隧道规则拦截，因此没有真实上游应答。';
+
+  @override
+  String get toolDnsNoAnswers => '没有返回任何应答记录。若来源是「被规则拦截」，说明该域名在本机规则里被拦掉了。';
+
+  @override
+  String get toolDnsFooter =>
+      '「走隧道查询」问的是本软件的解析链路（含规则与缓存），此时服务器由隧道决定；关闭后可选择跟随系统或指定一台 DNS 服务器，两者结果可能不同。';
+
+  @override
+  String get toolTunnelEngine => '隧道引擎';
+
+  @override
+  String get toolSpeedChecking => '正在检查测速通道…';
+
+  @override
+  String get toolSpeedUnsupported =>
+      '当前设备不支持测速：本机没有提供 DNS 查询耗时测量的原生通道，页面不会显示任何模拟耗时。';
+
+  @override
+  String get toolSpeedDomainHint => '用于测速的域名';
+
+  @override
+  String get toolSpeedProviders => '测速服务商';
+
+  @override
+  String toolNoProviders(Object protocol) {
+    return '暂无 $protocol DNS 服务商';
+  }
+
+  @override
+  String get toolNoProvidersBody => '在「服务商管理」里添加后即可参与测速';
+
+  @override
+  String get toolSpeedSelectionNote =>
+      '可选择 1 个或多个服务商；这里的选择只用于 DNS 查询测速，不影响竞速模式。';
+
+  @override
+  String get toolTestQueryTime => '测试查询耗时';
+
+  @override
+  String get toolSpeedRunning => '测速中…';
+
+  @override
+  String get toolSpeedEmpty =>
+      '尚未测速。选好服务商后点上面的按钮，本应用会直接向每个服务商发送 3 次真实 DNS 查询并记录往返耗时。';
+
+  @override
+  String get toolSpeedResults => '查询耗时结果';
+
+  @override
+  String toolSpeedResultsFooter(Object domain) {
+    return '测速结果按成功优先、平均耗时从低到高排序；结果只反映本次查询时的网络状态。域名当前为「$domain」。';
+  }
+
+  @override
+  String get toolSpeedFooter =>
+      '测速由原生侧执行：向每个服务商分别发送真实的 DoH / DoT / 明文 DNS 查询，只有拿到成功应答的样本才计入耗时。';
+
+  @override
+  String get toolFastest => '最快';
+
+  @override
+  String toolSampleCount(Object count, Object rate) {
+    return '$rate · 样本 $count';
+  }
+
+  @override
+  String toolAllFailed(Object count) {
+    return '全部失败（$count 次）';
+  }
+
+  @override
+  String get toolTraceOptions => '追踪选项';
+
+  @override
+  String get toolStartTrace => '开始追踪';
+
+  @override
+  String get toolTracing => '追踪中…';
+
+  @override
+  String get toolTraceFailed => '追踪失败：未收到任何回应';
+
+  @override
+  String get toolTraceCancelled => '追踪已取消。';
+
+  @override
+  String get toolHopCount => '跳数';
+
+  @override
+  String toolHopCountValue(Object count, Object max) {
+    return '$count / 最多 $max';
+  }
+
+  @override
+  String get toolNoResponse => '无响应';
+
+  @override
+  String get toolTraceFooter =>
+      '星号表示该跳在超时时间内没有回包——不代表链路断了，很多路由器不响应探测包。绿色一行表示已到达目标。';
+
+  @override
+  String get toolTraceHops15 => '15 跳';
+
+  @override
+  String get toolTraceHops30 => '30 跳';
 }

@@ -44,15 +44,14 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
     return PageBody(
       children: [
         if (available.isLoading)
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: _ToolNotice(text: '正在检查测速通道…'),
+            child: _ToolNotice(text: context.l10n.toolSpeedChecking),
           ),
         if (unavailable)
-          const _ToolNotice(
+          _ToolNotice(
             text:
-                '当前设备不支持测速：本机没有提供 DNS 查询耗时测量的原生通道，'
-                '页面不会显示任何模拟耗时。',
+                context.l10n.toolSpeedUnsupported,
             isError: true,
             glyph: AppGlyphs.warning,
           ),
@@ -62,7 +61,7 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: _ToolField(
               controller: _domain,
-              hintText: '用于测速的域名',
+              hintText: context.l10n.toolSpeedDomainHint,
               glyph: AppGlyphs.language,
               enabled: !state.running && !unavailable,
               // Write back on every keystroke: `_run` reads the provider value, so a
@@ -86,13 +85,13 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
           ),
         ),
         generateSection(
-          title: '测速服务商',
+          title: context.l10n.toolSpeedProviders,
           items: [
             if (providers.isEmpty)
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.info, size: 20),
-                title: Text('暂无 ${protocol.label} DNS 服务商'),
-                subtitle: const Text('在「服务商管理」里添加后即可参与测速'),
+                title: Text(context.l10n.toolNoProviders(protocol.label)),
+                subtitle: Text(context.l10n.toolNoProvidersBody),
               )
             else
               for (final spec in providers)
@@ -109,26 +108,24 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
                 ),
           ],
           footer:
-              '可选择 1 个或多个服务商；这里的选择只用于 DNS 查询测速，'
-              '不影响竞速模式。',
+              context.l10n.toolSpeedSelectionNote,
         ),
         if (state.error case final error?)
           _ToolNotice(text: error, isError: true, glyph: AppGlyphs.error),
         _RunButton(
           glyph: AppGlyphs.speed,
-          label: '测试查询耗时',
-          runningLabel: '测速中…',
+          label: context.l10n.toolTestQueryTime,
+          runningLabel: context.l10n.toolSpeedRunning,
           running: state.running,
           onPressed: unavailable || selected.isEmpty ? null : _run,
         ),
         if (!state.running && state.results.isEmpty && !unavailable)
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: CommonCard(
               padding: EdgeInsets.all(16),
               child: Text(
-                '尚未测速。选好服务商后点上面的按钮，本应用会直接向每个服务商发送 3 次'
-                '真实 DNS 查询并记录往返耗时。',
+                context.l10n.toolSpeedEmpty,
               ),
             ),
           ),
@@ -137,7 +134,7 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
           /// drives separators from `ItemPosition`, while `Divider(height: 0.5)` is a full logical
           /// pixel.
           generateSection(
-            title: '查询耗时结果',
+            title: context.l10n.toolSpeedResults,
             items: [
               for (final (index, sample) in state.results.indexed)
                 _SpeedResultRow(
@@ -148,14 +145,12 @@ class _SpeedTestPanelState extends ConsumerState<_SpeedTestPanel> {
                 ),
             ],
             footer:
-                '测速结果按成功优先、平均耗时从低到高排序；'
-                '结果只反映本次查询时的网络状态。域名当前为「$domain」。',
+                context.l10n.toolSpeedResultsFooter(domain),
           ),
         ],
-        const ListFooter(
+        ListFooter(
           text:
-              '测速由原生侧执行：向每个服务商分别发送真实的 DoH / DoT / 明文 DNS '
-              '查询，只有拿到成功应答的样本才计入耗时。',
+              context.l10n.toolSpeedFooter,
         ),
         const SizedBox(height: 24),
       ],
@@ -232,7 +227,7 @@ class _SpeedResultRow extends StatelessWidget {
               ),
               if (isFastest)
                 TonalChip(
-                  label: '最快',
+                  label: context.l10n.toolFastest,
                   color: colorScheme.primaryContainer,
                   foregroundColor: colorScheme.onPrimaryContainer,
                 ),
@@ -272,14 +267,16 @@ class _SpeedResultRow extends StatelessWidget {
             ),
             Text(
               sample.samplesMs.length > 1
-                  ? '${sample.successRateLabel} · 样本 '
-                        '${sample.samplesMs.map((ms) => '$ms ms').join(' / ')}'
+                  ? context.l10n.toolSampleCount(
+                      sample.successRateLabel,
+                      sample.samplesMs.map((ms) => '$ms ms').join(' / '),
+                    )
                   : sample.successRateLabel,
               style: context.listCaptionStyle,
             ),
           ] else ...[
             Text(
-              '全部失败（${sample.attempts} 次）',
+              context.l10n.toolAllFailed('${sample.attempts}'),
               style: context.listCaptionStyle.copyWith(
                 color: colorScheme.error,
               ),

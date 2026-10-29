@@ -1,6 +1,7 @@
 /// Network diagnostics: four tabs; `Stack` + `Offstage` keeps each tab state.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/diagnostics_bridge.dart';
 import 'package:diting/data/native/dns_latency_bridge.dart';
 import 'package:diting/state/diagnostics_providers.dart';
@@ -18,15 +19,21 @@ part 'tools_speed_panel.dart';
 part 'tools_trace_panel.dart';
 
 enum NetworkTool {
-  speedTest('测速', AppGlyphs.speed),
-  ping('Ping 测试', AppGlyphs.connections),
-  dnsLookup('DNS 解析', AppGlyphs.dns),
-  traceroute('路由追踪', AppGlyphs.split);
+  speedTest(AppGlyphs.speed),
+  ping(AppGlyphs.connections),
+  dnsLookup(AppGlyphs.dns),
+  traceroute(AppGlyphs.split);
 
-  const NetworkTool(this.label, this.glyph);
+  const NetworkTool(this.glyph);
 
-  final String label;
   final Glyph glyph;
+
+  String label(AppL10n l10n) => switch (this) {
+    speedTest => l10n.toolSpeedTest,
+    ping => l10n.toolPing,
+    dnsLookup => l10n.toolDnsLookup,
+    traceroute => l10n.toolTraceroute,
+  };
 }
 
 class ToolsPage extends ConsumerStatefulWidget {
@@ -44,11 +51,11 @@ class _ToolsPageState extends ConsumerState<ToolsPage> {
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      title: '网络诊断',
+      title: context.l10n.toolDiagnostics,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.refresh,
-          tooltip: '刷新网络信息',
+          tooltip: context.l10n.toolRefreshInfo,
           onPressed: () => ref.invalidate(networkInfoProvider),
         ),
       ],
@@ -61,7 +68,8 @@ class _ToolsPageState extends ConsumerState<ToolsPage> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: SegmentedControl<NetworkTool>(
                 segments: [
-                  for (final tool in NetworkTool.values) (tool, tool.label),
+                  for (final tool in NetworkTool.values)
+                    (tool, tool.label(context.l10n)),
                 ],
                 value: _tool,
                 onChanged: (tool) => setState(() => _tool = tool),
@@ -78,7 +86,7 @@ class _ToolsPageState extends ConsumerState<ToolsPage> {
                         child: switch (tool) {
                           NetworkTool.speedTest => const _SpeedTestPanel(),
                           NetworkTool.ping => const _PingPanel(),
-                          NetworkTool.dnsLookup => const _DnsLookupPanel(),
+                          NetworkTool.dnsLookup => _DnsLookupPanel(),
                           NetworkTool.traceroute => const _TraceroutePanel(),
                         },
                       ),
@@ -113,24 +121,24 @@ class _NetworkOverviewCard extends ConsumerWidget {
             StatStrip(
               stats: [
                 StatItem(
-                  label: '活动接口',
+                  label: context.l10n.toolActiveInterface,
                   value: info == null ? '—' : networkInterfaceLabel(info),
                   color: info?.vpnActive == true
                       ? colorScheme.warning
                       : colorScheme.success,
                 ),
                 StatItem(
-                  label: '本机地址',
+                  label: context.l10n.toolLocalAddress,
                   value: (info?.localIpv4.isNotEmpty ?? false)
                       ? info!.localIpv4
                       : '—',
                 ),
                 StatItem(
-                  label: 'DNS 服务器',
+                  label: context.l10n.toolDnsServers,
                   value: (info?.dnsServers.isNotEmpty ?? false)
                       ? '${info!.dnsServers.length}'
                       : '—',
-                  unit: (info?.dnsServers.isNotEmpty ?? false) ? '个' : null,
+                  unit: (info?.dnsServers.isNotEmpty ?? false) ? context.l10n.toolCountUnit : null,
                 ),
               ],
             ),
@@ -148,10 +156,8 @@ class _NetworkOverviewCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       info != null && info.privateDns != 'off'
-                          ? '探测走物理网络（本应用流量不经过隧道）；'
-                                '系统私人 DNS：${info.privateDns}'
-                          : '探测走物理网络：本应用自身流量被排除在隧道外，'
-                                '下面四个工具测的都是物理链路的真实时延。',
+                          ? context.l10n.toolPrivateDnsProbe(info.privateDns)
+                          : context.l10n.toolPhysicalProbe,
                       style: context.listCaptionStyle,
                     ),
                   ),

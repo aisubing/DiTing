@@ -2,6 +2,7 @@
 /// verbatim.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'dart:convert';
 
 import 'package:diting/data/prefs/legacy_prefs_store.dart';

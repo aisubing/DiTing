@@ -59,7 +59,7 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: _ToolField(
             controller: _target,
-            hintText: '输入 IP 或域名',
+            hintText: context.l10n.toolInputHostOrIp,
             glyph: AppGlyphs.target,
             enabled: !_running,
             onSubmitted: (_) => _run(),
@@ -69,7 +69,7 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: SegmentedControl<int>(
-            segments: const [(4, '4 次'), (10, '10 次')],
+            segments: [(4, context.l10n.toolPingCount4), (10, context.l10n.toolPingCount10)],
             value: _count,
             onChanged: (count) {
               if (!_running) {
@@ -79,12 +79,12 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
           ),
         ),
         generateSection(
-          title: '探测选项',
+          title: context.l10n.toolPingOptions,
           items: [
             _ViaTunnelRow(
               storageKey: pingViaTunnelKey,
-              title: '通过 Go 隧道解析',
-              subtitle: '域名经运行中的 Go 隧道解析（应用覆写与过滤规则），探测仍走物理网络',
+              title: context.l10n.toolViaTunnel,
+              subtitle: context.l10n.toolViaTunnelPingBody,
               value: flags.pingViaTunnel,
               enabled: !_running,
             ),
@@ -92,8 +92,8 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
         ),
         _RunButton(
           glyph: AppGlyphs.send,
-          label: '开始 Ping',
-          runningLabel: '正在探测…',
+          label: context.l10n.toolStartPing,
+          runningLabel: context.l10n.toolPinging,
           running: _running,
           onPressed: _run,
         ),
@@ -101,51 +101,50 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
           _ToolNotice(text: error, isError: true, glyph: AppGlyphs.error),
         if (result != null) ...[
           if (result.measuredWithFallback)
-            const _ToolNotice(
+            _ToolNotice(
               text:
-                  '系统 ICMP 受限，已用 TCP 回退测量。此时的时延是连接建立耗时，'
-                  '不能与 ICMP 往返时延直接比较。',
+                  context.l10n.toolTcpFallback,
               glyph: AppGlyphs.warning,
             ),
           if (!result.success)
             _ToolNotice(
-              text: result.message ?? '探测失败：未收到任何回复',
+              text: result.message ?? context.l10n.toolPingFailed,
               isError: true,
               glyph: AppGlyphs.error,
             ),
           _ToolSection(
             rows: [
-              KeyValueRow(label: '目标', value: result.target, monospace: true),
+              KeyValueRow(label: context.l10n.toolTarget, value: result.target, monospace: true),
               KeyValueRow(
-                label: '解析地址',
+                label: context.l10n.toolResolvedAddress,
                 value: result.resolvedAddress ?? '—',
                 monospace: true,
               ),
-              KeyValueRow(label: '地址族', value: result.addressFamily ?? '—'),
+              KeyValueRow(label: context.l10n.toolAddressFamily, value: result.addressFamily ?? '—'),
               KeyValueRow(
-                label: '发送 / 接收',
+                label: context.l10n.toolSentReceived,
                 value: '${result.transmitted} / ${result.received}',
                 monospace: true,
               ),
               KeyValueRow(
-                label: '丢包率',
+                label: context.l10n.toolPacketLoss,
                 value: '${result.lossPercent.toStringAsFixed(1)} %',
                 monospace: true,
               ),
               KeyValueRow(
-                label: '最小 / 平均 / 最大',
+                label: context.l10n.toolMinAvgMax,
                 value:
                     '${_msText(result.minMs)} / ${_msText(result.avgMs)} / '
                     '${_msText(result.maxMs)}',
                 monospace: true,
               ),
               KeyValueRow(
-                label: '抖动',
+                label: context.l10n.toolJitter,
                 value: _msText(result.jitterMs),
                 monospace: true,
               ),
             ],
-            footer: result.success ? '抖动按各包时延与均值的平均绝对偏差计算。' : null,
+            footer: result.success ? context.l10n.toolJitterFooter : null,
           ),
           if (result.replies.isNotEmpty)
             Padding(
@@ -157,10 +156,10 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
                   children: [
                     for (final reply in result.replies)
                       KeyValueRow(
-                        label: '第 ${reply.sequence} 个包',
+                        label: context.l10n.toolPacketN('${reply.sequence}'),
                         value: reply.ok
                             ? _msText(reply.elapsedMs)
-                            : (reply.error ?? '超时'),
+                            : (reply.error ?? context.l10n.toolTimeout),
                         monospace: true,
                       ),
                   ],
@@ -169,14 +168,14 @@ class _PingPanelState extends ConsumerState<_PingPanel> {
             ),
           PageIntroText(
             text:
-                '本次共发送 ${result.transmitted} 个探测包，'
-                '失败 ${result.transmitted - result.received} 个。',
+                context.l10n.toolPingSummary(
+                  '${result.transmitted}',
+                  '${result.transmitted - result.received}',
+                ),
           ),
         ],
-        const ListFooter(
-          text:
-              'Ping 由原生侧执行：优先调用系统 ping 二进制，不可用时回退到'
-              '地址可达性与 TCP 端口握手计时，并会明确标注。',
+        ListFooter(
+          text: context.l10n.toolPingFooter,
         ),
         const SizedBox(height: 24),
       ],

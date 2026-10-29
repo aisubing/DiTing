@@ -3,19 +3,20 @@ part of 'tools_page.dart';
 /// DNS lookup panel backed by `DiagnosticsRunner.lookupDns`. Server mode is `SYSTEM` or `CUSTOM`
 /// (real UDP query); `viaTunnel` asks the tunnel engine. Every result carries its `source`.
 class _DnsLookupPanel extends ConsumerStatefulWidget {
-  const _DnsLookupPanel();
+  _DnsLookupPanel();
 
   @override
   ConsumerState<_DnsLookupPanel> createState() => _DnsLookupPanelState();
 }
 
 enum _DnsServerMode {
-  system('跟随系统'),
-  custom('自定义');
+  system,
+  custom;
 
-  const _DnsServerMode(this.label);
-
-  final String label;
+  String label(AppL10n l10n) => switch (this) {
+    system => l10n.toolDnsSystem,
+    custom => l10n.toolDnsCustom,
+  };
 }
 
 class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
@@ -51,7 +52,7 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
     // An empty custom server is treated as "system" natively, so reject it before the
     // request: the user would think they tested their own server.
     if (server != null && server.isEmpty) {
-      setState(() => _hostError = '请输入自定义 DNS 服务器 IP');
+      setState(() => _hostError = context.l10n.toolCustomDnsError);
       return;
     }
     setState(() {
@@ -89,7 +90,7 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: _ToolField(
             controller: _domain,
-            hintText: '输入要解析的域名',
+            hintText: context.l10n.toolInputDomain,
             glyph: AppGlyphs.language,
             enabled: !_running,
             onSubmitted: (_) => _run(),
@@ -112,7 +113,8 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: SegmentedControl<_DnsServerMode>(
               segments: [
-                for (final mode in _DnsServerMode.values) (mode, mode.label),
+                for (final mode in _DnsServerMode.values)
+                  (mode, mode.label(context.l10n)),
               ],
               value: _serverMode,
               onChanged: (mode) {
@@ -127,7 +129,7 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: _ToolField(
                 controller: _server,
-                hintText: '自定义 DNS 服务器 IP（如 1.1.1.1）',
+                hintText: context.l10n.toolCustomDnsHint,
                 glyph: AppGlyphs.dns,
                 enabled: !_running,
                 onSubmitted: (_) => _run(),
@@ -135,14 +137,12 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
             ),
         ],
         generateSection(
-          title: '查询选项',
+          title: context.l10n.toolQueryOptions,
           items: [
             _ViaTunnelRow(
               storageKey: dnsLookupViaTunnelKey,
-              title: '通过 Go 隧道解析',
-              subtitle:
-                  '开启后由隧道引擎解析，会套用拦截规则与缓存；'
-                  '关闭时直接问系统解析器',
+              title: context.l10n.toolViaTunnel,
+              subtitle: context.l10n.toolViaTunnelDnsBody,
               value: flags.dnsLookupViaTunnel,
               enabled: !_running,
             ),
@@ -150,8 +150,8 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
         ),
         _RunButton(
           glyph: AppGlyphs.search,
-          label: '开始查询',
-          runningLabel: '查询中…',
+          label: context.l10n.toolStartQuery,
+          runningLabel: context.l10n.toolQuerying,
           running: _running,
           onPressed: _run,
         ),
@@ -166,30 +166,30 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
             ),
           _ToolSection(
             rows: [
-              KeyValueRow(label: '查询域名', value: result.domain, monospace: true),
+              KeyValueRow(label: context.l10n.toolQueryDomain, value: result.domain, monospace: true),
               KeyValueRow(
-                label: '记录类型',
+                label: context.l10n.toolRecordType,
                 value: _ipv4 ? 'A（IPv4）' : 'AAAA（IPv6）',
               ),
               KeyValueRow(
-                label: 'DNS 服务器',
+                label: context.l10n.toolDnsServers,
                 value: _serverLabel(flags.dnsLookupViaTunnel),
                 monospace: true,
               ),
-              KeyValueRow(label: '答案来源', value: dnsSourceLabel(result.source)),
+              KeyValueRow(label: context.l10n.toolAnswerSource, value: dnsSourceLabel(result.source)),
               KeyValueRow(
-                label: '耗时',
+                label: context.l10n.toolElapsed,
                 value: _msText(result.elapsedMs),
                 monospace: true,
               ),
               KeyValueRow(
-                label: '答案条数',
+                label: context.l10n.toolAnswerCount,
                 value: '${result.answers.length}',
                 monospace: true,
               ),
             ],
             footer: result.source == 'blocked'
-                ? '该域名被隧道规则拦截，因此没有真实上游应答。'
+                ? context.l10n.toolDnsBlockedBody
                 : null,
           ),
           if (result.answers.isNotEmpty)
@@ -211,18 +211,12 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
               ),
             )
           else
-            const _ToolNotice(
-              text:
-                  '没有返回任何应答记录。'
-                  '若来源是「被规则拦截」，说明该域名在本机规则里被拦掉了。',
+            _ToolNotice(
+              text: context.l10n.toolDnsNoAnswers,
               glyph: AppGlyphs.warning,
             ),
         ],
-        const ListFooter(
-          text:
-              '「走隧道查询」问的是本软件的解析链路（含规则与缓存），此时服务器由'
-              '隧道决定；关闭后可选择跟随系统或指定一台 DNS 服务器，两者结果可能不同。',
-        ),
+        ListFooter(text: context.l10n.toolDnsFooter),
         const SizedBox(height: 24),
       ],
     );
@@ -231,10 +225,10 @@ class _DnsLookupPanelState extends ConsumerState<_DnsLookupPanel> {
   /// Who this query actually asked; it must be spelled out, since after editing the server
   /// field without re-running the result still belongs to the previous server.
   String _serverLabel(bool viaTunnel) {
-    if (viaTunnel) return '隧道引擎';
+    if (viaTunnel) return context.l10n.toolTunnelEngine;
     if (_serverMode == _DnsServerMode.custom) return _server.text.trim();
     // The system's address is not part of the result (the native side returns only the
     // answer), so say so rather than inventing one.
-    return '跟随系统';
+    return context.l10n.toolDnsSystem;
   }
 }

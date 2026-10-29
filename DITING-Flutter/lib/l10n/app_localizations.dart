@@ -8384,6 +8384,480 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'去授予'**
   String get permGrant;
+
+  /// No description provided for @toolSpeedTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速'**
+  String get toolSpeedTest;
+
+  /// No description provided for @toolPing.
+  ///
+  /// In zh, this message translates to:
+  /// **'Ping 测试'**
+  String get toolPing;
+
+  /// No description provided for @toolDnsLookup.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 解析'**
+  String get toolDnsLookup;
+
+  /// No description provided for @toolTraceroute.
+  ///
+  /// In zh, this message translates to:
+  /// **'路由追踪'**
+  String get toolTraceroute;
+
+  /// No description provided for @toolDiagnostics.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络诊断'**
+  String get toolDiagnostics;
+
+  /// No description provided for @toolRefreshInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新网络信息'**
+  String get toolRefreshInfo;
+
+  /// No description provided for @toolActiveInterface.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动接口'**
+  String get toolActiveInterface;
+
+  /// No description provided for @toolLocalAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机地址'**
+  String get toolLocalAddress;
+
+  /// No description provided for @toolDnsServers.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务器'**
+  String get toolDnsServers;
+
+  /// No description provided for @toolCountUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'个'**
+  String get toolCountUnit;
+
+  /// No description provided for @toolPrivateDnsProbe.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测走物理网络（本应用流量不经过隧道）；系统私人 DNS：{dns}'**
+  String toolPrivateDnsProbe(Object dns);
+
+  /// No description provided for @toolPhysicalProbe.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测走物理网络：本应用自身流量被排除在隧道外，下面四个工具测的都是物理链路的真实时延。'**
+  String get toolPhysicalProbe;
+
+  /// No description provided for @toolInputHostOrIp.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入 IP 或域名'**
+  String get toolInputHostOrIp;
+
+  /// No description provided for @toolPingCount4.
+  ///
+  /// In zh, this message translates to:
+  /// **'4 次'**
+  String get toolPingCount4;
+
+  /// No description provided for @toolPingCount10.
+  ///
+  /// In zh, this message translates to:
+  /// **'10 次'**
+  String get toolPingCount10;
+
+  /// No description provided for @toolPingOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测选项'**
+  String get toolPingOptions;
+
+  /// No description provided for @toolViaTunnel.
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 Go 隧道解析'**
+  String get toolViaTunnel;
+
+  /// No description provided for @toolViaTunnelPingBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'域名经运行中的 Go 隧道解析（应用覆写与过滤规则），探测仍走物理网络'**
+  String get toolViaTunnelPingBody;
+
+  /// No description provided for @toolStartPing.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始 Ping'**
+  String get toolStartPing;
+
+  /// No description provided for @toolPinging.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在探测…'**
+  String get toolPinging;
+
+  /// No description provided for @toolTcpFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统 ICMP 受限，已用 TCP 回退测量。此时的时延是连接建立耗时，不能与 ICMP 往返时延直接比较。'**
+  String get toolTcpFallback;
+
+  /// No description provided for @toolPingFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测失败：未收到任何回复'**
+  String get toolPingFailed;
+
+  /// No description provided for @toolTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标'**
+  String get toolTarget;
+
+  /// No description provided for @toolResolvedAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析地址'**
+  String get toolResolvedAddress;
+
+  /// No description provided for @toolAddressFamily.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址族'**
+  String get toolAddressFamily;
+
+  /// No description provided for @toolSentReceived.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送 / 接收'**
+  String get toolSentReceived;
+
+  /// No description provided for @toolPacketLoss.
+  ///
+  /// In zh, this message translates to:
+  /// **'丢包率'**
+  String get toolPacketLoss;
+
+  /// No description provided for @toolMinAvgMax.
+  ///
+  /// In zh, this message translates to:
+  /// **'最小 / 平均 / 最大'**
+  String get toolMinAvgMax;
+
+  /// No description provided for @toolJitter.
+  ///
+  /// In zh, this message translates to:
+  /// **'抖动'**
+  String get toolJitter;
+
+  /// No description provided for @toolJitterFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'抖动按各包时延与均值的平均绝对偏差计算。'**
+  String get toolJitterFooter;
+
+  /// No description provided for @toolPacketN.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {n} 个包'**
+  String toolPacketN(Object n);
+
+  /// No description provided for @toolTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'超时'**
+  String get toolTimeout;
+
+  /// No description provided for @toolPingSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次共发送 {sent} 个探测包，失败 {failed} 个。'**
+  String toolPingSummary(Object failed, Object sent);
+
+  /// No description provided for @toolPingFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'Ping 由原生侧执行：优先调用系统 ping 二进制，不可用时回退到地址可达性与 TCP 端口握手计时，并会明确标注。'**
+  String get toolPingFooter;
+
+  /// No description provided for @toolDnsSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get toolDnsSystem;
+
+  /// No description provided for @toolDnsCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get toolDnsCustom;
+
+  /// No description provided for @toolCustomDnsError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入自定义 DNS 服务器 IP'**
+  String get toolCustomDnsError;
+
+  /// No description provided for @toolInputDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入要解析的域名'**
+  String get toolInputDomain;
+
+  /// No description provided for @toolCustomDnsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 DNS 服务器 IP（如 1.1.1.1）'**
+  String get toolCustomDnsHint;
+
+  /// No description provided for @toolQueryOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询选项'**
+  String get toolQueryOptions;
+
+  /// No description provided for @toolViaTunnelDnsBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后由隧道引擎解析，会套用拦截规则与缓存；关闭时直接问系统解析器'**
+  String get toolViaTunnelDnsBody;
+
+  /// No description provided for @toolStartQuery.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始查询'**
+  String get toolStartQuery;
+
+  /// No description provided for @toolQuerying.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询中…'**
+  String get toolQuerying;
+
+  /// No description provided for @toolQueryDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询域名'**
+  String get toolQueryDomain;
+
+  /// No description provided for @toolRecordType.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录类型'**
+  String get toolRecordType;
+
+  /// No description provided for @toolAnswerSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'答案来源'**
+  String get toolAnswerSource;
+
+  /// No description provided for @toolElapsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'耗时'**
+  String get toolElapsed;
+
+  /// No description provided for @toolAnswerCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'答案条数'**
+  String get toolAnswerCount;
+
+  /// No description provided for @toolDnsBlockedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'该域名被隧道规则拦截，因此没有真实上游应答。'**
+  String get toolDnsBlockedBody;
+
+  /// No description provided for @toolDnsNoAnswers.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有返回任何应答记录。若来源是「被规则拦截」，说明该域名在本机规则里被拦掉了。'**
+  String get toolDnsNoAnswers;
+
+  /// No description provided for @toolDnsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'「走隧道查询」问的是本软件的解析链路（含规则与缓存），此时服务器由隧道决定；关闭后可选择跟随系统或指定一台 DNS 服务器，两者结果可能不同。'**
+  String get toolDnsFooter;
+
+  /// No description provided for @toolTunnelEngine.
+  ///
+  /// In zh, this message translates to:
+  /// **'隧道引擎'**
+  String get toolTunnelEngine;
+
+  /// No description provided for @toolSpeedChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查测速通道…'**
+  String get toolSpeedChecking;
+
+  /// No description provided for @toolSpeedUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前设备不支持测速：本机没有提供 DNS 查询耗时测量的原生通道，页面不会显示任何模拟耗时。'**
+  String get toolSpeedUnsupported;
+
+  /// No description provided for @toolSpeedDomainHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于测速的域名'**
+  String get toolSpeedDomainHint;
+
+  /// No description provided for @toolSpeedProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速服务商'**
+  String get toolSpeedProviders;
+
+  /// No description provided for @toolNoProviders.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无 {protocol} DNS 服务商'**
+  String toolNoProviders(Object protocol);
+
+  /// No description provided for @toolNoProvidersBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'在「服务商管理」里添加后即可参与测速'**
+  String get toolNoProvidersBody;
+
+  /// No description provided for @toolSpeedSelectionNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'可选择 1 个或多个服务商；这里的选择只用于 DNS 查询测速，不影响竞速模式。'**
+  String get toolSpeedSelectionNote;
+
+  /// No description provided for @toolTestQueryTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试查询耗时'**
+  String get toolTestQueryTime;
+
+  /// No description provided for @toolSpeedRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速中…'**
+  String get toolSpeedRunning;
+
+  /// No description provided for @toolSpeedEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未测速。选好服务商后点上面的按钮，本应用会直接向每个服务商发送 3 次真实 DNS 查询并记录往返耗时。'**
+  String get toolSpeedEmpty;
+
+  /// No description provided for @toolSpeedResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'查询耗时结果'**
+  String get toolSpeedResults;
+
+  /// No description provided for @toolSpeedResultsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速结果按成功优先、平均耗时从低到高排序；结果只反映本次查询时的网络状态。域名当前为「{domain}」。'**
+  String toolSpeedResultsFooter(Object domain);
+
+  /// No description provided for @toolSpeedFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速由原生侧执行：向每个服务商分别发送真实的 DoH / DoT / 明文 DNS 查询，只有拿到成功应答的样本才计入耗时。'**
+  String get toolSpeedFooter;
+
+  /// No description provided for @toolFastest.
+  ///
+  /// In zh, this message translates to:
+  /// **'最快'**
+  String get toolFastest;
+
+  /// No description provided for @toolSampleCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{rate} · 样本 {count}'**
+  String toolSampleCount(Object count, Object rate);
+
+  /// No description provided for @toolAllFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部失败（{count} 次）'**
+  String toolAllFailed(Object count);
+
+  /// No description provided for @toolTraceOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'追踪选项'**
+  String get toolTraceOptions;
+
+  /// No description provided for @toolStartTrace.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始追踪'**
+  String get toolStartTrace;
+
+  /// No description provided for @toolTracing.
+  ///
+  /// In zh, this message translates to:
+  /// **'追踪中…'**
+  String get toolTracing;
+
+  /// No description provided for @toolTraceFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'追踪失败：未收到任何回应'**
+  String get toolTraceFailed;
+
+  /// No description provided for @toolTraceCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'追踪已取消。'**
+  String get toolTraceCancelled;
+
+  /// No description provided for @toolHopCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳数'**
+  String get toolHopCount;
+
+  /// No description provided for @toolHopCountValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} / 最多 {max}'**
+  String toolHopCountValue(Object count, Object max);
+
+  /// No description provided for @toolNoResponse.
+  ///
+  /// In zh, this message translates to:
+  /// **'无响应'**
+  String get toolNoResponse;
+
+  /// No description provided for @toolTraceFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'星号表示该跳在超时时间内没有回包——不代表链路断了，很多路由器不响应探测包。绿色一行表示已到达目标。'**
+  String get toolTraceFooter;
+
+  /// No description provided for @toolTraceHops15.
+  ///
+  /// In zh, this message translates to:
+  /// **'15 跳'**
+  String get toolTraceHops15;
+
+  /// No description provided for @toolTraceHops30.
+  ///
+  /// In zh, this message translates to:
+  /// **'30 跳'**
+  String get toolTraceHops30;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

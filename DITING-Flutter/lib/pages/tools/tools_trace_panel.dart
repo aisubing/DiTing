@@ -59,7 +59,7 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: _ToolField(
             controller: _target,
-            hintText: '输入 IP 或域名',
+            hintText: context.l10n.toolInputHostOrIp,
             glyph: AppGlyphs.target,
             enabled: !_running,
             onSubmitted: (_) => _run(),
@@ -69,7 +69,7 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: SegmentedControl<int>(
-            segments: const [(15, '15 跳'), (30, '30 跳')],
+            segments: [(15, context.l10n.toolTraceHops15), (30, context.l10n.toolTraceHops30)],
             value: _maxHops,
             onChanged: (hops) {
               if (!_running) {
@@ -79,12 +79,12 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
           ),
         ),
         generateSection(
-          title: '追踪选项',
+          title: context.l10n.toolTraceOptions,
           items: [
             _ViaTunnelRow(
               storageKey: tracerouteViaTunnelKey,
-              title: '通过 Go 隧道解析',
-              subtitle: '域名经运行中的 Go 隧道解析（应用覆写与过滤规则），探测仍走物理网络',
+              title: context.l10n.toolViaTunnel,
+              subtitle: context.l10n.toolViaTunnelPingBody,
               value: flags.tracerouteViaTunnel,
               enabled: !_running,
             ),
@@ -92,8 +92,8 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
         ),
         _RunButton(
           glyph: AppGlyphs.split,
-          label: '开始追踪',
-          runningLabel: '追踪中…',
+          label: context.l10n.toolStartTrace,
+          runningLabel: context.l10n.toolTracing,
           running: _running,
           onPressed: _run,
         ),
@@ -102,23 +102,26 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
         if (result != null) ...[
           if (!result.success && !result.cancelled)
             _ToolNotice(
-              text: result.message ?? '追踪失败：未收到任何回应',
+              text: result.message ?? context.l10n.toolTraceFailed,
               isError: true,
               glyph: AppGlyphs.error,
             ),
           if (result.cancelled)
-            const _ToolNotice(text: '追踪已取消。', glyph: AppGlyphs.info),
+            _ToolNotice(text: context.l10n.toolTraceCancelled, glyph: AppGlyphs.info),
           _ToolSection(
             rows: [
-              KeyValueRow(label: '目标', value: result.target, monospace: true),
+              KeyValueRow(label: context.l10n.toolTarget, value: result.target, monospace: true),
               KeyValueRow(
-                label: '解析地址',
+                label: context.l10n.toolResolvedAddress,
                 value: result.resolvedAddress ?? '—',
                 monospace: true,
               ),
               KeyValueRow(
-                label: '跳数',
-                value: '${result.hops.length} / 最多 $_maxHops',
+                label: context.l10n.toolHopCount,
+                value: context.l10n.toolHopCountValue(
+                  '${result.hops.length}',
+                  '$_maxHops',
+                ),
                 monospace: true,
               ),
             ],
@@ -157,7 +160,7 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
                               ),
                         ),
                         trailing: Text(
-                          hop.responded ? _msText(hop.elapsedMs) : '无响应',
+                          hop.responded ? _msText(hop.elapsedMs) : context.l10n.toolNoResponse,
                           style: AppTextStyle.caption1
                               .of(context)
                               .copyWith(
@@ -172,10 +175,9 @@ class _TraceroutePanelState extends ConsumerState<_TraceroutePanel> {
               ),
             ),
         ],
-        const ListFooter(
+        ListFooter(
           text:
-              '星号表示该跳在超时时间内没有回包——不代表链路断了，很多路由器'
-              '不响应探测包。绿色一行表示已到达目标。',
+              context.l10n.toolTraceFooter,
         ),
         const SizedBox(height: 24),
       ],

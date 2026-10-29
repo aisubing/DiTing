@@ -4798,4 +4798,272 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get permGrant => 'Grant';
+
+  @override
+  String get toolSpeedTest => 'Speed test';
+
+  @override
+  String get toolPing => 'Ping test';
+
+  @override
+  String get toolDnsLookup => 'DNS lookup';
+
+  @override
+  String get toolTraceroute => 'Traceroute';
+
+  @override
+  String get toolDiagnostics => 'Network diagnostics';
+
+  @override
+  String get toolRefreshInfo => 'Refresh network info';
+
+  @override
+  String get toolActiveInterface => 'Active interface';
+
+  @override
+  String get toolLocalAddress => 'Local address';
+
+  @override
+  String get toolDnsServers => 'DNS servers';
+
+  @override
+  String get toolCountUnit => '';
+
+  @override
+  String toolPrivateDnsProbe(Object dns) {
+    return 'Probes use the physical network (this app\'s traffic bypasses the tunnel); system private DNS: $dns';
+  }
+
+  @override
+  String get toolPhysicalProbe =>
+      'Probes use the physical network: this app\'s traffic is excluded from the tunnel, so all four tools measure real latency on the physical link.';
+
+  @override
+  String get toolInputHostOrIp => 'Enter an IP or domain';
+
+  @override
+  String get toolPingCount4 => '4 pings';
+
+  @override
+  String get toolPingCount10 => '10 pings';
+
+  @override
+  String get toolPingOptions => 'Probe options';
+
+  @override
+  String get toolViaTunnel => 'Resolve through the Go tunnel';
+
+  @override
+  String get toolViaTunnelPingBody =>
+      'Domains are resolved by the running Go tunnel (rewrites and filter rules apply), while probes still use the physical network';
+
+  @override
+  String get toolStartPing => 'Start ping';
+
+  @override
+  String get toolPinging => 'Probing…';
+
+  @override
+  String get toolTcpFallback =>
+      'ICMP is restricted, so a TCP fallback was used. That latency is connection setup time and cannot be compared directly with ICMP round trips.';
+
+  @override
+  String get toolPingFailed => 'Probe failed: no reply received';
+
+  @override
+  String get toolTarget => 'Target';
+
+  @override
+  String get toolResolvedAddress => 'Resolved address';
+
+  @override
+  String get toolAddressFamily => 'Address family';
+
+  @override
+  String get toolSentReceived => 'Sent / received';
+
+  @override
+  String get toolPacketLoss => 'Packet loss';
+
+  @override
+  String get toolMinAvgMax => 'Min / avg / max';
+
+  @override
+  String get toolJitter => 'Jitter';
+
+  @override
+  String get toolJitterFooter =>
+      'Jitter is the mean absolute deviation of each reply from the average.';
+
+  @override
+  String toolPacketN(Object n) {
+    return 'Packet $n';
+  }
+
+  @override
+  String get toolTimeout => 'Timed out';
+
+  @override
+  String toolPingSummary(Object failed, Object sent) {
+    return '$sent probes sent, $failed failed.';
+  }
+
+  @override
+  String get toolPingFooter =>
+      'Ping runs natively: it prefers the system ping binary and falls back to address reachability plus TCP handshake timing, which is always labelled.';
+
+  @override
+  String get toolDnsSystem => 'Follow system';
+
+  @override
+  String get toolDnsCustom => 'Custom';
+
+  @override
+  String get toolCustomDnsError => 'Enter a custom DNS server IP';
+
+  @override
+  String get toolInputDomain => 'Enter the domain to resolve';
+
+  @override
+  String get toolCustomDnsHint => 'Custom DNS server IP (e.g. 1.1.1.1)';
+
+  @override
+  String get toolQueryOptions => 'Query options';
+
+  @override
+  String get toolViaTunnelDnsBody =>
+      'When on, the tunnel engine resolves it with block rules and cache applied; when off, the system resolver is asked directly';
+
+  @override
+  String get toolStartQuery => 'Start lookup';
+
+  @override
+  String get toolQuerying => 'Querying…';
+
+  @override
+  String get toolQueryDomain => 'Queried domain';
+
+  @override
+  String get toolRecordType => 'Record type';
+
+  @override
+  String get toolAnswerSource => 'Answer source';
+
+  @override
+  String get toolElapsed => 'Elapsed';
+
+  @override
+  String get toolAnswerCount => 'Answers';
+
+  @override
+  String get toolDnsBlockedBody =>
+      'This domain was blocked by a tunnel rule, so there is no real upstream answer.';
+
+  @override
+  String get toolDnsNoAnswers =>
+      'No answer records were returned. If the source is \"blocked by rules\", this domain is blocked by a local rule.';
+
+  @override
+  String get toolDnsFooter =>
+      '\"Resolve through the tunnel\" queries this app\'s resolution path (rules and cache included) and lets the tunnel pick the server; when off you can follow the system or name a DNS server, and the results may differ.';
+
+  @override
+  String get toolTunnelEngine => 'Tunnel engine';
+
+  @override
+  String get toolSpeedChecking => 'Checking the speed test channel…';
+
+  @override
+  String get toolSpeedUnsupported =>
+      'This device cannot run the speed test: there is no native channel for measuring DNS query time, so no simulated timings are shown.';
+
+  @override
+  String get toolSpeedDomainHint => 'Domain used for the speed test';
+
+  @override
+  String get toolSpeedProviders => 'Speed test providers';
+
+  @override
+  String toolNoProviders(Object protocol) {
+    return 'No $protocol DNS providers yet';
+  }
+
+  @override
+  String get toolNoProvidersBody =>
+      'Add one under Provider management to include it';
+
+  @override
+  String get toolSpeedSelectionNote =>
+      'Choose one or more providers; this selection only affects the DNS speed test and does not change race mode.';
+
+  @override
+  String get toolTestQueryTime => 'Measure query time';
+
+  @override
+  String get toolSpeedRunning => 'Testing…';
+
+  @override
+  String get toolSpeedEmpty =>
+      'No results yet. Pick providers and tap the button above; this app sends three real DNS queries to each provider and records the round trips.';
+
+  @override
+  String get toolSpeedResults => 'Query time results';
+
+  @override
+  String toolSpeedResultsFooter(Object domain) {
+    return 'Results are sorted by success first, then by average time ascending; they only reflect the network at query time. The current domain is \"$domain\".';
+  }
+
+  @override
+  String get toolSpeedFooter =>
+      'The speed test runs natively: real DoH / DoT / plaintext DNS queries are sent to each provider, and only samples with a successful answer count towards the timing.';
+
+  @override
+  String get toolFastest => 'Fastest';
+
+  @override
+  String toolSampleCount(Object count, Object rate) {
+    return '$rate · $count samples';
+  }
+
+  @override
+  String toolAllFailed(Object count) {
+    return 'All failed ($count attempts)';
+  }
+
+  @override
+  String get toolTraceOptions => 'Trace options';
+
+  @override
+  String get toolStartTrace => 'Start trace';
+
+  @override
+  String get toolTracing => 'Tracing…';
+
+  @override
+  String get toolTraceFailed => 'Trace failed: no response received';
+
+  @override
+  String get toolTraceCancelled => 'The trace was cancelled.';
+
+  @override
+  String get toolHopCount => 'Hops';
+
+  @override
+  String toolHopCountValue(Object count, Object max) {
+    return '$count / max $max';
+  }
+
+  @override
+  String get toolNoResponse => 'No response';
+
+  @override
+  String get toolTraceFooter =>
+      'An asterisk means that hop did not reply in time; it does not mean the link is down, since many routers ignore probes. A green row marks the destination.';
+
+  @override
+  String get toolTraceHops15 => '15 hops';
+
+  @override
+  String get toolTraceHops30 => '30 hops';
 }
