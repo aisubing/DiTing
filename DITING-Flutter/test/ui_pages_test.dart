@@ -4,10 +4,13 @@
 import 'package:diting/data/db/app_traffic_repository.dart';
 import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
+import 'package:diting/data/db/rule_providers.dart';
+import 'package:diting/data/mock_data.dart';
 import 'package:diting/pages/observability/requests_page.dart';
 import 'package:diting/pages/traffic/traffic_page.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/observability_providers.dart';
+import 'package:diting/state/rules_providers.dart';
 import 'package:diting/state/traffic_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -18,6 +21,13 @@ import 'support/app_host.dart';
 
 void main() {
   group('请求与流量页', _observabilityPages);
+}
+
+class _EmptyRules extends InitialRulesNotifier {
+  @override
+  Map<RuleKind, List<MockRule>> build() => {
+    for (final kind in RuleKind.values) kind: const [],
+  };
 }
 
 void _observabilityPages() {
@@ -219,6 +229,45 @@ void _observabilityPages() {
       await tester.pumpAndSettle();
       expect(find.textContaining('共 120 条'), findsOneWidget);
       expect(find.textContaining('已加载全部'), findsOneWidget);
+    });
+
+    testWidgets('详情页可复制域名并加入黑白名单，纯 IP 记录禁用规则按钮', (tester) async {
+      await pumpPage(
+        tester,
+        RequestDetailSheet(request: ObservedRequest.fromDns(dnsRows.first)),
+        providerOverrides: [
+          ruleRepositoryProvider.overrideWith((ref) => null),
+          initialRulesProvider.overrideWith(_EmptyRules.new),
+        ],
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('复制域名'), findsOneWidget);
+
+      await tester.tap(find.text('加入黑名单'));
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(RequestDetailSheet)),
+      );
+      expect(
+        container.read(rulesOfKindProvider(RuleKind.block)).single.pattern,
+        'api.github.com',
+      );
+      expect(find.text('已在黑名单'), findsOneWidget);
+
+      await tester.tap(find.text('加入白名单'));
+      await tester.pumpAndSettle();
+      expect(find.text('已在白名单'), findsOneWidget);
+
+      await pumpPage(
+        tester,
+        RequestDetailSheet(request: ObservedRequest.fromDns(dnsRows[1])),
+        providerOverrides: [
+          ruleRepositoryProvider.overrideWith((ref) => null),
+          initialRulesProvider.overrideWith(_EmptyRules.new),
+        ],
+      );
+      expect(find.text('复制地址'), findsOneWidget);
+      expect(find.textContaining('域名规则无法匹配'), findsOneWidget);
     });
   });
 
