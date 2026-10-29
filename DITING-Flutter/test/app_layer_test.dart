@@ -150,6 +150,16 @@ void _appLayer() {
       expect(c.read(bottomBarProvider).length, greaterThanOrEqualTo(2));
     });
 
+    test('底栏项可调整顺序，越界移动被忽略', () {
+      final c = container();
+      final notifier = c.read(bottomBarProvider.notifier);
+      final defaults = List.of(c.read(bottomBarProvider));
+      notifier.move(0, defaults.length - 1);
+      expect(c.read(bottomBarProvider), [...defaults.skip(1), defaults.first]);
+      notifier.move(0, defaults.length);
+      expect(c.read(bottomBarProvider), [...defaults.skip(1), defaults.first]);
+    });
+
     test('重置底栏回到默认配置', () {
       final c = container();
       final notifier = c.read(bottomBarProvider.notifier);

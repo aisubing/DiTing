@@ -135,8 +135,8 @@ const _destinationSubtitles = {
   BottomBarDestination.settings: '全部设置项',
 };
 
-/// Dock customization: six switches, at least 2 and at most 4 enabled
-/// ([maxDockDestinations]). Rejections must explain themselves.
+/// Dock customization: at least 2 and at most 4 enabled ([maxDockDestinations]), and enabled
+/// rows drag into dock order. Rejections must explain themselves.
 class ThemeBottomBarPage extends ConsumerWidget {
   const ThemeBottomBarPage({super.key});
 
@@ -145,33 +145,72 @@ class ThemeBottomBarPage extends ConsumerWidget {
     final destinations = ref.watch(bottomBarProvider);
     final notifier = ref.read(bottomBarProvider.notifier);
     final haptic = ref.watch(hapticProvider);
+    final hidden = [
+      for (final destination in BottomBarDestination.values)
+        if (!destinations.contains(destination)) destination,
+    ];
+
+    void toggle(BottomBarDestination destination) {
+      final selected = destinations.contains(destination);
+      if (!notifier.toggle(destination)) {
+        showSettingHint(
+          context,
+          selected ? '底栏至少保留 2 项' : '底栏最多 $maxDockDestinations 项',
+        );
+      }
+    }
+
     return CommonScaffold(
       title: '底栏自定义',
       body: PageBody(
         children: [
-          generateSection(
-            title: '底栏项（${destinations.length}/$maxDockDestinations）',
-            footer:
+          ListHeader(title: '底栏项（${destinations.length}/$maxDockDestinations）'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ReorderableListView.builder(
+              // The page already scrolls; a nested scrollable would steal drag gestures.
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              proxyDecorator: commonProxyDecorator,
+              itemCount: destinations.length,
+              onReorderItem: notifier.move,
+              itemBuilder: (context, index) {
+                final destination = destinations[index];
+                return ReorderableDelayedDragStartListener(
+                  key: ValueKey(destination),
+                  index: index,
+                  child: ItemPositionProvider(
+                    position: ItemPosition.get(index, destinations.length),
+                    child: _DockDestinationRow(
+                      destination: destination,
+                      index: index,
+                      onToggle: () => toggle(destination),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const ListFooter(
+            text:
+                '按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。'
                 '至少 2 项、最多 $maxDockDestinations 项：浮条按项数等比分配宽度，'
                 '再多就挤到看不清图标。',
+          ),
+          generateSection(
+            title: '未启用',
             items: [
-              for (final destination in BottomBarDestination.values)
+              for (final destination in hidden)
                 ListItem.toggle(
                   title: Text(destination.label),
                   subtitle: Text(_destinationSubtitles[destination] ?? ''),
                   leading: GlyphIcon(destination.glyph),
-                  value: destinations.contains(destination),
-                  onChanged: (_) {
-                    final selected = destinations.contains(destination);
-                    if (!notifier.toggle(destination)) {
-                      showSettingHint(
-                        context,
-                        selected ? '底栏至少保留 2 项' : '底栏最多 $maxDockDestinations 项',
-                      );
-                    }
-                  },
+                  value: false,
+                  onChanged: (_) => toggle(destination),
                 ),
             ],
+            footer: '新启用的项排在底栏最右侧。',
           ),
           generateSection(
             title: '手感',
@@ -185,6 +224,46 @@ class ThemeBottomBarPage extends ConsumerWidget {
                     ref.read(hapticProvider.notifier).toggle(value),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// An enabled dock row: tap or switch disables it, the trailing handle drags it.
+class _DockDestinationRow extends StatelessWidget {
+  const _DockDestinationRow({
+    required this.destination,
+    required this.index,
+    required this.onToggle,
+  });
+
+  final BottomBarDestination destination;
+  final int index;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListItem(
+      title: Text(destination.label),
+      subtitle: Text(_destinationSubtitles[destination] ?? ''),
+      leading: GlyphIcon(destination.glyph),
+      padding: const EdgeInsets.only(left: 16, right: 4),
+      onTap: onToggle,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CommonSwitch(value: true, onChanged: (_) => onToggle()),
+          ReorderableDragStartListener(
+            index: index,
+            child: const MouseRegion(
+              cursor: SystemMouseCursors.grab,
+              child: SizedBox.square(
+                dimension: kMinInteractiveDimension,
+                child: Center(child: GlyphIcon(AppGlyphs.dragHandle)),
+              ),
+            ),
           ),
         ],
       ),

@@ -213,6 +213,22 @@ class BottomBarNotifier extends Notifier<List<BottomBarDestination>> {
     return true;
   }
 
+  /// Reorders the dock; [ReorderableListView.onReorderItem]'s `newIndex` is already adjusted.
+  void move(int oldIndex, int newIndex) {
+    final length = state.length;
+    if (oldIndex < 0 ||
+        oldIndex >= length ||
+        newIndex < 0 ||
+        newIndex >= length ||
+        newIndex == oldIndex) {
+      return;
+    }
+    final next = [...state];
+    next.insert(newIndex, next.removeAt(oldIndex));
+    state = next;
+    _save(next);
+  }
+
   void reset() {
     state = _defaults;
     _save(_defaults);
