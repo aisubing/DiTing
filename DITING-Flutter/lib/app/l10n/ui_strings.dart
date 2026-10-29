@@ -1,51 +1,60 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/l10n.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// The Chinese [UiLocalizations] the app runs with. `UiLocalizations.of` asserts the delegate is
-/// registered, so every vendored widget in `lib/ui` depends on it. The tests keep their own copy.
+/// The [UiLocalizations] the app runs with. `UiLocalizations.of` asserts the delegate is
+/// registered, so every vendored widget in `lib/ui` depends on it. The strings come from the same
+/// ARB resources as the pages (`lib/l10n/app_<locale>.arb`), so adding a language needs no change
+/// here. The tests keep their own stub.
 class AppUiLocalizations extends UiLocalizations {
-  AppUiLocalizations();
+  AppUiLocalizations(this.locale) : _l10n = lookupAppL10n(locale);
+
+  final Locale locale;
+  final AppL10n _l10n;
 
   static const delegate = _AppUiDelegate();
 
   @override
-  String get back => '返回';
+  String get back => _l10n.uiBack;
   @override
-  String get cancel => '取消';
+  String get cancel => _l10n.uiCancel;
   @override
-  String get clearSearch => '清除搜索';
+  String get clearSearch => _l10n.uiClearSearch;
   @override
-  String get close => '关闭';
+  String get close => _l10n.uiClose;
   @override
-  String get hidePassword => '隐藏密码';
+  String get hidePassword => _l10n.uiHidePassword;
   @override
-  String get more => '更多';
+  String get more => _l10n.uiMore;
   @override
-  String get noSearchResults => '无搜索结果';
+  String get noSearchResults => _l10n.uiNoSearchResults;
   @override
-  String get reset => '重置';
+  String get reset => _l10n.uiReset;
   @override
-  String get search => '搜索';
+  String get search => _l10n.uiSearch;
   @override
-  String get showLess => '收起';
+  String get showLess => _l10n.uiShowLess;
   @override
-  String get showMore => '展开';
+  String get showMore => _l10n.uiShowMore;
   @override
-  String get showPassword => '显示密码';
+  String get showPassword => _l10n.uiShowPassword;
   @override
-  String get sort => '排序';
+  String get sort => _l10n.uiSort;
   @override
-  String get submit => '提交';
+  String get submit => _l10n.uiSubmit;
 }
 
 class _AppUiDelegate extends LocalizationsDelegate<UiLocalizations> {
   const _AppUiDelegate();
 
   @override
-  bool isSupported(Locale locale) => true;
+  bool isSupported(Locale locale) => AppL10n.supportedLocales.any(
+    (supported) => supported.languageCode == locale.languageCode,
+  );
 
   @override
-  Future<UiLocalizations> load(Locale locale) async => AppUiLocalizations();
+  Future<UiLocalizations> load(Locale locale) async =>
+      AppUiLocalizations(locale);
 
   @override
   bool shouldReload(_AppUiDelegate old) => false;

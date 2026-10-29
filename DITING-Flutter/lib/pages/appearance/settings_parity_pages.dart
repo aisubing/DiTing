@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/notification_bridge.dart';
 import 'package:diting/data/native/permissions_bridge.dart';
 import 'package:diting/pages/appearance/appearance_inputs.dart';
@@ -442,7 +443,8 @@ class SettingsBackgroundPage extends ConsumerWidget {
   }
 }
 
-/// The legacy enum reserves English but ships no strings, so only two options are offered.
+/// The interface language list. Every entry of [AppLanguageMode] is offered; adding a language
+/// only needs a new `lib/l10n/app_<code>.arb` and one enum entry.
 class SettingsLanguagePage extends ConsumerWidget {
   const SettingsLanguagePage({super.key});
 
@@ -450,16 +452,16 @@ class SettingsLanguagePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(languageModeProvider);
     return CommonScaffold(
-      title: '语言设置',
+      title: context.l10n.languageTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '界面语言',
-            footer: '英文界面的文案尚未提供；选择「跟随系统」时非中文系统仍显示中文。',
+            title: context.l10n.languageInterfaceSection,
+            footer: context.l10n.languageInterfaceFooter,
             items: [
               for (final option in AppLanguageMode.values)
                 ListItem(
-                  title: Text(option.label),
+                  title: Text(option.label(context.l10n)),
                   leading: GlyphIcon(
                     option == mode ? AppGlyphs.check : AppGlyphs.language,
                     color: option == mode ? context.colorScheme.primary : null,

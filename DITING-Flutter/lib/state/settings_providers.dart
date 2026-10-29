@@ -1,8 +1,10 @@
 /// Settings-domain state; writes go back to the same `LegacySettings` keys.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/background_bridge.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 LegacySettings _settings(Ref ref) => ref.read(legacySettingsProvider);
@@ -158,15 +160,31 @@ final foregroundBackgroundProvider =
       ForegroundBackgroundNotifier.new,
     );
 
-/// Two-way language choice; English has no resources, so it is not exposed.
+/// Interface language. The storage values are the legacy `app_language_mode` ones, so a
+/// configuration written by an older build keeps working. Adding a language is one entry here
+/// plus its `lib/l10n/app_<code>.arb` file.
 enum AppLanguageMode {
-  system('system', '跟随系统'),
-  chinese('chinese', '中文');
+  system('system'),
+  chinese('chinese'),
+  english('english');
 
-  const AppLanguageMode(this.storageValue, this.label);
+  const AppLanguageMode(this.storageValue);
 
   final String storageValue;
-  final String label;
+
+  /// `null` lets the platform decide (`MaterialApp.locale`), which resolves to the first of
+  /// [AppL10n.supportedLocales] for languages the app has no resources for (Chinese).
+  Locale? get locale => switch (this) {
+    AppLanguageMode.system => null,
+    AppLanguageMode.chinese => const Locale('zh'),
+    AppLanguageMode.english => const Locale('en'),
+  };
+
+  String label(AppL10n l10n) => switch (this) {
+    AppLanguageMode.system => l10n.languageFollowSystem,
+    AppLanguageMode.chinese => l10n.languageChinese,
+    AppLanguageMode.english => l10n.languageEnglish,
+  };
 
   static AppLanguageMode fromStorageValue(String? value) => values.firstWhere(
     (mode) => mode.storageValue == value,
@@ -188,6 +206,11 @@ class LanguageNotifier extends Notifier<AppLanguageMode> {
 
 final languageModeProvider =
     NotifierProvider<LanguageNotifier, AppLanguageMode>(LanguageNotifier.new);
+
+/// The locale handed to `MaterialApp.locale`; `null` follows the device language.
+final appLocaleProvider = Provider<Locale?>(
+  (ref) => ref.watch(languageModeProvider).locale,
+);
 
 class NotificationSettingsNotifier extends Notifier<NotificationSettingsState> {
   @override

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:diting/app/bootstrap.dart';
 import 'package:diting/app/initial_agreement.dart';
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/l10n/ui_strings.dart';
 import 'package:diting/app/theme/colors.dart';
 import 'package:diting/app/theme/manager.dart';
@@ -197,7 +198,9 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     );
 
     return MaterialApp.router(
-      title: '谛听 DITING',
+      // Localized from the same ARB resources as the pages, so the task switcher follows the
+      // selected language too.
+      onGenerateTitle: (context) => context.l10n.appTitle,
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: _messengerKey,
       routerConfig: _router,
@@ -210,12 +213,15 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       darkTheme: _themes.of(pair.darkSpec),
       localizationsDelegates: const [
         AppUiLocalizations.delegate,
+        AppL10n.delegate,
         // `DefaultMaterialLocalizations` is English only; zh_CN needs the generated globals or
         // AppBar throws "No MaterialLocalizations".
         ...GlobalMaterialLocalizations.delegates,
       ],
-      supportedLocales: const [Locale('zh', 'CN')],
-      locale: const Locale('zh', 'CN'),
+      supportedLocales: AppL10n.supportedLocales,
+      // `null` follows the device language; unsupported ones fall back to the first supported
+      // locale, Chinese.
+      locale: ref.watch(appLocaleProvider),
       builder: (context, child) {
         // `child` is the Navigator; all scopes sit above it. `LiquidGlassScope` and
         // `LiquidGlassHost` are a pair, else panes fall back to tint + border. The agreement

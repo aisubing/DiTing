@@ -1,0 +1,26 @@
+{
+  "@@locale": "en",
+  "appTitle": "DITING",
+
+  "uiBack": "Back",
+  "uiCancel": "Cancel",
+  "uiClearSearch": "Clear search",
+  "uiClose": "Close",
+  "uiHidePassword": "Hide password",
+  "uiMore": "More",
+  "uiNoSearchResults": "No results",
+  "uiReset": "Reset",
+  "uiSearch": "Search",
+  "uiShowLess": "Show less",
+  "uiShowMore": "Show more",
+  "uiShowPassword": "Show password",
+  "uiSort": "Sort",
+  "uiSubmit": "Submit",
+
+  "languageTitle": "Language",
+  "languageInterfaceSection": "Interface language",
+  "languageInterfaceFooter": "Choose the interface language. \"Follow system\" uses the device language and falls back to Chinese for other languages.",
+  "languageFollowSystem": "Follow system",
+  "languageChinese": "中文",
+  "languageEnglish": "English"
+}

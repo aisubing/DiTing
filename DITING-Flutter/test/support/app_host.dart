@@ -1,3 +1,4 @@
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -42,10 +43,15 @@ class _AppHostState extends State<AppHost> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: _theme,
+      // Pages read their text through `context.l10n`; pin Chinese so the expectations in the
+      // widget tests keep matching the shipped strings.
       localizationsDelegates: const [
         StubUiLocalizations.delegate,
+        AppL10n.delegate,
         DefaultMaterialLocalizations.delegate,
       ],
+      supportedLocales: AppL10n.supportedLocales,
+      locale: const Locale('zh'),
       builder: (context, child) => MeasureScope(
         measure: Measure.of(context, 1),
         child: ViewScope(
