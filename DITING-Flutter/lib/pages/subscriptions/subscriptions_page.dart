@@ -16,6 +16,7 @@ import 'package:material_ui/material_ui.dart';
 
 part 'subscriptions_cards.dart';
 part 'subscriptions_sheet.dart';
+part 'subscriptions_sheet_widgets.dart';
 
 /// Subscriptions page: group filter, summary and card list. Groups sit at the top because
 /// users usually watch one group; data comes from the legacy `subscription_group` table
