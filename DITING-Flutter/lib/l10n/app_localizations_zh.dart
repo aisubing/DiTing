@@ -2132,4 +2132,391 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get hubContributorsDescription => '感谢为谛听贡献代码与建议的共建者';
+
+  @override
+  String get fontSizeSmall => '小';
+
+  @override
+  String get fontSizeStandard => '标准';
+
+  @override
+  String get fontSizeLarge => '大';
+
+  @override
+  String get fontSizeExtraLarge => '特大';
+
+  @override
+  String get fontSizeFooter => '字号会同时放大正文、标题与列表行，不会改变系统设置；界面已按所选比例排版，无需重启。';
+
+  @override
+  String get fontSizePreview => '实时预览';
+
+  @override
+  String get appearancePoem => '谛听万象，明察清浊';
+
+  @override
+  String get appearancePoemBody => '网络连通性、规则命中与设备状态，都在这一页里说清楚。';
+
+  @override
+  String get appearanceTitle => '外观设置';
+
+  @override
+  String get appearanceInterfaceSection => '界面显示';
+
+  @override
+  String get appearanceHomeOpacitySubtitle => '交互组件与文字的透明度';
+
+  @override
+  String get appearancePureBlackOn => '深色表面折叠为纯黑，OLED 更省电';
+
+  @override
+  String get appearancePureBlackOff => '切到深色模式后才可开启';
+
+  @override
+  String get appearanceHomeSection => '首页内容';
+
+  @override
+  String get appearanceHomeSentenceSubtitle => '运行与停止两种状态各一句';
+
+  @override
+  String get appearanceNotification => '通知栏设置';
+
+  @override
+  String get appearanceNotificationSubtitle => '常驻通知、实时速率与自定义文案';
+
+  @override
+  String get appearanceBackgroundSection => '背景与动效';
+
+  @override
+  String get appearanceHapticSubtitle => '切换 tab 时给一次轻震';
+
+  @override
+  String get appearanceBottomBarStyleFloating => '浮在页面之上';
+
+  @override
+  String get appearanceBottomBarStyleDocked => '贴底排列';
+
+  @override
+  String get appearanceTabTransitionSubtitle => '切换底部标签时的动画方式';
+
+  @override
+  String get appearanceMotionFooter => '底栏样式、动画与玻璃只作用于浮条；普通底栏始终是实色。';
+
+  @override
+  String get appearancePaletteGoldLegacy => '落盘值沿用旧版的 indigo';
+
+  @override
+  String get appearancePaletteFooter =>
+      '色板只提供种子，上屏的是 HCT 推导出的整套角色色。旧版没有自定义取色，因此这里也不提供。';
+
+  @override
+  String fontFamilySizeSubtitle(Object percent) {
+    return '当前 $percent%';
+  }
+
+  @override
+  String get fontFamilySystemDefault => '跟随宿主平台的中文界面字体，最稳妥的选择';
+
+  @override
+  String get fontFamilyImported => '已导入的第三方字体';
+
+  @override
+  String get fontFamilyEmpty => '还没有导入字体。导入后即可在这里切换，字体文件只保存在本机。';
+
+  @override
+  String get fontFamilyFooter => '导入的字体只影响本机显示，删除后会自动回退到系统默认。';
+
+  @override
+  String get fontFamilyLocalOnly => '选择只影响本机显示，不改动服务端规则。';
+
+  @override
+  String get fontFamilyImportFailed => '导入失败';
+
+  @override
+  String get fontFamilyDeleteTitle => '删除字体';
+
+  @override
+  String get commonCancel => '取消';
+
+  @override
+  String get commonDelete => '删除';
+
+  @override
+  String fontFamilyDeleteConfirm(Object name) {
+    return '删除「$name」后，使用该字体的界面会回退到系统默认。';
+  }
+
+  @override
+  String get fontFamilyImport => '导入字体';
+
+  @override
+  String get fontFamilyReading => '正在读取字体文件…';
+
+  @override
+  String get fontFamilyPickFile => '选择本机的 TTF / OTF 文件';
+
+  @override
+  String get notificationPersistentSection => '常驻通知';
+
+  @override
+  String get notificationPersistentFooter => '关闭后服务运行时不再显示常驻通知，系统可能因此更快回收进程。';
+
+  @override
+  String get notificationPersistent => '通知常驻';
+
+  @override
+  String get notificationPersistentSubtitle => '服务运行时保留一条不可划掉的通知';
+
+  @override
+  String get notificationShowSpeed => '显示实时速率';
+
+  @override
+  String get notificationShowSpeedSubtitle => '在通知里显示当前上下行速率';
+
+  @override
+  String get notificationTextRunning => 'DNS 服务开启时';
+
+  @override
+  String get notificationTextStopped => 'DNS 服务关闭时';
+
+  @override
+  String get notificationTextHint => '留空则使用默认文案';
+
+  @override
+  String get notificationTextFooter => '留空则使用默认文案；文案只影响通知栏，不改变服务行为。';
+
+  @override
+  String get notificationPermissions => '权限';
+
+  @override
+  String get notificationSystemPermission => '系统通知权限';
+
+  @override
+  String get notificationSystemPermissionSubtitle => '打开系统的通知设置页';
+
+  @override
+  String get backgroundTitle => '软件背景';
+
+  @override
+  String get backgroundSection => '自定义背景';
+
+  @override
+  String get backgroundFooter => '壁纸只保存在本机，不随备份导出。';
+
+  @override
+  String get backgroundEnable => '启用自定义背景';
+
+  @override
+  String get backgroundPickFirst => '请先添加一张图片';
+
+  @override
+  String get backgroundBehindPages => '在全部页面下垫一层壁纸';
+
+  @override
+  String get backgroundAddImage => '添加图片';
+
+  @override
+  String get backgroundAddImageSubtitle => '从相册选择一张';
+
+  @override
+  String get backgroundAdded => '已添加壁纸';
+
+  @override
+  String get backgroundAddedFooter => '点一下切换，长按删除。';
+
+  @override
+  String get backgroundEmpty => '还没有背景图';
+
+  @override
+  String get backgroundEmptyDescription => '点「添加图片」从相册里挑一张。';
+
+  @override
+  String get backgroundDeleteTitle => '删除壁纸';
+
+  @override
+  String get backgroundDeleteConfirm => '确定删除这张已添加的壁纸吗？';
+
+  @override
+  String get foregroundTitle => '前后台行为';
+
+  @override
+  String get foregroundPrivacySection => '后台与隐私';
+
+  @override
+  String get foregroundPrivacyFooter => '「后台隐藏」会从最近任务列表里移除本应用；下次从桌面图标进入即可。';
+
+  @override
+  String get foregroundHide => '后台隐藏';
+
+  @override
+  String get foregroundHideSubtitle => '不在最近任务列表中显示';
+
+  @override
+  String get foregroundRouting => '路由';
+
+  @override
+  String get foregroundBypassLan => '绕过局域网';
+
+  @override
+  String get foregroundBypassLanSubtitle => '本地网段与本机地址不走隧道';
+
+  @override
+  String get foregroundStability => '稳定性';
+
+  @override
+  String get foregroundBatteryFooter => '关闭电池优化后，系统在后台更不容易回收服务进程。';
+
+  @override
+  String get foregroundIgnoreBattery => '忽略电池优化';
+
+  @override
+  String get foregroundIgnoreBatterySubtitle => '请求把本应用加入系统白名单';
+
+  @override
+  String get dayNightTitle => '日夜模式';
+
+  @override
+  String get dayNightFollowSystemDescription => '系统切换深色时一起切换';
+
+  @override
+  String get dayNightFooter => '纯黑只在深色模式下生效，开关在「外观设置」的界面显示组里。';
+
+  @override
+  String get homeOpacityTitle => '首页透明度';
+
+  @override
+  String get homeOpacityComponents => '交互组件';
+
+  @override
+  String get homeOpacityComponentsFooter => '透明度只影响可见度，不影响这些组件的点击区域。';
+
+  @override
+  String get homeOpacityText => '文字';
+
+  @override
+  String get bottomBarHomeSubtitle => '首页与仪表盘';
+
+  @override
+  String get bottomBarFeatureHubSubtitle => '全部功能入口';
+
+  @override
+  String get bottomBarLogDashboardSubtitle => '日志仪表盘';
+
+  @override
+  String get bottomBarAppTrafficSubtitle => '应用流量排行';
+
+  @override
+  String get bottomBarNetworkToolsSubtitle => '测速与网络诊断';
+
+  @override
+  String get bottomBarSettingsSubtitle => '全部设置项';
+
+  @override
+  String get bottomBarMinimumHint => '底栏至少保留 2 项';
+
+  @override
+  String get bottomBarCustomTitle => '底栏自定义';
+
+  @override
+  String bottomBarItemsHeader(Object count, Object max) {
+    return '底栏项（$count/$max）';
+  }
+
+  @override
+  String bottomBarDragHint(Object max) {
+    return '按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 $max 项：浮条按项数等比分配宽度，再多就挤到看不清图标。';
+  }
+
+  @override
+  String get bottomBarDisabled => '未启用';
+
+  @override
+  String get bottomBarNewItemFooter => '新启用的项排在底栏最右侧。';
+
+  @override
+  String get bottomBarFeel => '手感';
+
+  @override
+  String get homeSentenceTitle => '首页句子';
+
+  @override
+  String get homeSentenceFooter => '两项均可留空；留空后对应状态下首页不显示句子，句子只在首页电源区下方出现一次。';
+
+  @override
+  String get appearancePaletteTitle => '主题色配置';
+
+  @override
+  String get appearancePaletteInfoLabel => '色板';
+
+  @override
+  String get appearancePaletteBody =>
+      '色板只提供种子，上屏的是 HCT 推导出的整套角色色。旧版没有自定义取色，因此这里也不提供。';
+
+  @override
+  String get dayNightInfoLabel => '模式';
+
+  @override
+  String get appearanceFontSizeLabel => '字号';
+
+  @override
+  String appearanceFontSizeCurrent(Object percent) {
+    return '当前 $percent%';
+  }
+
+  @override
+  String get appearanceFontSection => '字体';
+
+  @override
+  String appearanceFontImported(Object name) {
+    return '已导入 $name';
+  }
+
+  @override
+  String appearanceFontDeleted(Object name) {
+    return '已删除 $name';
+  }
+
+  @override
+  String appearanceBottomBarMax(Object max) {
+    return '底栏最多 $max 项';
+  }
+
+  @override
+  String appearanceBottomBarHeader(Object count, Object max) {
+    return '底栏项（$count/$max）';
+  }
+
+  @override
+  String appearanceBottomBarDragBody(Object max) {
+    return '按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 $max 项：浮条按项数等比分配宽度，再多就挤到看不清图标。';
+  }
+
+  @override
+  String appearanceBottomBarSelected(Object count) {
+    return '已选 $count 项，可配置 2–4 项';
+  }
+
+  @override
+  String get appearanceHaptic => '底栏触感反馈';
+
+  @override
+  String get appearancePureBlack => '纯黑';
+
+  @override
+  String get appearanceBottomBarStyle => '底栏样式';
+
+  @override
+  String get appearanceTabTransition => 'tab 切换动画';
+
+  @override
+  String get appearanceLiquidGlass => 'Liquid 玻璃';
+
+  @override
+  String get fontFamilyTitle => '字体设置';
+
+  @override
+  String get fontSizeRestoreDefaults => '恢复默认';
+
+  @override
+  String get fontFamilyHapticSubtitle => '切换 tab 时给一次轻震';
 }

@@ -48,7 +48,8 @@ class _AppHostState extends State<AppHost> {
       localizationsDelegates: const [
         StubUiLocalizations.delegate,
         AppL10n.delegate,
-        DefaultMaterialLocalizations.delegate,
+        // The material_ui globals cover zh; `DefaultMaterialLocalizations` is English only.
+        ...GlobalMaterialLocalizations.delegates,
       ],
       supportedLocales: AppL10n.supportedLocales,
       locale: const Locale('zh'),

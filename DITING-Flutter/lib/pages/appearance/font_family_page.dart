@@ -6,6 +6,7 @@
 /// face on most devices.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/fonts/font_repository.dart';
 import 'package:diting/pages/appearance/appearance_shared_pages.dart';
 import 'package:diting/routes/system_routes.dart';
@@ -36,7 +37,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
     final scale = ref.watch(textScaleProvider);
     final fonts = ref.watch(importedFontsProvider);
     return CommonScaffold(
-      title: '字体设置',
+      title: context.l10n.fontFamilyTitle,
       body: PageBody(
         dockSpacer: false,
         children: [
@@ -48,8 +49,10 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
               padding: EdgeInsets.zero,
               child: NavEntryRow(
                 glyph: AppGlyphs.textSize,
-                title: '字号',
-                subtitle: '当前 ${(scale * 100).round()}%',
+                title: context.l10n.appearanceFontSizeLabel,
+                subtitle: context.l10n.appearanceFontSizeCurrent(
+                  (scale * 100).round(),
+                ),
                 onPressed: () => context.push(SystemPaths.fontSize),
               ),
             ),
@@ -64,11 +67,11 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
           ),
           const SizedBox(height: 12),
           generateSection(
-            title: '字体',
+            title: context.l10n.appearanceFontSection,
             items: [
               _FontRow(
-                label: '系统默认',
-                description: '跟随宿主平台的中文界面字体，最稳妥的选择',
+                label: context.l10n.fontSystemDefault,
+                description: context.l10n.fontFamilySystemDefault,
                 family: null,
                 selected: selected == null,
                 onTap: () => _select(null),
@@ -76,7 +79,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
               for (final font in fonts)
                 _FontRow(
                   label: font.label,
-                  description: '已导入的第三方字体',
+                  description: context.l10n.fontFamilyImported,
                   family: font.family,
                   selected: selected == font.family,
                   onTap: () => _select(font.family),
@@ -84,8 +87,8 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
                 ),
             ],
             footer: fonts.isEmpty
-                ? '还没有导入字体。导入后即可在这里切换，字体文件只保存在本机。'
-                : '导入的字体只影响本机显示，删除后会自动回退到系统默认。',
+                ? context.l10n.fontFamilyEmpty
+                : context.l10n.fontFamilyFooter,
           ),
           const SizedBox(height: 12),
           Padding(
@@ -98,7 +101,7 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('选择只影响本机显示，不改动服务端规则。', style: context.listCaptionStyle),
+            child: Text(context.l10n.fontFamilyLocalOnly, style: context.listCaptionStyle),
           ),
           const SizedBox(height: 24),
         ],
@@ -122,32 +125,35 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
     }
     final font = result.font;
     if (font == null) {
-      showSettingHint(context, result.error ?? '导入失败');
+      showSettingHint(context, result.error ?? context.l10n.fontFamilyImportFailed);
       return;
     }
     // Refresh the list, then switch to the new font so the user sees it applied.
     ref.invalidate(importedFontsProvider);
     _select(font.family);
-    showSettingHint(context, '已导入 ${font.label}');
+    showSettingHint(
+      context,
+      context.l10n.appearanceFontImported(font.label),
+    );
   }
 
   Future<void> _delete(ImportedFont font) async {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除字体',
+        title: context.l10n.fontFamilyDeleteTitle,
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
-        child: Text('删除「${font.label}」后，使用该字体的界面会回退到系统默认。'),
+        child: Text(context.l10n.fontFamilyDeleteConfirm(font.label)),
       ),
     );
     if (confirmed != true || !mounted) {
@@ -163,7 +169,10 @@ class _FontFamilyPageState extends ConsumerState<FontFamilyPage> {
       return;
     }
     ref.invalidate(importedFontsProvider);
-    showSettingHint(context, '已删除 ${font.label}');
+    showSettingHint(
+      context,
+      context.l10n.appearanceFontDeleted(font.label),
+    );
   }
 }
 
@@ -183,7 +192,7 @@ class _PreviewHero extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '谛听万象，明察清浊',
+            context.l10n.appearancePoem,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyle.title2
@@ -258,7 +267,7 @@ class _FontRow extends StatelessWidget {
         children: [
           if (onDelete case final onDelete?)
             IconButton(
-              tooltip: '删除',
+              tooltip: context.l10n.commonDelete,
               onPressed: onDelete,
               icon: const GlyphIcon(AppGlyphs.delete, size: 20),
             ),
@@ -295,10 +304,10 @@ class _ImportCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('导入字体', style: context.listTitleStyle),
+                Text(context.l10n.fontFamilyImport, style: context.listTitleStyle),
                 const SizedBox(height: 2),
                 Text(
-                  isImporting ? '正在读取字体文件…' : '选择本机的 TTF / OTF 文件',
+                  isImporting ? context.l10n.fontFamilyReading : context.l10n.fontFamilyPickFile,
                   style: context.listSubtitleStyle,
                 ),
               ],

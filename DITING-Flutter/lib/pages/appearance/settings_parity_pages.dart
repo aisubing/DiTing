@@ -61,16 +61,16 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
     final settings = ref.watch(notificationSettingsProvider);
     final notifier = ref.read(notificationSettingsProvider.notifier);
     return CommonScaffold(
-      title: '通知栏设置',
+      title: context.l10n.appearanceNotification,
       body: PageBody(
         children: [
           generateSection(
-            title: '常驻通知',
-            footer: '关闭后服务运行时不再显示常驻通知，系统可能因此更快回收进程。',
+            title: context.l10n.notificationPersistentSection,
+            footer: context.l10n.notificationPersistentFooter,
             items: [
               ListItem.toggle(
-                title: const Text('通知常驻'),
-                subtitle: const Text('服务运行时保留一条不可划掉的通知'),
+                title: Text(context.l10n.notificationPersistent),
+                subtitle: Text(context.l10n.notificationPersistentSubtitle),
                 leading: const GlyphIcon(AppGlyphs.status),
                 value: settings.persistent,
                 onChanged: (value) {
@@ -79,8 +79,8 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
                 },
               ),
               ListItem.toggle(
-                title: const Text('显示实时速率'),
-                subtitle: const Text('在通知里显示当前上下行速率'),
+                title: Text(context.l10n.notificationShowSpeed),
+                subtitle: Text(context.l10n.notificationShowSpeedSubtitle),
                 leading: const GlyphIcon(AppGlyphs.speed),
                 value: settings.showSpeed,
                 onChanged: settings.persistent
@@ -97,20 +97,20 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
             child: FieldGroupCard(
               children: [
                 LabeledTextField(
-                  label: 'DNS 服务开启时',
+                  label: context.l10n.notificationTextRunning,
                   controller: _running,
                   minLines: 2,
-                  hintText: '留空则使用默认文案',
+                  hintText: context.l10n.notificationTextHint,
                   onChanged: (value) {
                     notifier.setRunningText(value);
                     _refreshNotification();
                   },
                 ),
                 LabeledTextField(
-                  label: 'DNS 服务关闭时',
+                  label: context.l10n.notificationTextStopped,
                   controller: _stopped,
                   minLines: 2,
-                  hintText: '留空则使用默认文案',
+                  hintText: context.l10n.notificationTextHint,
                   onChanged: (value) {
                     notifier.setStoppedText(value);
                     _refreshNotification();
@@ -119,14 +119,14 @@ class _ThemeNotificationPageState extends ConsumerState<ThemeNotificationPage> {
               ],
             ),
           ),
-          const ListFooter(text: '留空则使用默认文案；文案只影响通知栏，不改变服务行为。'),
+          ListFooter(text: context.l10n.notificationTextFooter),
           generateSection(
-            title: '权限',
+            title: context.l10n.notificationPermissions,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.lock,
-                title: '系统通知权限',
-                subtitle: '打开系统的通知设置页',
+                title: context.l10n.notificationSystemPermission,
+                subtitle: context.l10n.notificationSystemPermissionSubtitle,
                 // Opening the page directly beats a hint: the hint only told people what
                 // to do and left them to find it in Settings.
                 onPressed: () => ref
@@ -162,17 +162,17 @@ class ThemeBackgroundPage extends ConsumerWidget {
     final background = ref.watch(customBackgroundProvider);
     final notifier = ref.read(customBackgroundProvider.notifier);
     return CommonScaffold(
-      title: '软件背景',
+      title: context.l10n.backgroundTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '自定义背景',
-            footer: '壁纸只保存在本机，不随备份导出。',
+            title: context.l10n.backgroundSection,
+            footer: context.l10n.backgroundFooter,
             items: [
               ListItem.toggle(
-                title: const Text('启用自定义背景'),
+                title: Text(context.l10n.backgroundEnable),
                 subtitle: Text(
-                  background.uris.isEmpty ? '请先添加一张图片' : '在全部页面下垫一层壁纸',
+                  background.uris.isEmpty ? context.l10n.backgroundPickFirst : context.l10n.backgroundBehindPages,
                 ),
                 leading: const GlyphIcon(AppGlyphs.photos),
                 value: background.enabled,
@@ -180,8 +180,8 @@ class ThemeBackgroundPage extends ConsumerWidget {
               ),
               NavEntryRow(
                 glyph: AppGlyphs.add,
-                title: '添加图片',
-                subtitle: '从相册选择一张',
+                title: context.l10n.backgroundAddImage,
+                subtitle: context.l10n.backgroundAddImageSubtitle,
                 onPressed: () async {
                   final error = await notifier.pickAndAdd();
                   if (error != null && context.mounted) _hint(context, error);
@@ -191,8 +191,8 @@ class ThemeBackgroundPage extends ConsumerWidget {
           ),
           if (background.uris.isNotEmpty)
             generateSection(
-              title: '已添加壁纸',
-              footer: '点一下切换，长按删除。',
+              title: context.l10n.backgroundAdded,
+              footer: context.l10n.backgroundAddedFooter,
               items: [
                 _WallpaperGrid(
                   uris: background.uris,
@@ -203,12 +203,12 @@ class ThemeBackgroundPage extends ConsumerWidget {
               ],
             )
           else
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: NullStatus(
                 illustration: NullStatusIllustration.data,
-                label: '还没有背景图',
-                description: '点「添加图片」从相册里挑一张。',
+                label: context.l10n.backgroundEmpty,
+                description: context.l10n.backgroundEmptyDescription,
               ),
             ),
         ],
@@ -268,21 +268,21 @@ class _WallpaperGrid extends StatelessWidget {
     final confirmed = await showFloatingDialog<bool>(
       context: context,
       child: CommonDialog(
-        title: '删除壁纸',
+        title: context.l10n.backgroundDeleteTitle,
         // The last action is destructive: `destructive` tints it red on a filled
         // background, consistent with the other confirmation dialogs.
         destructive: true,
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(context.l10n.commonDelete),
           ),
         ],
-        child: const Text('确定删除这张已添加的壁纸吗？'),
+        child: Text(context.l10n.backgroundDeleteConfirm),
       ),
     );
     if (confirmed == true) onRemove(uri);
@@ -384,16 +384,16 @@ class SettingsBackgroundPage extends ConsumerWidget {
     final state = ref.watch(foregroundBackgroundProvider);
     final notifier = ref.read(foregroundBackgroundProvider.notifier);
     return CommonScaffold(
-      title: '前后台行为',
+      title: context.l10n.foregroundTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '后台与隐私',
-            footer: '「后台隐藏」会从最近任务列表里移除本应用；下次从桌面图标进入即可。',
+            title: context.l10n.foregroundPrivacySection,
+            footer: context.l10n.foregroundPrivacyFooter,
             items: [
               ListItem.toggle(
-                title: const Text('后台隐藏'),
-                subtitle: const Text('不在最近任务列表中显示'),
+                title: Text(context.l10n.foregroundHide),
+                subtitle: Text(context.l10n.foregroundHideSubtitle),
                 leading: const GlyphIcon(AppGlyphs.eyeOff),
                 value: state.hideFromRecents,
                 onChanged: notifier.setHideFromRecents,
@@ -401,11 +401,11 @@ class SettingsBackgroundPage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '路由',
+            title: context.l10n.foregroundRouting,
             items: [
               ListItem.toggle(
-                title: const Text('绕过局域网'),
-                subtitle: const Text('本地网段与本机地址不走隧道'),
+                title: Text(context.l10n.foregroundBypassLan),
+                subtitle: Text(context.l10n.foregroundBypassLanSubtitle),
                 leading: const GlyphIcon(AppGlyphs.devices),
                 value: state.bypassLan,
                 onChanged: notifier.setBypassLan,
@@ -422,13 +422,13 @@ class SettingsBackgroundPage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '稳定性',
-            footer: '关闭电池优化后，系统在后台更不容易回收服务进程。',
+            title: context.l10n.foregroundStability,
+            footer: context.l10n.foregroundBatteryFooter,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.bolt,
-                title: '忽略电池优化',
-                subtitle: '请求把本应用加入系统白名单',
+                title: context.l10n.foregroundIgnoreBattery,
+                subtitle: context.l10n.foregroundIgnoreBatterySubtitle,
                 // Asks the system instead of describing the screen path; the request shows the
                 // "always run in background" dialog when the ROM allows it.
                 onPressed: () => ref

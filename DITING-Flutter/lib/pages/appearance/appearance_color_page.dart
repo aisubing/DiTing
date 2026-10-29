@@ -26,11 +26,11 @@ class ThemeColorPage extends ConsumerWidget {
       AppThemeMode.system => MediaQuery.platformBrightnessOf(context),
     };
     return CommonScaffold(
-      title: '主题色配置',
+      title: context.l10n.appearancePaletteTitle,
       body: PageBody(
         children: [
           PreviewChoiceGroup<AppPalette>(
-            info: const Info(label: '色板'),
+            info: Info(label: context.l10n.appearancePaletteInfoLabel),
             value: palette,
             choices: [
               for (final option in AppPalette.values)
@@ -38,7 +38,7 @@ class ThemeColorPage extends ConsumerWidget {
                   value: option,
                   label: option.label(context.l10n),
                   description: option == AppPalette.gold
-                      ? '落盘值沿用旧版的 indigo'
+                      ? context.l10n.appearancePaletteGoldLegacy
                       : null,
                   pictogram: miniScreenThumb(
                     colorScheme: demoColorScheme(
@@ -54,8 +54,7 @@ class ThemeColorPage extends ConsumerWidget {
             onChanged: (value) =>
                 ref.read(paletteProvider.notifier).select(value),
             footer:
-                '色板只提供种子，上屏的是 HCT 推导出的整套角色色。'
-                '旧版没有自定义取色，因此这里也不提供。',
+                context.l10n.appearancePaletteBody,
           ),
         ],
       ),

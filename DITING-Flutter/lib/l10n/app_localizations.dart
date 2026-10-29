@@ -4012,6 +4012,732 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'感谢为谛听贡献代码与建议的共建者'**
   String get hubContributorsDescription;
+
+  /// No description provided for @fontSizeSmall.
+  ///
+  /// In zh, this message translates to:
+  /// **'小'**
+  String get fontSizeSmall;
+
+  /// No description provided for @fontSizeStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准'**
+  String get fontSizeStandard;
+
+  /// No description provided for @fontSizeLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'大'**
+  String get fontSizeLarge;
+
+  /// No description provided for @fontSizeExtraLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'特大'**
+  String get fontSizeExtraLarge;
+
+  /// No description provided for @fontSizeFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'字号会同时放大正文、标题与列表行，不会改变系统设置；界面已按所选比例排版，无需重启。'**
+  String get fontSizeFooter;
+
+  /// No description provided for @fontSizePreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时预览'**
+  String get fontSizePreview;
+
+  /// No description provided for @appearancePoem.
+  ///
+  /// In zh, this message translates to:
+  /// **'谛听万象，明察清浊'**
+  String get appearancePoem;
+
+  /// No description provided for @appearancePoemBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络连通性、规则命中与设备状态，都在这一页里说清楚。'**
+  String get appearancePoemBody;
+
+  /// No description provided for @appearanceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观设置'**
+  String get appearanceTitle;
+
+  /// No description provided for @appearanceInterfaceSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'界面显示'**
+  String get appearanceInterfaceSection;
+
+  /// No description provided for @appearanceHomeOpacitySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'交互组件与文字的透明度'**
+  String get appearanceHomeOpacitySubtitle;
+
+  /// No description provided for @appearancePureBlackOn.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色表面折叠为纯黑，OLED 更省电'**
+  String get appearancePureBlackOn;
+
+  /// No description provided for @appearancePureBlackOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'切到深色模式后才可开启'**
+  String get appearancePureBlackOff;
+
+  /// No description provided for @appearanceHomeSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页内容'**
+  String get appearanceHomeSection;
+
+  /// No description provided for @appearanceHomeSentenceSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行与停止两种状态各一句'**
+  String get appearanceHomeSentenceSubtitle;
+
+  /// No description provided for @appearanceNotification.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知栏设置'**
+  String get appearanceNotification;
+
+  /// No description provided for @appearanceNotificationSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'常驻通知、实时速率与自定义文案'**
+  String get appearanceNotificationSubtitle;
+
+  /// No description provided for @appearanceBackgroundSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'背景与动效'**
+  String get appearanceBackgroundSection;
+
+  /// No description provided for @appearanceHapticSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换 tab 时给一次轻震'**
+  String get appearanceHapticSubtitle;
+
+  /// No description provided for @appearanceBottomBarStyleFloating.
+  ///
+  /// In zh, this message translates to:
+  /// **'浮在页面之上'**
+  String get appearanceBottomBarStyleFloating;
+
+  /// No description provided for @appearanceBottomBarStyleDocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'贴底排列'**
+  String get appearanceBottomBarStyleDocked;
+
+  /// No description provided for @appearanceTabTransitionSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换底部标签时的动画方式'**
+  String get appearanceTabTransitionSubtitle;
+
+  /// No description provided for @appearanceMotionFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏样式、动画与玻璃只作用于浮条；普通底栏始终是实色。'**
+  String get appearanceMotionFooter;
+
+  /// No description provided for @appearancePaletteGoldLegacy.
+  ///
+  /// In zh, this message translates to:
+  /// **'落盘值沿用旧版的 indigo'**
+  String get appearancePaletteGoldLegacy;
+
+  /// No description provided for @appearancePaletteFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'色板只提供种子，上屏的是 HCT 推导出的整套角色色。旧版没有自定义取色，因此这里也不提供。'**
+  String get appearancePaletteFooter;
+
+  /// No description provided for @fontFamilySizeSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {percent}%'**
+  String fontFamilySizeSubtitle(Object percent);
+
+  /// No description provided for @fontFamilySystemDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随宿主平台的中文界面字体，最稳妥的选择'**
+  String get fontFamilySystemDefault;
+
+  /// No description provided for @fontFamilyImported.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导入的第三方字体'**
+  String get fontFamilyImported;
+
+  /// No description provided for @fontFamilyEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有导入字体。导入后即可在这里切换，字体文件只保存在本机。'**
+  String get fontFamilyEmpty;
+
+  /// No description provided for @fontFamilyFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入的字体只影响本机显示，删除后会自动回退到系统默认。'**
+  String get fontFamilyFooter;
+
+  /// No description provided for @fontFamilyLocalOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择只影响本机显示，不改动服务端规则。'**
+  String get fontFamilyLocalOnly;
+
+  /// No description provided for @fontFamilyImportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入失败'**
+  String get fontFamilyImportFailed;
+
+  /// No description provided for @fontFamilyDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除字体'**
+  String get fontFamilyDeleteTitle;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get commonCancel;
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get commonDelete;
+
+  /// No description provided for @fontFamilyDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除「{name}」后，使用该字体的界面会回退到系统默认。'**
+  String fontFamilyDeleteConfirm(Object name);
+
+  /// No description provided for @fontFamilyImport.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入字体'**
+  String get fontFamilyImport;
+
+  /// No description provided for @fontFamilyReading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在读取字体文件…'**
+  String get fontFamilyReading;
+
+  /// No description provided for @fontFamilyPickFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择本机的 TTF / OTF 文件'**
+  String get fontFamilyPickFile;
+
+  /// No description provided for @notificationPersistentSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'常驻通知'**
+  String get notificationPersistentSection;
+
+  /// No description provided for @notificationPersistentFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后服务运行时不再显示常驻通知，系统可能因此更快回收进程。'**
+  String get notificationPersistentFooter;
+
+  /// No description provided for @notificationPersistent.
+  ///
+  /// In zh, this message translates to:
+  /// **'通知常驻'**
+  String get notificationPersistent;
+
+  /// No description provided for @notificationPersistentSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务运行时保留一条不可划掉的通知'**
+  String get notificationPersistentSubtitle;
+
+  /// No description provided for @notificationShowSpeed.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示实时速率'**
+  String get notificationShowSpeed;
+
+  /// No description provided for @notificationShowSpeedSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在通知里显示当前上下行速率'**
+  String get notificationShowSpeedSubtitle;
+
+  /// No description provided for @notificationTextRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务开启时'**
+  String get notificationTextRunning;
+
+  /// No description provided for @notificationTextStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'DNS 服务关闭时'**
+  String get notificationTextStopped;
+
+  /// No description provided for @notificationTextHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则使用默认文案'**
+  String get notificationTextHint;
+
+  /// No description provided for @notificationTextFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则使用默认文案；文案只影响通知栏，不改变服务行为。'**
+  String get notificationTextFooter;
+
+  /// No description provided for @notificationPermissions.
+  ///
+  /// In zh, this message translates to:
+  /// **'权限'**
+  String get notificationPermissions;
+
+  /// No description provided for @notificationSystemPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统通知权限'**
+  String get notificationSystemPermission;
+
+  /// No description provided for @notificationSystemPermissionSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开系统的通知设置页'**
+  String get notificationSystemPermissionSubtitle;
+
+  /// No description provided for @backgroundTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'软件背景'**
+  String get backgroundTitle;
+
+  /// No description provided for @backgroundSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义背景'**
+  String get backgroundSection;
+
+  /// No description provided for @backgroundFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'壁纸只保存在本机，不随备份导出。'**
+  String get backgroundFooter;
+
+  /// No description provided for @backgroundEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用自定义背景'**
+  String get backgroundEnable;
+
+  /// No description provided for @backgroundPickFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先添加一张图片'**
+  String get backgroundPickFirst;
+
+  /// No description provided for @backgroundBehindPages.
+  ///
+  /// In zh, this message translates to:
+  /// **'在全部页面下垫一层壁纸'**
+  String get backgroundBehindPages;
+
+  /// No description provided for @backgroundAddImage.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加图片'**
+  String get backgroundAddImage;
+
+  /// No description provided for @backgroundAddImageSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从相册选择一张'**
+  String get backgroundAddImageSubtitle;
+
+  /// No description provided for @backgroundAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加壁纸'**
+  String get backgroundAdded;
+
+  /// No description provided for @backgroundAddedFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'点一下切换，长按删除。'**
+  String get backgroundAddedFooter;
+
+  /// No description provided for @backgroundEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有背景图'**
+  String get backgroundEmpty;
+
+  /// No description provided for @backgroundEmptyDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'点「添加图片」从相册里挑一张。'**
+  String get backgroundEmptyDescription;
+
+  /// No description provided for @backgroundDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除壁纸'**
+  String get backgroundDeleteTitle;
+
+  /// No description provided for @backgroundDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除这张已添加的壁纸吗？'**
+  String get backgroundDeleteConfirm;
+
+  /// No description provided for @foregroundTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'前后台行为'**
+  String get foregroundTitle;
+
+  /// No description provided for @foregroundPrivacySection.
+  ///
+  /// In zh, this message translates to:
+  /// **'后台与隐私'**
+  String get foregroundPrivacySection;
+
+  /// No description provided for @foregroundPrivacyFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'「后台隐藏」会从最近任务列表里移除本应用；下次从桌面图标进入即可。'**
+  String get foregroundPrivacyFooter;
+
+  /// No description provided for @foregroundHide.
+  ///
+  /// In zh, this message translates to:
+  /// **'后台隐藏'**
+  String get foregroundHide;
+
+  /// No description provided for @foregroundHideSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'不在最近任务列表中显示'**
+  String get foregroundHideSubtitle;
+
+  /// No description provided for @foregroundRouting.
+  ///
+  /// In zh, this message translates to:
+  /// **'路由'**
+  String get foregroundRouting;
+
+  /// No description provided for @foregroundBypassLan.
+  ///
+  /// In zh, this message translates to:
+  /// **'绕过局域网'**
+  String get foregroundBypassLan;
+
+  /// No description provided for @foregroundBypassLanSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地网段与本机地址不走隧道'**
+  String get foregroundBypassLanSubtitle;
+
+  /// No description provided for @foregroundStability.
+  ///
+  /// In zh, this message translates to:
+  /// **'稳定性'**
+  String get foregroundStability;
+
+  /// No description provided for @foregroundBatteryFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭电池优化后，系统在后台更不容易回收服务进程。'**
+  String get foregroundBatteryFooter;
+
+  /// No description provided for @foregroundIgnoreBattery.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略电池优化'**
+  String get foregroundIgnoreBattery;
+
+  /// No description provided for @foregroundIgnoreBatterySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求把本应用加入系统白名单'**
+  String get foregroundIgnoreBatterySubtitle;
+
+  /// No description provided for @dayNightTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'日夜模式'**
+  String get dayNightTitle;
+
+  /// No description provided for @dayNightFollowSystemDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统切换深色时一起切换'**
+  String get dayNightFollowSystemDescription;
+
+  /// No description provided for @dayNightFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'纯黑只在深色模式下生效，开关在「外观设置」的界面显示组里。'**
+  String get dayNightFooter;
+
+  /// No description provided for @homeOpacityTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页透明度'**
+  String get homeOpacityTitle;
+
+  /// No description provided for @homeOpacityComponents.
+  ///
+  /// In zh, this message translates to:
+  /// **'交互组件'**
+  String get homeOpacityComponents;
+
+  /// No description provided for @homeOpacityComponentsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'透明度只影响可见度，不影响这些组件的点击区域。'**
+  String get homeOpacityComponentsFooter;
+
+  /// No description provided for @homeOpacityText.
+  ///
+  /// In zh, this message translates to:
+  /// **'文字'**
+  String get homeOpacityText;
+
+  /// No description provided for @bottomBarHomeSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页与仪表盘'**
+  String get bottomBarHomeSubtitle;
+
+  /// No description provided for @bottomBarFeatureHubSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部功能入口'**
+  String get bottomBarFeatureHubSubtitle;
+
+  /// No description provided for @bottomBarLogDashboardSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志仪表盘'**
+  String get bottomBarLogDashboardSubtitle;
+
+  /// No description provided for @bottomBarAppTrafficSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用流量排行'**
+  String get bottomBarAppTrafficSubtitle;
+
+  /// No description provided for @bottomBarNetworkToolsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'测速与网络诊断'**
+  String get bottomBarNetworkToolsSubtitle;
+
+  /// No description provided for @bottomBarSettingsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部设置项'**
+  String get bottomBarSettingsSubtitle;
+
+  /// No description provided for @bottomBarMinimumHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏至少保留 2 项'**
+  String get bottomBarMinimumHint;
+
+  /// No description provided for @bottomBarCustomTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏自定义'**
+  String get bottomBarCustomTitle;
+
+  /// No description provided for @bottomBarItemsHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏项（{count}/{max}）'**
+  String bottomBarItemsHeader(Object count, Object max);
+
+  /// No description provided for @bottomBarDragHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 {max} 项：浮条按项数等比分配宽度，再多就挤到看不清图标。'**
+  String bottomBarDragHint(Object max);
+
+  /// No description provided for @bottomBarDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启用'**
+  String get bottomBarDisabled;
+
+  /// No description provided for @bottomBarNewItemFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'新启用的项排在底栏最右侧。'**
+  String get bottomBarNewItemFooter;
+
+  /// No description provided for @bottomBarFeel.
+  ///
+  /// In zh, this message translates to:
+  /// **'手感'**
+  String get bottomBarFeel;
+
+  /// No description provided for @homeSentenceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'首页句子'**
+  String get homeSentenceTitle;
+
+  /// No description provided for @homeSentenceFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'两项均可留空；留空后对应状态下首页不显示句子，句子只在首页电源区下方出现一次。'**
+  String get homeSentenceFooter;
+
+  /// No description provided for @appearancePaletteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'主题色配置'**
+  String get appearancePaletteTitle;
+
+  /// No description provided for @appearancePaletteInfoLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'色板'**
+  String get appearancePaletteInfoLabel;
+
+  /// No description provided for @appearancePaletteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'色板只提供种子，上屏的是 HCT 推导出的整套角色色。旧版没有自定义取色，因此这里也不提供。'**
+  String get appearancePaletteBody;
+
+  /// No description provided for @dayNightInfoLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模式'**
+  String get dayNightInfoLabel;
+
+  /// No description provided for @appearanceFontSizeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'字号'**
+  String get appearanceFontSizeLabel;
+
+  /// No description provided for @appearanceFontSizeCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {percent}%'**
+  String appearanceFontSizeCurrent(Object percent);
+
+  /// No description provided for @appearanceFontSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体'**
+  String get appearanceFontSection;
+
+  /// No description provided for @appearanceFontImported.
+  ///
+  /// In zh, this message translates to:
+  /// **'已导入 {name}'**
+  String appearanceFontImported(Object name);
+
+  /// No description provided for @appearanceFontDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {name}'**
+  String appearanceFontDeleted(Object name);
+
+  /// No description provided for @appearanceBottomBarMax.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏最多 {max} 项'**
+  String appearanceBottomBarMax(Object max);
+
+  /// No description provided for @appearanceBottomBarHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏项（{count}/{max}）'**
+  String appearanceBottomBarHeader(Object count, Object max);
+
+  /// No description provided for @appearanceBottomBarDragBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 {max} 项：浮条按项数等比分配宽度，再多就挤到看不清图标。'**
+  String appearanceBottomBarDragBody(Object max);
+
+  /// No description provided for @appearanceBottomBarSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 项，可配置 2–4 项'**
+  String appearanceBottomBarSelected(Object count);
+
+  /// No description provided for @appearanceHaptic.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏触感反馈'**
+  String get appearanceHaptic;
+
+  /// No description provided for @appearancePureBlack.
+  ///
+  /// In zh, this message translates to:
+  /// **'纯黑'**
+  String get appearancePureBlack;
+
+  /// No description provided for @appearanceBottomBarStyle.
+  ///
+  /// In zh, this message translates to:
+  /// **'底栏样式'**
+  String get appearanceBottomBarStyle;
+
+  /// No description provided for @appearanceTabTransition.
+  ///
+  /// In zh, this message translates to:
+  /// **'tab 切换动画'**
+  String get appearanceTabTransition;
+
+  /// No description provided for @appearanceLiquidGlass.
+  ///
+  /// In zh, this message translates to:
+  /// **'Liquid 玻璃'**
+  String get appearanceLiquidGlass;
+
+  /// No description provided for @fontFamilyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'字体设置'**
+  String get fontFamilyTitle;
+
+  /// No description provided for @fontSizeRestoreDefaults.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get fontSizeRestoreDefaults;
+
+  /// No description provided for @fontFamilyHapticSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换 tab 时给一次轻震'**
+  String get fontFamilyHapticSubtitle;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

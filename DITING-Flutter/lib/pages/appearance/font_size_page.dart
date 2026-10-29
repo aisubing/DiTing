@@ -1,6 +1,7 @@
 // Portions derived from DITING (https://github.com/chen08209/DITING), Copyright (c) the DITING authors, GPL-3.0-or-later.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/app/theme/layout.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/ui/ui.dart';
@@ -21,11 +22,11 @@ class FontSizePage extends ConsumerWidget {
     void set(double value) => ref.read(textScaleProvider.notifier).set(value);
     final isDefault = (scale - 1).abs() < 0.001;
     return CommonScaffold(
-      title: '字号',
+      title: context.l10n.appearanceFontSizeLabel,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.reset,
-          tooltip: '恢复默认',
+          tooltip: context.l10n.fontSizeRestoreDefaults,
           onPressed: isDefault ? null : () => set(1),
         ),
       ],
@@ -52,7 +53,10 @@ class FontSizePage extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text('字号', style: context.listTitleStyle),
+                        child: Text(
+                          context.l10n.appearanceFontSizeLabel,
+                          style: context.listTitleStyle,
+                        ),
                       ),
                       Text(
                         '${(scale * 100).round()}%',
@@ -91,21 +95,21 @@ class FontSizePage extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: SegmentedControl<double>(
-              segments: const [
-                (0.85, '小'),
-                (1.0, '标准'),
-                (1.2, '大'),
-                (1.4, '特大'),
+              segments: [
+                (0.85, context.l10n.fontSizeSmall),
+                (1.0, context.l10n.fontSizeStandard),
+                (1.2, context.l10n.fontSizeLarge),
+                (1.4, context.l10n.fontSizeExtraLarge),
               ],
               value: _nearestPreset(scale),
               onChanged: set,
             ),
           ),
-          const ListFooter(text: '字号会同时放大正文、标题与列表行，不会改变系统设置；界面已按所选比例排版，无需重启。'),
+          ListFooter(text: context.l10n.fontSizeFooter),
         ],
       ),
     );
@@ -141,7 +145,7 @@ class _SizePreview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text('实时预览', style: context.listCaptionStyle)),
+              Expanded(child: Text(context.l10n.fontSizePreview, style: context.listCaptionStyle)),
               TonalChip(
                 label: '${(scale * 100).round()}%',
                 color: colorScheme.primaryContainer,
@@ -151,14 +155,14 @@ class _SizePreview extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            '谛听万象，明察清浊',
+            context.l10n.appearancePoem,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppTextStyle.title2.of(context, emphasized: true),
           ),
           const SizedBox(height: 6),
           Text(
-            '网络连通性、规则命中与设备状态，都在这一页里说清楚。',
+            context.l10n.appearancePoemBody,
             style: AppTextStyle.body.of(context),
           ),
           const SizedBox(height: 6),

@@ -34,17 +34,17 @@ class ThemeDayNightPage extends ConsumerWidget {
       liquidGlass: glass,
     );
     return CommonScaffold(
-      title: '日夜模式',
+      title: context.l10n.dayNightTitle,
       body: PageBody(
         children: [
           PreviewChoiceGroup<AppThemeMode>(
-            info: const Info(label: '模式'),
+            info: Info(label: context.l10n.dayNightInfoLabel),
             value: mode,
             choices: [
               PreviewChoice(
                 value: AppThemeMode.system,
-                label: '跟随系统',
-                description: '系统切换深色时一起切换',
+                label: context.l10n.commonFollowSystem,
+                description: context.l10n.dayNightFollowSystemDescription,
                 pictogram: MiniScreenThumb(
                   screen: MiniSplitScreen(
                     light: MiniScreen(
@@ -62,18 +62,18 @@ class ThemeDayNightPage extends ConsumerWidget {
               ),
               PreviewChoice(
                 value: AppThemeMode.light,
-                label: '浅色模式',
+                label: context.l10n.themeModeLight,
                 pictogram: thumb(Brightness.light),
               ),
               PreviewChoice(
                 value: AppThemeMode.dark,
-                label: '深色模式',
+                label: context.l10n.themeModeDark,
                 pictogram: thumb(Brightness.dark),
               ),
             ],
             onChanged: (value) =>
                 ref.read(themeModeProvider.notifier).select(value),
-            footer: '纯黑只在深色模式下生效，开关在「外观设置」的界面显示组里。',
+            footer: context.l10n.dayNightFooter,
           ),
         ],
       ),
@@ -94,12 +94,12 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
     final opacity = ref.watch(homeOpacityProvider);
     final notifier = ref.read(homeOpacityProvider.notifier);
     return CommonScaffold(
-      title: '首页透明度',
+      title: context.l10n.homeOpacityTitle,
       body: PageBody(
         children: [
           generateSection(
-            title: '交互组件',
-            footer: '透明度只影响可见度，不影响这些组件的点击区域。',
+            title: context.l10n.homeOpacityComponents,
+            footer: context.l10n.homeOpacityComponentsFooter,
             items: [
               for (final layer in _interactive)
                 SliderCardRow(
@@ -110,7 +110,7 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '文字',
+            title: context.l10n.homeOpacityText,
             items: [
               for (final layer in _text)
                 SliderCardRow(
@@ -127,13 +127,13 @@ class ThemeHomeOpacityPage extends ConsumerWidget {
 }
 
 /// One-line description per dock destination; the enum has no such field.
-const _destinationSubtitles = {
-  BottomBarDestination.home: '首页与仪表盘',
-  BottomBarDestination.featureHub: '全部功能入口',
-  BottomBarDestination.logDashboard: '日志仪表盘',
-  BottomBarDestination.appTraffic: '应用流量排行',
-  BottomBarDestination.networkTools: '测速与网络诊断',
-  BottomBarDestination.settings: '全部设置项',
+Map<BottomBarDestination, String> _destinationSubtitles(AppL10n l10n) => {
+  BottomBarDestination.home: l10n.bottomBarHomeSubtitle,
+  BottomBarDestination.featureHub: l10n.bottomBarFeatureHubSubtitle,
+  BottomBarDestination.logDashboard: l10n.bottomBarLogDashboardSubtitle,
+  BottomBarDestination.appTraffic: l10n.bottomBarAppTrafficSubtitle,
+  BottomBarDestination.networkTools: l10n.bottomBarNetworkToolsSubtitle,
+  BottomBarDestination.settings: l10n.bottomBarSettingsSubtitle,
 };
 
 /// Dock customization: at least 2 and at most 4 enabled ([maxDockDestinations]), and enabled
@@ -156,16 +156,23 @@ class ThemeBottomBarPage extends ConsumerWidget {
       if (!notifier.toggle(destination)) {
         showSettingHint(
           context,
-          selected ? '底栏至少保留 2 项' : '底栏最多 $maxDockDestinations 项',
+          selected
+              ? context.l10n.bottomBarMinimumHint
+              : context.l10n.appearanceBottomBarMax(maxDockDestinations),
         );
       }
     }
 
     return CommonScaffold(
-      title: '底栏自定义',
+      title: context.l10n.bottomBarCustomTitle,
       body: PageBody(
         children: [
-          ListHeader(title: '底栏项（${destinations.length}/$maxDockDestinations）'),
+          ListHeader(
+            title: context.l10n.appearanceBottomBarHeader(
+              destinations.length,
+              maxDockDestinations,
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ReorderableListView.builder(
@@ -193,32 +200,31 @@ class ThemeBottomBarPage extends ConsumerWidget {
               },
             ),
           ),
-          const ListFooter(
-            text:
-                '按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。'
-                '至少 2 项、最多 $maxDockDestinations 项：浮条按项数等比分配宽度，'
-                '再多就挤到看不清图标。',
+          ListFooter(
+            text: context.l10n.appearanceBottomBarDragBody(maxDockDestinations),
           ),
           generateSection(
-            title: '未启用',
+            title: context.l10n.bottomBarDisabled,
             items: [
               for (final destination in hidden)
                 ListItem.toggle(
                   title: Text(destination.label(context.l10n)),
-                  subtitle: Text(_destinationSubtitles[destination] ?? ''),
+                  subtitle: Text(
+                    _destinationSubtitles(context.l10n)[destination] ?? '',
+                  ),
                   leading: GlyphIcon(destination.glyph),
                   value: false,
                   onChanged: (_) => toggle(destination),
                 ),
             ],
-            footer: '新启用的项排在底栏最右侧。',
+            footer: context.l10n.bottomBarNewItemFooter,
           ),
           generateSection(
-            title: '手感',
+            title: context.l10n.bottomBarFeel,
             items: [
               ListItem.toggle(
-                title: const Text('底栏触感反馈'),
-                subtitle: const Text('切换 tab 时给一次轻震'),
+                title: Text(context.l10n.appearanceHaptic),
+                subtitle: Text(context.l10n.appearanceHapticSubtitle),
                 leading: const GlyphIcon(AppGlyphs.motion),
                 value: haptic,
                 onChanged: (value) =>
@@ -248,7 +254,9 @@ class _DockDestinationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListItem(
       title: Text(destination.label(context.l10n)),
-      subtitle: Text(_destinationSubtitles[destination] ?? ''),
+      subtitle: Text(
+                    _destinationSubtitles(context.l10n)[destination] ?? '',
+                  ),
       leading: GlyphIcon(destination.glyph),
       padding: const EdgeInsets.only(left: 16, right: 4),
       onTap: onToggle,
@@ -303,7 +311,7 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      title: '首页句子',
+      title: context.l10n.homeSentenceTitle,
       body: PageBody(
         children: [
           Padding(
@@ -311,7 +319,7 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
             child: FieldGroupCard(
               children: [
                 LabeledTextField(
-                  label: 'DNS 服务开启时',
+                  label: context.l10n.notificationTextRunning,
                   controller: _running,
                   minLines: 2,
                   onChanged: (value) => ref
@@ -319,7 +327,7 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
                       .set(running: value),
                 ),
                 LabeledTextField(
-                  label: 'DNS 服务关闭时',
+                  label: context.l10n.notificationTextStopped,
                   controller: _stopped,
                   minLines: 2,
                   onChanged: (value) => ref
@@ -329,7 +337,7 @@ class _ThemeHomeSentencePageState extends ConsumerState<ThemeHomeSentencePage> {
               ],
             ),
           ),
-          const ListFooter(text: '两项均可留空；留空后对应状态下首页不显示句子，句子只在首页电源区下方出现一次。'),
+          ListFooter(text: context.l10n.homeSentenceFooter),
         ],
       ),
     );

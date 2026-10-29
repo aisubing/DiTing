@@ -1,10 +1,14 @@
 // Runs the subscription SQL against the real 1.4.3 tables: `ORDER BY`,
 // conflicts, cascades.
 
+import 'package:diting/app/l10n/l10n.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:diting/data/db/subscription_models.dart';
 import 'package:diting/data/db/subscription_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+final _zh = lookupAppL10n(const Locale('zh'));
 
 void main() {
   group('订阅表 SQL', _subscriptionRepository);
@@ -330,8 +334,8 @@ void _subscriptionRepository() {
       );
       expect(SubscriptionAutoUpdateStatus.success.storageValue, 'success');
       expect(SubscriptionAutoUpdateStatus.failed.storageValue, 'failed');
-      expect(SubscriptionKind.domain.displayName, '黑白名单规则');
-      expect(SubscriptionKind.hosts.displayName, 'hosts 规则');
+      expect(SubscriptionKind.domain.displayName(_zh), '黑白名单规则');
+      expect(SubscriptionKind.hosts.displayName(_zh), 'hosts 规则');
     });
   });
 }

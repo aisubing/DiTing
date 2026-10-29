@@ -70,44 +70,46 @@ class ThemePage extends ConsumerWidget {
     final glass = ref.watch(liquidGlassModeProvider);
     final barStyle = ref.watch(bottomBarStyleProvider);
     return CommonScaffold(
-      title: '外观设置',
+      title: context.l10n.appearanceTitle,
       body: PageBody(
         children: [
           // Large preview: the legacy app has none, but all nine sub pages build
           // their thumbnails on the same MiniScreen.
           const _ThemePreview(),
           generateSection(
-            title: '界面显示',
+            title: context.l10n.appearanceInterfaceSection,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.sun,
-                title: '日夜模式',
-                subtitle: _themeModeLabel(ref.watch(themeModeProvider)),
+                title: context.l10n.dayNightTitle,
+                subtitle: ref.watch(themeModeProvider).label(context.l10n),
                 onPressed: () => context.push(SystemPaths.dayNight),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.palette,
-                title: '主题色配置',
+                title: context.l10n.appearancePaletteTitle,
                 subtitle: ref.watch(paletteProvider).label(context.l10n),
                 onPressed: () => context.push(SystemPaths.colorStyle),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.blur,
-                title: '首页透明度',
-                subtitle: '交互组件与文字的透明度',
+                title: context.l10n.homeOpacityTitle,
+                subtitle: context.l10n.appearanceHomeOpacitySubtitle,
                 onPressed: () => context.push(SystemPaths.homeOpacity),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.dashboard,
-                title: '底栏自定义',
+                title: context.l10n.bottomBarCustomTitle,
                 subtitle:
-                    '已选 ${ref.watch(bottomBarProvider).length} 项，可配置 2–4 项',
+                    context.l10n.appearanceBottomBarSelected(
+                      ref.watch(bottomBarProvider).length,
+                    ),
                 onPressed: () => context.push(SystemPaths.bottomBar),
               ),
               // Retained entries, after the legacy ones.
               ListItem.toggle(
-                title: const Text('纯黑'),
-                subtitle: Text(dark ? '深色表面折叠为纯黑，OLED 更省电' : '切到深色模式后才可开启'),
+                title: Text(context.l10n.appearancePureBlack),
+                subtitle: Text(dark ? context.l10n.appearancePureBlackOn : context.l10n.appearancePureBlackOff),
                 leading: const GlyphIcon(AppGlyphs.pureBlack),
                 value: pureBlack,
                 onChanged: dark
@@ -117,7 +119,7 @@ class ThemePage extends ConsumerWidget {
               ),
               NavEntryRow(
                 glyph: AppGlyphs.font,
-                title: '字体',
+                title: context.l10n.appearanceFontSection,
                 subtitle: fontLabelOf(
                   ref.watch(importedFontsProvider),
                   ref.watch(selectedFontFamilyProvider),
@@ -127,36 +129,36 @@ class ThemePage extends ConsumerWidget {
             ],
           ),
           generateSection(
-            title: '首页内容',
+            title: context.l10n.appearanceHomeSection,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.textShort,
-                title: '首页句子',
-                subtitle: '运行与停止两种状态各一句',
+                title: context.l10n.homeSentenceTitle,
+                subtitle: context.l10n.appearanceHomeSentenceSubtitle,
                 onPressed: () => context.push(SystemPaths.homeSentence),
               ),
               NavEntryRow(
                 glyph: AppGlyphs.status,
-                title: '通知栏设置',
-                subtitle: '常驻通知、实时速率与自定义文案',
+                title: context.l10n.appearanceNotification,
+                subtitle: context.l10n.appearanceNotificationSubtitle,
                 onPressed: () => context.push(SystemPaths.notification),
               ),
             ],
           ),
           generateSection(
-            title: '背景与动效',
+            title: context.l10n.appearanceBackgroundSection,
             items: [
               NavEntryRow(
                 glyph: AppGlyphs.photos,
-                title: '软件背景',
+                title: context.l10n.backgroundTitle,
                 subtitle: ref.watch(customBackgroundProvider).enabled
-                    ? '已启用'
-                    : '未启用',
+                    ? context.l10n.commonEnabled
+                    : context.l10n.commonDisabled,
                 onPressed: () => context.push(SystemPaths.background),
               ),
               ListItem.toggle(
-                title: const Text('底栏触感反馈'),
-                subtitle: const Text('切换 tab 时给一次轻震'),
+                title: Text(context.l10n.appearanceHaptic),
+                subtitle: Text(context.l10n.appearanceHapticSubtitle),
                 leading: const GlyphIcon(AppGlyphs.motion),
                 value: ref.watch(hapticProvider),
                 onChanged: (value) =>
@@ -164,8 +166,8 @@ class ThemePage extends ConsumerWidget {
               ),
               // Retained entries, after the legacy ones.
               ListItem<BottomBarStyle>.options(
-                title: const Text('底栏样式'),
-                subtitle: Text(barStyle.isFloating ? '浮在页面之上' : '贴底排列'),
+                title: Text(context.l10n.appearanceBottomBarStyle),
+                subtitle: Text(barStyle.isFloating ? context.l10n.appearanceBottomBarStyleFloating : context.l10n.appearanceBottomBarStyleDocked),
                 leading: const GlyphIcon(AppGlyphs.sliders),
                 options: BottomBarStyle.values,
                 value: barStyle,
@@ -174,8 +176,8 @@ class ThemePage extends ConsumerWidget {
                     ref.read(bottomBarStyleProvider.notifier).select(value),
               ),
               ListItem<TabTransition>.options(
-                title: const Text('tab 切换动画'),
-                subtitle: const Text('切换底部标签时的动画方式'),
+                title: Text(context.l10n.appearanceTabTransition),
+                subtitle: Text(context.l10n.appearanceTabTransitionSubtitle),
                 leading: const GlyphIcon(AppGlyphs.motion),
                 options: TabTransition.values,
                 value: transition,
@@ -184,7 +186,7 @@ class ThemePage extends ConsumerWidget {
                     ref.read(tabTransitionProvider.notifier).select(value),
               ),
               ListItem<LiquidGlassMode>.options(
-                title: const Text('Liquid 玻璃'),
+                title: Text(context.l10n.appearanceLiquidGlass),
                 subtitle: Text(glass.label(context.l10n)),
                 leading: const GlyphIcon(AppGlyphs.liquidGlass),
                 options: LiquidGlassMode.values,
@@ -194,18 +196,13 @@ class ThemePage extends ConsumerWidget {
                     ref.read(liquidGlassModeProvider.notifier).select(value),
               ),
             ],
-            footer: '底栏样式、动画与玻璃只作用于浮条；普通底栏始终是实色。',
+            footer: context.l10n.appearanceMotionFooter,
           ),
         ],
       ),
     );
   }
 
-  static String _themeModeLabel(AppThemeMode mode) => switch (mode) {
-    AppThemeMode.system => '跟随系统',
-    AppThemeMode.light => '浅色模式',
-    AppThemeMode.dark => '深色模式',
-  };
 }
 
 class _ThemePreview extends ConsumerStatefulWidget {

@@ -2243,4 +2243,422 @@ class AppL10nEn extends AppL10n {
   @override
   String get hubContributorsDescription =>
       'Thanks to everyone who contributed code and ideas';
+
+  @override
+  String get fontSizeSmall => 'Small';
+
+  @override
+  String get fontSizeStandard => 'Standard';
+
+  @override
+  String get fontSizeLarge => 'Large';
+
+  @override
+  String get fontSizeExtraLarge => 'Extra large';
+
+  @override
+  String get fontSizeFooter =>
+      'The text size scales body copy, titles and list rows together without touching system settings; the layout follows it immediately, no restart needed.';
+
+  @override
+  String get fontSizePreview => 'Live preview';
+
+  @override
+  String get appearancePoem => 'Hear every sound, tell clear from murky';
+
+  @override
+  String get appearancePoemBody =>
+      'Connectivity, rule matches and device state, all explained on one page.';
+
+  @override
+  String get appearanceTitle => 'Appearance';
+
+  @override
+  String get appearanceInterfaceSection => 'Interface';
+
+  @override
+  String get appearanceHomeOpacitySubtitle =>
+      'Opacity of interactive components and text';
+
+  @override
+  String get appearancePureBlackOn =>
+      'Dark surfaces collapse to pure black, saving power on OLED';
+
+  @override
+  String get appearancePureBlackOff => 'Available once dark mode is on';
+
+  @override
+  String get appearanceHomeSection => 'Home content';
+
+  @override
+  String get appearanceHomeSentenceSubtitle =>
+      'One sentence each for running and stopped';
+
+  @override
+  String get appearanceNotification => 'Notification';
+
+  @override
+  String get appearanceNotificationSubtitle =>
+      'Persistent notification, live rate and custom text';
+
+  @override
+  String get appearanceBackgroundSection => 'Background and motion';
+
+  @override
+  String get appearanceHapticSubtitle =>
+      'A short vibration when switching tabs';
+
+  @override
+  String get appearanceBottomBarStyleFloating => 'Floating above the page';
+
+  @override
+  String get appearanceBottomBarStyleDocked => 'Docked at the bottom';
+
+  @override
+  String get appearanceTabTransitionSubtitle =>
+      'Animation used when switching tabs';
+
+  @override
+  String get appearanceMotionFooter =>
+      'Style, animation and glass only apply to the floating bar; the docked bar stays solid.';
+
+  @override
+  String get appearancePaletteGoldLegacy =>
+      'Stored value keeps the legacy indigo';
+
+  @override
+  String get appearancePaletteFooter =>
+      'The palette only supplies a seed; the screen shows the full HCT-derived role set. The legacy app had no custom picker, so there is none here.';
+
+  @override
+  String fontFamilySizeSubtitle(Object percent) {
+    return '$percent% now';
+  }
+
+  @override
+  String get fontFamilySystemDefault =>
+      'Follows the host platform\'s interface font; the safest choice';
+
+  @override
+  String get fontFamilyImported => 'Imported third-party font';
+
+  @override
+  String get fontFamilyEmpty =>
+      'No imported fonts yet. Once imported you can switch here; font files stay on this device.';
+
+  @override
+  String get fontFamilyFooter =>
+      'Imported fonts only affect this device and fall back to the system default when deleted.';
+
+  @override
+  String get fontFamilyLocalOnly =>
+      'The choice only affects this device and never changes server-side rules.';
+
+  @override
+  String get fontFamilyImportFailed => 'Import failed';
+
+  @override
+  String get fontFamilyDeleteTitle => 'Delete font';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String fontFamilyDeleteConfirm(Object name) {
+    return 'After deleting \"$name\", the interface falls back to the system default font.';
+  }
+
+  @override
+  String get fontFamilyImport => 'Import font';
+
+  @override
+  String get fontFamilyReading => 'Reading the font file…';
+
+  @override
+  String get fontFamilyPickFile => 'Pick a TTF / OTF file on this device';
+
+  @override
+  String get notificationPersistentSection => 'Persistent notification';
+
+  @override
+  String get notificationPersistentFooter =>
+      'When off, no persistent notification is shown while the service runs, so the system may reclaim the process sooner.';
+
+  @override
+  String get notificationPersistent => 'Persistent notification';
+
+  @override
+  String get notificationPersistentSubtitle =>
+      'Keeps an unswipeable notification while the service runs';
+
+  @override
+  String get notificationShowSpeed => 'Show live rate';
+
+  @override
+  String get notificationShowSpeedSubtitle =>
+      'Shows the current up/down rate in the notification';
+
+  @override
+  String get notificationTextRunning => 'When the DNS service is on';
+
+  @override
+  String get notificationTextStopped => 'When the DNS service is off';
+
+  @override
+  String get notificationTextHint => 'Leave empty to use the default text';
+
+  @override
+  String get notificationTextFooter =>
+      'Empty fields use the default text; the wording only affects the notification, never the service.';
+
+  @override
+  String get notificationPermissions => 'Permissions';
+
+  @override
+  String get notificationSystemPermission => 'System notification permission';
+
+  @override
+  String get notificationSystemPermissionSubtitle =>
+      'Opens the system notification settings';
+
+  @override
+  String get backgroundTitle => 'App background';
+
+  @override
+  String get backgroundSection => 'Custom background';
+
+  @override
+  String get backgroundFooter =>
+      'Wallpapers stay on this device and are never exported with backups.';
+
+  @override
+  String get backgroundEnable => 'Enable custom background';
+
+  @override
+  String get backgroundPickFirst => 'Add an image first';
+
+  @override
+  String get backgroundBehindPages => 'Puts a wallpaper behind every page';
+
+  @override
+  String get backgroundAddImage => 'Add image';
+
+  @override
+  String get backgroundAddImageSubtitle => 'Pick one from the gallery';
+
+  @override
+  String get backgroundAdded => 'Added wallpapers';
+
+  @override
+  String get backgroundAddedFooter => 'Tap to switch, long-press to delete.';
+
+  @override
+  String get backgroundEmpty => 'No background image yet';
+
+  @override
+  String get backgroundEmptyDescription =>
+      'Tap \"Add image\" and pick one from the gallery.';
+
+  @override
+  String get backgroundDeleteTitle => 'Delete wallpaper';
+
+  @override
+  String get backgroundDeleteConfirm => 'Delete this wallpaper?';
+
+  @override
+  String get foregroundTitle => 'Foreground and background';
+
+  @override
+  String get foregroundPrivacySection => 'Background and privacy';
+
+  @override
+  String get foregroundPrivacyFooter =>
+      'Hiding in the background removes the app from the recent tasks list; open it again from the home screen.';
+
+  @override
+  String get foregroundHide => 'Hide in background';
+
+  @override
+  String get foregroundHideSubtitle => 'Not shown in the recent tasks list';
+
+  @override
+  String get foregroundRouting => 'Routing';
+
+  @override
+  String get foregroundBypassLan => 'Bypass LAN';
+
+  @override
+  String get foregroundBypassLanSubtitle =>
+      'Local subnets and this device stay off the tunnel';
+
+  @override
+  String get foregroundStability => 'Stability';
+
+  @override
+  String get foregroundBatteryFooter =>
+      'With battery optimisation off, the system is less likely to reclaim the service process.';
+
+  @override
+  String get foregroundIgnoreBattery => 'Ignore battery optimisation';
+
+  @override
+  String get foregroundIgnoreBatterySubtitle =>
+      'Ask to whitelist this app in the system';
+
+  @override
+  String get dayNightTitle => 'Day/night mode';
+
+  @override
+  String get dayNightFollowSystemDescription =>
+      'Switches together with the system dark mode';
+
+  @override
+  String get dayNightFooter =>
+      'Pure black only applies in dark mode; its switch lives in the Interface group of Appearance.';
+
+  @override
+  String get homeOpacityTitle => 'Home opacity';
+
+  @override
+  String get homeOpacityComponents => 'Interactive components';
+
+  @override
+  String get homeOpacityComponentsFooter =>
+      'Opacity only affects visibility, not the tap targets of these components.';
+
+  @override
+  String get homeOpacityText => 'Text';
+
+  @override
+  String get bottomBarHomeSubtitle => 'Home and dashboard';
+
+  @override
+  String get bottomBarFeatureHubSubtitle => 'Every feature entry point';
+
+  @override
+  String get bottomBarLogDashboardSubtitle => 'Log dashboard';
+
+  @override
+  String get bottomBarAppTrafficSubtitle => 'App traffic ranking';
+
+  @override
+  String get bottomBarNetworkToolsSubtitle => 'Speed tests and diagnostics';
+
+  @override
+  String get bottomBarSettingsSubtitle => 'All settings';
+
+  @override
+  String get bottomBarMinimumHint => 'Keep at least 2 items in the bottom bar';
+
+  @override
+  String get bottomBarCustomTitle => 'Bottom bar';
+
+  @override
+  String bottomBarItemsHeader(Object count, Object max) {
+    return 'Bottom bar items ($count/$max)';
+  }
+
+  @override
+  String bottomBarDragHint(Object max) {
+    return 'Drag by the handle on the right or long-press a row to reorder; the order is the bottom bar order from left to right. Keep 2 to $max items: the floating bar splits its width evenly and more would squeeze the icons.';
+  }
+
+  @override
+  String get bottomBarDisabled => 'Not in use';
+
+  @override
+  String get bottomBarNewItemFooter =>
+      'Newly enabled items go to the far right.';
+
+  @override
+  String get bottomBarFeel => 'Feel';
+
+  @override
+  String get homeSentenceTitle => 'Home sentences';
+
+  @override
+  String get homeSentenceFooter =>
+      'Both fields may stay empty; when empty, no sentence is shown in that state. The sentence appears once, below the power button.';
+
+  @override
+  String get appearancePaletteTitle => 'Palette';
+
+  @override
+  String get appearancePaletteInfoLabel => 'Palette';
+
+  @override
+  String get appearancePaletteBody =>
+      'The palette only supplies a seed; the screen shows the full HCT-derived role set. The legacy app had no custom picker, so there is none here.';
+
+  @override
+  String get dayNightInfoLabel => 'Mode';
+
+  @override
+  String get appearanceFontSizeLabel => 'Text size';
+
+  @override
+  String appearanceFontSizeCurrent(Object percent) {
+    return '$percent% now';
+  }
+
+  @override
+  String get appearanceFontSection => 'Font';
+
+  @override
+  String appearanceFontImported(Object name) {
+    return 'Imported $name';
+  }
+
+  @override
+  String appearanceFontDeleted(Object name) {
+    return 'Deleted $name';
+  }
+
+  @override
+  String appearanceBottomBarMax(Object max) {
+    return 'At most $max bottom bar items';
+  }
+
+  @override
+  String appearanceBottomBarHeader(Object count, Object max) {
+    return 'Bottom bar items ($count/$max)';
+  }
+
+  @override
+  String appearanceBottomBarDragBody(Object max) {
+    return 'Drag by the handle on the right or long-press a row to reorder; the order is the bottom bar order from left to right. Keep 2 to $max items: the floating bar splits its width evenly and more would squeeze the icons.';
+  }
+
+  @override
+  String appearanceBottomBarSelected(Object count) {
+    return '$count selected; 2–4 are allowed';
+  }
+
+  @override
+  String get appearanceHaptic => 'Bottom bar haptics';
+
+  @override
+  String get appearancePureBlack => 'Pure black';
+
+  @override
+  String get appearanceBottomBarStyle => 'Bottom bar style';
+
+  @override
+  String get appearanceTabTransition => 'Tab transition';
+
+  @override
+  String get appearanceLiquidGlass => 'Liquid glass';
+
+  @override
+  String get fontFamilyTitle => 'Font settings';
+
+  @override
+  String get fontSizeRestoreDefaults => 'Restore defaults';
+
+  @override
+  String get fontFamilyHapticSubtitle =>
+      'A short vibration when switching tabs';
 }
