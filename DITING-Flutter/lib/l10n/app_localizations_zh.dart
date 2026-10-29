@@ -4807,4 +4807,279 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get toolTraceHops30 => '30 跳';
+
+  @override
+  String get uaDeleteTitle => '删除 User-Agent';
+
+  @override
+  String get uaDeleteBody => '确定删除这一条吗？只删候选，不影响当前已选中的 UA。';
+
+  @override
+  String get uaAdd => '添加 User-Agent';
+
+  @override
+  String get uaEdit => '编辑 User-Agent';
+
+  @override
+  String get uaNote => 'UA 会随订阅下载、规则集拉取与订阅测速请求一起发送；部分服务端按 UA 拒绝请求，改这里可以绕过。';
+
+  @override
+  String get uaCurrent => '当前选择';
+
+  @override
+  String get uaNoOverride => '不覆写';
+
+  @override
+  String get uaNoOverrideBody => '沿用订阅或内核自带的 UA';
+
+  @override
+  String get uaBuiltin => '内置';
+
+  @override
+  String get uaCustom => '自定义';
+
+  @override
+  String get uaBuiltinNote => '内置 UA 不可删除：删掉之后内核回落到默认值，用户会误以为「设置没生效」。';
+
+  @override
+  String get uaHint => '如：clash-verge/v2.0.0';
+
+  @override
+  String get uaEmptyError => 'UA 不能为空';
+
+  @override
+  String get uaDuplicateError => '该 UA 已存在';
+
+  @override
+  String get ssidInvalid => 'SSID 不能为空或已存在';
+
+  @override
+  String get ssidAdd => '添加 SSID';
+
+  @override
+  String get ssidEdit => '编辑 SSID';
+
+  @override
+  String get ssidSave => '保存 SSID';
+
+  @override
+  String get ssidHint => '区分大小写，与系统 Wi-Fi 列表里的名字完全一致';
+
+  @override
+  String get ssidExample => '如：Home-5G';
+
+  @override
+  String get ssidEmptyError => 'SSID 不能为空';
+
+  @override
+  String get ssidConnection => '连接方式';
+
+  @override
+  String get ssidCellular => '蜂窝网络';
+
+  @override
+  String get ssidCellularBody => '在该网络下也启动 VPN';
+
+  @override
+  String get ssidWifiBody => '连上该 SSID 时启动 VPN';
+
+  @override
+  String get ssidBothOff => '两种都关掉，等于把这条 SSID 从白名单里排除（VPN 不会启动）。';
+
+  @override
+  String get ssidDelay => '延迟';
+
+  @override
+  String get ssidStartDelay => '启动延迟';
+
+  @override
+  String get ssidStartDelayBody => '等待网络就绪后再启动 VPN';
+
+  @override
+  String get ssidImmediate => '立即连接';
+
+  @override
+  String get odTitle => '按需连接';
+
+  @override
+  String get odApplyNow => '立即应用';
+
+  @override
+  String get odEnable => '启用按需连接';
+
+  @override
+  String get odEnableBody => '连上白名单里的 SSID 时自动启动 VPN';
+
+  @override
+  String get odDisableBody => '关闭时 VPN 始终在线，不随网络切换';
+
+  @override
+  String get odNote =>
+      '开启后，只有连上白名单里的 SSID 时才会自动启动 VPN；其余网络保持断开，省电也更可控。自动判定只在网络变化时启停 VPN，不会覆盖手动开关的结果；点右上角「立即应用」可立即按当前网络重新判定。';
+
+  @override
+  String get odAllowlist => 'SSID 白名单';
+
+  @override
+  String get odNoSsid => '还没有 SSID';
+
+  @override
+  String get odNoSsidBody => '没有白名单时按需连接不会触发';
+
+  @override
+  String get odDelayNote => '延迟用于等 Wi-Fi 完成认证与 DHCP；过早启动 VPN 会让首个请求落到尚未就绪的网络上。';
+
+  @override
+  String get odCellular => '蜂窝';
+
+  @override
+  String get odKindsNone => '不启用';
+
+  @override
+  String odDelayValue(Object ms) {
+    return '延迟 $ms ms';
+  }
+
+  @override
+  String get odStateDisabled => '按需连接已关闭';
+
+  @override
+  String get odStateUnknown => '无法读取当前 Wi-Fi，白名单不会触发';
+
+  @override
+  String get odStateNoWifi => '当前不在 Wi-Fi 上，VPN 保持断开';
+
+  @override
+  String odStateMatched(Object ssid) {
+    return '已匹配 $ssid，VPN 会自动启动';
+  }
+
+  @override
+  String get odStateUnmatched => '当前 Wi-Fi 不在白名单，VPN 保持断开';
+
+  @override
+  String get odDisabledHint => '按需连接已关闭，VPN 不再随网络切换';
+
+  @override
+  String get odPillDisabled => '未启用';
+
+  @override
+  String get odPillUnknown => '无法判断';
+
+  @override
+  String get odPillNoWifi => '未连接 Wi-Fi';
+
+  @override
+  String get odPillWillStart => '会启动 VPN';
+
+  @override
+  String get odPillWillNotStart => '不会启动 VPN';
+
+  @override
+  String get odDecision => '当前判定';
+
+  @override
+  String get odDecisionFooter => '判定按当前网络实时计算：切换 Wi-Fi 后重新读取即可看到结果。SSID 区分大小写。';
+
+  @override
+  String get odCurrentNetwork => '当前网络';
+
+  @override
+  String get odWifiName => 'Wi-Fi 名称';
+
+  @override
+  String get odReadAgain => '重新读取';
+
+  @override
+  String get odPermission => '读取权限';
+
+  @override
+  String get odPermissionBody => 'Android 10 起读取 Wi-Fi 名称需要位置权限';
+
+  @override
+  String get odNotGranted => '未授权';
+
+  @override
+  String get odWifiUnreadable => '本机当前无法读取 Wi-Fi 名称：请在系统设置里授予本应用位置权限后重新读取。';
+
+  @override
+  String get odSsidPrivacy => 'SSID 只用于匹配白名单，不会被上传；手动添加的 SSID 在无法读取时仍然可用。';
+
+  @override
+  String get odBatteryJoined => '已加入';
+
+  @override
+  String get odBatteryNotJoined => '未加入';
+
+  @override
+  String get odBatteryUnavailable => '不可用';
+
+  @override
+  String get odPrerequisites => '前置条件';
+
+  @override
+  String get odIgnoreBattery => '忽略电池优化';
+
+  @override
+  String get odBatteryOk => '系统不会在后台冻结 VPN 进程';
+
+  @override
+  String get odBatteryAsk => '未加入时后台 VPN 可能被系统冻结，点击申请';
+
+  @override
+  String get odBatteryNoChannel => '当前构建没有提供电池优化通道';
+
+  @override
+  String get odBatteryFooter => '点击「未加入」会打开系统授权页；返回后会重新读取真实状态，取消则保持未加入。';
+
+  @override
+  String get odBatteryJoinedHint => '已加入电池优化白名单';
+
+  @override
+  String get odBatteryStillOff => '仍未加入，VPN 可能被系统冻结';
+
+  @override
+  String get odBatteryUnsupportedHint => '当前构建不支持该授权';
+
+  @override
+  String get odCapNoPermission => '无法读取：需要位置权限';
+
+  @override
+  String odCapCurrent(Object name) {
+    return '当前连接：$name';
+  }
+
+  @override
+  String get customResourcesTitle => '自定义资源';
+
+  @override
+  String get customResourcesNote =>
+      '这些资源按名字被引用：改名字等于断开引用，改内容则在下一次加载配置时生效。它们不属于旧版 1.4.3 的界面，保留在此供调试使用。';
+
+  @override
+  String get customResourcesSection => '资源';
+
+  @override
+  String get configDelete => '删除';
+
+  @override
+  String get configCancel => '取消';
+
+  @override
+  String get configNotSet => '未设置';
+
+  @override
+  String configItemCount(Object count) {
+    return '共 $count 项';
+  }
+
+  @override
+  String odEditSsidTooltip(Object ssid) {
+    return '编辑 $ssid';
+  }
+
+  @override
+  String odDeleteSsidTooltip(Object ssid) {
+    return '删除 $ssid';
+  }
 }

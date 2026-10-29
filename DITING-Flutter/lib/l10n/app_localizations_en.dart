@@ -5066,4 +5066,303 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get toolTraceHops30 => '30 hops';
+
+  @override
+  String get uaDeleteTitle => 'Delete User-Agent';
+
+  @override
+  String get uaDeleteBody =>
+      'Delete this entry? Only the candidate is removed; the currently selected UA is unaffected.';
+
+  @override
+  String get uaAdd => 'Add User-Agent';
+
+  @override
+  String get uaEdit => 'Edit User-Agent';
+
+  @override
+  String get uaNote =>
+      'The UA is sent with subscription downloads, ruleset fetches and subscription speed tests; some servers reject requests by UA, and changing it here works around that.';
+
+  @override
+  String get uaCurrent => 'Current selection';
+
+  @override
+  String get uaNoOverride => 'No override';
+
+  @override
+  String get uaNoOverrideBody => 'Use the UA from the subscription or the core';
+
+  @override
+  String get uaBuiltin => 'Built-in';
+
+  @override
+  String get uaCustom => 'Custom';
+
+  @override
+  String get uaBuiltinNote =>
+      'Built-in UAs cannot be deleted: removing one makes the core fall back to its default, which looks like the setting stopped working.';
+
+  @override
+  String get uaHint => 'e.g. clash-verge/v2.0.0';
+
+  @override
+  String get uaEmptyError => 'The UA cannot be empty';
+
+  @override
+  String get uaDuplicateError => 'That UA already exists';
+
+  @override
+  String get ssidInvalid => 'The SSID cannot be empty or already exist';
+
+  @override
+  String get ssidAdd => 'Add SSID';
+
+  @override
+  String get ssidEdit => 'Edit SSID';
+
+  @override
+  String get ssidSave => 'Save SSID';
+
+  @override
+  String get ssidHint =>
+      'Case sensitive; must match the name in the system Wi-Fi list exactly';
+
+  @override
+  String get ssidExample => 'e.g. Home-5G';
+
+  @override
+  String get ssidEmptyError => 'The SSID cannot be empty';
+
+  @override
+  String get ssidConnection => 'Connection';
+
+  @override
+  String get ssidCellular => 'Cellular';
+
+  @override
+  String get ssidCellularBody => 'Start the VPN on this network too';
+
+  @override
+  String get ssidWifiBody => 'Start the VPN when connected to this SSID';
+
+  @override
+  String get ssidBothOff =>
+      'Turning both off excludes this SSID from the allowlist, so the VPN will not start.';
+
+  @override
+  String get ssidDelay => 'Delay';
+
+  @override
+  String get ssidStartDelay => 'Start delay';
+
+  @override
+  String get ssidStartDelayBody =>
+      'Wait for the network before starting the VPN';
+
+  @override
+  String get ssidImmediate => 'Connect immediately';
+
+  @override
+  String get odTitle => 'On-demand connection';
+
+  @override
+  String get odApplyNow => 'Apply now';
+
+  @override
+  String get odEnable => 'Enable on-demand connection';
+
+  @override
+  String get odEnableBody => 'Start the VPN automatically on allowlisted SSIDs';
+
+  @override
+  String get odDisableBody =>
+      'When off, the VPN stays on and does not follow network changes';
+
+  @override
+  String get odNote =>
+      'When enabled, the VPN starts automatically only on allowlisted SSIDs and stays off elsewhere, which is both more power-friendly and more predictable. Automatic decisions only act on network changes and never override the manual switch; tap \"Apply now\" to re-evaluate for the current network immediately.';
+
+  @override
+  String get odAllowlist => 'SSID allowlist';
+
+  @override
+  String get odNoSsid => 'No SSIDs yet';
+
+  @override
+  String get odNoSsidBody =>
+      'On-demand connection never triggers without an allowlist';
+
+  @override
+  String get odDelayNote =>
+      'The delay lets Wi-Fi finish authentication and DHCP; starting the VPN too early sends the first requests over a network that is not ready.';
+
+  @override
+  String get odCellular => 'Cellular';
+
+  @override
+  String get odKindsNone => 'Disabled';
+
+  @override
+  String odDelayValue(Object ms) {
+    return 'Delayed $ms ms';
+  }
+
+  @override
+  String get odStateDisabled => 'On-demand connection is off';
+
+  @override
+  String get odStateUnknown =>
+      'The current Wi-Fi cannot be read, so the allowlist never triggers';
+
+  @override
+  String get odStateNoWifi => 'Not on Wi-Fi, so the VPN stays off';
+
+  @override
+  String odStateMatched(Object ssid) {
+    return 'Matched $ssid; the VPN starts automatically';
+  }
+
+  @override
+  String get odStateUnmatched =>
+      'The current Wi-Fi is not allowlisted, so the VPN stays off';
+
+  @override
+  String get odDisabledHint =>
+      'On-demand connection is off; the VPN no longer follows network changes';
+
+  @override
+  String get odPillDisabled => 'Disabled';
+
+  @override
+  String get odPillUnknown => 'Unknown';
+
+  @override
+  String get odPillNoWifi => 'Not on Wi-Fi';
+
+  @override
+  String get odPillWillStart => 'VPN will start';
+
+  @override
+  String get odPillWillNotStart => 'VPN will not start';
+
+  @override
+  String get odDecision => 'Current decision';
+
+  @override
+  String get odDecisionFooter =>
+      'The decision is computed from the current network: read it again after switching Wi-Fi. SSIDs are case sensitive.';
+
+  @override
+  String get odCurrentNetwork => 'Current network';
+
+  @override
+  String get odWifiName => 'Wi-Fi name';
+
+  @override
+  String get odReadAgain => 'Read again';
+
+  @override
+  String get odPermission => 'Read permission';
+
+  @override
+  String get odPermissionBody =>
+      'Reading the Wi-Fi name requires the location permission since Android 10';
+
+  @override
+  String get odNotGranted => 'Not granted';
+
+  @override
+  String get odWifiUnreadable =>
+      'The Wi-Fi name cannot be read right now: grant the location permission in system settings and read it again.';
+
+  @override
+  String get odSsidPrivacy =>
+      'SSIDs are only used to match the allowlist and are never uploaded; manually added SSIDs still work when reading fails.';
+
+  @override
+  String get odBatteryJoined => 'Added';
+
+  @override
+  String get odBatteryNotJoined => 'Not added';
+
+  @override
+  String get odBatteryUnavailable => 'Unavailable';
+
+  @override
+  String get odPrerequisites => 'Prerequisites';
+
+  @override
+  String get odIgnoreBattery => 'Ignore battery optimisation';
+
+  @override
+  String get odBatteryOk =>
+      'The system will not freeze the VPN process in the background';
+
+  @override
+  String get odBatteryAsk =>
+      'Without it the background VPN may be frozen; tap to request';
+
+  @override
+  String get odBatteryNoChannel =>
+      'This build has no battery optimisation channel';
+
+  @override
+  String get odBatteryFooter =>
+      'Tapping \"Not added\" opens the system authorisation page; the real state is re-read on return, and cancelling leaves it unchanged.';
+
+  @override
+  String get odBatteryJoinedHint =>
+      'Added to the battery optimisation allowlist';
+
+  @override
+  String get odBatteryStillOff =>
+      'Still not added; the VPN may be frozen by the system';
+
+  @override
+  String get odBatteryUnsupportedHint =>
+      'This build does not support that permission';
+
+  @override
+  String get odCapNoPermission =>
+      'Cannot read: the location permission is required';
+
+  @override
+  String odCapCurrent(Object name) {
+    return 'Connected to $name';
+  }
+
+  @override
+  String get customResourcesTitle => 'Custom resources';
+
+  @override
+  String get customResourcesNote =>
+      'These resources are referenced by name: renaming one breaks the reference, while editing content takes effect the next time the configuration loads. They are not part of the 1.4.3 interface and are kept here for debugging.';
+
+  @override
+  String get customResourcesSection => 'Resources';
+
+  @override
+  String get configDelete => 'Delete';
+
+  @override
+  String get configCancel => 'Cancel';
+
+  @override
+  String get configNotSet => 'Not set';
+
+  @override
+  String configItemCount(Object count) {
+    return '$count items';
+  }
+
+  @override
+  String odEditSsidTooltip(Object ssid) {
+    return 'Edit $ssid';
+  }
+
+  @override
+  String odDeleteSsidTooltip(Object ssid) {
+    return 'Delete $ssid';
+  }
 }

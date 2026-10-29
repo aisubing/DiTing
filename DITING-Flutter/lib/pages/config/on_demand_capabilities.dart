@@ -3,6 +3,7 @@
 /// claiming a value, because neither can be answered without a native channel.
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/mock_config_resources.dart';
 import 'package:diting/pages/server/server_platform_probe.dart'
     show
@@ -21,10 +22,10 @@ const _platformChannel = MethodChannel(platformChannelName);
 /// An empty string means "not on Wi-Fi"; null means the channel answered nothing — the method is
 /// not implemented yet or the location permission is missing, and the page says so instead of
 /// showing a made-up name.
-String describeSsid(String? ssid) => switch (ssid) {
-  null => '无法读取：需要位置权限',
-  '' => '未连接 Wi-Fi',
-  final name => '当前连接：$name',
+String describeSsid(String? ssid, AppL10n l10n) => switch (ssid) {
+  null => l10n.odCapNoPermission,
+  '' => l10n.odPillNoWifi,
+  final name => l10n.odCapCurrent(name),
 };
 
 /// Reads the joined Wi-Fi name; injected so tests can answer without a platform channel.

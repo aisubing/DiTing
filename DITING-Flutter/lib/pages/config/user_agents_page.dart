@@ -24,8 +24,8 @@ class UserAgentsConfigPage extends ConsumerWidget {
   ) async {
     final confirmed = await confirmConfigAction(
       context,
-      title: '删除 User-Agent',
-      message: '确定删除这一条吗？只删候选，不影响当前已选中的 UA。',
+      title: context.l10n.uaDeleteTitle,
+      message: context.l10n.uaDeleteBody,
     );
     if (!confirmed || !context.mounted) {
       return;
@@ -44,25 +44,24 @@ class UserAgentsConfigPage extends ConsumerWidget {
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加 User-Agent',
+          tooltip: context.l10n.uaAdd,
           onPressed: () => showUserAgentDialog(context, ref),
         ),
       ],
       body: PageBody(
         children: [
-          const NoteCard(
+          NoteCard(
             text:
-                'UA 会随订阅下载、规则集拉取与订阅测速请求一起发送；'
-                '部分服务端按 UA 拒绝请求，改这里可以绕过。',
+                context.l10n.uaNote,
             glyph: AppGlyphs.account,
           ),
           generateSection(
-            title: '当前选择',
+            title: context.l10n.uaCurrent,
             items: [
               ListItem(
                 leading: const GlyphIcon(AppGlyphs.checkCircle),
-                title: const Text('不覆写'),
-                subtitle: const Text('沿用订阅或内核自带的 UA'),
+                title: Text(context.l10n.uaNoOverride),
+                subtitle: Text(context.l10n.uaNoOverrideBody),
                 trailing: selected == null ? const SelectionCheck() : null,
                 onTap: () => notifier.selectUserAgent(null),
               ),
@@ -74,7 +73,7 @@ class UserAgentsConfigPage extends ConsumerWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text(agent.isDefault ? '内置' : '自定义'),
+                  subtitle: Text(agent.isDefault ? context.l10n.uaBuiltin : context.l10n.uaCustom),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     spacing: 4,
@@ -82,7 +81,7 @@ class UserAgentsConfigPage extends ConsumerWidget {
                       if (agent.value == selected) const SelectionCheck(),
                       if (!agent.isDefault)
                         ConfigRemoveButton(
-                          tooltip: '编辑',
+                          tooltip: context.l10n.uaEdit,
                           glyph: AppGlyphs.edit,
                           onPressed: () => showUserAgentDialog(
                             context,
@@ -92,7 +91,7 @@ class UserAgentsConfigPage extends ConsumerWidget {
                         ),
                       if (!agent.isDefault)
                         ConfigRemoveButton(
-                          tooltip: '删除',
+                          tooltip: context.l10n.configDelete,
                           onPressed: () => _delete(context, ref, agent),
                         ),
                     ],
@@ -101,8 +100,7 @@ class UserAgentsConfigPage extends ConsumerWidget {
                 ),
             ],
             footer:
-                '内置 UA 不可删除：删掉之后内核回落到默认值，'
-                '用户会误以为「设置没生效」。',
+                context.l10n.uaBuiltinNote,
           ),
         ],
       ),

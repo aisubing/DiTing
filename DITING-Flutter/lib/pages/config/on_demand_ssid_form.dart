@@ -57,7 +57,7 @@ class _SsidFormSheetState extends ConsumerState<_SsidFormSheet> {
           ),
         );
     if (!ok) {
-      showConfigHint(context, 'SSID 不能为空或已存在');
+      showConfigHint(context, context.l10n.ssidInvalid);
       return;
     }
     Navigator.of(context).pop();
@@ -66,10 +66,10 @@ class _SsidFormSheetState extends ConsumerState<_SsidFormSheet> {
   @override
   Widget build(BuildContext context) {
     return CommonScaffold(
-      title: widget.existing == null ? '添加 SSID' : '编辑 SSID',
+      title: widget.existing == null ? context.l10n.ssidAdd : context.l10n.ssidEdit,
       confirmationAction: IconButtonData(
         glyph: AppGlyphs.check,
-        tooltip: '保存 SSID',
+        tooltip: context.l10n.ssidSave,
         onPressed: _submit,
       ),
       body: Form(
@@ -82,46 +82,46 @@ class _SsidFormSheetState extends ConsumerState<_SsidFormSheet> {
               items: [
                 ConfigFieldRow(
                   label: 'SSID',
-                  hint: '区分大小写，与系统 Wi-Fi 列表里的名字完全一致',
+                  hint: context.l10n.ssidHint,
                   child: TextFormField(
                     controller: _ssid,
                     autofocus: widget.existing == null,
-                    decoration: const InputDecoration(hintText: '如：Home-5G'),
+                    decoration: InputDecoration(hintText: context.l10n.ssidExample),
                     validator: (value) =>
-                        (value ?? '').trim().isEmpty ? 'SSID 不能为空' : null,
+                        (value ?? '').trim().isEmpty ? context.l10n.ssidEmptyError : null,
                   ),
                 ),
               ],
             ),
             generateSection(
-              title: '连接方式',
+              title: context.l10n.ssidConnection,
               items: [
                 ListItem.toggle(
-                  title: const Text('蜂窝网络'),
-                  subtitle: const Text('在该网络下也启动 VPN'),
+                  title: Text(context.l10n.ssidCellular),
+                  subtitle: Text(context.l10n.ssidCellularBody),
                   value: _cellular,
                   onChanged: (value) => setState(() => _cellular = value),
                 ),
                 ListItem.toggle(
                   title: const Text('Wi-Fi'),
-                  subtitle: const Text('连上该 SSID 时启动 VPN'),
+                  subtitle: Text(context.l10n.ssidWifiBody),
                   value: _wifi,
                   onChanged: (value) => setState(() => _wifi = value),
                 ),
               ],
-              footer: '两种都关掉，等于把这条 SSID 从白名单里排除（VPN 不会启动）。',
+              footer: context.l10n.ssidBothOff,
             ),
             generateSection(
-              title: '延迟',
+              title: context.l10n.ssidDelay,
               items: [
                 ListItem<int>.options(
-                  title: const Text('启动延迟'),
-                  subtitle: const Text('等待网络就绪后再启动 VPN'),
+                  title: Text(context.l10n.ssidStartDelay),
+                  subtitle: Text(context.l10n.ssidStartDelayBody),
                   options: const [0, 500, 800, 1500, 3000],
                   value: [0, 500, 800, 1500, 3000].contains(_delay)
                       ? _delay
                       : 0,
-                  textBuilder: (delay) => delay == 0 ? '立即连接' : '$delay ms',
+                  textBuilder: (delay) => delay == 0 ? context.l10n.ssidImmediate : '$delay ms',
                   onChanged: (delay) => setState(() => _delay = delay),
                 ),
               ],

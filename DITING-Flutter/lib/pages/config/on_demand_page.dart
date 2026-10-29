@@ -25,16 +25,16 @@ class OnDemandConfigPage extends ConsumerWidget {
     final rules = resources.ssidRules;
     final decision = ref.watch(onDemandDecisionProvider);
     return CommonScaffold(
-      title: '按需连接',
+      title: context.l10n.odTitle,
       iconActions: [
         IconButtonData(
           glyph: AppGlyphs.refresh,
-          tooltip: '立即应用',
+          tooltip: context.l10n.odApplyNow,
           onPressed: () => _applyNow(context, ref),
         ),
         IconButtonData(
           glyph: AppGlyphs.add,
-          tooltip: '添加 SSID',
+          tooltip: context.l10n.ssidAdd,
           onPressed: () => showSsidForm(context, ref),
         ),
       ],
@@ -44,30 +44,27 @@ class OnDemandConfigPage extends ConsumerWidget {
             items: [
               ListItem.toggle(
                 leading: const GlyphIcon(AppGlyphs.wifi),
-                title: const Text('启用按需连接'),
+                title: Text(context.l10n.odEnable),
                 subtitle: Text(
                   resources.onDemand
-                      ? _decisionSummary(decision)
-                      : '关闭时 VPN 始终在线，不随网络切换',
+                      ? _decisionSummary(decision, context.l10n)
+                      : context.l10n.odDisableBody,
                 ),
                 value: resources.onDemand,
                 onChanged: (value) => _setEnabled(context, ref, value),
               ),
             ],
             footer:
-                '开启后，只有连上白名单里的 SSID 时才会自动启动 VPN；'
-                '其余网络保持断开，省电也更可控。自动判定只在网络'
-                '变化时启停 VPN，不会覆盖手动开关的结果；点右上角'
-                '「立即应用」可立即按当前网络重新判定。',
+                context.l10n.odNote,
           ),
           if (resources.onDemand) _DecisionCard(decision: decision),
           if (resources.onDemand)
             generateSection(
-              title: 'SSID 白名单',
+              title: context.l10n.odAllowlist,
               actions: [
                 IconButtonData(
                   glyph: AppGlyphs.add,
-                  tooltip: '添加 SSID',
+                  tooltip: context.l10n.ssidAdd,
                   onPressed: () => showSsidForm(context, ref),
                 ),
               ],
@@ -75,8 +72,8 @@ class OnDemandConfigPage extends ConsumerWidget {
                 if (rules.isEmpty)
                   ListItem(
                     leading: const GlyphIcon(AppGlyphs.wifiOff),
-                    title: const Text('还没有 SSID'),
-                    subtitle: const Text('没有白名单时按需连接不会触发'),
+                    title: Text(context.l10n.odNoSsid),
+                    subtitle: Text(context.l10n.odNoSsidBody),
                     onTap: () => showSsidForm(context, ref),
                   )
                 else
@@ -87,19 +84,19 @@ class OnDemandConfigPage extends ConsumerWidget {
                         size: 20,
                       ),
                       title: Text(rule.ssid),
-                      subtitle: Text(_ruleSummary(rule)),
+                      subtitle: Text(_ruleSummary(rule, context.l10n)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         spacing: 2,
                         children: [
                           ConfigRemoveButton(
-                            tooltip: '编辑 ${rule.ssid}',
+                            tooltip: context.l10n.odEditSsidTooltip(rule.ssid),
                             glyph: AppGlyphs.edit,
                             onPressed: () =>
                                 showSsidForm(context, ref, existing: rule.ssid),
                           ),
                           ConfigRemoveButton(
-                            tooltip: '删除 ${rule.ssid}',
+                            tooltip: context.l10n.odDeleteSsidTooltip(rule.ssid),
                             onPressed: () => notifier.removeSsid(rule.ssid),
                           ),
                         ],
@@ -109,8 +106,7 @@ class OnDemandConfigPage extends ConsumerWidget {
                     ),
               ],
               footer:
-                  '延迟用于等 Wi-Fi 完成认证与 DHCP；'
-                  '过早启动 VPN 会让首个请求落到尚未就绪的网络上。',
+                  context.l10n.odDelayNote,
             ),
           const _NetworkSection(),
           const _BatterySection(),
@@ -120,21 +116,29 @@ class OnDemandConfigPage extends ConsumerWidget {
   }
 }
 
-String _ruleSummary(MockSsidRule rule) {
-  final parts = <String>[if (rule.cellular) '蜂窝', if (rule.wifi) 'Wi-Fi'];
-  final kinds = parts.isEmpty ? '不启用' : parts.join(' 与 ');
-  final delay = rule.delayMs == 0 ? '立即连接' : '延迟 ${rule.delayMs} ms';
+String _ruleSummary(MockSsidRule rule, AppL10n l10n) {
+  final parts = <String>[
+    if (rule.cellular) l10n.odCellular,
+    if (rule.wifi) 'Wi-Fi',
+  ];
+  final kinds = parts.isEmpty ? l10n.odKindsNone : parts.join(' / ');
+  final delay = rule.delayMs == 0
+      ? l10n.ssidImmediate
+      : l10n.odDelayValue('${rule.delayMs}');
   return '$kinds · $delay';
 }
 
 /// One line for the switch's subtitle, so the current outcome is visible without opening a page.
-String _decisionSummary(SsidDecision decision) => switch (decision.state) {
-  SsidMatchState.disabled => '按需连接已关闭',
-  SsidMatchState.unknown => '无法读取当前 Wi-Fi，白名单不会触发',
-  SsidMatchState.noWifi => '当前不在 Wi-Fi 上，VPN 保持断开',
-  SsidMatchState.matched => '已匹配 ${decision.rule?.ssid ?? ''}，VPN 会自动启动',
-  SsidMatchState.unmatched => '当前 Wi-Fi 不在白名单，VPN 保持断开',
-};
+String _decisionSummary(SsidDecision decision, AppL10n l10n) =>
+    switch (decision.state) {
+      SsidMatchState.disabled => l10n.odStateDisabled,
+      SsidMatchState.unknown => l10n.odStateUnknown,
+      SsidMatchState.noWifi => l10n.odStateNoWifi,
+      SsidMatchState.matched => l10n.odStateMatched(
+        decision.rule?.ssid ?? '',
+      ),
+      SsidMatchState.unmatched => l10n.odStateUnmatched,
+    };
 
 /// Turns the switch on and immediately applies it: flipping the toggle alone only wrote a
 /// preference, so the tunnel state never followed the whitelist until the next restart.
@@ -145,7 +149,7 @@ Future<void> _setEnabled(
 ) async {
   ref.read(configResourcesProvider.notifier).setOnDemand(value);
   if (!value) {
-    showConfigHint(context, '按需连接已关闭，VPN 不再随网络切换');
+    showConfigHint(context, context.l10n.odDisabledHint);
     return;
   }
   final outcome = await ref.read(onDemandRunnerProvider).apply(force: true);
@@ -174,29 +178,29 @@ class _DecisionCard extends StatelessWidget {
     final (glyph, title, tone) = switch (decision.state) {
       SsidMatchState.disabled => (
         AppGlyphs.wifiOff,
-        '未启用',
+        context.l10n.odPillDisabled,
         colorScheme.onSurfaceVariant,
       ),
-      SsidMatchState.unknown => (AppGlyphs.locate, '无法判断', colorScheme.warning),
+      SsidMatchState.unknown => (AppGlyphs.locate, context.l10n.odPillUnknown, colorScheme.warning),
       SsidMatchState.noWifi => (
         AppGlyphs.wifiOff,
-        '未连接 Wi-Fi',
+        context.l10n.odPillNoWifi,
         colorScheme.onSurfaceVariant,
       ),
       SsidMatchState.matched => (
         AppGlyphs.check,
-        '会启动 VPN',
+        context.l10n.odPillWillStart,
         colorScheme.primary,
       ),
       SsidMatchState.unmatched => (
         AppGlyphs.wifi,
-        '不会启动 VPN',
+        context.l10n.odPillWillNotStart,
         colorScheme.warning,
       ),
     };
     final rule = decision.rule;
     return generateSection(
-      title: '当前判定',
+      title: context.l10n.odDecision,
       items: [
         ListItem(
           leading: GlyphIcon(glyph, size: 20, color: tone),
@@ -205,13 +209,14 @@ class _DecisionCard extends StatelessWidget {
             style: context.listTitleStyle.copyWith(color: tone),
           ),
           subtitle: Text(
-            rule == null ? _decisionSummary(decision) : _ruleSummary(rule),
+            rule == null
+                ? _decisionSummary(decision, context.l10n)
+                : _ruleSummary(rule, context.l10n),
           ),
         ),
       ],
       footer:
-          '判定按当前网络实时计算：切换 Wi-Fi 后重新读取即可看到结果。'
-          'SSID 区分大小写。',
+          context.l10n.odDecisionFooter,
     );
   }
 }
@@ -228,14 +233,14 @@ class _NetworkSection extends ConsumerWidget {
     final ssid = async.asData?.value;
     final unknown = async.hasValue && ssid == null;
     return generateSection(
-      title: '当前网络',
+      title: context.l10n.odCurrentNetwork,
       items: [
         ListItem(
           leading: const GlyphIcon(AppGlyphs.wifi, size: 20),
-          title: const Text('Wi-Fi 名称'),
-          subtitle: Text(describeSsid(ssid)),
+          title: Text(context.l10n.odWifiName),
+          subtitle: Text(describeSsid(ssid, context.l10n)),
           trailing: ConfigRemoveButton(
-            tooltip: '重新读取',
+            tooltip: context.l10n.odReadAgain,
             glyph: AppGlyphs.refresh,
             onPressed: () => ref.invalidate(currentSsidProvider),
           ),
@@ -244,10 +249,10 @@ class _NetworkSection extends ConsumerWidget {
         if (unknown)
           ListItem(
             leading: const GlyphIcon(AppGlyphs.locate, size: 20),
-            title: const Text('读取权限'),
-            subtitle: const Text('Android 10 起读取 Wi-Fi 名称需要位置权限'),
+            title: Text(context.l10n.odPermission),
+            subtitle: Text(context.l10n.odPermissionBody),
             trailing: Text(
-              '未授权',
+              context.l10n.odNotGranted,
               style: context.listCaptionStyle.copyWith(
                 color: colorScheme.warning,
               ),
@@ -255,8 +260,8 @@ class _NetworkSection extends ConsumerWidget {
           ),
       ],
       footer: unknown
-          ? '本机当前无法读取 Wi-Fi 名称：请在系统设置里授予本应用位置权限后重新读取。'
-          : 'SSID 只用于匹配白名单，不会被上传；手动添加的 SSID 在无法读取时仍然可用。',
+          ? context.l10n.odWifiUnreadable
+          : context.l10n.odSsidPrivacy,
     );
   }
 }
@@ -271,23 +276,23 @@ class _BatterySection extends ConsumerWidget {
     final async = ref.watch(batteryOptimizationProvider);
     final state = async.asData?.value;
     final (label, color) = switch (state) {
-      BatteryOptimizationState.ignored => ('已加入', colorScheme.primary),
-      BatteryOptimizationState.notIgnored => ('未加入', colorScheme.warning),
+      BatteryOptimizationState.ignored => (context.l10n.odBatteryJoined, colorScheme.primary),
+      BatteryOptimizationState.notIgnored => (context.l10n.odBatteryNotJoined, colorScheme.warning),
       BatteryOptimizationState.unavailable ||
-      null => ('不可用', context.colorScheme.onSurfaceVariant),
+      null => (context.l10n.odBatteryUnavailable, context.colorScheme.onSurfaceVariant),
     };
     return generateSection(
-      title: '前置条件',
+      title: context.l10n.odPrerequisites,
       items: [
         ListItem(
           leading: const GlyphIcon(AppGlyphs.bolt, size: 20),
-          title: const Text('忽略电池优化'),
+          title: Text(context.l10n.odIgnoreBattery),
           subtitle: Text(
             state == BatteryOptimizationState.ignored
-                ? '系统不会在后台冻结 VPN 进程'
+                ? context.l10n.odBatteryOk
                 : state == BatteryOptimizationState.notIgnored
-                ? '未加入时后台 VPN 可能被系统冻结，点击申请'
-                : '当前构建没有提供电池优化通道',
+                ? context.l10n.odBatteryAsk
+                : context.l10n.odBatteryNoChannel,
           ),
           trailing: Text(
             label,
@@ -298,7 +303,7 @@ class _BatterySection extends ConsumerWidget {
               : null,
         ),
       ],
-      footer: '点击「未加入」会打开系统授权页；返回后会重新读取真实状态，取消则保持未加入。',
+      footer: context.l10n.odBatteryFooter,
     );
   }
 
@@ -306,9 +311,9 @@ class _BatterySection extends ConsumerWidget {
     final state = await requestBatteryOptimizationAccess(ref);
     if (!context.mounted) return;
     showConfigHint(context, switch (state) {
-      BatteryOptimizationState.ignored => '已加入电池优化白名单',
-      BatteryOptimizationState.notIgnored => '仍未加入，VPN 可能被系统冻结',
-      BatteryOptimizationState.unavailable => '当前构建不支持该授权',
+      BatteryOptimizationState.ignored => context.l10n.odBatteryJoinedHint,
+      BatteryOptimizationState.notIgnored => context.l10n.odBatteryStillOff,
+      BatteryOptimizationState.unavailable => context.l10n.odBatteryUnsupportedHint,
     });
   }
 }

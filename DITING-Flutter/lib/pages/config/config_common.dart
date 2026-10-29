@@ -1,5 +1,6 @@
 library;
 
+import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,7 +20,7 @@ Future<bool> confirmConfigAction(
   BuildContext context, {
   required String title,
   required String message,
-  String confirmLabel = '删除',
+  String? confirmLabel,
 }) async {
   final confirmed = await showFloatingDialog<bool>(
     context: context,
@@ -29,11 +30,11 @@ Future<bool> confirmConfigAction(
       actions: [
         TextButton(
           onPressed: () => popFloatingDialog(context, false),
-          child: const Text('取消'),
+          child: Text(context.l10n.configCancel),
         ),
         TextButton(
           onPressed: () => popFloatingDialog(context, true),
-          child: Text(confirmLabel),
+          child: Text(confirmLabel ?? context.l10n.configDelete),
         ),
       ],
       child: Text(message),
@@ -121,5 +122,13 @@ class ConfigRemoveButton extends StatelessWidget {
 }
 
 /// Subtitle for list entries: report the count, and explain an empty list.
-String configListSummary(List<String> items, {String empty = '未设置'}) =>
-    items.isEmpty ? empty : '共 ${items.length} 项';
+String configListSummary(
+  List<String> items, {
+  String? empty,
+  AppL10n? l10n,
+}) {
+  final text = l10n ?? currentL10n;
+  return items.isEmpty
+      ? (empty ?? text.configNotSet)
+      : text.configItemCount(items.length);
+}

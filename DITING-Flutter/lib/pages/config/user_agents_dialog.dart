@@ -10,19 +10,19 @@ Future<void> showUserAgentDialog(
   final value = await showFloatingDialog<String>(
     context: context,
     child: InputDialog(
-      title: existing == null ? '添加 User-Agent' : '编辑 User-Agent',
+      title: existing == null ? context.l10n.uaAdd : context.l10n.uaEdit,
       value: existing ?? '',
-      hintText: '如：clash-verge/v2.0.0',
+      hintText: context.l10n.uaHint,
       labelText: 'User-Agent',
       maxLength: TextInputLimits.userAgent,
       selectAll: existing != null,
       validator: (input) {
         final text = (input ?? '').trim();
         if (text.isEmpty) {
-          return 'UA 不能为空';
+          return context.l10n.uaEmptyError;
         }
         if (text != existing && agents.any((item) => item.value == text)) {
-          return '该 UA 已存在';
+          return context.l10n.uaDuplicateError;
         }
         return null;
       },
@@ -36,6 +36,6 @@ Future<void> showUserAgentDialog(
       ? notifier.addUserAgent(value)
       : notifier.updateUserAgent(existing, value);
   if (!ok) {
-    showConfigHint(context, '该 UA 已存在');
+    showConfigHint(context, context.l10n.uaDuplicateError);
   }
 }

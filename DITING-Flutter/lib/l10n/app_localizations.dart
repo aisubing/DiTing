@@ -8858,6 +8858,528 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'30 跳'**
   String get toolTraceHops30;
+
+  /// No description provided for @uaDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 User-Agent'**
+  String get uaDeleteTitle;
+
+  /// No description provided for @uaDeleteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除这一条吗？只删候选，不影响当前已选中的 UA。'**
+  String get uaDeleteBody;
+
+  /// No description provided for @uaAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 User-Agent'**
+  String get uaAdd;
+
+  /// No description provided for @uaEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 User-Agent'**
+  String get uaEdit;
+
+  /// No description provided for @uaNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'UA 会随订阅下载、规则集拉取与订阅测速请求一起发送；部分服务端按 UA 拒绝请求，改这里可以绕过。'**
+  String get uaNote;
+
+  /// No description provided for @uaCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前选择'**
+  String get uaCurrent;
+
+  /// No description provided for @uaNoOverride.
+  ///
+  /// In zh, this message translates to:
+  /// **'不覆写'**
+  String get uaNoOverride;
+
+  /// No description provided for @uaNoOverrideBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'沿用订阅或内核自带的 UA'**
+  String get uaNoOverrideBody;
+
+  /// No description provided for @uaBuiltin.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置'**
+  String get uaBuiltin;
+
+  /// No description provided for @uaCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义'**
+  String get uaCustom;
+
+  /// No description provided for @uaBuiltinNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置 UA 不可删除：删掉之后内核回落到默认值，用户会误以为「设置没生效」。'**
+  String get uaBuiltinNote;
+
+  /// No description provided for @uaHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'如：clash-verge/v2.0.0'**
+  String get uaHint;
+
+  /// No description provided for @uaEmptyError.
+  ///
+  /// In zh, this message translates to:
+  /// **'UA 不能为空'**
+  String get uaEmptyError;
+
+  /// No description provided for @uaDuplicateError.
+  ///
+  /// In zh, this message translates to:
+  /// **'该 UA 已存在'**
+  String get uaDuplicateError;
+
+  /// No description provided for @ssidInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSID 不能为空或已存在'**
+  String get ssidInvalid;
+
+  /// No description provided for @ssidAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 SSID'**
+  String get ssidAdd;
+
+  /// No description provided for @ssidEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 SSID'**
+  String get ssidEdit;
+
+  /// No description provided for @ssidSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存 SSID'**
+  String get ssidSave;
+
+  /// No description provided for @ssidHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写，与系统 Wi-Fi 列表里的名字完全一致'**
+  String get ssidHint;
+
+  /// No description provided for @ssidExample.
+  ///
+  /// In zh, this message translates to:
+  /// **'如：Home-5G'**
+  String get ssidExample;
+
+  /// No description provided for @ssidEmptyError.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSID 不能为空'**
+  String get ssidEmptyError;
+
+  /// No description provided for @ssidConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接方式'**
+  String get ssidConnection;
+
+  /// No description provided for @ssidCellular.
+  ///
+  /// In zh, this message translates to:
+  /// **'蜂窝网络'**
+  String get ssidCellular;
+
+  /// No description provided for @ssidCellularBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'在该网络下也启动 VPN'**
+  String get ssidCellularBody;
+
+  /// No description provided for @ssidWifiBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'连上该 SSID 时启动 VPN'**
+  String get ssidWifiBody;
+
+  /// No description provided for @ssidBothOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'两种都关掉，等于把这条 SSID 从白名单里排除（VPN 不会启动）。'**
+  String get ssidBothOff;
+
+  /// No description provided for @ssidDelay.
+  ///
+  /// In zh, this message translates to:
+  /// **'延迟'**
+  String get ssidDelay;
+
+  /// No description provided for @ssidStartDelay.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动延迟'**
+  String get ssidStartDelay;
+
+  /// No description provided for @ssidStartDelayBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待网络就绪后再启动 VPN'**
+  String get ssidStartDelayBody;
+
+  /// No description provided for @ssidImmediate.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即连接'**
+  String get ssidImmediate;
+
+  /// No description provided for @odTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'按需连接'**
+  String get odTitle;
+
+  /// No description provided for @odApplyNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即应用'**
+  String get odApplyNow;
+
+  /// No description provided for @odEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用按需连接'**
+  String get odEnable;
+
+  /// No description provided for @odEnableBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'连上白名单里的 SSID 时自动启动 VPN'**
+  String get odEnableBody;
+
+  /// No description provided for @odDisableBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭时 VPN 始终在线，不随网络切换'**
+  String get odDisableBody;
+
+  /// No description provided for @odNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后，只有连上白名单里的 SSID 时才会自动启动 VPN；其余网络保持断开，省电也更可控。自动判定只在网络变化时启停 VPN，不会覆盖手动开关的结果；点右上角「立即应用」可立即按当前网络重新判定。'**
+  String get odNote;
+
+  /// No description provided for @odAllowlist.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSID 白名单'**
+  String get odAllowlist;
+
+  /// No description provided for @odNoSsid.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有 SSID'**
+  String get odNoSsid;
+
+  /// No description provided for @odNoSsidBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有白名单时按需连接不会触发'**
+  String get odNoSsidBody;
+
+  /// No description provided for @odDelayNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'延迟用于等 Wi-Fi 完成认证与 DHCP；过早启动 VPN 会让首个请求落到尚未就绪的网络上。'**
+  String get odDelayNote;
+
+  /// No description provided for @odCellular.
+  ///
+  /// In zh, this message translates to:
+  /// **'蜂窝'**
+  String get odCellular;
+
+  /// No description provided for @odKindsNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'不启用'**
+  String get odKindsNone;
+
+  /// No description provided for @odDelayValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'延迟 {ms} ms'**
+  String odDelayValue(Object ms);
+
+  /// No description provided for @odStateDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'按需连接已关闭'**
+  String get odStateDisabled;
+
+  /// No description provided for @odStateUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取当前 Wi-Fi，白名单不会触发'**
+  String get odStateUnknown;
+
+  /// No description provided for @odStateNoWifi.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前不在 Wi-Fi 上，VPN 保持断开'**
+  String get odStateNoWifi;
+
+  /// No description provided for @odStateMatched.
+  ///
+  /// In zh, this message translates to:
+  /// **'已匹配 {ssid}，VPN 会自动启动'**
+  String odStateMatched(Object ssid);
+
+  /// No description provided for @odStateUnmatched.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 Wi-Fi 不在白名单，VPN 保持断开'**
+  String get odStateUnmatched;
+
+  /// No description provided for @odDisabledHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按需连接已关闭，VPN 不再随网络切换'**
+  String get odDisabledHint;
+
+  /// No description provided for @odPillDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启用'**
+  String get odPillDisabled;
+
+  /// No description provided for @odPillUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法判断'**
+  String get odPillUnknown;
+
+  /// No description provided for @odPillNoWifi.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接 Wi-Fi'**
+  String get odPillNoWifi;
+
+  /// No description provided for @odPillWillStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'会启动 VPN'**
+  String get odPillWillStart;
+
+  /// No description provided for @odPillWillNotStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'不会启动 VPN'**
+  String get odPillWillNotStart;
+
+  /// No description provided for @odDecision.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前判定'**
+  String get odDecision;
+
+  /// No description provided for @odDecisionFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'判定按当前网络实时计算：切换 Wi-Fi 后重新读取即可看到结果。SSID 区分大小写。'**
+  String get odDecisionFooter;
+
+  /// No description provided for @odCurrentNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络'**
+  String get odCurrentNetwork;
+
+  /// No description provided for @odWifiName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Wi-Fi 名称'**
+  String get odWifiName;
+
+  /// No description provided for @odReadAgain.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新读取'**
+  String get odReadAgain;
+
+  /// No description provided for @odPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取权限'**
+  String get odPermission;
+
+  /// No description provided for @odPermissionBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'Android 10 起读取 Wi-Fi 名称需要位置权限'**
+  String get odPermissionBody;
+
+  /// No description provided for @odNotGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授权'**
+  String get odNotGranted;
+
+  /// No description provided for @odWifiUnreadable.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机当前无法读取 Wi-Fi 名称：请在系统设置里授予本应用位置权限后重新读取。'**
+  String get odWifiUnreadable;
+
+  /// No description provided for @odSsidPrivacy.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSID 只用于匹配白名单，不会被上传；手动添加的 SSID 在无法读取时仍然可用。'**
+  String get odSsidPrivacy;
+
+  /// No description provided for @odBatteryJoined.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入'**
+  String get odBatteryJoined;
+
+  /// No description provided for @odBatteryNotJoined.
+  ///
+  /// In zh, this message translates to:
+  /// **'未加入'**
+  String get odBatteryNotJoined;
+
+  /// No description provided for @odBatteryUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'不可用'**
+  String get odBatteryUnavailable;
+
+  /// No description provided for @odPrerequisites.
+  ///
+  /// In zh, this message translates to:
+  /// **'前置条件'**
+  String get odPrerequisites;
+
+  /// No description provided for @odIgnoreBattery.
+  ///
+  /// In zh, this message translates to:
+  /// **'忽略电池优化'**
+  String get odIgnoreBattery;
+
+  /// No description provided for @odBatteryOk.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统不会在后台冻结 VPN 进程'**
+  String get odBatteryOk;
+
+  /// No description provided for @odBatteryAsk.
+  ///
+  /// In zh, this message translates to:
+  /// **'未加入时后台 VPN 可能被系统冻结，点击申请'**
+  String get odBatteryAsk;
+
+  /// No description provided for @odBatteryNoChannel.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前构建没有提供电池优化通道'**
+  String get odBatteryNoChannel;
+
+  /// No description provided for @odBatteryFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击「未加入」会打开系统授权页；返回后会重新读取真实状态，取消则保持未加入。'**
+  String get odBatteryFooter;
+
+  /// No description provided for @odBatteryJoinedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入电池优化白名单'**
+  String get odBatteryJoinedHint;
+
+  /// No description provided for @odBatteryStillOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍未加入，VPN 可能被系统冻结'**
+  String get odBatteryStillOff;
+
+  /// No description provided for @odBatteryUnsupportedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前构建不支持该授权'**
+  String get odBatteryUnsupportedHint;
+
+  /// No description provided for @odCapNoPermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取：需要位置权限'**
+  String get odCapNoPermission;
+
+  /// No description provided for @odCapCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前连接：{name}'**
+  String odCapCurrent(Object name);
+
+  /// No description provided for @customResourcesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义资源'**
+  String get customResourcesTitle;
+
+  /// No description provided for @customResourcesNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'这些资源按名字被引用：改名字等于断开引用，改内容则在下一次加载配置时生效。它们不属于旧版 1.4.3 的界面，保留在此供调试使用。'**
+  String get customResourcesNote;
+
+  /// No description provided for @customResourcesSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'资源'**
+  String get customResourcesSection;
+
+  /// No description provided for @configDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get configDelete;
+
+  /// No description provided for @configCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get configCancel;
+
+  /// No description provided for @configNotSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置'**
+  String get configNotSet;
+
+  /// No description provided for @configItemCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {count} 项'**
+  String configItemCount(Object count);
+
+  /// No description provided for @odEditSsidTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 {ssid}'**
+  String odEditSsidTooltip(Object ssid);
+
+  /// No description provided for @odDeleteSsidTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 {ssid}'**
+  String odDeleteSsidTooltip(Object ssid);
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
