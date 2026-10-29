@@ -171,9 +171,12 @@ class _AttributionBanner extends StatelessWidget {
 /// Live rate block: show the native rate when available, otherwise say so. The monitor only
 /// covers the current session, so the label must say "this session".
 class _LiveRateCard extends ConsumerWidget {
-  const _LiveRateCard({required this.windowLabel});
+  const _LiveRateCard({required this.windowLabel, required this.showNote});
 
   final String windowLabel;
+
+  /// Whether to show the note comparing the live rate with the window totals.
+  final bool showNote;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -216,10 +219,11 @@ class _LiveRateCard extends ConsumerWidget {
                           '↑ ${obsFormatBytes(last.up.round())} /s',
                 style: context.listTitleStyle,
               ),
-              Text(
-                context.l10n.trafficLiveRateBody(windowLabel),
-                style: context.listCaptionStyle,
-              ),
+              if (showNote)
+                Text(
+                  context.l10n.trafficLiveRateBody(windowLabel),
+                  style: context.listCaptionStyle,
+                ),
             ],
           ],
         ),

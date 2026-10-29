@@ -3,6 +3,7 @@ library;
 
 import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/db/app_traffic_repository.dart';
+import 'package:diting/data/prefs/legacy_settings_provider.dart';
 import 'package:diting/pages/observability/observability_common.dart';
 import 'package:diting/state/dashboard_providers.dart';
 import 'package:diting/state/log_providers.dart';
@@ -31,9 +32,14 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
   /// Grab the notifier on entry: dispose() cannot call ref.read.
   SpeedSeriesNotifier? _speed;
 
+  /// Explanatory tips show on the first visit only; the app bar info button keeps the
+  /// attribution explainer reachable afterwards.
+  late final bool _showTips;
+
   @override
   void initState() {
     super.initState();
+    _showTips = consumeTrafficTips(ref.read(legacyPrefsStoreProvider));
     // Shares the same rate series as the home page; the provider ref-counts it.
     _speed = ref.read(speedSeriesProvider.notifier);
     _speed!.attachPolling();
@@ -168,14 +174,19 @@ class _TrafficPageState extends ConsumerState<TrafficPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              _LiveRateCard(windowLabel: window.label(context.l10n)),
-              const SizedBox(height: 10),
-              _AttributionBanner(
-                onTap: () => showSheet<void>(
-                  context: context,
-                  builder: (_) => const _AttributionSheet(),
-                ),
+              _LiveRateCard(
+                windowLabel: window.label(context.l10n),
+                showNote: _showTips,
               ),
+              if (_showTips) ...[
+                const SizedBox(height: 10),
+                _AttributionBanner(
+                  onTap: () => showSheet<void>(
+                    context: context,
+                    builder: (_) => const _AttributionSheet(),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               _TrafficFilterBar(
                 searchController: _search,
