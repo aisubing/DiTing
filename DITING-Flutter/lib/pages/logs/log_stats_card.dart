@@ -1,5 +1,4 @@
 import 'package:diting/app/l10n/l10n.dart';
-import 'package:diting/pages/home/dashboard/cards/dashboard_block_parts.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_style.dart';
 import 'package:diting/state/log_stats_providers.dart';
@@ -25,20 +24,21 @@ class LogStatsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 4),
-          GlyphIcon(AppGlyphs.dataUsage, size: 36, color: colorScheme.primary),
           const SizedBox(height: 8),
+          GlyphIcon(AppGlyphs.dataUsage, size: 40, color: colorScheme.primary),
+          const SizedBox(height: 12),
           Text(
             l10n.logStatsTitle,
             textAlign: TextAlign.center,
-            style: AppTextStyle.title3.of(context, emphasized: true),
+            style: AppTextStyle.title2.of(context, emphasized: true),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
           const _RequestsSection(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           _RecentActivityRow(onTap: onRecentActivity),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           const _DataSection(),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -101,8 +101,8 @@ class _DataSection extends ConsumerWidget {
     final window = ref.watch(logStatsWindowProvider(LogStatsSection.data));
     final stats = ref.watch(logStatsDataProvider(window)).value;
     final rest = colorScheme.onSurfaceVariant;
-    String figure(int? value) =>
-        value == null ? '—' : dashboardBinaryBytes(value);
+    // Base 1000 with one decimal, like the traffic page: `88.2 MB` fits a third of the card.
+    String figure(int? value) => value == null ? '—' : dashboardTraffic(value);
     return _Section(
       title: l10n.logStatsData,
       section: LogStatsSection.data,
@@ -168,32 +168,72 @@ class _Section extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTextStyle.headline.of(context),
+                style: AppTextStyle.title3.of(context, emphasized: true),
               ),
             ),
             _WindowPicker(section: section),
           ],
         ),
-        const SizedBox(height: 16),
-        Row(
+        const SizedBox(height: 22),
+        _FigureRow(cells: cells, neutralLabel: label),
+        const SizedBox(height: 20),
+        _ProportionBar(segments: segments),
+      ],
+    );
+  }
+}
+
+/// Three centered figures sharing one font size: the widest value decides the shrink, so the
+/// baselines stay aligned and neighbors never touch.
+class _FigureRow extends StatelessWidget {
+  const _FigureRow({required this.cells, required this.neutralLabel});
+
+  static const _gap = 12.0;
+
+  final List<_Cell> cells;
+  final Color neutralLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = DashboardText.figure(context, AppTextStyle.title1);
+    final scaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cellWidth =
+            (constraints.maxWidth - _gap * (cells.length - 1)) / cells.length;
+        var widest = 0.0;
+        for (final cell in cells) {
+          final painter = TextPainter(
+            text: TextSpan(text: cell.value, style: base),
+            textDirection: Directionality.of(context),
+            textScaler: scaler,
+            maxLines: 1,
+          )..layout();
+          if (painter.width > widest) widest = painter.width;
+          painter.dispose();
+        }
+        final shrink = widest <= cellWidth || widest == 0
+            ? 1.0
+            : cellWidth / widest;
+        return Row(
+          spacing: _gap,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final (index, cell) in cells.indexed)
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  spacing: 4,
+                  spacing: 6,
                   children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        cell.value,
-                        maxLines: 1,
-                        style: DashboardText.figure(
-                          context,
-                          AppTextStyle.title2,
-                          color: cell.color,
-                        ),
+                    Text(
+                      cell.value,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.clip,
+                      style: base.copyWith(
+                        color: cell.color,
+                        fontSize: base.fontSize! * shrink,
+                        letterSpacing: (base.letterSpacing ?? 0) * shrink,
                       ),
                     ),
                     Text(
@@ -201,19 +241,20 @@ class _Section extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
-                      style: DashboardText.label(
-                        context,
-                        color: index == cells.length - 1 ? label : cell.color,
-                      ),
+                      style: AppTextStyle.subheadline
+                          .of(context)
+                          .copyWith(
+                            color: index == cells.length - 1
+                                ? neutralLabel
+                                : cell.color,
+                          ),
                     ),
                   ],
                 ),
               ),
           ],
-        ),
-        const SizedBox(height: 16),
-        _ProportionBar(segments: segments),
-      ],
+        );
+      },
     );
   }
 }
@@ -223,8 +264,8 @@ class _Section extends StatelessWidget {
 class _ProportionBar extends StatelessWidget {
   const _ProportionBar({required this.segments});
 
-  static const _height = 6.0;
-  static const _gap = 6.0;
+  static const _height = 8.0;
+  static const _gap = 8.0;
   static const _minShare = 0.04;
 
   final List<_Segment> segments;
@@ -248,8 +289,10 @@ class _ProportionBar extends StatelessWidget {
     }
     return SizedBox(
       height: _height,
+      // Stretch: a childless box in a Row is otherwise laid out zero high.
       child: Row(
         spacing: _gap,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final segment in shown)
             Expanded(
@@ -293,7 +336,7 @@ class _WindowPicker extends ConsumerWidget {
               children: [
                 Text(
                   labelOf(window),
-                  style: AppTextStyle.subheadline
+                  style: AppTextStyle.callout
                       .of(context)
                       .copyWith(color: color),
                 ),
@@ -317,6 +360,22 @@ class _WindowPicker extends ConsumerWidget {
   }
 }
 
+/// Three left-aligned lines of falling length, the list mark of the reference design.
+const _activityGlyph = Glyph([
+  GlyphPolyline([
+    GlyphVertex(4, 6.5),
+    GlyphVertex(20, 6.5),
+  ], role: GlyphRole.line),
+  GlyphPolyline([
+    GlyphVertex(4, 12),
+    GlyphVertex(17, 12),
+  ], role: GlyphRole.line),
+  GlyphPolyline([
+    GlyphVertex(4, 17.5),
+    GlyphVertex(14, 17.5),
+  ], role: GlyphRole.line),
+], matchTextDirection: true);
+
 class _RecentActivityRow extends StatelessWidget {
   const _RecentActivityRow({this.onTap});
 
@@ -329,15 +388,11 @@ class _RecentActivityRow extends StatelessWidget {
       customBorder: AppShape.all(AppCorner.md),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
-          spacing: 14,
+          spacing: 16,
           children: [
-            GlyphIcon(
-              AppGlyphs.textShort,
-              size: 22,
-              color: colorScheme.primary,
-            ),
+            GlyphIcon(_activityGlyph, size: 24, color: colorScheme.primary),
             Expanded(
               child: Text(
                 context.l10n.logStatsRecentActivity,
