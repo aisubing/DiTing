@@ -102,10 +102,16 @@ class HttpRequestRepository {
     int limit = 200,
     RequestStatus status = RequestStatus.all,
     String query = '',
+    String? packageName,
   }) async {
     final trimmed = query.trim();
     final args = <Object?>[];
     final sql = StringBuffer('SELECT * FROM http_request_log WHERE 1=1');
+
+    if (packageName != null) {
+      sql.write(' AND packageName = ?');
+      args.add(packageName);
+    }
 
     if (trimmed.isNotEmpty) {
       sql.write(
@@ -163,6 +169,18 @@ class HttpRequestRepository {
       total += count;
     }
     return HttpRequestDailyStats(total: total, byOutcome: byOutcome);
+  }
+
+  /// Request count per attributed package; rows without a package are skipped.
+  Future<Map<String, int>> countByPackage() async {
+    final rows = await _db.rawQuery(
+      'SELECT packageName, COUNT(*) AS count FROM http_request_log '
+      "WHERE packageName != '' GROUP BY packageName",
+    );
+    return {
+      for (final row in rows)
+        row['packageName'] as String: (row['count'] as num?)?.toInt() ?? 0,
+    };
   }
 
   Future<int> clearAll() => _db.delete('http_request_log');

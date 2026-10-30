@@ -51,9 +51,16 @@ String? _hostOf(ObservedRequest request) {
 }
 
 class RequestDetailSheet extends StatelessWidget {
-  const RequestDetailSheet({super.key, required this.request});
+  const RequestDetailSheet({
+    super.key,
+    required this.request,
+    this.showAppLink = true,
+  });
 
   final ObservedRequest request;
+
+  /// Offers the page of this request's app; off when the sheet was opened from that page.
+  final bool showAppLink;
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +110,21 @@ class RequestDetailSheet extends StatelessWidget {
                     label: context.l10n.obsAppPackage,
                     value: packageName,
                     monospace: true,
+                  ),
+                if (request.packageName case final packageName?
+                    when showAppLink && packageName.isNotEmpty)
+                  ListItem(
+                    title: Text(context.l10n.obsViewAppRequests),
+                    trailing: GlyphIcon(
+                      AppGlyphs.chevronForward,
+                      size: 18,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    // Close the sheet first, otherwise coming back shows it over the list again.
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      context.push(ObservabilityPaths.appRequests(packageName));
+                    },
                   ),
                 if (parsed.resolved case final resolved?)
                   KeyValueRow(label: context.l10n.obsResolved, value: resolved, monospace: true),

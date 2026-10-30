@@ -3457,6 +3457,32 @@ class AppL10nZh extends AppL10n {
   String get obsFooterAll => '；已加载全部';
 
   @override
+  String get obsByApp => '按应用查看';
+
+  @override
+  String get obsViewAppRequests => '查看该应用的请求记录';
+
+  @override
+  String get obsAppsTitle => '按应用查看';
+
+  @override
+  String get obsAppsHeader => '应用';
+
+  @override
+  String get obsAppsEmpty => '还没有带应用归属的请求';
+
+  @override
+  String get obsAppsEmptyBody => '请求记录中带有应用包名时，会按应用汇总在这里。';
+
+  @override
+  String get obsAppsFooter => '按请求次数从多到少排列，统计范围为当前保留的全部请求记录。点按一个应用查看它的请求。';
+
+  @override
+  String obsAppRequestCount(Object count) {
+    return '$count 次请求';
+  }
+
+  @override
   String get logsSubStatsTitle => '订阅拦截率';
 
   @override

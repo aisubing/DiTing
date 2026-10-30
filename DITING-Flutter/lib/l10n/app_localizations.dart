@@ -6400,6 +6400,54 @@ abstract class AppL10n {
   /// **'；已加载全部'**
   String get obsFooterAll;
 
+  /// No description provided for @obsByApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'按应用查看'**
+  String get obsByApp;
+
+  /// No description provided for @obsViewAppRequests.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看该应用的请求记录'**
+  String get obsViewAppRequests;
+
+  /// No description provided for @obsAppsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'按应用查看'**
+  String get obsAppsTitle;
+
+  /// No description provided for @obsAppsHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get obsAppsHeader;
+
+  /// No description provided for @obsAppsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有带应用归属的请求'**
+  String get obsAppsEmpty;
+
+  /// No description provided for @obsAppsEmptyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求记录中带有应用包名时，会按应用汇总在这里。'**
+  String get obsAppsEmptyBody;
+
+  /// No description provided for @obsAppsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'按请求次数从多到少排列，统计范围为当前保留的全部请求记录。点按一个应用查看它的请求。'**
+  String get obsAppsFooter;
+
+  /// No description provided for @obsAppRequestCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 次请求'**
+  String obsAppRequestCount(Object count);
+
   /// No description provided for @logsSubStatsTitle.
   ///
   /// In zh, this message translates to:

@@ -8,24 +8,68 @@ import 'package:diting/data/db/dns_query_repository.dart';
 import 'package:diting/data/db/http_request_repository.dart';
 import 'package:diting/pages/observability/domain_detail_parts.dart';
 import 'package:diting/pages/observability/observability_common.dart';
+import 'package:diting/routes/observability_routes.dart';
+import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/log_providers.dart';
 import 'package:diting/state/observability_providers.dart';
 import 'package:diting/ui/ui.dart';
+import 'package:diting/widgets/app_icon_avatar.dart';
 import 'package:diting/widgets/stat_strip.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+part 'requests_apps.dart';
 part 'requests_detail.dart';
 part 'requests_rows.dart';
 
-class RequestsPage extends ConsumerStatefulWidget {
+/// Every app's requests; the menu leads to the per-app pages.
+class RequestsPage extends ConsumerWidget {
   const RequestsPage({super.key});
 
   @override
-  ConsumerState<RequestsPage> createState() => _RequestsPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RequestFeedView(
+      title: context.l10n.obsRequestsTitle,
+      queryProvider: requestFeedQueryProvider,
+      feedProvider: requestFeedProvider,
+      leadingMenuItems: [
+        CommonPopupMenuItem(
+          label: context.l10n.obsByApp,
+          glyph: AppGlyphs.appsList,
+          onPressed: () => context.push(ObservabilityPaths.requestApps),
+        ),
+      ],
+    );
+  }
 }
 
-class _RequestsPageState extends ConsumerState<RequestsPage> {
+/// Filterable, paged request list shared by [RequestsPage] and [AppRequestsPage]; each page brings
+/// its own query and feed so their filters never leak into each other.
+class RequestFeedView extends ConsumerStatefulWidget {
+  const RequestFeedView({
+    super.key,
+    required this.title,
+    required this.queryProvider,
+    required this.feedProvider,
+    this.packageName,
+    this.leadingMenuItems = const [],
+  });
+
+  final String title;
+  final NotifierProvider<RequestFeedNotifier, RequestFeedQuery> queryProvider;
+  final FutureProvider<RequestFeed> feedProvider;
+
+  /// Set when the list is already narrowed to one app; the detail sheet then hides its link to
+  /// the same app page.
+  final String? packageName;
+  final List<CommonPopupMenuItem> leadingMenuItems;
+
+  @override
+  ConsumerState<RequestFeedView> createState() => _RequestFeedViewState();
+}
+
+class _RequestFeedViewState extends ConsumerState<RequestFeedView> {
   /// 250 ms search debounce, as upstream: every keystroke would otherwise issue a LIKE query.
   static const _searchDebounce = Duration(milliseconds: 250);
 
@@ -44,37 +88,41 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
     _searchTimer?.cancel();
     _searchTimer = Timer(_searchDebounce, () {
       if (!mounted) return;
-      ref.read(requestFeedQueryProvider.notifier).setQuery(value.trim());
+      ref.read(widget.queryProvider.notifier).setQuery(value.trim());
     });
   }
 
   void _refresh() => ref.read(dnsLogRevisionProvider.notifier).bump();
 
   void _resetFilters() {
-    ref.read(requestFeedQueryProvider.notifier).reset();
+    ref.read(widget.queryProvider.notifier).reset();
     _searchTimer?.cancel();
   }
 
   void _openDetail(ObservedRequest request) {
     showSheet<void>(
       context: context,
-      builder: (_) => RequestDetailSheet(request: request),
+      builder: (_) => RequestDetailSheet(
+        request: request,
+        showAppLink: widget.packageName == null,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final asyncFeed = ref.watch(requestFeedProvider);
-    final query = ref.watch(requestFeedQueryProvider);
+    final asyncFeed = ref.watch(widget.feedProvider);
+    final query = ref.watch(widget.queryProvider);
     final filterLabel = [
       if (query.source != RequestSource.all) query.source.label,
       if (query.status != RequestStatus.all) query.status.label,
     ].join(' · ');
 
     return CommonScaffold(
-      title: context.l10n.obsRequestsTitle,
+      title: widget.title,
       searchState: AppBarSearchState(onSearch: _onSearch),
       menuItems: [
+        ...widget.leadingMenuItems,
         CommonPopupMenuItem(
           label: context.l10n.obsSource,
           glyph: AppGlyphs.filter,
@@ -83,9 +131,8 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
               CommonPopupMenuItem(
                 label: source.label,
                 checked: source == query.source,
-                onPressed: () => ref
-                    .read(requestFeedQueryProvider.notifier)
-                    .setSource(source),
+                onPressed: () =>
+                    ref.read(widget.queryProvider.notifier).setSource(source),
               ),
           ],
         ),
@@ -97,9 +144,8 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
               CommonPopupMenuItem(
                 label: status.label,
                 checked: status == query.status,
-                onPressed: () => ref
-                    .read(requestFeedQueryProvider.notifier)
-                    .setStatus(status),
+                onPressed: () =>
+                    ref.read(widget.queryProvider.notifier).setStatus(status),
               ),
           ],
         ),
@@ -142,7 +188,7 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
 
     return NullStatusSwitcher(
       isEmpty: items.isEmpty,
-      isSearching: ref.read(requestFeedQueryProvider).query.isNotEmpty,
+      isSearching: ref.read(widget.queryProvider).query.isNotEmpty,
       nullStatus: obsEmpty(
         label: filterLabel.isEmpty ? context.l10n.obsNoRecords : context.l10n.obsNoMatchingRequests,
         description: filterLabel.isEmpty
@@ -207,11 +253,11 @@ class _RequestsPageState extends ConsumerState<RequestsPage> {
   /// retry re-runs the same page.
   void _loadMore(RequestFeed feed) {
     if (!feed.hasMore || _isLoadingMore(feed)) return;
-    ref.read(requestFeedQueryProvider.notifier).loadMore();
+    ref.read(widget.queryProvider.notifier).loadMore();
   }
 
   bool _isLoadingMore(RequestFeed feed) =>
-      ref.read(requestFeedQueryProvider).page > feed.page;
+      ref.read(widget.queryProvider).page > feed.page;
 }
 
 /// Footer that doubles as the pagination indicator: a spinner while the next page is being read,

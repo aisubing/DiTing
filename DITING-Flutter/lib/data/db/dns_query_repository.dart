@@ -127,14 +127,33 @@ class DnsQueryRepository {
 
   final Database _db;
 
+  /// Request count per attributed package; rows without a package are skipped.
+  Future<Map<String, int>> countByPackage() async {
+    final rows = await _db.rawQuery(
+      'SELECT packageName, COUNT(*) AS count FROM dns_log '
+      "WHERE packageName IS NOT NULL AND packageName != '' "
+      'GROUP BY packageName',
+    );
+    return {
+      for (final row in rows)
+        row['packageName'] as String: (row['count'] as num?)?.toInt() ?? 0,
+    };
+  }
+
   /// Newest first. The page chips select one bucket at a time, so there is no `IN (...)` path.
   Future<List<DnsLogRow>> recent({
     int limit = 200,
     RequestStatus status = RequestStatus.all,
     String query = '',
+    String? packageName,
   }) async {
     final sql = StringBuffer('SELECT * FROM dns_log WHERE 1=1');
     final args = <Object?>[];
+
+    if (packageName != null) {
+      sql.write(' AND packageName = ?');
+      args.add(packageName);
+    }
 
     final trimmed = query.trim();
     if (trimmed.isNotEmpty) {

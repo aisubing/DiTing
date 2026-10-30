@@ -146,6 +146,14 @@ final requestFeedQueryProvider =
       RequestFeedNotifier.new,
     );
 
+/// Filters of the per-app request page, keyed by package name. Kept apart from
+/// [requestFeedQueryProvider] so filtering one app leaves the full list untouched, and disposed on
+/// leave so reopening an app starts unfiltered.
+final appRequestFeedQueryProvider = NotifierProvider.autoDispose
+    .family<RequestFeedNotifier, RequestFeedQuery, String>(
+      (_) => RequestFeedNotifier(),
+    );
+
 class RequestFeed {
   const RequestFeed({
     required this.items,
@@ -168,8 +176,12 @@ class RequestFeed {
 
 /// Express keeps its own database without `http_request_log`, so querying it throws `no such
 /// table`.
-Future<RequestFeed> _loadRequestFeed(Ref ref) async {
-  final query = ref.watch(requestFeedQueryProvider);
+/// [packageName] narrows both tables to one app; null reads every app.
+Future<RequestFeed> _loadRequestFeed(
+  Ref ref,
+  RequestFeedQuery query, {
+  String? packageName,
+}) async {
   final express = ref.watch(workModeProvider) == AppWorkMode.express;
 
   final dnsFuture = query.source == RequestSource.https
@@ -181,6 +193,7 @@ Future<RequestFeed> _loadRequestFeed(Ref ref) async {
             limit: query.limit,
             status: query.status,
             query: query.query,
+            packageName: packageName,
           );
         }();
 
@@ -193,6 +206,7 @@ Future<RequestFeed> _loadRequestFeed(Ref ref) async {
             limit: query.limit,
             status: query.status,
             query: query.query,
+            packageName: packageName,
           );
         }();
 
@@ -214,7 +228,57 @@ Future<RequestFeed> _loadRequestFeed(Ref ref) async {
 
 final requestFeedProvider = FutureProvider<RequestFeed>((ref) async {
   ref.watch(dnsLogRevisionProvider);
-  return _loadRequestFeed(ref);
+  return _loadRequestFeed(ref, ref.watch(requestFeedQueryProvider));
+});
+
+/// Request feed of one app, keyed by package name.
+final appRequestFeedProvider = FutureProvider.autoDispose
+    .family<RequestFeed, String>((ref, packageName) async {
+      ref.watch(dnsLogRevisionProvider);
+      return _loadRequestFeed(
+        ref,
+        ref.watch(appRequestFeedQueryProvider(packageName)),
+        packageName: packageName,
+      );
+    });
+
+/// Request count of one app across both tables.
+class AppRequestCount {
+  const AppRequestCount({required this.packageName, required this.count});
+
+  final String packageName;
+  final int count;
+}
+
+/// Apps that appear in the request log, most requests first. Rows without a package are left out:
+/// they cannot be opened as an app page. Express has no `http_request_log`, as in the feed.
+final requestAppCountsProvider = FutureProvider<List<AppRequestCount>>((
+  ref,
+) async {
+  ref.watch(dnsLogRevisionProvider);
+  final express = ref.watch(workModeProvider) == AppWorkMode.express;
+
+  Future<Map<String, int>> dnsCounts() async {
+    final db = await ref.watch(activeLogDatabaseProvider.future);
+    return db == null ? const {} : DnsQueryRepository(db).countByPackage();
+  }
+
+  Future<Map<String, int>> httpCounts() async {
+    if (express) return const {};
+    final db = await ref.watch(mainLogDatabaseProvider.future);
+    return db == null ? const {} : HttpRequestRepository(db).countByPackage();
+  }
+
+  final (dns, http) = await (dnsCounts(), httpCounts()).wait;
+  final merged = <String, int>{...dns};
+  http.forEach((name, count) => merged[name] = (merged[name] ?? 0) + count);
+  return [
+    for (final entry in merged.entries)
+      AppRequestCount(packageName: entry.key, count: entry.value),
+  ]..sort((a, b) {
+    final byCount = b.count.compareTo(a.count);
+    return byCount != 0 ? byCount : a.packageName.compareTo(b.packageName);
+  });
 });
 
 /// The main `diting_database`, the only one with `http_request_log` and `app_traffic_daily`.

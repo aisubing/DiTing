@@ -3631,6 +3631,34 @@ class AppL10nEn extends AppL10n {
   String get obsFooterAll => '; all loaded';
 
   @override
+  String get obsByApp => 'By app';
+
+  @override
+  String get obsViewAppRequests => 'View this app\'s requests';
+
+  @override
+  String get obsAppsTitle => 'By app';
+
+  @override
+  String get obsAppsHeader => 'Apps';
+
+  @override
+  String get obsAppsEmpty => 'No requests attributed to an app yet';
+
+  @override
+  String get obsAppsEmptyBody =>
+      'Requests that carry a package name are grouped by app here.';
+
+  @override
+  String get obsAppsFooter =>
+      'Sorted by request count, across all retained request records. Tap an app to see its requests.';
+
+  @override
+  String obsAppRequestCount(Object count) {
+    return '$count requests';
+  }
+
+  @override
   String get logsSubStatsTitle => 'Subscription block rate';
 
   @override
