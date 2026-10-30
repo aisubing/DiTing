@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
 part 'subscriptions_cards.dart';
+part 'subscriptions_groups_sheet.dart';
 part 'subscriptions_sheet.dart';
 part 'subscriptions_sheet_widgets.dart';
 
@@ -210,7 +211,11 @@ class SubscriptionsPage extends ConsumerWidget {
                     onSelect: (id) => ref
                         .read(subscriptionGroupFilterProvider.notifier)
                         .select(id),
-                    onManage: () => _manageGroups(context, ref),
+                    onCreate: () => _createGroup(context, ref),
+                    onManage: () => showSheet<void>(
+                      context: context,
+                      builder: (_) => const _GroupManageSheet(),
+                    ),
                   ),
                 ),
                 Padding(
@@ -296,7 +301,7 @@ class SubscriptionsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _manageGroups(BuildContext context, WidgetRef ref) async {
+  Future<void> _createGroup(BuildContext context, WidgetRef ref) async {
     final name = await showFloatingDialog<String>(
       context: context,
       child: InputDialog(
@@ -327,6 +332,7 @@ class _GroupChips extends StatelessWidget {
     required this.value,
     required this.totalCount,
     required this.onSelect,
+    required this.onCreate,
     required this.onManage,
   });
 
@@ -335,6 +341,7 @@ class _GroupChips extends StatelessWidget {
   final int? value;
   final int totalCount;
   final ValueChanged<int?> onSelect;
+  final VoidCallback onCreate;
   final VoidCallback onManage;
 
   @override
@@ -344,21 +351,48 @@ class _GroupChips extends StatelessWidget {
       (null, context.l10n.subsAllGroups),
       for (final group in groups) (group.id, group.name),
     ];
-    return ChipRow(
+    return Row(
       children: [
-        for (final (groupId, label) in options)
-          FilterPill(
-            label: label,
-            selected: groupId == value,
-            onPressed: () => onSelect(groupId),
+        Expanded(
+          child: ChipRow(
+            children: [
+              for (final (groupId, label) in options)
+                FilterPill(
+                  label: label,
+                  selected: groupId == value,
+                  onPressed: () => onSelect(groupId),
+                ),
+              // The create chip is a management entry, not a filter, so it is never selected.
+              TonalChip(
+                label: context.l10n.subsGroupShort,
+                color: context.raisedSurfaceLevel.colorOf(colorScheme),
+                foregroundColor: colorScheme.onSurfaceVariant,
+                onPressed: onCreate,
+              ),
+            ],
           ),
-        // The create chip is a management entry, not a filter, so it is never selected.
-        TonalChip(
-          label: context.l10n.subsGroupShort,
-          color: context.raisedSurfaceLevel.colorOf(colorScheme),
-          foregroundColor: colorScheme.onSurfaceVariant,
-          onPressed: onManage,
         ),
+        // Pinned outside the scrolling row: group management must stay reachable no matter how
+        // many groups push the chips off-screen.
+        if (groups.isNotEmpty)
+          TextButton(
+            onPressed: onManage,
+            style: TextButton.styleFrom(
+              foregroundColor: colorScheme.onSurfaceVariant,
+              textStyle: AppTextStyle.caption1.of(context, emphasized: true),
+              minimumSize: const Size(0, ChipRow.height),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 4,
+              children: [
+                const GlyphIcon(AppGlyphs.edit, size: 16),
+                Text(context.l10n.subsManageGroupsShort),
+              ],
+            ),
+          ),
       ],
     );
   }

@@ -3009,6 +3009,40 @@ class AppL10nZh extends AppL10n {
   String get subsGroupShort => '+ 分组';
 
   @override
+  String get subsManageGroupsShort => '管理分组';
+
+  @override
+  String get subsManageGroupsTitle => '分组管理';
+
+  @override
+  String get subsGroupRenameTitle => '重命名分组';
+
+  @override
+  String get subsGroupDeleteTitle => '删除分组';
+
+  @override
+  String subsGroupDeleteMessage(Object name) {
+    return '删除「$name」后，组内订阅会移到未分组，订阅与规则本身不会被删除。';
+  }
+
+  @override
+  String get subsGroupDuplicate => '已存在同名分组';
+
+  @override
+  String subsGroupSubCount(Object count) {
+    return '$count 个订阅';
+  }
+
+  @override
+  String get subsGroupsEmpty => '还没有分组';
+
+  @override
+  String get subsGroupsEmptyHint => '点击右上角新建分组，之后可以在这里重命名或删除。';
+
+  @override
+  String get subsGroupsFooter => '分组只影响订阅页的筛选与批量更新；删除分组不会删除订阅或规则。';
+
+  @override
   String subsMirrorName(Object mirror) {
     return '镜像 $mirror';
   }

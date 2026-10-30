@@ -3167,6 +3167,42 @@ class AppL10nEn extends AppL10n {
   String get subsGroupShort => '+ Group';
 
   @override
+  String get subsManageGroupsShort => 'Manage';
+
+  @override
+  String get subsManageGroupsTitle => 'Manage groups';
+
+  @override
+  String get subsGroupRenameTitle => 'Rename group';
+
+  @override
+  String get subsGroupDeleteTitle => 'Delete group';
+
+  @override
+  String subsGroupDeleteMessage(Object name) {
+    return 'Deleting \"$name\" moves its subscriptions to Ungrouped; the subscriptions and their rules are kept.';
+  }
+
+  @override
+  String get subsGroupDuplicate => 'A group with this name already exists';
+
+  @override
+  String subsGroupSubCount(Object count) {
+    return '$count subscriptions';
+  }
+
+  @override
+  String get subsGroupsEmpty => 'No groups yet';
+
+  @override
+  String get subsGroupsEmptyHint =>
+      'Create a group with the button at the top right, then rename or delete it here.';
+
+  @override
+  String get subsGroupsFooter =>
+      'Groups only affect filtering and bulk updates on this page; deleting a group never deletes subscriptions or rules.';
+
+  @override
   String subsMirrorName(Object mirror) {
     return 'Mirror $mirror';
   }

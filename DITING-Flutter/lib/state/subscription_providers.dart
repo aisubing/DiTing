@@ -324,6 +324,31 @@ class SubscriptionActions {
     return (await _ref.read(subscriptionRepositoryProvider.future))
         ?.insertGroup(name: trimmed);
   }
+
+  /// Renames a group; false when the name is empty or already taken by another group.
+  Future<bool> renameGroup(int id, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+    final repository = await _ref.read(subscriptionRepositoryProvider.future);
+    if (repository == null) {
+      return false;
+    }
+    final existing = await repository.groupByName(trimmed);
+    if (existing != null && existing.id != id) {
+      return false;
+    }
+    await repository.setGroupName(id, trimmed);
+    return true;
+  }
+
+  /// Deletes a group and moves its subscriptions to ungrouped; the subscriptions and their
+  /// rules stay, since a group only filters and batches them.
+  Future<void> deleteGroup(int id) async {
+    await (await _ref.read(subscriptionRepositoryProvider.future))
+        ?.dissolveGroup(id);
+  }
 }
 
 final subscriptionActionsProvider = Provider<SubscriptionActions>(

@@ -5621,6 +5621,66 @@ abstract class AppL10n {
   /// **'+ 分组'**
   String get subsGroupShort;
 
+  /// No description provided for @subsManageGroupsShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理分组'**
+  String get subsManageGroupsShort;
+
+  /// No description provided for @subsManageGroupsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组管理'**
+  String get subsManageGroupsTitle;
+
+  /// No description provided for @subsGroupRenameTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名分组'**
+  String get subsGroupRenameTitle;
+
+  /// No description provided for @subsGroupDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除分组'**
+  String get subsGroupDeleteTitle;
+
+  /// No description provided for @subsGroupDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除「{name}」后，组内订阅会移到未分组，订阅与规则本身不会被删除。'**
+  String subsGroupDeleteMessage(Object name);
+
+  /// No description provided for @subsGroupDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'已存在同名分组'**
+  String get subsGroupDuplicate;
+
+  /// No description provided for @subsGroupSubCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个订阅'**
+  String subsGroupSubCount(Object count);
+
+  /// No description provided for @subsGroupsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有分组'**
+  String get subsGroupsEmpty;
+
+  /// No description provided for @subsGroupsEmptyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右上角新建分组，之后可以在这里重命名或删除。'**
+  String get subsGroupsEmptyHint;
+
+  /// No description provided for @subsGroupsFooter.
+  ///
+  /// In zh, this message translates to:
+  /// **'分组只影响订阅页的筛选与批量更新；删除分组不会删除订阅或规则。'**
+  String get subsGroupsFooter;
+
   /// No description provided for @subsMirrorName.
   ///
   /// In zh, this message translates to:
