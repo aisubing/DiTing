@@ -57,7 +57,7 @@ class IntranetIpDetailPage extends ConsumerWidget {
               ? context.l10n.intranetSameSubnetHint
               : localIp.isEmpty
               ? context.l10n.intranetConnectHintSentence
-              : context.l10n.intranetModeNotListeningSentence(mode.title),
+              : context.l10n.intranetModeNotListeningSentence(mode.title(context.l10n)),
         ),
         if (dnsAddress != null)
           _CopyCard(address: dnsAddress, withPort: listening),

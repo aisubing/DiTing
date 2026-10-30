@@ -50,7 +50,7 @@ extension SubscriptionEditActions on SubscriptionActions {
           isLocal
               ? currentL10n.subscriptionThisFile
               : currentL10n.subscriptionThisLink,
-          kind.displayName,
+          kind.displayName(currentL10n),
           existing.name,
         ),
       );

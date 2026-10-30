@@ -47,7 +47,7 @@ class StatusDetailPage extends ConsumerWidget {
           chipColor: health.color,
           hint: core.isRunning
               ? health.summary
-              : context.l10n.statusPausedSummary(mode.title, core.label(context.l10n)),
+              : context.l10n.statusPausedSummary(mode.title(context.l10n), core.label(context.l10n)),
         ),
         DashboardDetailCard(
           glyph: AppGlyphs.status,

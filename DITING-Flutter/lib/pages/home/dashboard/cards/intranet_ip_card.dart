@@ -142,7 +142,7 @@ class IntranetIpCard extends ConsumerWidget {
   ) {
     if (noNetwork) return l10n.intranetConnectHint;
     if (mode != AppWorkMode.server) {
-      return l10n.intranetModeNotListening(mode.title);
+      return l10n.intranetModeNotListening(mode.title(l10n));
     }
     return listening
         ? l10n.intranetListeningOn(port)

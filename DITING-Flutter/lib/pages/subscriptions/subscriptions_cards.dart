@@ -56,8 +56,8 @@ class _SubscriptionCard extends StatelessWidget {
                 style: context.listTitleStyle,
               ),
               subtitle: Text(
-                '${entry.groupKey} · ${entry.kind.displayName}'
-                ' · ${entry.sourceType.label}',
+                '${entry.groupKey} · ${entry.kind.displayName(context.l10n)}'
+                ' · ${entry.sourceType.label(context.l10n)}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: context.listSubtitleStyle,
