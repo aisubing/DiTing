@@ -30,18 +30,18 @@ class _FakeSource extends FloatingLogSource {
 class _FakeWindow extends FloatingLogWindowChannel {
   final calls = <String>[];
 
+  /// Stands in for the native resize, which the test surface does not do by itself.
+  void Function(Size size)? onResize;
+
   @override
-  Future<int> setExpanded(
+  Future<void> setExpanded(
     bool expanded, {
     Size size = Size.zero,
     double dragStrip = 0,
   }) async {
     calls.add(expanded ? 'expand' : 'collapse');
-    return 1;
+    onResize?.call(expanded ? size : const Size.square(56));
   }
-
-  @override
-  Future<void> reveal() async => calls.add('reveal');
 
   @override
   Future<void> setFocusable(bool value) async => calls.add('focus:$value');
@@ -68,6 +68,11 @@ ObservedRequest _request(String key, String title, RequestStatus status) =>
 void main() {
   testWidgets('悬浮窗日志：展开面板、按状态筛选、清空仅影响显示', (tester) async {
     final window = _FakeWindow();
+    void resize(Size size) =>
+        tester.view.physicalSize = size * tester.view.devicePixelRatio;
+    window.onResize = resize;
+    resize(const Size.square(56));
+    addTearDown(tester.view.reset);
     final source = _FakeSource([
       _request('dns-1', 'ads.example.com', RequestStatus.blocked),
       _request('dns-2', 'api.example.com', RequestStatus.passed),
@@ -89,7 +94,7 @@ void main() {
     expect(find.text('ads.example.com'), findsNothing);
     await tester.tap(find.bySemanticsLabel('打开悬浮窗日志'));
     await tester.pumpAndSettle();
-    expect(window.calls, ['expand', 'reveal']);
+    expect(window.calls, ['expand']);
     expect(find.text('ads.example.com'), findsOneWidget);
     expect(find.text('api.example.com'), findsOneWidget);
 
@@ -115,10 +120,7 @@ void main() {
     // Minimise returns to the bubble.
     await tester.tap(find.byTooltip('收起为悬浮球'));
     await tester.pumpAndSettle();
-    expect(window.calls.sublist(window.calls.length - 2), [
-      'collapse',
-      'reveal',
-    ]);
+    expect(window.calls.last, 'collapse');
     expect(find.bySemanticsLabel('打开悬浮窗日志'), findsOneWidget);
 
     // Stop the polling timers before the test ends.

@@ -359,7 +359,6 @@ class _FloatingLogPanelState extends State<FloatingLogPanel> {
       ),
       CommonPopupMenuItem(
         label: l10n.floatingLogClear,
-        subtitle: l10n.floatingLogClearHint,
         glyph: AppGlyphs.clearAll,
         onPressed: _clear,
       ),

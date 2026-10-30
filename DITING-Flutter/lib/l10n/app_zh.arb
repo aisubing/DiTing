@@ -5169,7 +5169,6 @@
   "floatingLogSizeMedium": "中",
   "floatingLogSizeLarge": "大",
   "floatingLogClear": "清空列表",
-  "floatingLogClearHint": "仅清空悬浮窗显示，不删除日志",
   "floatingLogOpenApp": "打开谛听",
   "floatingLogHide": "本次隐藏",
   "floatingLogHideHint": "回到应用后再次显示",

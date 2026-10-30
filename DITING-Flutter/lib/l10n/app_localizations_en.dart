@@ -9263,9 +9263,6 @@ class AppL10nEn extends AppL10n {
   String get floatingLogClear => 'Clear list';
 
   @override
-  String get floatingLogClearHint => 'Clears this view only; logs are kept';
-
-  @override
   String get floatingLogOpenApp => 'Open DITING';
 
   @override

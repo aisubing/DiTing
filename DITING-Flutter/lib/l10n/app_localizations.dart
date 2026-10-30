@@ -15856,12 +15856,6 @@ abstract class AppL10n {
   /// **'清空列表'**
   String get floatingLogClear;
 
-  /// No description provided for @floatingLogClearHint.
-  ///
-  /// In zh, this message translates to:
-  /// **'仅清空悬浮窗显示，不删除日志'**
-  String get floatingLogClearHint;
-
   /// No description provided for @floatingLogOpenApp.
   ///
   /// In zh, this message translates to:

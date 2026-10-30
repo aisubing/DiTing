@@ -8681,9 +8681,6 @@ class AppL10nZh extends AppL10n {
   String get floatingLogClear => '清空列表';
 
   @override
-  String get floatingLogClearHint => '仅清空悬浮窗显示，不删除日志';
-
-  @override
   String get floatingLogOpenApp => '打开谛听';
 
   @override

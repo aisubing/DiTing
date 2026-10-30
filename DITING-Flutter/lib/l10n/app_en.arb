@@ -2622,7 +2622,6 @@
   "floatingLogSizeMedium": "Medium",
   "floatingLogSizeLarge": "Large",
   "floatingLogClear": "Clear list",
-  "floatingLogClearHint": "Clears this view only; logs are kept",
   "floatingLogOpenApp": "Open DITING",
   "floatingLogHide": "Hide for now",
   "floatingLogHideHint": "Shows again after you return to the app",

@@ -40,33 +40,19 @@ class FloatingLogWindowChannel {
 
   final MethodChannel _channel;
 
-  /// Resizes the window, which stays hidden until [reveal]. The reply is the side edge the panel
-  /// rests on: -1 left, 1 right.
-  Future<int> setExpanded(
+  /// Resizes the window to the panel, or back to the ball.
+  Future<void> setExpanded(
     bool expanded, {
     Size size = Size.zero,
     double dragStrip = 0,
   }) async {
-    try {
-      final raw = await _channel.invokeMapMethod<String, Object?>(
-        'setExpanded',
-        {
-          'expanded': expanded,
-          'width': size.width.round(),
-          'height': size.height.round(),
-          'dragStrip': dragStrip.round(),
-        },
-      );
-      return (raw?['side'] as num?)?.sign.toInt() ?? 1;
-    } on PlatformException {
-      return 1;
-    } on MissingPluginException {
-      return 1;
-    }
+    await _call('setExpanded', {
+      'expanded': expanded,
+      'width': size.width.round(),
+      'height': size.height.round(),
+      'dragStrip': dragStrip.round(),
+    });
   }
-
-  /// Shows the window again once a frame at the new size is on screen.
-  Future<void> reveal() => _call('reveal');
 
   Future<void> setFocusable(bool value) =>
       _call('setFocusable', {'value': value});
@@ -176,24 +162,18 @@ class FloatingLogHost extends StatefulWidget {
   State<FloatingLogHost> createState() => _FloatingLogHostState();
 }
 
-class _FloatingLogHostState extends State<FloatingLogHost>
-    with SingleTickerProviderStateMixin {
+class _FloatingLogHostState extends State<FloatingLogHost> {
   static const _badgeInterval = Duration(seconds: 4);
 
-  /// Slides the panel in from, and back out to, the screen edge it rests against.
-  late final _slide = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 280),
-    reverseDuration: const Duration(milliseconds: 200),
-  );
-  late final _slideCurve = CurvedAnimation(
-    parent: _slide,
-    curve: Curves.easeOutCubic,
-    reverseCurve: Curves.easeInCubic,
-  );
-  int _side = 1;
+  /// Panels are wider than this and the ball's window is not, so the size tells which one is live.
+  static const _ballWindowLimit = 160.0;
 
   bool _expanded = false;
+
+  /// Draws nothing while the window changes size. Until Flutter draws at the new size, Android
+  /// stretches the last frame over the window; an empty frame stretches into nothing, so neither
+  /// the ball nor the panel ever shows distorted.
+  bool _blank = false;
   bool _switching = false;
   late int _sizeIndex = widget.settings.floatingLogPanelSize;
 
@@ -215,8 +195,6 @@ class _FloatingLogHostState extends State<FloatingLogHost>
   void dispose() {
     _badgeTimer?.cancel();
     _lifecycle?.dispose();
-    _slideCurve.dispose();
-    _slide.dispose();
     super.dispose();
   }
 
@@ -240,36 +218,39 @@ class _FloatingLogHostState extends State<FloatingLogHost>
     setState(() => _badge = count);
   }
 
+  /// Clears the window, resizes it, then draws the new layout once the window has its size.
+  Future<void> _switchTo({required bool expanded, required Size size}) async {
+    setState(() => _blank = true);
+    // One frame draws the empty frame, the next makes sure it reached the screen.
+    await WidgetsBinding.instance.endOfFrame;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await widget.window.setExpanded(
+      expanded,
+      size: size,
+      dragStrip: FloatingLogPanel.headerHeight,
+    );
+    if (!mounted) return;
+    setState(() {
+      _expanded = expanded;
+      _blank = false;
+    });
+  }
+
   Future<void> _expand() async {
     if (_switching || _expanded) return;
     _switching = true;
     _badgeTimer?.cancel();
-    final side = await widget.window.setExpanded(
-      true,
-      size: floatingLogPanelSizes[_sizeIndex],
-      dragStrip: FloatingLogPanel.headerHeight,
-    );
-    if (!mounted) return;
-    _slide.value = 0;
-    setState(() {
-      _side = side;
-      _expanded = true;
-      _badge = 0;
-    });
-    await _revealAfterLayout();
-    if (mounted) await _slide.forward();
+    _badge = 0;
+    await _switchTo(expanded: true, size: floatingLogPanelSizes[_sizeIndex]);
     _switching = false;
   }
 
   Future<void> _collapse() async {
     if (_switching || !_expanded) return;
     _switching = true;
-    await _slide.reverse();
-    await widget.window.setExpanded(false);
+    await _switchTo(expanded: false, size: Size.zero);
     _seenAt = DateTime.now().millisecondsSinceEpoch;
-    if (!mounted) return;
-    setState(() => _expanded = false);
-    await _revealAfterLayout();
     _startBadge();
     _switching = false;
   }
@@ -279,22 +260,8 @@ class _FloatingLogHostState extends State<FloatingLogHost>
     _switching = true;
     widget.settings.setFloatingLogPanelSize(index);
     setState(() => _sizeIndex = index);
-    await widget.window.setExpanded(
-      true,
-      size: floatingLogPanelSizes[index],
-      dragStrip: FloatingLogPanel.headerHeight,
-    );
-    await _revealAfterLayout();
+    await _switchTo(expanded: true, size: floatingLogPanelSizes[index]);
     _switching = false;
-  }
-
-  /// The native window hides itself on every resize: until Flutter lays out at the new size, the
-  /// texture shows the old frame stretched over the window. Reveal once that frame is drawn.
-  Future<void> _revealAfterLayout() async {
-    // One frame for the new window metrics to arrive, one drawn at them.
-    await WidgetsBinding.instance.endOfFrame;
-    await WidgetsBinding.instance.endOfFrame;
-    if (mounted) await widget.window.reveal();
   }
 
   @override
@@ -303,22 +270,19 @@ class _FloatingLogHostState extends State<FloatingLogHost>
       type: MaterialType.transparency,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // The window resizes a frame after the state flips; never lay the panel out in the
-          // ball's 56 dp square.
-          if (_expanded && constraints.maxWidth > 160) {
-            return ClipRect(
-              child: SlideTransition(
-                position: _slideCurve.drive(
-                  Tween(begin: Offset(_side.toDouble(), 0), end: Offset.zero),
-                ),
-                child: FloatingLogPanel(
-                  source: widget.source,
-                  window: widget.window,
-                  sizeIndex: _sizeIndex,
-                  onResize: _resize,
-                  onCollapse: _collapse,
-                ),
-              ),
+          // Each layout draws only in a window of its own size: the panel never lays out in the
+          // ball's square, and the ball never shows in the panel-sized window.
+          final panelWindow = constraints.maxWidth > _ballWindowLimit;
+          if (_blank || _expanded != panelWindow) {
+            return const SizedBox.shrink();
+          }
+          if (_expanded) {
+            return FloatingLogPanel(
+              source: widget.source,
+              window: widget.window,
+              sizeIndex: _sizeIndex,
+              onResize: _resize,
+              onCollapse: _collapse,
             );
           }
           return Center(
