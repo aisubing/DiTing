@@ -61,7 +61,7 @@ class AppUpdateChecker {
   static const defaultReleaseUrl = String.fromEnvironment(
     'DITING_RELEASE_URL',
     defaultValue:
-        'https://api.github.com/repos/haoze-evoluling/DITING/releases/latest',
+        'https://api.github.com/repos/haoze-evolluling/DITING/releases/latest',
   );
 
   final String releaseUrl;
