@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:diting/app/app.dart';
 import 'package:diting/app/debug_probe.dart';
+import 'package:diting/app/upgrade_resets.dart';
 import 'package:diting/data/db/datasets.dart';
 import 'package:diting/data/db/rule_bootstrap.dart';
 import 'package:diting/data/db/rule_providers.dart';
@@ -57,6 +58,9 @@ Future<void> main() async {
       !settings.modeOnboardingCompleted) {
     settings.setModeOnboardingCompleted(true);
   }
+  // One-time resets from `upgradeResets`; before any provider reads the store, so a reset key
+  // is never read with its old value.
+  runUpgradeResets(store, upgradeResets);
   // Single source of truth: `pubspec.yaml`. The value feeds preset seeding,
   // cleanup actions and page display.
   final version = await versionTask;
