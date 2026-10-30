@@ -3,6 +3,9 @@
 library;
 
 import 'package:diting/app/l10n/l10n.dart';
+import 'package:diting/data/native/permissions_bridge.dart';
+import 'package:diting/pages/appearance/appearance_inputs.dart';
+import 'package:diting/state/permission_providers.dart';
 import 'package:diting/state/settings_providers.dart';
 import 'package:diting/ui/ui.dart';
 import 'package:diting/widgets/stat_strip.dart';
@@ -18,7 +21,6 @@ class LogRetentionPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(logModeProvider);
     final retentionDays = ref.watch(logRetentionProvider);
-    final floatingLog = ref.watch(floatingLogProvider);
     return CommonScaffold(
       title: context.l10n.logRetentionTitle,
       body: PageBody(
@@ -41,20 +43,7 @@ class LogRetentionPage extends ConsumerWidget {
             ],
             footer: context.l10n.logRetentionOffNote,
           ),
-          generateSection(
-            title: context.l10n.logRetentionOverlay,
-            items: [
-              ListItem.toggle(
-                leading: const GlyphIcon(AppGlyphs.eye),
-                title: Text(context.l10n.logRetentionOverlayLogs),
-                subtitle: Text(context.l10n.logRetentionOverlayBody),
-                value: floatingLog,
-                onChanged: (value) =>
-                    ref.read(floatingLogProvider.notifier).toggle(value),
-              ),
-            ],
-            footer: context.l10n.logRetentionOverlayNote,
-          ),
+          const _FloatingLogSection(),
           if (mode != LegacyLogMode.off)
             generateSection(
               title: context.l10n.logRetentionCleanup,
@@ -75,12 +64,129 @@ class LogRetentionPage extends ConsumerWidget {
                         ref.read(logRetentionProvider.notifier).set(days),
                   ),
               ],
-              footer:
-                  context.l10n.logRetentionCleanupNote,
+              footer: context.l10n.logRetentionCleanupNote,
             ),
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+}
+
+/// Floating log window settings. The permission row is re-read on resume, since the grant happens
+/// on a system screen the app cannot observe.
+class _FloatingLogSection extends ConsumerStatefulWidget {
+  const _FloatingLogSection();
+
+  @override
+  ConsumerState<_FloatingLogSection> createState() =>
+      _FloatingLogSectionState();
+}
+
+class _FloatingLogSectionState extends ConsumerState<_FloatingLogSection> {
+  AppLifecycleListener? _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.read(permissionStatesProvider.notifier).refresh(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _requestPermission() => ref
+      .read(permissionStatesProvider.notifier)
+      .request(AppPermission.overlay);
+
+  /// Turning it on without the permission sends the user to grant it right away; the switch stays
+  /// on, so returning with the grant needs no second tap.
+  Future<void> _toggle(bool value) async {
+    ref.read(floatingLogProvider.notifier).toggle(value);
+    if (!value) return;
+    final granted = ref
+        .read(permissionStatesProvider)
+        .value
+        ?.of(AppPermission.overlay);
+    if (granted == false) await _requestPermission();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colorScheme = context.colorScheme;
+    final enabled = ref.watch(floatingLogProvider);
+    final granted = ref
+        .watch(permissionStatesProvider)
+        .value
+        ?.of(AppPermission.overlay);
+    return Column(
+      children: [
+        generateSection(
+          title: l10n.logRetentionOverlay,
+          items: [
+            ListItem.toggle(
+              leading: const GlyphIcon(AppGlyphs.eye),
+              title: Text(l10n.logRetentionOverlayLogs),
+              subtitle: Text(l10n.logRetentionOverlayBody),
+              value: enabled,
+              onChanged: _toggle,
+            ),
+            if (enabled && granted != null)
+              ListItem(
+                leading: GlyphIcon(
+                  granted ? AppGlyphs.checkCircle : AppGlyphs.warning,
+                  size: 20,
+                  color: granted ? colorScheme.success : colorScheme.warning,
+                ),
+                title: Text(l10n.floatingLogPermissionTitle),
+                subtitle: Text(
+                  granted
+                      ? l10n.floatingLogPermissionGranted
+                      : l10n.floatingLogPermissionMissing,
+                ),
+                trailing: granted
+                    ? null
+                    : const GlyphIcon(AppGlyphs.chevronForward, size: 18),
+                onTap: granted ? null : _requestPermission,
+              ),
+          ],
+          footer: l10n.logRetentionOverlayNote,
+        ),
+        if (enabled) ...[
+          ListHeader(title: l10n.floatingLogSizeTitle),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SegmentedControl<int>(
+              segments: [
+                (0, l10n.floatingLogSizeSmall),
+                (1, l10n.floatingLogSizeMedium),
+                (2, l10n.floatingLogSizeLarge),
+              ],
+              value: ref.watch(floatingLogPanelSizeProvider),
+              onChanged: ref.read(floatingLogPanelSizeProvider.notifier).set,
+            ),
+          ),
+          const SizedBox(height: 12),
+          generateSection(
+            items: [
+              SliderCardRow(
+                label: l10n.floatingLogOpacity,
+                value: ref.watch(floatingLogOpacityProvider),
+                min: 0.3,
+                divisions: 14,
+                onChanged: ref.read(floatingLogOpacityProvider.notifier).set,
+              ),
+            ],
+            footer: l10n.logRetentionOverlayHowTo,
+          ),
+        ],
+      ],
     );
   }
 }

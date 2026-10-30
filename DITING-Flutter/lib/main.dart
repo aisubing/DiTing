@@ -16,6 +16,7 @@ import 'package:diting/data/native/dns_latency_bridge.dart';
 import 'package:diting/data/native/outbound_proxy_bridge.dart';
 import 'package:diting/data/prefs/legacy_prefs_store.dart';
 import 'package:diting/data/prefs/legacy_settings_provider.dart';
+import 'package:diting/overlay/floating_log_main.dart';
 import 'package:diting/state/app_version_provider.dart';
 import 'package:diting/state/ca_inspection_providers.dart';
 import 'package:diting/state/diagnostics_providers.dart';
@@ -115,6 +116,11 @@ Future<void> main() async {
   // biggest tables; it now lands as a state update once the UI is up.
   unawaited(_loadInitialRules(container, rules.repository, watch));
 }
+
+/// Entry of the floating log window's engine, started natively by `FloatingLogWindow`; the
+/// pragma keeps it out of tree shaking, since nothing in Dart calls it.
+@pragma('vm:entry-point')
+Future<void> floatingLogMain() => runFloatingLog();
 
 Future<void> _loadInitialRules(
   ProviderContainer container,

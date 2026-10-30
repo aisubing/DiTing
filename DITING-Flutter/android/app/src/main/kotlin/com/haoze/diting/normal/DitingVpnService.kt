@@ -20,6 +20,7 @@ import com.haoze.diting.log.EngineStats
 import com.haoze.diting.log.LogRetention
 import com.haoze.diting.log.PackageUids
 import com.haoze.diting.log.TrafficRateMonitor
+import com.haoze.diting.overlay.FloatingLogOverlay
 import com.haoze.diting.proxy.OutboundProxyBridge
 import com.haoze.diting.proxy.OutboundProxyScope
 import com.haoze.diting.tile.QuickSettingsTileUpdater
@@ -218,6 +219,7 @@ class DitingVpnService : VpnService() {
         startedAt = System.currentTimeMillis()
         setPersistedRunning(this, true)
         startSpeedTicker()
+        FloatingLogOverlay.setVpnRunning(this, true)
         // The window only matters while logs are written, and this service outlives the UI.
         LogRetention.start(
             context = this,
@@ -277,6 +279,7 @@ class DitingVpnService : VpnService() {
         releaseResources()
         isRunning = false
         startedAt = 0L
+        FloatingLogOverlay.setVpnRunning(this, false)
     }
 
     /// Flushes buffered traffic / HTTP rows; runs after the engine stopped, so nothing appends
@@ -292,6 +295,8 @@ class DitingVpnService : VpnService() {
         worker = null
         // Stopped too: the failure path returns before `isRunning` is set, leaking a ticker.
         stopSpeedTicker()
+        // Covers the failure paths, which never reach teardown().
+        FloatingLogOverlay.setVpnRunning(this, false)
         TrafficRateMonitor.reset()
         // The sweep belongs to the tunnel's lifetime; otherwise it outlives the service.
         LogRetention.stop()

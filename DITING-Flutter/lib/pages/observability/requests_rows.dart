@@ -2,7 +2,7 @@ part of 'requests_page.dart';
 
 /// Six status tiers, not three: rewritten and bypassed are not failures, and both color
 /// and glyph carry the meaning so color-blind users can tell them apart.
-(Color, Glyph) _statusStyle(BuildContext context, RequestStatus status) {
+(Color, Glyph) requestStatusStyle(BuildContext context, RequestStatus status) {
   final colorScheme = context.colorScheme;
   return switch (status) {
     RequestStatus.passed => (colorScheme.success, AppGlyphs.checkCircle),
@@ -38,7 +38,7 @@ class RequestRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final (statusColor, statusGlyph) = _statusStyle(context, request.status);
+    final (statusColor, statusGlyph) = requestStatusStyle(context, request.status);
     // authority can be null when TLS fails early, and title is then an empty string.
     // An empty Text renders as a hole, so fall back to a dash.
     final title = request.title.isEmpty ? '—' : request.title;

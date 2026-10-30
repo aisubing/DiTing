@@ -6243,11 +6243,11 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get logRetentionOverlayBody =>
-      'Shows a floating bubble while the VPN runs in the background; tap it to see recent requests';
+      'Shows a floating bubble while the VPN runs in the background; tap it to see live requests';
 
   @override
   String get logRetentionOverlayNote =>
-      'Requires the system overlay permission; the bubble hides automatically when the app returns to the foreground.';
+      'The bubble hides automatically when the app returns to the foreground. Normal mode only.';
 
   @override
   String get logRetentionCleanup => 'Automatic cleanup';
@@ -9222,4 +9222,117 @@ class AppL10nEn extends AppL10n {
   @override
   String get logDashboardCardStatsDescription =>
       'Blocks, cache hits and traffic for today, this week, this month or all history';
+
+  @override
+  String get floatingLogOpen => 'Open floating logs';
+
+  @override
+  String get floatingLogTitle => 'Live requests';
+
+  @override
+  String get floatingLogPaused => 'Paused';
+
+  @override
+  String get floatingLogSearch => 'Search';
+
+  @override
+  String get floatingLogSearchHint => 'Domain, app or rule';
+
+  @override
+  String get floatingLogPause => 'Pause updates';
+
+  @override
+  String get floatingLogResume => 'Resume updates';
+
+  @override
+  String get floatingLogMinimize => 'Collapse to bubble';
+
+  @override
+  String get floatingLogPanelSize => 'Panel size';
+
+  @override
+  String get floatingLogSizeSmall => 'Small';
+
+  @override
+  String get floatingLogSizeMedium => 'Medium';
+
+  @override
+  String get floatingLogSizeLarge => 'Large';
+
+  @override
+  String get floatingLogClear => 'Clear list';
+
+  @override
+  String get floatingLogClearHint => 'Clears this view only; logs are kept';
+
+  @override
+  String get floatingLogOpenApp => 'Open DITING';
+
+  @override
+  String get floatingLogHide => 'Hide for now';
+
+  @override
+  String get floatingLogHideHint => 'Shows again after you return to the app';
+
+  @override
+  String get floatingLogCopied => 'Copied';
+
+  @override
+  String get floatingLogCopyDomain => 'Copy domain';
+
+  @override
+  String get floatingLogCopyRecord => 'Copy record';
+
+  @override
+  String get floatingLogEmpty => 'No requests yet';
+
+  @override
+  String get floatingLogEmptyBody => 'New requests appear here as they happen.';
+
+  @override
+  String get floatingLogClearedBody =>
+      'List cleared; new requests will keep appearing.';
+
+  @override
+  String get floatingLogNoMatchBody => 'Try another keyword or filter.';
+
+  @override
+  String get floatingLogUnavailable => 'Logs unavailable';
+
+  @override
+  String get floatingLogUnavailableBody =>
+      'The log database does not exist yet. Start the tunnel from the app once.';
+
+  @override
+  String floatingLogShown(int count) {
+    return '$count shown';
+  }
+
+  @override
+  String floatingLogNewRows(int count) {
+    return '$count new';
+  }
+
+  @override
+  String get floatingLogPermissionTitle => 'Overlay permission';
+
+  @override
+  String get floatingLogPermissionGranted => 'Granted';
+
+  @override
+  String get floatingLogPermissionMissing =>
+      'Not granted. Tap to open system settings';
+
+  @override
+  String get floatingLogOpacity => 'Panel opacity';
+
+  @override
+  String get floatingLogSizeTitle => 'Panel size';
+
+  @override
+  String get logRetentionOverlayHowTo =>
+      'Drag the bubble or the panel\'s title bar to move it. Tap a row for details; long-press to copy the domain.';
+
+  @override
+  String get permOverlay => 'Overlay';
 }

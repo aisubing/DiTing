@@ -12,6 +12,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.haoze.diting.overlay.FloatingLogOverlay
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -59,6 +60,7 @@ class PermissionsBridge(private val activity: Activity) : MethodChannel.MethodCa
         "notification" to isNotificationGranted(),
         "appList" to isAppListGranted(),
         "batteryOptimization" to isIgnoringBatteryOptimizations(),
+        "overlay" to FloatingLogOverlay.canDrawOverlays(activity),
     )
 
     private fun isVpnGranted(): Boolean = runCatching {
@@ -107,6 +109,7 @@ class PermissionsBridge(private val activity: Activity) : MethodChannel.MethodCa
             "notification" -> requestNotification(result)
             "appList" -> requestAppList(result)
             "batteryOptimization" -> requestBatteryOptimization(result)
+            "overlay" -> requestOverlay(result)
             else -> result.error("unknown_permission", "未知的权限：$name", null)
         }
     }
@@ -188,6 +191,24 @@ class PermissionsBridge(private val activity: Activity) : MethodChannel.MethodCa
         } else {
             fallback
         }
+        pending = result
+        runCatching { activity.startActivityForResult(intent, REQUEST_SETTINGS) }
+            .onFailure {
+                pending = null
+                result.success(states())
+            }
+    }
+
+    /// No dialog exists: the per-app "display over other apps" screen is the only way in.
+    private fun requestOverlay(result: MethodChannel.Result) {
+        if (FloatingLogOverlay.canDrawOverlays(activity)) {
+            result.success(states())
+            return
+        }
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:${activity.packageName}"),
+        )
         pending = result
         runCatching { activity.startActivityForResult(intent, REQUEST_SETTINGS) }
             .onFailure {

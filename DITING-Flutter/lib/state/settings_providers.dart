@@ -93,6 +93,38 @@ final floatingLogProvider = NotifierProvider<FloatingLogNotifier, bool>(
   FloatingLogNotifier.new,
 );
 
+class FloatingLogPanelSizeNotifier extends Notifier<int> {
+  @override
+  int build() => _settings(ref).floatingLogPanelSize;
+
+  void set(int value) {
+    state = value.clamp(0, 2);
+    _settings(ref).setFloatingLogPanelSize(state);
+    _bump(ref);
+  }
+}
+
+final floatingLogPanelSizeProvider =
+    NotifierProvider<FloatingLogPanelSizeNotifier, int>(
+      FloatingLogPanelSizeNotifier.new,
+    );
+
+class FloatingLogOpacityNotifier extends Notifier<double> {
+  @override
+  double build() => _settings(ref).floatingLogOpacity;
+
+  void set(double value) {
+    state = value.clamp(0.3, 1).toDouble();
+    _settings(ref).setFloatingLogOpacity(state);
+    _bump(ref);
+  }
+}
+
+final floatingLogOpacityProvider =
+    NotifierProvider<FloatingLogOpacityNotifier, double>(
+      FloatingLogOpacityNotifier.new,
+    );
+
 /// IPv6 mode; `VpnRouteConfig` only distinguishes `auto` from the rest.
 enum LegacyIpv6Mode {
   auto('auto'),

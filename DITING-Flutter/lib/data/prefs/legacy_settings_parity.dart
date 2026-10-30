@@ -24,6 +24,20 @@ extension LegacySettingsParity on LegacySettings {
   void setFloatingLogEnabled(bool value) =>
       _store.putBool(_ui, 'floating_log_enabled', value);
 
+  /// Panel size of the floating log window: 0 small, 1 medium, 2 large (legacy key and values).
+  int get floatingLogPanelSize =>
+      _int(_ui, 'floating_log_panel_size', 1).clamp(0, 2);
+
+  void setFloatingLogPanelSize(int value) =>
+      _store.putInt(_ui, 'floating_log_panel_size', value.clamp(0, 2));
+
+  /// Expanded-panel opacity, read natively when the panel opens; the ball stays opaque.
+  double get floatingLogOpacity =>
+      _double(_ui, 'floating_log_opacity', 1).clamp(0.3, 1).toDouble();
+
+  void setFloatingLogOpacity(double value) =>
+      _store.putFloat(_ui, 'floating_log_opacity', value.clamp(0.3, 1));
+
   /// Applied natively on activity create and resume, where it also disables the recents screenshot.
   bool get hideFromRecentsEnabled =>
       _bool(_ui, 'hide_from_recents_enabled', false);

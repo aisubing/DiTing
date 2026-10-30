@@ -10890,13 +10890,13 @@ abstract class AppL10n {
   /// No description provided for @logRetentionOverlayBody.
   ///
   /// In zh, this message translates to:
-  /// **'VPN 运行且应用在后台时显示悬浮球，点击查看最近请求'**
+  /// **'VPN 运行且应用在后台时显示悬浮球，点按查看实时请求'**
   String get logRetentionOverlayBody;
 
   /// No description provided for @logRetentionOverlayNote.
   ///
   /// In zh, this message translates to:
-  /// **'需要系统悬浮窗权限；回到应用前台时悬浮窗会自动隐藏。'**
+  /// **'回到应用前台时悬浮窗会自动隐藏。仅普通模式可用。'**
   String get logRetentionOverlayNote;
 
   /// No description provided for @logRetentionCleanup.
@@ -15777,6 +15777,216 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量'**
   String get logDashboardCardStatsDescription;
+
+  /// No description provided for @floatingLogOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开悬浮窗日志'**
+  String get floatingLogOpen;
+
+  /// No description provided for @floatingLogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时请求'**
+  String get floatingLogTitle;
+
+  /// No description provided for @floatingLogPaused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停'**
+  String get floatingLogPaused;
+
+  /// No description provided for @floatingLogSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索'**
+  String get floatingLogSearch;
+
+  /// No description provided for @floatingLogSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'域名、应用或规则'**
+  String get floatingLogSearchHint;
+
+  /// No description provided for @floatingLogPause.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停刷新'**
+  String get floatingLogPause;
+
+  /// No description provided for @floatingLogResume.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续刷新'**
+  String get floatingLogResume;
+
+  /// No description provided for @floatingLogMinimize.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起为悬浮球'**
+  String get floatingLogMinimize;
+
+  /// No description provided for @floatingLogPanelSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'面板大小'**
+  String get floatingLogPanelSize;
+
+  /// No description provided for @floatingLogSizeSmall.
+  ///
+  /// In zh, this message translates to:
+  /// **'小'**
+  String get floatingLogSizeSmall;
+
+  /// No description provided for @floatingLogSizeMedium.
+  ///
+  /// In zh, this message translates to:
+  /// **'中'**
+  String get floatingLogSizeMedium;
+
+  /// No description provided for @floatingLogSizeLarge.
+  ///
+  /// In zh, this message translates to:
+  /// **'大'**
+  String get floatingLogSizeLarge;
+
+  /// No description provided for @floatingLogClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空列表'**
+  String get floatingLogClear;
+
+  /// No description provided for @floatingLogClearHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅清空悬浮窗显示，不删除日志'**
+  String get floatingLogClearHint;
+
+  /// No description provided for @floatingLogOpenApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开谛听'**
+  String get floatingLogOpenApp;
+
+  /// No description provided for @floatingLogHide.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次隐藏'**
+  String get floatingLogHide;
+
+  /// No description provided for @floatingLogHideHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'回到应用后再次显示'**
+  String get floatingLogHideHint;
+
+  /// No description provided for @floatingLogCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制'**
+  String get floatingLogCopied;
+
+  /// No description provided for @floatingLogCopyDomain.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制域名'**
+  String get floatingLogCopyDomain;
+
+  /// No description provided for @floatingLogCopyRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制记录'**
+  String get floatingLogCopyRecord;
+
+  /// No description provided for @floatingLogEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无请求'**
+  String get floatingLogEmpty;
+
+  /// No description provided for @floatingLogEmptyBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'新的请求会实时出现在这里。'**
+  String get floatingLogEmptyBody;
+
+  /// No description provided for @floatingLogClearedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'列表已清空，新的请求会继续出现。'**
+  String get floatingLogClearedBody;
+
+  /// No description provided for @floatingLogNoMatchBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'换个关键词或筛选条件试试。'**
+  String get floatingLogNoMatchBody;
+
+  /// No description provided for @floatingLogUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取日志'**
+  String get floatingLogUnavailable;
+
+  /// No description provided for @floatingLogUnavailableBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志数据库尚未创建，请先在应用中启动一次隧道。'**
+  String get floatingLogUnavailableBody;
+
+  /// No description provided for @floatingLogShown.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示 {count} 条'**
+  String floatingLogShown(int count);
+
+  /// No description provided for @floatingLogNewRows.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条新请求'**
+  String floatingLogNewRows(int count);
+
+  /// No description provided for @floatingLogPermissionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'悬浮窗权限'**
+  String get floatingLogPermissionTitle;
+
+  /// No description provided for @floatingLogPermissionGranted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已授予'**
+  String get floatingLogPermissionGranted;
+
+  /// No description provided for @floatingLogPermissionMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授予，点按前往系统设置开启'**
+  String get floatingLogPermissionMissing;
+
+  /// No description provided for @floatingLogOpacity.
+  ///
+  /// In zh, this message translates to:
+  /// **'面板不透明度'**
+  String get floatingLogOpacity;
+
+  /// No description provided for @floatingLogSizeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'面板大小'**
+  String get floatingLogSizeTitle;
+
+  /// No description provided for @logRetentionOverlayHowTo.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖动悬浮球或面板标题栏可移动位置；点按一行展开详情，长按复制域名。'**
+  String get logRetentionOverlayHowTo;
+
+  /// No description provided for @permOverlay.
+  ///
+  /// In zh, this message translates to:
+  /// **'悬浮窗'**
+  String get permOverlay;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -3482,8 +3482,8 @@
   "logRetentionOffNote": "关闭后不会删除已有日志，重新开启即可继续查看。",
   "logRetentionOverlay": "悬浮窗",
   "logRetentionOverlayLogs": "悬浮窗日志",
-  "logRetentionOverlayBody": "VPN 运行且应用在后台时显示悬浮球，点击查看最近请求",
-  "logRetentionOverlayNote": "需要系统悬浮窗权限；回到应用前台时悬浮窗会自动隐藏。",
+  "logRetentionOverlayBody": "VPN 运行且应用在后台时显示悬浮球，点按查看实时请求",
+  "logRetentionOverlayNote": "回到应用前台时悬浮窗会自动隐藏。仅普通模式可用。",
   "logRetentionCleanup": "自动清理时间",
   "logRetentionKeepDays": "保留 {days} 天",
   "@logRetentionKeepDays": {
@@ -5155,5 +5155,54 @@
   "logStatsDownloaded": "已下载",
   "logStatsWindow": "统计范围",
   "logStatsRecentActivity": "最近的活动",
-  "logDashboardCardStatsDescription": "按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量"
+  "logDashboardCardStatsDescription": "按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量",
+  "floatingLogOpen": "打开悬浮窗日志",
+  "floatingLogTitle": "实时请求",
+  "floatingLogPaused": "已暂停",
+  "floatingLogSearch": "搜索",
+  "floatingLogSearchHint": "域名、应用或规则",
+  "floatingLogPause": "暂停刷新",
+  "floatingLogResume": "继续刷新",
+  "floatingLogMinimize": "收起为悬浮球",
+  "floatingLogPanelSize": "面板大小",
+  "floatingLogSizeSmall": "小",
+  "floatingLogSizeMedium": "中",
+  "floatingLogSizeLarge": "大",
+  "floatingLogClear": "清空列表",
+  "floatingLogClearHint": "仅清空悬浮窗显示，不删除日志",
+  "floatingLogOpenApp": "打开谛听",
+  "floatingLogHide": "本次隐藏",
+  "floatingLogHideHint": "回到应用后再次显示",
+  "floatingLogCopied": "已复制",
+  "floatingLogCopyDomain": "复制域名",
+  "floatingLogCopyRecord": "复制记录",
+  "floatingLogEmpty": "暂无请求",
+  "floatingLogEmptyBody": "新的请求会实时出现在这里。",
+  "floatingLogClearedBody": "列表已清空，新的请求会继续出现。",
+  "floatingLogNoMatchBody": "换个关键词或筛选条件试试。",
+  "floatingLogUnavailable": "无法读取日志",
+  "floatingLogUnavailableBody": "日志数据库尚未创建，请先在应用中启动一次隧道。",
+  "floatingLogShown": "显示 {count} 条",
+  "@floatingLogShown": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "floatingLogNewRows": "{count} 条新请求",
+  "@floatingLogNewRows": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "floatingLogPermissionTitle": "悬浮窗权限",
+  "floatingLogPermissionGranted": "已授予",
+  "floatingLogPermissionMissing": "未授予，点按前往系统设置开启",
+  "floatingLogOpacity": "面板不透明度",
+  "floatingLogSizeTitle": "面板大小",
+  "logRetentionOverlayHowTo": "拖动悬浮球或面板标题栏可移动位置；点按一行展开详情，长按复制域名。",
+  "permOverlay": "悬浮窗"
 }

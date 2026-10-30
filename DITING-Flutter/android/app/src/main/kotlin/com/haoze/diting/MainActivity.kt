@@ -5,6 +5,7 @@ import com.haoze.diting.apps.AppsBridge
 import com.haoze.diting.cert.CaInspectionBridge
 import com.haoze.diting.net.DiagnosticsBridge
 import com.haoze.diting.net.DnsLatencyBridge
+import com.haoze.diting.overlay.FloatingLogOverlay
 import com.haoze.diting.platform.BackgroundBridge
 import com.haoze.diting.platform.DbHealthBridge
 import com.haoze.diting.platform.NotificationBridge
@@ -56,6 +57,17 @@ class MainActivity : FlutterActivity() {
         // Notification repaints after a Dart-side settings edit: same reasoning.
         NotificationBridge(applicationContext).register(messenger)
         DbHealthBridge(applicationContext).register(messenger)
+    }
+
+    /// The floating log window only shows while the app is in the background.
+    override fun onStart() {
+        super.onStart()
+        FloatingLogOverlay.setAppForeground(this, true)
+    }
+
+    override fun onStop() {
+        FloatingLogOverlay.setAppForeground(this, false)
+        super.onStop()
     }
 
     override fun onResume() {

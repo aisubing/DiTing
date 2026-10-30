@@ -25,6 +25,8 @@
     <!-- Without this declaration the battery-optimization dialog is filtered out and the
          request silently lands on the app info screen instead. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Floating log window shown over other apps while the tunnel runs in the background. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <application
         android:label="谛听"
         android:name="${applicationName}"

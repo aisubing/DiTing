@@ -13,13 +13,17 @@ enum AppPermission {
   vpn,
   notification,
   appList,
-  batteryOptimization;
+  batteryOptimization,
+
+  /// "Display over other apps", needed by the floating log window.
+  overlay;
 
   String label(AppL10n l10n) => switch (this) {
     AppPermission.vpn => l10n.permVpn,
     AppPermission.notification => l10n.permNotification,
     AppPermission.appList => l10n.permAppList,
     AppPermission.batteryOptimization => l10n.permBattery,
+    AppPermission.overlay => l10n.permOverlay,
   };
 
   static AppPermission? fromKey(String key) {

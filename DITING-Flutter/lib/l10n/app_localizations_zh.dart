@@ -5913,10 +5913,10 @@ class AppL10nZh extends AppL10n {
   String get logRetentionOverlayLogs => '悬浮窗日志';
 
   @override
-  String get logRetentionOverlayBody => 'VPN 运行且应用在后台时显示悬浮球，点击查看最近请求';
+  String get logRetentionOverlayBody => 'VPN 运行且应用在后台时显示悬浮球，点按查看实时请求';
 
   @override
-  String get logRetentionOverlayNote => '需要系统悬浮窗权限；回到应用前台时悬浮窗会自动隐藏。';
+  String get logRetentionOverlayNote => '回到应用前台时悬浮窗会自动隐藏。仅普通模式可用。';
 
   @override
   String get logRetentionCleanup => '自动清理时间';
@@ -8640,4 +8640,113 @@ class AppL10nZh extends AppL10n {
   @override
   String get logDashboardCardStatsDescription =>
       '按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量';
+
+  @override
+  String get floatingLogOpen => '打开悬浮窗日志';
+
+  @override
+  String get floatingLogTitle => '实时请求';
+
+  @override
+  String get floatingLogPaused => '已暂停';
+
+  @override
+  String get floatingLogSearch => '搜索';
+
+  @override
+  String get floatingLogSearchHint => '域名、应用或规则';
+
+  @override
+  String get floatingLogPause => '暂停刷新';
+
+  @override
+  String get floatingLogResume => '继续刷新';
+
+  @override
+  String get floatingLogMinimize => '收起为悬浮球';
+
+  @override
+  String get floatingLogPanelSize => '面板大小';
+
+  @override
+  String get floatingLogSizeSmall => '小';
+
+  @override
+  String get floatingLogSizeMedium => '中';
+
+  @override
+  String get floatingLogSizeLarge => '大';
+
+  @override
+  String get floatingLogClear => '清空列表';
+
+  @override
+  String get floatingLogClearHint => '仅清空悬浮窗显示，不删除日志';
+
+  @override
+  String get floatingLogOpenApp => '打开谛听';
+
+  @override
+  String get floatingLogHide => '本次隐藏';
+
+  @override
+  String get floatingLogHideHint => '回到应用后再次显示';
+
+  @override
+  String get floatingLogCopied => '已复制';
+
+  @override
+  String get floatingLogCopyDomain => '复制域名';
+
+  @override
+  String get floatingLogCopyRecord => '复制记录';
+
+  @override
+  String get floatingLogEmpty => '暂无请求';
+
+  @override
+  String get floatingLogEmptyBody => '新的请求会实时出现在这里。';
+
+  @override
+  String get floatingLogClearedBody => '列表已清空，新的请求会继续出现。';
+
+  @override
+  String get floatingLogNoMatchBody => '换个关键词或筛选条件试试。';
+
+  @override
+  String get floatingLogUnavailable => '无法读取日志';
+
+  @override
+  String get floatingLogUnavailableBody => '日志数据库尚未创建，请先在应用中启动一次隧道。';
+
+  @override
+  String floatingLogShown(int count) {
+    return '显示 $count 条';
+  }
+
+  @override
+  String floatingLogNewRows(int count) {
+    return '$count 条新请求';
+  }
+
+  @override
+  String get floatingLogPermissionTitle => '悬浮窗权限';
+
+  @override
+  String get floatingLogPermissionGranted => '已授予';
+
+  @override
+  String get floatingLogPermissionMissing => '未授予，点按前往系统设置开启';
+
+  @override
+  String get floatingLogOpacity => '面板不透明度';
+
+  @override
+  String get floatingLogSizeTitle => '面板大小';
+
+  @override
+  String get logRetentionOverlayHowTo => '拖动悬浮球或面板标题栏可移动位置；点按一行展开详情，长按复制域名。';
+
+  @override
+  String get permOverlay => '悬浮窗';
 }

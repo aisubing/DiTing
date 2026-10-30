@@ -2,7 +2,7 @@ part of 'requests_page.dart';
 
 /// Handling text, translating outcome and message into plain words. Wording follows the
 /// upstream matchedRule switch; no invented categories.
-String _handlingOf(ObservedRequest request, AppL10n l10n) {
+String requestHandlingOf(ObservedRequest request, AppL10n l10n) {
   if (request.source == RequestSource.dns) {
     if (request.status == RequestStatus.bypassed) return l10n.obsBypassedDns;
     if (request.status == RequestStatus.blocked) return l10n.obsBlockedDns;
@@ -21,7 +21,7 @@ String _handlingOf(ObservedRequest request, AppL10n l10n) {
 }
 
 /// Matched rule text. An empty value gets an explanation rather than "none".
-String _ruleOf(ObservedRequest request, AppL10n l10n) {
+String requestRuleOf(ObservedRequest request, AppL10n l10n) {
   final rule = request.matchedRule?.trim();
   if (rule != null && rule.isNotEmpty) return rule;
   return request.source == RequestSource.https ? l10n.obsNoRuleHttps : l10n.obsNone;
@@ -29,7 +29,7 @@ String _ruleOf(ObservedRequest request, AppL10n l10n) {
 
 /// Bare host of a record: drops the `TCP `/`UDP ` prefix of connection rows, the port and any
 /// trailing dot. Null when the record carries no host at all.
-String? _hostOf(ObservedRequest request) {
+String? requestHostOf(ObservedRequest request) {
   var text = request.title.trim();
   final lower = text.toLowerCase();
   if (lower.startsWith('tcp ') || lower.startsWith('udp ')) {
@@ -65,9 +65,9 @@ class RequestDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
-    final host = _hostOf(request);
+    final host = requestHostOf(request);
     final parsed = DnsLogMessage.parse(request.message);
-    final (statusColor, statusGlyph) = _statusStyle(context, request.status);
+    final (statusColor, statusGlyph) = requestStatusStyle(context, request.status);
 
     return CommonScaffold(
       title: context.l10n.obsRequestDetailTitle,
@@ -146,12 +146,12 @@ class RequestDetailSheet extends StatelessWidget {
               children: [
                 KeyValueRow(
                   label: context.l10n.obsRule,
-                  value: _ruleOf(request, context.l10n),
+                  value: requestRuleOf(request, context.l10n),
                   monospace: true,
                 ),
                 KeyValueRow(
                   label: context.l10n.obsHandling,
-                  value: _handlingOf(request, context.l10n),
+                  value: requestHandlingOf(request, context.l10n),
                 ),
                 if (parsed.error case final error?)
                   KeyValueRow(label: context.l10n.obsError, value: error, monospace: true),
