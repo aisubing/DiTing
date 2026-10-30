@@ -28,7 +28,10 @@ class AppIconAvatar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bytes = ref.watch(appIconsOrEmptyProvider)[packageName];
+    // `select`: a batch of icons landing rebuilds only the rows it covers.
+    final bytes = ref.watch(
+      appIconsProvider.select((icons) => icons[packageName]),
+    );
     final colors = context.colorScheme;
     return ExcludeSemantics(
       child: SizedBox(

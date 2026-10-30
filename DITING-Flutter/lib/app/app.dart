@@ -12,6 +12,7 @@ import 'package:diting/state/appearance_extra_providers.dart';
 import 'package:diting/state/appearance_providers.dart';
 import 'package:diting/state/auto_update_runner.dart';
 import 'package:diting/state/db_health_providers.dart';
+import 'package:diting/state/installed_apps_providers.dart';
 import 'package:diting/state/on_demand_runner.dart';
 import 'package:diting/state/rules_providers.dart';
 import 'package:diting/state/server_status_providers.dart';
@@ -56,6 +57,12 @@ class _DitingAppState extends ConsumerState<DitingApp> {
 
   Timer? _autoUpdateDelayTimer;
 
+  /// Icons are fetched ahead of the first app list, but after startup has settled so the batches
+  /// do not compete with the first frame's queries.
+  static const _appIconsWarmDelay = Duration(seconds: 3);
+
+  Timer? _appIconsWarmTimer;
+
   /// Needed because this state sits above `MaterialApp`: the snack bar that reports a silent
   /// log-write failure has no `ScaffoldMessenger` ancestor here.
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -72,6 +79,16 @@ class _DitingAppState extends ConsumerState<DitingApp> {
       _maybeRunAutoUpdate();
       _maybeApplyOnDemand();
       _maybeReportDbHealth();
+      _scheduleAppIconsWarm();
+    });
+  }
+
+  /// Reading the provider starts the fill; it is never disposed, so every app list opened later
+  /// finds the icons already in memory. Gated on the agreement like every other startup reader.
+  void _scheduleAppIconsWarm() {
+    _appIconsWarmTimer?.cancel();
+    _appIconsWarmTimer = Timer(_appIconsWarmDelay, () {
+      if (mounted && _agreementAccepted) ref.read(appIconsProvider);
     });
   }
 
@@ -138,6 +155,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
   @override
   void dispose() {
     _autoUpdateDelayTimer?.cancel();
+    _appIconsWarmTimer?.cancel();
     _lifecycle?.dispose();
     super.dispose();
   }
@@ -177,6 +195,7 @@ class _DitingAppState extends ConsumerState<DitingApp> {
     ref.listen(initialAgreementProvider, (_, accepted) {
       if (accepted) {
         _router.refresh();
+        _scheduleAppIconsWarm();
       }
     });
     final mode = ref.watch(themeModeProvider);

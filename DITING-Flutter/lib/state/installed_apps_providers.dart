@@ -2,6 +2,9 @@
 /// never a throw.
 library;
 
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:diting/app/l10n/l10n.dart';
 import 'package:diting/data/native/apps_bridge.dart';
 import 'package:flutter/services.dart';
@@ -66,26 +69,68 @@ final installedAppListProvider = Provider<List<InstalledApp>?>((ref) {
   return ref.watch(installedAppsProvider).value?.apps;
 });
 
-/// Package name to encoded launcher icon, fetched once per inventory revision so list rows can
-/// look icons up synchronously while scrolling. A missing entry renders as a placeholder glyph.
-final appIconsProvider = FutureProvider<Map<String, Uint8List>>((ref) async {
-  final apps = ref.watch(installedAppsProvider).value?.apps ?? const [];
-  if (apps.isEmpty) return const {};
-  final source = ref.watch(installedAppsSourceProvider);
-  try {
-    return await source.loadIcons([for (final app in apps) app.packageName]);
-  } on MissingPluginException {
-    return const {};
-  } on PlatformException {
-    return const {};
-  }
-});
+/// Icons asked for per channel call. Small batches keep each message (and the decode it causes on
+/// the UI isolate) short and let rows fill in as batches land, instead of the whole list waiting
+/// for one call that carries hundreds of PNGs. It also stays under the native per-call cap, which
+/// used to leave every app past the 400th without an icon.
+const appIconBatchSize = 48;
 
-/// The icon map if it has already loaded; pages call this from a `select` so a row rebuild never
-/// awaits the channel.
-final appIconsOrEmptyProvider = Provider<Map<String, Uint8List>>((ref) {
-  return ref.watch(appIconsProvider).value ?? const {};
-});
+/// Package name to encoded launcher icon, kept for the whole app run so reopening a list never
+/// fetches again. Filled in batches, user apps first since the pickers default to them. When the
+/// inventory reloads, icons already held stay and only new packages are fetched. A missing entry
+/// renders as a placeholder glyph.
+class AppIconsNotifier extends Notifier<Map<String, Uint8List>> {
+  /// Survives rebuilds: Riverpod keeps the notifier instance, so a reload starts from these.
+  Map<String, Uint8List> _icons = const {};
+
+  /// Bumped on every build so a fill started for an older inventory stops.
+  int _generation = 0;
+
+  @override
+  Map<String, Uint8List> build() {
+    final apps = ref.watch(installedAppListProvider);
+    final source = ref.watch(installedAppsSourceProvider);
+    final generation = ++_generation;
+    if (apps == null) return _icons;
+    final missing = [
+      for (final system in const [false, true])
+        for (final app in apps)
+          if (app.isSystem == system && !_icons.containsKey(app.packageName))
+            app.packageName,
+    ];
+    if (missing.isNotEmpty) unawaited(_fill(source, missing, generation));
+    return _icons;
+  }
+
+  Future<void> _fill(
+    InstalledAppsSource source,
+    List<String> packages,
+    int generation,
+  ) async {
+    bool stale() => !ref.mounted || generation != _generation;
+    for (var start = 0; start < packages.length; start += appIconBatchSize) {
+      if (stale()) return;
+      final end = math.min(start + appIconBatchSize, packages.length);
+      final Map<String, Uint8List> batch;
+      try {
+        batch = await source.loadIcons(packages.sublist(start, end));
+      } on MissingPluginException {
+        return;
+      } on PlatformException {
+        // One unreadable batch should not cost the icons of the rest.
+        continue;
+      }
+      if (stale()) return;
+      if (batch.isEmpty) continue;
+      state = _icons = {..._icons, ...batch};
+    }
+  }
+}
+
+final appIconsProvider =
+    NotifierProvider<AppIconsNotifier, Map<String, Uint8List>>(
+      AppIconsNotifier.new,
+    );
 
 /// Resolves package names to engine UIDs; uninstalled packages are absent rather than -1, so
 /// callers drop them.

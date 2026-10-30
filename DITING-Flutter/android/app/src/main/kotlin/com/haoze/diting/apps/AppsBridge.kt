@@ -9,6 +9,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.LinkedHashMap
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -38,6 +39,17 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ByteArray>) =
                 size > MAX_CACHED_ICONS
         }
+
+        /// Bump to drop every icon on disk when the rendering changes
+        private const val DISK_CACHE_VERSION = 1
+    }
+
+    /// Rendered icons kept across restarts, so a cold start reads files instead of drawing and
+    /// encoding every icon again. Files are named `<package>@<lastUpdateTime>.png`: an app update
+    /// changes the name, which is what invalidates its entry. Lives in `cacheDir`, so the system
+    /// may clear it under storage pressure.
+    private val diskCacheRoot by lazy {
+        File(context.cacheDir, "app_icons/v$DISK_CACHE_VERSION")
     }
 
     fun register(messenger: BinaryMessenger) {
@@ -115,25 +127,53 @@ class AppsBridge(private val context: Context) : MethodChannel.MethodCallHandler
         packageName.isNotEmpty() && packageName == context.packageName
 
     /// Package name -> PNG bytes of the launcher icon, drawn at [size] px. Encoding happens
-    /// off the platform thread and repeats are served from [iconCache], so scrolling back
-    /// through a list never re-decodes.
+    /// off the platform thread; repeats are served from [iconCache] and, after a restart, from
+    /// [diskCacheRoot], so only new or updated apps are drawn again.
     private fun loadIcons(packages: List<String>, size: Int): Map<String, ByteArray> {
         if (packages.isEmpty()) return emptyMap()
         val side = size.coerceIn(48, 512)
-        val key = { packageName: String -> "$side:$packageName" }
+        val dir = File(diskCacheRoot, side.toString())
         val output = HashMap<String, ByteArray>(packages.size)
         for (packageName in packages.distinct().take(MAX_ICON_PACKAGES)) {
             if (packageName.isBlank() || packageName == context.packageName) continue
-            val cached = iconCache.get(key(packageName))
+            val stamp = lastUpdateOf(packageName) ?: continue
+            val key = "$side:$packageName@$stamp"
+            val cached = iconCache.get(key)
             if (cached != null) {
                 output[packageName] = cached
                 continue
             }
-            val bytes = renderIcon(packageName, side) ?: continue
-            iconCache.put(key(packageName), bytes)
+            val file = File(dir, "$packageName@$stamp.png")
+            val bytes = readCached(file) ?: renderIcon(packageName, side)?.also {
+                writeCached(dir, packageName, file, it)
+            } ?: continue
+            iconCache.put(key, bytes)
             output[packageName] = bytes
         }
         return output
+    }
+
+    /// Null when the package is gone, which also skips drawing it
+    private fun lastUpdateOf(packageName: String): Long? = runCatching {
+        context.packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+    }.getOrNull()
+
+    private fun readCached(file: File): ByteArray? = runCatching {
+        if (file.isFile && file.length() > 0) file.readBytes() else null
+    }.getOrNull()
+
+    /// Best effort: a failed write only costs a redraw next time. Older entries of the package
+    /// are removed so updates do not pile up files. The temp file + rename keeps a crash
+    /// mid-write from leaving a truncated PNG behind.
+    private fun writeCached(dir: File, packageName: String, file: File, bytes: ByteArray) {
+        runCatching {
+            if (!dir.isDirectory && !dir.mkdirs()) return
+            dir.listFiles { _, name -> name.startsWith("$packageName@") }
+                ?.forEach { it.delete() }
+            val temp = File(dir, "${file.name}.tmp")
+            temp.writeBytes(bytes)
+            if (!temp.renameTo(file)) temp.delete()
+        }
     }
 
     private fun renderIcon(packageName: String, side: Int): ByteArray? = runCatching {
