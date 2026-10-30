@@ -3,12 +3,20 @@
 part of 'popup.dart';
 
 class CommonPopupMenu extends StatefulWidget {
-  const CommonPopupMenu({super.key, required this.items, this.maxVisibleItems});
+  const CommonPopupMenu({
+    super.key,
+    required this.items,
+    this.maxVisibleItems,
+    this.dense = false,
+  });
 
   final List<CommonPopupMenuItem> items;
 
   /// Half the next row shows past these, telling the menu scrolls; rows in view share one height.
   final int? maxVisibleItems;
+
+  /// Smaller rows, icons and type, for menus inside small surfaces.
+  final bool dense;
 
   @override
   State<CommonPopupMenu> createState() => _CommonPopupMenuState();

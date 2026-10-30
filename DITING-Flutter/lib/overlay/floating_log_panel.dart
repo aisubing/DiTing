@@ -311,7 +311,8 @@ class _FloatingLogPanelState extends State<FloatingLogPanel> {
                 tooltip: UiLocalizations.of(context).more,
                 onPressed: open,
               ),
-              popupBuilder: (_) => CommonPopupMenu(items: _menuItems(context)),
+              popupBuilder: (_) =>
+                  CommonPopupMenu(dense: true, items: _menuItems(context)),
             ),
             _iconButton(
               glyph: AppGlyphs.remove,
@@ -444,7 +445,8 @@ class _FloatingLogPanelState extends State<FloatingLogPanel> {
     final l10n = context.l10n;
     final snapshot = _snapshot;
     if (snapshot == null) {
-      return const Center(child: CommonCircleLoading(size: 22));
+      // The first read takes a few milliseconds; a spinner would only flash.
+      return const SizedBox.shrink();
     }
     if (rows.isEmpty) {
       final String title;

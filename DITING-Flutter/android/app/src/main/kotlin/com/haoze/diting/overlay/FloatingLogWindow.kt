@@ -61,9 +61,15 @@ internal class FloatingLogWindow(context: Context) {
 
     /// Height in dp of the panel strip that drags the window; zero in ball mode means "all of it".
     private var dragStripDp = 0
+
+    /// Side edge the open panel slides from: -1 left, 1 right.
+    private var panelSide = 1
     private var ballX = 0
     private var ballY = 0
     private var snapAnimator: ValueAnimator? = null
+
+    /// Shows the window if Dart never confirms the new layout drew, so it cannot stay invisible.
+    private val revealFallback = Runnable { reveal() }
     private var receiverRegistered = false
 
     private val screenReceiver = object : BroadcastReceiver() {
@@ -112,6 +118,7 @@ internal class FloatingLogWindow(context: Context) {
 
     fun destroy() {
         snapAnimator?.cancel()
+        root?.removeCallbacks(revealFallback)
         unregisterScreenReceiver()
         savePosition()
         root?.let { runCatching { windowManager.removeView(it) } }
@@ -139,6 +146,10 @@ internal class FloatingLogWindow(context: Context) {
                 setFocusable(call.argument<Boolean>("value") == true)
                 result.success(null)
             }
+            "reveal" -> {
+                reveal()
+                result.success(null)
+            }
             "openApp" -> {
                 openApp()
                 result.success(null)
@@ -152,7 +163,11 @@ internal class FloatingLogWindow(context: Context) {
         }
     }
 
-    /// Returns the size actually applied, in dp, after clamping to the screen.
+    /// Resizes the window and hides it until Dart calls `reveal`: until Flutter draws at the new
+    /// size, the texture view stretches the previous frame over the window. The panel opens flush
+    /// with the ball's side edge, so it can slide in from there.
+    ///
+    /// Returns the size actually applied, in dp, and the side (-1 left, 1 right) the panel rests on.
     private fun setExpanded(expand: Boolean, widthDp: Int, heightDp: Int, dragStripDp: Int): Map<String, Int> {
         snapAnimator?.cancel()
         val (screenW, screenH) = screenSize()
@@ -160,13 +175,23 @@ internal class FloatingLogWindow(context: Context) {
             ballX = params.x
             ballY = params.y
         }
+        val opening = expand && !expanded
         expanded = expand
         this.dragStripDp = dragStripDp
+        hide()
         if (expand) {
+            val oldRight = params.x + params.width
             params.width = dp(widthDp).coerceAtMost(screenW - 2 * dp(EDGE_DP))
             params.height = dp(heightDp).coerceAtMost(screenH - 2 * dp(EDGE_DP))
+            if (opening) {
+                panelSide = if (ballX + dp(BALL_DP) / 2 < screenW / 2) -1 else 1
+                params.x = if (panelSide < 0) dp(EDGE_DP) else screenW - params.width - dp(EDGE_DP)
+                params.y = ballY
+            } else if (panelSide > 0) {
+                // A resize keeps the right edge where it was.
+                params.x = oldRight - params.width
+            }
             clampInto(screenW, screenH)
-            root?.alpha = prefs.getFloat(KEY_OPACITY, 1f).coerceIn(0.3f, 1f)
         } else {
             setFocusable(false)
             params.width = dp(BALL_DP)
@@ -174,13 +199,26 @@ internal class FloatingLogWindow(context: Context) {
             params.x = ballX
             params.y = ballY
             clampInto(screenW, screenH)
-            root?.alpha = 1f
         }
         update()
         return mapOf(
             "width" to (params.width / density).roundToInt(),
             "height" to (params.height / density).roundToInt(),
+            "side" to panelSide,
         )
+    }
+
+    private fun hide() {
+        val view = root ?: return
+        view.alpha = 0f
+        view.removeCallbacks(revealFallback)
+        view.postDelayed(revealFallback, REVEAL_FALLBACK_MS)
+    }
+
+    private fun reveal() {
+        val view = root ?: return
+        view.removeCallbacks(revealFallback)
+        view.alpha = if (expanded) prefs.getFloat(KEY_OPACITY, 1f).coerceIn(0.3f, 1f) else 1f
     }
 
     /// Only a focused search field needs the keyboard; otherwise the window must not steal focus
@@ -366,6 +404,7 @@ internal class FloatingLogWindow(context: Context) {
         const val KEY_OPACITY = "floating_log_opacity"
         const val BALL_DP = 56
         const val EDGE_DP = 4
+        const val REVEAL_FALLBACK_MS = 400L
         const val BASE_FLAGS = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
 

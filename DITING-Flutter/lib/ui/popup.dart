@@ -63,4 +63,16 @@ const _itemArrowPadding = EdgeInsets.only(
   right: 8,
 );
 
+/// Row metrics of [CommonPopupMenu.dense], for menus in tight spaces such as an overlay window.
+const _denseItemIconSize = 18.0;
+const _denseItemPadding = EdgeInsets.symmetric(horizontal: 10, vertical: 8);
+const _denseItemArrowPadding = EdgeInsets.only(
+  left: 10,
+  top: 8,
+  bottom: 8,
+  right: 6,
+);
+const _denseMenuMinWidth = 140.0;
+const _denseMenuMaxWidth = 240.0;
+
 const _dividerHeight = _cardInset * 2 + 1;

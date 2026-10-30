@@ -15,6 +15,19 @@ final _arrowTurns = const _Span(0, 1).chain(Tween(begin: 0.0, end: 0.25));
 final _labelWidths = <(String, TextStyle, TextScaler, bool), double>{};
 
 extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
+  EdgeInsets _rowPadding({required bool arrow}) => widget.dense
+      ? (arrow ? _denseItemArrowPadding : _denseItemPadding)
+      : (arrow ? _itemArrowPadding : _itemPadding);
+
+  double get _iconSize => widget.dense ? _denseItemIconSize : _itemIconSize;
+
+  AppTextStyle get _labelStyle =>
+      widget.dense ? AppTextStyle.footnote : AppTextStyle.subheadline;
+
+  double get _minWidth => widget.dense ? _denseMenuMinWidth : _menuMinWidth;
+
+  double get _maxWidth => widget.dense ? _denseMenuMaxWidth : _menuMaxWidth;
+
   Widget _buildRow(
     BuildContext context, {
     required CommonPopupMenuItem item,
@@ -27,6 +40,7 @@ extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
     final enabled = onTap != null;
     final color = item.danger ? colorScheme.error : colorScheme.onSurface;
     final foregroundColor = enabled ? color : color.opacity30;
+    final dense = widget.dense;
     Widget? arrow;
     if (item.subItems.isNotEmpty) {
       arrow = GlyphIcon(
@@ -57,12 +71,12 @@ extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
           shape: AppShape.all(_itemRadius),
         ),
         child: Padding(
-          padding: arrow != null ? _itemArrowPadding : _itemPadding,
+          padding: _rowPadding(arrow: arrow != null),
           child: Row(
             children: [
               if (item.glyph case final glyph?) ...[
-                GlyphIcon(glyph, size: _itemIconSize, color: foregroundColor),
-                const SizedBox(width: 12),
+                GlyphIcon(glyph, size: _iconSize, color: foregroundColor),
+                SizedBox(width: dense ? 10 : 12),
               ],
               Expanded(
                 child: Column(
@@ -73,7 +87,7 @@ extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
                       item.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyle.subheadline
+                      style: _labelStyle
                           .of(context)
                           .copyWith(color: foregroundColor),
                     ),
@@ -82,13 +96,16 @@ extension _CommonPopupMenuStateBuild on _CommonPopupMenuState {
                         subtitle,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyle.footnote
-                            .of(context)
-                            .copyWith(
-                              color: enabled
-                                  ? colorScheme.onSurfaceVariant
-                                  : colorScheme.onSurfaceVariant.opacity30,
-                            ),
+                        style:
+                            (dense
+                                    ? AppTextStyle.caption1
+                                    : AppTextStyle.footnote)
+                                .of(context)
+                                .copyWith(
+                                  color: enabled
+                                      ? colorScheme.onSurfaceVariant
+                                      : colorScheme.onSurfaceVariant.opacity30,
+                                ),
                       ),
                   ],
                 ),

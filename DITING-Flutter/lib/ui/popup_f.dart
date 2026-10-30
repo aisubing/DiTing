@@ -88,8 +88,8 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
   }
 
   double _rowExtentOf(BuildContext context) =>
-      _itemPadding.vertical +
-      MediaQuery.textScalerOf(context).scale(AppTextStyle.subheadline.leading);
+      _rowPadding(arrow: false).vertical +
+      MediaQuery.textScalerOf(context).scale(_labelStyle.leading);
 
   int get _maxVisibleItems => widget.maxVisibleItems ?? _defaultMaxVisibleItems;
 
@@ -101,11 +101,11 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
   }
 
   double _lazyWidthOf(BuildContext context, List<CommonPopupMenuItem> items) {
-    final style = AppTextStyle.subheadline.of(context);
+    final style = _labelStyle.of(context);
     final root = DefaultTextStyle.of(context).style.merge(style);
     final textScaler = MediaQuery.textScalerOf(context);
     final boldText = MediaQuery.boldTextOf(context);
-    const limit = _menuMaxWidth - 2 * _cardInset;
+    final limit = _maxWidth - 2 * _cardInset;
     var width = 0.0;
     for (final item in items) {
       if (_labelWidths.length >= 1024) {
@@ -115,8 +115,8 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
           EmojiText.widthOf(context, item.label, root);
       final checked = item.checked == true;
       final row =
-          (checked ? _itemArrowPadding : _itemPadding).horizontal +
-          (item.glyph != null ? _itemIconSize + 12 : 0) +
+          _rowPadding(arrow: checked).horizontal +
+          (item.glyph != null ? _iconSize + (widget.dense ? 10 : 12) : 0) +
           label +
           (checked ? 8 + _submenuArrowSize : 0);
       width = math.max(width, row);
@@ -161,9 +161,9 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
       _MenuLevel(
         items: widget.items,
         top: 0,
-        fromWidth: _menuMinWidth,
-        minWidth: _menuMinWidth,
-        maxWidth: _menuMaxWidth,
+        fromWidth: _minWidth,
+        minWidth: _minWidth,
+        maxWidth: _maxWidth,
       ),
     ];
     for (final step in _path) {
@@ -185,7 +185,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
           top: math.max(0, step.itemTop - _cardInset),
           fromWidth: fromWidth,
           minWidth: minWidth,
-          maxWidth: math.max(minWidth, _menuMaxWidth),
+          maxWidth: math.max(minWidth, _maxWidth),
         ),
       );
     }
@@ -230,9 +230,7 @@ class _CommonPopupMenuState extends State<CommonPopupMenu>
               ? itemBox.localToGlobal(Offset.zero, ancestor: stackBox).dy
               : 0,
           itemHeight: placed ? itemBox.size.height : 0,
-          cardWidth: placed
-              ? itemBox.size.width + 2 * _cardInset
-              : _menuMinWidth,
+          cardWidth: placed ? itemBox.size.width + 2 * _cardInset : _minWidth,
         ),
       );
     });

@@ -31,14 +31,17 @@ class _FakeWindow extends FloatingLogWindowChannel {
   final calls = <String>[];
 
   @override
-  Future<Size?> setExpanded(
+  Future<int> setExpanded(
     bool expanded, {
     Size size = Size.zero,
     double dragStrip = 0,
   }) async {
     calls.add(expanded ? 'expand' : 'collapse');
-    return size;
+    return 1;
   }
+
+  @override
+  Future<void> reveal() async => calls.add('reveal');
 
   @override
   Future<void> setFocusable(bool value) async => calls.add('focus:$value');
@@ -86,7 +89,7 @@ void main() {
     expect(find.text('ads.example.com'), findsNothing);
     await tester.tap(find.bySemanticsLabel('打开悬浮窗日志'));
     await tester.pumpAndSettle();
-    expect(window.calls, ['expand']);
+    expect(window.calls, ['expand', 'reveal']);
     expect(find.text('ads.example.com'), findsOneWidget);
     expect(find.text('api.example.com'), findsOneWidget);
 
@@ -112,7 +115,10 @@ void main() {
     // Minimise returns to the bubble.
     await tester.tap(find.byTooltip('收起为悬浮球'));
     await tester.pumpAndSettle();
-    expect(window.calls.last, 'collapse');
+    expect(window.calls.sublist(window.calls.length - 2), [
+      'collapse',
+      'reveal',
+    ]);
     expect(find.bySemanticsLabel('打开悬浮窗日志'), findsOneWidget);
 
     // Stop the polling timers before the test ends.
