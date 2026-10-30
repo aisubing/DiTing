@@ -102,7 +102,7 @@ class AppL10nEn extends AppL10n {
       'Your changes have not been saved yet. Save them before leaving, or discard them?';
 
   @override
-  String commonSaveChangesMessageFor(Object name) {
+  String commonSaveChangesMessageFor(String name) {
     return 'The selection for \"$name\" has not been saved yet. Save it before leaving, or discard the changes?';
   }
 
@@ -170,22 +170,22 @@ class AppL10nEn extends AppL10n {
   String get appListNotRegistered => 'not registered';
 
   @override
-  String appListChannelUnavailable(Object detail) {
+  String appListChannelUnavailable(String detail) {
     return 'App list channel unavailable: $detail';
   }
 
   @override
-  String appListReadFailed(Object detail) {
+  String appListReadFailed(String detail) {
     return 'Failed to read the app list: $detail';
   }
 
   @override
-  String appListReadFailedCode(Object code) {
+  String appListReadFailedCode(String code) {
     return 'Failed to read the app list ($code)';
   }
 
   @override
-  String dbWriteUnhealthy(Object dropped, Object failures) {
+  String dbWriteUnhealthy(int dropped, int failures) {
     return 'Log writes are failing: $dropped rows dropped and $failures failed opens. See Troubleshooting for details.';
   }
 
@@ -222,17 +222,17 @@ class AppL10nEn extends AppL10n {
   String get homeChartEmptyLabel => 'No samples yet';
 
   @override
-  String durationHours(Object hours) {
+  String durationHours(int hours) {
     return '$hours h';
   }
 
   @override
-  String durationMinutes(Object minutes) {
+  String durationMinutes(int minutes) {
     return '$minutes min';
   }
 
   @override
-  String durationSeconds(Object seconds) {
+  String durationSeconds(int seconds) {
     return '$seconds s';
   }
 
@@ -377,12 +377,12 @@ class AppL10nEn extends AppL10n {
   String get logCacheHotspotsEmpty => 'No live cache entries';
 
   @override
-  String logExpiresIn(Object duration) {
+  String logExpiresIn(String duration) {
     return 'expires in $duration';
   }
 
   @override
-  String logTimes(Object count) {
+  String logTimes(String count) {
     return '$count times';
   }
 
@@ -393,7 +393,7 @@ class AppL10nEn extends AppL10n {
   String get logRaceWinnersEmpty => 'No race data yet';
 
   @override
-  String logAverageWinLatency(Object latency) {
+  String logAverageWinLatency(String latency) {
     return 'Won in $latency on average';
   }
 
@@ -401,7 +401,7 @@ class AppL10nEn extends AppL10n {
   String get logBootstrapDnsEmpty => 'No Bootstrap data yet';
 
   @override
-  String logBootstrapRow(Object ip, Object latency, Object percent) {
+  String logBootstrapRow(String ip, String latency, String percent) {
     return '$ip · $percent success · $latency';
   }
 
@@ -412,7 +412,7 @@ class AppL10nEn extends AppL10n {
   String get logRuleBlocksEmpty => 'No rule blocks yet';
 
   @override
-  String logShareRow(Object percent, Object status) {
+  String logShareRow(String percent, String status) {
     return '$status · $percent of all requests';
   }
 
@@ -439,7 +439,7 @@ class AppL10nEn extends AppL10n {
   String get logNoTimingSamples => '— · No timing samples today';
 
   @override
-  String logSampleValue(Object count, Object value) {
+  String logSampleValue(String count, String value) {
     return '$value · $count samples';
   }
 
@@ -447,7 +447,7 @@ class AppL10nEn extends AppL10n {
   String get logCacheHitRate => 'Cache hit rate';
 
   @override
-  String logCacheHitRateValue(Object percent) {
+  String logCacheHitRateValue(String percent) {
     return '$percent · denominator is passed + failed';
   }
 
@@ -458,7 +458,7 @@ class AppL10nEn extends AppL10n {
   String get logBootstrapSuccessRate => 'Bootstrap success rate';
 
   @override
-  String logRateValue(Object count, Object latency, Object percent) {
+  String logRateValue(String count, String latency, String percent) {
     return '$percent · $count times · $latency';
   }
 
@@ -991,27 +991,27 @@ class AppL10nEn extends AppL10n {
   String get commonNoData => 'No data';
 
   @override
-  String intranetModeNotListening(Object mode) {
+  String intranetModeNotListening(String mode) {
     return '$mode does not listen on the LAN, so other devices cannot use this as their DNS';
   }
 
   @override
-  String intranetListeningOn(Object port) {
+  String intranetListeningOn(int port) {
     return 'Listening on 0.0.0.0:$port; point other devices\' DNS at the address above';
   }
 
   @override
-  String intranetServiceStopped(Object port) {
+  String intranetServiceStopped(int port) {
     return 'Service not started: port $port is bound once it starts';
   }
 
   @override
-  String commonCopied(Object text) {
+  String commonCopied(String text) {
     return 'Copied $text';
   }
 
   @override
-  String intranetGatewaySuffix(Object gateway) {
+  String intranetGatewaySuffix(String gateway) {
     return ' · Gateway $gateway';
   }
 
@@ -1019,37 +1019,37 @@ class AppL10nEn extends AppL10n {
   String get speedTotalDash => 'Total —';
 
   @override
-  String siteLatencyAliveRatio(Object alive, Object total) {
+  String siteLatencyAliveRatio(int alive, int total) {
     return '$alive / $total reachable';
   }
 
   @override
-  String siteLatencyLastRun(Object ago) {
+  String siteLatencyLastRun(String ago) {
     return 'Last test $ago';
   }
 
   @override
-  String siteLatencyProviderSuffix(Object name) {
+  String siteLatencyProviderSuffix(String name) {
     return ' · Resolver $name';
   }
 
   @override
-  String siteLatencySitesCount(Object count) {
+  String siteLatencySitesCount(int count) {
     return '$count sites';
   }
 
   @override
-  String siteLatencyTestCategory(Object category) {
+  String siteLatencyTestCategory(String category) {
     return 'Test $category';
   }
 
   @override
-  String memorySystemShare(Object percent) {
+  String memorySystemShare(String percent) {
     return '$percent of the system';
   }
 
   @override
-  String memorySystemUsedOf(Object total, Object used) {
+  String memorySystemUsedOf(String total, String used) {
     return 'System used $used / $total';
   }
 
@@ -1059,35 +1059,35 @@ class AppL10nEn extends AppL10n {
 
   @override
   String trafficStructureRateValue(
-    Object count,
-    Object latency,
-    Object percent,
+    String count,
+    String latency,
+    String percent,
   ) {
     return '$percent · $count times · $latency';
   }
 
   @override
-  String trafficStructureShareValue(Object count, Object percent) {
+  String trafficStructureShareValue(String count, String percent) {
     return '$percent · $count times';
   }
 
   @override
-  String statusPausedSummary(Object core, Object mode) {
+  String statusPausedSummary(String core, String mode) {
     return '$mode $core, timing paused';
   }
 
   @override
-  String speedTotalsDown(Object percent) {
+  String speedTotalsDown(String percent) {
     return 'Down $percent';
   }
 
   @override
-  String speedTotalsUp(Object percent) {
+  String speedTotalsUp(String percent) {
     return 'Up $percent';
   }
 
   @override
-  String speedPeakAverage(Object average, Object peak) {
+  String speedPeakAverage(String average, String peak) {
     return 'Peak $peak · Average $average';
   }
 
@@ -1096,52 +1096,52 @@ class AppL10nEn extends AppL10n {
       'Connect to Wi-Fi or Ethernet to see a usable address here.';
 
   @override
-  String intranetModeNotListeningSentence(Object mode) {
+  String intranetModeNotListeningSentence(String mode) {
     return '$mode does not listen on the LAN, so other devices cannot use this as their DNS.';
   }
 
   @override
-  String intranetPrivateDnsOn(Object dns) {
+  String intranetPrivateDnsOn(String dns) {
     return 'System Private DNS is on ($dns); system lookups use an encrypted channel and may bypass the local service.';
   }
 
   @override
-  String intranetSecondaryDns(Object index) {
+  String intranetSecondaryDns(int index) {
     return 'Secondary $index';
   }
 
   @override
-  String intranetCopyAddressSemantics(Object address) {
+  String intranetCopyAddressSemantics(String address) {
     return 'Copy address $address';
   }
 
   @override
-  String speedTotalAccumulated(Object value) {
+  String speedTotalAccumulated(String value) {
     return 'Total $value';
   }
 
   @override
-  String dashboardSitesFull(Object count) {
+  String dashboardSitesFull(int count) {
     return 'The card holds $count sites; turn one off before adding another.';
   }
 
   @override
-  String dashboardSitesRemaining(Object count) {
+  String dashboardSitesRemaining(int count) {
     return 'You can add $count more sites.';
   }
 
   @override
-  String dashboardSitesMax(Object count) {
+  String dashboardSitesMax(int count) {
     return 'The card holds at most $count sites; deselect one first.';
   }
 
   @override
-  String dashboardSitesPosition(Object index) {
+  String dashboardSitesPosition(int index) {
     return 'Position $index';
   }
 
   @override
-  String siteLatencyFailedCount(Object count) {
+  String siteLatencyFailedCount(int count) {
     return '$count failed';
   }
 
@@ -1389,27 +1389,27 @@ class AppL10nEn extends AppL10n {
   String get elapsedJustNow => 'just now';
 
   @override
-  String elapsedSecondsAgo(Object count) {
+  String elapsedSecondsAgo(int count) {
     return '${count}s ago';
   }
 
   @override
-  String elapsedMinutesAgo(Object count) {
+  String elapsedMinutesAgo(int count) {
     return '${count}m ago';
   }
 
   @override
-  String elapsedHoursAgo(Object count) {
+  String elapsedHoursAgo(int count) {
     return '${count}h ago';
   }
 
   @override
-  String elapsedDaysAgo(Object count) {
+  String elapsedDaysAgo(int count) {
     return '${count}d ago';
   }
 
   @override
-  String providerRaceSummary(Object count, Object names) {
+  String providerRaceSummary(String count, String names) {
     return '$count selected: $names';
   }
 
@@ -1739,57 +1739,57 @@ class AppL10nEn extends AppL10n {
   String get aiProviderOllamaLocal => 'Ollama (local)';
 
   @override
-  String rulesReadFailed(Object detail) {
+  String rulesReadFailed(String detail) {
     return 'Failed to read app rules: $detail';
   }
 
   @override
-  String autoUpdateChecked(Object count) {
+  String autoUpdateChecked(int count) {
     return 'Checked $count subscriptions';
   }
 
   @override
-  String caChannelUnavailableDetail(Object detail) {
+  String caChannelUnavailableDetail(String detail) {
     return 'The certificate channel is unavailable: $detail';
   }
 
   @override
-  String caReadFailedCode(Object code) {
+  String caReadFailedCode(String code) {
     return 'Failed to read the root certificate ($code)';
   }
 
   @override
-  String caReadFailed(Object detail) {
+  String caReadFailed(String detail) {
     return 'Failed to read the root certificate: $detail';
   }
 
   @override
-  String agentAnalysisFailed(Object detail) {
+  String agentAnalysisFailed(String detail) {
     return 'Analysis failed: $detail';
   }
 
   @override
-  String diagnosticsFailedCode(Object code) {
+  String diagnosticsFailedCode(String code) {
     return 'The diagnostic failed ($code)';
   }
 
   @override
-  String diagnosticsFailed(Object detail) {
+  String diagnosticsFailed(String detail) {
     return 'The diagnostic failed: $detail';
   }
 
   @override
-  String subscriptionDeletedWithId(Object id) {
+  String subscriptionDeletedWithId(int id) {
     return 'Deleted subscription #$id';
   }
 
   @override
-  String providerLatencyValue(Object value) {
+  String providerLatencyValue(int value) {
     return '${value}ms';
   }
 
   @override
-  String providerRaceSummaryNames(Object count, Object names) {
+  String providerRaceSummaryNames(int count, String names) {
     return '$count selected: $names';
   }
 
@@ -1797,42 +1797,42 @@ class AppL10nEn extends AppL10n {
   String get providerNamesSeparator => ', ';
 
   @override
-  String recognitionInvalidConfigKept(Object detail) {
+  String recognitionInvalidConfigKept(String detail) {
     return 'The cloud roster configuration is invalid ($detail); the local cache is kept';
   }
 
   @override
-  String recognitionFetchFailed(Object detail) {
+  String recognitionFetchFailed(String detail) {
     return 'Fetching the cloud roster failed ($detail)';
   }
 
   @override
-  String recognitionUpdateFailedDetail(Object detail) {
+  String recognitionUpdateFailedDetail(String detail) {
     return 'The roster update failed: $detail';
   }
 
   @override
-  String subscriptionAlreadyExists(Object kind, Object what) {
+  String subscriptionAlreadyExists(String kind, String what) {
     return '$what already exists as $kind';
   }
 
   @override
-  String subscriptionUpdatedCount(Object count) {
+  String subscriptionUpdatedCount(int count) {
     return '$count updated';
   }
 
   @override
-  String subscriptionUnchangedCount(Object count) {
+  String subscriptionUnchangedCount(int count) {
     return '$count unchanged';
   }
 
   @override
-  String subscriptionFailedCount(Object count) {
+  String subscriptionFailedCount(int count) {
     return '$count failed';
   }
 
   @override
-  String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what) {
+  String subscriptionAlreadyExistsNamed(String kind, String name, String what) {
     return '$what already exists as $kind (\"$name\")';
   }
 
@@ -1891,12 +1891,12 @@ class AppL10nEn extends AppL10n {
   String get cleanupAllData => 'Clear all local data';
 
   @override
-  String cleanupDoneItems(Object action, Object count, Object detail) {
+  String cleanupDoneItems(String action, int count, String detail) {
     return '$action: $count items$detail';
   }
 
   @override
-  String cleanupDoneEmpty(Object action) {
+  String cleanupDoneEmpty(String action) {
     return '$action: nothing to clean up';
   }
 
@@ -1941,12 +1941,12 @@ class AppL10nEn extends AppL10n {
   String get subscriptionKindHosts => 'Hosts rules';
 
   @override
-  String logRowDirect(Object protocol) {
+  String logRowDirect(String protocol) {
     return '$protocol direct';
   }
 
   @override
-  String logRowDirectWithPackage(Object package, Object protocol) {
+  String logRowDirectWithPackage(String package, String protocol) {
     return '$protocol direct · $package';
   }
 
@@ -2019,7 +2019,7 @@ class AppL10nEn extends AppL10n {
   String get upstreamPresetByteDance => 'ByteDance';
 
   @override
-  String cleanupFailed(Object detail) {
+  String cleanupFailed(String detail) {
     return 'Cleanup failed: $detail';
   }
 
@@ -2334,7 +2334,7 @@ class AppL10nEn extends AppL10n {
       'The palette only supplies a seed; the screen shows the full HCT-derived role set. The legacy app had no custom picker, so there is none here.';
 
   @override
-  String fontFamilySizeSubtitle(Object percent) {
+  String fontFamilySizeSubtitle(String percent) {
     return '$percent% now';
   }
 
@@ -2370,7 +2370,7 @@ class AppL10nEn extends AppL10n {
   String get commonDelete => 'Delete';
 
   @override
-  String fontFamilyDeleteConfirm(Object name) {
+  String fontFamilyDeleteConfirm(String name) {
     return 'After deleting \"$name\", the interface falls back to the system default font.';
   }
 
@@ -2560,12 +2560,12 @@ class AppL10nEn extends AppL10n {
   String get bottomBarCustomTitle => 'Bottom bar';
 
   @override
-  String bottomBarItemsHeader(Object count, Object max) {
+  String bottomBarItemsHeader(String count, String max) {
     return 'Bottom bar items ($count/$max)';
   }
 
   @override
-  String bottomBarDragHint(Object max) {
+  String bottomBarDragHint(String max) {
     return 'Drag by the handle on the right or long-press a row to reorder; the order is the bottom bar order from left to right. Keep 2 to $max items: the floating bar splits its width evenly and more would squeeze the icons.';
   }
 
@@ -2603,7 +2603,7 @@ class AppL10nEn extends AppL10n {
   String get appearanceFontSizeLabel => 'Text size';
 
   @override
-  String appearanceFontSizeCurrent(Object percent) {
+  String appearanceFontSizeCurrent(int percent) {
     return '$percent% now';
   }
 
@@ -2611,32 +2611,32 @@ class AppL10nEn extends AppL10n {
   String get appearanceFontSection => 'Font';
 
   @override
-  String appearanceFontImported(Object name) {
+  String appearanceFontImported(String name) {
     return 'Imported $name';
   }
 
   @override
-  String appearanceFontDeleted(Object name) {
+  String appearanceFontDeleted(String name) {
     return 'Deleted $name';
   }
 
   @override
-  String appearanceBottomBarMax(Object max) {
+  String appearanceBottomBarMax(int max) {
     return 'At most $max bottom bar items';
   }
 
   @override
-  String appearanceBottomBarHeader(Object count, Object max) {
+  String appearanceBottomBarHeader(int count, int max) {
     return 'Bottom bar items ($count/$max)';
   }
 
   @override
-  String appearanceBottomBarDragBody(Object max) {
+  String appearanceBottomBarDragBody(int max) {
     return 'Drag by the handle on the right or long-press a row to reorder; the order is the bottom bar order from left to right. Keep 2 to $max items: the floating bar splits its width evenly and more would squeeze the icons.';
   }
 
   @override
-  String appearanceBottomBarSelected(Object count) {
+  String appearanceBottomBarSelected(int count) {
     return '$count selected; 2–4 are allowed';
   }
 
@@ -2832,32 +2832,32 @@ class AppL10nEn extends AppL10n {
   String get rulePatternHint => 'Rule text, e.g. ||ads.example.com^';
 
   @override
-  String ruleBatchImported(Object count, Object kind) {
+  String ruleBatchImported(String count, int kind) {
     return 'Imported $count rules into $kind.';
   }
 
   @override
-  String ruleBatchSkippedDuplicates(Object count) {
+  String ruleBatchSkippedDuplicates(int count) {
     return 'Skipped $count duplicate rules.';
   }
 
   @override
-  String ruleBatchAllowRejected(Object count) {
+  String ruleBatchAllowRejected(int count) {
     return '$count allow rules (with #@#) were not imported: allow rules belong in the allow list.';
   }
 
   @override
-  String ruleBatchImportCount(Object count) {
+  String ruleBatchImportCount(int count) {
     return 'Import $count';
   }
 
   @override
-  String ruleBatchMoreDuplicates(Object count) {
+  String ruleBatchMoreDuplicates(int count) {
     return 'and $count more';
   }
 
   @override
-  String ruleAddForKind(Object kind) {
+  String ruleAddForKind(String kind) {
     return 'Add a $kind rule';
   }
 
@@ -2865,27 +2865,27 @@ class AppL10nEn extends AppL10n {
   String get ruleEditDefaultPreset => 'Edit a default preset rule';
 
   @override
-  String ruleEditForKind(Object kind) {
+  String ruleEditForKind(String kind) {
     return 'Edit a $kind rule';
   }
 
   @override
-  String ruleDeletePresetMessage(Object pattern) {
+  String ruleDeletePresetMessage(String pattern) {
     return '\"$pattern\" is a built-in preset rule; resetting the defaults restores it.';
   }
 
   @override
-  String ruleDeleteSubscriptionMessage(Object name, Object pattern) {
+  String ruleDeleteSubscriptionMessage(String name, String pattern) {
     return '\"$pattern\" comes from the subscription \"$name\" and may return on the next update.';
   }
 
   @override
-  String ruleDeleteUserMessage(Object pattern) {
+  String ruleDeleteUserMessage(String pattern) {
     return 'Delete \"$pattern\"? This cannot be undone.';
   }
 
   @override
-  String ruleClearCustomMessage(Object kind) {
+  String ruleClearCustomMessage(String kind) {
     return 'All user-defined $kind rules will be deleted; subscription and preset rules are untouched.';
   }
 
@@ -2902,17 +2902,17 @@ class AppL10nEn extends AppL10n {
       'The allow list lets traffic through, so changing it may pass traffic that should be blocked. Enable this only if you understand the risk.';
 
   @override
-  String ruleTally(Object enabled, Object matched) {
+  String ruleTally(int enabled, int matched) {
     return '$matched total · $enabled enabled';
   }
 
   @override
-  String ruleNoRulesForKind(Object kind) {
+  String ruleNoRulesForKind(String kind) {
     return 'No $kind rules yet';
   }
 
   @override
-  String ruleClearCustomForKind(Object kind) {
+  String ruleClearCustomForKind(String kind) {
     return 'Clear custom $kind';
   }
 
@@ -3100,17 +3100,17 @@ class AppL10nEn extends AppL10n {
   String get subsMirrorTitle => 'Mirror';
 
   @override
-  String subsDeleteMessage(Object name) {
+  String subsDeleteMessage(String name) {
     return 'Deleting \"$name\" cannot be undone.\n\nIt also removes every rule this subscription contributed (source tag sub_<id>).';
   }
 
   @override
-  String subsTotal(Object count) {
+  String subsTotal(int count) {
     return '$count subscriptions';
   }
 
   @override
-  String subsGroupTotal(Object count, Object group) {
+  String subsGroupTotal(String count, int group) {
     return '$count subscriptions in \"$group\"';
   }
 
@@ -3124,7 +3124,7 @@ class AppL10nEn extends AppL10n {
   String get subsRename => 'Rename';
 
   @override
-  String subsConsecutiveFailures(Object count) {
+  String subsConsecutiveFailures(int count) {
     return 'Failed $count times in a row';
   }
 
@@ -3141,12 +3141,12 @@ class AppL10nEn extends AppL10n {
   String get subsNeverUpdated => 'Never updated successfully';
 
   @override
-  String subsRuleCountValue(Object count) {
+  String subsRuleCountValue(String count) {
     return '$count rules';
   }
 
   @override
-  String subsRulesStored(Object action, Object count) {
+  String subsRulesStored(String action, String count) {
     return '$count rules stored; $action the rules this subscription contributed.';
   }
 
@@ -3179,7 +3179,7 @@ class AppL10nEn extends AppL10n {
   String get subsGroupDeleteTitle => 'Delete group';
 
   @override
-  String subsGroupDeleteMessage(Object name) {
+  String subsGroupDeleteMessage(String name) {
     return 'Deleting \"$name\" moves its subscriptions to Ungrouped; the subscriptions and their rules are kept.';
   }
 
@@ -3187,7 +3187,7 @@ class AppL10nEn extends AppL10n {
   String get subsGroupDuplicate => 'A group with this name already exists';
 
   @override
-  String subsGroupSubCount(Object count) {
+  String subsGroupSubCount(int count) {
     return '$count subscriptions';
   }
 
@@ -3203,7 +3203,7 @@ class AppL10nEn extends AppL10n {
       'Groups only affect filtering and bulk updates on this page; deleting a group never deletes subscriptions or rules.';
 
   @override
-  String subsMirrorName(Object mirror) {
+  String subsMirrorName(String mirror) {
     return 'Mirror $mirror';
   }
 
@@ -3312,7 +3312,7 @@ class AppL10nEn extends AppL10n {
   String get trafficRankingTitle => 'App traffic ranking';
 
   @override
-  String trafficShareFooter(Object range, Object window) {
+  String trafficShareFooter(String range, String window) {
     return 'Shares use the total bytes (download + upload) for $window; $range. Tap a row to see that app\'s breakdown.';
   }
 
@@ -3357,32 +3357,32 @@ class AppL10nEn extends AppL10n {
       'Recognised by system flag and vendor preinstall prefixes; hidden apps are left out of the ranking';
 
   @override
-  String trafficWindowLabelDate(Object date) {
+  String trafficWindowLabelDate(String date) {
     return 'Statistics for $date';
   }
 
   @override
-  String trafficWindowLabelRange(Object end, Object start) {
+  String trafficWindowLabelRange(String end, String start) {
     return 'Statistics from $start to $end';
   }
 
   @override
-  String trafficShareWindow(Object range, Object window) {
+  String trafficShareWindow(String range, String window) {
     return 'Shares use the total bytes (download + upload) for $window; $range. Tap a row to see that app\'s breakdown.';
   }
 
   @override
-  String trafficTotalApps(Object count, Object total) {
+  String trafficTotalApps(int count, String total) {
     return '$count apps generated traffic · $total total';
   }
 
   @override
-  String trafficSearchEmpty(Object search) {
+  String trafficSearchEmpty(String search) {
     return 'No app name or package contains \"$search\".';
   }
 
   @override
-  String trafficHiddenCount(Object count) {
+  String trafficHiddenCount(int count) {
     return '$count apps are hidden by \"Hide system apps\"; turn it off to see them.';
   }
 
@@ -3391,12 +3391,12 @@ class AppL10nEn extends AppL10n {
       'Traffic is summed per day by the native side; once the tunnel runs and carries traffic, each app\'s download and upload bytes appear here.';
 
   @override
-  String trafficNoRecordsForWindow(Object window) {
+  String trafficNoRecordsForWindow(String window) {
     return 'No traffic records for \"$window\" yet. Records are summed per day, so try another window or run the tunnel first.';
   }
 
   @override
-  String trafficOptionUnavailable(Object label, Object reason) {
+  String trafficOptionUnavailable(String label, String reason) {
     return '\"$label\" is unavailable: $reason';
   }
 
@@ -3404,17 +3404,17 @@ class AppL10nEn extends AppL10n {
   String get trafficNoSourceReason => 'no matching data source here';
 
   @override
-  String trafficCleared(Object count) {
+  String trafficCleared(int count) {
     return 'Cleared $count traffic records';
   }
 
   @override
-  String trafficClearFailed(Object detail) {
+  String trafficClearFailed(String detail) {
     return 'Clearing failed: $detail';
   }
 
   @override
-  String trafficShareBarTooltip(Object sort, Object value) {
+  String trafficShareBarTooltip(String sort, String value) {
     return 'The bar length is this row\'s share of the window total under \"$sort\" (currently $value), matching the list order.';
   }
 
@@ -3430,12 +3430,12 @@ class AppL10nEn extends AppL10n {
   String get trafficLiveRateTitle => 'Live rate';
 
   @override
-  String trafficNoLiveRate(Object window) {
+  String trafficNoLiveRate(String window) {
     return 'This mode does not measure a live rate: express mode\'s narrow route bypasses the engine\'s traffic counters and there is no cumulative table for it. The $window download/upload figures and the ranking below are still real numbers.';
   }
 
   @override
-  String trafficLiveRateBody(Object window) {
+  String trafficLiveRateBody(String window) {
     return 'Per-second rates from the engine (this session), the same source as the persistent notification. The $window download/upload figures are cumulative bytes from `app_traffic_daily`; the two use different scopes and need not match.';
   }
 
@@ -3443,12 +3443,12 @@ class AppL10nEn extends AppL10n {
   String get trafficSearchPlaceholder => 'Search app or package...';
 
   @override
-  String trafficWindowDown(Object window) {
+  String trafficWindowDown(String window) {
     return '$window download';
   }
 
   @override
-  String trafficWindowUp(Object window) {
+  String trafficWindowUp(String window) {
     return '$window upload';
   }
 
@@ -3592,7 +3592,7 @@ class AppL10nEn extends AppL10n {
   String get obsCacheHit => 'Cache hit';
 
   @override
-  String obsCopied(Object text) {
+  String obsCopied(String text) {
     return 'Copied $text';
   }
 
@@ -3626,37 +3626,32 @@ class AppL10nEn extends AppL10n {
       'Use the configured model to judge ownership, risk and next steps';
 
   @override
-  String obsCopiedHost(Object host) {
+  String obsCopiedHost(String host) {
     return 'Copied $host';
   }
 
   @override
-  String obsAddedToKind(Object domain, Object kind) {
+  String obsAddedToKind(String domain, String kind) {
     return 'Added $domain to $kind';
   }
 
   @override
-  String obsAlreadyInKind(Object domain, Object kind) {
+  String obsAlreadyInKind(String domain, String kind) {
     return '$domain is already in $kind';
   }
 
   @override
-  String obsCurrentFilter(Object filter) {
+  String obsCurrentFilter(String filter) {
     return 'Filtered by: $filter.';
   }
 
   @override
-  String obsFooterCount(
-    Object count,
-    Object failed,
-    Object filter,
-    Object more,
-  ) {
+  String obsFooterCount(int count, int failed, String filter, String more) {
     return '$count records, $failed failed$filter$more. Tap a row to see the rule match and outcome.';
   }
 
   @override
-  String obsFooterFilter(Object filter) {
+  String obsFooterFilter(String filter) {
     return ' (filtered by: $filter)';
   }
 
@@ -3690,7 +3685,7 @@ class AppL10nEn extends AppL10n {
       'Sorted by request count, across all retained request records. Tap an app to see its requests.';
 
   @override
-  String obsAppRequestCount(Object count) {
+  String obsAppRequestCount(int count) {
     return '$count requests';
   }
 
@@ -3762,7 +3757,7 @@ class AppL10nEn extends AppL10n {
   String get logsLoadingRace => 'Reading race records';
 
   @override
-  String logsRaceSummary(Object count, Object range) {
+  String logsRaceSummary(String count, String range) {
     return '$count races in $range.';
   }
 
@@ -3800,7 +3795,7 @@ class AppL10nEn extends AppL10n {
       'Sorted by wins; the average time is the mean when that resolver won.';
 
   @override
-  String logsAverageWinLatency(Object latency) {
+  String logsAverageWinLatency(String latency) {
     return 'Won in $latency on average';
   }
 
@@ -3812,7 +3807,7 @@ class AppL10nEn extends AppL10n {
       'Only meaningful for the smart strategy: the primary hit rate counts queries where the primary resolver won; queries rescued by a fallback are excluded.';
 
   @override
-  String logsPrimaryHit(Object latency, Object percent) {
+  String logsPrimaryHit(String latency, String percent) {
     return 'Primary hit $percent · average $latency';
   }
 
@@ -3847,7 +3842,7 @@ class AppL10nEn extends AppL10n {
   String get logsCacheTableTitle => 'DNS cache table';
 
   @override
-  String logsCacheLoadFailed(Object detail) {
+  String logsCacheLoadFailed(String detail) {
     return 'The cache table cannot be read: $detail';
   }
 
@@ -3865,7 +3860,7 @@ class AppL10nEn extends AppL10n {
       'Successful lookups are written to dns_cache; on a fresh install or right after the tunnel starts the table may still be empty.';
 
   @override
-  String logsCurrentSearch(Object query) {
+  String logsCurrentSearch(String query) {
     return 'Searching: $query';
   }
 
@@ -3876,7 +3871,7 @@ class AppL10nEn extends AppL10n {
   String get logsNeverHit => 'Never hit';
 
   @override
-  String logsCacheFooter(Object count) {
+  String logsCacheFooter(String count) {
     return '$count entries sorted by hits and expiry. Entries with less than 30 seconds of TTL are orange. Tap a row for details, to copy the domain, add it to the lists or analyse it with AI.';
   }
 
@@ -3894,7 +3889,7 @@ class AppL10nEn extends AppL10n {
   String get logsLoadingBootstrap => 'Reading Bootstrap records';
 
   @override
-  String logsBootstrapSummary(Object count, Object range) {
+  String logsBootstrapSummary(String count, String range) {
     return '$count Bootstrap probes in $range.';
   }
 
@@ -3940,7 +3935,7 @@ class AppL10nEn extends AppL10n {
   String get logsValid => 'Valid';
 
   @override
-  String logsHitTimes(Object count) {
+  String logsHitTimes(int count) {
     return '$count hits';
   }
 
@@ -3995,67 +3990,67 @@ class AppL10nEn extends AppL10n {
   String get logsViewFullReport => 'View the full report';
 
   @override
-  String logsModelName(Object model) {
+  String logsModelName(String model) {
     return 'Model $model';
   }
 
   @override
-  String logsSuccessWith(Object percent) {
+  String logsSuccessWith(String percent) {
     return '$percent succeeded';
   }
 
   @override
-  String logsAverageWith(Object latency) {
+  String logsAverageWith(String latency) {
     return 'Average $latency';
   }
 
   @override
-  String logsPrimaryHitOnly(Object percent) {
+  String logsPrimaryHitOnly(String percent) {
     return 'Primary hit $percent';
   }
 
   @override
-  String logsFallbackUses(Object count) {
+  String logsFallbackUses(String count) {
     return '$count fallbacks';
   }
 
   @override
   String logsBootstrapRow(
-    Object failures,
-    Object ip,
-    Object latency,
-    Object percent,
+    String failures,
+    String ip,
+    String latency,
+    String percent,
   ) {
     return '$ip · $percent succeeded · average $latency$failures';
   }
 
   @override
-  String logsBootstrapFailures(Object count) {
+  String logsBootstrapFailures(String count) {
     return ' · $count failed';
   }
 
   @override
-  String logsEntryCount(Object count) {
+  String logsEntryCount(int count) {
     return '$count entries';
   }
 
   @override
-  String logsCacheRow(Object count, Object size, Object ttl) {
+  String logsCacheRow(String count, int size, int ttl) {
     return '$ttl · $count hits · $size B';
   }
 
   @override
-  String logsLastHitAt(Object time) {
+  String logsLastHitAt(String time) {
     return 'Last hit $time';
   }
 
   @override
-  String logsCacheFooterCount(Object count) {
+  String logsCacheFooterCount(int count) {
     return '$count entries sorted by hits and expiry. Entries with less than 30 seconds of TTL are orange. Tap a row for details, to copy the domain, add it to the lists or analyse it with AI.';
   }
 
   @override
-  String logsSubStatsRow(Object count, Object percent, Object status) {
+  String logsSubStatsRow(String count, String percent, String status) {
     return '$status | $count blocks | $percent';
   }
 
@@ -4072,7 +4067,7 @@ class AppL10nEn extends AppL10n {
   String get aboutJoinQq => 'Join the QQ group';
 
   @override
-  String aboutQqGroup(Object number) {
+  String aboutQqGroup(String number) {
     return 'Group $number';
   }
 
@@ -4160,22 +4155,22 @@ class AppL10nEn extends AppL10n {
   String get aboutCheckingRelease => 'Checking GitHub Releases';
 
   @override
-  String aboutUpToDate(Object version) {
+  String aboutUpToDate(String version) {
     return 'You are on the latest version$version';
   }
 
   @override
-  String aboutVersionSuffix(Object version) {
+  String aboutVersionSuffix(String version) {
     return ' ($version)';
   }
 
   @override
-  String aboutFoundVersion(Object version) {
+  String aboutFoundVersion(String version) {
     return 'Version $version found';
   }
 
   @override
-  String aboutCurrentSuffix(Object version) {
+  String aboutCurrentSuffix(String version) {
     return ' (current $version)';
   }
 
@@ -4186,12 +4181,12 @@ class AppL10nEn extends AppL10n {
   String get aboutNewVersion => 'a new version';
 
   @override
-  String aboutUpdatePackage(Object version) {
+  String aboutUpdatePackage(String version) {
     return '$version update package';
   }
 
   @override
-  String aboutLinkCopyFallback(Object url) {
+  String aboutLinkCopyFallback(String url) {
     return 'The browser could not be opened; the link was copied: $url';
   }
 
@@ -4199,7 +4194,7 @@ class AppL10nEn extends AppL10n {
   String get devStressLogs => 'Log stress test';
 
   @override
-  String devStressLogsBody(Object count) {
+  String devStressLogsBody(int count) {
     return 'Write $count DNS logs into the active log database for real';
   }
 
@@ -4231,12 +4226,12 @@ class AppL10nEn extends AppL10n {
   String get devRun => 'Run';
 
   @override
-  String devConfirmBody(Object action) {
+  String devConfirmBody(String action) {
     return '$action\n\nThis operation really rewrites local data and cannot be undone.';
   }
 
   @override
-  String devActionFailed(Object action, Object error) {
+  String devActionFailed(String action, String error) {
     return '$action failed: $error';
   }
 
@@ -4245,7 +4240,7 @@ class AppL10nEn extends AppL10n {
       'Stress test failed: the log database cannot be opened';
 
   @override
-  String devStressDone(Object count, Object file) {
+  String devStressDone(String count, String file) {
     return 'Stress test finished: $count rows written to $file';
   }
 
@@ -4262,7 +4257,7 @@ class AppL10nEn extends AppL10n {
       'Compaction failed: there are no database files yet';
 
   @override
-  String devVacuumDone(Object files, Object kb) {
+  String devVacuumDone(String files, int kb) {
     return 'Compacted $files, reclaimed $kb KB';
   }
 
@@ -4399,7 +4394,7 @@ class AppL10nEn extends AppL10n {
   String get sponsorScan => 'Scan to sponsor';
 
   @override
-  String sponsorQrCode(Object label) {
+  String sponsorQrCode(String label) {
     return '$label QR code';
   }
 
@@ -4411,7 +4406,7 @@ class AppL10nEn extends AppL10n {
       'Please add your nickname in the payment note so you can be added to the sponsor list.';
 
   @override
-  String aboutQqCopied(Object number) {
+  String aboutQqCopied(String number) {
     return 'QQ was not found; the group number was copied: $number';
   }
 
@@ -4466,7 +4461,7 @@ class AppL10nEn extends AppL10n {
   String get ipQualityStart => 'Start checking';
 
   @override
-  String ipQualityJudgedAs(Object type) {
+  String ipQualityJudgedAs(String type) {
     return 'Classified as $type';
   }
 
@@ -4477,7 +4472,7 @@ class AppL10nEn extends AppL10n {
   String get ipQualityUsed => 'Used';
 
   @override
-  String devFooterWarning(Object count) {
+  String devFooterWarning(int count) {
     return 'These actions work directly on the local databases, prefs and native channels: the stress test really writes $count rows, compaction runs SQLite VACUUM, and clearing all data deletes everything locally and requires a restart.';
   }
 
@@ -4723,7 +4718,7 @@ class AppL10nEn extends AppL10n {
   String get onboardingNext => 'Next';
 
   @override
-  String onboardingChosen(Object mode) {
+  String onboardingChosen(String mode) {
     return 'You chose $mode';
   }
 
@@ -4798,7 +4793,7 @@ class AppL10nEn extends AppL10n {
       'All permissions are used on this device only; no data is uploaded.';
 
   @override
-  String permGrantedCount(Object granted, Object total) {
+  String permGrantedCount(String granted, String total) {
     return '$granted of $total granted; all permissions are used on this device only and no data is uploaded.';
   }
 
@@ -4845,12 +4840,12 @@ class AppL10nEn extends AppL10n {
       'Here are the three most useful tips to start with.';
 
   @override
-  String onboardingTipIndex(Object index) {
+  String onboardingTipIndex(String index) {
     return 'Tip $index';
   }
 
   @override
-  String permStillDenied(Object name) {
+  String permStillDenied(String name) {
     return '$name is still denied; allow it in system settings and return to this page';
   }
 
@@ -4897,7 +4892,7 @@ class AppL10nEn extends AppL10n {
   String get toolCountUnit => '';
 
   @override
-  String toolPrivateDnsProbe(Object dns) {
+  String toolPrivateDnsProbe(String dns) {
     return 'Probes use the physical network (this app\'s traffic bypasses the tunnel); system private DNS: $dns';
   }
 
@@ -4963,7 +4958,7 @@ class AppL10nEn extends AppL10n {
       'Jitter is the mean absolute deviation of each reply from the average.';
 
   @override
-  String toolPacketN(Object n) {
+  String toolPacketN(String n) {
     return 'Packet $n';
   }
 
@@ -4971,7 +4966,7 @@ class AppL10nEn extends AppL10n {
   String get toolTimeout => 'Timed out';
 
   @override
-  String toolPingSummary(Object failed, Object sent) {
+  String toolPingSummary(String failed, String sent) {
     return '$sent probes sent, $failed failed.';
   }
 
@@ -5051,7 +5046,7 @@ class AppL10nEn extends AppL10n {
   String get toolSpeedProviders => 'Speed test providers';
 
   @override
-  String toolNoProviders(Object protocol) {
+  String toolNoProviders(String protocol) {
     return 'No $protocol DNS providers yet';
   }
 
@@ -5077,7 +5072,7 @@ class AppL10nEn extends AppL10n {
   String get toolSpeedResults => 'Query time results';
 
   @override
-  String toolSpeedResultsFooter(Object domain) {
+  String toolSpeedResultsFooter(String domain) {
     return 'Results are sorted by success first, then by average time ascending; they only reflect the network at query time. The current domain is \"$domain\".';
   }
 
@@ -5089,12 +5084,12 @@ class AppL10nEn extends AppL10n {
   String get toolFastest => 'Fastest';
 
   @override
-  String toolSampleCount(Object count, Object rate) {
+  String toolSampleCount(String count, String rate) {
     return '$rate · $count samples';
   }
 
   @override
-  String toolAllFailed(Object count) {
+  String toolAllFailed(String count) {
     return 'All failed ($count attempts)';
   }
 
@@ -5117,7 +5112,7 @@ class AppL10nEn extends AppL10n {
   String get toolHopCount => 'Hops';
 
   @override
-  String toolHopCountValue(Object count, Object max) {
+  String toolHopCountValue(String count, String max) {
     return '$count / max $max';
   }
 
@@ -5271,7 +5266,7 @@ class AppL10nEn extends AppL10n {
   String get odKindsNone => 'Disabled';
 
   @override
-  String odDelayValue(Object ms) {
+  String odDelayValue(String ms) {
     return 'Delayed $ms ms';
   }
 
@@ -5286,7 +5281,7 @@ class AppL10nEn extends AppL10n {
   String get odStateNoWifi => 'Not on Wi-Fi, so the VPN stays off';
 
   @override
-  String odStateMatched(Object ssid) {
+  String odStateMatched(String ssid) {
     return 'Matched $ssid; the VPN starts automatically';
   }
 
@@ -5395,7 +5390,7 @@ class AppL10nEn extends AppL10n {
       'Cannot read: the location permission is required';
 
   @override
-  String odCapCurrent(Object name) {
+  String odCapCurrent(String name) {
     return 'Connected to $name';
   }
 
@@ -5419,42 +5414,42 @@ class AppL10nEn extends AppL10n {
   String get configNotSet => 'Not set';
 
   @override
-  String configItemCount(Object count) {
+  String configItemCount(int count) {
     return '$count items';
   }
 
   @override
-  String odEditSsidTooltip(Object ssid) {
+  String odEditSsidTooltip(String ssid) {
     return 'Edit $ssid';
   }
 
   @override
-  String odDeleteSsidTooltip(Object ssid) {
+  String odDeleteSsidTooltip(String ssid) {
     return 'Delete $ssid';
   }
 
   @override
-  String serverSwitched(Object name) {
+  String serverSwitched(String name) {
     return 'Switched to $name; restart the service to apply';
   }
 
   @override
-  String serverSelected(Object name) {
+  String serverSelected(String name) {
     return 'Selected $name';
   }
 
   @override
-  String serverAdded(Object name) {
+  String serverAdded(String name) {
     return 'Added $name';
   }
 
   @override
-  String serverSaved(Object name) {
+  String serverSaved(String name) {
     return 'Saved $name';
   }
 
   @override
-  String serverDeleteConfirm(Object name) {
+  String serverDeleteConfirm(String name) {
     return 'Delete $name?';
   }
 
@@ -5463,7 +5458,7 @@ class AppL10nEn extends AppL10n {
       'If it is in use, the first built-in provider is used after deletion.';
 
   @override
-  String serverDeleted(Object name) {
+  String serverDeleted(String name) {
     return 'Deleted $name';
   }
 
@@ -5474,7 +5469,7 @@ class AppL10nEn extends AppL10n {
   String get serverAddCustom => 'Add a custom provider';
 
   @override
-  String serverCurrentUpstream(Object name, Object protocol) {
+  String serverCurrentUpstream(String name, String protocol) {
     return 'Currently resolving DNS: ($protocol) $name';
   }
 
@@ -5499,12 +5494,12 @@ class AppL10nEn extends AppL10n {
       'Server mode uses a single upstream; switch to normal or express mode for racing. Built-in providers are maintained by the app and can only be selected; long-press a custom one to edit or delete it.';
 
   @override
-  String serverEditName(Object name) {
+  String serverEditName(String name) {
     return 'Edit $name';
   }
 
   @override
-  String serverDeleteName(Object name) {
+  String serverDeleteName(String name) {
     return 'Delete $name';
   }
 
@@ -5564,7 +5559,7 @@ class AppL10nEn extends AppL10n {
       'Clearing failed: start the DNS service first';
 
   @override
-  String serverCacheOn(Object preset) {
+  String serverCacheOn(String preset) {
     return '$preset · cache hits no longer go upstream';
   }
 
@@ -5688,12 +5683,12 @@ class AppL10nEn extends AppL10n {
   String get serverPortInvalid => 'Enter a number';
 
   @override
-  String serverPortRange(Object max, Object min) {
+  String serverPortRange(String max, String min) {
     return 'Range $min–$max';
   }
 
   @override
-  String serverPortChanged(Object port) {
+  String serverPortChanged(String port) {
     return 'The port is now $port; restart the service to apply';
   }
 
@@ -5738,7 +5733,7 @@ class AppL10nEn extends AppL10n {
       'Point other LAN devices\' DNS at this address';
 
   @override
-  String serverCopied(Object text) {
+  String serverCopied(String text) {
     return 'Copied $text';
   }
 
@@ -5785,7 +5780,7 @@ class AppL10nEn extends AppL10n {
   String get serverStopped => 'Start';
 
   @override
-  String serverListening(Object port) {
+  String serverListening(String port) {
     return 'Listening on 0.0.0.0:$port';
   }
 
@@ -5863,12 +5858,12 @@ class AppL10nEn extends AppL10n {
   String get troubleshootReadingStatus => 'Reading capture status…';
 
   @override
-  String troubleshootRecording(Object size) {
+  String troubleshootRecording(String size) {
     return 'Recording, using $size; tap again to stop';
   }
 
   @override
-  String troubleshootStoppedWithLogs(Object size) {
+  String troubleshootStoppedWithLogs(String size) {
     return 'Stopped; $size of logs are available to export';
   }
 
@@ -5883,7 +5878,7 @@ class AppL10nEn extends AppL10n {
   String get troubleshootNoLogs => 'There are no runtime logs on this device';
 
   @override
-  String troubleshootLogCount(Object count, Object size) {
+  String troubleshootLogCount(int count, String size) {
     return '$count files, $size; tap to export';
   }
 
@@ -5894,16 +5889,16 @@ class AppL10nEn extends AppL10n {
   String get troubleshootHealthy => 'Healthy, no logs were dropped';
 
   @override
-  String troubleshootHealthyDetail(Object detail, Object mode) {
+  String troubleshootHealthyDetail(String detail, String mode) {
     return 'Healthy, no logs were dropped ($mode · $detail)';
   }
 
   @override
   String troubleshootDropped(
-    Object dropped,
-    Object failed,
-    Object reason,
-    Object split,
+    int dropped,
+    String failed,
+    int reason,
+    String split,
   ) {
     return '$dropped logs dropped$split, $failed open failures$reason';
   }
@@ -5927,7 +5922,7 @@ class AppL10nEn extends AppL10n {
   String get troubleshootNoCrashes => 'There are no crash logs on this device';
 
   @override
-  String troubleshootCrashCount(Object count) {
+  String troubleshootCrashCount(int count) {
     return '$count crash logs recorded; tap to export';
   }
 
@@ -5963,7 +5958,7 @@ class AppL10nEn extends AppL10n {
       'Export failed: there is no writable export directory';
 
   @override
-  String troubleshootExported(Object path) {
+  String troubleshootExported(String path) {
     return 'Exported to $path';
   }
 
@@ -5975,7 +5970,7 @@ class AppL10nEn extends AppL10n {
       'Clear all saved runtime logs? This cannot be undone.';
 
   @override
-  String troubleshootClearedLogs(Object count) {
+  String troubleshootClearedLogs(String count) {
     return 'Cleared $count log files';
   }
 
@@ -5991,7 +5986,7 @@ class AppL10nEn extends AppL10n {
   String get troubleshootClearCrashesConfirm => 'Clear all saved crash logs?';
 
   @override
-  String troubleshootClearedCrashes(Object count) {
+  String troubleshootClearedCrashes(String count) {
     return 'Cleared $count crash logs';
   }
 
@@ -6093,12 +6088,12 @@ class AppL10nEn extends AppL10n {
       'With race mode off, the resolver picker on the home page only shows the providers selected here. The one currently in use is always kept.';
 
   @override
-  String providerVisibilityProtocol(Object protocol) {
+  String providerVisibilityProtocol(String protocol) {
     return '$protocol providers';
   }
 
   @override
-  String providerVisibilityAll(Object protocol) {
+  String providerVisibilityAll(String protocol) {
     return 'All $protocol providers';
   }
 
@@ -6109,7 +6104,7 @@ class AppL10nEn extends AppL10n {
   String get providerVisibilityAllOn => 'Show every provider of this type';
 
   @override
-  String providerVisibilityCount(Object count) {
+  String providerVisibilityCount(String count) {
     return '$count providers selected';
   }
 
@@ -6161,7 +6156,7 @@ class AppL10nEn extends AppL10n {
   String get recognitionCached => 'Showing the locally cached list';
 
   @override
-  String recognitionLastUpdate(Object time) {
+  String recognitionLastUpdate(String time) {
     return 'Last updated: $time';
   }
 
@@ -6170,7 +6165,7 @@ class AppL10nEn extends AppL10n {
       'The list comes from the cloud and is checked for updates when you open the page';
 
   @override
-  String appRulesAllowCount(Object count, Object package) {
+  String appRulesAllowCount(String count, int package) {
     return '$package · $count allowed domains';
   }
 
@@ -6258,7 +6253,7 @@ class AppL10nEn extends AppL10n {
   String get logRetentionCleanup => 'Automatic cleanup';
 
   @override
-  String logRetentionKeepDays(Object days) {
+  String logRetentionKeepDays(String days) {
     return 'Keep $days days';
   }
 
@@ -6301,7 +6296,7 @@ class AppL10nEn extends AppL10n {
   String get appSelectionSaveTitle => 'Save changes?';
 
   @override
-  String appSelectionSaveBody(Object title) {
+  String appSelectionSaveBody(String title) {
     return 'The selection for \"$title\" is not saved. Save it before leaving, or discard the changes?';
   }
 
@@ -6312,7 +6307,7 @@ class AppL10nEn extends AppL10n {
   String get appSelectionNoAppsYet => 'No apps selected yet';
 
   @override
-  String appSelectionCount(Object count) {
+  String appSelectionCount(String count) {
     return '$count apps selected';
   }
 
@@ -6365,27 +6360,27 @@ class AppL10nEn extends AppL10n {
       'No custom Bootstrap IPs yet. Tap \"Add\" in the corner to create one.';
 
   @override
-  String bootstrapNoSample(Object ip) {
+  String bootstrapNoSample(String ip) {
     return '$ip · no samples';
   }
 
   @override
-  String bootstrapAverage(Object ms) {
+  String bootstrapAverage(String ms) {
     return ' · average ${ms}ms';
   }
 
   @override
-  String bootstrapFailures(Object count) {
+  String bootstrapFailures(String count) {
     return ' · $count failed';
   }
 
   @override
   String bootstrapStats(
-    Object failures,
-    Object ip,
-    Object latency,
-    Object samples,
-    Object success,
+    String failures,
+    String ip,
+    String latency,
+    String samples,
+    String success,
   ) {
     return '$ip$latency · $samples samples · $success% succeeded$failures';
   }
@@ -9130,7 +9125,7 @@ class AppL10nEn extends AppL10n {
   String get logDashboardCardTrafficStructure => 'Traffic structure';
 
   @override
-  String logDashboardEditHint(Object mode) {
+  String logDashboardEditHint(String mode) {
     return 'Editing the layout for $mode; each log mode keeps its own. Drag the handle to reorder, tap the top-right badge to remove.';
   }
 

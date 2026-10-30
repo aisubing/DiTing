@@ -100,7 +100,7 @@ class AppL10nZh extends AppL10n {
   String get commonSaveChangesMessage => '你的选择还没保存。保存后离开，还是放弃这些修改？';
 
   @override
-  String commonSaveChangesMessageFor(Object name) {
+  String commonSaveChangesMessageFor(String name) {
     return '「$name」的选择还没保存。保存后离开，还是放弃这些修改？';
   }
 
@@ -168,22 +168,22 @@ class AppL10nZh extends AppL10n {
   String get appListNotRegistered => '未注册';
 
   @override
-  String appListChannelUnavailable(Object detail) {
+  String appListChannelUnavailable(String detail) {
     return '应用列表通道不可用：$detail';
   }
 
   @override
-  String appListReadFailed(Object detail) {
+  String appListReadFailed(String detail) {
     return '读取应用列表失败：$detail';
   }
 
   @override
-  String appListReadFailedCode(Object code) {
+  String appListReadFailedCode(String code) {
     return '读取应用列表失败（$code）';
   }
 
   @override
-  String dbWriteUnhealthy(Object dropped, Object failures) {
+  String dbWriteUnhealthy(int dropped, int failures) {
     return '日志写入异常：已丢弃 $dropped 条、打开失败 $failures 次，可在「故障排查」查看详情';
   }
 
@@ -220,17 +220,17 @@ class AppL10nZh extends AppL10n {
   String get homeChartEmptyLabel => '还没有采到样本';
 
   @override
-  String durationHours(Object hours) {
+  String durationHours(int hours) {
     return '$hours 小时';
   }
 
   @override
-  String durationMinutes(Object minutes) {
+  String durationMinutes(int minutes) {
     return '$minutes 分钟';
   }
 
   @override
-  String durationSeconds(Object seconds) {
+  String durationSeconds(int seconds) {
     return '$seconds 秒';
   }
 
@@ -370,12 +370,12 @@ class AppL10nZh extends AppL10n {
   String get logCacheHotspotsEmpty => '暂无有效缓存';
 
   @override
-  String logExpiresIn(Object duration) {
+  String logExpiresIn(String duration) {
     return '$duration 后过期';
   }
 
   @override
-  String logTimes(Object count) {
+  String logTimes(String count) {
     return '$count 次';
   }
 
@@ -386,7 +386,7 @@ class AppL10nZh extends AppL10n {
   String get logRaceWinnersEmpty => '暂无竞速数据';
 
   @override
-  String logAverageWinLatency(Object latency) {
+  String logAverageWinLatency(String latency) {
     return '平均胜出耗时 $latency';
   }
 
@@ -394,7 +394,7 @@ class AppL10nZh extends AppL10n {
   String get logBootstrapDnsEmpty => '暂无 Bootstrap 数据';
 
   @override
-  String logBootstrapRow(Object ip, Object latency, Object percent) {
+  String logBootstrapRow(String ip, String latency, String percent) {
     return '$ip · 成功 $percent · $latency';
   }
 
@@ -405,7 +405,7 @@ class AppL10nZh extends AppL10n {
   String get logRuleBlocksEmpty => '暂无规则拦截数据';
 
   @override
-  String logShareRow(Object percent, Object status) {
+  String logShareRow(String percent, String status) {
     return '$status · 占全部请求 $percent';
   }
 
@@ -432,7 +432,7 @@ class AppL10nZh extends AppL10n {
   String get logNoTimingSamples => '— · 今日暂无计时样本';
 
   @override
-  String logSampleValue(Object count, Object value) {
+  String logSampleValue(String count, String value) {
     return '$value · $count 个样本';
   }
 
@@ -440,7 +440,7 @@ class AppL10nZh extends AppL10n {
   String get logCacheHitRate => '缓存命中率';
 
   @override
-  String logCacheHitRateValue(Object percent) {
+  String logCacheHitRateValue(String percent) {
     return '$percent · 分母为通过 + 失败';
   }
 
@@ -451,7 +451,7 @@ class AppL10nZh extends AppL10n {
   String get logBootstrapSuccessRate => 'Bootstrap 成功率';
 
   @override
-  String logRateValue(Object count, Object latency, Object percent) {
+  String logRateValue(String count, String latency, String percent) {
     return '$percent · $count 次 · $latency';
   }
 
@@ -951,27 +951,27 @@ class AppL10nZh extends AppL10n {
   String get commonNoData => '无数据';
 
   @override
-  String intranetModeNotListening(Object mode) {
+  String intranetModeNotListening(String mode) {
     return '$mode不监听局域网，其他设备无法把这里当 DNS';
   }
 
   @override
-  String intranetListeningOn(Object port) {
+  String intranetListeningOn(int port) {
     return '已监听 0.0.0.0:$port，其他设备把 DNS 指到上面的地址';
   }
 
   @override
-  String intranetServiceStopped(Object port) {
+  String intranetServiceStopped(int port) {
     return '服务未启动：启动后才会绑定 $port 端口';
   }
 
   @override
-  String commonCopied(Object text) {
+  String commonCopied(String text) {
     return '已复制 $text';
   }
 
   @override
-  String intranetGatewaySuffix(Object gateway) {
+  String intranetGatewaySuffix(String gateway) {
     return ' · 网关 $gateway';
   }
 
@@ -979,37 +979,37 @@ class AppL10nZh extends AppL10n {
   String get speedTotalDash => '累计 —';
 
   @override
-  String siteLatencyAliveRatio(Object alive, Object total) {
+  String siteLatencyAliveRatio(int alive, int total) {
     return '$alive / $total 通畅';
   }
 
   @override
-  String siteLatencyLastRun(Object ago) {
+  String siteLatencyLastRun(String ago) {
     return '最近测速 $ago';
   }
 
   @override
-  String siteLatencyProviderSuffix(Object name) {
+  String siteLatencyProviderSuffix(String name) {
     return ' · 解析服务商 $name';
   }
 
   @override
-  String siteLatencySitesCount(Object count) {
+  String siteLatencySitesCount(int count) {
     return '$count 个站点';
   }
 
   @override
-  String siteLatencyTestCategory(Object category) {
+  String siteLatencyTestCategory(String category) {
     return '测速$category';
   }
 
   @override
-  String memorySystemShare(Object percent) {
+  String memorySystemShare(String percent) {
     return '占整机 $percent';
   }
 
   @override
-  String memorySystemUsedOf(Object total, Object used) {
+  String memorySystemUsedOf(String total, String used) {
     return '整机已用 $used / $total';
   }
 
@@ -1018,35 +1018,35 @@ class AppL10nZh extends AppL10n {
 
   @override
   String trafficStructureRateValue(
-    Object count,
-    Object latency,
-    Object percent,
+    String count,
+    String latency,
+    String percent,
   ) {
     return '$percent · $count 次 · $latency';
   }
 
   @override
-  String trafficStructureShareValue(Object count, Object percent) {
+  String trafficStructureShareValue(String count, String percent) {
     return '$percent · $count 次';
   }
 
   @override
-  String statusPausedSummary(Object core, Object mode) {
+  String statusPausedSummary(String core, String mode) {
     return '$mode$core，计时已暂停';
   }
 
   @override
-  String speedTotalsDown(Object percent) {
+  String speedTotalsDown(String percent) {
     return '下行 $percent';
   }
 
   @override
-  String speedTotalsUp(Object percent) {
+  String speedTotalsUp(String percent) {
     return '上行 $percent';
   }
 
   @override
-  String speedPeakAverage(Object average, Object peak) {
+  String speedPeakAverage(String average, String peak) {
     return '峰值 $peak · 平均 $average';
   }
 
@@ -1054,52 +1054,52 @@ class AppL10nZh extends AppL10n {
   String get intranetConnectHintSentence => '连上 Wi-Fi 或以太网后这里会显示可用地址。';
 
   @override
-  String intranetModeNotListeningSentence(Object mode) {
+  String intranetModeNotListeningSentence(String mode) {
     return '$mode不监听局域网，其它设备无法把这里当 DNS。';
   }
 
   @override
-  String intranetPrivateDnsOn(Object dns) {
+  String intranetPrivateDnsOn(String dns) {
     return '系统开启了私人 DNS（$dns），系统解析会走加密通道，可能绕过本地服务。';
   }
 
   @override
-  String intranetSecondaryDns(Object index) {
+  String intranetSecondaryDns(int index) {
     return '备用 $index';
   }
 
   @override
-  String intranetCopyAddressSemantics(Object address) {
+  String intranetCopyAddressSemantics(String address) {
     return '复制地址 $address';
   }
 
   @override
-  String speedTotalAccumulated(Object value) {
+  String speedTotalAccumulated(String value) {
     return '累计 $value';
   }
 
   @override
-  String dashboardSitesFull(Object count) {
+  String dashboardSitesFull(int count) {
     return '卡片只能放 $count 个站点，先点掉一个再换别的。';
   }
 
   @override
-  String dashboardSitesRemaining(Object count) {
+  String dashboardSitesRemaining(int count) {
     return '还可以再放 $count 个站点。';
   }
 
   @override
-  String dashboardSitesMax(Object count) {
+  String dashboardSitesMax(int count) {
     return '卡片最多放 $count 个站点，先取消一个再选。';
   }
 
   @override
-  String dashboardSitesPosition(Object index) {
+  String dashboardSitesPosition(int index) {
     return '第 $index 位';
   }
 
   @override
-  String siteLatencyFailedCount(Object count) {
+  String siteLatencyFailedCount(int count) {
     return '$count 个失败';
   }
 
@@ -1342,27 +1342,27 @@ class AppL10nZh extends AppL10n {
   String get elapsedJustNow => '刚刚';
 
   @override
-  String elapsedSecondsAgo(Object count) {
+  String elapsedSecondsAgo(int count) {
     return '$count 秒前';
   }
 
   @override
-  String elapsedMinutesAgo(Object count) {
+  String elapsedMinutesAgo(int count) {
     return '$count 分钟前';
   }
 
   @override
-  String elapsedHoursAgo(Object count) {
+  String elapsedHoursAgo(int count) {
     return '$count 小时前';
   }
 
   @override
-  String elapsedDaysAgo(Object count) {
+  String elapsedDaysAgo(int count) {
     return '$count 天前';
   }
 
   @override
-  String providerRaceSummary(Object count, Object names) {
+  String providerRaceSummary(String count, String names) {
     return '已选 $count 个：$names';
   }
 
@@ -1661,57 +1661,57 @@ class AppL10nZh extends AppL10n {
   String get aiProviderOllamaLocal => 'Ollama（本机）';
 
   @override
-  String rulesReadFailed(Object detail) {
+  String rulesReadFailed(String detail) {
     return '读取应用规则失败：$detail';
   }
 
   @override
-  String autoUpdateChecked(Object count) {
+  String autoUpdateChecked(int count) {
     return '已检查 $count 个订阅';
   }
 
   @override
-  String caChannelUnavailableDetail(Object detail) {
+  String caChannelUnavailableDetail(String detail) {
     return '证书通道不可用：$detail';
   }
 
   @override
-  String caReadFailedCode(Object code) {
+  String caReadFailedCode(String code) {
     return '读取根证书失败（$code）';
   }
 
   @override
-  String caReadFailed(Object detail) {
+  String caReadFailed(String detail) {
     return '读取根证书失败：$detail';
   }
 
   @override
-  String agentAnalysisFailed(Object detail) {
+  String agentAnalysisFailed(String detail) {
     return '分析失败：$detail';
   }
 
   @override
-  String diagnosticsFailedCode(Object code) {
+  String diagnosticsFailedCode(String code) {
     return '诊断执行失败（$code）';
   }
 
   @override
-  String diagnosticsFailed(Object detail) {
+  String diagnosticsFailed(String detail) {
     return '诊断执行失败：$detail';
   }
 
   @override
-  String subscriptionDeletedWithId(Object id) {
+  String subscriptionDeletedWithId(int id) {
     return '已删除订阅 #$id';
   }
 
   @override
-  String providerLatencyValue(Object value) {
+  String providerLatencyValue(int value) {
     return '${value}ms';
   }
 
   @override
-  String providerRaceSummaryNames(Object count, Object names) {
+  String providerRaceSummaryNames(int count, String names) {
     return '已选 $count 个：$names';
   }
 
@@ -1719,42 +1719,42 @@ class AppL10nZh extends AppL10n {
   String get providerNamesSeparator => '、';
 
   @override
-  String recognitionInvalidConfigKept(Object detail) {
+  String recognitionInvalidConfigKept(String detail) {
     return '云端名单配置无效（$detail），已保留本地缓存';
   }
 
   @override
-  String recognitionFetchFailed(Object detail) {
+  String recognitionFetchFailed(String detail) {
     return '云端名单拉取失败（$detail）';
   }
 
   @override
-  String recognitionUpdateFailedDetail(Object detail) {
+  String recognitionUpdateFailedDetail(String detail) {
     return '名单更新失败：$detail';
   }
 
   @override
-  String subscriptionAlreadyExists(Object kind, Object what) {
+  String subscriptionAlreadyExists(String kind, String what) {
     return '$what已作为$kind存在';
   }
 
   @override
-  String subscriptionUpdatedCount(Object count) {
+  String subscriptionUpdatedCount(int count) {
     return '$count 个已更新';
   }
 
   @override
-  String subscriptionUnchangedCount(Object count) {
+  String subscriptionUnchangedCount(int count) {
     return '$count 个未变化';
   }
 
   @override
-  String subscriptionFailedCount(Object count) {
+  String subscriptionFailedCount(int count) {
     return '$count 个失败';
   }
 
   @override
-  String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what) {
+  String subscriptionAlreadyExistsNamed(String kind, String name, String what) {
     return '$what已作为$kind存在（「$name」）';
   }
 
@@ -1813,12 +1813,12 @@ class AppL10nZh extends AppL10n {
   String get cleanupAllData => '清理全部本地数据';
 
   @override
-  String cleanupDoneItems(Object action, Object count, Object detail) {
+  String cleanupDoneItems(String action, int count, String detail) {
     return '已$action：$count 项$detail';
   }
 
   @override
-  String cleanupDoneEmpty(Object action) {
+  String cleanupDoneEmpty(String action) {
     return '已$action：没有可清理的数据';
   }
 
@@ -1860,12 +1860,12 @@ class AppL10nZh extends AppL10n {
   String get subscriptionKindHosts => 'hosts 规则';
 
   @override
-  String logRowDirect(Object protocol) {
+  String logRowDirect(String protocol) {
     return '$protocol 直连';
   }
 
   @override
-  String logRowDirectWithPackage(Object package, Object protocol) {
+  String logRowDirectWithPackage(String package, String protocol) {
     return '$protocol 直连 · $package';
   }
 
@@ -1936,7 +1936,7 @@ class AppL10nZh extends AppL10n {
   String get upstreamPresetByteDance => '字节跳动';
 
   @override
-  String cleanupFailed(Object detail) {
+  String cleanupFailed(String detail) {
     return '清理失败：$detail';
   }
 
@@ -2213,7 +2213,7 @@ class AppL10nZh extends AppL10n {
       '色板只提供种子，上屏的是 HCT 推导出的整套角色色。旧版没有自定义取色，因此这里也不提供。';
 
   @override
-  String fontFamilySizeSubtitle(Object percent) {
+  String fontFamilySizeSubtitle(String percent) {
     return '当前 $percent%';
   }
 
@@ -2245,7 +2245,7 @@ class AppL10nZh extends AppL10n {
   String get commonDelete => '删除';
 
   @override
-  String fontFamilyDeleteConfirm(Object name) {
+  String fontFamilyDeleteConfirm(String name) {
     return '删除「$name」后，使用该字体的界面会回退到系统默认。';
   }
 
@@ -2421,12 +2421,12 @@ class AppL10nZh extends AppL10n {
   String get bottomBarCustomTitle => '底栏自定义';
 
   @override
-  String bottomBarItemsHeader(Object count, Object max) {
+  String bottomBarItemsHeader(String count, String max) {
     return '底栏项（$count/$max）';
   }
 
   @override
-  String bottomBarDragHint(Object max) {
+  String bottomBarDragHint(String max) {
     return '按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 $max 项：浮条按项数等比分配宽度，再多就挤到看不清图标。';
   }
 
@@ -2462,7 +2462,7 @@ class AppL10nZh extends AppL10n {
   String get appearanceFontSizeLabel => '字号';
 
   @override
-  String appearanceFontSizeCurrent(Object percent) {
+  String appearanceFontSizeCurrent(int percent) {
     return '当前 $percent%';
   }
 
@@ -2470,32 +2470,32 @@ class AppL10nZh extends AppL10n {
   String get appearanceFontSection => '字体';
 
   @override
-  String appearanceFontImported(Object name) {
+  String appearanceFontImported(String name) {
     return '已导入 $name';
   }
 
   @override
-  String appearanceFontDeleted(Object name) {
+  String appearanceFontDeleted(String name) {
     return '已删除 $name';
   }
 
   @override
-  String appearanceBottomBarMax(Object max) {
+  String appearanceBottomBarMax(int max) {
     return '底栏最多 $max 项';
   }
 
   @override
-  String appearanceBottomBarHeader(Object count, Object max) {
+  String appearanceBottomBarHeader(int count, int max) {
     return '底栏项（$count/$max）';
   }
 
   @override
-  String appearanceBottomBarDragBody(Object max) {
+  String appearanceBottomBarDragBody(int max) {
     return '按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 $max 项：浮条按项数等比分配宽度，再多就挤到看不清图标。';
   }
 
   @override
-  String appearanceBottomBarSelected(Object count) {
+  String appearanceBottomBarSelected(int count) {
     return '已选 $count 项，可配置 2–4 项';
   }
 
@@ -2687,32 +2687,32 @@ class AppL10nZh extends AppL10n {
   String get rulePatternHint => '规则内容，如 ||ads.example.com^';
 
   @override
-  String ruleBatchImported(Object count, Object kind) {
+  String ruleBatchImported(String count, int kind) {
     return '已向$kind导入 $count 条规则。';
   }
 
   @override
-  String ruleBatchSkippedDuplicates(Object count) {
+  String ruleBatchSkippedDuplicates(int count) {
     return '跳过 $count 条重复规则。';
   }
 
   @override
-  String ruleBatchAllowRejected(Object count) {
+  String ruleBatchAllowRejected(int count) {
     return '$count 条放行规则（含 #@#）未导入：该规则为放行规则，请在白名单中添加。';
   }
 
   @override
-  String ruleBatchImportCount(Object count) {
+  String ruleBatchImportCount(int count) {
     return '导入 $count 条';
   }
 
   @override
-  String ruleBatchMoreDuplicates(Object count) {
+  String ruleBatchMoreDuplicates(int count) {
     return '等 $count 条';
   }
 
   @override
-  String ruleAddForKind(Object kind) {
+  String ruleAddForKind(String kind) {
     return '添加$kind规则';
   }
 
@@ -2720,27 +2720,27 @@ class AppL10nZh extends AppL10n {
   String get ruleEditDefaultPreset => '编辑默认预设规则';
 
   @override
-  String ruleEditForKind(Object kind) {
+  String ruleEditForKind(String kind) {
     return '编辑$kind规则';
   }
 
   @override
-  String ruleDeletePresetMessage(Object pattern) {
+  String ruleDeletePresetMessage(String pattern) {
     return '「$pattern」是内置预设规则，删除后可通过重置默认恢复。';
   }
 
   @override
-  String ruleDeleteSubscriptionMessage(Object name, Object pattern) {
+  String ruleDeleteSubscriptionMessage(String name, String pattern) {
     return '「$pattern」来自订阅「$name」，删除后下次更新订阅可能重新出现。';
   }
 
   @override
-  String ruleDeleteUserMessage(Object pattern) {
+  String ruleDeleteUserMessage(String pattern) {
     return '确定删除「$pattern」吗？此操作不可撤销。';
   }
 
   @override
-  String ruleClearCustomMessage(Object kind) {
+  String ruleClearCustomMessage(String kind) {
     return '将删除全部用户自定义的$kind规则，订阅与预设规则不受影响。';
   }
 
@@ -2755,17 +2755,17 @@ class AppL10nZh extends AppL10n {
   String get ruleAllowEditMessage => '白名单是放行名单，改动它可能让本应被拦截的流量通过。确认你清楚这条风险后再开启。';
 
   @override
-  String ruleTally(Object enabled, Object matched) {
+  String ruleTally(int enabled, int matched) {
     return '共 $matched 条 · 启用 $enabled';
   }
 
   @override
-  String ruleNoRulesForKind(Object kind) {
+  String ruleNoRulesForKind(String kind) {
     return '还没有$kind规则';
   }
 
   @override
-  String ruleClearCustomForKind(Object kind) {
+  String ruleClearCustomForKind(String kind) {
     return '清空自定义$kind';
   }
 
@@ -2943,17 +2943,17 @@ class AppL10nZh extends AppL10n {
   String get subsMirrorTitle => '镜像加速';
 
   @override
-  String subsDeleteMessage(Object name) {
+  String subsDeleteMessage(String name) {
     return '删除「$name」后不可撤销。\n\n删除会同时移除这条订阅贡献的全部规则（来源标签 sub_<id>）。';
   }
 
   @override
-  String subsTotal(Object count) {
+  String subsTotal(int count) {
     return '共 $count 个订阅';
   }
 
   @override
-  String subsGroupTotal(Object count, Object group) {
+  String subsGroupTotal(String count, int group) {
     return '「$group」下 $count 个订阅';
   }
 
@@ -2967,7 +2967,7 @@ class AppL10nZh extends AppL10n {
   String get subsRename => '重命名';
 
   @override
-  String subsConsecutiveFailures(Object count) {
+  String subsConsecutiveFailures(int count) {
     return '连续失败 $count 次';
   }
 
@@ -2984,12 +2984,12 @@ class AppL10nZh extends AppL10n {
   String get subsNeverUpdated => '从未成功更新';
 
   @override
-  String subsRuleCountValue(Object count) {
+  String subsRuleCountValue(String count) {
     return '$count 条';
   }
 
   @override
-  String subsRulesStored(Object action, Object count) {
+  String subsRulesStored(String action, String count) {
     return '已入库 $count 条规则；$action该订阅贡献的规则。';
   }
 
@@ -3021,7 +3021,7 @@ class AppL10nZh extends AppL10n {
   String get subsGroupDeleteTitle => '删除分组';
 
   @override
-  String subsGroupDeleteMessage(Object name) {
+  String subsGroupDeleteMessage(String name) {
     return '删除「$name」后，组内订阅会移到未分组，订阅与规则本身不会被删除。';
   }
 
@@ -3029,7 +3029,7 @@ class AppL10nZh extends AppL10n {
   String get subsGroupDuplicate => '已存在同名分组';
 
   @override
-  String subsGroupSubCount(Object count) {
+  String subsGroupSubCount(int count) {
     return '$count 个订阅';
   }
 
@@ -3043,7 +3043,7 @@ class AppL10nZh extends AppL10n {
   String get subsGroupsFooter => '分组只影响订阅页的筛选与批量更新；删除分组不会删除订阅或规则。';
 
   @override
-  String subsMirrorName(Object mirror) {
+  String subsMirrorName(String mirror) {
     return '镜像 $mirror';
   }
 
@@ -3150,7 +3150,7 @@ class AppL10nZh extends AppL10n {
   String get trafficRankingTitle => '应用流量排行';
 
   @override
-  String trafficShareFooter(Object range, Object window) {
+  String trafficShareFooter(String range, String window) {
     return '占比按$window总字节数（下行 + 上行）计算；$range。点按一行查看该应用的上下行明细。';
   }
 
@@ -3191,32 +3191,32 @@ class AppL10nZh extends AppL10n {
   String get trafficHideSystemAppsSubtitle => '按系统应用标记与厂商预装前缀识别，隐藏后不计入排行';
 
   @override
-  String trafficWindowLabelDate(Object date) {
+  String trafficWindowLabelDate(String date) {
     return '统计日期 $date';
   }
 
   @override
-  String trafficWindowLabelRange(Object end, Object start) {
+  String trafficWindowLabelRange(String end, String start) {
     return '统计范围 $start 至 $end';
   }
 
   @override
-  String trafficShareWindow(Object range, Object window) {
+  String trafficShareWindow(String range, String window) {
     return '占比按$window总字节数（下行 + 上行）计算；$range。点按一行查看该应用的上下行明细。';
   }
 
   @override
-  String trafficTotalApps(Object count, Object total) {
+  String trafficTotalApps(int count, String total) {
     return '共 $count 个应用产生流量 · 合计 $total';
   }
 
   @override
-  String trafficSearchEmpty(Object search) {
+  String trafficSearchEmpty(String search) {
     return '没有应用名或包名包含「$search」。';
   }
 
   @override
-  String trafficHiddenCount(Object count) {
+  String trafficHiddenCount(int count) {
     return '本次共有 $count 个应用被「隐藏系统应用」过滤掉，关闭该开关即可看到。';
   }
 
@@ -3225,12 +3225,12 @@ class AppL10nZh extends AppL10n {
       '流量按天由原生侧汇总落库；启动隧道并产生流量后，这里会出现各应用的下行 / 上行字节数。';
 
   @override
-  String trafficNoRecordsForWindow(Object window) {
+  String trafficNoRecordsForWindow(String window) {
     return '「$window」还没有流量记录。流量按天由原生侧汇总落库，换个时间窗口或启动隧道产生流量后再看。';
   }
 
   @override
-  String trafficOptionUnavailable(Object label, Object reason) {
+  String trafficOptionUnavailable(String label, String reason) {
     return '「$label」不可用：$reason';
   }
 
@@ -3238,17 +3238,17 @@ class AppL10nZh extends AppL10n {
   String get trafficNoSourceReason => '本仓没有对应的数据来源';
 
   @override
-  String trafficCleared(Object count) {
+  String trafficCleared(int count) {
     return '已清除 $count 条流量记录';
   }
 
   @override
-  String trafficClearFailed(Object detail) {
+  String trafficClearFailed(String detail) {
     return '清除失败：$detail';
   }
 
   @override
-  String trafficShareBarTooltip(Object sort, Object value) {
+  String trafficShareBarTooltip(String sort, String value) {
     return '占比条长度是这一行按「$sort」在当前窗口总量里的份额（当前 $value），与列表排序一致。';
   }
 
@@ -3263,12 +3263,12 @@ class AppL10nZh extends AppL10n {
   String get trafficLiveRateTitle => '实时速率';
 
   @override
-  String trafficNoLiveRate(Object window) {
+  String trafficNoLiveRate(String window) {
     return '本模式不统计实时速率：极速模式的窄路由不经过引擎的流量计数器，本仓也没有它的累计表。上面的 $window 下行 / 上行与下方排行都是真实数字。';
   }
 
   @override
-  String trafficLiveRateBody(Object window) {
+  String trafficLiveRateBody(String window) {
     return '来自引擎的每秒速率（本次会话），与常驻通知里的读数同源；上面的 $window 下行 / 上行是 `app_traffic_daily` 的累计字节，两者口径不同，数字不必相等。';
   }
 
@@ -3276,12 +3276,12 @@ class AppL10nZh extends AppL10n {
   String get trafficSearchPlaceholder => '搜索应用或包名...';
 
   @override
-  String trafficWindowDown(Object window) {
+  String trafficWindowDown(String window) {
     return '$window下行';
   }
 
   @override
-  String trafficWindowUp(Object window) {
+  String trafficWindowUp(String window) {
     return '$window上行';
   }
 
@@ -3418,7 +3418,7 @@ class AppL10nZh extends AppL10n {
   String get obsCacheHit => '缓存命中';
 
   @override
-  String obsCopied(Object text) {
+  String obsCopied(String text) {
     return '已复制 $text';
   }
 
@@ -3450,37 +3450,32 @@ class AppL10nZh extends AppL10n {
   String get obsAnalyzeRequestBody => '用配置的模型研判归属、风险与处置建议';
 
   @override
-  String obsCopiedHost(Object host) {
+  String obsCopiedHost(String host) {
     return '已复制 $host';
   }
 
   @override
-  String obsAddedToKind(Object domain, Object kind) {
+  String obsAddedToKind(String domain, String kind) {
     return '已将 $domain 加入$kind';
   }
 
   @override
-  String obsAlreadyInKind(Object domain, Object kind) {
+  String obsAlreadyInKind(String domain, String kind) {
     return '$domain 已在$kind中';
   }
 
   @override
-  String obsCurrentFilter(Object filter) {
+  String obsCurrentFilter(String filter) {
     return '当前筛选：$filter。';
   }
 
   @override
-  String obsFooterCount(
-    Object count,
-    Object failed,
-    Object filter,
-    Object more,
-  ) {
+  String obsFooterCount(int count, int failed, String filter, String more) {
     return '共 $count 条，其中 $failed 条处理失败$filter$more。点按一行查看规则命中与处理结果。';
   }
 
   @override
-  String obsFooterFilter(Object filter) {
+  String obsFooterFilter(String filter) {
     return '（筛选：$filter）';
   }
 
@@ -3512,7 +3507,7 @@ class AppL10nZh extends AppL10n {
   String get obsAppsFooter => '按请求次数从多到少排列，统计范围为当前保留的全部请求记录。点按一个应用查看它的请求。';
 
   @override
-  String obsAppRequestCount(Object count) {
+  String obsAppRequestCount(int count) {
     return '$count 次请求';
   }
 
@@ -3579,7 +3574,7 @@ class AppL10nZh extends AppL10n {
   String get logsLoadingRace => '正在读取竞速记录';
 
   @override
-  String logsRaceSummary(Object count, Object range) {
+  String logsRaceSummary(String count, String range) {
     return '$range内共 $count 次竞速解析。';
   }
 
@@ -3615,7 +3610,7 @@ class AppL10nZh extends AppL10n {
   String get logsWinnerFooter => '按胜出次数排序；平均耗时是该服务商胜出时的耗时均值。';
 
   @override
-  String logsAverageWinLatency(Object latency) {
+  String logsAverageWinLatency(String latency) {
     return '平均胜出耗时 $latency';
   }
 
@@ -3627,7 +3622,7 @@ class AppL10nZh extends AppL10n {
       '只有智能选择策略下才有意义；首选命中率统计「首选服务商就是胜出者」的比例，兜底救回的查询不计入。';
 
   @override
-  String logsPrimaryHit(Object latency, Object percent) {
+  String logsPrimaryHit(String latency, String percent) {
     return '首选命中 $percent · 平均首选耗时 $latency';
   }
 
@@ -3659,7 +3654,7 @@ class AppL10nZh extends AppL10n {
   String get logsCacheTableTitle => 'DNS 缓存表';
 
   @override
-  String logsCacheLoadFailed(Object detail) {
+  String logsCacheLoadFailed(String detail) {
     return '无法读取缓存表：$detail';
   }
 
@@ -3677,7 +3672,7 @@ class AppL10nZh extends AppL10n {
       '引擎解析成功后会把应答写进 dns_cache；全新安装或隧道刚启动时这张表可能还是空的。';
 
   @override
-  String logsCurrentSearch(Object query) {
+  String logsCurrentSearch(String query) {
     return '当前搜索：$query';
   }
 
@@ -3688,7 +3683,7 @@ class AppL10nZh extends AppL10n {
   String get logsNeverHit => '尚未命中';
 
   @override
-  String logsCacheFooter(Object count) {
+  String logsCacheFooter(String count) {
     return '共 $count 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。';
   }
 
@@ -3705,7 +3700,7 @@ class AppL10nZh extends AppL10n {
   String get logsLoadingBootstrap => '正在读取 Bootstrap 记录';
 
   @override
-  String logsBootstrapSummary(Object count, Object range) {
+  String logsBootstrapSummary(String count, String range) {
     return '$range内共 $count 次 Bootstrap 探测。';
   }
 
@@ -3746,7 +3741,7 @@ class AppL10nZh extends AppL10n {
   String get logsValid => '有效';
 
   @override
-  String logsHitTimes(Object count) {
+  String logsHitTimes(int count) {
     return '命中 $count 次';
   }
 
@@ -3801,67 +3796,67 @@ class AppL10nZh extends AppL10n {
   String get logsViewFullReport => '查看完整报告';
 
   @override
-  String logsModelName(Object model) {
+  String logsModelName(String model) {
     return '模型 $model';
   }
 
   @override
-  String logsSuccessWith(Object percent) {
+  String logsSuccessWith(String percent) {
     return '成功 $percent';
   }
 
   @override
-  String logsAverageWith(Object latency) {
+  String logsAverageWith(String latency) {
     return '平均 $latency';
   }
 
   @override
-  String logsPrimaryHitOnly(Object percent) {
+  String logsPrimaryHitOnly(String percent) {
     return '首选命中 $percent';
   }
 
   @override
-  String logsFallbackUses(Object count) {
+  String logsFallbackUses(String count) {
     return '兜底 $count 次';
   }
 
   @override
   String logsBootstrapRow(
-    Object failures,
-    Object ip,
-    Object latency,
-    Object percent,
+    String failures,
+    String ip,
+    String latency,
+    String percent,
   ) {
     return '$ip · 成功 $percent · 平均 $latency$failures';
   }
 
   @override
-  String logsBootstrapFailures(Object count) {
+  String logsBootstrapFailures(String count) {
     return ' · 失败 $count 次';
   }
 
   @override
-  String logsEntryCount(Object count) {
+  String logsEntryCount(int count) {
     return '$count 条';
   }
 
   @override
-  String logsCacheRow(Object count, Object size, Object ttl) {
+  String logsCacheRow(String count, int size, int ttl) {
     return '$ttl · 命中 $count 次 · $size B';
   }
 
   @override
-  String logsLastHitAt(Object time) {
+  String logsLastHitAt(String time) {
     return '最后命中 $time';
   }
 
   @override
-  String logsCacheFooterCount(Object count) {
+  String logsCacheFooterCount(int count) {
     return '共 $count 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。';
   }
 
   @override
-  String logsSubStatsRow(Object count, Object percent, Object status) {
+  String logsSubStatsRow(String count, String percent, String status) {
     return '$status | 拦截 $count 次 | $percent';
   }
 
@@ -3878,7 +3873,7 @@ class AppL10nZh extends AppL10n {
   String get aboutJoinQq => '加入 QQ 群';
 
   @override
-  String aboutQqGroup(Object number) {
+  String aboutQqGroup(String number) {
     return '群号 $number';
   }
 
@@ -3960,22 +3955,22 @@ class AppL10nZh extends AppL10n {
   String get aboutCheckingRelease => '正在检查 GitHub Release';
 
   @override
-  String aboutUpToDate(Object version) {
+  String aboutUpToDate(String version) {
     return '当前已是最新版本$version';
   }
 
   @override
-  String aboutVersionSuffix(Object version) {
+  String aboutVersionSuffix(String version) {
     return '（$version）';
   }
 
   @override
-  String aboutFoundVersion(Object version) {
+  String aboutFoundVersion(String version) {
     return '发现 $version版本';
   }
 
   @override
-  String aboutCurrentSuffix(Object version) {
+  String aboutCurrentSuffix(String version) {
     return '（当前 $version）';
   }
 
@@ -3986,12 +3981,12 @@ class AppL10nZh extends AppL10n {
   String get aboutNewVersion => '新版本';
 
   @override
-  String aboutUpdatePackage(Object version) {
+  String aboutUpdatePackage(String version) {
     return '$version 更新包';
   }
 
   @override
-  String aboutLinkCopyFallback(Object url) {
+  String aboutLinkCopyFallback(String url) {
     return '未能打开浏览器，链接已复制：$url';
   }
 
@@ -3999,7 +3994,7 @@ class AppL10nZh extends AppL10n {
   String get devStressLogs => '日志压测';
 
   @override
-  String devStressLogsBody(Object count) {
+  String devStressLogsBody(int count) {
     return '向当前模式的日志库真实写入 $count 条 DNS 日志';
   }
 
@@ -4028,12 +4023,12 @@ class AppL10nZh extends AppL10n {
   String get devRun => '执行';
 
   @override
-  String devConfirmBody(Object action) {
+  String devConfirmBody(String action) {
     return '$action\n\n该操作会真正改写本机数据，无法撤销。';
   }
 
   @override
-  String devActionFailed(Object action, Object error) {
+  String devActionFailed(String action, String error) {
     return '$action失败：$error';
   }
 
@@ -4041,7 +4036,7 @@ class AppL10nZh extends AppL10n {
   String get devStressNoDb => '日志压测失败：无法打开日志数据库';
 
   @override
-  String devStressDone(Object count, Object file) {
+  String devStressDone(String count, String file) {
     return '日志压测完成：写入 $count 条到 $file';
   }
 
@@ -4055,7 +4050,7 @@ class AppL10nZh extends AppL10n {
   String get devVacuumNoDb => '压缩数据库失败：本机还没有数据库文件';
 
   @override
-  String devVacuumDone(Object files, Object kb) {
+  String devVacuumDone(String files, int kb) {
     return '已压缩 $files，回收 $kb KB';
   }
 
@@ -4184,7 +4179,7 @@ class AppL10nZh extends AppL10n {
   String get sponsorScan => '扫码赞助';
 
   @override
-  String sponsorQrCode(Object label) {
+  String sponsorQrCode(String label) {
     return '$label 收款码';
   }
 
@@ -4195,7 +4190,7 @@ class AppL10nZh extends AppL10n {
   String get sponsorNoteShort => '付款时请备注昵称，以便同步加入赞助者名单。';
 
   @override
-  String aboutQqCopied(Object number) {
+  String aboutQqCopied(String number) {
     return '未检测到 QQ，群号已复制：$number';
   }
 
@@ -4246,7 +4241,7 @@ class AppL10nZh extends AppL10n {
   String get ipQualityStart => '开始检测';
 
   @override
-  String ipQualityJudgedAs(Object type) {
+  String ipQualityJudgedAs(String type) {
     return '判定为$type';
   }
 
@@ -4257,7 +4252,7 @@ class AppL10nZh extends AppL10n {
   String get ipQualityUsed => '已采用';
 
   @override
-  String devFooterWarning(Object count) {
+  String devFooterWarning(int count) {
     return '这些动作直接作用于本机的数据库、prefs 与 native 通道：日志压测会真的写入 $count 条日志，压缩数据库执行的是 SQLite VACUUM，清空全部数据会删除所有本地数据并要求重启。';
   }
 
@@ -4486,7 +4481,7 @@ class AppL10nZh extends AppL10n {
   String get onboardingNext => '下一步';
 
   @override
-  String onboardingChosen(Object mode) {
+  String onboardingChosen(String mode) {
     return '你选择了$mode';
   }
 
@@ -4551,7 +4546,7 @@ class AppL10nZh extends AppL10n {
   String get permAllLocal => '全部权限只在本机使用，不会上传任何数据。';
 
   @override
-  String permGrantedCount(Object granted, Object total) {
+  String permGrantedCount(String granted, String total) {
     return '已授予 $granted / $total 项；全部权限只在本机使用，不会上传任何数据。';
   }
 
@@ -4589,12 +4584,12 @@ class AppL10nZh extends AppL10n {
   String get onboardingReadyBody => '下面是三条最常用的上手要点。';
 
   @override
-  String onboardingTipIndex(Object index) {
+  String onboardingTipIndex(String index) {
     return '第 $index 条';
   }
 
   @override
-  String permStillDenied(Object name) {
+  String permStillDenied(String name) {
     return '$name 仍未授予，请在系统设置里允许后返回本页';
   }
 
@@ -4641,7 +4636,7 @@ class AppL10nZh extends AppL10n {
   String get toolCountUnit => '个';
 
   @override
-  String toolPrivateDnsProbe(Object dns) {
+  String toolPrivateDnsProbe(String dns) {
     return '探测走物理网络（本应用流量不经过隧道）；系统私人 DNS：$dns';
   }
 
@@ -4704,7 +4699,7 @@ class AppL10nZh extends AppL10n {
   String get toolJitterFooter => '抖动按各包时延与均值的平均绝对偏差计算。';
 
   @override
-  String toolPacketN(Object n) {
+  String toolPacketN(String n) {
     return '第 $n 个包';
   }
 
@@ -4712,7 +4707,7 @@ class AppL10nZh extends AppL10n {
   String get toolTimeout => '超时';
 
   @override
-  String toolPingSummary(Object failed, Object sent) {
+  String toolPingSummary(String failed, String sent) {
     return '本次共发送 $sent 个探测包，失败 $failed 个。';
   }
 
@@ -4789,7 +4784,7 @@ class AppL10nZh extends AppL10n {
   String get toolSpeedProviders => '测速服务商';
 
   @override
-  String toolNoProviders(Object protocol) {
+  String toolNoProviders(String protocol) {
     return '暂无 $protocol DNS 服务商';
   }
 
@@ -4814,7 +4809,7 @@ class AppL10nZh extends AppL10n {
   String get toolSpeedResults => '查询耗时结果';
 
   @override
-  String toolSpeedResultsFooter(Object domain) {
+  String toolSpeedResultsFooter(String domain) {
     return '测速结果按成功优先、平均耗时从低到高排序；结果只反映本次查询时的网络状态。域名当前为「$domain」。';
   }
 
@@ -4826,12 +4821,12 @@ class AppL10nZh extends AppL10n {
   String get toolFastest => '最快';
 
   @override
-  String toolSampleCount(Object count, Object rate) {
+  String toolSampleCount(String count, String rate) {
     return '$rate · 样本 $count';
   }
 
   @override
-  String toolAllFailed(Object count) {
+  String toolAllFailed(String count) {
     return '全部失败（$count 次）';
   }
 
@@ -4854,7 +4849,7 @@ class AppL10nZh extends AppL10n {
   String get toolHopCount => '跳数';
 
   @override
-  String toolHopCountValue(Object count, Object max) {
+  String toolHopCountValue(String count, String max) {
     return '$count / 最多 $max';
   }
 
@@ -4999,7 +4994,7 @@ class AppL10nZh extends AppL10n {
   String get odKindsNone => '不启用';
 
   @override
-  String odDelayValue(Object ms) {
+  String odDelayValue(String ms) {
     return '延迟 $ms ms';
   }
 
@@ -5013,7 +5008,7 @@ class AppL10nZh extends AppL10n {
   String get odStateNoWifi => '当前不在 Wi-Fi 上，VPN 保持断开';
 
   @override
-  String odStateMatched(Object ssid) {
+  String odStateMatched(String ssid) {
     return '已匹配 $ssid，VPN 会自动启动';
   }
 
@@ -5108,7 +5103,7 @@ class AppL10nZh extends AppL10n {
   String get odCapNoPermission => '无法读取：需要位置权限';
 
   @override
-  String odCapCurrent(Object name) {
+  String odCapCurrent(String name) {
     return '当前连接：$name';
   }
 
@@ -5132,42 +5127,42 @@ class AppL10nZh extends AppL10n {
   String get configNotSet => '未设置';
 
   @override
-  String configItemCount(Object count) {
+  String configItemCount(int count) {
     return '共 $count 项';
   }
 
   @override
-  String odEditSsidTooltip(Object ssid) {
+  String odEditSsidTooltip(String ssid) {
     return '编辑 $ssid';
   }
 
   @override
-  String odDeleteSsidTooltip(Object ssid) {
+  String odDeleteSsidTooltip(String ssid) {
     return '删除 $ssid';
   }
 
   @override
-  String serverSwitched(Object name) {
+  String serverSwitched(String name) {
     return '已切换到 $name，重启服务后生效';
   }
 
   @override
-  String serverSelected(Object name) {
+  String serverSelected(String name) {
     return '已选择 $name';
   }
 
   @override
-  String serverAdded(Object name) {
+  String serverAdded(String name) {
     return '已添加 $name';
   }
 
   @override
-  String serverSaved(Object name) {
+  String serverSaved(String name) {
     return '已保存 $name';
   }
 
   @override
-  String serverDeleteConfirm(Object name) {
+  String serverDeleteConfirm(String name) {
     return '删除 $name？';
   }
 
@@ -5175,7 +5170,7 @@ class AppL10nZh extends AppL10n {
   String get serverDeleteBody => '如果它正被使用，删除后会回落到第一个内置服务商。';
 
   @override
-  String serverDeleted(Object name) {
+  String serverDeleted(String name) {
     return '已删除 $name';
   }
 
@@ -5186,7 +5181,7 @@ class AppL10nZh extends AppL10n {
   String get serverAddCustom => '添加自定义服务商';
 
   @override
-  String serverCurrentUpstream(Object name, Object protocol) {
+  String serverCurrentUpstream(String name, String protocol) {
     return '当前用于解析 DNS：($protocol) $name';
   }
 
@@ -5210,12 +5205,12 @@ class AppL10nZh extends AppL10n {
       '服务器模式只用一家上游；需要多路竞速请切到普通或极速模式。内置服务商由应用维护，只能切换；自定义项长按可编辑或删除。';
 
   @override
-  String serverEditName(Object name) {
+  String serverEditName(String name) {
     return '编辑 $name';
   }
 
   @override
-  String serverDeleteName(Object name) {
+  String serverDeleteName(String name) {
     return '删除 $name';
   }
 
@@ -5271,7 +5266,7 @@ class AppL10nZh extends AppL10n {
   String get serverCacheClearFailed => '清空失败：请先启动解析服务再试';
 
   @override
-  String serverCacheOn(Object preset) {
+  String serverCacheOn(String preset) {
     return '$preset · 命中缓存的查询不再请求上游';
   }
 
@@ -5385,12 +5380,12 @@ class AppL10nZh extends AppL10n {
   String get serverPortInvalid => '请输入数字';
 
   @override
-  String serverPortRange(Object max, Object min) {
+  String serverPortRange(String max, String min) {
     return '范围 $min–$max';
   }
 
   @override
-  String serverPortChanged(Object port) {
+  String serverPortChanged(String port) {
     return '端口已改为 $port，重启服务后生效';
   }
 
@@ -5431,7 +5426,7 @@ class AppL10nZh extends AppL10n {
   String get serverLanPointHint => '将局域网其他设备的 DNS 指向此地址';
 
   @override
-  String serverCopied(Object text) {
+  String serverCopied(String text) {
     return '已复制 $text';
   }
 
@@ -5476,7 +5471,7 @@ class AppL10nZh extends AppL10n {
   String get serverStopped => '开启';
 
   @override
-  String serverListening(Object port) {
+  String serverListening(String port) {
     return '监听 0.0.0.0:$port';
   }
 
@@ -5551,12 +5546,12 @@ class AppL10nZh extends AppL10n {
   String get troubleshootReadingStatus => '正在读取抓取状态…';
 
   @override
-  String troubleshootRecording(Object size) {
+  String troubleshootRecording(String size) {
     return '正在记录，已占用 $size，再次点击可关闭';
   }
 
   @override
-  String troubleshootStoppedWithLogs(Object size) {
+  String troubleshootStoppedWithLogs(String size) {
     return '已关闭，本地已有 $size 日志可导出';
   }
 
@@ -5570,7 +5565,7 @@ class AppL10nZh extends AppL10n {
   String get troubleshootNoLogs => '当前设备没有运行日志';
 
   @override
-  String troubleshootLogCount(Object count, Object size) {
+  String troubleshootLogCount(int count, String size) {
     return '共 $count 个文件，$size，点击导出文件';
   }
 
@@ -5581,16 +5576,16 @@ class AppL10nZh extends AppL10n {
   String get troubleshootHealthy => '正常，没有日志被丢弃';
 
   @override
-  String troubleshootHealthyDetail(Object detail, Object mode) {
+  String troubleshootHealthyDetail(String detail, String mode) {
     return '正常，没有日志被丢弃（$mode · $detail）';
   }
 
   @override
   String troubleshootDropped(
-    Object dropped,
-    Object failed,
-    Object reason,
-    Object split,
+    int dropped,
+    String failed,
+    int reason,
+    String split,
   ) {
     return '已丢弃 $dropped 条日志$split，打开失败 $failed 次$reason';
   }
@@ -5614,7 +5609,7 @@ class AppL10nZh extends AppL10n {
   String get troubleshootNoCrashes => '当前设备没有崩溃日志';
 
   @override
-  String troubleshootCrashCount(Object count) {
+  String troubleshootCrashCount(int count) {
     return '已记录 $count 份崩溃日志，点击导出文件';
   }
 
@@ -5647,7 +5642,7 @@ class AppL10nZh extends AppL10n {
   String get troubleshootExportFailed => '导出失败：本机没有可写的导出目录';
 
   @override
-  String troubleshootExported(Object path) {
+  String troubleshootExported(String path) {
     return '已导出到 $path';
   }
 
@@ -5658,7 +5653,7 @@ class AppL10nZh extends AppL10n {
   String get troubleshootClearLogsConfirm => '确认清空所有已保存的运行日志吗？该操作不可恢复。';
 
   @override
-  String troubleshootClearedLogs(Object count) {
+  String troubleshootClearedLogs(String count) {
     return '已清空 $count 个日志文件';
   }
 
@@ -5672,7 +5667,7 @@ class AppL10nZh extends AppL10n {
   String get troubleshootClearCrashesConfirm => '确认清空所有已保存的崩溃日志吗？';
 
   @override
-  String troubleshootClearedCrashes(Object count) {
+  String troubleshootClearedCrashes(String count) {
     return '已清空 $count 份崩溃日志';
   }
 
@@ -5770,12 +5765,12 @@ class AppL10nZh extends AppL10n {
       '关闭竞速模式时，首页解析服务下拉框仅显示这里选中的服务。当前正在使用的服务会始终保留。';
 
   @override
-  String providerVisibilityProtocol(Object protocol) {
+  String providerVisibilityProtocol(String protocol) {
     return '$protocol 服务';
   }
 
   @override
-  String providerVisibilityAll(Object protocol) {
+  String providerVisibilityAll(String protocol) {
     return '全部 $protocol 服务';
   }
 
@@ -5786,7 +5781,7 @@ class AppL10nZh extends AppL10n {
   String get providerVisibilityAllOn => '显示该类型的全部服务';
 
   @override
-  String providerVisibilityCount(Object count) {
+  String providerVisibilityCount(String count) {
     return '已选择 $count 个服务';
   }
 
@@ -5836,7 +5831,7 @@ class AppL10nZh extends AppL10n {
   String get recognitionCached => '正在显示本地缓存的名单';
 
   @override
-  String recognitionLastUpdate(Object time) {
+  String recognitionLastUpdate(String time) {
     return '上次更新：$time';
   }
 
@@ -5844,7 +5839,7 @@ class AppL10nZh extends AppL10n {
   String get recognitionCloudNote => '名单由云端下发，进入页面时自动检查更新';
 
   @override
-  String appRulesAllowCount(Object count, Object package) {
+  String appRulesAllowCount(String count, int package) {
     return '$package · $count 个放行域名';
   }
 
@@ -5927,7 +5922,7 @@ class AppL10nZh extends AppL10n {
   String get logRetentionCleanup => '自动清理时间';
 
   @override
-  String logRetentionKeepDays(Object days) {
+  String logRetentionKeepDays(String days) {
     return '保留 $days 天';
   }
 
@@ -5966,7 +5961,7 @@ class AppL10nZh extends AppL10n {
   String get appSelectionSaveTitle => '保存更改？';
 
   @override
-  String appSelectionSaveBody(Object title) {
+  String appSelectionSaveBody(String title) {
     return '「$title」的选择还没保存。保存后离开，还是放弃这些修改？';
   }
 
@@ -5977,7 +5972,7 @@ class AppL10nZh extends AppL10n {
   String get appSelectionNoAppsYet => '尚未选择应用';
 
   @override
-  String appSelectionCount(Object count) {
+  String appSelectionCount(String count) {
     return '已选择 $count 个应用';
   }
 
@@ -6026,27 +6021,27 @@ class AppL10nZh extends AppL10n {
   String get bootstrapNoCustom => '暂无自定义 Bootstrap IP。点击右上角「新增」添加。';
 
   @override
-  String bootstrapNoSample(Object ip) {
+  String bootstrapNoSample(String ip) {
     return '$ip · 暂无样本';
   }
 
   @override
-  String bootstrapAverage(Object ms) {
+  String bootstrapAverage(String ms) {
     return ' · 平均 ${ms}ms';
   }
 
   @override
-  String bootstrapFailures(Object count) {
+  String bootstrapFailures(String count) {
     return ' · 失败 $count';
   }
 
   @override
   String bootstrapStats(
-    Object failures,
-    Object ip,
-    Object latency,
-    Object samples,
-    Object success,
+    String failures,
+    String ip,
+    String latency,
+    String samples,
+    String success,
   ) {
     return '$ip$latency · 样本 $samples · 成功 $success%$failures';
   }
@@ -8562,7 +8557,7 @@ class AppL10nZh extends AppL10n {
   String get logDashboardCardTrafficStructure => '流量结构';
 
   @override
-  String logDashboardEditHint(Object mode) {
+  String logDashboardEditHint(String mode) {
     return '正在编辑「$mode」模式的布局，切换日志模式后各自独立。拖动手柄排序，点右上角移除。';
   }
 

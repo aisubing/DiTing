@@ -281,7 +281,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'「{name}」的选择还没保存。保存后离开，还是放弃这些修改？'**
-  String commonSaveChangesMessageFor(Object name);
+  String commonSaveChangesMessageFor(String name);
 
   /// No description provided for @commonGrantPermission.
   ///
@@ -413,25 +413,25 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'应用列表通道不可用：{detail}'**
-  String appListChannelUnavailable(Object detail);
+  String appListChannelUnavailable(String detail);
 
   /// No description provided for @appListReadFailed.
   ///
   /// In zh, this message translates to:
   /// **'读取应用列表失败：{detail}'**
-  String appListReadFailed(Object detail);
+  String appListReadFailed(String detail);
 
   /// No description provided for @appListReadFailedCode.
   ///
   /// In zh, this message translates to:
   /// **'读取应用列表失败（{code}）'**
-  String appListReadFailedCode(Object code);
+  String appListReadFailedCode(String code);
 
   /// No description provided for @dbWriteUnhealthy.
   ///
   /// In zh, this message translates to:
   /// **'日志写入异常：已丢弃 {dropped} 条、打开失败 {failures} 次，可在「故障排查」查看详情'**
-  String dbWriteUnhealthy(Object dropped, Object failures);
+  String dbWriteUnhealthy(int dropped, int failures);
 
   /// No description provided for @agreementDeclinedTitle.
   ///
@@ -497,19 +497,19 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{hours} 小时'**
-  String durationHours(Object hours);
+  String durationHours(int hours);
 
   /// No description provided for @durationMinutes.
   ///
   /// In zh, this message translates to:
   /// **'{minutes} 分钟'**
-  String durationMinutes(Object minutes);
+  String durationMinutes(int minutes);
 
   /// No description provided for @durationSeconds.
   ///
   /// In zh, this message translates to:
   /// **'{seconds} 秒'**
-  String durationSeconds(Object seconds);
+  String durationSeconds(int seconds);
 
   /// No description provided for @dashboardDetailTooltip.
   ///
@@ -785,13 +785,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{duration} 后过期'**
-  String logExpiresIn(Object duration);
+  String logExpiresIn(String duration);
 
   /// No description provided for @logTimes.
   ///
   /// In zh, this message translates to:
   /// **'{count} 次'**
-  String logTimes(Object count);
+  String logTimes(String count);
 
   /// No description provided for @logRaceWinners.
   ///
@@ -809,7 +809,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'平均胜出耗时 {latency}'**
-  String logAverageWinLatency(Object latency);
+  String logAverageWinLatency(String latency);
 
   /// No description provided for @logBootstrapDnsEmpty.
   ///
@@ -821,7 +821,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{ip} · 成功 {percent} · {latency}'**
-  String logBootstrapRow(Object ip, Object latency, Object percent);
+  String logBootstrapRow(String ip, String latency, String percent);
 
   /// No description provided for @logRuleBlocks.
   ///
@@ -839,7 +839,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{status} · 占全部请求 {percent}'**
-  String logShareRow(Object percent, Object status);
+  String logShareRow(String percent, String status);
 
   /// No description provided for @logPrivacyMode.
   ///
@@ -887,7 +887,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{value} · {count} 个样本'**
-  String logSampleValue(Object count, Object value);
+  String logSampleValue(String count, String value);
 
   /// No description provided for @logCacheHitRate.
   ///
@@ -899,7 +899,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{percent} · 分母为通过 + 失败'**
-  String logCacheHitRateValue(Object percent);
+  String logCacheHitRateValue(String percent);
 
   /// No description provided for @logRaceSuccessRate.
   ///
@@ -917,7 +917,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{percent} · {count} 次 · {latency}'**
-  String logRateValue(Object count, Object latency, Object percent);
+  String logRateValue(String count, String latency, String percent);
 
   /// No description provided for @dashboardRestoreDefaults.
   ///
@@ -1895,31 +1895,31 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{mode}不监听局域网，其他设备无法把这里当 DNS'**
-  String intranetModeNotListening(Object mode);
+  String intranetModeNotListening(String mode);
 
   /// No description provided for @intranetListeningOn.
   ///
   /// In zh, this message translates to:
   /// **'已监听 0.0.0.0:{port}，其他设备把 DNS 指到上面的地址'**
-  String intranetListeningOn(Object port);
+  String intranetListeningOn(int port);
 
   /// No description provided for @intranetServiceStopped.
   ///
   /// In zh, this message translates to:
   /// **'服务未启动：启动后才会绑定 {port} 端口'**
-  String intranetServiceStopped(Object port);
+  String intranetServiceStopped(int port);
 
   /// No description provided for @commonCopied.
   ///
   /// In zh, this message translates to:
   /// **'已复制 {text}'**
-  String commonCopied(Object text);
+  String commonCopied(String text);
 
   /// No description provided for @intranetGatewaySuffix.
   ///
   /// In zh, this message translates to:
   /// **' · 网关 {gateway}'**
-  String intranetGatewaySuffix(Object gateway);
+  String intranetGatewaySuffix(String gateway);
 
   /// No description provided for @speedTotalDash.
   ///
@@ -1931,43 +1931,43 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{alive} / {total} 通畅'**
-  String siteLatencyAliveRatio(Object alive, Object total);
+  String siteLatencyAliveRatio(int alive, int total);
 
   /// No description provided for @siteLatencyLastRun.
   ///
   /// In zh, this message translates to:
   /// **'最近测速 {ago}'**
-  String siteLatencyLastRun(Object ago);
+  String siteLatencyLastRun(String ago);
 
   /// No description provided for @siteLatencyProviderSuffix.
   ///
   /// In zh, this message translates to:
   /// **' · 解析服务商 {name}'**
-  String siteLatencyProviderSuffix(Object name);
+  String siteLatencyProviderSuffix(String name);
 
   /// No description provided for @siteLatencySitesCount.
   ///
   /// In zh, this message translates to:
   /// **'{count} 个站点'**
-  String siteLatencySitesCount(Object count);
+  String siteLatencySitesCount(int count);
 
   /// No description provided for @siteLatencyTestCategory.
   ///
   /// In zh, this message translates to:
   /// **'测速{category}'**
-  String siteLatencyTestCategory(Object category);
+  String siteLatencyTestCategory(String category);
 
   /// No description provided for @memorySystemShare.
   ///
   /// In zh, this message translates to:
   /// **'占整机 {percent}'**
-  String memorySystemShare(Object percent);
+  String memorySystemShare(String percent);
 
   /// No description provided for @memorySystemUsedOf.
   ///
   /// In zh, this message translates to:
   /// **'整机已用 {used} / {total}'**
-  String memorySystemUsedOf(Object total, Object used);
+  String memorySystemUsedOf(String total, String used);
 
   /// No description provided for @memoryNoChannel.
   ///
@@ -1980,40 +1980,40 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'{percent} · {count} 次 · {latency}'**
   String trafficStructureRateValue(
-    Object count,
-    Object latency,
-    Object percent,
+    String count,
+    String latency,
+    String percent,
   );
 
   /// No description provided for @trafficStructureShareValue.
   ///
   /// In zh, this message translates to:
   /// **'{percent} · {count} 次'**
-  String trafficStructureShareValue(Object count, Object percent);
+  String trafficStructureShareValue(String count, String percent);
 
   /// No description provided for @statusPausedSummary.
   ///
   /// In zh, this message translates to:
   /// **'{mode}{core}，计时已暂停'**
-  String statusPausedSummary(Object core, Object mode);
+  String statusPausedSummary(String core, String mode);
 
   /// No description provided for @speedTotalsDown.
   ///
   /// In zh, this message translates to:
   /// **'下行 {percent}'**
-  String speedTotalsDown(Object percent);
+  String speedTotalsDown(String percent);
 
   /// No description provided for @speedTotalsUp.
   ///
   /// In zh, this message translates to:
   /// **'上行 {percent}'**
-  String speedTotalsUp(Object percent);
+  String speedTotalsUp(String percent);
 
   /// No description provided for @speedPeakAverage.
   ///
   /// In zh, this message translates to:
   /// **'峰值 {peak} · 平均 {average}'**
-  String speedPeakAverage(Object average, Object peak);
+  String speedPeakAverage(String average, String peak);
 
   /// No description provided for @intranetConnectHintSentence.
   ///
@@ -2025,61 +2025,61 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{mode}不监听局域网，其它设备无法把这里当 DNS。'**
-  String intranetModeNotListeningSentence(Object mode);
+  String intranetModeNotListeningSentence(String mode);
 
   /// No description provided for @intranetPrivateDnsOn.
   ///
   /// In zh, this message translates to:
   /// **'系统开启了私人 DNS（{dns}），系统解析会走加密通道，可能绕过本地服务。'**
-  String intranetPrivateDnsOn(Object dns);
+  String intranetPrivateDnsOn(String dns);
 
   /// No description provided for @intranetSecondaryDns.
   ///
   /// In zh, this message translates to:
   /// **'备用 {index}'**
-  String intranetSecondaryDns(Object index);
+  String intranetSecondaryDns(int index);
 
   /// No description provided for @intranetCopyAddressSemantics.
   ///
   /// In zh, this message translates to:
   /// **'复制地址 {address}'**
-  String intranetCopyAddressSemantics(Object address);
+  String intranetCopyAddressSemantics(String address);
 
   /// No description provided for @speedTotalAccumulated.
   ///
   /// In zh, this message translates to:
   /// **'累计 {value}'**
-  String speedTotalAccumulated(Object value);
+  String speedTotalAccumulated(String value);
 
   /// No description provided for @dashboardSitesFull.
   ///
   /// In zh, this message translates to:
   /// **'卡片只能放 {count} 个站点，先点掉一个再换别的。'**
-  String dashboardSitesFull(Object count);
+  String dashboardSitesFull(int count);
 
   /// No description provided for @dashboardSitesRemaining.
   ///
   /// In zh, this message translates to:
   /// **'还可以再放 {count} 个站点。'**
-  String dashboardSitesRemaining(Object count);
+  String dashboardSitesRemaining(int count);
 
   /// No description provided for @dashboardSitesMax.
   ///
   /// In zh, this message translates to:
   /// **'卡片最多放 {count} 个站点，先取消一个再选。'**
-  String dashboardSitesMax(Object count);
+  String dashboardSitesMax(int count);
 
   /// No description provided for @dashboardSitesPosition.
   ///
   /// In zh, this message translates to:
   /// **'第 {index} 位'**
-  String dashboardSitesPosition(Object index);
+  String dashboardSitesPosition(int index);
 
   /// No description provided for @siteLatencyFailedCount.
   ///
   /// In zh, this message translates to:
   /// **'{count} 个失败'**
-  String siteLatencyFailedCount(Object count);
+  String siteLatencyFailedCount(int count);
 
   /// No description provided for @siteLatencyDetailFooterLong.
   ///
@@ -2559,31 +2559,31 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{count} 秒前'**
-  String elapsedSecondsAgo(Object count);
+  String elapsedSecondsAgo(int count);
 
   /// No description provided for @elapsedMinutesAgo.
   ///
   /// In zh, this message translates to:
   /// **'{count} 分钟前'**
-  String elapsedMinutesAgo(Object count);
+  String elapsedMinutesAgo(int count);
 
   /// No description provided for @elapsedHoursAgo.
   ///
   /// In zh, this message translates to:
   /// **'{count} 小时前'**
-  String elapsedHoursAgo(Object count);
+  String elapsedHoursAgo(int count);
 
   /// No description provided for @elapsedDaysAgo.
   ///
   /// In zh, this message translates to:
   /// **'{count} 天前'**
-  String elapsedDaysAgo(Object count);
+  String elapsedDaysAgo(int count);
 
   /// No description provided for @providerRaceSummary.
   ///
   /// In zh, this message translates to:
   /// **'已选 {count} 个：{names}'**
-  String providerRaceSummary(Object count, Object names);
+  String providerRaceSummary(String count, String names);
 
   /// No description provided for @rulesDbUnavailable.
   ///
@@ -3177,67 +3177,67 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'读取应用规则失败：{detail}'**
-  String rulesReadFailed(Object detail);
+  String rulesReadFailed(String detail);
 
   /// No description provided for @autoUpdateChecked.
   ///
   /// In zh, this message translates to:
   /// **'已检查 {count} 个订阅'**
-  String autoUpdateChecked(Object count);
+  String autoUpdateChecked(int count);
 
   /// No description provided for @caChannelUnavailableDetail.
   ///
   /// In zh, this message translates to:
   /// **'证书通道不可用：{detail}'**
-  String caChannelUnavailableDetail(Object detail);
+  String caChannelUnavailableDetail(String detail);
 
   /// No description provided for @caReadFailedCode.
   ///
   /// In zh, this message translates to:
   /// **'读取根证书失败（{code}）'**
-  String caReadFailedCode(Object code);
+  String caReadFailedCode(String code);
 
   /// No description provided for @caReadFailed.
   ///
   /// In zh, this message translates to:
   /// **'读取根证书失败：{detail}'**
-  String caReadFailed(Object detail);
+  String caReadFailed(String detail);
 
   /// No description provided for @agentAnalysisFailed.
   ///
   /// In zh, this message translates to:
   /// **'分析失败：{detail}'**
-  String agentAnalysisFailed(Object detail);
+  String agentAnalysisFailed(String detail);
 
   /// No description provided for @diagnosticsFailedCode.
   ///
   /// In zh, this message translates to:
   /// **'诊断执行失败（{code}）'**
-  String diagnosticsFailedCode(Object code);
+  String diagnosticsFailedCode(String code);
 
   /// No description provided for @diagnosticsFailed.
   ///
   /// In zh, this message translates to:
   /// **'诊断执行失败：{detail}'**
-  String diagnosticsFailed(Object detail);
+  String diagnosticsFailed(String detail);
 
   /// No description provided for @subscriptionDeletedWithId.
   ///
   /// In zh, this message translates to:
   /// **'已删除订阅 #{id}'**
-  String subscriptionDeletedWithId(Object id);
+  String subscriptionDeletedWithId(int id);
 
   /// No description provided for @providerLatencyValue.
   ///
   /// In zh, this message translates to:
   /// **'{value}ms'**
-  String providerLatencyValue(Object value);
+  String providerLatencyValue(int value);
 
   /// No description provided for @providerRaceSummaryNames.
   ///
   /// In zh, this message translates to:
   /// **'已选 {count} 个：{names}'**
-  String providerRaceSummaryNames(Object count, Object names);
+  String providerRaceSummaryNames(int count, String names);
 
   /// No description provided for @providerNamesSeparator.
   ///
@@ -3249,49 +3249,49 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'云端名单配置无效（{detail}），已保留本地缓存'**
-  String recognitionInvalidConfigKept(Object detail);
+  String recognitionInvalidConfigKept(String detail);
 
   /// No description provided for @recognitionFetchFailed.
   ///
   /// In zh, this message translates to:
   /// **'云端名单拉取失败（{detail}）'**
-  String recognitionFetchFailed(Object detail);
+  String recognitionFetchFailed(String detail);
 
   /// No description provided for @recognitionUpdateFailedDetail.
   ///
   /// In zh, this message translates to:
   /// **'名单更新失败：{detail}'**
-  String recognitionUpdateFailedDetail(Object detail);
+  String recognitionUpdateFailedDetail(String detail);
 
   /// No description provided for @subscriptionAlreadyExists.
   ///
   /// In zh, this message translates to:
   /// **'{what}已作为{kind}存在'**
-  String subscriptionAlreadyExists(Object kind, Object what);
+  String subscriptionAlreadyExists(String kind, String what);
 
   /// No description provided for @subscriptionUpdatedCount.
   ///
   /// In zh, this message translates to:
   /// **'{count} 个已更新'**
-  String subscriptionUpdatedCount(Object count);
+  String subscriptionUpdatedCount(int count);
 
   /// No description provided for @subscriptionUnchangedCount.
   ///
   /// In zh, this message translates to:
   /// **'{count} 个未变化'**
-  String subscriptionUnchangedCount(Object count);
+  String subscriptionUnchangedCount(int count);
 
   /// No description provided for @subscriptionFailedCount.
   ///
   /// In zh, this message translates to:
   /// **'{count} 个失败'**
-  String subscriptionFailedCount(Object count);
+  String subscriptionFailedCount(int count);
 
   /// No description provided for @subscriptionAlreadyExistsNamed.
   ///
   /// In zh, this message translates to:
   /// **'{what}已作为{kind}存在（「{name}」）'**
-  String subscriptionAlreadyExistsNamed(Object kind, Object name, Object what);
+  String subscriptionAlreadyExistsNamed(String kind, String name, String what);
 
   /// No description provided for @commonBypass.
   ///
@@ -3405,13 +3405,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已{action}：{count} 项{detail}'**
-  String cleanupDoneItems(Object action, Object count, Object detail);
+  String cleanupDoneItems(String action, int count, String detail);
 
   /// No description provided for @cleanupDoneEmpty.
   ///
   /// In zh, this message translates to:
   /// **'已{action}：没有可清理的数据'**
-  String cleanupDoneEmpty(Object action);
+  String cleanupDoneEmpty(String action);
 
   /// No description provided for @blockResponseNxdomain.
   ///
@@ -3489,13 +3489,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{protocol} 直连'**
-  String logRowDirect(Object protocol);
+  String logRowDirect(String protocol);
 
   /// No description provided for @logRowDirectWithPackage.
   ///
   /// In zh, this message translates to:
   /// **'{protocol} 直连 · {package}'**
-  String logRowDirectWithPackage(Object package, Object protocol);
+  String logRowDirectWithPackage(String package, String protocol);
 
   /// No description provided for @logRowCacheHit.
   ///
@@ -3627,7 +3627,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'清理失败：{detail}'**
-  String cleanupFailed(Object detail);
+  String cleanupFailed(String detail);
 
   /// No description provided for @cleanupProxyRestored.
   ///
@@ -4173,7 +4173,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'当前 {percent}%'**
-  String fontFamilySizeSubtitle(Object percent);
+  String fontFamilySizeSubtitle(String percent);
 
   /// No description provided for @fontFamilySystemDefault.
   ///
@@ -4233,7 +4233,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'删除「{name}」后，使用该字体的界面会回退到系统默认。'**
-  String fontFamilyDeleteConfirm(Object name);
+  String fontFamilyDeleteConfirm(String name);
 
   /// No description provided for @fontFamilyImport.
   ///
@@ -4581,13 +4581,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'底栏项（{count}/{max}）'**
-  String bottomBarItemsHeader(Object count, Object max);
+  String bottomBarItemsHeader(String count, String max);
 
   /// No description provided for @bottomBarDragHint.
   ///
   /// In zh, this message translates to:
   /// **'按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 {max} 项：浮条按项数等比分配宽度，再多就挤到看不清图标。'**
-  String bottomBarDragHint(Object max);
+  String bottomBarDragHint(String max);
 
   /// No description provided for @bottomBarDisabled.
   ///
@@ -4653,7 +4653,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'当前 {percent}%'**
-  String appearanceFontSizeCurrent(Object percent);
+  String appearanceFontSizeCurrent(int percent);
 
   /// No description provided for @appearanceFontSection.
   ///
@@ -4665,37 +4665,37 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已导入 {name}'**
-  String appearanceFontImported(Object name);
+  String appearanceFontImported(String name);
 
   /// No description provided for @appearanceFontDeleted.
   ///
   /// In zh, this message translates to:
   /// **'已删除 {name}'**
-  String appearanceFontDeleted(Object name);
+  String appearanceFontDeleted(String name);
 
   /// No description provided for @appearanceBottomBarMax.
   ///
   /// In zh, this message translates to:
   /// **'底栏最多 {max} 项'**
-  String appearanceBottomBarMax(Object max);
+  String appearanceBottomBarMax(int max);
 
   /// No description provided for @appearanceBottomBarHeader.
   ///
   /// In zh, this message translates to:
   /// **'底栏项（{count}/{max}）'**
-  String appearanceBottomBarHeader(Object count, Object max);
+  String appearanceBottomBarHeader(int count, int max);
 
   /// No description provided for @appearanceBottomBarDragBody.
   ///
   /// In zh, this message translates to:
   /// **'按住右侧把手或长按整行拖动排序，顺序即底栏从左到右的顺序。至少 2 项、最多 {max} 项：浮条按项数等比分配宽度，再多就挤到看不清图标。'**
-  String appearanceBottomBarDragBody(Object max);
+  String appearanceBottomBarDragBody(int max);
 
   /// No description provided for @appearanceBottomBarSelected.
   ///
   /// In zh, this message translates to:
   /// **'已选 {count} 项，可配置 2–4 项'**
-  String appearanceBottomBarSelected(Object count);
+  String appearanceBottomBarSelected(int count);
 
   /// No description provided for @appearanceHaptic.
   ///
@@ -5073,37 +5073,37 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已向{kind}导入 {count} 条规则。'**
-  String ruleBatchImported(Object count, Object kind);
+  String ruleBatchImported(String count, int kind);
 
   /// No description provided for @ruleBatchSkippedDuplicates.
   ///
   /// In zh, this message translates to:
   /// **'跳过 {count} 条重复规则。'**
-  String ruleBatchSkippedDuplicates(Object count);
+  String ruleBatchSkippedDuplicates(int count);
 
   /// No description provided for @ruleBatchAllowRejected.
   ///
   /// In zh, this message translates to:
   /// **'{count} 条放行规则（含 #@#）未导入：该规则为放行规则，请在白名单中添加。'**
-  String ruleBatchAllowRejected(Object count);
+  String ruleBatchAllowRejected(int count);
 
   /// No description provided for @ruleBatchImportCount.
   ///
   /// In zh, this message translates to:
   /// **'导入 {count} 条'**
-  String ruleBatchImportCount(Object count);
+  String ruleBatchImportCount(int count);
 
   /// No description provided for @ruleBatchMoreDuplicates.
   ///
   /// In zh, this message translates to:
   /// **'等 {count} 条'**
-  String ruleBatchMoreDuplicates(Object count);
+  String ruleBatchMoreDuplicates(int count);
 
   /// No description provided for @ruleAddForKind.
   ///
   /// In zh, this message translates to:
   /// **'添加{kind}规则'**
-  String ruleAddForKind(Object kind);
+  String ruleAddForKind(String kind);
 
   /// No description provided for @ruleEditDefaultPreset.
   ///
@@ -5115,31 +5115,31 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'编辑{kind}规则'**
-  String ruleEditForKind(Object kind);
+  String ruleEditForKind(String kind);
 
   /// No description provided for @ruleDeletePresetMessage.
   ///
   /// In zh, this message translates to:
   /// **'「{pattern}」是内置预设规则，删除后可通过重置默认恢复。'**
-  String ruleDeletePresetMessage(Object pattern);
+  String ruleDeletePresetMessage(String pattern);
 
   /// No description provided for @ruleDeleteSubscriptionMessage.
   ///
   /// In zh, this message translates to:
   /// **'「{pattern}」来自订阅「{name}」，删除后下次更新订阅可能重新出现。'**
-  String ruleDeleteSubscriptionMessage(Object name, Object pattern);
+  String ruleDeleteSubscriptionMessage(String name, String pattern);
 
   /// No description provided for @ruleDeleteUserMessage.
   ///
   /// In zh, this message translates to:
   /// **'确定删除「{pattern}」吗？此操作不可撤销。'**
-  String ruleDeleteUserMessage(Object pattern);
+  String ruleDeleteUserMessage(String pattern);
 
   /// No description provided for @ruleClearCustomMessage.
   ///
   /// In zh, this message translates to:
   /// **'将删除全部用户自定义的{kind}规则，订阅与预设规则不受影响。'**
-  String ruleClearCustomMessage(Object kind);
+  String ruleClearCustomMessage(String kind);
 
   /// No description provided for @ruleResetMessage.
   ///
@@ -5163,19 +5163,19 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'共 {matched} 条 · 启用 {enabled}'**
-  String ruleTally(Object enabled, Object matched);
+  String ruleTally(int enabled, int matched);
 
   /// No description provided for @ruleNoRulesForKind.
   ///
   /// In zh, this message translates to:
   /// **'还没有{kind}规则'**
-  String ruleNoRulesForKind(Object kind);
+  String ruleNoRulesForKind(String kind);
 
   /// No description provided for @ruleClearCustomForKind.
   ///
   /// In zh, this message translates to:
   /// **'清空自定义{kind}'**
-  String ruleClearCustomForKind(Object kind);
+  String ruleClearCustomForKind(String kind);
 
   /// No description provided for @subsPickTxt.
   ///
@@ -5517,19 +5517,19 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'删除「{name}」后不可撤销。\n\n删除会同时移除这条订阅贡献的全部规则（来源标签 sub_<id>）。'**
-  String subsDeleteMessage(Object name);
+  String subsDeleteMessage(String name);
 
   /// No description provided for @subsTotal.
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 个订阅'**
-  String subsTotal(Object count);
+  String subsTotal(int count);
 
   /// No description provided for @subsGroupTotal.
   ///
   /// In zh, this message translates to:
   /// **'「{group}」下 {count} 个订阅'**
-  String subsGroupTotal(Object count, Object group);
+  String subsGroupTotal(String count, int group);
 
   /// No description provided for @subsUpdateNow.
   ///
@@ -5553,7 +5553,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'连续失败 {count} 次'**
-  String subsConsecutiveFailures(Object count);
+  String subsConsecutiveFailures(int count);
 
   /// No description provided for @subsMirrorFallbackShort.
   ///
@@ -5583,13 +5583,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{count} 条'**
-  String subsRuleCountValue(Object count);
+  String subsRuleCountValue(String count);
 
   /// No description provided for @subsRulesStored.
   ///
   /// In zh, this message translates to:
   /// **'已入库 {count} 条规则；{action}该订阅贡献的规则。'**
-  String subsRulesStored(Object action, Object count);
+  String subsRulesStored(String action, String count);
 
   /// No description provided for @subsActionRemote.
   ///
@@ -5649,7 +5649,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'删除「{name}」后，组内订阅会移到未分组，订阅与规则本身不会被删除。'**
-  String subsGroupDeleteMessage(Object name);
+  String subsGroupDeleteMessage(String name);
 
   /// No description provided for @subsGroupDuplicate.
   ///
@@ -5661,7 +5661,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{count} 个订阅'**
-  String subsGroupSubCount(Object count);
+  String subsGroupSubCount(int count);
 
   /// No description provided for @subsGroupsEmpty.
   ///
@@ -5685,7 +5685,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'镜像 {mirror}'**
-  String subsMirrorName(Object mirror);
+  String subsMirrorName(String mirror);
 
   /// No description provided for @trafficPackageName.
   ///
@@ -5883,7 +5883,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'占比按{window}总字节数（下行 + 上行）计算；{range}。点按一行查看该应用的上下行明细。'**
-  String trafficShareFooter(Object range, Object window);
+  String trafficShareFooter(String range, String window);
 
   /// No description provided for @trafficClearTitle.
   ///
@@ -5961,37 +5961,37 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'统计日期 {date}'**
-  String trafficWindowLabelDate(Object date);
+  String trafficWindowLabelDate(String date);
 
   /// No description provided for @trafficWindowLabelRange.
   ///
   /// In zh, this message translates to:
   /// **'统计范围 {start} 至 {end}'**
-  String trafficWindowLabelRange(Object end, Object start);
+  String trafficWindowLabelRange(String end, String start);
 
   /// No description provided for @trafficShareWindow.
   ///
   /// In zh, this message translates to:
   /// **'占比按{window}总字节数（下行 + 上行）计算；{range}。点按一行查看该应用的上下行明细。'**
-  String trafficShareWindow(Object range, Object window);
+  String trafficShareWindow(String range, String window);
 
   /// No description provided for @trafficTotalApps.
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 个应用产生流量 · 合计 {total}'**
-  String trafficTotalApps(Object count, Object total);
+  String trafficTotalApps(int count, String total);
 
   /// No description provided for @trafficSearchEmpty.
   ///
   /// In zh, this message translates to:
   /// **'没有应用名或包名包含「{search}」。'**
-  String trafficSearchEmpty(Object search);
+  String trafficSearchEmpty(String search);
 
   /// No description provided for @trafficHiddenCount.
   ///
   /// In zh, this message translates to:
   /// **'本次共有 {count} 个应用被「隐藏系统应用」过滤掉，关闭该开关即可看到。'**
-  String trafficHiddenCount(Object count);
+  String trafficHiddenCount(int count);
 
   /// No description provided for @trafficNoRecordsBody.
   ///
@@ -6003,13 +6003,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'「{window}」还没有流量记录。流量按天由原生侧汇总落库，换个时间窗口或启动隧道产生流量后再看。'**
-  String trafficNoRecordsForWindow(Object window);
+  String trafficNoRecordsForWindow(String window);
 
   /// No description provided for @trafficOptionUnavailable.
   ///
   /// In zh, this message translates to:
   /// **'「{label}」不可用：{reason}'**
-  String trafficOptionUnavailable(Object label, Object reason);
+  String trafficOptionUnavailable(String label, String reason);
 
   /// No description provided for @trafficNoSourceReason.
   ///
@@ -6021,19 +6021,19 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已清除 {count} 条流量记录'**
-  String trafficCleared(Object count);
+  String trafficCleared(int count);
 
   /// No description provided for @trafficClearFailed.
   ///
   /// In zh, this message translates to:
   /// **'清除失败：{detail}'**
-  String trafficClearFailed(Object detail);
+  String trafficClearFailed(String detail);
 
   /// No description provided for @trafficShareBarTooltip.
   ///
   /// In zh, this message translates to:
   /// **'占比条长度是这一行按「{sort}」在当前窗口总量里的份额（当前 {value}），与列表排序一致。'**
-  String trafficShareBarTooltip(Object sort, Object value);
+  String trafficShareBarTooltip(String sort, String value);
 
   /// No description provided for @trafficWhyDaemonTitle.
   ///
@@ -6057,13 +6057,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'本模式不统计实时速率：极速模式的窄路由不经过引擎的流量计数器，本仓也没有它的累计表。上面的 {window} 下行 / 上行与下方排行都是真实数字。'**
-  String trafficNoLiveRate(Object window);
+  String trafficNoLiveRate(String window);
 
   /// No description provided for @trafficLiveRateBody.
   ///
   /// In zh, this message translates to:
   /// **'来自引擎的每秒速率（本次会话），与常驻通知里的读数同源；上面的 {window} 下行 / 上行是 `app_traffic_daily` 的累计字节，两者口径不同，数字不必相等。'**
-  String trafficLiveRateBody(Object window);
+  String trafficLiveRateBody(String window);
 
   /// No description provided for @trafficSearchPlaceholder.
   ///
@@ -6075,13 +6075,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{window}下行'**
-  String trafficWindowDown(Object window);
+  String trafficWindowDown(String window);
 
   /// No description provided for @trafficWindowUp.
   ///
   /// In zh, this message translates to:
   /// **'{window}上行'**
-  String trafficWindowUp(Object window);
+  String trafficWindowUp(String window);
 
   /// No description provided for @obsRequestsTitle.
   ///
@@ -6351,7 +6351,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已复制 {text}'**
-  String obsCopied(Object text);
+  String obsCopied(String text);
 
   /// No description provided for @obsCopyAddress.
   ///
@@ -6411,42 +6411,37 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已复制 {host}'**
-  String obsCopiedHost(Object host);
+  String obsCopiedHost(String host);
 
   /// No description provided for @obsAddedToKind.
   ///
   /// In zh, this message translates to:
   /// **'已将 {domain} 加入{kind}'**
-  String obsAddedToKind(Object domain, Object kind);
+  String obsAddedToKind(String domain, String kind);
 
   /// No description provided for @obsAlreadyInKind.
   ///
   /// In zh, this message translates to:
   /// **'{domain} 已在{kind}中'**
-  String obsAlreadyInKind(Object domain, Object kind);
+  String obsAlreadyInKind(String domain, String kind);
 
   /// No description provided for @obsCurrentFilter.
   ///
   /// In zh, this message translates to:
   /// **'当前筛选：{filter}。'**
-  String obsCurrentFilter(Object filter);
+  String obsCurrentFilter(String filter);
 
   /// No description provided for @obsFooterCount.
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 条，其中 {failed} 条处理失败{filter}{more}。点按一行查看规则命中与处理结果。'**
-  String obsFooterCount(
-    Object count,
-    Object failed,
-    Object filter,
-    Object more,
-  );
+  String obsFooterCount(int count, int failed, String filter, String more);
 
   /// No description provided for @obsFooterFilter.
   ///
   /// In zh, this message translates to:
   /// **'（筛选：{filter}）'**
-  String obsFooterFilter(Object filter);
+  String obsFooterFilter(String filter);
 
   /// No description provided for @obsFooterMore.
   ///
@@ -6506,7 +6501,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{count} 次请求'**
-  String obsAppRequestCount(Object count);
+  String obsAppRequestCount(int count);
 
   /// No description provided for @logsSubStatsTitle.
   ///
@@ -6632,7 +6627,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{range}内共 {count} 次竞速解析。'**
-  String logsRaceSummary(Object count, Object range);
+  String logsRaceSummary(String count, String range);
 
   /// No description provided for @logsRaceEmptyRange.
   ///
@@ -6698,7 +6693,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'平均胜出耗时 {latency}'**
-  String logsAverageWinLatency(Object latency);
+  String logsAverageWinLatency(String latency);
 
   /// No description provided for @logsSmartPrimary.
   ///
@@ -6716,7 +6711,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'首选命中 {percent} · 平均首选耗时 {latency}'**
-  String logsPrimaryHit(Object latency, Object percent);
+  String logsPrimaryHit(String latency, String percent);
 
   /// No description provided for @logsDashboardTitle.
   ///
@@ -6776,7 +6771,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'无法读取缓存表：{detail}'**
-  String logsCacheLoadFailed(Object detail);
+  String logsCacheLoadFailed(String detail);
 
   /// No description provided for @logsLoadingCache.
   ///
@@ -6806,7 +6801,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'当前搜索：{query}'**
-  String logsCurrentSearch(Object query);
+  String logsCurrentSearch(String query);
 
   /// No description provided for @logsLiveCache.
   ///
@@ -6824,7 +6819,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。'**
-  String logsCacheFooter(Object count);
+  String logsCacheFooter(String count);
 
   /// No description provided for @logsBootstrapTitle.
   ///
@@ -6854,7 +6849,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{range}内共 {count} 次 Bootstrap 探测。'**
-  String logsBootstrapSummary(Object count, Object range);
+  String logsBootstrapSummary(String count, String range);
 
   /// No description provided for @logsBootstrapEmptyRange.
   ///
@@ -6932,7 +6927,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'命中 {count} 次'**
-  String logsHitTimes(Object count);
+  String logsHitTimes(int count);
 
   /// No description provided for @logsCacheInfo.
   ///
@@ -7034,78 +7029,78 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'模型 {model}'**
-  String logsModelName(Object model);
+  String logsModelName(String model);
 
   /// No description provided for @logsSuccessWith.
   ///
   /// In zh, this message translates to:
   /// **'成功 {percent}'**
-  String logsSuccessWith(Object percent);
+  String logsSuccessWith(String percent);
 
   /// No description provided for @logsAverageWith.
   ///
   /// In zh, this message translates to:
   /// **'平均 {latency}'**
-  String logsAverageWith(Object latency);
+  String logsAverageWith(String latency);
 
   /// No description provided for @logsPrimaryHitOnly.
   ///
   /// In zh, this message translates to:
   /// **'首选命中 {percent}'**
-  String logsPrimaryHitOnly(Object percent);
+  String logsPrimaryHitOnly(String percent);
 
   /// No description provided for @logsFallbackUses.
   ///
   /// In zh, this message translates to:
   /// **'兜底 {count} 次'**
-  String logsFallbackUses(Object count);
+  String logsFallbackUses(String count);
 
   /// No description provided for @logsBootstrapRow.
   ///
   /// In zh, this message translates to:
   /// **'{ip} · 成功 {percent} · 平均 {latency}{failures}'**
   String logsBootstrapRow(
-    Object failures,
-    Object ip,
-    Object latency,
-    Object percent,
+    String failures,
+    String ip,
+    String latency,
+    String percent,
   );
 
   /// No description provided for @logsBootstrapFailures.
   ///
   /// In zh, this message translates to:
   /// **' · 失败 {count} 次'**
-  String logsBootstrapFailures(Object count);
+  String logsBootstrapFailures(String count);
 
   /// No description provided for @logsEntryCount.
   ///
   /// In zh, this message translates to:
   /// **'{count} 条'**
-  String logsEntryCount(Object count);
+  String logsEntryCount(int count);
 
   /// No description provided for @logsCacheRow.
   ///
   /// In zh, this message translates to:
   /// **'{ttl} · 命中 {count} 次 · {size} B'**
-  String logsCacheRow(Object count, Object size, Object ttl);
+  String logsCacheRow(String count, int size, int ttl);
 
   /// No description provided for @logsLastHitAt.
   ///
   /// In zh, this message translates to:
   /// **'最后命中 {time}'**
-  String logsLastHitAt(Object time);
+  String logsLastHitAt(String time);
 
   /// No description provided for @logsCacheFooterCount.
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 条，按命中次数与过期时间排序。剩余 TTL 少于 30 秒的条目标橙色。点按一行查看详情，可复制域名、加入黑白名单或用 AI 分析。'**
-  String logsCacheFooterCount(Object count);
+  String logsCacheFooterCount(int count);
 
   /// No description provided for @logsSubStatsRow.
   ///
   /// In zh, this message translates to:
   /// **'{status} | 拦截 {count} 次 | {percent}'**
-  String logsSubStatsRow(Object count, Object percent, Object status);
+  String logsSubStatsRow(String count, String percent, String status);
 
   /// No description provided for @aboutTitle.
   ///
@@ -7135,7 +7130,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'群号 {number}'**
-  String aboutQqGroup(Object number);
+  String aboutQqGroup(String number);
 
   /// No description provided for @aboutSponsor.
   ///
@@ -7291,25 +7286,25 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'当前已是最新版本{version}'**
-  String aboutUpToDate(Object version);
+  String aboutUpToDate(String version);
 
   /// No description provided for @aboutVersionSuffix.
   ///
   /// In zh, this message translates to:
   /// **'（{version}）'**
-  String aboutVersionSuffix(Object version);
+  String aboutVersionSuffix(String version);
 
   /// No description provided for @aboutFoundVersion.
   ///
   /// In zh, this message translates to:
   /// **'发现 {version}版本'**
-  String aboutFoundVersion(Object version);
+  String aboutFoundVersion(String version);
 
   /// No description provided for @aboutCurrentSuffix.
   ///
   /// In zh, this message translates to:
   /// **'（当前 {version}）'**
-  String aboutCurrentSuffix(Object version);
+  String aboutCurrentSuffix(String version);
 
   /// No description provided for @aboutNew.
   ///
@@ -7327,13 +7322,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{version} 更新包'**
-  String aboutUpdatePackage(Object version);
+  String aboutUpdatePackage(String version);
 
   /// No description provided for @aboutLinkCopyFallback.
   ///
   /// In zh, this message translates to:
   /// **'未能打开浏览器，链接已复制：{url}'**
-  String aboutLinkCopyFallback(Object url);
+  String aboutLinkCopyFallback(String url);
 
   /// No description provided for @devStressLogs.
   ///
@@ -7345,7 +7340,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'向当前模式的日志库真实写入 {count} 条 DNS 日志'**
-  String devStressLogsBody(Object count);
+  String devStressLogsBody(int count);
 
   /// No description provided for @devErrorReport.
   ///
@@ -7399,13 +7394,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{action}\n\n该操作会真正改写本机数据，无法撤销。'**
-  String devConfirmBody(Object action);
+  String devConfirmBody(String action);
 
   /// No description provided for @devActionFailed.
   ///
   /// In zh, this message translates to:
   /// **'{action}失败：{error}'**
-  String devActionFailed(Object action, Object error);
+  String devActionFailed(String action, String error);
 
   /// No description provided for @devStressNoDb.
   ///
@@ -7417,7 +7412,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'日志压测完成：写入 {count} 条到 {file}'**
-  String devStressDone(Object count, Object file);
+  String devStressDone(String count, String file);
 
   /// No description provided for @devTestException.
   ///
@@ -7441,7 +7436,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已压缩 {files}，回收 {kb} KB'**
-  String devVacuumDone(Object files, Object kb);
+  String devVacuumDone(String files, int kb);
 
   /// No description provided for @devRestartNeeded.
   ///
@@ -7693,7 +7688,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{label} 收款码'**
-  String sponsorQrCode(Object label);
+  String sponsorQrCode(String label);
 
   /// No description provided for @sponsorClose.
   ///
@@ -7711,7 +7706,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'未检测到 QQ，群号已复制：{number}'**
-  String aboutQqCopied(Object number);
+  String aboutQqCopied(String number);
 
   /// No description provided for @disclaimerTitle.
   ///
@@ -7807,7 +7802,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'判定为{type}'**
-  String ipQualityJudgedAs(Object type);
+  String ipQualityJudgedAs(String type);
 
   /// No description provided for @ipQualityNotUsed.
   ///
@@ -7825,7 +7820,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'这些动作直接作用于本机的数据库、prefs 与 native 通道：日志压测会真的写入 {count} 条日志，压缩数据库执行的是 SQLite VACUUM，清空全部数据会删除所有本地数据并要求重启。'**
-  String devFooterWarning(Object count);
+  String devFooterWarning(int count);
 
   /// No description provided for @devDataCleanupBody.
   ///
@@ -8269,7 +8264,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'你选择了{mode}'**
-  String onboardingChosen(Object mode);
+  String onboardingChosen(String mode);
 
   /// No description provided for @onboardingChangeable.
   ///
@@ -8395,7 +8390,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已授予 {granted} / {total} 项；全部权限只在本机使用，不会上传任何数据。'**
-  String permGrantedCount(Object granted, Object total);
+  String permGrantedCount(String granted, String total);
 
   /// No description provided for @onboardingTipNormal1.
   ///
@@ -8467,13 +8462,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'第 {index} 条'**
-  String onboardingTipIndex(Object index);
+  String onboardingTipIndex(String index);
 
   /// No description provided for @permStillDenied.
   ///
   /// In zh, this message translates to:
   /// **'{name} 仍未授予，请在系统设置里允许后返回本页'**
-  String permStillDenied(Object name);
+  String permStillDenied(String name);
 
   /// No description provided for @permGranted.
   ///
@@ -8563,7 +8558,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'探测走物理网络（本应用流量不经过隧道）；系统私人 DNS：{dns}'**
-  String toolPrivateDnsProbe(Object dns);
+  String toolPrivateDnsProbe(String dns);
 
   /// No description provided for @toolPhysicalProbe.
   ///
@@ -8683,7 +8678,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'第 {n} 个包'**
-  String toolPacketN(Object n);
+  String toolPacketN(String n);
 
   /// No description provided for @toolTimeout.
   ///
@@ -8695,7 +8690,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'本次共发送 {sent} 个探测包，失败 {failed} 个。'**
-  String toolPingSummary(Object failed, Object sent);
+  String toolPingSummary(String failed, String sent);
 
   /// No description provided for @toolPingFooter.
   ///
@@ -8839,7 +8834,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'暂无 {protocol} DNS 服务商'**
-  String toolNoProviders(Object protocol);
+  String toolNoProviders(String protocol);
 
   /// No description provided for @toolNoProvidersBody.
   ///
@@ -8881,7 +8876,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'测速结果按成功优先、平均耗时从低到高排序；结果只反映本次查询时的网络状态。域名当前为「{domain}」。'**
-  String toolSpeedResultsFooter(Object domain);
+  String toolSpeedResultsFooter(String domain);
 
   /// No description provided for @toolSpeedFooter.
   ///
@@ -8899,13 +8894,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{rate} · 样本 {count}'**
-  String toolSampleCount(Object count, Object rate);
+  String toolSampleCount(String count, String rate);
 
   /// No description provided for @toolAllFailed.
   ///
   /// In zh, this message translates to:
   /// **'全部失败（{count} 次）'**
-  String toolAllFailed(Object count);
+  String toolAllFailed(String count);
 
   /// No description provided for @toolTraceOptions.
   ///
@@ -8947,7 +8942,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{count} / 最多 {max}'**
-  String toolHopCountValue(Object count, Object max);
+  String toolHopCountValue(String count, String max);
 
   /// No description provided for @toolNoResponse.
   ///
@@ -9229,7 +9224,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'延迟 {ms} ms'**
-  String odDelayValue(Object ms);
+  String odDelayValue(String ms);
 
   /// No description provided for @odStateDisabled.
   ///
@@ -9253,7 +9248,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已匹配 {ssid}，VPN 会自动启动'**
-  String odStateMatched(Object ssid);
+  String odStateMatched(String ssid);
 
   /// No description provided for @odStateUnmatched.
   ///
@@ -9439,7 +9434,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'当前连接：{name}'**
-  String odCapCurrent(Object name);
+  String odCapCurrent(String name);
 
   /// No description provided for @customResourcesTitle.
   ///
@@ -9481,49 +9476,49 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 项'**
-  String configItemCount(Object count);
+  String configItemCount(int count);
 
   /// No description provided for @odEditSsidTooltip.
   ///
   /// In zh, this message translates to:
   /// **'编辑 {ssid}'**
-  String odEditSsidTooltip(Object ssid);
+  String odEditSsidTooltip(String ssid);
 
   /// No description provided for @odDeleteSsidTooltip.
   ///
   /// In zh, this message translates to:
   /// **'删除 {ssid}'**
-  String odDeleteSsidTooltip(Object ssid);
+  String odDeleteSsidTooltip(String ssid);
 
   /// No description provided for @serverSwitched.
   ///
   /// In zh, this message translates to:
   /// **'已切换到 {name}，重启服务后生效'**
-  String serverSwitched(Object name);
+  String serverSwitched(String name);
 
   /// No description provided for @serverSelected.
   ///
   /// In zh, this message translates to:
   /// **'已选择 {name}'**
-  String serverSelected(Object name);
+  String serverSelected(String name);
 
   /// No description provided for @serverAdded.
   ///
   /// In zh, this message translates to:
   /// **'已添加 {name}'**
-  String serverAdded(Object name);
+  String serverAdded(String name);
 
   /// No description provided for @serverSaved.
   ///
   /// In zh, this message translates to:
   /// **'已保存 {name}'**
-  String serverSaved(Object name);
+  String serverSaved(String name);
 
   /// No description provided for @serverDeleteConfirm.
   ///
   /// In zh, this message translates to:
   /// **'删除 {name}？'**
-  String serverDeleteConfirm(Object name);
+  String serverDeleteConfirm(String name);
 
   /// No description provided for @serverDeleteBody.
   ///
@@ -9535,7 +9530,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已删除 {name}'**
-  String serverDeleted(Object name);
+  String serverDeleted(String name);
 
   /// No description provided for @serverUpstreamTitle.
   ///
@@ -9553,7 +9548,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'当前用于解析 DNS：({protocol}) {name}'**
-  String serverCurrentUpstream(Object name, Object protocol);
+  String serverCurrentUpstream(String name, String protocol);
 
   /// No description provided for @serverBuiltinProviders.
   ///
@@ -9595,13 +9590,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'编辑 {name}'**
-  String serverEditName(Object name);
+  String serverEditName(String name);
 
   /// No description provided for @serverDeleteName.
   ///
   /// In zh, this message translates to:
   /// **'删除 {name}'**
-  String serverDeleteName(Object name);
+  String serverDeleteName(String name);
 
   /// No description provided for @serverEditCustom.
   ///
@@ -9709,7 +9704,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{preset} · 命中缓存的查询不再请求上游'**
-  String serverCacheOn(Object preset);
+  String serverCacheOn(String preset);
 
   /// No description provided for @serverCacheOff.
   ///
@@ -9931,13 +9926,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'范围 {min}–{max}'**
-  String serverPortRange(Object max, Object min);
+  String serverPortRange(String max, String min);
 
   /// No description provided for @serverPortChanged.
   ///
   /// In zh, this message translates to:
   /// **'端口已改为 {port}，重启服务后生效'**
-  String serverPortChanged(Object port);
+  String serverPortChanged(String port);
 
   /// No description provided for @serverResetConfirm.
   ///
@@ -10015,7 +10010,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已复制 {text}'**
-  String serverCopied(Object text);
+  String serverCopied(String text);
 
   /// No description provided for @serverServiceStatus.
   ///
@@ -10099,7 +10094,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'监听 0.0.0.0:{port}'**
-  String serverListening(Object port);
+  String serverListening(String port);
 
   /// No description provided for @serverStatusStopped.
   ///
@@ -10237,13 +10232,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'正在记录，已占用 {size}，再次点击可关闭'**
-  String troubleshootRecording(Object size);
+  String troubleshootRecording(String size);
 
   /// No description provided for @troubleshootStoppedWithLogs.
   ///
   /// In zh, this message translates to:
   /// **'已关闭，本地已有 {size} 日志可导出'**
-  String troubleshootStoppedWithLogs(Object size);
+  String troubleshootStoppedWithLogs(String size);
 
   /// No description provided for @troubleshootStoppedNoLogs.
   ///
@@ -10267,7 +10262,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'共 {count} 个文件，{size}，点击导出文件'**
-  String troubleshootLogCount(Object count, Object size);
+  String troubleshootLogCount(int count, String size);
 
   /// No description provided for @troubleshootReadingHealth.
   ///
@@ -10285,17 +10280,17 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'正常，没有日志被丢弃（{mode} · {detail}）'**
-  String troubleshootHealthyDetail(Object detail, Object mode);
+  String troubleshootHealthyDetail(String detail, String mode);
 
   /// No description provided for @troubleshootDropped.
   ///
   /// In zh, this message translates to:
   /// **'已丢弃 {dropped} 条日志{split}，打开失败 {failed} 次{reason}'**
   String troubleshootDropped(
-    Object dropped,
-    Object failed,
-    Object reason,
-    Object split,
+    int dropped,
+    String failed,
+    int reason,
+    String split,
   );
 
   /// No description provided for @troubleshootOverflow.
@@ -10338,7 +10333,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已记录 {count} 份崩溃日志，点击导出文件'**
-  String troubleshootCrashCount(Object count);
+  String troubleshootCrashCount(int count);
 
   /// No description provided for @troubleshootStoppedToast.
   ///
@@ -10398,7 +10393,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已导出到 {path}'**
-  String troubleshootExported(Object path);
+  String troubleshootExported(String path);
 
   /// No description provided for @troubleshootConfirm.
   ///
@@ -10416,7 +10411,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已清空 {count} 个日志文件'**
-  String troubleshootClearedLogs(Object count);
+  String troubleshootClearedLogs(String count);
 
   /// No description provided for @troubleshootNoClearableLogs.
   ///
@@ -10440,7 +10435,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已清空 {count} 份崩溃日志'**
-  String troubleshootClearedCrashes(Object count);
+  String troubleshootClearedCrashes(String count);
 
   /// No description provided for @troubleshootNoClearableCrashes.
   ///
@@ -10620,13 +10615,13 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{protocol} 服务'**
-  String providerVisibilityProtocol(Object protocol);
+  String providerVisibilityProtocol(String protocol);
 
   /// No description provided for @providerVisibilityAll.
   ///
   /// In zh, this message translates to:
   /// **'全部 {protocol} 服务'**
-  String providerVisibilityAll(Object protocol);
+  String providerVisibilityAll(String protocol);
 
   /// No description provided for @providerVisibilityNone.
   ///
@@ -10644,7 +10639,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已选择 {count} 个服务'**
-  String providerVisibilityCount(Object count);
+  String providerVisibilityCount(String count);
 
   /// No description provided for @markdownCopyCode.
   ///
@@ -10740,7 +10735,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'上次更新：{time}'**
-  String recognitionLastUpdate(Object time);
+  String recognitionLastUpdate(String time);
 
   /// No description provided for @recognitionCloudNote.
   ///
@@ -10752,7 +10747,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{package} · {count} 个放行域名'**
-  String appRulesAllowCount(Object count, Object package);
+  String appRulesAllowCount(String count, int package);
 
   /// No description provided for @appRulesConfigured.
   ///
@@ -10914,7 +10909,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'保留 {days} 天'**
-  String logRetentionKeepDays(Object days);
+  String logRetentionKeepDays(String days);
 
   /// No description provided for @logRetentionCleanupNote.
   ///
@@ -10986,7 +10981,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'「{title}」的选择还没保存。保存后离开，还是放弃这些修改？'**
-  String appSelectionSaveBody(Object title);
+  String appSelectionSaveBody(String title);
 
   /// No description provided for @appSelectionSwitch.
   ///
@@ -11004,7 +10999,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'已选择 {count} 个应用'**
-  String appSelectionCount(Object count);
+  String appSelectionCount(String count);
 
   /// No description provided for @appSelectionNoAppsAvailable.
   ///
@@ -11094,30 +11089,30 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'{ip} · 暂无样本'**
-  String bootstrapNoSample(Object ip);
+  String bootstrapNoSample(String ip);
 
   /// No description provided for @bootstrapAverage.
   ///
   /// In zh, this message translates to:
   /// **' · 平均 {ms}ms'**
-  String bootstrapAverage(Object ms);
+  String bootstrapAverage(String ms);
 
   /// No description provided for @bootstrapFailures.
   ///
   /// In zh, this message translates to:
   /// **' · 失败 {count}'**
-  String bootstrapFailures(Object count);
+  String bootstrapFailures(String count);
 
   /// No description provided for @bootstrapStats.
   ///
   /// In zh, this message translates to:
   /// **'{ip}{latency} · 样本 {samples} · 成功 {success}%{failures}'**
   String bootstrapStats(
-    Object failures,
-    Object ip,
-    Object latency,
-    Object samples,
-    Object success,
+    String failures,
+    String ip,
+    String latency,
+    String samples,
+    String success,
   );
 
   /// No description provided for @bootstrapInvalidIp.
@@ -15625,7 +15620,7 @@ abstract class AppL10n {
   ///
   /// In zh, this message translates to:
   /// **'正在编辑「{mode}」模式的布局，切换日志模式后各自独立。拖动手柄排序，点右上角移除。'**
-  String logDashboardEditHint(Object mode);
+  String logDashboardEditHint(String mode);
 
   /// No description provided for @logDashboardModeFooter.
   ///
