@@ -14,6 +14,7 @@ List<LogDashboardWidget> logDashboardCatalogOf(LegacyLogMode mode) =>
     switch (mode) {
       LegacyLogMode.all => const [
         LogDashboardWidget.hero,
+        LogDashboardWidget.stats,
         LogDashboardWidget.trafficMonitor,
         LogDashboardWidget.requestOverview,
         LogDashboardWidget.aiInsight,

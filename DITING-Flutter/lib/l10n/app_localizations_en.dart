@@ -9132,4 +9132,35 @@ class AppL10nEn extends AppL10n {
   @override
   String get logDashboardCardRuleBlocksDescription =>
       'Rule sources that block the most';
+
+  @override
+  String get logStatsTitle => 'Statistics';
+
+  @override
+  String get logStatsRequests => 'Requests';
+
+  @override
+  String get logStatsTotal => 'Total';
+
+  @override
+  String get logStatsData => 'Data usage';
+
+  @override
+  String get logStatsSaved => 'Saved by cache';
+
+  @override
+  String get logStatsUploaded => 'Uploaded';
+
+  @override
+  String get logStatsDownloaded => 'Downloaded';
+
+  @override
+  String get logStatsWindow => 'Time range';
+
+  @override
+  String get logStatsRecentActivity => 'Recent activity';
+
+  @override
+  String get logDashboardCardStatsDescription =>
+      'Blocks, cache hits and traffic for today, this week, this month or all history';
 }

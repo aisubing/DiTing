@@ -7,6 +7,9 @@ import 'package:diting/app/l10n/l10n.dart';
 enum LogDashboardWidget {
   /// Title and description block at the top; its text follows the log mode.
   hero,
+
+  /// Request and data-usage totals over a picked window, with proportion bars.
+  stats,
   trafficMonitor,
   requestOverview,
   filteredHighlight,
@@ -26,6 +29,7 @@ enum LogDashboardWidget {
 
   String label(AppL10n l10n) => switch (this) {
     LogDashboardWidget.hero => l10n.logDashboardCardHero,
+    LogDashboardWidget.stats => l10n.logStatsTitle,
     LogDashboardWidget.trafficMonitor => l10n.trafficMonitorTitle,
     LogDashboardWidget.requestOverview => l10n.logRequestsOverview,
     LogDashboardWidget.filteredHighlight => l10n.logHighlights,
@@ -45,6 +49,7 @@ enum LogDashboardWidget {
 
   String description(AppL10n l10n) => switch (this) {
     LogDashboardWidget.hero => l10n.logDashboardCardHeroDescription,
+    LogDashboardWidget.stats => l10n.logDashboardCardStatsDescription,
     LogDashboardWidget.trafficMonitor =>
       l10n.logDashboardCardTrafficMonitorDescription,
     LogDashboardWidget.requestOverview =>

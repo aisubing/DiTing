@@ -5,6 +5,7 @@ import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/cards/traffic_structure_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_card.dart';
 import 'package:diting/pages/logs/ai_insight_card.dart';
+import 'package:diting/pages/logs/log_stats_card.dart';
 import 'package:diting/pages/logs/logs_shared.dart';
 import 'package:diting/router.dart';
 import 'package:diting/routes/routes.dart';
@@ -25,6 +26,9 @@ Widget buildLogDashboardCard(
       interactive ? () => context.push(path) : null;
   return switch (widget) {
     LogDashboardWidget.hero => _HeroBlock(mode: mode),
+    LogDashboardWidget.stats => LogStatsCard(
+      onRecentActivity: push(ObservabilityPaths.requests),
+    ),
     LogDashboardWidget.trafficMonitor => TrafficMonitorCard(
       // Full screen like the hub entry: the bar belongs to the shell, so only a push on the root
       // navigator hides it and gives the title bar a back arrow.

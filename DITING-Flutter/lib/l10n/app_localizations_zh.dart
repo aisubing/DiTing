@@ -8554,4 +8554,35 @@ class AppL10nZh extends AppL10n {
 
   @override
   String get logDashboardCardRuleBlocksDescription => '拦截次数最多的规则来源';
+
+  @override
+  String get logStatsTitle => '统计';
+
+  @override
+  String get logStatsRequests => '请求';
+
+  @override
+  String get logStatsTotal => '总请求';
+
+  @override
+  String get logStatsData => '数据使用';
+
+  @override
+  String get logStatsSaved => '缓存节省';
+
+  @override
+  String get logStatsUploaded => '已上传';
+
+  @override
+  String get logStatsDownloaded => '已下载';
+
+  @override
+  String get logStatsWindow => '统计范围';
+
+  @override
+  String get logStatsRecentActivity => '最近的活动';
+
+  @override
+  String get logDashboardCardStatsDescription =>
+      '按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量';
 }

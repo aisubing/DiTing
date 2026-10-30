@@ -3373,5 +3373,15 @@
   "logDashboardCardCacheDescription": "命中次数最多的缓存域名",
   "logDashboardCardRaceDescription": "竞速中胜出最多的上游",
   "logDashboardCardBootstrapDescription": "Bootstrap DNS 的解析次数与成功率",
-  "logDashboardCardRuleBlocksDescription": "拦截次数最多的规则来源"
+  "logDashboardCardRuleBlocksDescription": "拦截次数最多的规则来源",
+  "logStatsTitle": "统计",
+  "logStatsRequests": "请求",
+  "logStatsTotal": "总请求",
+  "logStatsData": "数据使用",
+  "logStatsSaved": "缓存节省",
+  "logStatsUploaded": "已上传",
+  "logStatsDownloaded": "已下载",
+  "logStatsWindow": "统计范围",
+  "logStatsRecentActivity": "最近的活动",
+  "logDashboardCardStatsDescription": "按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量"
 }

@@ -15614,6 +15614,66 @@ abstract class AppL10n {
   /// In zh, this message translates to:
   /// **'拦截次数最多的规则来源'**
   String get logDashboardCardRuleBlocksDescription;
+
+  /// No description provided for @logStatsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计'**
+  String get logStatsTitle;
+
+  /// No description provided for @logStatsRequests.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求'**
+  String get logStatsRequests;
+
+  /// No description provided for @logStatsTotal.
+  ///
+  /// In zh, this message translates to:
+  /// **'总请求'**
+  String get logStatsTotal;
+
+  /// No description provided for @logStatsData.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据使用'**
+  String get logStatsData;
+
+  /// No description provided for @logStatsSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'缓存节省'**
+  String get logStatsSaved;
+
+  /// No description provided for @logStatsUploaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已上传'**
+  String get logStatsUploaded;
+
+  /// No description provided for @logStatsDownloaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已下载'**
+  String get logStatsDownloaded;
+
+  /// No description provided for @logStatsWindow.
+  ///
+  /// In zh, this message translates to:
+  /// **'统计范围'**
+  String get logStatsWindow;
+
+  /// No description provided for @logStatsRecentActivity.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近的活动'**
+  String get logStatsRecentActivity;
+
+  /// No description provided for @logDashboardCardStatsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'按今日、本周、本月或全部历史统计拦截、缓存命中与上下行流量'**
+  String get logDashboardCardStatsDescription;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

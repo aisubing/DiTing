@@ -164,13 +164,21 @@ final trafficSnapshotProvider = FutureProvider<TrafficSnapshot>((ref) async {
   return _loadSnapshot(ref, window);
 });
 
+/// A fixed window, for cards that pick their own range without moving the traffic page's.
+final trafficSnapshotOfProvider =
+    FutureProvider.family<TrafficSnapshot, TrafficWindow>((ref, window) {
+      ref.watch(dnsLogRevisionProvider);
+      return _loadSnapshot(ref, window);
+    });
+
 /// Set after the first visit to the traffic page; the live-rate note and the attribution
 /// banner show only on that visit (the app bar info button still opens the explainer).
 const trafficTipsSeenKey = 'traffic_stats_tips_seen';
 
 /// Returns whether the traffic page tips are still unseen, and marks them seen.
 bool consumeTrafficTips(LegacyPrefsStore store) {
-  final seen = store.read(LegacySettings.uiContainer, trafficTipsSeenKey) == true;
+  final seen =
+      store.read(LegacySettings.uiContainer, trafficTipsSeenKey) == true;
   if (!seen) {
     store.putBool(LegacySettings.uiContainer, trafficTipsSeenKey, true);
   }

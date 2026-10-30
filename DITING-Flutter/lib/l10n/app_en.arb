@@ -2580,5 +2580,15 @@
   "logDashboardCardCacheDescription": "Most-hit cached domains",
   "logDashboardCardRaceDescription": "Upstreams that win races most often",
   "logDashboardCardBootstrapDescription": "Bootstrap DNS lookups and success rate",
-  "logDashboardCardRuleBlocksDescription": "Rule sources that block the most"
+  "logDashboardCardRuleBlocksDescription": "Rule sources that block the most",
+  "logStatsTitle": "Statistics",
+  "logStatsRequests": "Requests",
+  "logStatsTotal": "Total",
+  "logStatsData": "Data usage",
+  "logStatsSaved": "Saved by cache",
+  "logStatsUploaded": "Uploaded",
+  "logStatsDownloaded": "Downloaded",
+  "logStatsWindow": "Time range",
+  "logStatsRecentActivity": "Recent activity",
+  "logDashboardCardStatsDescription": "Blocks, cache hits and traffic for today, this week, this month or all history"
 }
