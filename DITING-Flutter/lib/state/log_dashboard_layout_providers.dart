@@ -10,34 +10,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Cards a log mode can show, in the order a fresh install shows them. A card outside this list
 /// has no data in that mode (the traffic monitor is meaningless when only blocks are logged), so
 /// the add sheet never offers it there.
+///
+/// Order follows what a user opens the page for: the headline figures, then what just happened,
+/// then why it was blocked, then usage, and the resolver internals (cache, race, bootstrap) last.
+/// The off mode leads with why the page is empty and whether resolving is still healthy.
 List<LogDashboardWidget> logDashboardCatalogOf(LegacyLogMode mode) =>
     switch (mode) {
       LegacyLogMode.all => const [
         LogDashboardWidget.hero,
         LogDashboardWidget.stats,
+        LogDashboardWidget.recentRequests,
+        LogDashboardWidget.trafficStructure,
+        LogDashboardWidget.ruleBlocks,
+        LogDashboardWidget.aiInsight,
         LogDashboardWidget.trafficMonitor,
         LogDashboardWidget.requestOverview,
-        LogDashboardWidget.aiInsight,
-        LogDashboardWidget.trafficStructure,
-        LogDashboardWidget.recentRequests,
         LogDashboardWidget.cacheHotspots,
         LogDashboardWidget.raceWinners,
         LogDashboardWidget.bootstrapDns,
-        LogDashboardWidget.ruleBlocks,
       ],
       LegacyLogMode.blockedAndErrors => const [
         LogDashboardWidget.hero,
         LogDashboardWidget.filteredHighlight,
-        LogDashboardWidget.aiInsight,
-        LogDashboardWidget.trafficStructure,
         LogDashboardWidget.recentBlocked,
         LogDashboardWidget.ruleBlocks,
+        LogDashboardWidget.trafficStructure,
+        LogDashboardWidget.aiInsight,
       ],
       LegacyLogMode.off => const [
         LogDashboardWidget.hero,
         LogDashboardWidget.privacyMode,
-        LogDashboardWidget.offModeMetric,
         LogDashboardWidget.resolutionPerf,
+        LogDashboardWidget.offModeMetric,
         LogDashboardWidget.cacheHotspots,
         LogDashboardWidget.raceWinners,
         LogDashboardWidget.bootstrapDns,

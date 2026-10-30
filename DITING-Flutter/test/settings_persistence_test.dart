@@ -173,20 +173,26 @@ void _settingsPersistence() {
         ],
       );
       addTearDown(instance.dispose);
-      const mode = LegacyLogMode.blockedAndErrors;
+      // The AI card sits mid-board in this mode, so a reorder must leave its slot alone.
+      const mode = LegacyLogMode.all;
       final visible = instance.read(visibleLogDashboardWidgetsProvider(mode));
       expect(visible, isNot(contains(LogDashboardWidget.aiInsight)));
-      // Move the hero (visible index 0) below the highlight card.
+      // Move the hero (visible index 0) below the stats card.
       instance
           .read(logDashboardWidgetsProvider(mode).notifier)
           .moveVisible(visible, 0, 1);
       expect(instance.read(logDashboardWidgetsProvider(mode)), [
-        LogDashboardWidget.filteredHighlight,
+        LogDashboardWidget.stats,
         LogDashboardWidget.hero,
-        LogDashboardWidget.aiInsight,
+        LogDashboardWidget.recentRequests,
         LogDashboardWidget.trafficStructure,
-        LogDashboardWidget.recentBlocked,
         LogDashboardWidget.ruleBlocks,
+        LogDashboardWidget.aiInsight,
+        LogDashboardWidget.trafficMonitor,
+        LogDashboardWidget.requestOverview,
+        LogDashboardWidget.cacheHotspots,
+        LogDashboardWidget.raceWinners,
+        LogDashboardWidget.bootstrapDns,
       ]);
     });
   });

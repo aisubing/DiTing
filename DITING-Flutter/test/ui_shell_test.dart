@@ -8,6 +8,7 @@ import 'package:diting/data/mock_data.dart';
 import 'package:diting/data/vpn/vpn_bridge.dart';
 import 'package:diting/pages/about/about_page.dart';
 import 'package:diting/pages/home/dashboard/cards/network_speed_card.dart';
+import 'package:diting/pages/home/dashboard/cards/traffic_monitor_card.dart';
 import 'package:diting/pages/home/dashboard/dashboard_board.dart';
 import 'package:diting/pages/home/dashboard/detail/network_speed_detail_page.dart';
 import 'package:diting/pages/home/widgets/home_power_button.dart';
@@ -277,7 +278,14 @@ void _appShell() {
     // and left no way back; it now opens the full-screen twin like the hub card does.
     testWidgets('日志仪表盘的流量监控以全屏页打开并给出返回键', (tester) async {
       await pumpApp(tester, initialLocation: Routes.logs, dock: userDock);
-      await tester.tap(find.byTooltip('详情').first);
+      // The monitor sits below the fold; tap its own detail button, not the first one on the page.
+      final detail = find.descendant(
+        of: find.byType(TrafficMonitorCard),
+        matching: find.byTooltip('详情'),
+      );
+      await tester.ensureVisible(detail);
+      await tester.pumpAndSettle();
+      await tester.tap(detail);
       await tester.pumpAndSettle();
       expect(find.byType(TrafficPage), findsOneWidget);
       expect(find.byType(NavigationDock), findsNothing);
